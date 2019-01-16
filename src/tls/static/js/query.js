@@ -1,4 +1,4 @@
-function sendPostRequest(req_data, req_url) {
+function sendPostRequest(req_data, req_url, redir) {
   $.ajax({
     url: req_url,
     dataType: 'json',
@@ -8,8 +8,10 @@ function sendPostRequest(req_data, req_url) {
     processData: false,
     success: function(data, textStatus, jQxhr){
       console.log('OK');
-      var redirection = (req_url.split("/").pop() === "run") ? "active" : req_url.split("/").pop();
-      window.location.replace(redirection);
+      if (redir) {
+        var redirection = (req_url.split("/").pop() === "run") ? "active" : req_url.split("/").pop();
+        window.location.replace(redirection);
+      }
     },
     error: function(jqXhr, textStatus, errorThrown){
       var _clientmsg = 'Client: ' + errorThrown;
@@ -43,7 +45,7 @@ function sendQuery() {
       query: _query,
       repeat: _repeat
   };
-  sendPostRequest(data, _url);
+  sendPostRequest(data, _url, true);
 }
 
 function clearQuery() {
@@ -90,4 +92,9 @@ function confirmDeleteQueries(_names) {
     deleteQueries(_names);
   });
   $("#confirmModal").modal();
+}
+
+function refreshTableNow(table_id) {
+  var table = $('#' + table_id).DataTable();
+  table.ajax.reload();
 }

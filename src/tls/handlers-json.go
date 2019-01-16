@@ -103,10 +103,9 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"removeBackslash":     removeBackslash,
-		"pastTimeAgo":         pastTimeAgo,
-		"resultsSearchLink":   resultsSearchLink,
-		"noBackslashTruncate": noBackslashTruncate,
+		"removeBackslash":   removeBackslash,
+		"pastTimeAgo":       pastTimeAgo,
+		"resultsSearchLink": resultsSearchLink,
 	}
 	// Fill template with data
 	var tmplName string

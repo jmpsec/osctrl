@@ -21,11 +21,7 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-terminal"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
-                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
-                    <i class="fas fa-pause"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableNodes');">
+                  <button class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableQueries');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
@@ -53,6 +49,52 @@
             </div>
 
             <input type="hidden" id="csrftoken" value="thisshouldbeatoken">
+
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-danger" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Something went wrong...</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="errorModalMessageClient"></p>
+                    <p id="errorModalMessageServer"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-warning" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Confirm the action</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="confirmModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="confirm_action" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
                 
           </div>
 
@@ -142,7 +184,7 @@
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableNodes.rows('.selected').data(), function() {
+                $.each(tableQueries.rows('.selected').data(), function() {
                   a.push(this);
                 });
                 var names = []
@@ -167,7 +209,7 @@
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableNodes.rows('.selected').data(), function() {
+                $.each(tableQueries.rows('.selected').data(), function() {
                   a.push(this);
                 });
                 var names = []

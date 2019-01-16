@@ -96,6 +96,7 @@ type OsqueryQueryData struct {
 	UUID    string `gorm:"index"`
 	Context string
 	Name    string
+	Data    json.RawMessage
 	Status  int
 }
 
@@ -106,6 +107,7 @@ func postgresQuery(data []byte, name string, node OsqueryNode, status int) {
 		UUID:    node.UUID,
 		Context: node.Context,
 		Name:    name,
+		Data:    data,
 		Status:  status,
 	}
 	// Insert in DB
@@ -141,7 +143,7 @@ func postgresResultLogs(uuid, context string, seconds int64) ([]OsqueryResultDat
 // Function to retrieve the query log by name
 func postgresQueryLogs(name string) ([]OsqueryQueryData, error) {
 	var logs []OsqueryQueryData
-	if err := db.Where("name = ?", "query", name).Find(&logs).Error; err != nil {
+	if err := db.Where("name = ?", name).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil

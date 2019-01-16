@@ -4,7 +4,7 @@
     {{ if $i }}, {{ end }}
     {
       "checkbox" : "",
-      "name": "<a href='{{ resultsSearchLink $e.Name }}'>{{ noBackslashTruncate $e.Name }}...</a>",
+      "name": "<a href='{{ resultsSearchLink $e.Name }}'>{{ removeBackslash $e.Name }}</a>",
       "creator": "{{ removeBackslash $e.Creator }}",
       "query": "<span style='font-family: monospace;'>{{ removeBackslash $e.Query }}</span>",
       "created": "{{ pastTimeAgo $e.CreatedAt }}",

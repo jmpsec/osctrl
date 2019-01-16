@@ -7,7 +7,7 @@
         "display": "{{ pastTimeAgo $e.CreatedAt }}",
         "timestamp": "{{ pastTimestamp $e.CreatedAt }}"
       },
-      "columns": "{{ stringEncode $e.Columns }}"
+      "data": "{{ stringEncode $e.Data }}"
     }
   {{end}}
   ]
