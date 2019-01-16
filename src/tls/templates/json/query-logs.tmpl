@@ -1,0 +1,14 @@
+{
+  "data": [
+  {{range  $i, $e := .}}
+    {{ if $i }}, {{ end }}
+    {
+      "created": {
+        "display": "{{ pastTimeAgo $e.CreatedAt }}",
+        "timestamp": "{{ pastTimestamp $e.CreatedAt }}"
+      },
+      "columns": "{{ stringEncode $e.Columns }}"
+    }
+  {{end}}
+  ]
+}

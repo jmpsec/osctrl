@@ -1,0 +1,50 @@
+@font-face {
+  font-family: 'osquery';
+  src:  url('/static/fonts/osquery.eot?zcdbov');
+  src:  url('/static/fonts/osquery.eot?zcdbov#iefix') format('embedded-opentype'),
+    url('/static/fonts/osquery.ttf?zcdbov') format('truetype'),
+    url('/static/fonts/osquery.woff?zcdbov') format('woff'),
+    url('/static/fonts/osquery.woff2?zcdbov') format('woff2'),
+    url('/static/fonts/osquery.svg?zcdbov#osquery') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'osquery' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-osquery_gray .path1:before {
+  content: "\e903";
+  color: rgb(0, 0, 0);
+}
+.icon-osquery_gray .path2:before {
+  content: "\e904";
+  margin-left: -1em;
+  color: rgb(160, 160, 160);
+}
+.icon-osquery .path1:before {
+  content: "\e900";
+  color: rgb(0, 0, 0);
+}
+.icon-osquery .path2:before {
+  content: "\e901";
+  margin-left: -1em;
+  color: rgb(111, 101, 171);
+}
+.icon-osquery .path3:before {
+  content: "\e902";
+  margin-left: -1em;
+  color: rgb(165, 150, 255);
+}

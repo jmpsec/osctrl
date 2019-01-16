@@ -1,0 +1,231 @@
+{{ define "page-sidebar" }}
+
+<div class="sidebar">
+  <nav class="sidebar-nav">
+    <ul class="nav">
+      
+      <!--
+      <li class="nav-item">
+        <a class="nav-link" href="/dashboard">
+          <i class="nav-icon fas fa-tachometer-alt"></i> Dashboard
+        </a>
+      </li>
+      -->
+
+      <li class="nav-title">Nodes by context</li>
+      {{range  $i, $e := $.ContextStats}}
+      <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle">
+          {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
+          {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
+          {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
+          {{else}}<i class="fas fa-server"></i>{{end}}
+          {{ $i }}
+          <span class="mr-4 badge badge-light">{{ $e.Total }}</span>
+        </a>
+        <ul class="nav-dropdown-items">
+          <li class="nav-item nav-dropdown">
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/active">
+              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
+              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
+              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
+              {{else}}<i class="fas fa-server"></i>{{end}}
+              active
+              <span class="badge badge-success">{{ $e.Active }}</span>
+            </a>
+          </li>
+          <li class="nav-item nav-dropdown">
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/inactive">
+              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
+              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
+              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
+              {{else}}<i class="fas fa-server"></i>{{end}}
+              inactive 
+              <span class="badge badge-danger">{{ $e.Inactive }}</span>
+            </a>
+          </li>
+          <li class="nav-item nav-dropdown">
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/all">
+              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
+              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
+              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
+              {{else}}<i class="fas fa-server"></i>{{end}}
+              all
+              <span class="badge badge-light">{{ $e.Total }}</span>
+            </a>
+          </li>
+          <li class="nav-item nav-dropdown">
+            <a style="padding-left: 2em;" class="nav-link" href="/conf/{{ $i }}">
+              <i class="nav-icon fas fa-cog"></i> {{ $i }}.conf
+            </a>
+          </li>
+        </ul>
+      </li>
+      {{end}}
+        
+      <li class="divider"></li>
+        
+      <li class="nav-title">Nodes by Platform</li>
+      {{range  $i, $e := $.PlatformStats}}
+        
+      <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle">
+          {{if eq $i "ubuntu"}}
+            <i class="nav-icon fa fl-ubuntu-inverse"></i>
+          {{end}}
+          {{if eq $i "darwin"}}
+            <i class="nav-icon fa fl-apple"></i>
+          {{end}}
+          {{if eq $i "windows"}}
+            <i class="fab fa-windows"></i>
+          {{end}}
+          {{if eq $i "centos"}}
+            <i class="nav-icon fl-centos"></i>
+          {{end}}
+          {{if eq $i "fedora"}}
+            <i class="nav-icon fl-centos"></i>
+          {{end}}
+          {{if eq $i "debian"}}
+            <i class="nav-icon fl-debian"></i>
+          {{end}}
+          {{if eq $i "freebsd"}}
+            <i class="nav-icon fl-freebsd"></i>
+          {{end}}
+          {{if eq $i "opensuse"}}
+            <i class="nav-icon fl-opensuse"></i>
+          {{end}}
+          {{if eq $i "unknown"}}
+            <i class="nav-icon fa fa-question-circle"></i>
+          {{end}}
+          {{ $i }}
+          <span class="mr-4 badge badge-light">{{ $e.Total }}</span>
+        </a>
+        <ul class="nav-dropdown-items">
+          <li class="nav-item">
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/active">
+              {{if eq $i "ubuntu"}}
+                <i class="nav-icon fa fl-ubuntu-inverse"></i>
+              {{end}}
+              {{if eq $i "darwin"}}
+              <i class="nav-icon fa fl-apple"></i>
+              {{end}}
+              {{if eq $i "windows"}}
+                <i class="nav-icon fab fa-windows"></i>
+              {{end}}
+              {{if eq $i "centos"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "fedora"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "debian"}}
+                <i class="nav-icon fl-debian"></i>
+              {{end}}
+              {{if eq $i "freebsd"}}
+                <i class="nav-icon fl-freebsd"></i>
+              {{end}}
+              {{if eq $i "opensuse"}}
+                <i class="nav-icon fl-opensuse"></i>
+              {{end}}
+              {{if eq $i "unknown"}}
+                <i class="nav-icon fa fa-question-circle"></i>
+              {{end}}
+              active 
+              <span class="badge badge-success">{{ $e.Active }}</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/inactive">
+              {{if eq $i "ubuntu"}}
+                <i class="nav-icon fa fl-ubuntu-inverse"></i>
+              {{end}}
+              {{if eq $i "darwin"}}
+              <i class="nav-icon fa fl-apple"></i>
+              {{end}}
+              {{if eq $i "windows"}}
+                <i class="nav-icon fa-windows"></i>
+              {{end}}
+              {{if eq $i "centos"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "fedora"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "debian"}}
+                <i class="nav-icon fl-debian"></i>
+              {{end}}
+              {{if eq $i "freebsd"}}
+                <i class="nav-icon fl-freebsd"></i>
+              {{end}}
+              {{if eq $i "opensuse"}}
+                <i class="nav-icon fl-opensuse"></i>
+              {{end}}
+              {{if eq $i "unknown"}}
+                <i class="nav-icon fa fa-question-circle"></i>
+              {{end}}
+              inactive 
+              <span class="badge badge-danger">{{ $e.Inactive }}</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/all">
+              {{if eq $i "ubuntu"}}
+                <i class="nav-icon fa fl-ubuntu-inverse"></i>
+              {{end}}
+              {{if eq $i "darwin"}}
+              <i class="nav-icon fa fl-apple"></i>
+              {{end}}
+              {{if eq $i "windows"}}
+                <i class="nav-icon fa-windows"></i>
+              {{end}}
+              {{if eq $i "centos"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "fedora"}}
+                <i class="nav-icon fl-centos"></i>
+              {{end}}
+              {{if eq $i "debian"}}
+                <i class="nav-icon fl-debian"></i>
+              {{end}}
+              {{if eq $i "freebsd"}}
+                <i class="nav-icon fl-freebsd"></i>
+              {{end}}
+              {{if eq $i "opensuse"}}
+                <i class="nav-icon fl-opensuse"></i>
+              {{end}}
+              {{if eq $i "unknown"}}
+                <i class="nav-icon fa fa-question-circle"></i>
+              {{end}}
+              all 
+              <span class="badge badge-light">{{ $e.Total }}</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+      {{end}}
+
+      <li class="divider"></li>
+      
+      <li class="nav-title">On-Demand Queries</li>
+      <li class="nav-item">
+        <a class="nav-link" href="/query/run">
+          <i class="nav-icon fas fa-terminal"></i> Run Query
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/query/active">
+          <i class="nav-icon fas fa-hourglass-end"></i> Active Queries
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/query/completed">
+          <i class="nav-icon fas fa-flag-checkered"></i> Completed Queries
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+  <button class="sidebar-minimizer" type="button"></button>
+</div>
+
+{{ end }}

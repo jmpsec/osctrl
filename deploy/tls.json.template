@@ -1,0 +1,72 @@
+{
+  "tls": {
+    "listener": "127.0.0.1",
+    "port": "_TLS_PORT",
+    "host": "_TLS_HOST",
+    "auth": "none",
+    "enroll": "osquery_enroll",
+    "config": "osquery_config",
+    "log": "osquery_log",
+    "queryread": "osquery_read",
+    "querywrite": "osquery_write",
+    "contexts": {
+      "dev": {
+        "secret": "_OSQUERY_SECRET_DEV",
+        "secret-md5": "_OSQUERY_SECRETMD5_DEV",
+        "conf": "osquery-confs/osquery-dev.conf",
+        "flags": "osquery-confs/osquery-dev.flags",
+        "install": "osquery-confs/osquery-dev.sh",
+        "debian": "",
+        "centos": "",
+        "darwin": "",
+        "windows": ""
+      }
+    },
+    "debughttp": true
+  },
+  "admin": {
+    "listener": "127.0.0.1",
+    "port": "_ADMIN_PORT",
+    "host": "_ADMIN_HOST",
+    "auth": "local",
+    "debughttp": true
+  },
+  "users": {
+    "_ADMIN_USER": {
+      "password": "_ADMIN_PASS",
+      "admin": true
+    }
+  },
+  "db": {
+    "host": "_DB_HOST",
+    "port": "_DB_PORT",
+    "name": "_DB_NAME",
+    "username": "_DB_USERNAME",
+    "password": "_DB_PASSWORD"
+  },
+  "logging": {
+    "graylog": false,
+    "graylogcfg": {
+      "url": ""
+    },
+    "splunk": false,
+    "splunkcfg": {
+      "url": "", 
+      "token": "",
+      "search": "results_for_{{NAME}}"
+    },
+    "stdout": false,
+    "postgres": true
+  },
+  "geolocation": {
+    "map": false,
+    "ipstackcfg": {
+      "api": "",
+      "apikey": ""
+    },
+    "googlemapscfg": {
+      "api": "",
+      "apikey": ""
+    }
+  }
+}

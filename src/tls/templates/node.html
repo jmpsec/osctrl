@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    
+    {{ template "page-header" . }}
+    
+    <div class="app-body">
+      
+      {{ template "page-sidebar" . }}
+
+      <main class="main">
+        
+        <div class="container-fluid">
+          
+          <div class="animated fadeIn">
+
+            {{ $template := . }}
+            {{ with .Node }}
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="nav-icon fas fa-info-circle"></i>
+                <strong> Details of node {{ .UUID }} </strong>
+                <small>{{ .Context }}</small>
+              </div>
+              <div class="card-body">
+                <input type="hidden" id="csrftoken" value="">
+                <div class="row">
+                  
+                  <div class="col-md-12">
+
+                    <div class="row float-right">
+                      <div class="col-md-12">
+                        <button type="button" class="btn custom-size-btn btn-outline-danger"
+                        data-toggle="tooltip" data-placement="top" title="Remove node" onclick="confirmRemoveNode({{ .UUID }});">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                        <button type="button" class="btn custom-size-btn btn-outline-dark"
+                        data-toggle="tooltip" data-placement="top" title="Run Query in node" onclick="showQueryNode({{ .UUID }});">
+                          <i class="fas fa-terminal"></i>
+                        </button>
+                        <button type="button" class="btn custom-size-btn btn-outline-primary"
+                        data-toggle="tooltip" data-placement="top" title="Refresh node details" onclick="refreshCurrentNode();">
+                          <i class="fas fa-sync-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <ul class="nav nav-tabs" role="tablist">
+                      <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#details" role="tab" aria-controls="details">Details</a>
+                      </li>
+                    {{ if $template.LocationShow }}
+                      <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#location" role="tab" aria-controls="location">Location</a>
+                      </li>
+                    {{ end }}
+                    {{ if $template.PostgresLogs }}
+                      <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#status-logs" role="tab" aria-controls="status-logs">Status Logs</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#result-logs" role="tab" aria-controls="result-logs">Result Logs</a>
+                      </li>
+                    {{ end }}
+                    </ul>
+
+                    <div class="tab-content">
+                      <div class="tab-pane fade show active" id="details" role="tabpanel">
+
+                        <div class="row">
+                          <div class="col-md-6">
+
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Context</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .Context }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>UUID</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .UUID }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Hostname</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .Hostname }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Localname</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .Localname }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Platform</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">
+                                    {{if eq .Platform "darwin"}}<i class='fab fa-apple'></i> darwin{{end}}
+                                    {{if eq .Platform "debian"}}<i class='fl-debian'></i> debian{{end}}
+                                    {{if eq .Platform "ubuntu"}}<i class='fl-ubuntu-inverse'></i> ubuntu{{end}}
+                                    {{if eq .Platform "centos"}}<i class='fl-centos'></i> centos{{end}}
+                                    {{if eq .Platform "fedora"}}<i class='fl-fedora'></i> fedora{{end}}
+                                    {{if eq .Platform "windows"}}<i class='fab fa-windows'></i> windows{{end}}
+                                    {{if eq .Platform "freebsd"}}<i class='fl-freebsd'></i> freebsd{{end}}
+                                    {{if eq .Platform "opensuse"}}<i class='fl-opensuse'></i> opensuse{{end}}
+                                    {{if eq .Platform "unknown"}}<i class='fa fa-question-circle'></i> unknown{{end}}                  
+                                  - {{ .PlatformVersion }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>IP Address</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .IPAddress }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Username</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .Username }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>CPU</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .CPU }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Memory</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .Memory }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Hardware Serial</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .HardwareSerial }}</p>
+                              </div>
+                            </div>
+
+                          </div>
+
+                          <div class="col-md-6">
+                            
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Enrolled</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .CreatedAt }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Last Status</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .LastStatus }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Last Result</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .LastResult }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Last Config</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .LastConfig }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Query Read</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .LastQueryRead }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>Query Write</b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ pastTimeAgo .LastQueryWrite }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>
+                                  <span class="icon-osquery">
+                                  <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> Node Key
+                                </b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .NodeKey }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>
+                                  <span class="icon-osquery">
+                                  <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> User
+                                </b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .OsqueryUser }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>
+                                  <span class="icon-osquery">
+                                    <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> Version
+                                </b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .OsqueryVersion }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>
+                                  <span class="icon-osquery">
+                                    <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> Config Hash
+                                </b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .ConfigHash }}</p>
+                              </div>
+                            </div>
+
+                          </div>
+                      
+                        </div>
+
+                      </div>
+
+                    {{if $template.LocationShow }}
+                      <div class="tab-pane fade" id="location" role="tabpanel">
+                        <div class="row justify-content-center mb-4">
+                          <div class="col-md-2">
+                            <button type="button" class="btn btn-block btn-outline-secondary active disabled" data-toggle="button" aria-pressed="true" autocomplete="off">Last Location</button>
+                          </div>
+                          <div class="col-md-2">
+                            <button type="button" class="btn btn-block btn-outline-secondary disabled" data-toggle="button" aria-pressed="false" autocomplete="off">All Locations</button>
+                          </div>
+                          <div class="col-md-2">
+                            <button type="button" class="btn btn-block btn-outline-secondary disabled" data-toggle="button" aria-pressed="false" autocomplete="off">Heatmap</button>
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col-md-12" style="width: 100%; height: 640px;" id="location_map"></div>
+                        </div>
+                      </div>
+                    {{ end }}
+
+                    {{ if $template.PostgresLogs }}
+                      <div class="tab-pane fade" id="status-logs" role="tabpanel">
+                        <div class="card mt-2">
+                          <div id="status-card-header" class="card-header">
+                            <i class="fas fa-stream"></i> Last 6 hours of status logs for node {{ .UUID }}
+                            <div class="card-header-actions">
+                              <small>Refresh in <span id="status_refresh_seconds">60</span> seconds</small>
+                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('status_refresh_value', 'status_refresh_pause');">
+                                <i class="fas fa-pause"></i>
+                              </button>
+                              <button id="status_reload" class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableStatusLogs');">
+                                <i class="fas fa-sync-alt"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div id="status-table" class="card-body table-responsive">
+                            <table id="tableStatusLogs" class="table table-bordered table-striped" style="width:100%">
+                              <input type="hidden" id="status_refresh_value" value="yes">
+                              <thead>
+                                <tr>
+                                  <th>Created</th>
+                                  <th>Message</th>
+                                  <th>Severity</th>
+                                </tr>
+                              </thead>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    {{ end }}
+
+                    {{ if $template.PostgresLogs }}
+                      <div class="tab-pane fade" id="result-logs" role="tabpanel">
+                        <div class="card mt-2">
+                          <div id="result-card-header" class="card-header">
+                            <i class="fas fa-stream"></i> Last 6 hours of result logs for node {{ .UUID }}
+                            <div class="card-header-actions">
+                              <small>Refresh in <span id="result_refresh_seconds">60</span> seconds</small>
+                              <button id="result_refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('result_refresh_value', 'result_refresh_pause');">
+                                <i class="fas fa-pause"></i>
+                              </button>
+                              <button id="result_reload" class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableResultLogs');">
+                                <i class="fas fa-sync-alt"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div id="results-table" class="card-body table-responsive">
+                            <table id="tableResultLogs" class="table table-bordered table-striped" style="width:100%">
+                              <input type="hidden" id="result_refresh_value" value="yes">
+                              <thead>
+                                <tr>
+                                  <th>Created</th>
+                                  <th>Name</th>
+                                  <th>Columns</th>
+                                </tr>
+                              </thead>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    {{ end }}
+
+                    </div> 
+
+                  </div>
+
+                </div>
+              
+              </div>
+            </div>
+
+            <div class="modal fade" id="queryModal" tabindex="-1" role="dialog" aria-labelledby="queryModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Run a query</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <input class="form-control" id="query" type="text">
+                  </div>
+                  <div class="modal-footer">
+                    <button id="query_action" type="button" class="btn btn-dark" data-dismiss="modal">Query</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-success" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Completed successfully</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="successModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="nodesView({{ .Context }});">
+                      Back to active nodes
+                    </button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-danger" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Something went wrong...</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="errorModalMessageClient"></p>
+                    <p id="errorModalMessageServer"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-warning" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Confirm the action</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="confirmModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="confirm_action" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            {{ end }}
+
+          </div>
+        </div>
+
+      </main>
+      
+      {{ template "page-aside" . }}
+
+    </div>
+
+    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
+    <!-- CoreUI JS -->
+    <script src="/static/js/coreui.min.js"></script>
+    <!-- osctrl JS -->
+    <script src="/static/js/actions.js"></script>
+    <script src="/static/js/tables.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+      });
+    </script>
+  {{ if .LocationShow }}
+    {{ with .LastLocation }}
+    <script type="text/javascript">
+      var map, infoWindow;
+      function initMap() {
+        var last_location = {lat: {{ .Latitude }}, lng: {{ .Longitude }} };
+        map = new google.maps.Map(document.getElementById('location_map'), {
+          center: last_location,
+          zoom: 10
+        });
+        var content_string = '<b>IP Address:</b> {{ .IPAddress }}<br>' +
+          '<b>Country:</b> {{ .CountryName }} {{ .EmojiFlag }}<br>' +
+          '<b>City:</b> {{ .City }}<br>';
+          infoWindow = new google.maps.InfoWindow({
+          content: content_string
+        });
+        var marker = new google.maps.Marker({
+          position: last_location,
+          map: map,
+          title: 'Last Location'
+        });
+        marker.addListener('click', function() {
+          infoWindow.open(map, marker);
+        });
+        google.maps.event.trigger(marker, 'click');
+      }
+    </script>
+    <script async defer src="{{ .GoogleMapsURL }}"></script>
+    {{ end }}
+  {{ end }}
+    
+  {{ if .PostgresLogs }}
+    {{ with .Node }}
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Handle datatable ajax error
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+          console.log(message);
+          if (settings.sTableId === "tableStatusLogs") {
+            $('#status-card-header').addClass("bg-danger");
+          }
+          if (settings.sTableId === "tableResultLogs") {
+            $('#result-card-header').addClass("bg-danger");
+          }
+        };
+        $.fn.dataTable.ext.ajax;
+        var tableStatusLogs = $('#tableStatusLogs').DataTable({
+          initComplete : function(settings, json) {
+            $('#status-card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          processing : true,
+          ajax : {
+            url: "/json/status/{{ .Context }}/{{ .UUID }}",
+            dataSrc: function(json) {
+              $('#status-card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
+            {"data" : "message"},
+            {"data" : "severity"}
+          ],
+          order: [[ 0, "desc" ]],
+          columnDefs: [
+            { width: '10%', targets: 0 },
+            { width: '88%', targets: 1 },
+            { width: '2%', targets: 2 }
+          ]
+        });
+        // Display the number of seconds left and refresh for status logs
+        var refreshSecondsStatus = 60;
+        // Time to go back in seconds, default is 6 hours
+        var refreshBackSeconds = 21600;
+        var timeLeftStatus = refreshSecondsStatus;
+        var tableTimerStatus = setInterval(function(){
+          if (document.getElementById("status_refresh_value").value === 'yes') {
+            timeLeftStatus--;
+          }
+          document.getElementById("status_refresh_seconds").textContent = timeLeftStatus;
+          if (timeLeftStatus <= 0) {
+            timeLeftStatus = refreshSecondsStatus;
+            tableStatusLogs.ajax.url("/json/status/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableStatusLogs.ajax.reload();
+          }
+        },1000);
+
+        var tableResultLogs = $('#tableResultLogs').DataTable({
+          initComplete : function(settings, json) {
+            $('#result-card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          processing : true,
+          ajax : {
+            url: "/json/result/{{ .Context }}/{{ .UUID }}",
+            dataSrc: function(json) {
+              $('#result-card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
+            {"data" : "name"},
+            {"data" : "columns"}
+          ],
+          order: [[ 0, "desc" ]],
+          columnDefs: [
+            { width: '10%', targets: 0 },
+            { width: '10%', targets: 1 },
+            { width: '80%', targets: 2 }
+          ]
+        });
+        // Display the number of seconds left and refresh for result logs
+        var refreshSecondsResult = 60;
+        // Time to go back in seconds, default is 6 hours
+        var refreshBackSeconds = 21600;
+        var timeLeftResult = refreshSecondsResult;
+        var tableTimerResult = setInterval(function(){
+          if (document.getElementById("result_refresh_value").value === 'yes') {
+            timeLeftResult--;
+          }
+          document.getElementById("result_refresh_seconds").textContent = timeLeftResult;
+          if (timeLeftResult <= 0) {
+            timeLeftResult = refreshSecondsResult;
+            tableResultLogs.ajax.url("/json/result/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableResultLogs.ajax.reload();
+          }
+        },1000);
+      });
+    </script>
+    {{ end }}
+  {{ end }}
+
+  </body>
+</html>

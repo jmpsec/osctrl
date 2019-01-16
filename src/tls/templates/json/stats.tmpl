@@ -1,0 +1,14 @@
+{
+  "stats": [
+  {{range  $i, $e := .}}
+    {{ if $i }}, {{ end }}
+    { 
+      "{{ $i }}": {
+        "total" : {{ $e.Total }},
+        "active": {{ $e.Active }},
+        "inactive": {{ $e.Inactive }}
+      }
+    }
+  {{end}}
+  ]
+}

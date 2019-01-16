@@ -1,0 +1,16 @@
+{
+  "data": [
+  {{range  $i, $e := .}}
+    {{ if $i }}, {{ end }}
+    {
+      "checkbox" : "",
+      "name": "<a href='{{ resultsSearchLink $e.Name }}'>{{ noBackslashTruncate $e.Name }}...</a>",
+      "creator": "{{ removeBackslash $e.Creator }}",
+      "query": "<span style='font-family: monospace;'>{{ removeBackslash $e.Query }}</span>",
+      "created": "{{ pastTimeAgo $e.CreatedAt }}",
+      "executions": "{{ $e.Executions }} executions",
+      "errors": "{{ $e.Errors }} errors"
+    }
+  {{end}}
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "data": [
+  {{range  $i, $e := .}}
+    {{ if $i }}, {{ end }}
+    {
+      "checkbox" : "",
+      "uuid": "{{removeBackslash $e.UUID}}",
+      "uuid": "<a href='/node/{{$e.UUID}}'>{{removeBackslash $e.UUID}}</a>",
+      "username": "{{removeBackslash $e.Username}}",
+      "localname": "{{removeBackslash $e.Localname}}",
+      "ip": "{{removeBackslash $e.IPAddress}}",
+      {{if eq $e.Platform "darwin"}}"platform": "<i class='fab fa-apple'></i> darwin",{{end}}
+      {{if eq $e.Platform "debian"}}"platform": "<i class='fl-debian'></i> debian",{{end}}
+      {{if eq $e.Platform "ubuntu"}}"platform": "<i class='fl-ubuntu-inverse'></i> ubuntu",{{end}}
+      {{if eq $e.Platform "centos"}}"platform": "<i class='fl-centos'></i> centos",{{end}}
+      {{if eq $e.Platform "fedora"}}"platform": "<i class='fl-fedora'></i> fedora",{{end}}
+      {{if eq $e.Platform "windows"}}"platform": "<i class='fab fa-windows'></i> windows",{{end}}
+      {{if eq $e.Platform "freebsd"}}"platform": "<i class='fl-freebsd'></i> freebsd",{{end}}
+      {{if eq $e.Platform "opensuse"}}"platform": "<i class='fl-opensuse'></i> opensuse",{{end}}
+      {{if eq $e.Platform "unknown"}}"platform": "<i class='fa fa-question-circle'></i> unknown",{{end}}
+      "version": "{{removeBackslash $e.PlatformVersion}}",
+      "osquery": "{{removeBackslash $e.OsqueryVersion}}",
+      "lastseen": "{{pastTimeAgo $e.UpdatedAt}}"
+    }
+  {{end}}
+  ]
+}

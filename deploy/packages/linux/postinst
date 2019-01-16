@@ -1,0 +1,3 @@
+#!/bin/bash
+/bin/systemctl start osqueryd
+/bin/systemctl enable osqueryd

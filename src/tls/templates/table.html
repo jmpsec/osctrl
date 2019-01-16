@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+        
+      {{ template "page-sidebar" . }}
+      
+      <main class="main">
+        
+        <div class="container-fluid">
+          
+          <div class="animated fadeIn">
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fa fas fa-server"></i> Table of {{ .Target }} Nodes by {{ .Selector }} : {{ .SelectorName }}
+                <div class="card-header-actions">
+                  <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
+                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
+                    <i class="fas fa-pause"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableNodes');">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                
+                <table id="tableNodes" class="table table-responsive table-bordered table-striped" style="width:100%">
+                  <input type="hidden" id="refresh_value" value="yes">
+                  <thead>
+                    <tr>
+                      <th>
+                        <input type="checkbox" name="select-all" value="1" id="select-all">
+                      </th>
+                      <th>UUID</th>
+                      <th>Username</th>
+                      <th>Localname</th>
+                      <th>IP Address</th>
+                      <th>Platform</th>
+                      <th>Version</th>
+                      <th>
+                        <span class="icon-osquery">
+                          <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                </table>
+
+              </div>
+            </div>
+
+          <div class="modal fade" id="queryModal" tabindex="-1" role="dialog" aria-labelledby="queryModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dark" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Run a query</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <input class="form-control" id="query" type="text">
+                </div>
+                <div class="modal-footer">
+                  <button id="query_action" type="button" class="btn btn-dark" data-dismiss="modal">Query</button>
+                  <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+          
+          <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-success" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Completed successfully</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <p id="successModalMessage"></p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-primary" onclick="nodesView({{ .SelectorName }});">Back to active nodes</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
+          <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-danger" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Something went wrong...</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <p id="errorModalMessageClient"></p>
+                  <p id="errorModalMessageServer"></p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
+          <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-warning" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Confirm the action</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <p id="confirmModalMessage"></p>
+                </div>
+                <div class="modal-footer">
+                  <button id="confirm_action" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
+                  <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
+          </div>
+
+        </div>
+
+      </main>
+      
+      {{ template "page-aside" . }}
+      
+    </div>
+
+    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
+    <!-- Select for DataTables -->
+    <script src="https://cdn.datatables.net/select/1.2.7/js/dataTables.select.min.js" integrity="sha384-cOjgXKpKZwqHUxQkXUhdnJfrnLtI4RMo71zMDdhSIeb6m1tWreU56MdGcqc8l+HH" crossorigin="anonymous"></script>
+    <!-- Buttons for DataTables -->
+    <script src="https://cdn.datatables.net/buttons/1.5.2/js/dataTables.buttons.min.js" integrity="sha384-zOjU8Lmrn7aY/0op2Zr4DRXhg0el3XJ4SEMVakZ7bni+KP5F9geHOJ0cWYSvj0HN" crossorigin="anonymous"></script>
+    <!-- CoreUI JS -->
+    <script src="/static/js/coreui.min.js"></script>
+    <!-- osctrl JS -->
+    <script src="/static/js/actions.js"></script>
+    <script src="/static/js/tables.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) { 
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax;
+        var tableNodes = $('#tableNodes').DataTable({
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'tr>>" +
+               "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4'i><'col-sm-12 col-md-4'p>>",
+          processing : true,
+          ajax : {
+            url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
+            dataSrc: function(json) {
+              $('.card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : "checkbox"},
+            {"data" : "uuid"},
+            {"data" : "username"},
+            {"data" : "localname"},
+            {"data" : "ip"},
+            {"data" : "platform"},
+            {"data" : "version"},
+            {"data" : "osquery"},
+            {"data" : "lastseen"}
+          ],
+          columnDefs: [
+            { width: '1%', targets: 0 },
+            { width: '26%', targets: 1 },
+            { width: '7%', targets: 2 },
+            { width: '5%', targets: 3 },
+            { width: '3%', targets: 4 },
+            { width: '5%', targets: 5 },
+            { width: '15%', targets: 6 },
+            { width: '3%', targets: 7 },
+            { width: '10%', targets: 8 },
+            {
+              className: 'select-checkbox',
+              targets:   0,
+              searchable:  false,
+              orderable:   false,
+            }
+          ],
+          select: {
+            style:    'os',
+            selector: 'td:first-child'
+          },
+          buttons: [
+            {
+              className: 'btn custom-size-btn btn-outline-danger',
+              text: '<i class="far fa-trash-alt"></i>',
+              titleAttr: 'Remove Nodes',
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableNodes.rows('.selected').data(), function() {
+                  a.push(this);
+                });
+                var uuids = []
+                for (var i=0; i<a.length; i++) {
+                  var uuid = $.parseHTML(a[i].uuid);
+                  uuids.push(uuid[0].innerText)
+                }
+                if (uuids.length > 0) {
+                  console.log(uuids);
+                  confirmRemoveNodes(uuids);
+                } else {
+                  console.log('NO SELECTION');
+                }
+              }
+            },
+            {
+              className: 'btn custom-size-btn btn-outline-dark',
+              text: '<i class="fa fa-terminal"></i>',
+              titleAttr: 'Run Query',
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableNodes.rows('.selected').data(), function() {
+                  a.push(this);
+                });
+                var uuids = []
+                for (var i=0; i<a.length; i++) {
+                  var uuid = $.parseHTML(a[i].uuid);
+                  uuids.push(uuid[0].innerText)
+                }
+                if (uuids.length > 0) {
+                  console.log(uuids);
+                  showQueryNodes(uuids);
+                } else {
+                  console.log('Query: NO SELECTION');
+                }
+              }
+            }
+          ]
+        });
+
+        // Select and deselect all
+        tableNodes.on("click", "th.select-checkbox", function() {
+          if ($("th.select-checkbox").hasClass("selected")) {
+            tableNodes.rows().deselect();
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            tableNodes.rows().select();
+            $("th.select-checkbox").addClass("selected");
+          }
+        }).on("select deselect", function() {
+          ("Some selection or deselection going on")
+          if (tableNodes.rows({
+            selected: true
+          }).count() !== tableNodes.rows().count()) {
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            $("th.select-checkbox").addClass("selected");
+          }
+        });
+
+        // Display the number of seconds left and refresh
+        var refreshSeconds = 30;
+        var timeleft = refreshSeconds;
+        var tableTimer = setInterval(function(){
+          if (document.getElementById("refresh_value").value === 'yes') {
+            timeleft--;
+          }
+          document.getElementById("refresh_seconds").textContent = timeleft;
+          if(timeleft <= 0) {
+            timeleft = refreshSeconds;
+            tableNodes.ajax.reload();
+          }
+        },1000);
+      });
+    </script>
+
+  </body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    
+    {{ template "page-header" . }}
+    
+    <div class="app-body">
+      
+      {{ template "page-sidebar" . }}
+      
+      <main class="main">
+        
+        <div class="container-fluid">
+          
+          <div class="animated fadeIn">
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fa fas fa-server"></i> osquery configuration for context {{ .Context }}
+                <div class="card-header-actions">
+                  <div class="card-header-action">
+                    <button id="json_save" class="btn btn-sm btn-block btn-dark disabled">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                
+                <textarea id="conf" name="conf">{{ .ConfigurationBlob }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                  <i class="fas fa-bolt"></i> osctrl quick install for context {{ .Context }}
+              </div>
+              <div class="card-body">
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Run this command in Linux or Mac to just add nodes for the context {{ .Context }}. It will install osquery in the system:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-enroll-cmd">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <code id="osctrl-enroll-cmd" class="bash">curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.sh | sh</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-cubes"></i> osctrl packages for context {{ .Context }}
+              </div>
+              <div class="card-body">
+
+                <div class="row mb-4">
+                  <div class="text-center col-md-12">
+                    <b>IMPORTANT:</b> You must install <a href="https://osquery.io/downloads/official/3.3.0" target="_blank">osquery</a> first
+                  </div>
+                </div>
+                <div class="row justify-content-center mb-4">
+                  {{ range  $i, $e := $.Packages }}
+                  <div class="col-md-3">
+                    <div class="btn-group" role="group" aria-label="osctrl quick install">
+                      {{if eq $i "debian"}}
+                        <a href="https://osquery-packages.s3.amazonaws.com/deb/osquery_3.3.0_1.linux.amd64.deb" class="btn btn-light" role="button">
+                          <span class="icon-osquery">
+                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
+                        </a>
+                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
+                          <i class="nav-icon fl-debian"></i> osctrl.deb
+                        </a>
+                      {{end}}
+                      {{if eq $i "darwin"}}
+                        <a href="https://osquery-packages.s3.amazonaws.com/darwin/osquery-3.3.0.pkg" class="btn btn-light" role="button">
+                          <span class="icon-osquery">
+                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
+                        </a>
+                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
+                          <i class="nav-icon fa fl-apple"></i> osctrl.pkg
+                        </a>
+                      {{end}}
+                      {{if eq $i "windows"}}
+                        <a href="https://osquery-packages.s3.amazonaws.com/windows/osquery-3.3.0.msi" class="btn btn-light" role="button">
+                          <span class="icon-osquery">
+                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
+                        </a>
+                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
+                          <i class="fab fa-windows"></i> osctrl.exe
+                        </a>
+                      {{end}}
+                      {{if eq $i "centos"}}
+                        <a href="https://osquery-packages.s3.amazonaws.com/rpm/osquery-3.3.0-1.linux.x86_64.rpm" class="btn btn-light" role="button">
+                          <span class="icon-osquery">
+                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
+                        </a>
+                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
+                          <i class="nav-icon fl-centos"></i> osctrl.rpm
+                        </a>
+                      {{end}}
+                    </div>
+                  </div>
+                  {{ end }}
+                </div>
+
+              </div>
+            </div>
+            -->
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fab fa-font-awesome-flag"></i> osquery flags for context {{ .Context }}
+                <div class="card-header-actions">
+                  <div class="card-header-action">
+                    <button id="flags_save" class="btn btn-sm btn-block btn-dark disabled">
+                      <i class="far fa-save"></i></button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                
+                <textarea id="flags" name="flags">{{ .FlagsBlob }}</textarea>
+
+              </div>
+            </div>
+          
+          </div>
+
+        </div>
+
+      </main>
+      
+      {{ template "page-aside" . }}
+      
+    </div>
+
+    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- CoreUI JS -->
+    <script src="/static/js/coreui.min.js"></script>
+    <!-- Codemirror JS -->
+    <script src="/static/js/codemirror/codemirror.js"></script>
+    <script src="/static/js/codemirror/addon/active-line.js"></script>
+    <script src="/static/js/codemirror/addon/matchbrackets.js"></script>
+    <script src="/static/js/codemirror/mode/javascript.js"></script>
+    <!-- Clipboard.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js" integrity="sha384-5tfO0soa+FisnuBhaHP2VmPXQG/JZ8dLcRL43IkJFzbsXTXT6zIX8q8sIT0VSe2G" crossorigin="anonymous"></script>
+    <!-- Highlight.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/highlight.min.js" integrity="sha384-BlPof9RtjBqeJFskKv3sK3dh4Wk70iKlpIe92FeVN+6qxaGUOUu+mZNpALZ+K7ya" crossorigin="anonymous"></script>
+    <!-- osctrl JS -->
+    <script type="text/javascript">
+      // Highlight.js initialization
+      hljs.initHighlightingOnLoad();
+      $(document).ready(function() {
+        // Codemirror editor for configuration
+        // JSON validity check when content is changed
+        var editorConf = CodeMirror.fromTextArea(document.getElementById("conf"), {
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        editorConf.on('change', function(_editor){
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            console.log(e);
+            $("#json_status_text").text('Invalid JSON - ' +e);
+            $("#json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+          }
+          if (_valid) {
+            $("#json_status_text").text('Valid JSON');
+            $("#json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            console.log('Valid JSON');
+          }
+        });
+        editorConf.setSize("100%", "100%");
+
+        // Codemirror editor for flags
+        var editorFlags = CodeMirror.fromTextArea(document.getElementById("flags"), {
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: true
+        });
+        editorFlags.setSize("100%", "100%");
+
+        // Highlight.js initialization
+        $('code').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
+
+        // Clipboard.js initialization
+        var clipboard = new ClipboardJS('#button-clipboard');
+        clipboard.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+      });
+    </script>
+  </body>
+</html>

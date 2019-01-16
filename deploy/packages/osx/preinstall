@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+if launchctl list | grep -qcm1 com.facebook.osqueryd; then
+  sudo launchctl unload /Library/LaunchDaemons/com.facebook.osqueryd.plist
+fi
+
+exit 0

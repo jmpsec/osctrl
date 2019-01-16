@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+sudo cp /private/var/osquery/com.facebook.osqueryd.plist /Library/LaunchDaemons/com.facebook.osqueryd.plist
+sudo launchctl load /Library/LaunchDaemons/com.facebook.osqueryd.plist
+
+exit 0

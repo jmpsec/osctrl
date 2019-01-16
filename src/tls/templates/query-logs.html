@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+        
+      {{ template "page-sidebar" . }}
+      
+      <main class="main">
+        
+        <div class="container-fluid">
+          
+          <div class="animated fadeIn">
+
+          {{ with .Query }}
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fa fas fa-server"></i> Results for {{ .Name }}
+                <div class="card-header-actions">
+                  <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
+                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
+                    <i class="fas fa-pause"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body table-responsive">
+                
+                Query: <b>{{ .Query }}</b><br>
+                Targets: <br>
+                {{ range  $i, $e := $.QueryTargets }}
+                  Type = {{ $e.Type }}, Value = {{ $e.Value }}<br>
+                {{ end }}
+                <br>
+                <table id="tableQueryLogs" class="table table-bordered table-striped" style="width:100%">
+                  <input type="hidden" id="refresh_value" value="yes">
+                  <thead>
+                    <tr>
+                      <th>Created</th>
+                      <th>Data</th>
+                    </tr>
+                  </thead>
+                </table>
+
+              </div>
+            </div>
+          {{ end }}
+
+          </div>
+
+        </div>
+
+      </main>
+      
+      {{ template "page-aside" . }}
+      
+    </div>
+
+    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
+    <!-- CoreUI JS -->
+    <script src="/static/js/coreui.min.js"></script>
+    <!-- osctrl JS -->
+    <script src="/static/js/tables.js"></script>
+  {{ with .Query }}
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) { 
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax
+        var tableQueryLogs = $('#tableQueryLogs').DataTable({
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          processing : true,
+          ajax : {
+            url: "/json/query/{{ .Name }}",
+            dataSrc: function(json) {
+              $('#status-card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
+            {"data" : "data"}
+          ],
+          order: [[ 0, "desc" ]],
+          columnDefs: [
+            { width: '10%', targets: 0 },
+            { width: '90%', targets: 1 }
+          ]
+        });
+
+        // Display the number of seconds left and refresh
+        var refreshSeconds = 30;
+        var timeleft = refreshSeconds;
+        var tableTimer = setInterval(function(){
+          if (document.getElementById("refresh_value").value === 'yes') {
+            timeleft--;
+          }
+          document.getElementById("refresh_seconds").textContent = timeleft;
+          if(timeleft <= 0) {
+            timeleft = refreshSeconds;
+            tableQueryLogs.ajax.reload();
+          }
+        },1000);
+      });
+    </script>
+  {{ end }}
+
+  </body>
+</html>

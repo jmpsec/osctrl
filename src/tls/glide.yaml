@@ -1,0 +1,13 @@
+package: .
+import:
+- package: github.com/crewjam/saml
+  subpackages:
+  - samlsp
+- package: github.com/gorilla/mux
+- package: github.com/gorilla/securecookie
+- package: github.com/gorilla/sessions
+- package: github.com/jinzhu/gorm
+  subpackages:
+  - dialects/postgres
+- package: github.com/spf13/viper
+- package: github.com/unrolled/render
