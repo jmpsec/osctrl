@@ -34,6 +34,19 @@ function sendQuery() {
   var _repeat = $('#target_repeat').prop('checked') ? 1 : 0;
   var editor = $('.CodeMirror')[0].CodeMirror;
   var _query = editor.getValue();
+
+  // Making sure targets are specified
+  if (_context === "" && _platform === "" && _uuid_list.length === 0 && _host_list.length === 0) {
+    $("#warningModalMessage").text("No targets have been specified");
+    $("#warningModal").modal();
+    return
+  }
+  // Making sure query isn't empty
+  if (_query === "") {
+    $("#warningModalMessage").text("Query can not be empty");
+    $("#warningModal").modal();
+    return
+  }
   
   var _url = '/query/run';
   var data = {

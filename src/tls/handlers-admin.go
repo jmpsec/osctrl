@@ -359,6 +359,14 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check CSRF Token
 	if checkCSRFToken(q.CSRFToken) {
+		// FIXME check validity of query
+		// Query can not be empty
+		if q.Query != "" {
+			responseMessage = "query can not be empty"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+			goto response
+		}
 		// Prepare and create new query
 		queryName := "query_" + generateQueryName()
 		query := DistributedQuery{
