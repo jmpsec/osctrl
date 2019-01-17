@@ -48,7 +48,7 @@ osctrl.secret
 osctrl.pem
 
 # Customization
-#brand.png
+brand.png
 
 # Random notes for debug
 notes.txt
