@@ -23,7 +23,8 @@
                 <i class="fa fas fa-server"></i> Results for {{ .Name }}
                 <div class="card-header-actions">
                   <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
-                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
+                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip" 
+                    data-placement="bottom" title="Refresh table" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
                     <i class="fas fa-pause"></i>
                   </button>
                 </div>
@@ -107,6 +108,9 @@
             { width: '90%', targets: 1 }
           ]
         });
+
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
 
         // Display the number of seconds left and refresh
         var refreshSeconds = 30;

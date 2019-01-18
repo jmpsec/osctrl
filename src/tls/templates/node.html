@@ -293,10 +293,12 @@
                             <i class="fas fa-stream"></i> Last 6 hours of status logs for node {{ .UUID }}
                             <div class="card-header-actions">
                               <small>Refresh in <span id="status_refresh_seconds">60</span> seconds</small>
-                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('status_refresh_value', 'status_refresh_pause');">
+                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip" 
+                                data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('status_refresh_value', 'status_refresh_pause');">
                                 <i class="fas fa-pause"></i>
                               </button>
-                              <button id="status_reload" class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableStatusLogs');">
+                              <button id="status_reload" class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                                data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableStatusLogs');">
                                 <i class="fas fa-sync-alt"></i>
                               </button>
                             </div>
@@ -324,10 +326,12 @@
                             <i class="fas fa-stream"></i> Last 6 hours of result logs for node {{ .UUID }}
                             <div class="card-header-actions">
                               <small>Refresh in <span id="result_refresh_seconds">60</span> seconds</small>
-                              <button id="result_refresh_pause" class="btn btn-sm btn-outline-dark" onclick="changeTableRefresh('result_refresh_value', 'result_refresh_pause');">
+                              <button id="result_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip"
+                                data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('result_refresh_value', 'result_refresh_pause');">
                                 <i class="fas fa-pause"></i>
                               </button>
-                              <button id="result_reload" class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableResultLogs');">
+                              <button id="result_reload" class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                              data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableResultLogs');">
                                 <i class="fas fa-sync-alt"></i>
                               </button>
                             </div>
@@ -473,12 +477,6 @@
     <!-- osctrl JS -->
     <script src="/static/js/actions.js"></script>
     <script src="/static/js/tables.js"></script>
-    <script type="text/javascript">
-      $(document).ready(function() {
-        // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip();
-      });
-    </script>
   {{ if .LocationShow }}
     {{ with .LastLocation }}
     <script type="text/javascript">
@@ -602,6 +600,9 @@
             { width: '80%', targets: 2 }
           ]
         });
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+
         // Display the number of seconds left and refresh for result logs
         var refreshSecondsResult = 60;
         // Time to go back in seconds, default is 6 hours

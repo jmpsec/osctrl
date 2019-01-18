@@ -361,7 +361,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if checkCSRFToken(q.CSRFToken) {
 		// FIXME check validity of query
 		// Query can not be empty
-		if q.Query != "" {
+		if q.Query == "" {
 			responseMessage = "query can not be empty"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
@@ -451,7 +451,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/query-table.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"templates/query-active.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -498,7 +498,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/query-table.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"templates/query-completed.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -571,6 +571,15 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				err := completeQuery(n)
 				if err != nil {
 					responseMessage = "error completing query"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				}
+			}
+		case "activate":
+			for _, n := range q.Names {
+				err := activateQuery(n)
+				if err != nil {
+					responseMessage = "error activating query"
 					responseCode = http.StatusInternalServerError
 					log.Printf("%s %v", responseMessage, err)
 				}

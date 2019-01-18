@@ -1,4 +1,4 @@
-function sendPostRequest(req_data, req_url, redir) {
+function sendPostRequest(req_data, req_url, _redir) {
   $.ajax({
     url: req_url,
     dataType: 'json',
@@ -8,9 +8,8 @@ function sendPostRequest(req_data, req_url, redir) {
     processData: false,
     success: function(data, textStatus, jQxhr){
       console.log('OK');
-      if (redir) {
-        var redirection = (req_url.split("/").pop() === "run") ? "active" : req_url.split("/").pop();
-        window.location.replace(redirection);
+      if (_redir !== "") {
+        window.location.replace(_redir);
       }
     },
     error: function(jqXhr, textStatus, errorThrown){
@@ -39,13 +38,14 @@ function sendQuery() {
   if (_context === "" && _platform === "" && _uuid_list.length === 0 && _host_list.length === 0) {
     $("#warningModalMessage").text("No targets have been specified");
     $("#warningModal").modal();
-    return
+    return;
   }
   // Making sure query isn't empty
+  console.log(_query);
   if (_query === "") {
     $("#warningModalMessage").text("Query can not be empty");
     $("#warningModal").modal();
-    return
+    return;
   }
   
   var _url = '/query/run';
@@ -58,7 +58,7 @@ function sendQuery() {
       query: _query,
       repeat: _repeat
   };
-  sendPostRequest(data, _url, true);
+  sendPostRequest(data, _url, '/query/active');
 }
 
 function clearQuery() {
@@ -78,14 +78,18 @@ $("#query").keyup(function(event) {
 });
 
 function deleteQueries(_names) {
-  actionQueries('delete', _names);
+  actionQueries('delete', _names, window.location.pathname);
 }
 
 function completeQueries(_names) {
-  actionQueries('complete', _names);
+  actionQueries('complete', _names, '/query/completed');
 }
 
-function actionQueries(_action, _names) {
+function activateQueries(_names) {
+  actionQueries('activate', _names, '/query/active');
+}
+
+function actionQueries(_action, _names, _redir) {
   var _csrftoken = $("#csrftoken").val();
   
   var _url = '/query/actions';
@@ -94,7 +98,7 @@ function actionQueries(_action, _names) {
       names: _names,
       action: _action
   };
-  sendPostRequest(data, _url, false);
+  sendPostRequest(data, _url, _redir);
 }
 
 function confirmDeleteQueries(_names) {

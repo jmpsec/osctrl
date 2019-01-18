@@ -223,6 +223,9 @@
           hljs.highlightBlock(block);
         });
 
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+
         // Clipboard.js initialization
         var clipboard = new ClipboardJS('#button-clipboard');
         clipboard.on('success', function(e) {

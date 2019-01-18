@@ -46,7 +46,7 @@ func getQueries(target string) ([]DistributedQuery, error) {
 			return queries, err
 		}
 	case "completed":
-		if err := db.Where("active = ? AND completed = ? AND deleted = ?", true, true, false).Find(&queries).Error; err != nil {
+		if err := db.Where("active = ? AND completed = ? AND deleted = ?", false, true, false).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	}
@@ -68,7 +68,19 @@ func completeQuery(name string) error {
 	if err != nil {
 		return err
 	}
-	if err := db.Model(&query).Updates(DistributedQuery{Completed: true, Active: false}).Error; err != nil {
+	if err := db.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// Mark query as active
+func activateQuery(name string) error {
+	query, err := getQuery(name)
+	if err != nil {
+		return err
+	}
+	if err := db.Model(&query).Updates(map[string]interface{}{"completed": false, "active": true}).Error; err != nil {
 		return err
 	}
 	return nil
@@ -80,7 +92,7 @@ func deleteQuery(name string) error {
 	if err != nil {
 		return err
 	}
-	if err := db.Model(&query).Updates(DistributedQuery{Deleted: true, Completed: false, Active: false}).Error; err != nil {
+	if err := db.Model(&query).Updates(map[string]interface{}{"deleted": true, "active": false}).Error; err != nil {
 		return err
 	}
 	return nil

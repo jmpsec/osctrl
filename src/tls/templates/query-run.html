@@ -208,12 +208,14 @@
                         <div class="card-header-action">
                           <div class="row">
                             <div class="col-sm-6 mx-auto">
-                              <button type="button" class="btn btn-sm btn-outline-dark" onclick="sendQuery();">
+                              <button type="button" class="btn btn-sm btn-outline-dark" 
+                              data-toggle="tooltip" data-placement="top" title="Send query" onclick="sendQuery();">
                                 <i class="fas fa-search"></i> Query
                               </button>
                             </div>
                             <div class="col-sm-6 mx-auto">
-                              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearQuery();">
+                              <button type="button" class="btn btn-sm btn-outline-danger" 
+                              data-toggle="tooltip" data-placement="top" title="Clear query" onclick="clearQuery();">
                                 <i class="fas fa-eraser"></i> Clear
                               </button>
                             </div>
@@ -313,6 +315,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
     <!-- osctrl JS -->
     <script src="/static/js/query.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+      });
+    </script>
     <script type="text/javascript">
       $(document).ready(function() {
         // Codemirror editor for query

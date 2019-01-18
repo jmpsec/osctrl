@@ -21,7 +21,8 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-terminal"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" onclick="refreshTableNow('tableQueries');">
+                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip" 
+                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
@@ -88,6 +89,28 @@
                   <div class="modal-footer">
                     <button id="confirm_action" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
                     <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="warningModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-warning" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Action can not be completed</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="warningModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>
                 <!-- /.modal-content -->
@@ -178,7 +201,11 @@
             {
               className: 'btn custom-size-btn btn-outline-danger',
               text: '<i class="far fa-trash-alt"></i>',
-              titleAttr: 'Delete Query',
+              titleAttr: 'Delete Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
               init: function(api, node, config) {
                 $(node).removeClass('dt-button');
               },
@@ -196,14 +223,20 @@
                   console.log(names);
                   confirmDeleteQueries(names);
                 } else {
-                  console.log('NO SELECTION');
+                  console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
                 }
               }
             },
             {
               className: 'btn custom-size-btn btn-outline-dark',
-              text: '<i class="fas fa-flag-checkered"></i>',
-              titleAttr: 'Complete Query',
+              text: '<i class="fas fa-redo-alt"></i>',
+              titleAttr: 'Activate Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
               init: function(api, node, config) {
                 $(node).removeClass('dt-button');
               },
@@ -219,14 +252,19 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  completeQueries(names);
+                  activateQueries(names);
                 } else {
                   console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
                 }
               }
             }
           ]
         });
+
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
 
         // Auto-refresh table
         setInterval(function (){
