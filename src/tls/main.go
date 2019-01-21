@@ -219,7 +219,7 @@ func main() {
 	routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryRead, queryReadHandler).Methods("POST")
 	routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryWrite, queryWriteHandler).Methods("POST")
 	// TLS: Quick enrollment script
-	routerTLS.HandleFunc("/{context}/{secretmd5}/osctrl.sh", quickEnrollHandler).Methods("GET")
+	routerTLS.HandleFunc("/{context}/{secretmd5}/{script}", quickEnrollHandler).Methods("GET")
 	// Create router for admin
 	routerAdmin := mux.NewRouter()
 	// Admin: login only if local auth is enabled
@@ -279,7 +279,7 @@ func main() {
 	//routerAdmin.Handle("/settings/{target}", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
 	//routerAdmin.Handle("/settings/{target}", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")
 	// Admin: Packages to enroll
-	routerAdmin.Handle("/package/{context}/{platform}", handlerAuthCheck(http.HandlerFunc(packageHandler))).Methods("GET")
+	//routerAdmin.Handle("/package/{context}/{platform}", handlerAuthCheck(http.HandlerFunc(packageHandler))).Methods("GET")
 	// SAML ACS
 	if adminConfig.Auth == samlAuthLogin {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)

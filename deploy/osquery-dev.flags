@@ -1,8 +1,6 @@
 --host_identifier=uuid
---force=true
+--force
 --utc
---pidfile=/tmp/osquery.pid
---database_path=/tmp/osquery.db
 
 --enroll_secret_path=/etc/osquery/osquery.secret
 --enroll_tls_endpoint=/dev/osquery_enroll
@@ -22,6 +20,6 @@
 --distributed_tls_read_endpoint=/dev/osquery_read
 --distributed_tls_write_endpoint=/dev/osquery_write
 
---tls_dump=true
+--tls_dump
 --tls_hostname=__TLSHOST
 --tls_server_certs=/etc/osquery/certs/osctrl.crt

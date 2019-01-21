@@ -364,8 +364,9 @@ if [[ "$NGINX" == true ]]; then
     _dh_bits="4096"
     #certbot_certificates_nginx "$_certificates_dir" "$_certificate_name" "$EMAIL" "$DOMAIN"
     # FIXME: REMEMBER GENERATE THE CERTIFICATES MANUALLY!
-    sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
-    sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file" 
+    log "************** REMEMBER GENERATE THE CERTIFICATES MANUALLY **************"
+    #sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
+    #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file" 
   fi
 
   # Diffie-Hellman parameter for DHE ciphersuites
@@ -454,13 +455,12 @@ cat "$SOURCE_PATH/deploy/osquery-dev.flags" | sed "s|__TLSHOST|$_T_HOST|g" | sud
 # Copy flags for dev
 sudo cp "/etc/osquery/osquery.flags" "$DEST_PATH/osquery-confs/osquery-dev.flags"
 
-# Prepare secret for dev
-sudo touch "/etc/osquery/osquery.secret"
-
 # Copy server TLS certificate
 sudo mkdir -p "/etc/osquery/certs"
 sudo cp "/etc/nginx/certs/osctrl.crt" "/etc/osquery/certs/osctrl.crt"
 
+# Prepare secret for dev
+sudo touch "/etc/osquery/osquery.secret"
 echo "$OSCTRL_SECRET_DEV" | sudo tee "/etc/osquery/osquery.secret"
 cat "$DEST_PATH/config/$TLS_CONF" | sed "s|_OSQUERY_SECRET_DEV|$OSCTRL_SECRET_DEV|g" | sudo tee "$DEST_PATH/config/$TLS_CONF"
 
@@ -468,8 +468,11 @@ cat "$DEST_PATH/config/$TLS_CONF" | sed "s|_OSQUERY_SECRET_DEV|$OSCTRL_SECRET_DE
 OSCTRL_SECRETMD5_DEV=$(echo "$OSCTRL_SECRET_DEV" | md5sum | cut -d " " -f1)
 cat "$DEST_PATH/config/$TLS_CONF" | sed "s|_OSQUERY_SECRETMD5_DEV|$OSCTRL_SECRETMD5_DEV|g" | sudo tee "$DEST_PATH/config/$TLS_CONF"
 
-# Prepare quick install
+# Prepare quick install for linux/osx
 cat "$SOURCE_PATH/deploy/osctrl-dev.sh" | sed "s|__TLSHOST|$_T_HOST|g" | sed "s|__OSQUERYSECRET|$OSCTRL_SECRET_DEV|g" | sed "s|__SECRETMD5|$OSCTRL_SECRETMD5_DEV|g" | sed -e '/__CERT_CONTENT/{r /etc/osquery/certs/osctrl.crt' -e 'd}' | sudo tee "$DEST_PATH/osquery-confs/osquery-dev.sh"
+
+# Prepare quick install for windows
+cat "$SOURCE_PATH/deploy/osctrl-dev.ps1" | sed "s|__TLSHOST|$_T_HOST|g" | sed "s|__OSQUERYSECRET|$OSCTRL_SECRET_DEV|g" | sed "s|__SECRETMD5|$OSCTRL_SECRETMD5_DEV|g" | sed -e '/__CERT_CONTENT/{r /etc/osquery/certs/osctrl.crt' -e 'd}' | sudo tee "$DEST_PATH/osquery-confs/osquery-dev.ps1"
 
 # Start osqueryd service
 sudo systemctl start osqueryd

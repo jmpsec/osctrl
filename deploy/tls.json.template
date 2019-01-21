@@ -15,11 +15,8 @@
         "secret-md5": "_OSQUERY_SECRETMD5_DEV",
         "conf": "osquery-confs/osquery-dev.conf",
         "flags": "osquery-confs/osquery-dev.flags",
-        "install": "osquery-confs/osquery-dev.sh",
-        "debian": "",
-        "centos": "",
-        "darwin": "",
-        "windows": ""
+        "install-sh": "osquery-confs/osquery-dev.sh",
+        "install-ps": "osquery-confs/osquery-dev.ps1"
       }
     },
     "debughttp": true

@@ -345,7 +345,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for POST requests to run queries
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	responseMessage := "OK"
+	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, adminConfig.DebugHTTP, true)
 	var q DistributedQueryRequest

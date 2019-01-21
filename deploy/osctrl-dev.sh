@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# To run this script execute:
-#   `curl -ks https:/__TLSHOST/dev/__SECRETMD5/osctrl.sh | sh`
+# Tool to add OSX/Linux nodes into osctrl
 #
 # IMPORTANT! If osquery is not installed, it will be installed.
 
@@ -16,6 +15,7 @@ _CERT_OSX=/private/var/osquery/certs/osctrl.crt
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-3.3.0.pkg"
 _OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_3.3.0_1.linux.amd64.deb"
 _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-3.3.0-1.linux.x86_64.rpm"
+_OSQUERY_SERVICE="osqueryd"
 
 fail() {
   echo "[!] $1"
@@ -81,12 +81,13 @@ whatOS() {
   log "_SECRET_FILE=$_SECRET_FILE"
   log "_FLAGS=$_FLAGS"
   log "_CERT=$_CERT"
+  log "IMPORTANT! If osquery is not installed, it will be installed."
 }
 
 stopOsquery() {
-  log "Stopping osqueryd"
+  log "Stopping $_OSQUERY_SERVICE"
   if [ "$OS" = "linux" ]; then
-    sudo systemctl stop osqueryd
+    sudo systemctl stop "$_OSQUERY_SERVICE"
   fi
   if [ "$OS" = "darwin" ]; then
     if launchctl list | grep -qcm1 com.facebook.osqueryd; then
@@ -106,23 +107,20 @@ prepareFlags() {
   sudo sh -c "cat <<EOF > $_FLAGS
 --host_identifier=uuid
 --force=true
---verbose=true
---debug
---utc
---pidfile=/tmp/osquery.pid
---database_path=/tmp/osquery.db
+--utc=true
 --enroll_secret_path=$_SECRET_FILE
 --enroll_tls_endpoint=/dev/osquery_enroll
 --config_plugin=tls
 --config_tls_endpoint=/dev/osquery_config
 --config_tls_refresh=10
 --logger_plugin=tls
---logger_tls_compress=false
+--logger_tls_compress=true
 --logger_tls_endpoint=/dev/osquery_log
 --logger_tls_period=10
 --disable_distributed=false
 --distributed_interval=10
 --distributed_plugin=tls
+--distributed_tls_max_attempts=3
 --distributed_tls_read_endpoint=/dev/osquery_read
 --distributed_tls_write_endpoint=/dev/osquery_write
 --tls_dump=true
@@ -140,10 +138,10 @@ EOF"
 }
 
 startOsquery() {
-  log "Starting osqueryd"
+  log "Starting $_OSQUERY_SERVICE"
   if [ "$OS" = "linux" ]; then
-    sudo systemctl start osqueryd
-    sudo systemctl enable osqueryd
+    sudo systemctl start $_OSQUERY_SERVICE
+    sudo systemctl enable $_OSQUERY_SERVICE
   fi
   if [ "$OS" = "darwin" ]; then
     sudo cp /private/var/osquery/com.facebook.osqueryd.plist /Library/LaunchDaemons/com.facebook.osqueryd.plist

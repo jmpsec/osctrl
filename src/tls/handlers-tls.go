@@ -507,11 +507,30 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Invalid Secret MD5")
 		return
 	}
-	// Prepare response with the script
-	response, err := ioutil.ReadFile(tlsConfig.Contexts[context]["install"])
-	if err != nil {
-		log.Printf("error reading quick install %v", err)
+	// Retrieve type of script
+	enrollScript, ok := vars["script"]
+	if !ok {
+		log.Println("Script is missing")
 		return
+	}
+	// Prepare response with the script
+	var response []byte
+	var err error
+	if enrollScript == "osctrl.sh" {
+		response, err = ioutil.ReadFile(tlsConfig.Contexts[context]["install-sh"])
+		if err != nil {
+			log.Printf("error reading osctrl.sh %v", err)
+			return
+		}
+	} else if enrollScript == "osctrl.ps1" {
+		response, err = ioutil.ReadFile(tlsConfig.Contexts[context]["install-ps"])
+		if err != nil {
+			log.Printf("error reading osctrl.ps1 %v", err)
+			return
+		}
+	} else {
+		response = []byte("NOPE")
+		log.Printf("invalid script %s", enrollScript)
 	}
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)

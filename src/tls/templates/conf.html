@@ -51,19 +51,40 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or Mac to just add nodes for the context {{ .Context }}. It will install osquery in the system:
+                    Run this command in Linux or Mac to quickly add nodes in the context {{ .Context }}. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-enroll-cmd">
+                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-enroll-cmd-sh">
                       Copy
                     </button>
                     <div class="highlight">
-                      <code id="osctrl-enroll-cmd" class="bash">curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.sh | sh</code>
+                      <code id="osctrl-enroll-cmd-sh" class="bash">
+                        curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.sh | sh
+                      </code>
                     </div>
                   </div>
                 </div>
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Run this command in Windows to quickly add nodes in the context {{ .Context }}. It will install osquery in the system:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-enroll-cmd-ps">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <code id="osctrl-enroll-cmd-ps" class="bash">
+                        Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.ps1'))
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              
               </div>
             </div>
 
@@ -89,7 +110,7 @@
                             <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
                         </a>
                         <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="nav-icon fl-debian"></i> osctrl.deb
+                          <i class="nav-icon fa fl-debian"></i> osctrl.deb
                         </a>
                       {{end}}
                       {{if eq $i "darwin"}}
@@ -116,7 +137,7 @@
                             <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
                         </a>
                         <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="nav-icon fl-centos"></i> osctrl.rpm
+                          <i class="nav-icon fa fl-centos"></i> osctrl.rpm
                         </a>
                       {{end}}
                     </div>
@@ -227,8 +248,8 @@
         $('[data-toggle="tooltip"]').tooltip();
 
         // Clipboard.js initialization
-        var clipboard = new ClipboardJS('#button-clipboard');
-        clipboard.on('success', function(e) {
+        var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
+        clipboard_sh.on('success', function(e) {
           console.info('Action:', e.action);
           console.info('Text:', e.text);
           console.info('Trigger:', e.trigger);
@@ -238,7 +259,23 @@
             $(e.trigger).text('Copy');
           }, 2500);
         });
-        clipboard.on('error', function(e) {
+        clipboard_sh.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+        var clipboard_ps = new ClipboardJS('#button-clipboard-ps');
+        clipboard_ps.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_ps.on('error', function(e) {
           $(e.trigger).text('Error');
           console.error('Action:', e.action);
           console.error('Trigger:', e.trigger);
