@@ -79,7 +79,9 @@
                     </button>
                     <div class="highlight">
                       <code id="osctrl-enroll-cmd-ps" class="bash">
-                        Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.ps1'))
+                        Set-ExecutionPolicy Bypass -Scope Process -Force
+                        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+                        iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.ps1'))
                       </code>
                     </div>
                   </div>
