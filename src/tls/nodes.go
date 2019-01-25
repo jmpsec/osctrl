@@ -385,8 +385,8 @@ func newNodeHistoryIPAddress(entry NodeHistoryIPAddress) error {
 
 // If IP Address is not already stored, request the API and save it
 func geoLocationCheckByIPAddress(ipaddress string) error {
-	// IP Address geo location, if IP is public
-	if isPublicIP(net.ParseIP(ipaddress)) {
+	// IP Address geo location, if IP is public and geolocation is enabled
+	if isPublicIP(net.ParseIP(ipaddress)) && geolocConfig.Maps {
 		// Check if data is already mapped
 		// FIXME check how old is the data, and maybe refresh if older than some time
 		if !checkGeoLocationIPAddress(ipaddress) {
