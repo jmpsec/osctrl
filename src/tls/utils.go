@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"io/ioutil"
 	"log"
@@ -237,6 +238,11 @@ func debugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 		}
 		log.Println("-------------------------------------------------------end")
 	}
+}
+
+// Helper to escape text
+func escapeText(rawString string) string {
+	return html.EscapeString(rawString)
 }
 
 // Helper to remove backslashes from text

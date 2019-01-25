@@ -47,7 +47,10 @@ function sendQuery() {
     $("#warningModal").modal();
     return;
   }
-  
+  // Make sure semicolon always in the query
+  if (_query.slice(-1) !== ';') {
+    _query = _query + ';';
+  }
   var _url = '/query/run';
   var data = {
       csrftoken: _csrftoken,
@@ -114,4 +117,5 @@ function confirmDeleteQueries(_names) {
 function refreshTableNow(table_id) {
   var table = $('#' + table_id).DataTable();
   table.ajax.reload();
+  return;
 }

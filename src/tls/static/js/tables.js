@@ -7,4 +7,5 @@ function changeTableRefresh(value_id, button_id) {
     document.getElementById(value_id).value = 'yes';
     document.getElementById(button_id).innerHTML = '<i class="fas fa-pause"></i>';
   }
+  return;
 }

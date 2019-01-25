@@ -78,11 +78,16 @@ function refreshCurrentNode() {
 function refreshTableNow(table_id) {
   var table = $('#' + table_id).DataTable();
   table.ajax.reload();
+  return;
 }
 
 function queryNode(_uuid) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
+  // Make sure semicolon always in the query
+  if (_query.slice(-1) !== ';') {
+    _query = _query + ';';
+  }
   
   var _url = '/query/run';
   var data = {
