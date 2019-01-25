@@ -250,6 +250,11 @@ func removeBackslash(rawString string) string {
 	return strings.Replace(rawString, "\\", " ", -1)
 }
 
+// Helper to remove backslashes from text and encode
+func removeBackslashEncode(data []byte) string {
+	return strings.Replace(string(data), "\\", " ", -1)
+}
+
 // Helper to remove backslashes from text
 func stringEncode(data []byte) string {
 	return string(data)
