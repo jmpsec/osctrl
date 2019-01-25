@@ -249,6 +249,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"pastTimestamp": pastTimestamp,
 		"stringEncode":  stringEncode,
+		"escapeText":    escapeText,
 		"pastTimeAgo":   pastTimeAgo,
 	}
 	// Fill template with data
