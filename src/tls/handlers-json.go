@@ -246,9 +246,10 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastTimestamp": pastTimestamp,
-		"stringEncode":  stringEncode,
-		"pastTimeAgo":   pastTimeAgo,
+		"pastTimestamp":   pastTimestamp,
+		"stringEncode":    stringEncode,
+		"removeBackslash": removeBackslash,
+		"pastTimeAgo":     pastTimeAgo,
 	}
 	// Fill template with data
 	t := template.Must(template.New("query-logs.tmpl").Funcs(funcMap).ParseFiles("templates/json/query-logs.tmpl"))
