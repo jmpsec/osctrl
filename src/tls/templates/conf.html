@@ -247,7 +247,7 @@
         });
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip();
+        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
 
         // Clipboard.js initialization
         var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
