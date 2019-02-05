@@ -11,7 +11,7 @@ const (
 	// GraylogVersion GELF spec version
 	GraylogVersion = "1.1"
 	// GraylogHost as source for GELF data
-	GraylogHost = "osctrl"
+	GraylogHost = appName
 	// GraylogLevel informational
 	GraylogLevel = 6
 	// GraylogMethod to send

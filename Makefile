@@ -44,19 +44,25 @@ clean-deps:
 	rm -Rf $(TLS_DIR)/vendor
 	rm -Rf $(CLI_DIR)/vendor
 
-# Install and restart service
+# Install everything
 # optional DEST=destination_path
 install:
 	make clean
 	make build
 	make install_tls
+	make install_cli
 
-# Install TLS server
+# Install TLS server and restart service
 # optional DEST=destination_path
 install_tls:
 	sudo systemctl stop $(TLS_NAME)
 	sudo cp $(TLS_NAME) $(DEST)
 	sudo systemctl start $(TLS_NAME)
+
+# Install CLI
+# optional DEST=destination_path
+install_cli:
+	sudo cp $(CLI_NAME) $(DEST)
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s

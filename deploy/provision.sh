@@ -482,9 +482,10 @@ sudo systemctl enable osqueryd
 # Systemd services for non-docker deployments
 if [[ "$DOCKER" == false ]]; then
   _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
-  # See logs with sudo journalctl -f -u osctrl-tls or alias '_klogs'
-  echo "alias _klogs='sudo journalctl -f -u osctrl-tls'" >> ~/.profile
 fi
+
+# Install CLI
+make install_cli
 
 # Ascii art is always appreciated
 if [[ "$DOCKER" == false ]]; then

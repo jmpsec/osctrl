@@ -4,10 +4,6 @@ import (
 	"net/http"
 )
 
-const (
-	sessionName = "osctrl"
-)
-
 // Hanlder to check access to a resource based on the authentication enabled
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -17,7 +13,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		case localAuthLogin:
 			// Check if user is authenticated
-			session, err := store.Get(r, sessionName)
+			session, err := store.Get(r, serviceName)
 			if err != nil {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return

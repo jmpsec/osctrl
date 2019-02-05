@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 // Get PostgreSQL DB using GORM
@@ -23,4 +24,20 @@ func getDB() *gorm.DB {
 	db.DB().SetConnMaxLifetime(time.Second * 30)
 
 	return db
+}
+
+// Automigrate of tables
+func automigrateDB() error {
+	var err error
+	// table tls_contexts
+	err = db.AutoMigrate(TLSContext{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
+	}
+	// table admin_users
+	err = db.AutoMigrate(AdminUser{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
+	}
+	return nil
 }

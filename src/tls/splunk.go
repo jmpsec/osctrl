@@ -9,7 +9,7 @@ import (
 
 const (
 	// SplunkHost as source for Splunk events
-	SplunkHost = "osctrl"
+	SplunkHost = appName
 	// SplunkMethod to send
 	SplunkMethod = "POST"
 	// SplunkIndex to go to the right index

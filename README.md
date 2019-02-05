@@ -30,6 +30,7 @@ If you want to update your dependencies, use ``make update`` and the latest vers
 Another option would be to see which dependency is needed and you can install in your ``$GOPATH``. The following commands should work:
 
 ```shell 
+go get -u github.com/crewjam/saml/samlsp
 go get -u github.com/gorilla/mux
 go get -u github.com/gorilla/securecookie
 go get -u github.com/gorilla/sessions
@@ -37,6 +38,7 @@ go get -u github.com/jinzhu/gorm
 go get -u github.com/jinzhu/gorm/dialects/postgres
 go get -u github.com/spf13/viper
 go get -u github.com/unrolled/render
+go get -u github.com/urfave/cli
 ```
 
 ## Service configuration

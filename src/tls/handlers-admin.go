@@ -64,7 +64,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := LoginTemplateData{
-		Title: "Login to osctrl",
+		Title: "Login to " + appName,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -87,7 +87,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check credentials
 	if access, user := checkLoginCredentials(l.Username, l.Password); access {
-		session, err := store.Get(r, sessionName)
+		session, err := store.Get(r, appName)
 		if err != nil {
 			log.Printf("New session - %v", err)
 		}
@@ -130,7 +130,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Check CSRF Token
 	if checkCSRFToken(l.CSRFToken) {
 		// Access existing session
-		session, err := store.Get(r, sessionName)
+		session, err := store.Get(r, appName)
 		if err != nil {
 			log.Printf("error accessing session [ %v ]", err)
 			http.Error(w, "Session Error", http.StatusInternalServerError)

@@ -24,6 +24,12 @@ import (
 
 // Define endpoints
 const (
+	// Application name
+	appName = "osctrl"
+	// Service name
+	serviceName = appName + "-tls"
+	// Service version
+	serviceVersion = "0.0.1"
 	// Default endpoint to handle HTTP testing
 	testingPath = "/testing"
 	// Default endpoint to handle HTTP errors
@@ -50,7 +56,7 @@ var (
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
-	dbConfig       JSONConfigurationBackend
+	dbConfig       JSONConfigurationDB
 	logConfig      JSONConfigurationLogging
 	geolocConfig   JSONConfigurationGeoLocation
 	store          *sessions.CookieStore
@@ -321,8 +327,9 @@ func getDB() *gorm.DB {
 
 // Automigrate of tables
 func automigrateDB() error {
+	var err error
 	// table osquery_nodes
-	err := db.AutoMigrate(OsqueryNode{}).Error
+	err = db.AutoMigrate(OsqueryNode{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
 	}
