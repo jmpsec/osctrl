@@ -51,6 +51,7 @@ const (
 // Global variables
 var (
 	tlsConfig      JSONConfigurationTLS
+	tlsPath        TLSPath
 	adminConfig    JSONConfigurationAdmin
 	localUsers     map[string]LocalAuthUser
 	samlMiddleware *samlsp.Middleware
@@ -79,6 +80,16 @@ func loadConfiguration() error {
 	err = tlsRaw.Unmarshal(&tlsConfig)
 	if err != nil {
 		return err
+	}
+	// TLS paths
+	tlsPath = TLSPath{
+		EnrollPath:      defaultEnrollPath,
+		LogPath:         defaultLogPath,
+		ConfigPath:      defaultConfigPath,
+		QueryReadPath:   defaultQueryReadPath,
+		QueryWritePath:  defaultQueryWritePath,
+		CarverInitPath:  defaultCarverInitPath,
+		CarverBlockPath: defaultCarverBlockPath,
 	}
 	// TLS Admin values
 	adminRaw := viper.Sub("admin")
@@ -219,11 +230,11 @@ func main() {
 	// TLS: error
 	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
-	routerTLS.HandleFunc("/{context}/{path}", enrollHandler).Methods("POST")
-	//routerTLS.HandleFunc("/{context}/"+tlsConfig.Config, configHandler).Methods("POST")
-	//routerTLS.HandleFunc("/{context}/"+tlsConfig.Log, logHandler).Methods("POST")
-	//routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryRead, queryReadHandler).Methods("POST")
-	//routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryWrite, queryWriteHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.EnrollPath, enrollHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.ConfigPath, configHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.LogPath, logHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryReadPath, queryReadHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryWritePath, queryWriteHandler).Methods("POST")
 	// TLS: Quick enrollment script
 	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 	// Create router for admin

@@ -411,14 +411,14 @@ type TableTemplateData struct {
 
 // ConfTemplateData for passing data to the conf template
 type ConfTemplateData struct {
-	Title             string
-	TLSHost           string
-	ConfigurationBlob string
-	ConfigurationHash string
-	Context           string
-	SecretPath        string
-	ContextStats      StatsData
-	PlatformStats     StatsData
+	Title              string
+	Context            string
+	ConfigurationBlob  string
+	ConfigurationHash  string
+	QuickAddShell      string
+	QuickAddPowershell string
+	ContextStats       StatsData
+	PlatformStats      StatsData
 }
 
 // QueryRunTemplateData for passing data to the query template

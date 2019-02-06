@@ -166,9 +166,6 @@ VALID_MODE=("dev" "prod" "update")
 VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
-# Generate secret for osquery
-OSCTRL_SECRET_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1)
-
 # Extract arguments
 ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nD:c:d:e:s:S: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,certfile:,domain:,email:,source:,dest:" -- "$@")
 
@@ -411,73 +408,23 @@ make clean-deps
 make update-deps
 make
 
-# Prepare destination folder
-sudo mkdir -p "$DEST_PATH"
-
-# Prepare configuration folder
+# Prepare destination and configuration folder
 sudo mkdir -p "$DEST_PATH/config"
-
-# Prepare data folder
-sudo mkdir -p "$DEST_PATH/data"
 
 # Configure service
 configure_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "$_A_HOST|$_A_INT_PORT"
 
-# Copy osquery tables JSON file
-sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
-
 # Configure credentials to access admin console
 configure_credentials "$DEST_PATH/config/$TLS_CONF" "$DEST_PATH/config/$TLS_CONF" "$_ADMIN_USER" "$_ADMIN_PASS"
 
+# Prepare data folder
+sudo mkdir -p "$DEST_PATH/data"
+
+# Copy osquery tables JSON file
+sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
+
 # Prepare static files for admin
 _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH"
-
-# Prepare osquery configuration files directory
-sudo mkdir -p "$DEST_PATH/osquery-confs"
-
-# Copy configuration for dev
-sudo cp "$SOURCE_PATH/deploy/osquery-dev.conf" "$DEST_PATH/osquery-confs"
-
-# Install osquery
-#repo_osquery_ubuntu
-#package_repo_update
-#package osquery
-OSQUERYDEB="osquery_3.3.0_1.linux.amd64.deb"
-sudo curl -s "https://osquery-packages.s3.amazonaws.com/deb/$OSQUERYDEB" -o "/tmp/$OSQUERYDEB" 
-sudo dpkg -i "/tmp/$OSQUERYDEB"
-
-# Verify osquery
-osqueryi -version
-
-# Prepare flagsfile
-cat "$SOURCE_PATH/deploy/osquery-dev.flags" | sed "s|__TLSHOST|$_T_HOST|g" | sudo tee "/etc/osquery/osquery.flags"
-
-# Copy flags for dev
-sudo cp "/etc/osquery/osquery.flags" "$DEST_PATH/osquery-confs/osquery-dev.flags"
-
-# Copy server TLS certificate
-sudo mkdir -p "/etc/osquery/certs"
-sudo cp "/etc/nginx/certs/osctrl.crt" "/etc/osquery/certs/osctrl.crt"
-
-# Prepare secret for dev
-sudo touch "/etc/osquery/osquery.secret"
-echo "$OSCTRL_SECRET_DEV" | sudo tee "/etc/osquery/osquery.secret"
-cat "$DEST_PATH/config/$TLS_CONF" | sed "s|_OSQUERY_SECRET_DEV|$OSCTRL_SECRET_DEV|g" | sudo tee "$DEST_PATH/config/$TLS_CONF"
-
-# MD5 for secret
-OSCTRL_SECRETMD5_DEV=$(echo "$OSCTRL_SECRET_DEV" | md5sum | cut -d " " -f1)
-cat "$DEST_PATH/config/$TLS_CONF" | sed "s|_OSQUERY_SECRETMD5_DEV|$OSCTRL_SECRETMD5_DEV|g" | sudo tee "$DEST_PATH/config/$TLS_CONF"
-
-# Prepare quick install for linux/osx
-cat "$SOURCE_PATH/deploy/osctrl-dev.sh" | sed "s|__TLSHOST|$_T_HOST|g" | sed "s|__OSQUERYSECRET|$OSCTRL_SECRET_DEV|g" | sed "s|__SECRETMD5|$OSCTRL_SECRETMD5_DEV|g" | sed -e '/__CERT_CONTENT/{r /etc/osquery/certs/osctrl.crt' -e 'd}' | sudo tee "$DEST_PATH/osquery-confs/osquery-dev.sh"
-
-# Prepare quick install for windows
-cat "$SOURCE_PATH/deploy/osctrl-dev.ps1" | sed "s|__TLSHOST|$_T_HOST|g" | sed "s|__OSQUERYSECRET|$OSCTRL_SECRET_DEV|g" | sed "s|__SECRETMD5|$OSCTRL_SECRETMD5_DEV|g" | sed -e '/__CERT_CONTENT/{r /etc/osquery/certs/osctrl.crt' -e 'd}' | sudo tee "$DEST_PATH/osquery-confs/osquery-dev.ps1"
-
-# Start osqueryd service
-sudo systemctl start osqueryd
-# Enable osqueryd to start at boot
-sudo systemctl enable osqueryd
 
 # Systemd services for non-docker deployments
 if [[ "$DOCKER" == false ]]; then
@@ -485,7 +432,19 @@ if [[ "$DOCKER" == false ]]; then
 fi
 
 # Install CLI
-make install_cli
+DEST="$DEST_PATH" make install_cli
+
+# If we are in dev, create context and enroll host
+if [[ "$MODE" == "dev" ]]; then
+  log "Creating context for dev"
+  __tls_conf="$DEST_PATH/config/$TLS_CONF"
+  __osquery_dev="$SOURCE_PATH/deploy/osquery-dev.conf"
+  __osctrl_crt="/etc/nginx/certs/osctrl.crt"
+  "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
+  
+  log "Adding host in dev context"
+  eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context quick-add -n "dev" )
+fi
 
 # Ascii art is always appreciated
 if [[ "$DOCKER" == false ]]; then

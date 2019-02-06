@@ -54,10 +54,6 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("oh no..."))
 }
 
-// Generic handler for POST requests to act as router
-func genericHandlerPOST(w http.ResponseWriter, r *http.Request) {
-}
-
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
@@ -529,7 +525,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare response with the script
-	quickScript, err := quickAddScript(tlsConfig.Host, addScript, ctx)
+	quickScript, err := quickAddScript(addScript, ctx, tlsPath)
 	if err != nil {
 		log.Printf("error getting script %v", err)
 		return

@@ -187,10 +187,14 @@ func init() {
 							Name:  "name, n",
 							Usage: "Context to be added",
 						},
+						cli.StringFlag{
+							Name:  "hostname, host",
+							Usage: "Context host to be added",
+						},
 						cli.BoolFlag{
 							Name:   "debug, d",
 							Hidden: false,
-							Usage:  "Context to be added",
+							Usage:  "Context debug capability",
 						},
 						cli.StringFlag{
 							Name:  "configuration, conf",
@@ -208,6 +212,12 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
+						// Get context hostname
+						ctxHost := c.String("hostname")
+						if ctxHost == "" {
+							fmt.Println("Context hostname is required")
+							os.Exit(1)
+						}
 						// Get configuration
 						var configuration string
 						confFile := c.String("configuration")
@@ -222,7 +232,7 @@ func init() {
 						}
 						// Create context if it does not exist
 						if !contextExists(ctxName) {
-							newContext := emptyContext(ctxName)
+							newContext := emptyContext(ctxName, ctxHost)
 							newContext.DebugHTTP = c.Bool("debug")
 							newContext.Configuration = configuration
 							newContext.Certificate = certificate
@@ -279,6 +289,7 @@ func init() {
 						}
 						fmt.Printf("Context %s\n", ctx.Name)
 						fmt.Printf(" Name: %s\n", ctx.Name)
+						fmt.Printf(" Host: %s\n", ctx.Hostname)
 						fmt.Printf(" Secret: %s\n", ctx.Secret)
 						fmt.Printf(" SecretPath: %s\n", ctx.SecretPath)
 						fmt.Printf(" Type: %v\n", ctx.Type)
@@ -288,13 +299,6 @@ func init() {
 						fmt.Printf("%s\n", ctx.Configuration)
 						fmt.Println(" Certificate: ")
 						fmt.Printf("%s\n", ctx.Certificate)
-						fmt.Printf(" EnrollPath: %s\n", ctx.EnrollPath)
-						fmt.Printf(" LogPath: %s\n", ctx.LogPath)
-						fmt.Printf(" ConfigPath: %s\n", ctx.ConfigPath)
-						fmt.Printf(" QueryReadPath: %s\n", ctx.QueryReadPath)
-						fmt.Printf(" QueryWritePath: %s\n", ctx.QueryWritePath)
-						fmt.Printf(" CarverInitPath: %s\n", ctx.CarverInitPath)
-						fmt.Printf(" CarverBlockPath: %s\n", ctx.CarverBlockPath)
 						fmt.Println()
 						return nil
 					},
@@ -308,12 +312,50 @@ func init() {
 						if err != nil {
 							return err
 						}
-						fmt.Printf("Existing contexts:\n\n")
-						for _, ctx := range contexts {
-							fmt.Printf("  Name: %s\n", ctx.Name)
-
+						if len(contexts) > 0 {
+							fmt.Printf("Existing contexts:\n\n")
+							for _, ctx := range contexts {
+								fmt.Printf("  Name: %s\n", ctx.Name)
+							}
+							fmt.Println()
+						} else {
+							fmt.Printf("No contexts\n")
 						}
-						fmt.Println()
+						return nil
+					},
+				},
+				{
+					Name:  "quick-add",
+					Usage: "Generates one-liner for quick adding nodes to context",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Context to be used",
+						},
+						cli.StringFlag{
+							Name:  "target, t",
+							Value: "sh",
+							Usage: "Type of one-liner",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get context name
+						ctxName := c.String("name")
+						if ctxName == "" {
+							fmt.Println("Context name is required")
+							os.Exit(1)
+						}
+						ctx, err := getContext(ctxName)
+						if err != nil {
+							return err
+						}
+						var oneLiner string
+						if c.String("target") == "sh" {
+							oneLiner, _ = quickAddOneLinerShell(ctx)
+						} else if c.String("target") == "ps1" {
+							oneLiner, _ = quickAddOneLinerPowershell(ctx)
+						}
+						fmt.Printf("%s\n", oneLiner)
 						return nil
 					},
 				},

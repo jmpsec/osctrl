@@ -748,15 +748,17 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template data
+	shellQuickAdd, _ := quickAddOneLinerShell(ctx)
+	powershellQuickAdd, _ := quickAddOneLinerPowershell(ctx)
 	templateData := ConfTemplateData{
-		Title:             context + " Configuration",
-		TLSHost:           tlsConfig.Host,
-		ConfigurationBlob: ctx.Configuration,
-		ConfigurationHash: generateOsqueryConfigHash(ctx.Configuration),
-		Context:           context,
-		SecretPath:        ctx.SecretPath,
-		ContextStats:      tmplCtxStats,
-		PlatformStats:     tmplPlatStats,
+		Title:              context + " Configuration",
+		ConfigurationBlob:  ctx.Configuration,
+		ConfigurationHash:  generateOsqueryConfigHash(ctx.Configuration),
+		Context:            context,
+		QuickAddShell:      shellQuickAdd,
+		QuickAddPowershell: powershellQuickAdd,
+		ContextStats:       tmplCtxStats,
+		PlatformStats:      tmplPlatStats,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)

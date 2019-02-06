@@ -5,7 +5,7 @@
 # IMPORTANT! If osquery is not installed, it will be installed.
 
 _PROJECT="{{ .Project }}"
-_TLS_HOSTNAME="{{ .TLSHostname }}"
+_TLS_HOSTNAME="{{ .Context.Hostname }}"
 _SECRET="{{ .Context.Secret }}"
 _SECRET_LINUX=/etc/osquery/osquery.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
@@ -90,11 +90,12 @@ whatOS() {
 }
 
 stopOsquery() {
-  log "Stopping $_OSQUERY_SERVICE_LINUX"
   if [ "$OS" = "linux" ]; then
+    log "Stopping $_OSQUERY_SERVICE_LINUX"
     sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
   fi
   if [ "$OS" = "darwin" ]; then
+    log "Stopping $_OSQUERY_SERVICE_OSX"
     if launchctl list | grep -qcm1 "$_OSQUERY_SERVICE_OSX"; then
       sudo launchctl unload "$_PLIST_OSX"
     fi
@@ -114,20 +115,20 @@ prepareFlags() {
 --force=true
 --utc=true
 --enroll_secret_path=$_SECRET_FILE
---enroll_tls_endpoint=/{{ .Context.Name }}/{{ .Context.EnrollPath }}
+--enroll_tls_endpoint=/{{ .Context.Name }}/{{ .Path.EnrollPath }}
 --config_plugin=tls
---config_tls_endpoint=/{{ .Context.Name }}/{{ .Context.ConfigPath }}
+--config_tls_endpoint=/{{ .Context.Name }}/{{ .Path.ConfigPath }}
 --config_tls_refresh=10
 --logger_plugin=tls
 --logger_tls_compress=true
---logger_tls_endpoint=/{{ .Context.Name }}/{{ .Context.LogPath }}
+--logger_tls_endpoint=/{{ .Context.Name }}/{{ .Path.LogPath }}
 --logger_tls_period=10
 --disable_distributed=false
 --distributed_interval=10
 --distributed_plugin=tls
 --distributed_tls_max_attempts=3
---distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Context.QueryReadPath }}
---distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Context.QueryWritePath }}
+--distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Path.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Path.QueryWritePath }}
 --tls_dump=true
 --tls_hostname=$_TLS_HOSTNAME
 --tls_server_certs=$_CERT
@@ -143,12 +144,13 @@ EOF"
 }
 
 startOsquery() {
-  log "Starting $_OSQUERY_SERVICE"
   if [ "$OS" = "linux" ]; then
-    sudo systemctl start $_OSQUERY_SERVICE
-    sudo systemctl enable $_OSQUERY_SERVICE
+    log "Starting $_OSQUERY_SERVICE_LINUX"
+    sudo systemctl start "$_OSQUERY_SERVICE_LINUX"
+    sudo systemctl enable "$_OSQUERY_SERVICE_LINUX"
   fi
   if [ "$OS" = "darwin" ]; then
+    log "Starting $_OSQUERY_SERVICE_OSX"
     sudo cp "$_OSQUERY_PLIST" "$_PLIST_OSX"
     sudo launchctl load "$_PLIST_OSX"
   fi

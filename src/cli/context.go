@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 
 	"github.com/jinzhu/gorm"
@@ -11,21 +13,79 @@ import (
 )
 
 const (
-	defaultEnrollPath      = "osquery_enroll"
-	defaultLogPath         = "osquery_log"
-	defaultConfigPath      = "osquery_config"
-	defaultQueryReadPath   = "osquery_read"
-	defaultQueryWritePath  = "osquery_write"
-	defaultCarverInitPath  = "carver_init"
-	defaultCarverBlockPath = "carver_block"
+	defaultEnrollPath      = "enroll"
+	defaultLogPath         = "log"
+	defaultConfigPath      = "config"
+	defaultQueryReadPath   = "read"
+	defaultQueryWritePath  = "write"
+	defaultCarverInitPath  = "init"
+	defaultCarverBlockPath = "block"
 	defaultContextIcon     = "fas fa-wrench"
 	defaultContextType     = "osquery"
 	defaultSecretLength    = 64
+	errorRandomString      = "SomethingRandomWentWrong"
 )
 
-const (
-	errorRandomString = "SomethingRandomWentWrong"
-)
+// TLSContext to hold all the TLS contexts
+type TLSContext struct {
+	gorm.Model
+	Name          string `gorm:"index"`
+	Hostname      string
+	Secret        string
+	SecretPath    string
+	Type          string
+	DebugHTTP     bool
+	Icon          string
+	Configuration string
+	Certificate   string
+}
+
+// TLSPath to hold all the paths for TLS
+type TLSPath struct {
+	EnrollPath      string
+	LogPath         string
+	ConfigPath      string
+	QueryReadPath   string
+	QueryWritePath  string
+	CarverInitPath  string
+	CarverBlockPath string
+}
+
+// Helper generic to generate quick add one-liners
+func quickAddOneLiner(oneliner string, context TLSContext) (string, error) {
+	t, err := template.New("QuickAddOneLiner").Parse(oneliner)
+	if err != nil {
+		return "", err
+	}
+	data := struct {
+		TLSHost    string
+		Context    string
+		SecretPath string
+	}{
+		TLSHost:    context.Hostname,
+		Context:    context.Name,
+		SecretPath: context.SecretPath,
+	}
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, data); err != nil {
+		return "", err
+	}
+	return tpl.String(), nil
+}
+
+// Helper to get the quick add one-liner for Linux/OSX nodes
+func quickAddOneLinerShell(context TLSContext) (string, error) {
+	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.sh | sh`
+	return quickAddOneLiner(s, context)
+}
+
+// Helper to get the quick add one-liner for Windows nodes
+func quickAddOneLinerPowershell(context TLSContext) (string, error) {
+	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
+iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.ps1'))`
+	return quickAddOneLiner(s, context)
+}
 
 // Helper to generate a random string of n characters
 func generateRandomString(n int) string {
@@ -54,24 +114,34 @@ func readExternalFile(path string) string {
 	return string(content)
 }
 
-// TLSContext to hold all the TLS contexts
-type TLSContext struct {
-	gorm.Model
-	Name            string `gorm:"index"`
-	Secret          string
-	SecretPath      string
-	Type            string
-	DebugHTTP       bool
-	Icon            string
-	Configuration   string
-	Certificate     string
-	EnrollPath      string
-	LogPath         string
-	ConfigPath      string
-	QueryReadPath   string
-	QueryWritePath  string
-	CarverInitPath  string
-	CarverBlockPath string
+// Helper to get a quick add script for a context
+func quickAddScript(script string, context TLSContext) (string, error) {
+	var templatePath string
+	// What script is it?
+	if script == "osctrl.sh" {
+		templatePath = "templates/scripts/quick-add.sh"
+	} else if script == "osctrl.ps1" {
+		templatePath = "templates/scripts/quick-add.ps1"
+	}
+	// Prepare template
+	t, err := template.New(templatePath).ParseFiles(templatePath)
+	if err != nil {
+		return "", err
+	}
+	// Prepare template data
+	data := struct {
+		Project string
+		Context TLSContext
+	}{
+		Project: appName,
+		Context: context,
+	}
+	// Compile template into buffer
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, data); err != nil {
+		return "", err
+	}
+	return tpl.String(), nil
 }
 
 // Get context by name
@@ -84,23 +154,17 @@ func getContext(name string) (TLSContext, error) {
 }
 
 // Generate empty context with default values
-func emptyContext(name string) TLSContext {
+func emptyContext(name, hostname string) TLSContext {
 	return TLSContext{
-		Name:            name,
-		Secret:          generateRandomString(defaultSecretLength),
-		SecretPath:      generateKSUID(),
-		Type:            defaultContextType,
-		DebugHTTP:       false,
-		Icon:            defaultContextIcon,
-		Configuration:   "",
-		Certificate:     "",
-		EnrollPath:      defaultEnrollPath,
-		LogPath:         defaultLogPath,
-		ConfigPath:      defaultConfigPath,
-		QueryReadPath:   defaultQueryReadPath,
-		QueryWritePath:  defaultQueryWritePath,
-		CarverInitPath:  defaultCarverInitPath,
-		CarverBlockPath: defaultCarverBlockPath,
+		Name:          name,
+		Hostname:      hostname,
+		Secret:        generateRandomString(defaultSecretLength),
+		SecretPath:    generateKSUID(),
+		Type:          defaultContextType,
+		DebugHTTP:     false,
+		Icon:          defaultContextIcon,
+		Configuration: "",
+		Certificate:   "",
 	}
 }
 
