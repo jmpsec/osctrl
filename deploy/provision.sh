@@ -442,6 +442,18 @@ if [[ "$MODE" == "dev" ]]; then
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
   "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
   
+  log "Checking if service is ready"
+  while true; do
+    _readiness=$(curl -k --write-out %{http_code} --head --silent --output /dev/null "https://$_T_HOST")
+    if [[ "$_readiness" == "200" ]]; then
+      log "Status $_readiness, service ready"
+      break
+    else
+      log "Status $_readiness, not yet"
+    fi
+    sleep 1
+  done
+  
   log "Adding host in dev context"
   eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context quick-add -n "dev" )
 fi

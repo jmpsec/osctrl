@@ -4,14 +4,14 @@
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
     "auth": "none",
-    "debughttp": true
+    "debughttp": false
   },
   "admin": {
     "listener": "127.0.0.1",
     "port": "_ADMIN_PORT",
     "host": "_ADMIN_HOST",
     "auth": "local",
-    "debughttp": true
+    "debughttp": false
   },
   "users": {
     "_ADMIN_USER": {
