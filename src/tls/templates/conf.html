@@ -61,7 +61,7 @@
                     </button>
                     <div class="highlight">
                       <code id="osctrl-enroll-cmd-sh" class="bash">
-                        curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.sh | sh
+                        curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.sh | sh
                       </code>
                     </div>
                   </div>
@@ -81,7 +81,7 @@
                       <code id="osctrl-enroll-cmd-ps" class="bash">
                         Set-ExecutionPolicy Bypass -Scope Process -Force;
                         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-                        iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretMD5 }}/osctrl.ps1'))
+                        iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.ps1'))
                       </code>
                     </div>
                   </div>
@@ -149,7 +149,6 @@
 
               </div>
             </div>
-            -->
 
             <div class="card mt-2">
               <div class="card-header">
@@ -169,6 +168,8 @@
             </div>
           
           </div>
+
+          -->
 
         </div>
 

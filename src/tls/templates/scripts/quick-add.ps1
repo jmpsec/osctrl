@@ -12,15 +12,15 @@
 # Stop as soon as there is an error
 $ErrorActionPreference = "Stop"
 
-$osctrlTLSHost = "__TLSHOST"
-$projectName = "osctrl"
-$osctrlSecret = "__OSQUERYSECRET"
+$projectName = "{{ .Project }}"
+$osctrlTLSHost = "{{ .TLSHostname }}"
+$osctrlSecret = "{{ .Context.Secret }}"
 $osqueryPath = ([System.IO.Path]::Combine('C:\', 'ProgramData', 'osquery'))
 $osqueryDaemonPath = (Join-Path $osqueryPath "osqueryd")
 $osqueryDaemon = (Join-Path $osqueryDaemonPath "osqueryd.exe")
 $secretFile = (Join-Path $osqueryPath "osquery.secret")
 $flagsFile = (Join-Path $osqueryPath "osquery.flags")
-$certFile = (Join-Path $osqueryPath "osctrl.crt")
+$certFile = (Join-Path $osqueryPath "{{ .Project }}.crt")
 $osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-3.3.1.msi"
 $osqueryTempMSI = "C:\Windows\Temp\osquery-3.3.1.msi"
 $osqueryMSISize = 9953280
@@ -31,26 +31,26 @@ $osqueryFlags = @"
 --force=true
 --utc=true
 --enroll_secret_path=$secretFile
---enroll_tls_endpoint=/dev/osquery_enroll
+--enroll_tls_endpoint=/{{ .Context.Name }}/{{ .Context.EnrollPath }}
 --config_plugin=tls
---config_tls_endpoint=/dev/osquery_config
+--config_tls_endpoint=/{{ .Context.Name }}/{{ .Context.ConfigPath }}
 --config_tls_refresh=10
 --logger_plugin=tls
 --logger_tls_compress=true
---logger_tls_endpoint=/dev/osquery_log
+--logger_tls_endpoint=/{{ .Context.Name }}/{{ .Context.LogPath }}
 --logger_tls_period=10
 --disable_distributed=false
 --distributed_interval=10
 --distributed_plugin=tls
 --distributed_tls_max_attempts=3
---distributed_tls_read_endpoint=/dev/osquery_read
---distributed_tls_write_endpoint=/dev/osquery_write
+--distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Context.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Context.QueryWritePath }}
 --tls_dump=true
 --tls_hostname=$osctrlTLSHost
 --tls_server_certs=$certFile
 "@
 $osqueryCertificate = @"
-__CERT_CONTENT
+{{ .Context.Certificate }}
 "@
 
 # Adapted from http://www.jonathanmedd.net/2014/01/testing-for-admin-privileges-in-powershell.html

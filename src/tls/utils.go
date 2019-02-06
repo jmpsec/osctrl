@@ -83,13 +83,11 @@ func generateQueryName() string {
 
 // Helper to check if the provided secret is valid for this context
 func checkValidSecret(enrollSecret string, context string) bool {
-	return (strings.TrimSpace(enrollSecret) == tlsConfig.Contexts[context]["secret"])
-}
-
-// Helper to check if the provided context is valid
-func checkValidContext(context string) bool {
-	_, present := tlsConfig.Contexts[context]
-	return present
+	ctx, err := getContext(context)
+	if err != nil {
+		return false
+	}
+	return (strings.TrimSpace(enrollSecret) == ctx.Secret)
 }
 
 // Helper to check if the provided platform exists
@@ -106,15 +104,13 @@ func checkValidPlatform(platform string) bool {
 	return false
 }
 
-// Helper to check if the provided package platform is valid
-func checkValidPackagePlatform(context, platform string) bool {
-	_, present := tlsConfig.Contexts[context][platform]
-	return present
-}
-
-// Helper to check if the provided SecretMD5 is valid for a context
-func checkValidSecretMD5(context, secretmd5 string) bool {
-	return (tlsConfig.Contexts[context]["secret-md5"] == secretmd5)
+// Helper to check if the provided SecretPath is valid for a context
+func checkValidSecretPath(context, secretpath string) bool {
+	ctx, err := getContext(context)
+	if err != nil {
+		return false
+	}
+	return (strings.TrimSpace(secretpath) == ctx.SecretPath)
 }
 
 // Helper to convert an enrollment request into a osquery node
@@ -402,14 +398,14 @@ func sendRequest(secure bool, reqType, url string, params io.Reader, headers map
 }
 
 // Helper to generate stats for all contexts
-func getContextStats(contexts map[string]TLSContext) (StatsData, error) {
+func getContextStats(contexts []TLSContext) (StatsData, error) {
 	contextStats := make(StatsData)
-	for k := range contexts {
-		stats, err := getNodeStatsByContext(k)
+	for _, c := range contexts {
+		stats, err := getNodeStatsByContext(c.Name)
 		if err != nil {
 			return contextStats, err
 		}
-		contextStats[k] = stats
+		contextStats[c.Name] = stats
 	}
 	return contextStats, nil
 }

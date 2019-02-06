@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 
 	"github.com/jinzhu/gorm"
@@ -27,31 +29,38 @@ const (
 	errorRandomString = "SomethingRandomWentWrong"
 )
 
-// Helper to generate a random string of n characters
-func generateRandomString(n int) string {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return errorRandomString
+// Helper to get a quick add script for a context
+func quickAddScript(hostname, script string, context TLSContext) (string, error) {
+	var templateName, templatePath string
+	// What script is it?
+	if script == "osctrl.sh" {
+		templateName = "osctrl.sh"
+		templatePath = "templates/quick-add.sh"
+	} else if script == "osctrl.ps1" {
+		templateName = "osctrl.ps1"
+		templatePath = "templates/quick-add.ps1"
 	}
-	return base64.URLEncoding.EncodeToString(b)
-}
-
-// Helper to generate a KSUID
-// See https://github.com/segmentio/ksuid for more info about KSUIDs
-func generateKSUID() string {
-	id := ksuid.New()
-	return id.String()
-}
-
-// Helper to read an external file and return contents
-func readExternalFile(path string) string {
-	content, err := ioutil.ReadFile(path)
+	// Prepare template
+	t, err := template.New(templateName).ParseFiles(templatePath)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(content)
+	// Prepare template data
+	data := struct {
+		Project     string
+		TLSHostname string
+		Context     TLSContext
+	}{
+		Project:     appName,
+		TLSHostname: hostname,
+		Context:     context,
+	}
+	// Compile template into buffer
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, data); err != nil {
+		return "", err
+	}
+	return tpl.String(), nil
 }
 
 // TLSContext to hold all the TLS contexts
@@ -142,4 +151,31 @@ func deleteContext(name string) error {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
+}
+
+// Helper to generate a random string of n characters
+func generateRandomString(n int) string {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return errorRandomString
+	}
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+// Helper to generate a KSUID
+// See https://github.com/segmentio/ksuid for more info about KSUIDs
+func generateKSUID() string {
+	id := ksuid.New()
+	return id.String()
+}
+
+// Helper to read a configuration file
+func readConfigurationFile(path string) string {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }

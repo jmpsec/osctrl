@@ -71,7 +71,7 @@ OHNOES=41414141
 function usage() {
   printf "\n"
   printf "\n"
-  printf "\n [ osctrl ] : Provisioning script\n"
+  printf "\n [ osctrl 🎛 ] : Provisioning script\n"
   printf "\n"
   printf "\n"
   printf "\nUsage: %s [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...\n" "${0}"

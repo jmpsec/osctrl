@@ -18,21 +18,12 @@ type JSONConfigurationDB struct {
 
 // JSONConfigurationTLS to hold all TLS endpoint configuration values
 type JSONConfigurationTLS struct {
-	Listener   string                `json:"listener"`
-	Port       string                `json:"port"`
-	Host       string                `json:"host"`
-	Auth       string                `json:"auth"`
-	Enroll     string                `json:"enroll"`
-	Config     string                `json:"config"`
-	Log        string                `json:"log"`
-	QueryRead  string                `json:"queryread"`
-	QueryWrite string                `json:"querywrite"`
-	Contexts   map[string]TLSContext `json:"contexts"`
-	DebugHTTP  bool                  `json:"debughttp"`
+	Listener  string `json:"listener"`
+	Port      string `json:"port"`
+	Host      string `json:"host"`
+	Auth      string `json:"auth"`
+	DebugHTTP bool   `json:"debughttp"`
 }
-
-// TLSContext to hold each context where machines will be enrolled
-type TLSContext map[string]string
 
 // JSONConfigurationAdmin to hold all Admin configuration values
 type JSONConfigurationAdmin struct {
@@ -424,10 +415,8 @@ type ConfTemplateData struct {
 	TLSHost           string
 	ConfigurationBlob string
 	ConfigurationHash string
-	FlagsBlob         string
 	Context           string
-	SecretMD5         string
-	Packages          map[string]string
+	SecretPath        string
 	ContextStats      StatsData
 	PlatformStats     StatsData
 }

@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"path"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -162,7 +160,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Redirect to table for all nodes
-	if checkValidContext("corp") {
+	if contextExists("corp") {
 		http.Redirect(w, r, "/context/corp/all", http.StatusFound)
 	} else {
 		http.Redirect(w, r, "/context/dev/all", http.StatusFound)
@@ -180,7 +178,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -199,7 +197,12 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -256,7 +259,12 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -298,7 +306,12 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -386,7 +399,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			goto response
 		}
 		// Create context target
-		if (q.Context != "") && checkValidContext(q.Context) {
+		if (q.Context != "") && contextExists(q.Context) {
 			if err := createQueryTarget(queryName, queryTargetContext, q.Context); err != nil {
 				responseMessage = "error creating query context target"
 				responseCode = http.StatusInternalServerError
@@ -457,7 +470,12 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -504,7 +522,12 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -626,7 +649,12 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -680,7 +708,7 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -692,7 +720,12 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts%v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -709,33 +742,19 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get configuration JSON
-	c, err := ioutil.ReadFile(tlsConfig.Contexts[context]["conf"])
+	ctx, err := getContext(context)
 	if err != nil {
-		log.Printf("error reading conf file %v", err)
+		log.Printf("error getting context %v", err)
 		return
 	}
-	// Get flags
-	f, err := ioutil.ReadFile(tlsConfig.Contexts[context]["flags"])
-	if err != nil {
-		log.Printf("error reading conf file %v", err)
-		return
-	}
-	// Get packages
-	p := make(map[string]string)
-	p["debian"] = tlsConfig.Contexts[context]["debian"]
-	p["centos"] = tlsConfig.Contexts[context]["centos"]
-	p["darwin"] = tlsConfig.Contexts[context]["darwin"]
-	p["windows"] = tlsConfig.Contexts[context]["windows"]
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:             context + " Configuration",
 		TLSHost:           tlsConfig.Host,
-		ConfigurationBlob: string(c),
-		ConfigurationHash: generateOsqueryConfigHash(string(c)),
-		FlagsBlob:         string(f),
+		ConfigurationBlob: ctx.Configuration,
+		ConfigurationHash: generateOsqueryConfigHash(ctx.Configuration),
 		Context:           context,
-		SecretMD5:         tlsConfig.Contexts[context]["secret-md5"],
-		Packages:          p,
+		SecretPath:        ctx.SecretPath,
 		ContextStats:      tmplCtxStats,
 		PlatformStats:     tmplPlatStats,
 	}
@@ -768,7 +787,12 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	tmplCtxStats, err := getContextStats(tlsConfig.Contexts)
+	contexts, err := getAllContexts()
+	if err != nil {
+		log.Printf("error getting contexts%v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
 	if err != nil {
 		log.Printf("error getting context stats: %v", err)
 		return
@@ -925,16 +949,19 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for downloading packages
+/*
 func packageHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	vars := mux.Vars(r)
 	// Extract context
+	// FIXME verify context
 	context, ok := vars["context"]
 	if !ok {
 		log.Println("error getting context")
 		return
 	}
 	// Extract platform
+	// FIXME verify platform
 	platform, ok := vars["platform"]
 	if !ok {
 		log.Println("error getting platform")
@@ -948,3 +975,4 @@ func packageHandler(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, tlsConfig.Contexts[context][platform])
 	}
 }
+*/

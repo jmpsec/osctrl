@@ -193,8 +193,12 @@ func init() {
 							Usage:  "Context to be added",
 						},
 						cli.StringFlag{
-							Name:  "configuration, c",
+							Name:  "configuration, conf",
 							Usage: "Configuration file to be read",
+						},
+						cli.StringFlag{
+							Name:  "certificate, crt",
+							Usage: "Certificate file to be read",
 						},
 					},
 					Action: func(c *cli.Context) error {
@@ -206,15 +210,22 @@ func init() {
 						}
 						// Get configuration
 						var configuration string
-						cFile := c.String("configuration")
-						if cFile != "" {
-							configuration = readConfigurationFile(cFile)
+						confFile := c.String("configuration")
+						if confFile != "" {
+							configuration = readExternalFile(confFile)
+						}
+						// Get certificate
+						var certificate string
+						certFile := c.String("certificate")
+						if certFile != "" {
+							certificate = readExternalFile(certFile)
 						}
 						// Create context if it does not exist
 						if !contextExists(ctxName) {
 							newContext := emptyContext(ctxName)
 							newContext.DebugHTTP = c.Bool("debug")
 							newContext.Configuration = configuration
+							newContext.Certificate = certificate
 							if err := createContext(newContext); err != nil {
 								return err
 							}
@@ -246,6 +257,49 @@ func init() {
 					},
 				},
 				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show a TLS context",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Context to be displayed",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get context name
+						ctxName := c.String("name")
+						if ctxName == "" {
+							fmt.Println("Context name is required")
+							os.Exit(1)
+						}
+						ctx, err := getContext(ctxName)
+						if err != nil {
+							return err
+						}
+						fmt.Printf("Context %s\n", ctx.Name)
+						fmt.Printf(" Name: %s\n", ctx.Name)
+						fmt.Printf(" Secret: %s\n", ctx.Secret)
+						fmt.Printf(" SecretPath: %s\n", ctx.SecretPath)
+						fmt.Printf(" Type: %v\n", ctx.Type)
+						fmt.Printf(" DebugHTTP? %v\n", ctx.DebugHTTP)
+						fmt.Printf(" Icon: %s\n", ctx.Icon)
+						fmt.Println(" Configuration: ")
+						fmt.Printf("%s\n", ctx.Configuration)
+						fmt.Println(" Certificate: ")
+						fmt.Printf("%s\n", ctx.Certificate)
+						fmt.Printf(" EnrollPath: %s\n", ctx.EnrollPath)
+						fmt.Printf(" LogPath: %s\n", ctx.LogPath)
+						fmt.Printf(" ConfigPath: %s\n", ctx.ConfigPath)
+						fmt.Printf(" QueryReadPath: %s\n", ctx.QueryReadPath)
+						fmt.Printf(" QueryWritePath: %s\n", ctx.QueryWritePath)
+						fmt.Printf(" CarverInitPath: %s\n", ctx.CarverInitPath)
+						fmt.Printf(" CarverBlockPath: %s\n", ctx.CarverBlockPath)
+						fmt.Println()
+						return nil
+					},
+				},
+				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS contexts",
@@ -257,21 +311,9 @@ func init() {
 						fmt.Printf("Existing contexts:\n\n")
 						for _, ctx := range contexts {
 							fmt.Printf("  Name: %s\n", ctx.Name)
-							fmt.Printf("  Secret: %s\n", ctx.Secret)
-							fmt.Printf("  SecretPath: %s\n", ctx.SecretPath)
-							fmt.Printf("  Type: %v\n", ctx.Type)
-							fmt.Printf("  DebugHTTP? %v\n", ctx.DebugHTTP)
-							fmt.Printf("  Icon: %s\n", ctx.Icon)
-							fmt.Printf("  Configuration: %s\n", ctx.Configuration)
-							fmt.Printf("  EnrollPath: %s\n", ctx.EnrollPath)
-							fmt.Printf("  LogPath: %s\n", ctx.LogPath)
-							fmt.Printf("  ConfigPath: %s\n", ctx.ConfigPath)
-							fmt.Printf("  QueryReadPath: %s\n", ctx.QueryReadPath)
-							fmt.Printf("  QueryWritePath: %s\n", ctx.QueryWritePath)
-							fmt.Printf("  CarverInitPath: %s\n", ctx.CarverInitPath)
-							fmt.Printf("  CarverBlockPath: %s\n", ctx.CarverBlockPath)
-							fmt.Println()
+
 						}
+						fmt.Println()
 						return nil
 					},
 				},

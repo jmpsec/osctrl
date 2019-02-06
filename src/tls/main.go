@@ -219,13 +219,13 @@ func main() {
 	// TLS: error
 	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
-	routerTLS.HandleFunc("/{context}/"+tlsConfig.Enroll, enrollHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsConfig.Config, configHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsConfig.Log, logHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryRead, queryReadHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryWrite, queryWriteHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/{path}", enrollHandler).Methods("POST")
+	//routerTLS.HandleFunc("/{context}/"+tlsConfig.Config, configHandler).Methods("POST")
+	//routerTLS.HandleFunc("/{context}/"+tlsConfig.Log, logHandler).Methods("POST")
+	//routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryRead, queryReadHandler).Methods("POST")
+	//routerTLS.HandleFunc("/{context}/"+tlsConfig.QueryWrite, queryWriteHandler).Methods("POST")
 	// TLS: Quick enrollment script
-	routerTLS.HandleFunc("/{context}/{secretmd5}/{script}", quickEnrollHandler).Methods("GET")
+	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 	// Create router for admin
 	routerAdmin := mux.NewRouter()
 	// Admin: login only if local auth is enabled

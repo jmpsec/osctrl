@@ -3,7 +3,6 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -20,8 +19,14 @@ const (
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
 
+// TextPlain for Content-Type headers
+const TextPlain string = "text/plain"
+
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
+
+// TextPlainUTF8 for Content-Type headers, UTF charset
+const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +54,10 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("oh no..."))
 }
 
+// Generic handler for POST requests to act as router
+func genericHandlerPOST(w http.ResponseWriter, r *http.Request) {
+}
+
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
@@ -62,7 +71,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -133,13 +142,19 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
+		return
+	}
+	// Get context
+	ctx, err := getContext(context)
+	if err != nil {
+		log.Printf("error getting context %v", err)
 		return
 	}
 	// Decode read POST body
 	var t ConfigRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
+	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -150,17 +165,12 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("error updating IP address %v", err)
 		}
-		// Read configuration
-		configurationText, err := getOsqueryConfiguration(tlsConfig.Contexts[context]["conf"])
-		if err != nil {
-			log.Printf("error getting configuration %v", err)
-			return
-		}
+		// Refresh last config for node
 		err = refreshNodeLastConfig(t.NodeKey)
 		if err != nil {
 			log.Printf("error refreshing last config %v", err)
 		}
-		response = []byte(configurationText)
+		response = []byte(ctx.Configuration)
 	} else {
 		response, err = json.Marshal(ConfigResponse{NodeInvalid: true})
 		if err != nil {
@@ -189,7 +199,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -343,7 +353,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -405,7 +415,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -492,48 +502,40 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !checkValidContext(context) {
+	if !contextExists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
-	// Retrieve Secret MD5 variable
-	secretMD5, ok := vars["secretmd5"]
-	if !ok {
-		log.Println("Secret MD5 is missing")
+	ctx, err := getContext(context)
+	if err != nil {
+		log.Printf("error getting context %v", err)
 		return
 	}
-	// Check if provided SecretMD5 is valid and if so, prepare script
-	if !checkValidSecretMD5(context, secretMD5) {
-		log.Println("Invalid Secret MD5")
+	// Retrieve SecretPath variable
+	secretPath, ok := vars["secretpath"]
+	if !ok {
+		log.Println("Path is missing")
+		return
+	}
+	// Check if provided SecretPath is valid and if so, prepare script
+	if !checkValidSecretPath(context, secretPath) {
+		log.Println("Invalid Path")
 		return
 	}
 	// Retrieve type of script
-	enrollScript, ok := vars["script"]
+	addScript, ok := vars["script"]
 	if !ok {
 		log.Println("Script is missing")
 		return
 	}
 	// Prepare response with the script
-	var response []byte
-	var err error
-	if enrollScript == "osctrl.sh" {
-		response, err = ioutil.ReadFile(tlsConfig.Contexts[context]["install-sh"])
-		if err != nil {
-			log.Printf("error reading osctrl.sh %v", err)
-			return
-		}
-	} else if enrollScript == "osctrl.ps1" {
-		response, err = ioutil.ReadFile(tlsConfig.Contexts[context]["install-ps"])
-		if err != nil {
-			log.Printf("error reading osctrl.ps1 %v", err)
-			return
-		}
-	} else {
-		response = []byte("NOPE")
-		log.Printf("invalid script %s", enrollScript)
+	quickScript, err := quickAddScript(tlsConfig.Host, addScript, ctx)
+	if err != nil {
+		log.Printf("error getting script %v", err)
+		return
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set("Content-Type", TextPlainUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	w.Write([]byte(quickScript))
 }
