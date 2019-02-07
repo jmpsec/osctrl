@@ -88,87 +88,6 @@
               </div>
             </div>
 
-            <!-- 
-            <div class="card mt-2">
-              <div class="card-header">
-                <i class="fas fa-cubes"></i> osctrl packages for context {{ .Context }}
-              </div>
-              <div class="card-body">
-
-                <div class="row mb-4">
-                  <div class="text-center col-md-12">
-                    <b>IMPORTANT:</b> You must install <a href="https://osquery.io/downloads/official/3.3.0" target="_blank">osquery</a> first
-                  </div>
-                </div>
-                <div class="row justify-content-center mb-4">
-                  {{ range  $i, $e := $.Packages }}
-                  <div class="col-md-3">
-                    <div class="btn-group" role="group" aria-label="osctrl quick install">
-                      {{if eq $i "debian"}}
-                        <a href="https://osquery-packages.s3.amazonaws.com/deb/osquery_3.3.0_1.linux.amd64.deb" class="btn btn-light" role="button">
-                          <span class="icon-osquery">
-                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
-                        </a>
-                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="nav-icon fa fl-debian"></i> osctrl.deb
-                        </a>
-                      {{end}}
-                      {{if eq $i "darwin"}}
-                        <a href="https://osquery-packages.s3.amazonaws.com/darwin/osquery-3.3.0.pkg" class="btn btn-light" role="button">
-                          <span class="icon-osquery">
-                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
-                        </a>
-                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="nav-icon fa fl-apple"></i> osctrl.pkg
-                        </a>
-                      {{end}}
-                      {{if eq $i "windows"}}
-                        <a href="https://osquery-packages.s3.amazonaws.com/windows/osquery-3.3.0.msi" class="btn btn-light" role="button">
-                          <span class="icon-osquery">
-                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
-                        </a>
-                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="fab fa-windows"></i> osctrl.exe
-                        </a>
-                      {{end}}
-                      {{if eq $i "centos"}}
-                        <a href="https://osquery-packages.s3.amazonaws.com/rpm/osquery-3.3.0-1.linux.x86_64.rpm" class="btn btn-light" role="button">
-                          <span class="icon-osquery">
-                            <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
-                        </a>
-                        <a href="/package/{{ $.Context }}/{{ $i }}" class="btn btn-block btn-secondary {{if eq $e ""}}disabled{{end}}" role="button" aria-pressed="false">
-                          <i class="nav-icon fa fl-centos"></i> osctrl.rpm
-                        </a>
-                      {{end}}
-                    </div>
-                  </div>
-                  {{ end }}
-                </div>
-
-              </div>
-            </div>
-
-            <div class="card mt-2">
-              <div class="card-header">
-                <i class="fab fa-font-awesome-flag"></i> osquery flags for context {{ .Context }}
-                <div class="card-header-actions">
-                  <div class="card-header-action">
-                    <button id="flags_save" class="btn btn-sm btn-block btn-dark disabled">
-                      <i class="far fa-save"></i></button>
-                  </div>
-                </div>
-              </div>
-              <div class="card-body">
-                
-                <textarea id="flags" name="flags">{{ .FlagsBlob }}</textarea>
-
-              </div>
-            </div>
-          
-          </div>
-
-          -->
-
         </div>
 
       </main>
@@ -230,15 +149,6 @@
           }
         });
         editorConf.setSize("100%", "100%");
-
-        // Codemirror editor for flags
-        var editorFlags = CodeMirror.fromTextArea(document.getElementById("flags"), {
-          lineNumbers: true,
-          styleActiveLine: true,
-          matchBrackets: true,
-          readOnly: true
-        });
-        editorFlags.setSize("100%", "100%");
 
         // Highlight.js initialization
         $('code').each(function(i, block) {
