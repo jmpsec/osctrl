@@ -1,10 +1,16 @@
 {
-  "tls": {
+  "admin": {
     "listener": "127.0.0.1",
-    "port": "_TLS_PORT",
-    "host": "_TLS_HOST",
-    "auth": "none",
+    "port": "_ADMIN_PORT",
+    "host": "_ADMIN_HOST",
+    "auth": "local",
     "debughttp": false
+  },
+  "users": {
+    "_ADMIN_USER": {
+      "password": "_ADMIN_PASS",
+      "admin": true
+    }
   },
   "db": {
     "host": "_DB_HOST",

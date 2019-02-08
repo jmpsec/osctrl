@@ -9,13 +9,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Types of log types
-const (
-	statusLog = "status"
-	resultLog = "result"
-	queryLog  = "query"
-)
-
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
 

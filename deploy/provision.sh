@@ -124,6 +124,8 @@ set -e
 # Values not intended to change
 TLS_CONF="tls.json"
 TLS_TEMPLATE="$TLS_CONF.template"
+ADMIN_CONF="admin.json"
+ADMIN_TEMPLATE="$ADMIN_CONF.template"
 
 # Default values for arguments
 SHOW_USAGE=false
@@ -312,15 +314,19 @@ source "$SOURCE_PATH/deploy/lib.sh"
 
 log ""
 log ""
-log "Provisioning [ osctrl ]"
+log "Provisioning [ osctrl ][ $PART ]"
 log ""
 log "  -> [$MODE] mode and with [$TYPE] certificate"
 log ""
-log "  -> Deploying TLS service for ports $_T_PUB_PORT:$_T_INT_PORT"
-log "  -> Hostname for TLS endpoint: $_T_HOST"
+if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
+  log "  -> Deploying TLS service for ports $_T_PUB_PORT:$_T_INT_PORT"
+  log "  -> Hostname for TLS endpoint: $_T_HOST"
+fi
 log ""
-log "  -> Deploying Admin service for ports $_A_PUB_PORT:$_A_INT_PORT"
-log "  -> Hostname for admin: $_A_HOST"
+if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
+  log "  -> Deploying Admin service for ports $_A_PUB_PORT:$_A_INT_PORT"
+  log "  -> Hostname for admin: $_A_HOST"
+fi
 log ""
 log ""
 
@@ -411,24 +417,34 @@ make
 # Prepare destination and configuration folder
 sudo mkdir -p "$DEST_PATH/config"
 
-# Configure service
-configure_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "$_A_HOST|$_A_INT_PORT"
+if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
+  # Configure TLS service
+  configure_tls_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
 
-# Configure credentials to access admin console
-configure_credentials "$DEST_PATH/config/$TLS_CONF" "$DEST_PATH/config/$TLS_CONF" "$_ADMIN_USER" "$_ADMIN_PASS"
+  # Prepare static files for TLS service
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls"
+fi
 
-# Prepare data folder
-sudo mkdir -p "$DEST_PATH/data"
+if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
+  # Configure Admin service
+  configure_admin_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_A_HOST|$_A_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+  # Configure credentials to access admin console
+  configure_credentials "$DEST_PATH/config/$TLS_CONF" "$DEST_PATH/config/$TLS_CONF" "$_ADMIN_USER" "$_ADMIN_PASS"
 
-# Copy osquery tables JSON file
-sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
+  # Prepare data folder
+  sudo mkdir -p "$DEST_PATH/data"
 
-# Prepare static files for admin
-_static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH"
+  # Copy osquery tables JSON file
+  sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
+
+  # Prepare static files for admin
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin"
+fi
 
 # Systemd services for non-docker deployments
 if [[ "$DOCKER" == false ]]; then
   _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
+  _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
 # Install CLI

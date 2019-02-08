@@ -11,6 +11,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// JSONApplication for Content-Type headers
+const JSONApplication string = "application/json"
+
+// TextPlain for Content-Type headers
+const TextPlain string = "text/plain"
+
+// JSONApplicationUTF8 for Content-Type headers, UTF charset
+const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
+
+// TextPlainUTF8 for Content-Type headers, UTF charset
+const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
+
 // Handler to serve static content with the proper header
 func staticHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
@@ -817,7 +829,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if location is enabled, and if so prepare data
-	var locationData LocationData
+	// FIXME needs rewriting
+	/*var locationData LocationData
 	if geolocConfig.Maps {
 		geoloc, err := getGeoLocationIPAddress(node.IPAddress)
 		if err != nil {
@@ -827,7 +840,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			GoogleMapsURL: getGoogleMapsURL(),
 			LastLocation:  geoloc,
 		}
-	}
+	}*/
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:         "Node View " + node.UUID,
@@ -835,8 +848,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		Node:          node,
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
-		LocationShow:  geolocConfig.Maps,
-		Location:      locationData,
+		LocationShow:  false,
+		Location:      LocationData{},
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)

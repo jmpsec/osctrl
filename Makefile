@@ -4,6 +4,10 @@ TLS_DIR = src/tls
 TLS_NAME = osctrl-tls
 TLS_CODE = ${TLS_DIR:=/*.go}
 
+ADMIN_DIR = src/admin
+ADMIN_NAME = osctrl-admin
+ADMIN_CODE = ${ADMIN_DIR:=/*.go}
+
 CLI_DIR = src/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
@@ -13,11 +17,16 @@ DEST ?= /opt/osctrl
 # Build code according to caller OS and architecture
 build:
 	make tls
+	make admin
 	make cli
 
 # Build TLS endpoint
 tls:
 	GOPATH=${CURDIR} go build -o $(TLS_NAME) $(TLS_CODE)
+
+# Build Admin UI
+admin:
+	GOPATH=${CURDIR} go build -o $(ADMIN_NAME) $(ADMIN_CODE)
 
 # Build the CLI
 cli:
@@ -26,22 +35,26 @@ cli:
 # Install the dependencies for TLS and CLI
 deps:
 	cd $(TLS_DIR) && GOPATH=${CURDIR} glide install
+	cd $(ADMIN_DIR) && GOPATH=${CURDIR} glide install
 	cd $(CLI_DIR) && GOPATH=${CURDIR} glide install
 
 # Update glide.lock file to include latest versions of all dependences
 # Must be run whenever glide.yaml changes
 update-deps:
 	cd $(TLS_DIR) && GOPATH=${CURDIR} glide update
+	cd $(ADMIN_DIR) && GOPATH=${CURDIR} glide update
 	cd $(CLI_DIR) && GOPATH=${CURDIR} glide update
  
 # Delete all compiled binaries
 clean:
 	rm -rf $(TLS_NAME)
+	rm -rf $(ADMIN_NAME)
 	rm -rf $(CLI_NAME)
 
 # Delete dependencies, run "make install" to bring them back
 clean-deps:
 	rm -Rf $(TLS_DIR)/vendor
+	rm -Rf $(ADMIN_DIR)/vendor
 	rm -Rf $(CLI_DIR)/vendor
 
 # Install everything
@@ -50,6 +63,7 @@ install:
 	make clean
 	make build
 	make install_tls
+	make install_admin
 	make install_cli
 
 # Install TLS server and restart service
