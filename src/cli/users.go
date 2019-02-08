@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminUser to hold all users
@@ -11,12 +12,36 @@ type AdminUser struct {
 	gorm.Model
 	Username  string `gorm:"index"`
 	Fullname  string
-	Password  string
+	PassHash  string
 	Admin     bool
 	CSRF      string
 	Cookie    string
 	IPAddress string
 	UserAgent string
+}
+
+// Helper to hash a password before store it
+func hashMyPasswordWithSalt(password string) (string, error) {
+	saltedBytes := []byte(password)
+	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	hash := string(hashedBytes[:])
+	return hash, nil
+}
+
+// Helper to check provided login credentials by matching hashes
+func checkLoginCredentials(username, password string) error {
+	// Retrieve user
+	user, err := getUser(username)
+	if err != nil {
+		return err
+	}
+	// Check for hash matching
+	p := []byte(password)
+	existing := []byte(user.PassHash)
+	return bcrypt.CompareHashAndPassword(existing, p)
 }
 
 // Get user by username

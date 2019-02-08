@@ -115,9 +115,13 @@ func init() {
 						admin := c.Bool("admin")
 						// Create user if it does not exist
 						if !userExists(username) {
+							hash, err := hashMyPasswordWithSalt(password)
+							if err != nil {
+								return err
+							}
 							newUser := AdminUser{
 								Username: username,
-								Password: password,
+								PassHash: hash,
 								Fullname: fullname,
 								Admin:    admin,
 							}
@@ -161,7 +165,7 @@ func init() {
 						for _, u := range users {
 							fmt.Printf("  Username: %s\n", u.Username)
 							fmt.Printf("  Fullname: %s\n", u.Fullname)
-							fmt.Printf("  Password: %s\n", u.Password)
+							fmt.Printf("  Hashed Password: %s\n", u.PassHash)
 							fmt.Printf("  Admin? %v\n", u.Admin)
 							fmt.Printf("  CSRF: %s\n", u.CSRF)
 							fmt.Printf("  Cookie: %s\n", u.Cookie)
