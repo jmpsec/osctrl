@@ -57,7 +57,6 @@ const (
 
 // Global variables
 var (
-	tlsConfig      JSONConfigurationTLS
 	tlsPath        TLSPath
 	adminConfig    JSONConfigurationAdmin
 	localUsers     map[string]LocalAuthUser
@@ -79,12 +78,6 @@ func loadConfiguration() error {
 	// Load file and read config
 	viper.SetConfigFile(configurationFile)
 	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-	// TLS endpoint values
-	tlsRaw := viper.Sub("tls")
-	err = tlsRaw.Unmarshal(&tlsConfig)
 	if err != nil {
 		return err
 	}

@@ -139,54 +139,31 @@ function certbot_certificates_nginx() {
   sudo certbot -n --agree-tos --standalone certonly -m "$__email" -d "$__domain" --cert-name "$__name" --cert-path "$__cert" --key-path "$__key"
 }
 
-# TLS configuration file generation
+# Service configuration file generation
 #   string  conf_template
 #   string  conf_destination
-#   string  tls_host_port (host|port)
+#   string  service_host_port (host|port)
+#   string  service_variable
 #   string  db_host
 #   string  db_port
 #   string  db_name
 #   string  db_username
 #   string  db_password
-function configure_tls_service() {
+function configure_service() {
   local __conf=$1
   local __dest=$2
   local __tlshost=`echo $3 | cut -d"|" -f1`
   local __tlsport=`echo $3 | cut -d"|" -f2`
-  local __dbhost=$4
-  local __dbport=$5
-  local __dbname=$6
-  local __dbuser=$7
-  local __dbpass=$8
+  local __var=$4
+  local __dbhost=$5
+  local __dbport=$6
+  local __dbname=$7
+  local __dbuser=$8
+  local __dbpass=$9
 
   log "Generating $__dest configuration"
 
-  cat "$__conf" | sed "s|_TLS_PORT|$__tlsport|g" | sed "s|_TLS_HOST|$__tlshost|g" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
-}
-
-# Admin configuration file generation
-#   string  conf_template
-#   string  conf_destination
-#   string  admin_host_port (host|port)
-#   string  db_host
-#   string  db_port
-#   string  db_name
-#   string  db_username
-#   string  db_password
-function configure_admin_service() {
-  local __conf=$1
-  local __dest=$2
-  local __adminhost=`echo $3 | cut -d"|" -f1`
-  local __adminport=`echo $3 | cut -d"|" -f2`
-  local __dbhost=$4
-  local __dbport=$5
-  local __dbname=$6
-  local __dbuser=$7
-  local __dbpass=$8
-
-  log "Generating $__dest configuration"
-
-  cat "$__conf" | sed "s|_ADMIN_PORT|$__adminport|g" | sed "s|_ADMIN_HOST|$__adminhost|g" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
+  cat "$__conf" | sed "s|_${__var}_PORT|$__tlsport|g" | sed "s|_${__var}_HOST|$__tlshost|g" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
 }
 
 # Configure credentials
@@ -238,19 +215,21 @@ function _systemd() {
 #   string  path_to_code
 #   string  path_destination
 #   string  server_component
+#   string  target_files
 function _static_files() {
   local __mode=$1
   local __path=$2
   local __dest=$3
-  local __part=$4
+  local __from=$4
+  local __target=$5
   
-  # Static files will be linked if we are in dev
+  # Files will be linked if we are in dev
   if [[ "$__mode" == "dev" ]]; then
-    sudo ln -s "$__path/src/$__part/templates" "$__dest/templates"
-    sudo ln -s "$__path/src/$__part/static" "$__dest/static"
+    if [[ ! -d "$__dest/$__target" ]]; then 
+      sudo ln -s "$__path/src/$__from" "$__dest/$__target"
+    fi
   else
-    sudo cp -R "$__path/src/$__part/templates" "$__dest/templates"
-    sudo cp -R "$__path/src/$__part/static" "$__dest/static"
+    sudo cp -R "$__path/src/$__from" "$__dest/$__target"
   fi
 }
 

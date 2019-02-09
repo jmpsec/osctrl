@@ -120,10 +120,10 @@ func quickAddScript(script string, context TLSContext, paths TLSPath) (string, e
 	// What script is it?
 	if script == "osctrl.sh" {
 		templateName = "quick-add.sh"
-		templatePath = "templates/scripts/quick-add.sh"
+		templatePath = "tmpl_tls/scripts/quick-add.sh"
 	} else if script == "osctrl.ps1" {
 		templateName = "quick-add.ps1"
-		templatePath = "templates/scripts/quick-add.ps1"
+		templatePath = "tmpl_tls/scripts/quick-add.ps1"
 	}
 	// Prepare template
 	t, err := template.New(templateName).ParseFiles(templatePath)

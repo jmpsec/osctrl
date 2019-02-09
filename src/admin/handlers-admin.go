@@ -67,7 +67,7 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
-	t, err := template.ParseFiles("templates/login.html", "templates/head.html")
+	t, err := template.ParseFiles("tmpl_admin/login.html", "tmpl_admin/head.html")
 	if err != nil {
 		log.Printf("error getting login template: %v", err)
 		return
@@ -203,7 +203,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/table.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/table.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -265,7 +265,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/table.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/table.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -312,7 +312,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/query-run.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/query-run.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -476,7 +476,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/query-active.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/query-active.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -528,7 +528,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, adminConfig.DebugHTTP, false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/query-completed.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/query-completed.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -655,7 +655,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("query-logs.html").Funcs(funcMap).ParseFiles(
-		"templates/query-logs.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/query-logs.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -726,7 +726,7 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"templates/conf.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/conf.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -795,7 +795,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(
-		"templates/node.html", "templates/head.html", "templates/page-aside.html", "templates/page-sidebar.html", "templates/page-header.html")
+		"tmpl_admin/node.html", "tmpl_admin/head.html", "tmpl_admin/page-aside.html", "tmpl_admin/page-sidebar.html", "tmpl_admin/page-header.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return

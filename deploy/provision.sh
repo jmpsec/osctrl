@@ -419,15 +419,15 @@ sudo mkdir -p "$DEST_PATH/config"
 
 if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
   # Configure TLS service
-  configure_tls_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+  configure_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "TLS" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
 
   # Prepare static files for TLS service
-  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls"
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/templates" "tmpl_tls"
 fi
 
 if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Configure Admin service
-  configure_admin_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_A_HOST|$_A_INT_PORT" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+  configure_service "$SOURCE_PATH/deploy/$ADMIN_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "ADMIN" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
   # Configure credentials to access admin console
   configure_credentials "$DEST_PATH/config/$TLS_CONF" "$DEST_PATH/config/$TLS_CONF" "$_ADMIN_USER" "$_ADMIN_PASS"
 
@@ -438,7 +438,9 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
 
   # Prepare static files for admin
-  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin"
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+  
 fi
 
 # Systemd services for non-docker deployments

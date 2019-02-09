@@ -109,7 +109,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if adminConfig.DebugHTTP {
+	if tlsConfig.DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -228,7 +228,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug
-	if adminConfig.DebugHTTP {
+	if tlsConfig.DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response

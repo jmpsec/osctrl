@@ -128,14 +128,14 @@ func getIPStackData(ipaddress string, configData GeoLocationConfigurationData) (
 	// Add query to URL
 	_url.RawQuery = queryString.Encode()
 	// Send log with a GET to the IP Stack API URL
-	if adminConfig.DebugHTTP {
+	if tlsConfig.DebugHTTP {
 		log.Printf("Request IP Stack API for %s", ipaddress)
 	}
 	resp, body, err := sendRequest(true, IPStackMethod, _url.String(), nil, map[string]string{})
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}
-	if adminConfig.DebugHTTP {
+	if tlsConfig.DebugHTTP {
 		log.Printf("IP Stack: HTTP %d %s", resp, body)
 	}
 	var jsonResponse GeoLocationResponse

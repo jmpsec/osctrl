@@ -45,7 +45,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 		"pastTimeAgo":     pastTimeAgo,
 	}
 	// Fill template with data
-	t, _ := template.New("nodes.tmpl").Funcs(funcMap).ParseFiles("templates/json/nodes.tmpl")
+	t, _ := template.New("nodes.tmpl").Funcs(funcMap).ParseFiles("tmpl_admin/json/nodes.tmpl")
 	t.Execute(w, nodes)
 }
 
@@ -78,7 +78,7 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 		"pastTimeAgo":     pastTimeAgo,
 	}
 	// Fill template with data
-	t, _ := template.New("nodes.tmpl").Funcs(funcMap).ParseFiles("templates/json/nodes.tmpl")
+	t, _ := template.New("nodes.tmpl").Funcs(funcMap).ParseFiles("tmpl_admin/json/nodes.tmpl")
 	t.Execute(w, nodes)
 }
 
@@ -115,7 +115,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	case "completed":
 		tmplName = "completed-queries.tmpl"
 	}
-	t, _ := template.New(tmplName).Funcs(funcMap).ParseFiles("templates/json/" + tmplName)
+	t, _ := template.New(tmplName).Funcs(funcMap).ParseFiles("tmpl_admin/json/" + tmplName)
 	t.Execute(w, queries)
 }
 
@@ -180,7 +180,7 @@ func jsonStatusLogsHandler(w http.ResponseWriter, r *http.Request) {
 		"pastTimeAgo":   pastTimeAgo,
 	}
 	// Fill template with data
-	t := template.Must(template.New("status-logs.tmpl").Funcs(funcMap).ParseFiles("templates/json/status-logs.tmpl"))
+	t := template.Must(template.New("status-logs.tmpl").Funcs(funcMap).ParseFiles("tmpl_admin/json/status-logs.tmpl"))
 	t.Execute(w, statusLogs)
 }
 
@@ -223,7 +223,7 @@ func jsonResultLogsHandler(w http.ResponseWriter, r *http.Request) {
 		"pastTimeAgo":   pastTimeAgo,
 	}
 	// Fill template with data
-	t := template.Must(template.New("result-logs.tmpl").Funcs(funcMap).ParseFiles("templates/json/result-logs.tmpl"))
+	t := template.Must(template.New("result-logs.tmpl").Funcs(funcMap).ParseFiles("tmpl_admin/json/result-logs.tmpl"))
 	t.Execute(w, resultLogs)
 }
 
@@ -252,7 +252,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		"pastTimeAgo":           pastTimeAgo,
 	}
 	// Fill template with data
-	t := template.Must(template.New("query-logs.tmpl").Funcs(funcMap).ParseFiles("templates/json/query-logs.tmpl"))
+	t := template.Must(template.New("query-logs.tmpl").Funcs(funcMap).ParseFiles("tmpl_admin/json/query-logs.tmpl"))
 	t.Execute(w, queryLogs)
 }
 
@@ -294,6 +294,6 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	// Prepare and fill template with data
-	t := template.Must(template.New("stats.tmpl").ParseFiles("templates/json/stats.tmpl"))
+	t := template.Must(template.New("stats.tmpl").ParseFiles("tmpl_admin/json/stats.tmpl"))
 	t.Execute(w, stats)
 }

@@ -41,7 +41,6 @@ const (
 var (
 	tlsConfig      JSONConfigurationTLS
 	tlsPath        TLSPath
-	adminConfig    JSONConfigurationAdmin
 	localUsers     map[string]LocalAuthUser
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
@@ -79,27 +78,6 @@ func loadConfiguration() error {
 		QueryWritePath:  defaultQueryWritePath,
 		CarverInitPath:  defaultCarverInitPath,
 		CarverBlockPath: defaultCarverBlockPath,
-	}
-	// TLS Admin values
-	adminRaw := viper.Sub("admin")
-	err = adminRaw.Unmarshal(&adminConfig)
-	if err != nil {
-		return err
-	}
-	// Load configuration for the auth method
-	switch adminConfig.Auth {
-	case "local":
-		usersRaw := viper.Sub("users")
-		err = usersRaw.Unmarshal(&localUsers)
-		if err != nil {
-			return err
-		}
-	case "saml":
-		samlRaw := viper.Sub("saml")
-		err = samlRaw.Unmarshal(&samlConfig)
-		if err != nil {
-			return err
-		}
 	}
 	// Backend values
 	dbRaw := viper.Sub("db")
