@@ -34,12 +34,6 @@ type JSONConfigurationAdmin struct {
 	DebugHTTP bool   `json:"debughttp"`
 }
 
-// LocalAuthUser to set the admin credentials
-type LocalAuthUser struct {
-	Password string `json:"password"`
-	Admin    bool   `json:"admin"`
-}
-
 // JSONConfigurationSAML to keep all SAML details for auth
 type JSONConfigurationSAML struct {
 	CertPath    string `json:"certpath"`

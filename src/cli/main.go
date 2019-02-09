@@ -113,21 +113,12 @@ func init() {
 						password := c.String("password")
 						fullname := c.String("fullname")
 						admin := c.Bool("admin")
-						// Create user if it does not exist
-						if !userExists(username) {
-							hash, err := hashMyPasswordWithSalt(password)
-							if err != nil {
-								return err
-							}
-							newUser := AdminUser{
-								Username: username,
-								PassHash: hash,
-								Fullname: fullname,
-								Admin:    admin,
-							}
-							if err := createUser(newUser); err != nil {
-								return err
-							}
+						user, err := newUser(username, password, fullname, admin)
+						if err != nil {
+							return err
+						}
+						if err := createUser(user); err != nil {
+							return err
 						}
 						return nil
 					},

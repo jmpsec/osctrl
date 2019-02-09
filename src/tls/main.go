@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"
@@ -39,17 +37,12 @@ const (
 
 // Global variables
 var (
-	tlsConfig      JSONConfigurationTLS
-	tlsPath        TLSPath
-	localUsers     map[string]LocalAuthUser
-	samlMiddleware *samlsp.Middleware
-	samlConfig     JSONConfigurationSAML
-	db             *gorm.DB
-	dbConfig       JSONConfigurationDB
-	logConfig      JSONConfigurationLogging
-	geolocConfig   JSONConfigurationGeoLocation
-	store          *sessions.CookieStore
-	storeKey       []byte
+	tlsConfig    JSONConfigurationTLS
+	tlsPath      TLSPath
+	db           *gorm.DB
+	dbConfig     JSONConfigurationDB
+	logConfig    JSONConfigurationLogging
+	geolocConfig JSONConfigurationGeoLocation
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
 )

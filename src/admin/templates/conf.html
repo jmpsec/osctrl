@@ -30,6 +30,8 @@
               </div>
               <div class="card-body">
                 
+                <input type="hidden" id="csrftoken" value="">
+
                 <textarea id="conf" name="conf">{{ .ConfigurationBlob }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
@@ -112,6 +114,8 @@
     <!-- Highlight.js JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/highlight.min.js" integrity="sha384-BlPof9RtjBqeJFskKv3sK3dh4Wk70iKlpIe92FeVN+6qxaGUOUu+mZNpALZ+K7ya" crossorigin="anonymous"></script>
     <!-- osctrl JS -->
+    <script src="/static/js/functions.js"></script>
+    <script src="/static/js/login.js"></script>
     <script type="text/javascript">
       // Highlight.js initialization
       hljs.initHighlightingOnLoad();

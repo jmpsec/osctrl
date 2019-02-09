@@ -1,29 +1,3 @@
-function sendPostRequest(req_data, req_url, _redir) {
-  $.ajax({
-    url: req_url,
-    dataType: 'json',
-    type: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify(req_data),
-    processData: false,
-    success: function(data, textStatus, jQxhr){
-      console.log('OK');
-      if (_redir !== "") {
-        window.location.replace(_redir);
-      }
-    },
-    error: function(jqXhr, textStatus, errorThrown){
-      var _clientmsg = 'Client: ' + errorThrown;
-      var _serverJSON = $.parseJSON(jqXhr.responseText);
-      var _servermsg = 'Server: ' + _serverJSON.message;
-      $("#errorModalMessageClient").text(_clientmsg);
-      console.log(_clientmsg);
-      $("#errorModalMessageServer").text(_servermsg);
-      $("#errorModal").modal();
-    }
-  });
-}
-
 function sendQuery() {
   var _csrftoken = $("#csrftoken").val(); 
   var _context = $('#target_context_switch').prop('checked') ? $("#target_context").val() : "";
@@ -61,7 +35,7 @@ function sendQuery() {
       query: _query,
       repeat: _repeat
   };
-  sendPostRequest(data, _url, '/query/active');
+  sendPostRequest(data, _url, '/query/active', false);
 }
 
 function clearQuery() {
@@ -101,7 +75,7 @@ function actionQueries(_action, _names, _redir) {
       names: _names,
       action: _action
   };
-  sendPostRequest(data, _url, _redir);
+  sendPostRequest(data, _url, _redir, false);
 }
 
 function confirmDeleteQueries(_names) {

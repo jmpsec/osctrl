@@ -73,6 +73,13 @@ install_tls:
 	sudo cp $(TLS_NAME) $(DEST)
 	sudo systemctl start $(TLS_NAME)
 
+# Install Admin server and restart service
+# optional DEST=destination_path
+install_admin:
+	sudo systemctl stop $(ADMIN_NAME)
+	sudo cp $(ADMIN_NAME) $(DEST)
+	sudo systemctl start $(ADMIN_NAME)	
+
 # Install CLI
 # optional DEST=destination_path
 install_cli:

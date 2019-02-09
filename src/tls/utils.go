@@ -415,16 +415,6 @@ func uniq(duplicated []string) []string {
 	return result
 }
 
-// Helper to verify login credentials
-func checkLoginCredentials(user, pass string) (bool, LocalAuthUser) {
-	if u, ok := localUsers[user]; ok {
-		if u.Password == pass {
-			return true, u
-		}
-	}
-	return false, LocalAuthUser{}
-}
-
 // Helper to calculate the osquery config_hash and skip sending a blob that won't change anything
 // https://github.com/facebook/osquery/blob/master/osquery/config/config.cpp#L911
 // osquery calculates the SHA1 of the configuration blob, then the SHA1 hash of that

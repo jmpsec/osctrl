@@ -166,22 +166,6 @@ function configure_service() {
   cat "$__conf" | sed "s|_${__var}_PORT|$__tlsport|g" | sed "s|_${__var}_HOST|$__tlshost|g" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
 }
 
-# Configure credentials
-#   string  conf_template
-#   string  conf_destination
-#   string  admin_user
-#   string  admin_pass
-function configure_credentials() {
-  local __conf=$1
-  local __dest=$2
-  local __adminuser=$3
-  local __adminpass=$4
-
-  log "Adding credentials to $__dest"
-
-  cat "$__conf" | sed "s|_ADMIN_USER|$__adminuser|g" | sed "s|_ADMIN_PASS|$__adminpass|g" | sudo tee "$__dest"
-}
-
 # Enable service as systemd
 #   string  service_user
 #   string  service_name

@@ -5,13 +5,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
@@ -59,7 +57,6 @@ const (
 var (
 	tlsPath        TLSPath
 	adminConfig    JSONConfigurationAdmin
-	localUsers     map[string]LocalAuthUser
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
@@ -99,12 +96,6 @@ func loadConfiguration() error {
 	}
 	// Load configuration for the auth method
 	switch adminConfig.Auth {
-	case "local":
-		usersRaw := viper.Sub("users")
-		err = usersRaw.Unmarshal(&localUsers)
-		if err != nil {
-			return err
-		}
 	case "saml":
 		samlRaw := viper.Sub("saml")
 		err = samlRaw.Unmarshal(&samlConfig)
@@ -158,10 +149,16 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading configuration %s", err)
 	}
-	// Generate cookie store
+	// Generate cookie store with proper options
 	if adminConfig.Auth != noAuthLogin {
 		storeKey = securecookie.GenerateRandomKey(32)
 		store = sessions.NewCookieStore(storeKey)
+		store.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   86400 * 7,
+			Secure:   true,
+			HttpOnly: true,
+		}
 	}
 	// Load osquery tables JSON
 	err = loadOsqueryTables()
@@ -294,92 +291,4 @@ func main() {
 	}()
 
 	<-finish
-}
-
-// Get PostgreSQL DB using GORM
-func getDB() *gorm.DB {
-	t := "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
-	postgresDSN := fmt.Sprintf(
-		t, dbConfig.Host, dbConfig.Port, dbConfig.Name, dbConfig.Username, dbConfig.Password)
-	db, err := gorm.Open("postgres", postgresDSN)
-	if err != nil {
-		log.Fatalf("Failed to open database connection: %v", err)
-	}
-	// Performance settings for DB access
-	db.DB().SetMaxIdleConns(20)
-	db.DB().SetMaxOpenConns(100)
-	db.DB().SetConnMaxLifetime(time.Second * 30)
-
-	return db
-}
-
-// Automigrate of tables
-func automigrateDB() error {
-	var err error
-	// table osquery_nodes
-	err = db.AutoMigrate(OsqueryNode{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
-	}
-	// table archive_osquery_nodes
-	err = db.AutoMigrate(ArchiveOsqueryNode{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
-	}
-	// table node_history_ipaddress
-	err = db.AutoMigrate(NodeHistoryIPAddress{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
-	}
-	// table geo_location_ipaddress
-	err = db.AutoMigrate(GeoLocationIPAddress{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (geo_location_ipaddress): %v", err)
-	}
-	// table node_history_hostname
-	err = db.AutoMigrate(NodeHistoryHostname{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_hostname): %v", err)
-	}
-	// table node_history_localname
-	err = db.AutoMigrate(NodeHistoryLocalname{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_localname): %v", err)
-	}
-	// table node_history_username
-	err = db.AutoMigrate(NodeHistoryUsername{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
-	}
-	// table distributed_queries
-	err = db.AutoMigrate(DistributedQuery{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
-	}
-	// table distributed_query_executions
-	err = db.AutoMigrate(DistributedQueryExecution{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
-	}
-	// table distributed_query_targets
-	err = db.AutoMigrate(DistributedQueryTarget{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
-	}
-	// table osquery_status_data
-	err = db.AutoMigrate(OsqueryStatusData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_status_data): %v", err)
-	}
-	// table osquery_result_data
-	err = db.AutoMigrate(OsqueryResultData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_result_data): %v", err)
-	}
-	// table osquery_query_data
-	err = db.AutoMigrate(OsqueryQueryData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
-	}
-	return nil
 }

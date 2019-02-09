@@ -1,28 +1,4 @@
-function sendPostRequest(req_data, req_url) {
-  $.ajax({
-    url: req_url,
-    dataType: 'json',
-    type: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify(req_data),
-    processData: false,
-    success: function(data, textStatus, jQxhr){
-      console.log('OK');
-      console.log(data);
-      $("#successModalMessage").text(data.message);
-      $("#successModal").modal();
-    },
-    error: function(jqXhr, textStatus, errorThrown){
-      var _clientmsg = 'Client: ' + errorThrown;
-      var _serverJSON = $.parseJSON(jqXhr.responseText);
-      var _servermsg = 'Server: ' + _serverJSON.message;
-      $("#errorModalMessageClient").text(_clientmsg);
-      console.log(_clientmsg);
-      $("#errorModalMessageServer").text(_servermsg);
-      $("#errorModal").modal();
-    }
-  });
-}
+/* JS functions for different actions */
 
 function confirmRemoveNode(_uuid) {
   var modal_message = 'Are you sure you want to remove this node?';
@@ -52,7 +28,7 @@ function removeNode(_uuid) {
       csrftoken: _csrftoken,
       action: 'delete'
   };
-  sendPostRequest(data, _url);
+  sendPostRequest(data, _url, false, true);
 }
 
 function removeNodes(_uuids) {
@@ -64,7 +40,7 @@ function removeNodes(_uuids) {
       uuids: _uuids, 
       action: 'delete'
   };
-  sendPostRequest(data, _url);
+  sendPostRequest(data, _url, false, true);
 }
 
 function nodesView(context) {
@@ -84,6 +60,7 @@ function refreshTableNow(table_id) {
 function queryNode(_uuid) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
+
   // Make sure semicolon always in the query
   if (_query.slice(-1) !== ';') {
     _query = _query + ';';
@@ -99,7 +76,7 @@ function queryNode(_uuid) {
       query: _query,
       repeat: 0
   };
-  sendPostRequest(data, _url);
+  sendPostRequest(data, _url, false, true);
 }
 
 function queryNodes(_uuids) {
@@ -116,7 +93,7 @@ function queryNodes(_uuids) {
       query: _query,
       repeat: 0
   };
-  sendPostRequest(data, _url);
+  sendPostRequest(data, _url, false, true);
 }
 
 function showQueryNode(_uuid) {

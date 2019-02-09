@@ -428,8 +428,6 @@ fi
 if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Configure Admin service
   configure_service "$SOURCE_PATH/deploy/$ADMIN_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "ADMIN" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
-  # Configure credentials to access admin console
-  configure_credentials "$DEST_PATH/config/$TLS_CONF" "$DEST_PATH/config/$TLS_CONF" "$_ADMIN_USER" "$_ADMIN_PASS"
 
   # Prepare data folder
   sudo mkdir -p "$DEST_PATH/data"
@@ -440,7 +438,6 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Prepare static files for admin
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
-  
 fi
 
 # Systemd services for non-docker deployments
@@ -475,6 +472,10 @@ if [[ "$MODE" == "dev" ]]; then
   log "Adding host in dev context"
   eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context quick-add -n "dev" )
 fi
+
+# Create admin user
+log "Creating admin user"
+"$DEST_PATH"/osctrl-cli -c "$__tls_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
 
 # Ascii art is always appreciated
 if [[ "$DOCKER" == false ]]; then

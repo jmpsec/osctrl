@@ -149,6 +149,28 @@
           </div>
           <!-- /.modal -->
 
+          <div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="warningModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-warning" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Action can not be completed</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <p id="warningModalMessage"></p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
           </div>
 
         </div>
@@ -173,6 +195,8 @@
     <!-- CoreUI JS -->
     <script src="/static/js/coreui.min.js"></script>
     <!-- osctrl JS -->
+    <script src="/static/js/functions.js"></script>
+    <script src="/static/js/login.js"></script>
     <script src="/static/js/actions.js"></script>
     <script src="/static/js/tables.js"></script>
     <script type="text/javascript">
@@ -257,7 +281,9 @@
                   console.log(uuids);
                   confirmRemoveNodes(uuids);
                 } else {
-                  console.log('NO SELECTION');
+                  console.log('Delete: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more nodes");
+                  $("#warningModal").modal();
                 }
               }
             },
@@ -287,6 +313,8 @@
                   showQueryNodes(uuids);
                 } else {
                   console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more nodes");
+                  $("#warningModal").modal();
                 }
               }
             }

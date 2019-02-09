@@ -6,12 +6,6 @@
     "auth": "local",
     "debughttp": false
   },
-  "users": {
-    "_ADMIN_USER": {
-      "password": "_ADMIN_PASS",
-      "admin": true
-    }
-  },
   "db": {
     "host": "_DB_HOST",
     "port": "_DB_PORT",
