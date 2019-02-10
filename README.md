@@ -50,31 +50,9 @@ The most basic `tls.json` configuration file will have the following format:
   "tls": {
     "listener": "127.0.0.1",
     "port": "_TLS_PORT",
+    "host": "_TLS_HOST",
     "auth": "none",
-    "enroll": "osquery_enroll",
-    "config": "osquery_config",
-    "log": "osquery_log",
-    "queryread": "osquery_read",
-    "querywrite": "osquery_write",
-    "contexts": {
-      "dev": {
-        "secret": "_OSQUERY_SECRET_DEV",
-        "conf": "osquery-confs/osquery-dev.conf"
-      }
-    },
-    "debughttp": true
-  },
-  "admin": {
-    "listener": "127.0.0.1",
-    "port": "_ADMIN_PORT",
-    "auth": "local",
-    "debughttp": true
-  },
-  "users": {
-    "_ADMIN_USER": {
-      "password": "_ADMIN_PASS",
-      "admin": true
-    }
+    "debughttp": false
   },
   "db": {
     "host": "_DB_HOST",
@@ -94,8 +72,54 @@ The most basic `tls.json` configuration file will have the following format:
       "token": "",
       "search": "results_for_{{NAME}}"
     },
-    "postgres": true,
-    "stdout": true
+    "stdout": false,
+    "postgres": true
+  },
+  "geolocation": {
+    "map": false,
+    "ipstackcfg": {
+      "api": "",
+      "apikey": ""
+    },
+    "googlemapscfg": {
+      "api": "",
+      "apikey": ""
+    }
+  }
+}
+```
+
+And for `admin.json` it will look like this:
+
+```json
+{
+  "admin": {
+    "listener": "127.0.0.1",
+    "port": "_ADMIN_PORT",
+    "host": "_ADMIN_HOST",
+    "auth": "local",
+    "debughttp": false
+  },
+  "db": {
+    "host": "_DB_HOST",
+    "port": "_DB_PORT",
+    "name": "_DB_NAME",
+    "username": "_DB_USERNAME",
+    "password": "_DB_PASSWORD"
+  },
+  "logging": {
+    "graylog": false,
+    "graylogcfg": {
+      "url": ""
+    },
+    "splunk": false,
+    "splunkcfg": {
+      "url": "", 
+      "token": "",
+      "search": "results_for_{{NAME}}"
+    },
+    "stdout": false,
+    "postgres": true
   },
   "geolocation": {
     "map": false,
