@@ -536,6 +536,12 @@ type SettingsRequest struct {
 	DebugHTTP bool   `json:"debughttp"`
 }
 
+// ConfigurationRequest to receive changes to configuration
+type ConfigurationRequest struct {
+	CSRFToken        string `json:"csrftoken"`
+	ConfigurationB64 string `json:"configuration"`
+}
+
 // AdminResponse to be returned to requests
 type AdminResponse struct {
 	Message string `json:"message"`

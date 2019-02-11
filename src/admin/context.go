@@ -211,3 +211,15 @@ func deleteContext(name string) error {
 	}
 	return nil
 }
+
+// Update configuration for a context
+func updateConfiguration(name, configuration string) error {
+	ctx, err := getContext(name)
+	if err != nil {
+		return fmt.Errorf("getContext %v", err)
+	}
+	if err := db.Model(&ctx).Update("configuration", configuration).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}

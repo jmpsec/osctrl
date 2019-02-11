@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -818,6 +819,58 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler POST requests for conf
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	vars := mux.Vars(r)
+	// Extract context
+	// FIXME verify context
+	context, ok := vars["context"]
+	if !ok {
+		log.Println("error getting context")
+		return
+	}
+	var c ConfigurationRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&c)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(c.CSRFToken) {
+			configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
+			if err != nil {
+				responseMessage = "error decoding configuration"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+			}
+			err = updateConfiguration(context, string(configuration))
+			if err != nil {
+				responseMessage = "error saving configuration"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+			} else {
+				responseMessage = "Configuration saved successfully"
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	w.Write(response)
 }
 
 // Handler for node view

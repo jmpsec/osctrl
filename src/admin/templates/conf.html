@@ -22,7 +22,8 @@
                 <i class="fa fas fa-server"></i> osquery configuration for context {{ .Context }}
                 <div class="card-header-actions">
                   <div class="card-header-action">
-                    <button id="json_save" class="btn btn-sm btn-block btn-dark disabled">
+                    <button id="json_save" class="btn btn-sm btn-block btn-dark" 
+                      data-toggle="tooltip" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
                   </div>
@@ -90,6 +91,51 @@
               </div>
             </div>
 
+            <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-success" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Completed successfully</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="successModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-danger" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Something went wrong...</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="errorModalMessageClient"></p>
+                    <p id="errorModalMessageServer"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
         </div>
 
       </main>
@@ -117,6 +163,7 @@
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
+    <script src="/static/js/configuration.js"></script>
     <script type="text/javascript">
       // Highlight.js initialization
       hljs.initHighlightingOnLoad();
@@ -129,19 +176,26 @@
           matchBrackets: true,
           readOnly: false
         });
+        $('#conf').data('CodeMirrorInstance', editorConf);
         editorConf.on('change', function(_editor){
           var _valid = true;
           try {
             JSON.parse(_editor.getValue());
           } catch (e) {
+            // Display error in console
             console.log(e);
-            $("#json_status_text").text('Invalid JSON - ' +e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
             $("#json_status_icon").html('<i class="fas fa-times"></i>');
             $("#json_status_color").each(function(){
               $(this).removeClass("btn-success");
               $(this).addClass("btn-danger");
             });
             _valid = false
+            // Disable button
+            $('#json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
           }
           if (_valid) {
             $("#json_status_text").text('Valid JSON');
@@ -150,7 +204,7 @@
               $(this).removeClass("btn-danger");
               $(this).addClass("btn-success");
             });
-            console.log('Valid JSON');
+            $('#json_save').prop("disabled", false);
           }
         });
         editorConf.setSize("100%", "100%");
