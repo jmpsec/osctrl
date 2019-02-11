@@ -18,20 +18,18 @@ type JSONConfigurationDB struct {
 
 // JSONConfigurationTLS to hold all TLS endpoint configuration values
 type JSONConfigurationTLS struct {
-	Listener  string `json:"listener"`
-	Port      string `json:"port"`
-	Host      string `json:"host"`
-	Auth      string `json:"auth"`
-	DebugHTTP bool   `json:"debughttp"`
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
 }
 
 // JSONConfigurationAdmin to hold all Admin configuration values
 type JSONConfigurationAdmin struct {
-	Listener  string `json:"listener"`
-	Port      string `json:"port"`
-	Host      string `json:"host"`
-	Auth      string `json:"auth"`
-	DebugHTTP bool   `json:"debughttp"`
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
 }
 
 // JSONConfigurationSAML to keep all SAML details for auth
@@ -393,6 +391,12 @@ type LoginTemplateData struct {
 	Title string
 }
 
+// SettingsData for passing settings data to templates
+type SettingsData struct {
+	TLSDebugHTTP   bool
+	AdminDebugHTTP bool
+}
+
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
 	Title         string
@@ -401,6 +405,7 @@ type TableTemplateData struct {
 	Target        string
 	ContextStats  StatsData
 	PlatformStats StatsData
+	Settings      SettingsData
 }
 
 // ConfTemplateData for passing data to the conf template
@@ -413,6 +418,7 @@ type ConfTemplateData struct {
 	QuickAddPowershell string
 	ContextStats       StatsData
 	PlatformStats      StatsData
+	Settings           SettingsData
 }
 
 // QueryRunTemplateData for passing data to the query template
@@ -424,6 +430,7 @@ type QueryRunTemplateData struct {
 	Hosts         []string
 	Tables        []OsqueryTable
 	TablesVersion string
+	Settings      SettingsData
 }
 
 // QueryTableTemplateData for passing data to the query template
@@ -433,6 +440,7 @@ type QueryTableTemplateData struct {
 	PlatformStats StatsData
 	Target        string
 	Queries       []DistributedQuery
+	Settings      SettingsData
 }
 
 // QueryLogsTemplateData for passing data to the query template
@@ -442,6 +450,7 @@ type QueryLogsTemplateData struct {
 	PlatformStats StatsData
 	Query         DistributedQuery
 	QueryTargets  []DistributedQueryTarget
+	Settings      SettingsData
 }
 
 // LocationData to hold all location related data, when enabled
@@ -459,6 +468,7 @@ type NodeTemplateData struct {
 	PlatformStats StatsData
 	Location      LocationData
 	LocationShow  bool
+	Settings      SettingsData
 }
 
 // NodeStats to display node stats
@@ -517,6 +527,13 @@ type NodeMultiActionRequest struct {
 	CSRFToken string   `json:"csrftoken"`
 	Action    string   `json:"action"`
 	UUIDs     []string `json:"uuids"`
+}
+
+// SettingsRequest to receive changes to settings
+type SettingsRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Service   string `json:"service"`
+	DebugHTTP bool   `json:"debughttp"`
 }
 
 // AdminResponse to be returned to requests

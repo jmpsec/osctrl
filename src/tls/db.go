@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 // Get PostgreSQL DB using GORM
@@ -93,16 +92,6 @@ func automigrateDB() error {
 	err = db.AutoMigrate(OsqueryQueryData{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
-	}
-	// table tls_contexts
-	err = db.AutoMigrate(TLSContext{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
-	}
-	// table admin_users
-	err = db.AutoMigrate(AdminUser{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
 	// table configuration_values
 	err = db.AutoMigrate(ConfigurationValue{}).Error

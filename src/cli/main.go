@@ -30,6 +30,7 @@ var (
 	dbConfig   DBConf
 	app        *cli.App
 	configFile string
+	config     *ServiceConfiguration
 )
 
 // Function to load the configuration file and assign to variables
@@ -152,17 +153,21 @@ func init() {
 						if err != nil {
 							return err
 						}
-						fmt.Printf("Existing users:\n")
-						for _, u := range users {
-							fmt.Printf("  Username: %s\n", u.Username)
-							fmt.Printf("  Fullname: %s\n", u.Fullname)
-							fmt.Printf("  Hashed Password: %s\n", u.PassHash)
-							fmt.Printf("  Admin? %v\n", u.Admin)
-							fmt.Printf("  CSRF: %s\n", u.CSRF)
-							fmt.Printf("  Cookie: %s\n", u.Cookie)
-							fmt.Printf("  IPAddress: %s\n", u.IPAddress)
-							fmt.Printf("  UserAgent: %s\n", u.UserAgent)
-							fmt.Println()
+						if len(users) > 0 {
+							fmt.Printf("Existing users:\n")
+							for _, u := range users {
+								fmt.Printf("  Username: %s\n", u.Username)
+								fmt.Printf("  Fullname: %s\n", u.Fullname)
+								fmt.Printf("  Hashed Password: %s\n", u.PassHash)
+								fmt.Printf("  Admin? %v\n", u.Admin)
+								fmt.Printf("  CSRF: %s\n", u.CSRF)
+								fmt.Printf("  Cookie: %s\n", u.Cookie)
+								fmt.Printf("  IPAddress: %s\n", u.IPAddress)
+								fmt.Printf("  UserAgent: %s\n", u.UserAgent)
+								fmt.Println()
+							}
+						} else {
+							fmt.Printf("No users\n")
 						}
 						return nil
 					},
@@ -357,6 +362,191 @@ func init() {
 			},
 		},
 		{
+			Name:  "configuration",
+			Usage: "Commands for configuration",
+			Subcommands: []cli.Command{
+				{
+					Name:    "add",
+					Aliases: []string{"a"},
+					Usage:   "Add a new configuration value",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Value name to be added",
+						},
+						cli.StringFlag{
+							Name:  "service, s",
+							Usage: "Value service to be added",
+						},
+						cli.StringFlag{
+							Name:  "type, t",
+							Usage: "Value type to be added",
+						},
+						cli.StringFlag{
+							Name:  "string",
+							Value: "",
+							Usage: "Value string",
+						},
+						cli.Int64Flag{
+							Name:  "integer",
+							Value: 0,
+							Usage: "Value integer",
+						},
+						cli.BoolFlag{
+							Name:   "boolean",
+							Hidden: false,
+							Usage:  "Value boolean",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						name := c.String("name")
+						if name == "" {
+							fmt.Println("name is required")
+							os.Exit(1)
+						}
+						service := c.String("service")
+						if service == "" {
+							fmt.Println("service is required")
+							os.Exit(1)
+						}
+						typeValue := c.String("type")
+						if typeValue == "" {
+							fmt.Println("type is required")
+							os.Exit(1)
+						}
+						values := make(map[string]interface{})
+						values[typeString] = c.String("string")
+						values[typeInteger] = c.Int64("integer")
+						values[typeBoolean] = c.Bool("boolean")
+						return config.NewValue(service, name, typeValue, values)
+					},
+				},
+				{
+					Name:    "update",
+					Aliases: []string{"u"},
+					Usage:   "Update a configuration value",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Value name to be updated",
+						},
+						cli.StringFlag{
+							Name:  "service, s",
+							Usage: "Value service to be updated",
+						},
+						cli.StringFlag{
+							Name:  "type, t",
+							Usage: "Value type to be updated",
+						},
+						cli.StringFlag{
+							Name:  "string",
+							Value: "",
+							Usage: "Value string",
+						},
+						cli.Int64Flag{
+							Name:  "integer",
+							Value: 0,
+							Usage: "Value integer",
+						},
+						cli.BoolFlag{
+							Name:   "true",
+							Hidden: false,
+							Usage:  "Value boolean true",
+						},
+						cli.BoolFlag{
+							Name:   "false",
+							Hidden: false,
+							Usage:  "Value boolean false",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						name := c.String("name")
+						if name == "" {
+							fmt.Println("name is required")
+							os.Exit(1)
+						}
+						service := c.String("service")
+						if service == "" {
+							fmt.Println("service is required")
+							os.Exit(1)
+						}
+						typeValue := c.String("type")
+						if typeValue == "" {
+							fmt.Println("type is required")
+							os.Exit(1)
+						}
+						var err error
+						switch typeValue {
+						case typeInteger:
+							err = config.SetInteger(c.Int64("integer"), service, name)
+						case typeBoolean:
+							err = config.SetBoolean(c.Bool("true"), service, name)
+						case typeString:
+							err = config.SetString(c.String("string"), service, name)
+						}
+						return err
+					},
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Delete an existing configuration value",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Value name to be deleted",
+						},
+						cli.StringFlag{
+							Name:  "service, s",
+							Usage: "Value service to be deleted",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						name := c.String("name")
+						if name == "" {
+							fmt.Println("name is required")
+							os.Exit(1)
+						}
+						service := c.String("service")
+						if service == "" {
+							fmt.Println("service is required")
+							os.Exit(1)
+						}
+						return config.DeleteValue(service, name)
+					},
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show all configuration values",
+					Action: func(c *cli.Context) error {
+						values, err := config.RetrieveAllValues()
+						if err != nil {
+							return err
+						}
+						if len(values) > 0 {
+							fmt.Printf("Configuration values:\n\n")
+							for _, v := range values {
+								fmt.Printf(" Name: %s\n", v.Name)
+								fmt.Printf(" Service: %s\n", v.Service)
+								fmt.Printf(" Type: %s\n", v.Type)
+								fmt.Printf(" String: %s\n", v.String)
+								fmt.Printf(" Integer: %d\n", v.Integer)
+								fmt.Printf(" Boolean: %v\n", v.Boolean)
+								fmt.Println()
+							}
+						} else {
+							fmt.Printf("No configuration values\n")
+						}
+						return nil
+					},
+				},
+			},
+		},
+		{
 			Name:        "node",
 			Usage:       "Commands for nodes",
 			Subcommands: []cli.Command{},
@@ -384,9 +574,14 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
-
+	// Service configuration
+	var err error
+	config, err = NewServiceConfiguration(db)
+	if err != nil {
+		panic(err)
+	}
 	// Let's go!
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
 		panic(err)
 	}

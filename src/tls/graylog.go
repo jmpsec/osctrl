@@ -74,7 +74,7 @@ func graylogSend(data []byte, context, logType, UUID string, configData LoggingC
 		log.Printf("Error sending request %s", err)
 		return
 	}
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Graylog: HTTP %d %s", resp, body)
 	}
 }

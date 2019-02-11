@@ -18,28 +18,18 @@ type JSONConfigurationDB struct {
 
 // JSONConfigurationTLS to hold all TLS endpoint configuration values
 type JSONConfigurationTLS struct {
-	Listener  string `json:"listener"`
-	Port      string `json:"port"`
-	Host      string `json:"host"`
-	Auth      string `json:"auth"`
-	DebugHTTP bool   `json:"debughttp"`
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
 }
 
 // JSONConfigurationAdmin to hold all Admin configuration values
 type JSONConfigurationAdmin struct {
-	Listener  string `json:"listener"`
-	Port      string `json:"port"`
-	Host      string `json:"host"`
-	Auth      string `json:"auth"`
-	DebugHTTP bool   `json:"debughttp"`
-}
-
-// JSONConfigurationSAML to keep all SAML details for auth
-type JSONConfigurationSAML struct {
-	CertPath    string `json:"certpath"`
-	KeyPath     string `json:"keypath"`
-	MetaDataURL string `json:"metadataurl"`
-	RootURL     string `json:"rooturl"`
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
 }
 
 // JSONConfigurationLogging to keep all the logging configuration values

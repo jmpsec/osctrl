@@ -19,12 +19,12 @@
                   <b>TLS endpoint HTTP debug</b>
                 </small>
                 <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                  <input class="switch-input" type="checkbox" checked="">
+                  <input id="tls_debug_check" class="switch-input" type="checkbox" onclick="changeDebugTLS();" {{if .Settings.TLSDebugHTTP}} checked {{ end }}>
                   <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                 </label>
               </div>
               <div>
-                <small class="text-muted">Enables verbose HTTP logging for the TLS endpoint service</small>
+                <small class="text-muted">Enables verbose HTTP logging for the TLS Service</small>
               </div>
             </div>
             <div class="aside-options">
@@ -33,12 +33,12 @@
                   <b>Admin UI HTTP debug</b>
                 </small>
                 <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                  <input class="switch-input" type="checkbox">
+                  <input id="admin_debug_check" class="switch-input" type="checkbox" onclick="changeDebugAdmin();" {{if .Settings.AdminDebugHTTP}} checked {{ end }}>
                   <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                 </label>
               </div>
               <div>
-                <small class="text-muted">Enables verbose HTTP logging for the Admin UI service</small>
+                <small class="text-muted">Enables verbose HTTP logging for the Admin Service</small>
               </div>
             </div>
             <hr>

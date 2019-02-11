@@ -12,7 +12,7 @@ import (
 
 // Handler for JSON endpoints by context
 func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -52,7 +52,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON endpoints by platform
 func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	platform, ok := vars["platform"]
@@ -86,7 +86,7 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON queries by target
 func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract target
 	// FIXME verify target
@@ -124,7 +124,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for node JSON
 func jsonNodeHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -145,7 +145,7 @@ func jsonNodeHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for JSON status logs by node and context
 func jsonStatusLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -190,7 +190,7 @@ func jsonStatusLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON result logs by node and context
 func jsonResultLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -234,7 +234,7 @@ func jsonResultLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON query logs by query name
 func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract query name
 	name, ok := vars["name"]
@@ -264,7 +264,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for platform/context stats in JSON
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]

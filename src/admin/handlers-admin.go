@@ -25,7 +25,7 @@ const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to serve static content with the proper header
 func staticHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 
 	path := r.URL.Path
 	if strings.HasSuffix(path, ".css") {
@@ -57,7 +57,7 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the favicon
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 
 	w.Header().Set("Content-Type", "image/png")
 	http.ServeFile(w, r, "./static/favicon.png")
@@ -65,7 +65,7 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/login.html",
@@ -86,7 +86,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for POST requests
 func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	var l LoginRequest
@@ -130,7 +130,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	var l LogoutRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&l)
@@ -172,7 +172,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the root path
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Redirect to table for all nodes
 	if contextExists("corp") {
 		http.Redirect(w, r, "/context/corp/all", http.StatusFound)
@@ -183,7 +183,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for context view of the table
 func contextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -244,6 +244,10 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		Target:        target,
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
+		Settings: SettingsData{
+			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
+			AdminDebugHTTP: config.DebugHTTP(serviceName),
+		},
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -253,7 +257,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for platform view of the table
 func platformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
@@ -310,6 +314,10 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		Target:        target,
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
+		Settings: SettingsData{
+			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
+			AdminDebugHTTP: config.DebugHTTP(serviceName),
+		},
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -319,7 +327,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to run queries
 func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-run.html",
@@ -386,7 +394,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, adminConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -487,7 +495,7 @@ response:
 
 // Handler for GET requests to active queries
 func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-active.html",
@@ -543,7 +551,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to completed queries
 func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-completed.html",
@@ -602,7 +610,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, adminConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var q DistributedQueryActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -662,7 +670,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests to see query results by name
 func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -734,9 +742,9 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler for conf
-func showConfigHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+// Handler GET requests for conf
+func confGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract context
 	// FIXME verify context
@@ -808,9 +816,13 @@ func showConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Handler POST requests for conf
+func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
+}
+
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -895,7 +907,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, adminConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var m NodeMultiActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&m)
@@ -949,7 +961,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, adminConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -977,6 +989,56 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					responseMessage = "Node has been deleted successfully"
 				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	w.Write(response)
+}
+
+// Handler for POST request for settings
+func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	/*vars := mux.Vars(r)
+	// Extract uuid
+	uuid, ok := vars["uuid"]
+	if !ok {
+		log.Println("error getting uuid")
+		return
+	}*/
+	var s SettingsRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&s)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(s.CSRFToken) {
+			// FIXME verify service
+			err := config.SetBoolean(s.DebugHTTP, s.Service, DebugHTTP)
+			if err != nil {
+				responseMessage = "error changing settings"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+			} else {
+				responseMessage = "Settings updated successfully"
 			}
 		} else {
 			responseMessage = "invalid CSRF token"

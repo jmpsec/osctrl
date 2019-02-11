@@ -51,8 +51,7 @@ The most basic `tls.json` configuration file will have the following format:
     "listener": "127.0.0.1",
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
-    "auth": "none",
-    "debughttp": false
+    "auth": "none"
   },
   "db": {
     "host": "_DB_HOST",
@@ -97,8 +96,7 @@ And for `admin.json` it will look like this:
     "listener": "127.0.0.1",
     "port": "_ADMIN_PORT",
     "host": "_ADMIN_HOST",
-    "auth": "local",
-    "debughttp": false
+    "auth": "local"
   },
   "db": {
     "host": "_DB_HOST",

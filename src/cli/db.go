@@ -39,5 +39,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
+	// table configuration_values
+	err = db.AutoMigrate(ConfigurationValue{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
+	}
 	return nil
 }

@@ -23,7 +23,7 @@ const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, tlsConfig.DebugHTTP, false)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Send response
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("💥"))
@@ -31,7 +31,7 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
@@ -40,7 +40,7 @@ func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
@@ -50,7 +50,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
 	// Retrieve context variable
 	vars := mux.Vars(r)
@@ -109,7 +109,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -121,7 +121,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the configuration requests from osquery nodes
 func configHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
 	// Retrieve context variable
 	vars := mux.Vars(r)
@@ -168,7 +168,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Debug HTTP
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
@@ -203,7 +203,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Extract POST body and decode JSON
 	var t LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -228,7 +228,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -333,7 +333,7 @@ func dispatchQueries(queryData QueryWriteData, node OsqueryNode) {
 // Function to handle on-demand queries to osquery nodes
 func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -383,7 +383,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -395,7 +395,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle distributed query results from osquery nodes
 func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -436,7 +436,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if tlsConfig.DebugHTTP {
+	if config.DebugHTTP(serviceName) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -482,7 +482,7 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 // Function to handle the endpoint for quick enrollment script distribution
 func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
-	debugHTTPDump(r, tlsConfig.DebugHTTP, true)
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]

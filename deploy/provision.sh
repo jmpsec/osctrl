@@ -440,14 +440,14 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 fi
 
+# Install CLI
+DEST="$DEST_PATH" make install_cli
+
 # Systemd services for non-docker deployments
 if [[ "$DOCKER" == false ]]; then
   _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
   _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
-
-# Install CLI
-DEST="$DEST_PATH" make install_cli
 
 # If we are in dev, create context and enroll host
 if [[ "$MODE" == "dev" ]]; then
