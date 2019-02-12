@@ -61,7 +61,7 @@ func (conf *ServiceConfiguration) EmptyValue(service, name, typeValue string) Co
 		Service: service,
 		Type:    typeValue,
 		String:  "",
-		Integer: 0,
+		Integer: int64(0),
 		Boolean: false,
 	}
 }
@@ -89,6 +89,8 @@ func (conf *ServiceConfiguration) NewValue(service, name, typeValue string, valu
 func (conf *ServiceConfiguration) NewStringValue(service, name, value string) error {
 	entry := make(TypedValues)
 	entry[typeString] = value
+	entry[typeInteger] = int64(0)
+	entry[typeBoolean] = false
 	return conf.NewValue(service, name, typeString, entry)
 }
 
@@ -96,6 +98,8 @@ func (conf *ServiceConfiguration) NewStringValue(service, name, value string) er
 func (conf *ServiceConfiguration) NewBooleanValue(service, name string, value bool) error {
 	entry := make(TypedValues)
 	entry[typeBoolean] = value
+	entry[typeInteger] = int64(0)
+	entry[typeString] = ""
 	return conf.NewValue(service, name, typeBoolean, entry)
 }
 
@@ -103,6 +107,8 @@ func (conf *ServiceConfiguration) NewBooleanValue(service, name string, value bo
 func (conf *ServiceConfiguration) NewIntegerValue(service, name string, value int64) error {
 	entry := make(TypedValues)
 	entry[typeInteger] = value
+	entry[typeBoolean] = false
+	entry[typeString] = ""
 	return conf.NewValue(service, name, typeInteger, entry)
 }
 

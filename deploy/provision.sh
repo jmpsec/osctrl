@@ -159,9 +159,9 @@ _A_INT_PORT="9001"
 _A_PUB_PORT="8443"
 _A_HOST="127.0.0.1"
 
-# Default admin credentials
+# Default admin credentials with random password
 _ADMIN_USER="admin"
-_ADMIN_PASS="admin"
+_ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | md5sum | cut -d " " -f1)
 
 # Arrays with valid arguments
 VALID_MODE=("dev" "prod" "update")
@@ -423,6 +423,11 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/templates" "tmpl_tls"
+
+  # Systemd services for non-docker deployments
+  if [[ "$DOCKER" == false ]]; then
+    _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
+  fi
 fi
 
 if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
@@ -438,16 +443,15 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Prepare static files for admin
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+
+    # Systemd services for non-docker deployments
+  if [[ "$DOCKER" == false ]]; then
+    _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
+  fi
 fi
 
 # Install CLI
 DEST="$DEST_PATH" make install_cli
-
-# Systemd services for non-docker deployments
-if [[ "$DOCKER" == false ]]; then
-  _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
-  _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
-fi
 
 # If we are in dev, create context and enroll host
 if [[ "$MODE" == "dev" ]]; then
