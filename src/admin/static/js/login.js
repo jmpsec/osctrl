@@ -7,7 +7,7 @@ function sendLogin() {
       username: _user,
       password: _password
   };
-  sendPostRequest(data, _url, '/dashboard');
+  sendPostRequest(data, _url, '/dashboard', false);
 }
 
 function sendLogout() {
@@ -17,7 +17,7 @@ function sendLogout() {
   var data = {
     csrftoken: _csrf
   };
-  sendPostRequest(data, _url, '/login');
+  sendPostRequest(data, _url, '/login', false);
 }
 
 $("#login_password").keyup(function(event) {

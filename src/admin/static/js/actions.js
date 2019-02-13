@@ -28,7 +28,7 @@ function removeNode(_uuid) {
       csrftoken: _csrftoken,
       action: 'delete'
   };
-  sendPostRequest(data, _url, false, true);
+  sendPostRequest(data, _url, '/', true);
 }
 
 function removeNodes(_uuids) {
@@ -40,7 +40,7 @@ function removeNodes(_uuids) {
       uuids: _uuids, 
       action: 'delete'
   };
-  sendPostRequest(data, _url, false, true);
+  sendPostRequest(data, _url, '/', true);
 }
 
 function nodesView(context) {
@@ -76,7 +76,7 @@ function queryNode(_uuid) {
       query: _query,
       repeat: 0
   };
-  sendPostRequest(data, _url, false, true);
+  sendPostRequest(data, _url, '', true);
 }
 
 function queryNodes(_uuids) {
@@ -93,7 +93,7 @@ function queryNodes(_uuids) {
       query: _query,
       repeat: 0
   };
-  sendPostRequest(data, _url, false, true);
+  sendPostRequest(data, _url, '', true);
 }
 
 function showQueryNode(_uuid) {
