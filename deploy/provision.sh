@@ -52,6 +52,9 @@
 #     provision.sh -m dev -U -s /home/foobar/osctrl -p admin
 #
 
+# Before we begin...
+_START_TIME=$(date +%s)
+
 # Show an informational log message
 #   string  message_to_display
 function log() {
@@ -497,6 +500,16 @@ if [[ "$MODE" == "dev" ]]; then
   log " -> 🔐 Credentials: $_ADMIN_USER/$_ADMIN_PASS"
   echo
 fi
+
+# Done
+_END_TIME=$(date +%s)
+_DIFFERENCE=$(echo "$_END_TIME-$_START_TIME" | bc)
+_MINUTES="$(echo "$_DIFFERENCE/60" | bc) minutes"
+_SECONDS="$(echo "$_DIFFERENCE%60" | bc) seconds"
+
+echo
+log "Completed in $_MINUTES and $_SECONDS"
+
 exit 0
 
 # kthxbai
