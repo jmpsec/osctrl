@@ -410,15 +410,17 @@ type TableTemplateData struct {
 
 // ConfTemplateData for passing data to the conf template
 type ConfTemplateData struct {
-	Title              string
-	Context            string
-	ConfigurationBlob  string
-	ConfigurationHash  string
-	QuickAddShell      string
-	QuickAddPowershell string
-	ContextStats       StatsData
-	PlatformStats      StatsData
-	Settings           SettingsData
+	Title                 string
+	Context               string
+	ConfigurationBlob     string
+	ConfigurationHash     string
+	QuickAddShell         string
+	QuickRemoveShell      string
+	QuickAddPowershell    string
+	QuickRemovePowershell string
+	ContextStats          StatsData
+	PlatformStats         StatsData
+	Settings              SettingsData
 }
 
 // QueryRunTemplateData for passing data to the query template

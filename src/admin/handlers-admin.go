@@ -801,15 +801,19 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	shellQuickAdd, _ := quickAddOneLinerShell(ctx)
 	powershellQuickAdd, _ := quickAddOneLinerPowershell(ctx)
+	shellQuickRemove, _ := quickRemoveOneLinerShell(ctx)
+	powershellQuickRemove, _ := quickRemoveOneLinerPowershell(ctx)
 	templateData := ConfTemplateData{
-		Title:              context + " Configuration",
-		ConfigurationBlob:  ctx.Configuration,
-		ConfigurationHash:  generateOsqueryConfigHash(ctx.Configuration),
-		Context:            context,
-		QuickAddShell:      shellQuickAdd,
-		QuickAddPowershell: powershellQuickAdd,
-		ContextStats:       tmplCtxStats,
-		PlatformStats:      tmplPlatStats,
+		Title:                 context + " Configuration",
+		ConfigurationBlob:     ctx.Configuration,
+		ConfigurationHash:     generateOsqueryConfigHash(ctx.Configuration),
+		Context:               context,
+		QuickAddShell:         shellQuickAdd,
+		QuickRemoveShell:      shellQuickRemove,
+		QuickAddPowershell:    powershellQuickAdd,
+		QuickRemovePowershell: powershellQuickRemove,
+		ContextStats:          tmplCtxStats,
+		PlatformStats:         tmplPlatStats,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)

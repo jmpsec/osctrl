@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"html/template"
 	"io/ioutil"
+	"text/template"
 
 	"github.com/jinzhu/gorm"
 	"github.com/segmentio/ksuid"
@@ -51,9 +51,9 @@ type TLSPath struct {
 	CarverBlockPath string
 }
 
-// Helper generic to generate quick add one-liners
-func quickAddOneLiner(oneliner string, context TLSContext) (string, error) {
-	t, err := template.New("QuickAddOneLiner").Parse(oneliner)
+// Helper generic to generate quick one-liners
+func quickOneLiner(oneliner string, context TLSContext, target string) (string, error) {
+	t, err := template.New(target).Parse(oneliner)
 	if err != nil {
 		return "", err
 	}
@@ -75,16 +75,30 @@ func quickAddOneLiner(oneliner string, context TLSContext) (string, error) {
 
 // Helper to get the quick add one-liner for Linux/OSX nodes
 func quickAddOneLinerShell(context TLSContext) (string, error) {
-	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.sh | sh`
-	return quickAddOneLiner(s, context)
+	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.sh | sh`
+	return quickOneLiner(s, context, "enroll.sh")
+}
+
+// Helper to get the quick remove one-liner for Linux/OSX nodes
+func quickRemoveOneLinerShell(context TLSContext) (string, error) {
+	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.sh | sh`
+	return quickOneLiner(s, context, "remove.sh")
 }
 
 // Helper to get the quick add one-liner for Windows nodes
 func quickAddOneLinerPowershell(context TLSContext) (string, error) {
 	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/osctrl.ps1'))`
-	return quickAddOneLiner(s, context)
+iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.ps1'))`
+	return quickOneLiner(s, context, "enroll.ps1")
+}
+
+// Helper to get the quick remove one-liner for Windows nodes
+func quickRemoveOneLinerPowershell(context TLSContext) (string, error) {
+	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
+iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.ps1'))`
+	return quickOneLiner(s, context, "remove.ps1")
 }
 
 // Helper to generate a random string of n characters
@@ -115,16 +129,24 @@ func readExternalFile(path string) string {
 }
 
 // Helper to get a quick add script for a context
-func quickAddScript(script string, context TLSContext) (string, error) {
-	var templatePath string
+func quickAddScript(script string, context TLSContext, paths TLSPath) (string, error) {
+	var templateName, templatePath string
 	// What script is it?
-	if script == "osctrl.sh" {
-		templatePath = "templates/scripts/quick-add.sh"
-	} else if script == "osctrl.ps1" {
-		templatePath = "templates/scripts/quick-add.ps1"
+	if script == "enroll.sh" {
+		templateName = "quick-add.sh"
+		templatePath = "tmpl_tls/scripts/quick-add.sh"
+	} else if script == "enroll.ps1" {
+		templateName = "quick-add.ps1"
+		templatePath = "tmpl_tls/scripts/quick-add.ps1"
+	} else if script == "remove.sh" {
+		templateName = "quick-remove.sh"
+		templatePath = "tmpl_tls/scripts/quick-remove.sh"
+	} else if script == "remove.ps1" {
+		templateName = "quick-remove.ps1"
+		templatePath = "tmpl_tls/scripts/quick-remove.ps1"
 	}
 	// Prepare template
-	t, err := template.New(templatePath).ParseFiles(templatePath)
+	t, err := template.New(templateName).ParseFiles(templatePath)
 	if err != nil {
 		return "", err
 	}
@@ -132,9 +154,11 @@ func quickAddScript(script string, context TLSContext) (string, error) {
 	data := struct {
 		Project string
 		Context TLSContext
+		Path    TLSPath
 	}{
 		Project: appName,
 		Context: context,
+		Path:    paths,
 	}
 	// Compile template into buffer
 	var tpl bytes.Buffer
@@ -204,6 +228,18 @@ func deleteContext(name string) error {
 	}
 	if err := db.Delete(&ctx).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
+	}
+	return nil
+}
+
+// Update configuration for a context
+func updateConfiguration(name, configuration string) error {
+	ctx, err := getContext(name)
+	if err != nil {
+		return fmt.Errorf("getContext %v", err)
+	}
+	if err := db.Model(&ctx).Update("configuration", configuration).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }

@@ -21,6 +21,10 @@ _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-3.3.0-1.linu
 _OSQUERY_SERVICE_LINUX="osqueryd"
 _OSQUERY_SERVICE_OSX="com.facebook.osqueryd"
 
+_SECRET_FILE=""
+_FLAGS=""
+_CERT=""
+_SERVICE=""
 
 fail() {
   echo "[!] $1"
@@ -77,11 +81,13 @@ whatOS() {
     _SECRET_FILE="$_SECRET_LINUX"
     _FLAGS="$_FLAGS_LINUX"
     _CERT="$_CERT_LINUX"
+    _SERVICE="$_OSQUERY_SERVICE_LINUX"
   fi
   if [ "$OS" = "darwin" ]; then
     _SECRET_FILE="$_SECRET_OSX"
     _FLAGS="$_FLAGS_OSX"
     _CERT="$_CERT_OSX"
+    _SERVICE="$_OSQUERY_SERVICE_OSX"
   fi
   log "_SECRET_FILE=$_SECRET_FILE"
   log "_FLAGS=$_FLAGS"
@@ -175,5 +181,6 @@ prepareCert
 startOsquery
 
 log "Congratulations! The node has been enrolled in $_PROJECT"
+log "IMPORTANT! $_SERVICE has been started and enabled."
 
 # EOF

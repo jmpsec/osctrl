@@ -48,13 +48,13 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                  <i class="fas fa-bolt"></i> osctrl quick install for context {{ .Context }}
+                  <i class="fas fa-bolt"></i> osctrl quick install/update nodes for context {{ .Context }}
               </div>
               <div class="card-body">
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or Mac to quickly add nodes in the context {{ .Context }}. It will install osquery in the system:
+                    Run this command in Linux or Mac to quickly add/update nodes in the context {{ .Context }}. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -83,6 +83,51 @@
                     <div class="highlight">
                       <code id="osctrl-enroll-cmd-ps" class="bash">
                         {{ .QuickAddPowershell }}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-exclamation-triangle"></i> osctrl quick <span style="color:red;">remove</span> nodes for context {{ .Context }}
+              </div>
+              <div class="card-body">
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Run this command in Linux or Mac to quickly <span style="color:red;">remove</span> nodes in the context {{ .Context }}. It will NOT remove osquery from the system:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-remove-cmd-sh">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <code id="osctrl-remove-cmd-sh" class="bash">
+                        {{ .QuickRemoveShell }}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the context {{ .Context }}. It will NOT remove osquery from the system:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#osctrl-remove-cmd-ps">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <code id="osctrl-remove-cmd-ps" class="bash">
+                        {{ .QuickRemovePowershell }}
                       </code>
                     </div>
                   </div>

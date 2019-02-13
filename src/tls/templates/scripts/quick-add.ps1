@@ -196,6 +196,7 @@ function Osctrl-Node
   }
 
   Write-Host "Congratulations! The node has been enrolled in $projectName"
+  Write-Host "IMPORTANT! $serviceName has been started and enabled."
 }
 
 Osctrl-Node
