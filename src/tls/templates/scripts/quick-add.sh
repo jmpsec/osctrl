@@ -181,6 +181,6 @@ prepareCert
 startOsquery
 
 log "Congratulations! The node has been enrolled in $_PROJECT"
-log "IMPORTANT! $_SERVICE has been started and enabled."
+log "REMINDER! $_SERVICE has been started and enabled."
 
 # EOF

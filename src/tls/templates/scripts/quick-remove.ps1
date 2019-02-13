@@ -65,7 +65,7 @@ function Osctrl-Remove
   }
 
   Write-Host "Congratulations! The node has been removed from $projectName"
-  Write-Host "IMPORTANT! $serviceName has been stopped and disabled."
+  Write-Host "WARNING! $serviceName has been stopped and disabled."
 }
 
 Osctrl-Remove

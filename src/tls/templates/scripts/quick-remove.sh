@@ -98,6 +98,6 @@ removeFlags
 removeCert
 
 log "Congratulations! The node has been removed from $_PROJECT"
-log "IMPORTANT! $_SERVICE has been stopped and disabled."
+log "WARNING! $_SERVICE has been stopped and disabled."
 
 # EOF
