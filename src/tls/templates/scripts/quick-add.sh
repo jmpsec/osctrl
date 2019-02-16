@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Tool to quick add OSX/Linux nodes into osctrl
+# Tool to quick-add OSX/Linux nodes
 #
 # IMPORTANT! If osquery is not installed, it will be installed.
 

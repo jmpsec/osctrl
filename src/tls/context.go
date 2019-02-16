@@ -156,7 +156,7 @@ func quickAddScript(script string, context TLSContext, paths TLSPath) (string, e
 		Context TLSContext
 		Path    TLSPath
 	}{
-		Project: appName,
+		Project: projectName,
 		Context: context,
 		Path:    paths,
 	}

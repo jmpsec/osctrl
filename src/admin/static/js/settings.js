@@ -1,7 +1,7 @@
 function changeDebugTLS() {
   var _csrftoken = $("#csrftoken").val();
   var _value = $("#tls_debug_check").is(':checked');
-  var _service = 'osctrl-tls';
+  var _service = 'tls';
   
   var _url = '/settings';
   
@@ -16,7 +16,7 @@ function changeDebugTLS() {
 function changeDebugAdmin() {
   var _csrftoken = $("#csrftoken").val();
   var _value = $("#admin_debug_check").is(':checked');
-  var _service = 'osctrl-admin';
+  var _service = 'admin';
 
   var _url = '/settings';
   

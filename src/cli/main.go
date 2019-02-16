@@ -14,14 +14,16 @@ import (
 const (
 	// Service configuration file
 	defConfigFile = "config/tls.json"
+	// Project name
+	projectName = "osctrl"
 	// Application name
-	appName = "osctrl-cli"
+	appName = projectName + "-cli"
 	// Application version
 	appVersion = "0.0.1"
-	// Application description
-	appDescription = "CLI for osctrl, a fast and efficient operative system management"
 	// Application usage
-	appUsage = "CLI for osctrl"
+	appUsage = "CLI for " + projectName
+	// Application description
+	appDescription = appUsage + ", a fast and efficient operative system management"
 )
 
 // Global variables

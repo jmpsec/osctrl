@@ -388,7 +388,8 @@ type OsqueryTable struct {
 
 // LoginTemplateData for passing data to the login template
 type LoginTemplateData struct {
-	Title string
+	Title   string
+	Project string
 }
 
 // SettingsData for passing settings data to templates

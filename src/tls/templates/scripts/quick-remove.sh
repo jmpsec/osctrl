@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Tool to quick remove OSX/Linux nodes from osctrl
+# Tool to quick-remove OSX/Linux nodes
 #
 # IMPORTANT! osquery will not be removed.
 

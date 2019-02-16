@@ -13,7 +13,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		case localAuthLogin:
 			// Check if user is authenticated
-			session, err := store.Get(r, appName)
+			session, err := store.Get(r, projectName)
 			if err != nil {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return

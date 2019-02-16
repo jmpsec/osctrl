@@ -490,8 +490,6 @@ if [[ "$DOCKER" == false ]]; then
 fi
 
 echo
-echo
-echo
 log "Your osctrl is ready 👌🏽"
 echo
 if [[ "$MODE" == "dev" ]]; then

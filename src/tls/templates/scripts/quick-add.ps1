@@ -1,6 +1,6 @@
 #requires -version 2
 
-## Tool to add Windows nodes into osctrl
+## Tool to quick-add Windows nodes
 ##
 ## IMPORTANT! If osquery is not installed, it will be installed.
 
@@ -13,8 +13,8 @@
 $ErrorActionPreference = "Stop"
 
 $projectName = "{{ .Project }}"
-$osctrlTLSHost = "{{ .Context.Hostname }}"
-$osctrlSecret = "{{ .Context.Secret }}"
+$projectTLSHost = "{{ .Context.Hostname }}"
+$projectSecret = "{{ .Context.Secret }}"
 $osqueryPath = ([System.IO.Path]::Combine('C:\', 'ProgramData', 'osquery'))
 $osqueryDaemonPath = (Join-Path $osqueryPath "osqueryd")
 $osqueryDaemon = (Join-Path $osqueryDaemonPath "osqueryd.exe")
@@ -46,7 +46,7 @@ $osqueryFlags = @"
 --distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Path.QueryReadPath }}
 --distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Path.QueryWritePath }}
 --tls_dump=true
---tls_hostname=$osctrlTLSHost
+--tls_hostname=$projectTLSHost
 --tls_server_certs=$certFile
 "@
 $osqueryCertificate = @"
@@ -123,7 +123,7 @@ function Set-SafePermissions {
   return $false
 }
 
-function Osctrl-Node
+function QuickAdd-Node
 {
   # Make sure we are admin
   if (-not (Test-IsAdmin)) {
@@ -165,7 +165,7 @@ function Osctrl-Node
   if (!(Test-Path $secretFile)) {
     New-Item -ItemType "file" -Path $secretFile
   }
-  $osctrlSecret | Out-File -FilePath $secretFile -Encoding ASCII
+  $projectSecret | Out-File -FilePath $secretFile -Encoding ASCII
 
   # Prepare flags
   Write-Host "[+] Preparing osquery flags"
@@ -199,4 +199,4 @@ function Osctrl-Node
   Write-Host "REMINDER! $serviceName has been started and enabled."
 }
 
-Osctrl-Node
+QuickAdd-Node

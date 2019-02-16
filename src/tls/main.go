@@ -12,10 +12,10 @@ import (
 
 // Define endpoints
 const (
-	// Application name
-	appName = "osctrl"
+	// Project name
+	projectName = "osctrl"
 	// Service name
-	serviceName = appName + "-tls"
+	serviceName = projectName + "-tls"
 	// Service version
 	serviceVersion = "0.0.1"
 	// Default endpoint to handle HTTP testing

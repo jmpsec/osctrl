@@ -1,6 +1,6 @@
 #requires -version 2
 
-## Tool to remove Windows nodes from osctrl
+## Tool to quick-remove Windows nodes
 ##
 ## IMPORTANT! osquery will not be removed.
 
@@ -28,7 +28,7 @@ function Test-IsAdmin {
   )
 }
 
-function Osctrl-Remove
+function QuickRemove-Node
 {
   # Make sure we are admin
   if (-not (Test-IsAdmin)) {
@@ -68,4 +68,4 @@ function Osctrl-Remove
   Write-Host "WARNING! $serviceName has been stopped and disabled."
 }
 
-Osctrl-Remove
+QuickRemove-Node

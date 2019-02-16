@@ -26,7 +26,7 @@ const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to serve static content with the proper header
 func staticHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 
 	path := r.URL.Path
 	if strings.HasSuffix(path, ".css") {
@@ -58,7 +58,7 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the favicon
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 
 	w.Header().Set("Content-Type", "image/png")
 	http.ServeFile(w, r, "./static/favicon.png")
@@ -66,7 +66,7 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/login.html",
@@ -77,7 +77,8 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := LoginTemplateData{
-		Title: "Login to " + appName,
+		Title:   "Login to " + projectName,
+		Project: projectName,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -87,7 +88,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for POST requests
 func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	var l LoginRequest
@@ -100,7 +101,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check credentials
 	if access, user := checkLoginCredentials(l.Username, l.Password); access {
-		session, err := store.Get(r, appName)
+		session, err := store.Get(r, projectName)
 		if err != nil {
 			log.Printf("New session - %v", err)
 		}
@@ -131,7 +132,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	var l LogoutRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&l)
@@ -143,7 +144,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Check CSRF Token
 	if checkCSRFToken(l.CSRFToken) {
 		// Access existing session
-		session, err := store.Get(r, appName)
+		session, err := store.Get(r, projectName)
 		if err != nil {
 			log.Printf("error accessing session [ %v ]", err)
 			http.Error(w, "Session Error", http.StatusInternalServerError)
@@ -173,7 +174,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the root path
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Redirect to table for all nodes
 	if contextExists("corp") {
 		http.Redirect(w, r, "/context/corp/all", http.StatusFound)
@@ -184,7 +185,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for context view of the table
 func contextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -247,7 +248,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		PlatformStats: tmplPlatStats,
 		Settings: SettingsData{
 			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
-			AdminDebugHTTP: config.DebugHTTP(serviceName),
+			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
 		},
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -258,7 +259,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for platform view of the table
 func platformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
@@ -317,7 +318,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		PlatformStats: tmplPlatStats,
 		Settings: SettingsData{
 			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
-			AdminDebugHTTP: config.DebugHTTP(serviceName),
+			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
 		},
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -328,7 +329,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to run queries
 func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-run.html",
@@ -395,7 +396,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -496,7 +497,7 @@ response:
 
 // Handler for GET requests to active queries
 func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-active.html",
@@ -552,7 +553,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to completed queries
 func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-completed.html",
@@ -611,7 +612,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	var q DistributedQueryActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -671,7 +672,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests to see query results by name
 func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -745,7 +746,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for conf
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	// FIXME verify context
@@ -825,7 +826,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	vars := mux.Vars(r)
 	// Extract context
 	// FIXME verify context
@@ -879,7 +880,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -964,7 +965,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	var m NodeMultiActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&m)
@@ -1018,7 +1019,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -1070,7 +1071,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	/*vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -1088,8 +1089,14 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(s.CSRFToken) {
-			// FIXME verify service
-			err := config.SetBoolean(s.DebugHTTP, s.Service, DebugHTTP)
+			var serviceToChange string
+			switch s.Service {
+			case serviceTLS:
+				serviceToChange = serviceNameTLS
+			case serviceAdmin:
+				serviceToChange = serviceNameAdmin
+			}
+			err := config.SetBoolean(s.DebugHTTP, serviceToChange, DebugHTTP)
 			if err != nil {
 				responseMessage = "error changing settings"
 				responseCode = http.StatusInternalServerError

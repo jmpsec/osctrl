@@ -22,12 +22,16 @@ import (
 
 // Define endpoints
 const (
-	// Application name
-	appName = "osctrl"
+	// Project name
+	projectName = "osctrl"
+	// TLS service
+	serviceTLS = "tls"
+	// Admin service
+	serviceAdmin = "admin"
 	// Service name
-	serviceName = appName + "-admin"
+	serviceNameAdmin = projectName + "-" + serviceAdmin
 	// TLS service name
-	serviceNameTLS = appName + "-tls"
+	serviceNameTLS = projectName + "-" + serviceTLS
 	// Service version
 	serviceVersion = "0.0.1"
 	// Default endpoint to handle HTTP testing
@@ -186,8 +190,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize configuration: %v", err)
 	}
-	if !config.IsValue(serviceName, DebugHTTP) {
-		if err := config.NewBooleanValue(serviceName, DebugHTTP, false); err != nil {
+	if !config.IsValue(serviceNameAdmin, DebugHTTP) {
+		if err := config.NewBooleanValue(serviceNameAdmin, DebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", DebugHTTP, err)
 		}
 	}

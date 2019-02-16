@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="osctrl.png" />
+  <img src="logo.png" />
 </div>
 
 </br>
