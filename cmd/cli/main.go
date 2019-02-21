@@ -365,9 +365,9 @@ func init() {
 						}
 						var oneLiner string
 						if c.String("target") == "sh" {
-							oneLiner, _ = contexts.quickAddOneLinerShell(ctx)
+							oneLiner, _ = contexts.QuickAddOneLinerShell(ctx)
 						} else if c.String("target") == "ps1" {
-							oneLiner, _ = contexts.quickAddOneLinerPowershell(ctx)
+							oneLiner, _ = contexts.QuickAddOneLinerPowershell(ctx)
 						}
 						fmt.Printf("%s\n", oneLiner)
 						return nil

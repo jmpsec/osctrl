@@ -44,14 +44,10 @@ type Configuration struct {
 }
 
 // NewConfiguration to initialize the access to configuration
-func NewConfiguration(database *gorm.DB) (*Configuration, error) {
+func NewConfiguration(database *gorm.DB) *Configuration {
 	var s *Configuration
 	s = &Configuration{DB: database, Values: nil}
-	err := s.ReloadValues()
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
+	return s
 }
 
 // EmptyValue creates an emtpy value

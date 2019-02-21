@@ -1,9 +1,7 @@
 package context
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
 
 	"github.com/jinzhu/gorm"
 )
@@ -57,96 +55,6 @@ func CreateContexts(backend *gorm.DB) *Context {
 	var c *Context
 	c = &Context{DB: backend}
 	return c
-}
-
-// Helper generic to generate quick one-liners
-func quickOneLiner(oneliner string, context TLSContext, target string) (string, error) {
-	t, err := template.New(target).Parse(oneliner)
-	if err != nil {
-		return "", err
-	}
-	data := struct {
-		TLSHost    string
-		Context    string
-		SecretPath string
-	}{
-		TLSHost:    context.Hostname,
-		Context:    context.Name,
-		SecretPath: context.SecretPath,
-	}
-	var tpl bytes.Buffer
-	if err := t.Execute(&tpl, data); err != nil {
-		return "", err
-	}
-	return tpl.String(), nil
-}
-
-// Helper to get the quick add one-liner for Linux/OSX nodes
-func quickAddOneLinerShell(context TLSContext) (string, error) {
-	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.sh | sh`
-	return quickOneLiner(s, context, "enroll.sh")
-}
-
-// Helper to get the quick remove one-liner for Linux/OSX nodes
-func quickRemoveOneLinerShell(context TLSContext) (string, error) {
-	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.sh | sh`
-	return quickOneLiner(s, context, "remove.sh")
-}
-
-// Helper to get the quick add one-liner for Windows nodes
-func quickAddOneLinerPowershell(context TLSContext) (string, error) {
-	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.ps1'))`
-	return quickOneLiner(s, context, "enroll.ps1")
-}
-
-// Helper to get the quick remove one-liner for Windows nodes
-func quickRemoveOneLinerPowershell(context TLSContext) (string, error) {
-	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.ps1'))`
-	return quickOneLiner(s, context, "remove.ps1")
-}
-
-// Helper to get a quick add script for a context
-func quickAddScript(project, script string, context TLSContext, paths TLSPath) (string, error) {
-	var templateName, templatePath string
-	// What script is it?
-	if script == "enroll.sh" {
-		templateName = "quick-add.sh"
-		templatePath = "tmpl_tls/scripts/quick-add.sh"
-	} else if script == "enroll.ps1" {
-		templateName = "quick-add.ps1"
-		templatePath = "tmpl_tls/scripts/quick-add.ps1"
-	} else if script == "remove.sh" {
-		templateName = "quick-remove.sh"
-		templatePath = "tmpl_tls/scripts/quick-remove.sh"
-	} else if script == "remove.ps1" {
-		templateName = "quick-remove.ps1"
-		templatePath = "tmpl_tls/scripts/quick-remove.ps1"
-	}
-	// Prepare template
-	t, err := template.New(templateName).ParseFiles(templatePath)
-	if err != nil {
-		return "", err
-	}
-	// Prepare template data
-	data := struct {
-		Project string
-		Context TLSContext
-		Path    TLSPath
-	}{
-		Project: project,
-		Context: context,
-		Path:    paths,
-	}
-	// Compile template into buffer
-	var tpl bytes.Buffer
-	if err := t.Execute(&tpl, data); err != nil {
-		return "", err
-	}
-	return tpl.String(), nil
 }
 
 // Get TLSContext by name
