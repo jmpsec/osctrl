@@ -25,6 +25,13 @@ type UserManager struct {
 	DB *gorm.DB
 }
 
+// CreateUserManager to initialize the users struct
+func CreateUserManager(backend *gorm.DB) *UserManager {
+	var u *UserManager
+	u = &UserManager{DB: backend}
+	return u
+}
+
 // HashPasswordWithSalt to hash a password before store it
 func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
 	saltedBytes := []byte(password)
@@ -117,11 +124,4 @@ func (m *UserManager) Delete(username string) error {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
-}
-
-// CreateUserManager to initialize the users struct
-func CreateUserManager(backend *gorm.DB) *UserManager {
-	var u *UserManager
-	u = &UserManager{DB: backend}
-	return u
 }

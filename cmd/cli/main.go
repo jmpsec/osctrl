@@ -6,6 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/users"
+
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli"
@@ -32,8 +36,9 @@ var (
 	dbConfig   DBConf
 	app        *cli.App
 	configFile string
-	config     *ServiceConfiguration
-	users      *users.UserManager
+	config     *configuration.Configuration
+	adminUsers *users.UserManager
+	contexts   *context.Context
 )
 
 // Function to load the configuration file and assign to variables
@@ -63,7 +68,11 @@ func init() {
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
 	// Initialize users
-	users := users.CreateUserManager(db)
+	adminUsers = users.CreateUserManager(db)
+	// Initialize context
+	contexts = context.CreateContexts(db)
+	// Initialize configuration
+	config = configuration.NewConfiguration(db)
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
@@ -119,11 +128,11 @@ func init() {
 						password := c.String("password")
 						fullname := c.String("fullname")
 						admin := c.Bool("admin")
-						user, err := users.New(username, password, fullname, admin)
+						user, err := adminUsers.New(username, password, fullname, admin)
 						if err != nil {
 							return err
 						}
-						if err := users.Create(user); err != nil {
+						if err := adminUsers.Create(user); err != nil {
 							return err
 						}
 						return nil
@@ -146,7 +155,7 @@ func init() {
 							fmt.Println("username is required")
 							os.Exit(1)
 						}
-						return users.Delete(username)
+						return adminUsers.Delete(username)
 					},
 				},
 				{
@@ -154,7 +163,7 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List all existing users",
 					Action: func(c *cli.Context) error {
-						users, err := users.All()
+						users, err := adminUsers.All()
 						if err != nil {
 							return err
 						}
@@ -227,21 +236,21 @@ func init() {
 						var configuration string
 						confFile := c.String("configuration")
 						if confFile != "" {
-							configuration = readExternalFile(confFile)
+							configuration = context.ReadExternalFile(confFile)
 						}
 						// Get certificate
 						var certificate string
 						certFile := c.String("certificate")
 						if certFile != "" {
-							certificate = readExternalFile(certFile)
+							certificate = context.ReadExternalFile(certFile)
 						}
 						// Create context if it does not exist
-						if !contextExists(ctxName) {
-							newContext := emptyContext(ctxName, ctxHost)
+						if !contexts.Exists(ctxName) {
+							newContext := contexts.Empty(ctxName, ctxHost)
 							newContext.DebugHTTP = c.Bool("debug")
 							newContext.Configuration = configuration
 							newContext.Certificate = certificate
-							if err := createContext(newContext); err != nil {
+							if err := contexts.Create(newContext); err != nil {
 								return err
 							}
 						} else {
@@ -268,7 +277,7 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						return deleteContext(ctxName)
+						return contexts.Delete(ctxName)
 					},
 				},
 				{
@@ -288,7 +297,7 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						ctx, err := getContext(ctxName)
+						ctx, err := contexts.Get(ctxName)
 						if err != nil {
 							return err
 						}
@@ -313,7 +322,7 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS contexts",
 					Action: func(c *cli.Context) error {
-						contexts, err := getAllContexts()
+						contexts, err := contexts.All()
 						if err != nil {
 							return err
 						}
@@ -350,15 +359,15 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						ctx, err := getContext(ctxName)
+						ctx, err := contexts.Get(ctxName)
 						if err != nil {
 							return err
 						}
 						var oneLiner string
 						if c.String("target") == "sh" {
-							oneLiner, _ = quickAddOneLinerShell(ctx)
+							oneLiner, _ = contexts.quickAddOneLinerShell(ctx)
 						} else if c.String("target") == "ps1" {
-							oneLiner, _ = quickAddOneLinerPowershell(ctx)
+							oneLiner, _ = contexts.quickAddOneLinerPowershell(ctx)
 						}
 						fmt.Printf("%s\n", oneLiner)
 						return nil

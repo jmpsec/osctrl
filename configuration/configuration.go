@@ -19,8 +19,8 @@ const (
 	DebugHTTP = "debug_http"
 )
 
-// StoredValue to hold each value for configuration
-type StoredValue struct {
+// ConfigValue to hold each value for configuration
+type ConfigValue struct {
 	gorm.Model
 	Name    string `gorm:"index"`
 	Service string
@@ -34,19 +34,19 @@ type StoredValue struct {
 type TypedValues map[string]interface{}
 
 // ServiceValues to have all configuration values by service
-type ServiceValues map[string][]StoredValue
+type ServiceValues map[string][]ConfigValue
 
 // Configuration keeps al configuration values
 type Configuration struct {
-	db     *gorm.DB
-	Values []StoredValue
+	DB     *gorm.DB
+	Values []ConfigValue
 	//Service ServiceValues
 }
 
-// NewServiceConfiguration to initialize the access to configuration
-func NewServiceConfiguration(database *gorm.DB) (*Configuration, error) {
+// NewConfiguration to initialize the access to configuration
+func NewConfiguration(database *gorm.DB) (*Configuration, error) {
 	var s *Configuration
-	s = &Configuration{db: database, Values: nil}
+	s = &Configuration{DB: database, Values: nil}
 	err := s.ReloadValues()
 	if err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func NewServiceConfiguration(database *gorm.DB) (*Configuration, error) {
 }
 
 // EmptyValue creates an emtpy value
-func (conf *Configuration) EmptyValue(service, name, typeValue string) StoredValue {
-	return StoredValue{
+func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigValue {
+	return ConfigValue{
 		Name:    name,
 		Service: service,
 		Type:    typeValue,
@@ -74,8 +74,8 @@ func (conf *Configuration) NewValue(service, name, typeValue string, values Type
 	entry.Boolean = values[typeBoolean].(bool)
 	entry.String = values[typeString].(string)
 	// Create record in database
-	if conf.db.NewRecord(entry) {
-		if err := conf.db.Create(&entry).Error; err != nil {
+	if conf.DB.NewRecord(entry) {
+		if err := conf.DB.Create(&entry).Error; err != nil {
 			return fmt.Errorf("Create NewValue %v", err)
 		}
 	} else {
@@ -118,27 +118,27 @@ func (conf *Configuration) DeleteValue(service, name string) error {
 	if err != nil {
 		return fmt.Errorf("DeleteValue %v", err)
 	}
-	if err := conf.db.Delete(&value).Error; err != nil {
+	if err := conf.DB.Delete(&value).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return conf.ReloadValues()
 }
 
 // GetAllValues gets all configuration values
-func (conf *Configuration) GetAllValues() ([]StoredValue, error) {
+func (conf *Configuration) GetAllValues() ([]ConfigValue, error) {
 	return conf.Values, nil
 }
 
 // SetAllValues sets all configuration values
-func (conf *Configuration) SetAllValues(values []StoredValue) error {
+func (conf *Configuration) SetAllValues(values []ConfigValue) error {
 	conf.Values = values
 	return nil
 }
 
 // ReloadValues reloads all values from backend
 func (conf *Configuration) ReloadValues() error {
-	var values []StoredValue
-	if err := conf.db.Find(&values).Error; err != nil {
+	var values []ConfigValue
+	if err := conf.DB.Find(&values).Error; err != nil {
 		return err
 	}
 	conf.Values = values
@@ -148,29 +148,29 @@ func (conf *Configuration) ReloadValues() error {
 // RetrieveAllValues retrieves and returns all values from backend
 func (conf *Configuration) RetrieveAllValues() ([]Configuration, error) {
 	var values []Configuration
-	if err := conf.db.Find(&values).Error; err != nil {
+	if err := conf.DB.Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
 }
 
 // RetrieveValue retrieves one value from configuration by service and name from backend
-func (conf *Configuration) RetrieveValue(service, name string) (StoredValue, error) {
-	var value StoredValue
-	if err := conf.db.Where("service = ?", service).Where("name = ?", name).First(&value).Error; err != nil {
-		return StoredValue{}, err
+func (conf *Configuration) RetrieveValue(service, name string) (ConfigValue, error) {
+	var value ConfigValue
+	if err := conf.DB.Where("service = ?", service).Where("name = ?", name).First(&value).Error; err != nil {
+		return ConfigValue{}, err
 	}
 	return value, nil
 }
 
 // GetValue gets one value from configuration by service and name
-func (conf *Configuration) GetValue(service, name string) (StoredValue, error) {
+func (conf *Configuration) GetValue(service, name string) (ConfigValue, error) {
 	for _, v := range conf.Values {
 		if v.Service == service && v.Name == name {
 			return v, nil
 		}
 	}
-	return StoredValue{}, fmt.Errorf("configuration value not found")
+	return ConfigValue{}, fmt.Errorf("configuration value not found")
 }
 
 // SetInteger sets a numeric configuration value by service and name
@@ -181,7 +181,7 @@ func (conf *Configuration) SetInteger(intValue int64, service, name string) erro
 		return fmt.Errorf("SetInteger %d %v", intValue, err)
 	}
 	// Update
-	if err := conf.db.Model(&value).Update(typeInteger, intValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(typeInteger, intValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetInteger %d %s %s", intValue, service, name)
@@ -205,7 +205,7 @@ func (conf *Configuration) SetBoolean(boolValue bool, service, name string) erro
 		return fmt.Errorf("SetBoolean %v %v", boolValue, err)
 	}
 	// Update
-	if err := conf.db.Model(&value).Update(typeBoolean, boolValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(typeBoolean, boolValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetBoolean %v %s %s", boolValue, service, name)
@@ -238,7 +238,7 @@ func (conf *Configuration) SetString(strValue string, service, name string) erro
 		return fmt.Errorf("SetString %s %v", strValue, err)
 	}
 	// Update
-	if err := conf.db.Model(&value).Update(typeString, strValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(typeString, strValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetString %s %s %s", strValue, service, name)

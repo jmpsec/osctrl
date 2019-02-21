@@ -52,6 +52,13 @@ type Context struct {
 	DB *gorm.DB
 }
 
+// CreateContexts to initialize the context struct
+func CreateContexts(backend *gorm.DB) *Context {
+	var c *Context
+	c = &Context{DB: backend}
+	return c
+}
+
 // Helper generic to generate quick one-liners
 func quickOneLiner(oneliner string, context TLSContext, target string) (string, error) {
 	t, err := template.New(target).Parse(oneliner)
@@ -156,8 +163,8 @@ func (context *Context) Empty(name, hostname string) TLSContext {
 	return TLSContext{
 		Name:          name,
 		Hostname:      hostname,
-		Secret:        generateRandomString(defaultSecretLength),
-		SecretPath:    generateKSUID(),
+		Secret:        GenerateRandomString(defaultSecretLength),
+		SecretPath:    GenerateKSUID(),
 		Type:          defaultContextType,
 		DebugHTTP:     false,
 		Icon:          defaultContextIcon,

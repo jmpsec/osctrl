@@ -24,6 +24,7 @@ require (
 	github.com/google/pprof v0.0.0-20190208070709-b421f19a5c07 // indirect
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
+	github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3

@@ -5,6 +5,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/configuration"
+	ctx "github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/users"
+
 	"github.com/jinzhu/gorm"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -31,17 +35,17 @@ func getDB() *gorm.DB {
 func automigrateDB() error {
 	var err error
 	// table tls_contexts
-	err = db.AutoMigrate(TLSContext{}).Error
+	err = db.AutoMigrate(ctx.TLSContext{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
 	}
 	// table admin_users
-	err = db.AutoMigrate(AdminUser{}).Error
+	err = db.AutoMigrate(users.AdminUser{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
 	// table configuration_values
-	err = db.AutoMigrate(ConfigurationValue{}).Error
+	err = db.AutoMigrate(configuration.ConfigValue{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
 	}
