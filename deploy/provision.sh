@@ -406,15 +406,12 @@ if [[ "$DOCKER" == false ]]; then
 fi
 
 # Golang
-package golang-go
-package golang-glide
+# package golang-go
+install_go_11
 
 # Build code
 cd "$SOURCE_PATH"
-export GOPATH="$SOURCE_PATH"
 make clean
-make clean-deps
-make update-deps
 make
 
 # Prepare destination and configuration folder

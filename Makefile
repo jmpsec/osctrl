@@ -59,20 +59,20 @@ install:
 # optional DEST=destination_path
 install_tls:
 	sudo systemctl stop $(TLS_NAME)
-	sudo cp $(TLS_NAME) $(DEST)
+	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)
 	sudo systemctl start $(TLS_NAME)
 
 # Install Admin server and restart service
 # optional DEST=destination_path
 install_admin:
 	sudo systemctl stop $(ADMIN_NAME)
-	sudo cp $(ADMIN_NAME) $(DEST)
+	sudo cp $(OUTPUT)/$(ADMIN_NAME) $(DEST)
 	sudo systemctl start $(ADMIN_NAME)	
 
 # Install CLI
 # optional DEST=destination_path
 install_cli:
-	sudo cp $(CLI_NAME) $(DEST)
+	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s

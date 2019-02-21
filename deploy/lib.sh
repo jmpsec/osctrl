@@ -187,7 +187,7 @@ function _systemd() {
   sudo chmod 755 "/lib/systemd/system/$__server.service"
 
   # Copying binaries
-  sudo cp "$__path/$__server" "$__dest"
+  sudo cp "$__path/build/$__server" "$__dest"
 
   # Enable and start service
   sudo systemctl enable "$__server.service"
@@ -315,4 +315,23 @@ function set_motd_ubuntu() {
     sudo chmod -x /etc/update-motd.d/51-cloudguest
   fi
   sudo cp "$__motd" /etc/update-motd.d/10-help-text
+}
+
+# Install go 1.11 from tgz
+function install_go_11() {
+  local __version="1.11.5"
+  local __file="go$__version.linux-amd64.tar.gz"
+  local __url="https://dl.google.com/go/$__file"
+  if ! [[ -d "/usr/local/go" ]]; then
+    log  "Installing Golang $__version"
+    sudo curl -sO "$__url"
+    sudo tar -xf "$__file"
+    sudo mv go /usr/local
+    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
+    source ~/.profile
+    go version
+  else
+    source ~/.profile
+    go version
+  fi
 }
