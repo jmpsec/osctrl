@@ -18,10 +18,9 @@
 vendor
 glide.lock
 
-# Binaries
-osctrl-tls
-osctrl-admin
-osctrl-cli
+# Directories to ignore
+build
+vendor
 
 # TLS Configuration
 tls.json

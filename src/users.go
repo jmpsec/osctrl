@@ -1,4 +1,4 @@
-package main
+package users
 
 import (
 	"fmt"
@@ -20,6 +20,12 @@ type AdminUser struct {
 	UserAgent string
 }
 
+// UserManager have all users of the system
+type UserManager struct {
+	db    *gorm.DB
+	Users []AdminUser
+}
+
 // Helper to hash a password before store it
 func hashMyPasswordWithSalt(password string) (string, error) {
 	saltedBytes := []byte(password)
@@ -32,9 +38,9 @@ func hashMyPasswordWithSalt(password string) (string, error) {
 }
 
 // Helper to check provided login credentials by matching hashes
-func checkLoginCredentials(username, password string) (bool, AdminUser) {
+func (m *UserManager) checkLoginCredentials(username, password string) (bool, AdminUser) {
 	// Retrieve user
-	user, err := getUser(username)
+	user, err := m.Get(username)
 	if err != nil {
 		return false, AdminUser{}
 	}
@@ -49,18 +55,18 @@ func checkLoginCredentials(username, password string) (bool, AdminUser) {
 }
 
 // Get user by username
-func getUser(username string) (AdminUser, error) {
+func (m *UserManager) Get(username string) (AdminUser, error) {
 	var user AdminUser
-	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
+	if err := m.db.Where("username = ?", username).First(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
 }
 
 // Create new user
-func createUser(user AdminUser) error {
-	if db.NewRecord(user) {
-		if err := db.Create(&user).Error; err != nil {
+func (m *UserManager) Create(user AdminUser) error {
+	if m.db.NewRecord(user) {
+		if err := m.db.Create(&user).Error; err != nil {
 			return fmt.Errorf("Create AdminUser %v", err)
 		}
 	} else {
@@ -70,8 +76,8 @@ func createUser(user AdminUser) error {
 }
 
 // New empty user
-func newUser(username, password, fullname string, admin bool) (AdminUser, error) {
-	if !userExists(username) {
+func (m *UserManager) New(username, password, fullname string, admin bool) (AdminUser, error) {
+	if !m.Exists(username) {
 		passhash, err := hashMyPasswordWithSalt(password)
 		if err != nil {
 			return AdminUser{}, err
@@ -86,29 +92,29 @@ func newUser(username, password, fullname string, admin bool) (AdminUser, error)
 	return AdminUser{}, fmt.Errorf("%s already exists", username)
 }
 
-// Check if user exists
-func userExists(username string) bool {
+// Exists checks if user exists
+func (m *UserManager) Exists(username string) bool {
 	var results int
-	db.Model(&AdminUser{}).Where("username = ?", username).Count(&results)
+	m.db.Model(&AdminUser{}).Where("username = ?", username).Count(&results)
 	return (results > 0)
 }
 
-// Get all users
-func getAllUsers() ([]AdminUser, error) {
+// All get all users
+func (m *UserManager) All() ([]AdminUser, error) {
 	var users []AdminUser
-	if err := db.Find(&users).Error; err != nil {
+	if err := m.db.Find(&users).Error; err != nil {
 		return users, err
 	}
 	return users, nil
 }
 
 // Delete user by username
-func deleteUser(username string) error {
-	user, err := getUser(username)
+func (m *UserManager) Delete(username string) error {
+	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("getUser %v", err)
+		return fmt.Errorf("error getting user %v", err)
 	}
-	if err := db.Delete(&user).Error; err != nil {
+	if err := m.db.Delete(&user).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil

@@ -1,4 +1,4 @@
-package main
+package context
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ const (
 	errorRandomString      = "SomethingRandomWentWrong"
 )
 
-// TLSContext to hold all the TLS contexts
+// TLSContext to hold each of the TLS context
 type TLSContext struct {
 	gorm.Model
 	Name          string `gorm:"index"`
@@ -49,6 +49,12 @@ type TLSPath struct {
 	QueryWritePath  string
 	CarverInitPath  string
 	CarverBlockPath string
+}
+
+// Context keeps all TLS Contexts
+type Context struct {
+	db       *gorm.DB
+	Contexts []TLSContext
 }
 
 // Helper generic to generate quick one-liners
@@ -129,7 +135,7 @@ func readExternalFile(path string) string {
 }
 
 // Helper to get a quick add script for a context
-func quickAddScript(script string, context TLSContext, paths TLSPath) (string, error) {
+func quickAddScript(project, script string, context TLSContext, paths TLSPath) (string, error) {
 	var templateName, templatePath string
 	// What script is it?
 	if script == "enroll.sh" {
@@ -156,7 +162,7 @@ func quickAddScript(script string, context TLSContext, paths TLSPath) (string, e
 		Context TLSContext
 		Path    TLSPath
 	}{
-		Project: appName,
+		Project: project,
 		Context: context,
 		Path:    paths,
 	}
@@ -168,17 +174,17 @@ func quickAddScript(script string, context TLSContext, paths TLSPath) (string, e
 	return tpl.String(), nil
 }
 
-// Get context by name
-func getContext(name string) (TLSContext, error) {
+// Get TLSContext by name
+func (context *Context) Get(name string) (TLSContext, error) {
 	var ctx TLSContext
-	if err := db.Where("name = ?", name).First(&ctx).Error; err != nil {
+	if err := context.db.Where("name = ?", name).First(&ctx).Error; err != nil {
 		return ctx, err
 	}
 	return ctx, nil
 }
 
-// Generate empty context with default values
-func emptyContext(name, hostname string) TLSContext {
+// Empty generates an empty TLSContext with default values
+func Empty(name, hostname string) TLSContext {
 	return TLSContext{
 		Name:          name,
 		Hostname:      hostname,
@@ -192,10 +198,10 @@ func emptyContext(name, hostname string) TLSContext {
 	}
 }
 
-// Create new context
-func createContext(ctx TLSContext) error {
-	if db.NewRecord(ctx) {
-		if err := db.Create(&ctx).Error; err != nil {
+// Create new TLSContext
+func (context *Context) Create(ctx TLSContext) error {
+	if context.db.NewRecord(ctx) {
+		if err := context.db.Create(&ctx).Error; err != nil {
 			return fmt.Errorf("Create TLSContext %v", err)
 		}
 	} else {
@@ -204,41 +210,41 @@ func createContext(ctx TLSContext) error {
 	return nil
 }
 
-// Check if context exists
-func contextExists(name string) bool {
+// Exists checks if TLSContext exists already
+func (context *Context) Exists(name string) bool {
 	var results int
-	db.Model(&TLSContext{}).Where("name = ?", name).Count(&results)
+	context.db.Model(&TLSContext{}).Where("name = ?", name).Count(&results)
 	return (results > 0)
 }
 
-// Get all contexts
-func getAllContexts() ([]TLSContext, error) {
+// All gets all TLSContext
+func (context *Context) All() ([]TLSContext, error) {
 	var ctxs []TLSContext
-	if err := db.Find(&ctxs).Error; err != nil {
+	if err := context.db.Find(&ctxs).Error; err != nil {
 		return ctxs, err
 	}
 	return ctxs, nil
 }
 
-// Delete context by name
-func deleteContext(name string) error {
-	ctx, err := getContext(name)
+// Delete TLSContext by name
+func (context *Context) Delete(name string) error {
+	ctx, err := context.Get(name)
 	if err != nil {
-		return fmt.Errorf("getContext %v", err)
+		return fmt.Errorf("error getting context %v", err)
 	}
-	if err := db.Delete(&ctx).Error; err != nil {
+	if err := context.db.Delete(&ctx).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
 }
 
-// Update configuration for a context
-func updateConfiguration(name, configuration string) error {
-	ctx, err := getContext(name)
+// UpdateConfiguration configuration for a context
+func (context *Context) UpdateConfiguration(name, configuration string) error {
+	ctx, err := context.Get(name)
 	if err != nil {
-		return fmt.Errorf("getContext %v", err)
+		return fmt.Errorf("error getting context %v", err)
 	}
-	if err := db.Model(&ctx).Update("configuration", configuration).Error; err != nil {
+	if err := context.db.Model(&ctx).Update("configuration", configuration).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil

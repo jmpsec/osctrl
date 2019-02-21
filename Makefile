@@ -1,3 +1,5 @@
+export GO111MODULE=on
+
 SHELL := /bin/bash
 
 TLS_DIR = src/tls
@@ -13,6 +15,8 @@ CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
 DEST ?= /opt/osctrl
+
+OUTPUT = build
  
 # Build code according to caller OS and architecture
 build:
@@ -22,15 +26,15 @@ build:
 
 # Build TLS endpoint
 tls:
-	GOPATH=${CURDIR} go build -o $(TLS_NAME) $(TLS_CODE)
+	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
 
 # Build Admin UI
 admin:
-	GOPATH=${CURDIR} go build -o $(ADMIN_NAME) $(ADMIN_CODE)
+	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
 
 # Build the CLI
 cli:
-	GOPATH=${CURDIR} go build -o $(CLI_NAME) $(CLI_CODE)
+	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
 
 # Install the dependencies for TLS and CLI
 deps:
@@ -47,9 +51,9 @@ update-deps:
  
 # Delete all compiled binaries
 clean:
-	rm -rf $(TLS_NAME)
-	rm -rf $(ADMIN_NAME)
-	rm -rf $(CLI_NAME)
+	rm -rf $(OUTPUT)/$(TLS_NAME)
+	rm -rf $(OUTPUT)/$(ADMIN_NAME)
+	rm -rf $(OUTPUT)/$(CLI_NAME)
 
 # Delete dependencies, run "make install" to bring them back
 clean-deps:
