@@ -53,8 +53,7 @@ type TLSPath struct {
 
 // Context keeps all TLS Contexts
 type Context struct {
-	db       *gorm.DB
-	Contexts []TLSContext
+	DB *gorm.DB
 }
 
 // Helper generic to generate quick one-liners
@@ -126,7 +125,7 @@ func generateKSUID() string {
 }
 
 // Helper to read an external file and return contents
-func readExternalFile(path string) string {
+func (context *Context) readExternalFile(path string) string {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return ""
@@ -177,14 +176,14 @@ func quickAddScript(project, script string, context TLSContext, paths TLSPath) (
 // Get TLSContext by name
 func (context *Context) Get(name string) (TLSContext, error) {
 	var ctx TLSContext
-	if err := context.db.Where("name = ?", name).First(&ctx).Error; err != nil {
+	if err := context.DB.Where("name = ?", name).First(&ctx).Error; err != nil {
 		return ctx, err
 	}
 	return ctx, nil
 }
 
 // Empty generates an empty TLSContext with default values
-func Empty(name, hostname string) TLSContext {
+func (context *Context) Empty(name, hostname string) TLSContext {
 	return TLSContext{
 		Name:          name,
 		Hostname:      hostname,
@@ -200,8 +199,8 @@ func Empty(name, hostname string) TLSContext {
 
 // Create new TLSContext
 func (context *Context) Create(ctx TLSContext) error {
-	if context.db.NewRecord(ctx) {
-		if err := context.db.Create(&ctx).Error; err != nil {
+	if context.DB.NewRecord(ctx) {
+		if err := context.DB.Create(&ctx).Error; err != nil {
 			return fmt.Errorf("Create TLSContext %v", err)
 		}
 	} else {
@@ -213,14 +212,14 @@ func (context *Context) Create(ctx TLSContext) error {
 // Exists checks if TLSContext exists already
 func (context *Context) Exists(name string) bool {
 	var results int
-	context.db.Model(&TLSContext{}).Where("name = ?", name).Count(&results)
+	context.DB.Model(&TLSContext{}).Where("name = ?", name).Count(&results)
 	return (results > 0)
 }
 
 // All gets all TLSContext
 func (context *Context) All() ([]TLSContext, error) {
 	var ctxs []TLSContext
-	if err := context.db.Find(&ctxs).Error; err != nil {
+	if err := context.DB.Find(&ctxs).Error; err != nil {
 		return ctxs, err
 	}
 	return ctxs, nil
@@ -232,7 +231,7 @@ func (context *Context) Delete(name string) error {
 	if err != nil {
 		return fmt.Errorf("error getting context %v", err)
 	}
-	if err := context.db.Delete(&ctx).Error; err != nil {
+	if err := context.DB.Delete(&ctx).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
@@ -244,7 +243,7 @@ func (context *Context) UpdateConfiguration(name, configuration string) error {
 	if err != nil {
 		return fmt.Errorf("error getting context %v", err)
 	}
-	if err := context.db.Model(&ctx).Update("configuration", configuration).Error; err != nil {
+	if err := context.DB.Model(&ctx).Update("configuration", configuration).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil

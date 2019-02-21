@@ -33,7 +33,7 @@ var (
 	app        *cli.App
 	configFile string
 	config     *ServiceConfiguration
-	users      *UserManager
+	users      *users.UserManager
 )
 
 // Function to load the configuration file and assign to variables
@@ -63,7 +63,7 @@ func init() {
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
 	// Initialize users
-	users := CreateUserManager(db)
+	users := users.CreateUserManager(db)
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
@@ -119,11 +119,11 @@ func init() {
 						password := c.String("password")
 						fullname := c.String("fullname")
 						admin := c.Bool("admin")
-						user, err := newUser(username, password, fullname, admin)
+						user, err := users.New(username, password, fullname, admin)
 						if err != nil {
 							return err
 						}
-						if err := createUser(user); err != nil {
+						if err := users.Create(user); err != nil {
 							return err
 						}
 						return nil
@@ -146,7 +146,7 @@ func init() {
 							fmt.Println("username is required")
 							os.Exit(1)
 						}
-						return deleteUser(username)
+						return users.Delete(username)
 					},
 				},
 				{
@@ -154,7 +154,7 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List all existing users",
 					Action: func(c *cli.Context) error {
-						users, err := getAllUsers()
+						users, err := users.All()
 						if err != nil {
 							return err
 						}
