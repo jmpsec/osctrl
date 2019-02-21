@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/context"
 )
 
 // JSONApplication for Content-Type headers
@@ -60,7 +61,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -131,12 +132,12 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
 	// Get context
-	ctx, err := getContext(context)
+	ctx, err := ctxs.Get(context)
 	if err != nil {
 		log.Printf("error getting context %v", err)
 		return
@@ -188,7 +189,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -342,7 +343,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -404,7 +405,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -485,17 +486,17 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	_context, ok := vars["context"]
 	if !ok {
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
-		log.Printf("error unknown context (%s)", context)
+	if !ctxs.Exists(_context) {
+		log.Printf("error unknown context (%s)", _context)
 		return
 	}
-	ctx, err := getContext(context)
+	ctx, err := ctxs.Get(_context)
 	if err != nil {
 		log.Printf("error getting context %v", err)
 		return
@@ -507,7 +508,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if provided SecretPath is valid and if so, prepare script
-	if !checkValidSecretPath(context, secretPath) {
+	if !checkValidSecretPath(_context, secretPath) {
 		log.Println("Invalid Path")
 		return
 	}
@@ -518,7 +519,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare response with the script
-	quickScript, err := quickAddScript(addScript, ctx, tlsPath)
+	quickScript, err := context.QuickAddScript(projectName, addScript, ctx, tlsPath)
 	if err != nil {
 		log.Printf("error getting script %v", err)
 		return

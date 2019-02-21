@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/javuto/osctrl/context"
 )
 
 // Constants for seconds
@@ -83,7 +85,7 @@ func generateQueryName() string {
 
 // Helper to check if the provided secret is valid for this context
 func checkValidSecret(enrollSecret string, context string) bool {
-	ctx, err := getContext(context)
+	ctx, err := ctxs.Get(context)
 	if err != nil {
 		return false
 	}
@@ -106,7 +108,7 @@ func checkValidPlatform(platform string) bool {
 
 // Helper to check if the provided SecretPath is valid for a context
 func checkValidSecretPath(context, secretpath string) bool {
-	ctx, err := getContext(context)
+	ctx, err := ctxs.Get(context)
 	if err != nil {
 		return false
 	}
@@ -377,7 +379,7 @@ func sendRequest(secure bool, reqType, url string, params io.Reader, headers map
 }
 
 // Helper to generate stats for all contexts
-func getContextStats(contexts []TLSContext) (StatsData, error) {
+func getContextStats(contexts []context.TLSContext) (StatsData, error) {
 	contextStats := make(StatsData)
 	for _, c := range contexts {
 		stats, err := getNodeStatsByContext(c.Name)

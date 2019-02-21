@@ -7,17 +7,26 @@ import (
 )
 
 const (
-	defaultEnrollPath      = "enroll"
-	defaultLogPath         = "log"
-	defaultConfigPath      = "config"
-	defaultQueryReadPath   = "read"
-	defaultQueryWritePath  = "write"
-	defaultCarverInitPath  = "init"
-	defaultCarverBlockPath = "block"
-	defaultContextIcon     = "fas fa-wrench"
-	defaultContextType     = "osquery"
-	defaultSecretLength    = 64
-	errorRandomString      = "SomethingRandomWentWrong"
+	// DefaultEnrollPath as default value for enrolling nodes
+	DefaultEnrollPath = "enroll"
+	// DefaultLogPath as default value for logging data from nodes
+	DefaultLogPath = "log"
+	// DefaultConfigPath as default value for configuring nodes
+	DefaultConfigPath = "config"
+	// DefaultQueryReadPath as default value for distributing on-demand queries to nodes
+	DefaultQueryReadPath = "read"
+	// DefaultQueryWritePath as default value for collecting results from on-demand queries
+	DefaultQueryWritePath = "write"
+	// DefaultCarverInitPath as default init endpoint for the carver
+	DefaultCarverInitPath = "init"
+	// DefaultCarverBlockPath as default block endpoint for the carver
+	DefaultCarverBlockPath = "block"
+	// DefaultContextIcon as default icon to use for contexts
+	DefaultContextIcon = "fas fa-wrench"
+	// DefaultContextType as default type of context
+	DefaultContextType = "osquery"
+	// DefaultSecretLength as default length for secrets
+	DefaultSecretLength = 64
 )
 
 // TLSContext to hold each of the TLS context
@@ -71,11 +80,11 @@ func (context *Context) Empty(name, hostname string) TLSContext {
 	return TLSContext{
 		Name:          name,
 		Hostname:      hostname,
-		Secret:        generateRandomString(defaultSecretLength),
+		Secret:        generateRandomString(DefaultSecretLength),
 		SecretPath:    generateKSUID(),
-		Type:          defaultContextType,
+		Type:          DefaultContextType,
 		DebugHTTP:     false,
-		Icon:          defaultContextIcon,
+		Icon:          DefaultContextIcon,
 		Configuration: "",
 		Certificate:   "",
 	}

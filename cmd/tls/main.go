@@ -4,6 +4,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/context"
+
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -36,9 +39,10 @@ const (
 // Global variables
 var (
 	tlsConfig    JSONConfigurationTLS
-	tlsPath      TLSPath
+	tlsPath      context.TLSPath
 	db           *gorm.DB
-	config       *ServiceConfiguration
+	config       *configuration.Configuration
+	ctxs         *context.Context
 	dbConfig     JSONConfigurationDB
 	logConfig    JSONConfigurationLogging
 	geolocConfig JSONConfigurationGeoLocation
@@ -62,14 +66,14 @@ func loadConfiguration() error {
 		return err
 	}
 	// TLS paths
-	tlsPath = TLSPath{
-		EnrollPath:      defaultEnrollPath,
-		LogPath:         defaultLogPath,
-		ConfigPath:      defaultConfigPath,
-		QueryReadPath:   defaultQueryReadPath,
-		QueryWritePath:  defaultQueryWritePath,
-		CarverInitPath:  defaultCarverInitPath,
-		CarverBlockPath: defaultCarverBlockPath,
+	tlsPath = context.TLSPath{
+		EnrollPath:      context.DefaultEnrollPath,
+		LogPath:         context.DefaultLogPath,
+		ConfigPath:      context.DefaultConfigPath,
+		QueryReadPath:   context.DefaultQueryReadPath,
+		QueryWritePath:  context.DefaultQueryWritePath,
+		CarverInitPath:  context.DefaultCarverInitPath,
+		CarverBlockPath: context.DefaultCarverBlockPath,
 	}
 	// Backend values
 	dbRaw := viper.Sub("db")
@@ -114,15 +118,13 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
-	// Service configuration
-	var err error
-	config, err = NewServiceConfiguration(db)
-	if err != nil {
-		log.Fatalf("Failed to initialize configuration: %v", err)
-	}
-	if !config.IsValue(serviceName, DebugHTTP) {
-		if err := config.NewBooleanValue(serviceName, DebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", DebugHTTP, err)
+	// Initialize context
+	ctxs = context.CreateContexts(db)
+	// Initialize configuration
+	config = configuration.NewConfiguration(db)
+	if !config.IsValue(serviceName, configuration.FieldDebugHTTP) {
+		if err := config.NewBooleanValue(serviceName, configuration.FieldDebugHTTP, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
 		}
 	}
 	// multiple listeners channel

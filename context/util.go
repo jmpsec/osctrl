@@ -8,6 +8,10 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
+const (
+	errorRandomString = "SomethingRandomWentWrong"
+)
+
 // Helper to generate a random string of n characters
 func generateRandomString(n int) string {
 	b := make([]byte, n)

@@ -16,7 +16,7 @@ const (
 
 // Names for configuration values
 const (
-	DebugHTTP = "debug_http"
+	FieldDebugHTTP = "debug_http"
 )
 
 // ConfigValue to hold each value for configuration
@@ -252,7 +252,7 @@ func (conf *Configuration) IsValue(service, name string) bool {
 
 // DebugHTTP checks if debugging is enabled by service
 func (conf *Configuration) DebugHTTP(service string) bool {
-	value, err := conf.RetrieveValue(service, DebugHTTP)
+	value, err := conf.RetrieveValue(service, FieldDebugHTTP)
 	if err != nil {
 		return false
 	}

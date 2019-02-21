@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/configuration"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -94,7 +96,7 @@ func automigrateDB() error {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
 	// table configuration_values
-	err = db.AutoMigrate(ConfigurationValue{}).Error
+	err = db.AutoMigrate(configuration.ConfigValue{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
 	}
