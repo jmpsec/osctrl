@@ -21,7 +21,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -274,7 +274,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var stats StatsData
 	if target == "context" {
-		contexts, err := getAllContexts()
+		contexts, err := ctxs.All()
 		if err != nil {
 			log.Printf("error getting contexts: %v", err)
 			return

@@ -5,6 +5,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/users"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -95,19 +98,19 @@ func automigrateDB() error {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
 	// table tls_contexts
-	err = db.AutoMigrate(TLSContext{}).Error
+	err = db.AutoMigrate(context.TLSContext{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
 	}
 	// table admin_users
-	err = db.AutoMigrate(AdminUser{}).Error
+	err = db.AutoMigrate(users.AdminUser{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
-	// table configuration_values
-	err = db.AutoMigrate(ConfigurationValue{}).Error
+	// table config_values
+	err = db.AutoMigrate(configuration.ConfigValue{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (config_values): %v", err)
 	}
 	return nil
 }

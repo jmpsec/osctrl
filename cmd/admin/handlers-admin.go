@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/context"
+
 	"github.com/gorilla/mux"
 )
 
@@ -100,7 +103,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s %v", responseMessage, err)
 	}
 	// Check credentials
-	if access, user := checkLoginCredentials(l.Username, l.Password); access {
+	if access, user := adminUsers.CheckLoginCredentials(l.Username, l.Password); access {
 		session, err := store.Get(r, projectName)
 		if err != nil {
 			log.Printf("New session - %v", err)
@@ -176,7 +179,8 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Redirect to table for all nodes
-	if contextExists("corp") {
+	// FIXME there should not be static context
+	if ctxs.Exists("corp") {
 		http.Redirect(w, r, "/context/corp/all", http.StatusFound)
 	} else {
 		http.Redirect(w, r, "/context/dev/all", http.StatusFound)
@@ -194,7 +198,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
+	if !ctxs.Exists(context) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -217,7 +221,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -287,7 +291,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -342,7 +346,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -435,7 +439,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			goto response
 		}
 		// Create context target
-		if (q.Context != "") && contextExists(q.Context) {
+		if (q.Context != "") && ctxs.Exists(q.Context) {
 			if err := createQueryTarget(queryName, queryTargetContext, q.Context); err != nil {
 				responseMessage = "error creating query context target"
 				responseCode = http.StatusInternalServerError
@@ -510,7 +514,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -566,7 +570,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -697,7 +701,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
@@ -750,14 +754,14 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Extract context
 	// FIXME verify context
-	context, ok := vars["context"]
+	contextVar, ok := vars["context"]
 	if !ok {
 		log.Println("error getting context")
 		return
 	}
 	// Check if context is valid
-	if !contextExists(context) {
-		log.Printf("error unknown context (%s)", context)
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
 		return
 	}
 	// Prepare template
@@ -772,7 +776,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts%v", err)
 		return
@@ -794,21 +798,21 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get configuration JSON
-	ctx, err := getContext(context)
+	ctx, err := ctxs.Get(contextVar)
 	if err != nil {
 		log.Printf("error getting context %v", err)
 		return
 	}
 	// Prepare template data
-	shellQuickAdd, _ := quickAddOneLinerShell(ctx)
-	powershellQuickAdd, _ := quickAddOneLinerPowershell(ctx)
-	shellQuickRemove, _ := quickRemoveOneLinerShell(ctx)
-	powershellQuickRemove, _ := quickRemoveOneLinerPowershell(ctx)
+	shellQuickAdd, _ := context.QuickAddOneLinerShell(ctx)
+	powershellQuickAdd, _ := context.QuickAddOneLinerPowershell(ctx)
+	shellQuickRemove, _ := context.QuickRemoveOneLinerShell(ctx)
+	powershellQuickRemove, _ := context.QuickRemoveOneLinerPowershell(ctx)
 	templateData := ConfTemplateData{
-		Title:                 context + " Configuration",
+		Title:                 contextVar + " Configuration",
 		ConfigurationBlob:     ctx.Configuration,
 		ConfigurationHash:     generateOsqueryConfigHash(ctx.Configuration),
-		Context:               context,
+		Context:               contextVar,
 		QuickAddShell:         shellQuickAdd,
 		QuickRemoveShell:      shellQuickRemove,
 		QuickAddPowershell:    powershellQuickAdd,
@@ -830,7 +834,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Extract context
 	// FIXME verify context
-	context, ok := vars["context"]
+	contextVar, ok := vars["context"]
 	if !ok {
 		log.Println("error getting context")
 		return
@@ -851,7 +855,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
 			}
-			err = updateConfiguration(context, string(configuration))
+			err = ctxs.UpdateConfiguration(contextVar, string(configuration))
 			if err != nil {
 				responseMessage = "error saving configuration"
 				responseCode = http.StatusInternalServerError
@@ -905,7 +909,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all contexts
-	contexts, err := getAllContexts()
+	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts%v", err)
 		return
@@ -1096,7 +1100,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			case serviceAdmin:
 				serviceToChange = serviceNameAdmin
 			}
-			err := config.SetBoolean(s.DebugHTTP, serviceToChange, DebugHTTP)
+			err := config.SetBoolean(s.DebugHTTP, serviceToChange, configuration.FieldDebugHTTP)
 			if err != nil {
 				responseMessage = "error changing settings"
 				responseCode = http.StatusInternalServerError

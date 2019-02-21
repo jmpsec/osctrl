@@ -38,7 +38,7 @@ var (
 	configFile string
 	config     *configuration.Configuration
 	adminUsers *users.UserManager
-	contexts   *context.Context
+	ctxs       *context.Context
 )
 
 // Function to load the configuration file and assign to variables
@@ -70,7 +70,7 @@ func init() {
 	// Initialize users
 	adminUsers = users.CreateUserManager(db)
 	// Initialize context
-	contexts = context.CreateContexts(db)
+	ctxs = context.CreateContexts(db)
 	// Initialize configuration
 	config = configuration.NewConfiguration(db)
 	// Initialize CLI details
@@ -245,12 +245,12 @@ func init() {
 							certificate = context.ReadExternalFile(certFile)
 						}
 						// Create context if it does not exist
-						if !contexts.Exists(ctxName) {
-							newContext := contexts.Empty(ctxName, ctxHost)
+						if !ctxs.Exists(ctxName) {
+							newContext := ctxs.Empty(ctxName, ctxHost)
 							newContext.DebugHTTP = c.Bool("debug")
 							newContext.Configuration = configuration
 							newContext.Certificate = certificate
-							if err := contexts.Create(newContext); err != nil {
+							if err := ctxs.Create(newContext); err != nil {
 								return err
 							}
 						} else {
@@ -277,7 +277,7 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						return contexts.Delete(ctxName)
+						return ctxs.Delete(ctxName)
 					},
 				},
 				{
@@ -297,7 +297,7 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						ctx, err := contexts.Get(ctxName)
+						ctx, err := ctxs.Get(ctxName)
 						if err != nil {
 							return err
 						}
@@ -322,7 +322,7 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS contexts",
 					Action: func(c *cli.Context) error {
-						contexts, err := contexts.All()
+						contexts, err := ctxs.All()
 						if err != nil {
 							return err
 						}
@@ -359,7 +359,7 @@ func init() {
 							fmt.Println("Context name is required")
 							os.Exit(1)
 						}
-						ctx, err := contexts.Get(ctxName)
+						ctx, err := ctxs.Get(ctxName)
 						if err != nil {
 							return err
 						}

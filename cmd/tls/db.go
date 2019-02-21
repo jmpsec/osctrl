@@ -95,10 +95,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
-	// table configuration_values
+	// table config_values
 	err = db.AutoMigrate(configuration.ConfigValue{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (config_values): %v", err)
 	}
 	return nil
 }

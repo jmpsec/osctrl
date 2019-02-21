@@ -2,22 +2,26 @@ export GO111MODULE=on
 
 SHELL := /bin/bash
 
-TLS_DIR = src/tls
+TLS_DIR = cmd/tls
 TLS_NAME = osctrl-tls
 TLS_CODE = ${TLS_DIR:=/*.go}
 
-ADMIN_DIR = src/admin
+ADMIN_DIR = cmd/admin
 ADMIN_NAME = osctrl-admin
 ADMIN_CODE = ${ADMIN_DIR:=/*.go}
 
-CLI_DIR = src/cli
+CLI_DIR = cmd/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
 DEST ?= /opt/osctrl
 
 OUTPUT = build
- 
+
+.PHONY: all build clean
+
+all: build
+
 # Build code according to caller OS and architecture
 build:
 	make tls
@@ -26,40 +30,21 @@ build:
 
 # Build TLS endpoint
 tls:
-	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
+	go build -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
 
 # Build Admin UI
 admin:
-	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
+	go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
 
 # Build the CLI
 cli:
-	GOPATH=${CURDIR} go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
+	go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
 
-# Install the dependencies for TLS and CLI
-deps:
-	cd $(TLS_DIR) && GOPATH=${CURDIR} glide install
-	cd $(ADMIN_DIR) && GOPATH=${CURDIR} glide install
-	cd $(CLI_DIR) && GOPATH=${CURDIR} glide install
-
-# Update glide.lock file to include latest versions of all dependences
-# Must be run whenever glide.yaml changes
-update-deps:
-	cd $(TLS_DIR) && GOPATH=${CURDIR} glide update
-	cd $(ADMIN_DIR) && GOPATH=${CURDIR} glide update
-	cd $(CLI_DIR) && GOPATH=${CURDIR} glide update
- 
 # Delete all compiled binaries
 clean:
 	rm -rf $(OUTPUT)/$(TLS_NAME)
 	rm -rf $(OUTPUT)/$(ADMIN_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
-
-# Delete dependencies, run "make install" to bring them back
-clean-deps:
-	rm -Rf $(TLS_DIR)/vendor
-	rm -Rf $(ADMIN_DIR)/vendor
-	rm -Rf $(CLI_DIR)/vendor
 
 # Install everything
 # optional DEST=destination_path
@@ -92,18 +77,18 @@ install_cli:
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
 gofmt-tls:
-	GOPATH=${CURDIR} gofmt $(GOFMT_ARGS) ./$(TLS_CODE)
+	gofmt $(GOFMT_ARGS) ./$(TLS_CODE)
 
 gofmt-cli:
-	GOPATH=${CURDIR} gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
+	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
 
 # Run all tests
 test:
 	# Install dependencies for TLS
-	cd $(TLS_DIR) && GOPATH=${CURDIR} go test -i . -v
+	cd $(TLS_DIR) && go test -i . -v
 	# Run TLS tests
-	cd $(TLS_DIR) && GOPATH=${CURDIR} go test . -v
+	cd $(TLS_DIR) && go test . -v
 	# Install dependencies for CLI
-	cd $(CLI_DIR) && GOPATH=${CURDIR} go test -i . -v
+	cd $(CLI_DIR) && go test -i . -v
 	# Run CLI tests
-	cd $(CLI_DIR) && GOPATH=${CURDIR} go test . -v
+	cd $(CLI_DIR) && go test . -v

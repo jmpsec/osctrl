@@ -11,6 +11,10 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/users"
+
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
@@ -61,16 +65,18 @@ const (
 
 // Global variables
 var (
-	tlsPath        TLSPath
+	tlsPath        context.TLSPath
 	adminConfig    JSONConfigurationAdmin
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
-	config         *ServiceConfiguration
+	config         *configuration.Configuration
+	ctxs           *context.Context
 	dbConfig       JSONConfigurationDB
 	logConfig      JSONConfigurationLogging
 	geolocConfig   JSONConfigurationGeoLocation
 	store          *sessions.CookieStore
+	adminUsers     *users.UserManager
 	storeKey       []byte
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
@@ -86,14 +92,14 @@ func loadConfiguration() error {
 		return err
 	}
 	// TLS paths
-	tlsPath = TLSPath{
-		EnrollPath:      defaultEnrollPath,
-		LogPath:         defaultLogPath,
-		ConfigPath:      defaultConfigPath,
-		QueryReadPath:   defaultQueryReadPath,
-		QueryWritePath:  defaultQueryWritePath,
-		CarverInitPath:  defaultCarverInitPath,
-		CarverBlockPath: defaultCarverBlockPath,
+	tlsPath = context.TLSPath{
+		EnrollPath:      context.DefaultEnrollPath,
+		LogPath:         context.DefaultLogPath,
+		ConfigPath:      context.DefaultConfigPath,
+		QueryReadPath:   context.DefaultQueryReadPath,
+		QueryWritePath:  context.DefaultQueryWritePath,
+		CarverInitPath:  context.DefaultCarverInitPath,
+		CarverBlockPath: context.DefaultCarverBlockPath,
 	}
 	// TLS Admin values
 	adminRaw := viper.Sub("admin")
@@ -172,6 +178,12 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading osquery tables %s", err)
 	}
+	// Initialize users
+	adminUsers = users.CreateUserManager(db)
+	// Initialize context
+	ctxs = context.CreateContexts(db)
+	// Initialize configuration
+	config = configuration.NewConfiguration(db)
 }
 
 // Go go!
@@ -184,15 +196,10 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
-	// Service configuration
-	var err error
-	config, err = NewServiceConfiguration(db)
-	if err != nil {
-		log.Fatalf("Failed to initialize configuration: %v", err)
-	}
-	if !config.IsValue(serviceNameAdmin, DebugHTTP) {
-		if err := config.NewBooleanValue(serviceNameAdmin, DebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", DebugHTTP, err)
+	// Check if service configuration is ready
+	if !config.IsValue(serviceNameAdmin, configuration.FieldDebugHTTP) {
+		if err := config.NewBooleanValue(serviceNameAdmin, configuration.FieldDebugHTTP, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
 		}
 	}
 	// multiple listeners channel
