@@ -33,6 +33,7 @@ var (
 	app        *cli.App
 	configFile string
 	config     *ServiceConfiguration
+	users      *UserManager
 )
 
 // Function to load the configuration file and assign to variables
@@ -61,6 +62,8 @@ func init() {
 		panic(err)
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
+	// Initialize users
+	users := CreateUserManager(db)
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
