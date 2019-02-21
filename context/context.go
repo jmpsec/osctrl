@@ -71,8 +71,8 @@ func (context *Context) Empty(name, hostname string) TLSContext {
 	return TLSContext{
 		Name:          name,
 		Hostname:      hostname,
-		Secret:        GenerateRandomString(defaultSecretLength),
-		SecretPath:    GenerateKSUID(),
+		Secret:        generateRandomString(defaultSecretLength),
+		SecretPath:    generateKSUID(),
 		Type:          defaultContextType,
 		DebugHTTP:     false,
 		Icon:          defaultContextIcon,

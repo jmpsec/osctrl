@@ -8,8 +8,8 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
-// GenerateRandomString to generate a random string of n characters
-func GenerateRandomString(n int) string {
+// Helper to generate a random string of n characters
+func generateRandomString(n int) string {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
@@ -19,9 +19,9 @@ func GenerateRandomString(n int) string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-// GenerateKSUID to generate a KSUID
+// Helper to generate a KSUID
 // See https://github.com/segmentio/ksuid for more info about KSUIDs
-func GenerateKSUID() string {
+func generateKSUID() string {
 	id := ksuid.New()
 	return id.String()
 }

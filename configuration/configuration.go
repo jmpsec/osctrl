@@ -9,9 +9,9 @@ import (
 
 // Types of configuration values
 const (
-	typeString  = "string"
-	typeBoolean = "boolean"
-	typeInteger = "integer"
+	TypeString  = "string"
+	TypeBoolean = "boolean"
+	TypeInteger = "integer"
 )
 
 // Names for configuration values
@@ -66,9 +66,9 @@ func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigVal
 func (conf *Configuration) NewValue(service, name, typeValue string, values TypedValues) error {
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue)
-	entry.Integer = values[typeInteger].(int64)
-	entry.Boolean = values[typeBoolean].(bool)
-	entry.String = values[typeString].(string)
+	entry.Integer = values[TypeInteger].(int64)
+	entry.Boolean = values[TypeBoolean].(bool)
+	entry.String = values[TypeString].(string)
 	// Create record in database
 	if conf.DB.NewRecord(entry) {
 		if err := conf.DB.Create(&entry).Error; err != nil {
@@ -84,28 +84,28 @@ func (conf *Configuration) NewValue(service, name, typeValue string, values Type
 // NewStringValue creates a new configuration value
 func (conf *Configuration) NewStringValue(service, name, value string) error {
 	entry := make(TypedValues)
-	entry[typeString] = value
-	entry[typeInteger] = int64(0)
-	entry[typeBoolean] = false
-	return conf.NewValue(service, name, typeString, entry)
+	entry[TypeString] = value
+	entry[TypeInteger] = int64(0)
+	entry[TypeBoolean] = false
+	return conf.NewValue(service, name, TypeString, entry)
 }
 
 // NewBooleanValue creates a new configuration value
 func (conf *Configuration) NewBooleanValue(service, name string, value bool) error {
 	entry := make(TypedValues)
-	entry[typeBoolean] = value
-	entry[typeInteger] = int64(0)
-	entry[typeString] = ""
-	return conf.NewValue(service, name, typeBoolean, entry)
+	entry[TypeBoolean] = value
+	entry[TypeInteger] = int64(0)
+	entry[TypeString] = ""
+	return conf.NewValue(service, name, TypeBoolean, entry)
 }
 
 // NewIntegerValue creates a new configuration value
 func (conf *Configuration) NewIntegerValue(service, name string, value int64) error {
 	entry := make(TypedValues)
-	entry[typeInteger] = value
-	entry[typeBoolean] = false
-	entry[typeString] = ""
-	return conf.NewValue(service, name, typeInteger, entry)
+	entry[TypeInteger] = value
+	entry[TypeBoolean] = false
+	entry[TypeString] = ""
+	return conf.NewValue(service, name, TypeInteger, entry)
 }
 
 // DeleteValue deletes an existing configuration value
@@ -142,8 +142,8 @@ func (conf *Configuration) ReloadValues() error {
 }
 
 // RetrieveAllValues retrieves and returns all values from backend
-func (conf *Configuration) RetrieveAllValues() ([]Configuration, error) {
-	var values []Configuration
+func (conf *Configuration) RetrieveAllValues() ([]ConfigValue, error) {
+	var values []ConfigValue
 	if err := conf.DB.Find(&values).Error; err != nil {
 		return values, err
 	}
@@ -177,7 +177,7 @@ func (conf *Configuration) SetInteger(intValue int64, service, name string) erro
 		return fmt.Errorf("SetInteger %d %v", intValue, err)
 	}
 	// Update
-	if err := conf.DB.Model(&value).Update(typeInteger, intValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(TypeInteger, intValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetInteger %d %s %s", intValue, service, name)
@@ -201,7 +201,7 @@ func (conf *Configuration) SetBoolean(boolValue bool, service, name string) erro
 		return fmt.Errorf("SetBoolean %v %v", boolValue, err)
 	}
 	// Update
-	if err := conf.DB.Model(&value).Update(typeBoolean, boolValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(TypeBoolean, boolValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetBoolean %v %s %s", boolValue, service, name)
@@ -234,7 +234,7 @@ func (conf *Configuration) SetString(strValue string, service, name string) erro
 		return fmt.Errorf("SetString %s %v", strValue, err)
 	}
 	// Update
-	if err := conf.DB.Model(&value).Update(typeString, strValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Update(TypeString, strValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetString %s %s %s", strValue, service, name)

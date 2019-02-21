@@ -365,9 +365,9 @@ func init() {
 						}
 						var oneLiner string
 						if c.String("target") == "sh" {
-							oneLiner, _ = contexts.QuickAddOneLinerShell(ctx)
+							oneLiner, _ = context.QuickAddOneLinerShell(ctx)
 						} else if c.String("target") == "ps1" {
-							oneLiner, _ = contexts.QuickAddOneLinerPowershell(ctx)
+							oneLiner, _ = context.QuickAddOneLinerPowershell(ctx)
 						}
 						fmt.Printf("%s\n", oneLiner)
 						return nil
@@ -430,9 +430,9 @@ func init() {
 							os.Exit(1)
 						}
 						values := make(map[string]interface{})
-						values[typeString] = c.String("string")
-						values[typeInteger] = c.Int64("integer")
-						values[typeBoolean] = c.Bool("boolean")
+						values[configuration.TypeString] = c.String("string")
+						values[configuration.TypeInteger] = c.Int64("integer")
+						values[configuration.TypeBoolean] = c.Bool("boolean")
 						return config.NewValue(service, name, typeValue, values)
 					},
 				},
@@ -493,11 +493,11 @@ func init() {
 						}
 						var err error
 						switch typeValue {
-						case typeInteger:
+						case configuration.TypeInteger:
 							err = config.SetInteger(c.Int64("integer"), service, name)
-						case typeBoolean:
+						case configuration.TypeBoolean:
 							err = config.SetBoolean(c.Bool("true"), service, name)
-						case typeString:
+						case configuration.TypeString:
 							err = config.SetString(c.String("string"), service, name)
 						}
 						return err
@@ -588,14 +588,8 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
-	// Service configuration
-	var err error
-	config, err = NewServiceConfiguration(db)
-	if err != nil {
-		panic(err)
-	}
 	// Let's go!
-	err = app.Run(os.Args)
+	err := app.Run(os.Args)
 	if err != nil {
 		panic(err)
 	}
