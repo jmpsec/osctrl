@@ -210,10 +210,10 @@ function _static_files() {
   # Files will be linked if we are in dev
   if [[ "$__mode" == "dev" ]]; then
     if [[ ! -d "$__dest/$__target" ]]; then 
-      sudo ln -s "$__path/src/$__from" "$__dest/$__target"
+      sudo ln -s "$__path/cmd/$__from" "$__dest/$__target"
     fi
   else
-    sudo cp -R "$__path/src/$__from" "$__dest/$__target"
+    sudo cp -R "$__path/cmd/$__from" "$__dest/$__target"
   fi
 }
 

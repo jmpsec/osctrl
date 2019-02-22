@@ -2,7 +2,7 @@ package context
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 )
 
 // QuickOneLiner generic to generate quick one-liners

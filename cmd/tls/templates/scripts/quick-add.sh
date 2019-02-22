@@ -75,7 +75,7 @@ verifyOsquery() {
 }
 
 whatOS() {
-	OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+  OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
   log "OS=$OS"
   if [ "$OS" = "linux" ]; then
     _SECRET_FILE="$_SECRET_LINUX"
