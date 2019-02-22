@@ -14,19 +14,35 @@ function _log() {
   echo "[!] $1"
 }
 
+# Update packages
 function package_repo_update() {
-  log "Running apt-get update"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get update
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    log "Running apt-get update"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update
+  elif [[ "$DISTRO" == "centos" ]]; then
+    log "Running yum check-update"
+    sudo yum -y check-update || { rc=$?; [ "$rc" -eq 100 ] && log "returned $rc"; }
+  fi
 }
 
 # Install a package in the system
 #   string  package_name
 function package() {
-  if [[ -n "$(dpkg --get-selections | grep -P '^$1\s')" ]]; then
-    log "$1 is already installed. skipping."
-  else
-    log "Installing $1"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install $1 -y --no-install-recommends
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    INSTALLED=`dpkg-query -W -f='${Status} ${Version}\n' $1 || true`
+    if [[ -n "$INSTALLED" && ! "$INSTALLED" = *"unknown ok not-installed"* ]]; then
+      log "$1 is already installed. skipping."
+    else
+      log "installing $1"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install $1 -y -q --no-install-recommends
+    fi
+  elif [[ "$DISTRO" == "centos" ]]; then
+    if [[ ! -n "$(rpm -V $1)" ]]; then
+      log "$1 is already installed. skipping."
+    else
+      log "installing $1"
+      sudo yum install $1 -y
+    fi
   fi
 }
 
@@ -93,10 +109,27 @@ function configure_nginx() {
   local __out=$7
   local __nginx=$8
 
-  cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sudo tee "$__nginx/sites-available/$__out"
+  local __available="$__nginx/sites-available"
+  local __enabled="$__nginx/sites-enabled"
 
-  sudo rm -f "$__nginx/sites-enabled/default"
-  sudo ln -sf "$__nginx/sites-available/$__out" "$__nginx/sites-enabled/$__out"
+  if [[ "$DISTRO" == "centos" ]]; then
+    $__available="$__nginx/conf.d"
+    $__enabled="$__nginx/conf.d"
+  fi
+
+  sudo mkdir -p "$__available"
+  sudo mkdir -p "$__enabled"
+
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    
+  cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sudo tee "$__available/$__out"
+
+  if [[ -f "$__enabled/default" ]]; then
+    sudo rm -f "$__enabled/default"
+  fi
+  if [[ "$__available" != "$__enabled" ]]; then
+    sudo ln -sf "$__available/$__out" "$__enabled/$__out"
+  fi
 }
 
 # Generate self-signed certificates for nginx

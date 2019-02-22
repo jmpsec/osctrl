@@ -315,9 +315,16 @@ fi
 # Include functions
 source "$SOURCE_PATH/deploy/lib.sh"
 
+# Detect Linux distro
+if [[ -f "/etc/debian-release" ]]; then
+  DISTRO="ubuntu"
+elif [[ -f "/etc/centos-release" ]]; then
+  DISTRO="centos"
+fi
+
 log ""
 log ""
-log "Provisioning [ osctrl ][ $PART ]"
+log "Provisioning [ osctrl ][ $PART ] for $DISTRO"
 log ""
 log "  -> [$MODE] mode and with [$TYPE] certificate"
 log ""
@@ -336,11 +343,13 @@ log ""
 package_repo_update
 
 # Required packages
-package apt-utils
+if [[ "$DISTRO" == "ubuntu" ]]; then
+  package apt-utils
+  package build-essential
+fi
 package sudo
 package git
 package wget
-package build-essential
 package gcc
 package make
 package openssl
@@ -350,7 +359,10 @@ package tmux
 if [[ "$NGINX" == true ]]; then
   # Some static values for now that can be turned into arguments eventually
   NGINX_PATH="/etc/nginx"
-  package nginx
+  if [[ "$DISTRO" == "centos" ]]; then
+    package epel-release
+  fi
+  package nginx  
 
   _certificate_name="osctrl"
   _certificates_dir="$NGINX_PATH/certs"
@@ -483,7 +495,11 @@ log "Creating admin user"
 
 # Ascii art is always appreciated
 if [[ "$DOCKER" == false ]]; then
-  set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
+  elif [[ "$DISTRO" == "centos" ]]; then
+    log "No motd"
+  fi
 fi
 
 echo
