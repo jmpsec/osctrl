@@ -67,12 +67,6 @@ func init() {
 		panic(err)
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
-	// Initialize users
-	adminUsers = users.CreateUserManager(db)
-	// Initialize context
-	ctxs = context.CreateContexts(db)
-	// Initialize configuration
-	config = configuration.NewConfiguration(db)
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
@@ -588,6 +582,12 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
+	// Initialize users
+	adminUsers = users.CreateUserManager(db)
+	// Initialize context
+	ctxs = context.CreateContexts(db)
+	// Initialize configuration
+	config = configuration.NewConfiguration(db)
 	// Let's go!
 	err := app.Run(os.Args)
 	if err != nil {

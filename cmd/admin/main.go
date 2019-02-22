@@ -178,12 +178,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading osquery tables %s", err)
 	}
-	// Initialize users
-	adminUsers = users.CreateUserManager(db)
-	// Initialize context
-	ctxs = context.CreateContexts(db)
-	// Initialize configuration
-	config = configuration.NewConfiguration(db)
 }
 
 // Go go!
@@ -196,6 +190,12 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
+	// Initialize users
+	adminUsers = users.CreateUserManager(db)
+	// Initialize context
+	ctxs = context.CreateContexts(db)
+	// Initialize configuration
+	config = configuration.NewConfiguration(db)
 	// Check if service configuration is ready
 	if !config.IsValue(serviceNameAdmin, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceNameAdmin, configuration.FieldDebugHTTP, false); err != nil {

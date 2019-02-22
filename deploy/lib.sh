@@ -327,11 +327,11 @@ function install_go_11() {
     sudo curl -sO "$__url"
     sudo tar -xf "$__file"
     sudo mv go /usr/local
-    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
-    source ~/.profile
+    echo "export PATH=$PATH:/usr/local/go/bin" | sudo tee -a /etc/profile
+    source /etc/profile
     go version
   else
-    source ~/.profile
+    source /etc/profile
     go version
   fi
 }
