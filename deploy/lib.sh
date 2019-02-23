@@ -113,15 +113,13 @@ function configure_nginx() {
   local __enabled="$__nginx/sites-enabled"
 
   if [[ "$DISTRO" == "centos" ]]; then
-    $__available="$__nginx/conf.d"
-    $__enabled="$__nginx/conf.d"
+    __available="$__nginx/conf.d"
+    __enabled="$__nginx/conf.d"
   fi
 
   sudo mkdir -p "$__available"
   sudo mkdir -p "$__enabled"
 
-  if [[ "$DISTRO" == "ubuntu" ]]; then
-    
   cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sudo tee "$__available/$__out"
 
   if [[ -f "$__enabled/default" ]]; then
@@ -263,7 +261,7 @@ function install_postgresql10_xenial() {
   
   package "postgresql-$__pgversion"
   
-  configure_postgres "$__pgversion" "$__pgconf"
+  configure_postgres "$__pgconf" "postgresql"
 }
 
 # Create empty DB and username
@@ -271,12 +269,13 @@ function install_postgresql10_xenial() {
 #   string  PostgreSQL_system_user
 #   string  PostgreSQL_db_user
 #   string  PostgreSQL_db_pass
+#   string  PostgerSQL_psql
 function db_user_postgresql() {
-  local __psql="/usr/lib/postgresql/10/bin/psql"
   local __pgdb=$1
   local __pguser=$2
   local __dbuser=$3
   local __dbpass=$4
+  local __psql=$5
 
   log "Creating user"
   local _dbstatementuser="CREATE USER $__dbuser;"
@@ -327,15 +326,19 @@ function repo_postgres_xenial() {
 
 # Configure PostgreSQL
 #   string  postgres_conf_file_location
+#   string  postgres_service_name
+#   string  postgres_hba_file
 function configure_postgres() {
   local __conf=$1
+  local __service=$2
+  local __hba=$3
 
   log "PostgreSQL permissions"
   
-  sudo cp "$__conf" "/etc/postgresql/10/main/pg_hba.conf"
+  sudo cp "$__conf" "$__hba"
   
-  sudo systemctl restart postgresql
-  sudo systemctl enable postgresql
+  sudo systemctl restart "$__service"
+  sudo systemctl enable "$__service"
 }
 
 # Customize the MOTD in Ubuntu

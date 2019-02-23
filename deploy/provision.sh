@@ -354,6 +354,7 @@ package gcc
 package make
 package openssl
 package tmux
+package bc
 
 # nginx as TLS termination
 if [[ "$NGINX" == true ]]; then
@@ -408,12 +409,25 @@ fi
 # PostgreSQL - Backend
 if [[ "$DOCKER" == false ]]; then
   if [[ "$POSTGRES" == true ]]; then
-    package postgresql 
-    package postgresql-contrib
-
     POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
-    configure_postgres "$POSTGRES_CONF"
-    db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS"
+    if [[ "$DISTRO" == "ubuntu" ]]; then
+      package postgresql 
+      package postgresql-contrib  
+      configure_postgres "$POSTGRES_CONF" "postgresql" 
+      POSTGRES_SERVICE="postgresql"
+      POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
+      POSTGRES_PSQL="/usr/lib/postgresql/10/bin/psql"
+    elif [[ "$DISTRO" == "centos" ]]; then
+      sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
+      package postgresql96-server
+      package postgresql96-contrib
+      sudo /usr/pgsql-9.6/bin/postgresql96-setup initdb
+      POSTGRES_SERVICE="postgresql-9.6"
+      POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
+      POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
+    fi
+    configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA" 
+    db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
   fi
 fi
 

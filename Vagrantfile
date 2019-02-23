@@ -18,6 +18,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     v.cpus = 1
     v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
   end
+  config.vm.define "centos", autostart: false
   targets.each do |name, target|
     box = target["box"]
     config.vm.define name do |build|
