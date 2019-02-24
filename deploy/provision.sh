@@ -316,7 +316,7 @@ fi
 source "$SOURCE_PATH/deploy/lib.sh"
 
 # Detect Linux distro
-if [[ -f "/etc/debian-release" ]]; then
+if [[ -f "/etc/debian_version" ]]; then
   DISTRO="ubuntu"
 elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
@@ -340,11 +340,11 @@ fi
 log ""
 log ""
 
+# Update distro
 package_repo_update
 
 # Required packages
 if [[ "$DISTRO" == "ubuntu" ]]; then
-  package apt-utils
   package build-essential
 fi
 package sudo
@@ -393,13 +393,20 @@ if [[ "$NGINX" == true ]]; then
   sudo openssl dhparam -out "$_dh_file" $_dh_bits &>/dev/null
 
   # Configuration for nginx
-  configure_nginx "$SOURCE_PATH/deploy/nginx.conf" "" "" "" "" "" "osctrl.conf" "$NGINX_PATH"
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    nginx_main "$SOURCE_PATH/deploy/nginx/nginx.conf" "nginx.conf" "www-data" "/etc/nginx/modules-enabled/*.conf" "$NGINX_PATH"
+  elif [[ "$DISTRO" == "centos" ]]; then
+    nginx_main "$SOURCE_PATH/deploy/nginx/nginx.conf" "nginx.conf" "nginx" "/usr/share/nginx/modules/*.conf" "$NGINX_PATH"
+    # SELinux
+    log "Enabling httpd in SELinux"
+    sudo setsebool -P httpd_can_network_connect 1
+  fi
 
   # Configuration for TLS service
-  configure_nginx "$SOURCE_PATH/deploy/generic.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH" 
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH" 
   
   # Configuration for Admin service
-  configure_nginx "$SOURCE_PATH/deploy/generic.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
 
   # Restart nginx
   sudo nginx -t
@@ -412,8 +419,7 @@ if [[ "$DOCKER" == false ]]; then
     POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
     if [[ "$DISTRO" == "ubuntu" ]]; then
       package postgresql 
-      package postgresql-contrib  
-      configure_postgres "$POSTGRES_CONF" "postgresql" 
+      package postgresql-contrib
       POSTGRES_SERVICE="postgresql"
       POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
       POSTGRES_PSQL="/usr/lib/postgresql/10/bin/psql"
@@ -464,7 +470,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   sudo mkdir -p "$DEST_PATH/data"
 
   # Copy osquery tables JSON file
-  sudo cp "$SOURCE_PATH/deploy/data/3.3.0.json" "$DEST_PATH/data"
+  sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.0.json" "$DEST_PATH/data"
 
   # Prepare static files for admin
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
@@ -483,7 +489,7 @@ DEST="$DEST_PATH" make install_cli
 if [[ "$MODE" == "dev" ]]; then
   log "Creating context for dev"
   __tls_conf="$DEST_PATH/config/$TLS_CONF"
-  __osquery_dev="$SOURCE_PATH/deploy/osquery-dev.conf"
+  __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.conf"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
   "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
   
@@ -512,7 +518,7 @@ if [[ "$DOCKER" == false ]]; then
   if [[ "$DISTRO" == "ubuntu" ]]; then
     set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
   elif [[ "$DISTRO" == "centos" ]]; then
-    log "No motd"
+    set_motd_centos "$SOURCE_PATH/deploy/motd-osctrl.sh"
   fi
 fi
 

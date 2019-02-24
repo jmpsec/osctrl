@@ -90,6 +90,22 @@ function self_signed_cert() {
   sudo openssl x509 -req -days 365 -in "$__csr" -signkey "$__devkey" -out "$__devcert"
 }
 
+# Configure main nginx
+#   string  configuration_template
+#   string  configuration_output
+#   string  nginx_user
+#   string  nginx_modules
+#   string  nginx_folder
+function nginx_main() {
+  local __conf=$1
+  local __out=$2
+  local __user=$3
+  local __modules=$4
+  local __nginx=$5
+
+  cat "$__conf" | sed "s|SERVER_USER|$__user|g" | sed "s|MODULES_CONF|$__modules|g" | sudo tee "$__nginx/$__out"
+}
+
 # Configure nginx for a service
 #   string  configuration_template
 #   string  certificate_file
@@ -99,7 +115,7 @@ function self_signed_cert() {
 #   int     private_port
 #   string  configuration_output
 #   string  nginx_folder
-function configure_nginx() {
+function nginx_service() {
   local __conf=$1
   local __cert=$2
   local __key=$3
@@ -112,11 +128,6 @@ function configure_nginx() {
   local __available="$__nginx/sites-available"
   local __enabled="$__nginx/sites-enabled"
 
-  if [[ "$DISTRO" == "centos" ]]; then
-    __available="$__nginx/conf.d"
-    __enabled="$__nginx/conf.d"
-  fi
-
   sudo mkdir -p "$__available"
   sudo mkdir -p "$__enabled"
 
@@ -125,9 +136,8 @@ function configure_nginx() {
   if [[ -f "$__enabled/default" ]]; then
     sudo rm -f "$__enabled/default"
   fi
-  if [[ "$__available" != "$__enabled" ]]; then
-    sudo ln -sf "$__available/$__out" "$__enabled/$__out"
-  fi
+  
+  sudo ln -sf "$__available/$__out" "$__enabled/$__out"
 }
 
 # Generate self-signed certificates for nginx
@@ -351,6 +361,17 @@ function set_motd_ubuntu() {
     sudo chmod -x /etc/update-motd.d/51-cloudguest
   fi
   sudo cp "$__motd" /etc/update-motd.d/10-help-text
+}
+
+# Customize the MOTD in CentOS
+#   string  path_to_motd_script
+function set_motd_centos() {
+  local __motd=$1
+  local __centosmotd="/etc/motd.sh"
+
+  sudo cp "$__motd" "$__centosmotd"
+  sudo chmod +x "$__centosmotd"
+  echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
 # Install go 1.11 from tgz
