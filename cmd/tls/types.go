@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"time"
+
+	"github.com/javuto/osctrl/nodes"
 
 	"github.com/jinzhu/gorm"
 )
@@ -63,111 +64,6 @@ type GenericRequest struct {
 // GenericResponse for osquery nodes
 type GenericResponse struct {
 	NodeInvalid bool `json:"node_invalid"`
-}
-
-// OsqueryNode as abstraction of a node
-type OsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Context         string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	ConfigHash      string
-	RawEnrollment   json.RawMessage
-	LastStatus      time.Time
-	LastResult      time.Time
-	LastConfig      time.Time
-	LastQueryRead   time.Time
-	LastQueryWrite  time.Time
-}
-
-// ArchiveOsqueryNode as abstraction of an archived node
-type ArchiveOsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Trigger         string
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Context         string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	ConfigHash      string
-	RawEnrollment   json.RawMessage
-	LastStatus      time.Time
-	LastResult      time.Time
-	LastConfig      time.Time
-	LastQueryRead   time.Time
-	LastQueryWrite  time.Time
-}
-
-// NodeHistoryIPAddress to keep track of all IP Addresses for nodes
-type NodeHistoryIPAddress struct {
-	gorm.Model
-	UUID      string `gorm:"index"`
-	IPAddress string
-	Count     int
-}
-
-// GeoLocationIPAddress to keep all the Geo Location by IP Address
-type GeoLocationIPAddress struct {
-	gorm.Model
-	IPAddress     string `gorm:"index"`
-	Alias         string
-	Type          string
-	ContinentCode string
-	ContinentName string
-	CountryCode   string
-	CountryName   string
-	RegionCode    string
-	RegionName    string
-	City          string
-	Zip           string
-	Latitude      float64
-	Longitude     float64
-	EmojiFlag     string
-	Connection    string
-}
-
-// NodeHistoryHostname to keep track of all IP Addresses for nodes
-type NodeHistoryHostname struct {
-	gorm.Model
-	UUID     string `gorm:"index"`
-	Hostname string
-	Count    int
-}
-
-// NodeHistoryLocalname to keep track of all IP Addresses for nodes
-type NodeHistoryLocalname struct {
-	gorm.Model
-	UUID      string `gorm:"index"`
-	Localname string
-	Count     int
-}
-
-// NodeHistoryUsername to keep track of all usernames for nodes
-type NodeHistoryUsername struct {
-	gorm.Model
-	UUID     string `gorm:"index"`
-	Username string
-	Count    int
 }
 
 // DistributedQuery as abstraction of a distributed query
@@ -389,8 +285,8 @@ type TableTemplateData struct {
 	Selector      string
 	SelectorName  string
 	Target        string
-	ContextStats  StatsData
-	PlatformStats StatsData
+	ContextStats  nodes.StatsData
+	PlatformStats nodes.StatsData
 }
 
 // ConfTemplateData for passing data to the conf template
@@ -401,15 +297,15 @@ type ConfTemplateData struct {
 	ConfigurationHash  string
 	QuickAddShell      string
 	QuickAddPowershell string
-	ContextStats       StatsData
-	PlatformStats      StatsData
+	ContextStats       nodes.StatsData
+	PlatformStats      nodes.StatsData
 }
 
 // QueryRunTemplateData for passing data to the query template
 type QueryRunTemplateData struct {
 	Title         string
-	ContextStats  StatsData
-	PlatformStats StatsData
+	ContextStats  nodes.StatsData
+	PlatformStats nodes.StatsData
 	UUIDs         []string
 	Hosts         []string
 	Tables        []OsqueryTable
@@ -419,8 +315,8 @@ type QueryRunTemplateData struct {
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData struct {
 	Title         string
-	ContextStats  StatsData
-	PlatformStats StatsData
+	ContextStats  nodes.StatsData
+	PlatformStats nodes.StatsData
 	Target        string
 	Queries       []DistributedQuery
 }
@@ -428,8 +324,8 @@ type QueryTableTemplateData struct {
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
 	Title         string
-	ContextStats  StatsData
-	PlatformStats StatsData
+	ContextStats  nodes.StatsData
+	PlatformStats nodes.StatsData
 	Query         DistributedQuery
 	QueryTargets  []DistributedQueryTarget
 }
@@ -437,34 +333,24 @@ type QueryLogsTemplateData struct {
 // LocationData to hold all location related data, when enabled
 type LocationData struct {
 	GoogleMapsURL string
-	LastLocation  GeoLocationIPAddress
+	LastLocation  nodes.GeoLocationIPAddress
 }
 
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title         string
 	PostgresLogs  bool
-	Node          OsqueryNode
-	ContextStats  StatsData
-	PlatformStats StatsData
+	Node          nodes.OsqueryNode
+	ContextStats  nodes.StatsData
+	PlatformStats nodes.StatsData
 	Location      LocationData
 	LocationShow  bool
 }
 
-// NodeStats to display node stats
-type NodeStats struct {
-	Total    int
-	Active   int
-	Inactive int
-}
-
-// StatsData to hold data for node stats
-type StatsData map[string]NodeStats
-
 // SidebarStats to get all stats
 type SidebarStats struct {
-	Context  StatsData `json:"context"`
-	Platform StatsData `json:"platform"`
+	Context  nodes.StatsData `json:"context"`
+	Platform nodes.StatsData `json:"platform"`
 }
 
 // LoginRequest to receive login credentials

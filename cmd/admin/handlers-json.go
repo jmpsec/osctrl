@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/nodes"
 	"github.com/unrolled/render"
 )
 
@@ -32,7 +33,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("error getting target")
 		return
 	}
-	nodes, err := getNodesByContext(context, target)
+	nodes, err := nodesmgr.GetByContext(context, target)
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		return
@@ -66,7 +67,7 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("error getting target")
 		return
 	}
-	nodes, err := getNodesByPlatform(platform, target)
+	nodes, err := nodesmgr.GetByPlatform(platform, target)
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		return
@@ -133,7 +134,7 @@ func jsonNodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get node by UUID
-	node, err := getNodeByUUID(uuid)
+	node, err := nodesmgr.GetByUUID(uuid)
 	if err != nil {
 		log.Printf("error getting node %v", err)
 		return
@@ -272,7 +273,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("error getting target")
 		return
 	}
-	var stats StatsData
+	var stats nodes.StatsData
 	if target == "context" {
 		contexts, err := ctxs.All()
 		if err != nil {
@@ -286,7 +287,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if target == "platform" {
-		platforms, err := getAllPlatforms()
+		platforms, err := nodesmgr.GetAllPlatforms()
 		if err != nil {
 			log.Printf("error getting platforms: %v", err)
 			return

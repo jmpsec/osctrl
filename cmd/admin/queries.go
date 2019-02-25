@@ -14,7 +14,7 @@ const (
 // FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
 func getQueriesForNode(nodeKey string) (QueryReadQueries, error) {
 	// Retrieve node
-	node, err := getNodeByKey(nodeKey)
+	node, err := nodesmgr.GetByKey(nodeKey)
 	if err != nil {
 		return QueryReadQueries{}, err
 	}

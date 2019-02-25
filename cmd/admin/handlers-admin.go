@@ -232,7 +232,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -302,7 +302,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -357,7 +357,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -368,7 +368,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get all nodes
-	nodes, err := getNodes("active")
+	nodes, err := nodesmgr.Gets("active")
 	if err != nil {
 		log.Printf("error getting all nodes: %v", err)
 		return
@@ -525,7 +525,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -581,7 +581,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -712,7 +712,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -787,7 +787,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -920,7 +920,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
@@ -931,7 +931,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get node by UUID
-	node, err := getNodeByUUID(uuid)
+	node, err := nodesmgr.GetByUUID(uuid)
 	if err != nil {
 		log.Printf("error getting node %v", err)
 		return
@@ -985,7 +985,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 				okCount := 0
 				errCount := 0
 				for _, u := range m.UUIDs {
-					err := archiveDeleteOsqueryNodeByUUID(u)
+					err := nodesmgr.ArchiveDeleteByUUID(u)
 					if err != nil {
 						errCount++
 						log.Printf("error deleting node %s %v", u, err)
@@ -1043,7 +1043,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 		if checkCSRFToken(n.CSRFToken) {
 			switch n.Action {
 			case "delete":
-				err := archiveDeleteOsqueryNodeByUUID(uuid)
+				err := nodesmgr.ArchiveDeleteByUUID(uuid)
 				if err != nil {
 					responseMessage = "error deleting node"
 					responseCode = http.StatusInternalServerError

@@ -528,7 +528,7 @@ echo
 if [[ "$MODE" == "dev" ]]; then
   log " -> https://$_A_HOST:$_A_PUB_PORT"
   echo
-  log " -> 🔐 Credentials: $_ADMIN_USER/$_ADMIN_PASS"
+  log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
   echo
 fi
 

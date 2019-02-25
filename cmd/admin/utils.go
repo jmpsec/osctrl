@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/nodes"
 )
 
 // Constants for seconds
@@ -94,7 +95,7 @@ func checkValidSecret(enrollSecret string, context string) bool {
 
 // Helper to check if the provided platform exists
 func checkValidPlatform(platform string) bool {
-	platforms, err := getAllPlatforms()
+	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		return false
 	}
@@ -116,7 +117,7 @@ func checkValidSecretPath(context, secretpath string) bool {
 }
 
 // Helper to convert an enrollment request into a osquery node
-func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) OsqueryNode {
+func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) nodes.OsqueryNode {
 	// Prepare the enrollment request to be stored as JSON
 	enrollRaw, err := json.Marshal(req)
 	if err != nil {
@@ -125,7 +126,7 @@ func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) Osque
 	}
 	// Avoid the error "unsupported Unicode escape sequence" due to \u0000
 	enrollRaw = bytes.Replace(enrollRaw, []byte("\\u0000"), []byte(""), -1)
-	return OsqueryNode{
+	return nodes.OsqueryNode{
 		NodeKey:         nodekey,
 		UUID:            req.HostIdentifier,
 		Platform:        req.HostDetails.EnrollOSVersion.Platform,
@@ -147,34 +148,6 @@ func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) Osque
 		LastConfig:      time.Time{},
 		LastQueryRead:   time.Time{},
 		LastQueryWrite:  time.Time{},
-	}
-}
-
-// Helper to convert an enrolled osquery node into an archived osquery node
-func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
-	return ArchiveOsqueryNode{
-		NodeKey:         node.NodeKey,
-		UUID:            node.UUID,
-		Trigger:         trigger,
-		Platform:        node.Platform,
-		PlatformVersion: node.PlatformVersion,
-		OsqueryVersion:  node.OsqueryVersion,
-		Hostname:        node.Hostname,
-		Localname:       node.Localname,
-		IPAddress:       node.IPAddress,
-		Username:        node.Username,
-		OsqueryUser:     node.OsqueryUser,
-		Context:         node.Context,
-		CPU:             node.CPU,
-		Memory:          node.Memory,
-		HardwareSerial:  node.HardwareSerial,
-		ConfigHash:      node.ConfigHash,
-		RawEnrollment:   node.RawEnrollment,
-		LastStatus:      node.LastStatus,
-		LastResult:      node.LastResult,
-		LastConfig:      node.LastConfig,
-		LastQueryRead:   node.LastQueryRead,
-		LastQueryWrite:  node.LastQueryWrite,
 	}
 }
 
@@ -379,10 +352,10 @@ func sendRequest(secure bool, reqType, url string, params io.Reader, headers map
 }
 
 // Helper to generate stats for all contexts
-func getContextStats(contexts []context.TLSContext) (StatsData, error) {
-	contextStats := make(StatsData)
+func getContextStats(contexts []context.TLSContext) (nodes.StatsData, error) {
+	contextStats := make(nodes.StatsData)
 	for _, c := range contexts {
-		stats, err := getNodeStatsByContext(c.Name)
+		stats, err := nodesmgr.GetStatsByContext(c.Name)
 		if err != nil {
 			return contextStats, err
 		}
@@ -392,10 +365,10 @@ func getContextStats(contexts []context.TLSContext) (StatsData, error) {
 }
 
 // Helper to generate stats for all platforms
-func getPlatformStats(platforms []string) (StatsData, error) {
-	platformStats := make(StatsData)
+func getPlatformStats(platforms []string) (nodes.StatsData, error) {
+	platformStats := make(nodes.StatsData)
 	for _, p := range platforms {
-		stats, err := getNodeStatsByPlatform(p)
+		stats, err := nodesmgr.GetStatsByPlatform(p)
 		if err != nil {
 			return platformStats, err
 		}
@@ -431,7 +404,7 @@ func generateOsqueryConfigHash(config string) string {
 }
 
 // Helper to decide whether if the query targets apply to a give node
-func isQueryTarget(node OsqueryNode, targets []DistributedQueryTarget) bool {
+func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
 	for _, t := range targets {
 		// Check for context match
 		if t.Type == queryTargetContext && node.Context == t.Value {

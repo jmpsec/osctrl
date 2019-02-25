@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/nodes"
 	"github.com/jinzhu/gorm"
 )
 
@@ -101,7 +102,7 @@ type OsqueryQueryData struct {
 }
 
 // Function that sends JSON query logs to the configured PostgreSQL DB
-func postgresQuery(data []byte, name string, node OsqueryNode, status int) {
+func postgresQuery(data []byte, name string, node nodes.OsqueryNode, status int) {
 	// Prepare data
 	entry := OsqueryQueryData{
 		UUID:    node.UUID,

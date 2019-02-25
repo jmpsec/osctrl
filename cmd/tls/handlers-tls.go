@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/nodes"
 )
 
 // JSONApplication for Content-Type headers
@@ -73,27 +74,27 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if received secret is valid
 	var nodeKey string
-	var newNode OsqueryNode
+	var newNode nodes.OsqueryNode
 	nodeInvalid := true
 	if checkValidSecret(t.EnrollSecret, context) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier)
 		newNode = nodeFromEnroll(t, context, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
-		if checkNodeByUUID(t.HostIdentifier) {
-			err := archiveOsqueryNode(t.HostIdentifier, "exists")
+		if nodesmgr.CheckByUUID(t.HostIdentifier) {
+			err := nodesmgr.Archive(t.HostIdentifier, "exists")
 			if err != nil {
 				log.Printf("error archiving node %v", err)
 			}
 			// Update existing with new enroll data
-			err = updateOsqueryNodeByUUID(newNode, t.HostIdentifier)
+			err = nodesmgr.UpdateByUUID(newNode, t.HostIdentifier)
 			if err != nil {
 				log.Printf("error updating existing node %v", err)
 			} else {
 				nodeInvalid = false
 			}
 		} else { // New node, persist it
-			err := createOsqueryNode(newNode)
+			err := nodesmgr.Create(newNode)
 			if err != nil {
 				log.Printf("error creating node %v", err)
 			} else {
@@ -150,13 +151,13 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if provided node_key is valid and if so, update node
-	if checkNodeByKey(t.NodeKey) {
-		err = updateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if nodesmgr.CheckByKey(t.NodeKey) {
+		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
 			log.Printf("error updating IP address %v", err)
 		}
 		// Refresh last config for node
-		err = refreshNodeLastConfig(t.NodeKey)
+		err = nodesmgr.RefreshLastConfig(t.NodeKey)
 		if err != nil {
 			log.Printf("error refreshing last config %v", err)
 		}
@@ -215,7 +216,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if checkNodeByKey(t.NodeKey) {
+	if nodesmgr.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
 		processLogs(t.Data, t.LogType, context, r.Header.Get("X-Real-IP"))
@@ -285,19 +286,19 @@ func dispatchLogs(data []byte, UUID, ipaddress, user, osqueryuser, hostname, loc
 		log.Printf("LOG: %s from context %s : %s", logType, context, string(data))
 	}
 	// Use metadata to update record
-	err := updateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, UUID)
+	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, UUID)
 	if err != nil {
 		log.Printf("error updating metadata %s", err)
 	}
 	// Refresh last logging request
 	if logType == statusLog {
-		err := refreshNodeLastStatus(UUID)
+		err := nodesmgr.RefreshLastStatus(UUID)
 		if err != nil {
 			log.Printf("error refreshing last status %v", err)
 		}
 	}
 	if logType == resultLog {
-		err := refreshNodeLastResult(UUID)
+		err := nodesmgr.RefreshLastResult(UUID)
 		if err != nil {
 			log.Printf("error refreshing last result %v", err)
 		}
@@ -305,7 +306,7 @@ func dispatchLogs(data []byte, UUID, ipaddress, user, osqueryuser, hostname, loc
 }
 
 // Helper to dispatch queries
-func dispatchQueries(queryData QueryWriteData, node OsqueryNode) {
+func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 	// Prepare data to send
 	data, err := json.Marshal(queryData)
 	if err != nil {
@@ -325,7 +326,7 @@ func dispatchQueries(queryData QueryWriteData, node OsqueryNode) {
 		log.Printf("QUERY: %s from context %s : %s", "query", node.Context, string(data))
 	}
 	// Refresh last query write request
-	err = refreshNodeLastQueryWrite(node.UUID)
+	err = nodesmgr.RefreshLastQueryWrite(node.UUID)
 	if err != nil {
 		log.Printf("error refreshing last query write %v", err)
 	}
@@ -358,8 +359,8 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeInvalid bool
 	queries := make(QueryReadQueries)
 	// Check if provided node_key is valid and if so, update node
-	if checkNodeByKey(t.NodeKey) {
-		err = updateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if nodesmgr.CheckByKey(t.NodeKey) {
+		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
 			log.Printf("error updating IP Address %v", err)
 		}
@@ -370,7 +371,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 			response = []byte("")
 		}
 		// Refresh last query read request
-		err = refreshNodeLastQueryRead(t.NodeKey)
+		err = nodesmgr.RefreshLastQueryRead(t.NodeKey)
 		if err != nil {
 			log.Printf("error refreshing last query read %v", err)
 		}
@@ -419,8 +420,8 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if checkNodeByKey(t.NodeKey) {
-		err = updateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if nodesmgr.CheckByKey(t.NodeKey) {
+		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
 			log.Printf("error updating IP Address %v", err)
 		}
@@ -449,7 +450,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 // Helper to process on-demand query result logs
 func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuses, nodeKey string, context string) {
 	// Retrieve node
-	node, err := getNodeByKey(nodeKey)
+	node, err := nodesmgr.GetByKey(nodeKey)
 	if err != nil {
 		log.Printf("error retrieving node %s", err)
 	}

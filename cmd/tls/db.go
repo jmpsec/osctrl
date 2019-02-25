@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/configuration"
+	"github.com/javuto/osctrl/nodes"
 
 	"github.com/jinzhu/gorm"
 )
@@ -31,37 +32,37 @@ func getDB() *gorm.DB {
 func automigrateDB() error {
 	var err error
 	// table osquery_nodes
-	err = db.AutoMigrate(OsqueryNode{}).Error
+	err = db.AutoMigrate(nodes.OsqueryNode{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
 	}
 	// table archive_osquery_nodes
-	err = db.AutoMigrate(ArchiveOsqueryNode{}).Error
+	err = db.AutoMigrate(nodes.ArchiveOsqueryNode{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
 	// table node_history_ipaddress
-	err = db.AutoMigrate(NodeHistoryIPAddress{}).Error
+	err = db.AutoMigrate(nodes.NodeHistoryIPAddress{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
 	}
 	// table geo_location_ipaddress
-	err = db.AutoMigrate(GeoLocationIPAddress{}).Error
+	err = db.AutoMigrate(nodes.GeoLocationIPAddress{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (geo_location_ipaddress): %v", err)
 	}
 	// table node_history_hostname
-	err = db.AutoMigrate(NodeHistoryHostname{}).Error
+	err = db.AutoMigrate(nodes.NodeHistoryHostname{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_hostname): %v", err)
 	}
 	// table node_history_localname
-	err = db.AutoMigrate(NodeHistoryLocalname{}).Error
+	err = db.AutoMigrate(nodes.NodeHistoryLocalname{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_localname): %v", err)
 	}
 	// table node_history_username
-	err = db.AutoMigrate(NodeHistoryUsername{}).Error
+	err = db.AutoMigrate(nodes.NodeHistoryUsername{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
 	}

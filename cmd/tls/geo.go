@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+
+	"github.com/javuto/osctrl/nodes"
 )
 
 const (
@@ -49,8 +51,8 @@ type GeoLocationCountry struct {
 
 // Helper to convert from received JSON structure to the data we want to store
 // FIXME use cache for this to avoid too much I/O
-func geolocationFromJSONData(data GeoLocationResponse) GeoLocationIPAddress {
-	return GeoLocationIPAddress{
+func geolocationFromJSONData(data GeoLocationResponse) nodes.GeoLocationIPAddress {
+	return nodes.GeoLocationIPAddress{
 		IPAddress:     data.IP,
 		Alias:         "",
 		Type:          data.Type,
@@ -90,7 +92,7 @@ func geoLocationCheckByIPAddress(ipaddress string) error {
 }
 
 // Insert new entry for the geo location of an IP Address
-func newGeoLocationIPAddress(geoloc GeoLocationIPAddress) error {
+func newGeoLocationIPAddress(geoloc nodes.GeoLocationIPAddress) error {
 	if db.NewRecord(geoloc) {
 		if err := db.Create(&geoloc).Error; err != nil {
 			return fmt.Errorf("Create newGeoLocationIPAddress %v", err)
@@ -104,13 +106,13 @@ func newGeoLocationIPAddress(geoloc GeoLocationIPAddress) error {
 // Check if IP Address is already mapped for Geo Location
 func checkGeoLocationIPAddress(ipaddress string) bool {
 	var results int
-	db.Model(&GeoLocationIPAddress{}).Where("ip_address = ?", ipaddress).Count(&results)
+	db.Model(&nodes.GeoLocationIPAddress{}).Where("ip_address = ?", ipaddress).Count(&results)
 	return (results > 0)
 }
 
 // Retrieve geo location data by IP Address
-func getGeoLocationIPAddress(ipaddress string) (GeoLocationIPAddress, error) {
-	var geoloc GeoLocationIPAddress
+func getGeoLocationIPAddress(ipaddress string) (nodes.GeoLocationIPAddress, error) {
+	var geoloc nodes.GeoLocationIPAddress
 	if err := db.Where("ip_address = ?", ipaddress).Order("updated_at").First(&geoloc).Error; err != nil {
 		return geoloc, err
 	}
@@ -118,7 +120,7 @@ func getGeoLocationIPAddress(ipaddress string) (GeoLocationIPAddress, error) {
 }
 
 // Retrieve Geo Location data for an IP Address
-func getIPStackData(ipaddress string, configData GeoLocationConfigurationData) (GeoLocationIPAddress, error) {
+func getIPStackData(ipaddress string, configData GeoLocationConfigurationData) (nodes.GeoLocationIPAddress, error) {
 	// Prepare URL joining base URL with path
 	_url, _ := url.Parse(configData["api"])
 	_url.Path = path.Join(_url.Path, ipaddress)

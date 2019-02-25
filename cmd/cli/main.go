@@ -8,6 +8,7 @@ import (
 
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/nodes"
 	"github.com/javuto/osctrl/users"
 
 	"github.com/jinzhu/gorm"
@@ -37,6 +38,7 @@ var (
 	app        *cli.App
 	configFile string
 	config     *configuration.Configuration
+	nodesmgr   *nodes.NodeManager
 	adminUsers *users.UserManager
 	ctxs       *context.Context
 )
@@ -555,9 +557,79 @@ func init() {
 			},
 		},
 		{
-			Name:        "node",
-			Usage:       "Commands for nodes",
-			Subcommands: []cli.Command{},
+			Name:  "node",
+			Usage: "Commands for nodes",
+			Subcommands: []cli.Command{
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Delete and archive an existing node",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "uuid, u",
+							Usage: "Node UUID to be deleted",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						uuid := c.String("uuid")
+						if uuid == "" {
+							fmt.Println("uuid is required")
+							os.Exit(1)
+						}
+						return nodesmgr.ArchiveDeleteByUUID(uuid)
+					},
+				},
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "List enrolled nodes",
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:   "all, v",
+							Hidden: false,
+							Usage:  "Show all nodes",
+						},
+						cli.BoolFlag{
+							Name:   "active, a",
+							Hidden: true,
+							Usage:  "Show active nodes",
+						},
+						cli.BoolFlag{
+							Name:   "inactive, i",
+							Hidden: false,
+							Usage:  "Show inactive nodes",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						target := "active"
+						if c.Bool("all") {
+							target = "all"
+						}
+						if c.Bool("inactive") {
+							target = "inactive"
+						}
+						nodes, err := nodesmgr.Gets(target)
+						if err != nil {
+							return err
+						}
+						if len(nodes) > 0 {
+							fmt.Printf("Existing %s nodes (%d):\n", target, len(nodes))
+							for _, n := range nodes {
+								fmt.Printf("  Hostname: %s\n", n.Hostname)
+								fmt.Printf("  UUID: %s\n", n.UUID)
+								fmt.Printf("  Platform: %s\n", n.Platform)
+								fmt.Printf("  Context: %s\n", n.Context)
+								fmt.Println()
+							}
+						} else {
+							fmt.Printf("No nodes\n")
+						}
+						return nil
+					},
+				},
+			},
 		},
 		{
 			Name:        "query",
@@ -588,6 +660,8 @@ func main() {
 	ctxs = context.CreateContexts(db)
 	// Initialize configuration
 	config = configuration.NewConfiguration(db)
+	// Initialize nodes
+	nodesmgr = nodes.CreateNodes(db)
 	// Let's go!
 	err := app.Run(os.Args)
 	if err != nil {
