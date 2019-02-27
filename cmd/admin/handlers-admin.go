@@ -11,6 +11,7 @@ import (
 
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/queries"
 
 	"github.com/gorilla/mux"
 )
@@ -422,7 +423,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Prepare and create new query
 		queryName := "query_" + generateQueryName()
-		query := DistributedQuery{
+		newQuery := queries.DistributedQuery{
 			Query:      q.Query,
 			Name:       queryName,
 			Creator:    "Admin",
@@ -432,7 +433,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			Deleted:    false,
 			Repeat:     0,
 		}
-		if err := createQuery(query); err != nil {
+		if err := queriesmgr.Create(newQuery); err != nil {
 			responseMessage = "error creating query"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
@@ -440,7 +441,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Create context target
 		if (q.Context != "") && ctxs.Exists(q.Context) {
-			if err := createQueryTarget(queryName, queryTargetContext, q.Context); err != nil {
+			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetContext, q.Context); err != nil {
 				responseMessage = "error creating query context target"
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
@@ -449,7 +450,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Create platform target
 		if (q.Platform != "") && checkValidPlatform(q.Platform) {
-			if err := createQueryTarget(queryName, queryTargetPlatform, q.Platform); err != nil {
+			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, q.Platform); err != nil {
 				responseMessage = "error creating query platform target"
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
@@ -460,7 +461,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		// FIXME verify UUIDs
 		if len(q.UUIDs) > 0 {
 			for _, u := range q.UUIDs {
-				if err := createQueryTarget(queryName, queryTargetUUID, u); err != nil {
+				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
 					responseMessage = "error creating query UUID target"
 					responseCode = http.StatusInternalServerError
 					log.Printf("%s %v", responseMessage, err)
@@ -472,7 +473,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		// FIXME verify localnames
 		if len(q.Hosts) > 0 {
 			for _, h := range q.Hosts {
-				if err := createQueryTarget(queryName, queryTargetLocalname, h); err != nil {
+				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
 					responseMessage = "error creating query hostname target"
 					responseCode = http.StatusInternalServerError
 					log.Printf("%s %v", responseMessage, err)
@@ -536,7 +537,7 @@ func queryAllGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get queries
-	queries, err := getQueries("all")
+	qs, err := queriesmgr.Gets("all")
 	if err != nil {
 		log.Printf("error getting active queries: %v", err)
 		return
@@ -546,7 +547,7 @@ func queryAllGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:         "All on-demand queries",
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
-		Queries:       queries,
+		Queries:       qs,
 		Target:        "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -592,7 +593,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get queries
-	queries, err := getQueries("active")
+	qs, err := queriesmgr.Gets("active")
 	if err != nil {
 		log.Printf("error getting active queries: %v", err)
 		return
@@ -602,7 +603,7 @@ func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:         "Currently active queries",
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
-		Queries:       queries,
+		Queries:       qs,
 		Target:        "active",
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -648,7 +649,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get queries
-	queries, err := getQueries("completed")
+	qs, err := queriesmgr.Gets("completed")
 	if err != nil {
 		log.Printf("error getting completed queries: %v", err)
 		return
@@ -658,7 +659,7 @@ func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:         "Completed queries",
 		ContextStats:  tmplCtxStats,
 		PlatformStats: tmplPlatStats,
-		Queries:       queries,
+		Queries:       qs,
 		Target:        "completed",
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -686,7 +687,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		switch q.Action {
 		case "delete":
 			for _, n := range q.Names {
-				err := deleteQuery(n)
+				err := queriesmgr.Delete(n)
 				if err != nil {
 					responseMessage = "error deleting query"
 					responseCode = http.StatusInternalServerError
@@ -695,7 +696,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		case "complete":
 			for _, n := range q.Names {
-				err := completeQuery(n)
+				err := queriesmgr.Complete(n)
 				if err != nil {
 					responseMessage = "error completing query"
 					responseCode = http.StatusInternalServerError
@@ -704,7 +705,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		case "activate":
 			for _, n := range q.Names {
-				err := activateQuery(n)
+				err := queriesmgr.Activate(n)
 				if err != nil {
 					responseMessage = "error activating query"
 					responseCode = http.StatusInternalServerError
@@ -779,13 +780,13 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get query by name
-	query, err := getQuery(name)
+	query, err := queriesmgr.Get(name)
 	if err != nil {
 		log.Printf("error getting query %v", err)
 		return
 	}
 	// Get query targets
-	targets, err := getQueryTargets(name)
+	targets, err := queriesmgr.GetTargets(name)
 	if err != nil {
 		log.Printf("error getting targets %v", err)
 		return

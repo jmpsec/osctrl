@@ -8,6 +8,7 @@ import (
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 	"github.com/javuto/osctrl/users"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -69,17 +70,17 @@ func automigrateDB() error {
 		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
 	}
 	// table distributed_queries
-	err = db.AutoMigrate(DistributedQuery{}).Error
+	err = db.AutoMigrate(queries.DistributedQuery{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
 	}
 	// table distributed_query_executions
-	err = db.AutoMigrate(DistributedQueryExecution{}).Error
+	err = db.AutoMigrate(queries.DistributedQueryExecution{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
 	}
 	// table distributed_query_targets
-	err = db.AutoMigrate(DistributedQueryTarget{}).Error
+	err = db.AutoMigrate(queries.DistributedQueryTarget{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
 	}

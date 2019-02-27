@@ -9,6 +9,7 @@ import (
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 	"github.com/javuto/osctrl/users"
 
 	"github.com/jinzhu/gorm"
@@ -39,6 +40,7 @@ var (
 	configFile string
 	config     *configuration.Configuration
 	nodesmgr   *nodes.NodeManager
+	queriesmgr *queries.Queries
 	adminUsers *users.UserManager
 	ctxs       *context.Context
 )
@@ -657,9 +659,109 @@ func init() {
 			},
 		},
 		{
-			Name:        "query",
-			Usage:       "Commands for queries",
-			Subcommands: []cli.Command{},
+			Name:  "query",
+			Usage: "Commands for queries",
+			Subcommands: []cli.Command{
+				{
+					Name:    "complete",
+					Aliases: []string{"c"},
+					Usage:   "Mark an on-demand query as completed",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Query name to be completed",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						name := c.String("name")
+						if name == "" {
+							fmt.Println("name is required")
+							os.Exit(1)
+						}
+						return queriesmgr.Complete(name)
+					},
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Mark an on-demand query as deleted",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Query name to be deleted",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						name := c.String("name")
+						if name == "" {
+							fmt.Println("name is required")
+							os.Exit(1)
+						}
+						return queriesmgr.Delete(name)
+					},
+				},
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "List on-demand queries",
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:   "all, v",
+							Hidden: true,
+							Usage:  "Show all queries",
+						},
+						cli.BoolFlag{
+							Name:   "active, a",
+							Hidden: false,
+							Usage:  "Show active queries",
+						},
+						cli.BoolFlag{
+							Name:   "completed, c",
+							Hidden: false,
+							Usage:  "Show completed queries",
+						},
+						cli.BoolFlag{
+							Name:   "deleted, d",
+							Hidden: false,
+							Usage:  "Show deleted queries",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						target := "all"
+						if c.Bool("all") {
+							target = "all"
+						}
+						if c.Bool("active") {
+							target = "active"
+						}
+						if c.Bool("completed") {
+							target = "completed"
+						}
+						if c.Bool("deleted") {
+							target = "deleted"
+						}
+						qs, err := queriesmgr.Gets(target)
+						if err != nil {
+							return err
+						}
+						if len(qs) > 0 {
+							fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
+							for _, q := range qs {
+								fmt.Printf("  Name: %s\n", q.Name)
+								fmt.Printf("  Creator: %s\n", q.Creator)
+								fmt.Printf("  Query: %s\n", q.Query)
+								fmt.Println()
+							}
+						} else {
+							fmt.Printf("No nodes\n")
+						}
+						return nil
+					},
+				},
+			},
 		},
 	}
 	// Load configuration
@@ -687,6 +789,8 @@ func main() {
 	config = configuration.NewConfiguration(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
+	// Initialize queries
+	queriesmgr = queries.CreateQueries(db)
 	// Let's go!
 	err := app.Run(os.Args)
 	if err != nil {

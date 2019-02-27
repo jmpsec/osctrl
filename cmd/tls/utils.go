@@ -403,29 +403,6 @@ func generateOsqueryConfigHash(config string) string {
 	return hex.EncodeToString(secondHasher.Sum(nil))
 }
 
-// Helper to decide whether if the query targets apply to a give node
-func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
-	for _, t := range targets {
-		// Check for context match
-		if t.Type == queryTargetContext && node.Context == t.Value {
-			return true
-		}
-		// Check for platform match
-		if t.Type == queryTargetPlatform && node.Platform == t.Value {
-			return true
-		}
-		// Check for UUID match
-		if t.Type == queryTargetUUID && node.UUID == t.Value {
-			return true
-		}
-		// Check for localname match
-		if t.Type == queryTargetLocalname && node.Localname == t.Value {
-			return true
-		}
-	}
-	return false
-}
-
 // Helper to determine if an IPv4 is public, based on the following:
 // Class   Starting IPAddress  Ending IPAddress
 // A       		10.0.0.0       	 10.255.255.255

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 
 	"github.com/jinzhu/gorm"
 )
@@ -240,8 +241,8 @@ type QueryReadQueries map[string]string
 
 // QueryReadResponse for on-demand queries from nodes
 type QueryReadResponse struct {
-	Queries     QueryReadQueries `json:"queries"`
-	NodeInvalid bool             `json:"node_invalid"`
+	Queries     queries.QueryReadQueries `json:"queries"`
+	NodeInvalid bool                     `json:"node_invalid"`
 }
 
 // QueryWriteQueries to hold the on-demand queries results

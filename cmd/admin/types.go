@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/javuto/osctrl/nodes"
-
-	"github.com/jinzhu/gorm"
+	"github.com/javuto/osctrl/queries"
 )
 
 // JSONConfigurationDB to hold all backend configuration values
@@ -72,36 +71,6 @@ type GenericRequest struct {
 // GenericResponse for osquery nodes
 type GenericResponse struct {
 	NodeInvalid bool `json:"node_invalid"`
-}
-
-// DistributedQuery as abstraction of a distributed query
-type DistributedQuery struct {
-	gorm.Model
-	Name       string `gorm:"not null;unique;index"`
-	Creator    string
-	Query      string
-	Executions int
-	Errors     int
-	Active     bool
-	Completed  bool
-	Deleted    bool
-	Repeat     uint
-}
-
-// DistributedQueryTarget to keep target logic for queries
-type DistributedQueryTarget struct {
-	gorm.Model
-	Name  string `gorm:"index"`
-	Type  string
-	Value string
-}
-
-// DistributedQueryExecution to keep track of queries executing
-type DistributedQueryExecution struct {
-	gorm.Model
-	Name   string `gorm:"index"`
-	UUID   string `gorm:"index"`
-	Result int
 }
 
 // OSVersionTable provided on enrollment, table os_version
@@ -243,13 +212,10 @@ type LogGenericData struct {
 // QueryReadRequest received to get on-demand queries
 type QueryReadRequest GenericRequest
 
-// QueryReadQueries to hold the on-demand queries
-type QueryReadQueries map[string]string
-
 // QueryReadResponse for on-demand queries from nodes
 type QueryReadResponse struct {
-	Queries     QueryReadQueries `json:"queries"`
-	NodeInvalid bool             `json:"node_invalid"`
+	Queries     queries.QueryReadQueries `json:"queries"`
+	NodeInvalid bool                     `json:"node_invalid"`
 }
 
 // QueryWriteQueries to hold the on-demand queries results
@@ -339,7 +305,7 @@ type QueryTableTemplateData struct {
 	ContextStats  nodes.StatsData
 	PlatformStats nodes.StatsData
 	Target        string
-	Queries       []DistributedQuery
+	Queries       []queries.DistributedQuery
 	Settings      SettingsData
 }
 
@@ -348,8 +314,8 @@ type QueryLogsTemplateData struct {
 	Title         string
 	ContextStats  nodes.StatsData
 	PlatformStats nodes.StatsData
-	Query         DistributedQuery
-	QueryTargets  []DistributedQueryTarget
+	Query         queries.DistributedQuery
+	QueryTargets  []queries.DistributedQueryTarget
 	Settings      SettingsData
 }
 

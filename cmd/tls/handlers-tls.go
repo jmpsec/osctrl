@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 )
 
 // JSONApplication for Content-Type headers
@@ -357,15 +358,16 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	var nodeInvalid bool
-	queries := make(QueryReadQueries)
-	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
-		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	qs := make(queries.QueryReadQueries)
+	// Lookup node by node_key
+	node, err := nodesmgr.GetByKey(t.NodeKey)
+	if err == nil {
+		err = nodesmgr.UpdateIPAddress(r.Header.Get("X-Real-IP"), node)
 		if err != nil {
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
-		queries, err = getQueriesForNode(t.NodeKey)
+		qs, err = queriesmgr.NodeQueries(node)
 		if err != nil {
 			log.Printf("error getting queries from db %v", err)
 			response = []byte("")
@@ -379,7 +381,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response for invalid key
-	response, err = json.Marshal(QueryReadResponse{Queries: queries, NodeInvalid: nodeInvalid})
+	response, err = json.Marshal(QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
 	if err != nil {
 		log.Printf("error formating response %v", err)
 		response = []byte("")
@@ -466,15 +468,15 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 		// Update internal metrics per query
 		var err error
 		if statuses[q] != 0 {
-			err = incQueryError(q)
+			err = queriesmgr.IncError(q)
 		} else {
-			err = incQueryExecution(q)
+			err = queriesmgr.IncExecution(q)
 		}
 		if err != nil {
 			log.Printf("error updating query %s", err)
 		}
 		// Add a record for this query
-		err = trackQueryExecution(q, node.UUID, statuses[q])
+		err = queriesmgr.TrackExecution(q, node.UUID, statuses[q])
 		if err != nil {
 			log.Printf("error adding query execution %s", err)
 		}

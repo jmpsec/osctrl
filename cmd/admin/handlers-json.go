@@ -97,7 +97,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Retrieve queries for that target
-	queries, err := getQueries(target)
+	qs, err := queriesmgr.Gets(target)
 	if err != nil {
 		log.Printf("error getting queries %v", err)
 		return
@@ -122,7 +122,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	t, _ := template.New(tmplName).Funcs(funcMap).ParseFiles(
 		"tmpl_admin/json/" + tmplName)
-	t.Execute(w, queries)
+	t.Execute(w, qs)
 }
 
 // Handler for node JSON

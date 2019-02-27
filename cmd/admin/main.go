@@ -15,6 +15,7 @@ import (
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 	"github.com/javuto/osctrl/users"
 
 	"github.com/crewjam/saml/samlsp"
@@ -74,6 +75,7 @@ var (
 	db             *gorm.DB
 	config         *configuration.Configuration
 	nodesmgr       *nodes.NodeManager
+	queriesmgr     *queries.Queries
 	ctxs           *context.Context
 	dbConfig       JSONConfigurationDB
 	logConfig      JSONConfigurationLogging
@@ -209,6 +211,8 @@ func main() {
 	config = configuration.NewConfiguration(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
+	// Initialize queries
+	queriesmgr = queries.CreateQueries(db)
 	// Check if service configuration is ready
 	if !config.IsValue(serviceNameAdmin, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceNameAdmin, configuration.FieldDebugHTTP, false); err != nil {

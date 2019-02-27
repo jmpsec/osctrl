@@ -7,6 +7,7 @@ import (
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/queries"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -45,6 +46,7 @@ var (
 	config       *configuration.Configuration
 	ctxs         *context.Context
 	nodesmgr     *nodes.NodeManager
+	queriesmgr   *queries.Queries
 	dbConfig     JSONConfigurationDB
 	logConfig    JSONConfigurationLogging
 	geolocConfig JSONConfigurationGeoLocation
@@ -126,6 +128,9 @@ func main() {
 	config = configuration.NewConfiguration(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
+	// Initialize queries
+	queriesmgr = queries.CreateQueries(db)
+	// Make sure service has its configuration
 	if !config.IsValue(serviceName, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceName, configuration.FieldDebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
