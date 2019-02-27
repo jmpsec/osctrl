@@ -302,6 +302,7 @@ func main() {
 	// Admin: queries
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/query/all", handlerAuthCheck(http.HandlerFunc(queryAllGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/active", handlerAuthCheck(http.HandlerFunc(queryActiveGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/completed", handlerAuthCheck(http.HandlerFunc(queryCompletedGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/actions", handlerAuthCheck(http.HandlerFunc(queryActionsPOSTHandler))).Methods("POST")

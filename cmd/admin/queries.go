@@ -49,6 +49,14 @@ func getQueries(target string) ([]DistributedQuery, error) {
 		if err := db.Where("active = ? AND completed = ? AND deleted = ?", false, true, false).Find(&queries).Error; err != nil {
 			return queries, err
 		}
+	case "all":
+		if err := db.Where("deleted = ?", false).Find(&queries).Error; err != nil {
+			return queries, err
+		}
+	case "deleted":
+		if err := db.Where("deleted = ?", true).Find(&queries).Error; err != nil {
+			return queries, err
+		}
 	}
 	return queries, nil
 }

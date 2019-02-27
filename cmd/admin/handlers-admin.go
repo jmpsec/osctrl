@@ -499,6 +499,62 @@ response:
 	w.Write(response)
 }
 
+// Handler for GET requests to all queries
+func queryAllGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/query-all.html",
+		"tmpl_admin/head.html",
+		"tmpl_admin/page-header.html",
+		"tmpl_admin/page-sidebar.html",
+		"tmpl_admin/page-aside.html")
+	if err != nil {
+		log.Printf("error getting table template: %v", err)
+		return
+	}
+	// Get stats for all contexts
+	contexts, err := ctxs.All()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	tmplCtxStats, err := getContextStats(contexts)
+	if err != nil {
+		log.Printf("error getting context stats: %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	tmplPlatStats, err := getPlatformStats(platforms)
+	if err != nil {
+		log.Printf("error getting context stats: %v", err)
+		return
+	}
+	// Get queries
+	queries, err := getQueries("all")
+	if err != nil {
+		log.Printf("error getting active queries: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := QueryTableTemplateData{
+		Title:         "All on-demand queries",
+		ContextStats:  tmplCtxStats,
+		PlatformStats: tmplPlatStats,
+		Queries:       queries,
+		Target:        "all",
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Printf("template error %v", err)
+		return
+	}
+}
+
 // Handler for GET requests to active queries
 func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)

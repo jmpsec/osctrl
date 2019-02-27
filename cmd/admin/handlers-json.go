@@ -113,6 +113,8 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// Fill template with data
 	var tmplName string
 	switch target {
+	case "all":
+		tmplName = "all-queries.tmpl"
 	case "active":
 		tmplName = "active-queries.tmpl"
 	case "completed":

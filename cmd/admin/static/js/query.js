@@ -35,7 +35,7 @@ function sendQuery() {
       query: _query,
       repeat: _repeat
   };
-  sendPostRequest(data, _url, '/query/active', false);
+  sendPostRequest(data, _url, '/query/all', false);
 }
 
 function clearQuery() {
@@ -59,11 +59,11 @@ function deleteQueries(_names) {
 }
 
 function completeQueries(_names) {
-  actionQueries('complete', _names, '/query/completed');
+  actionQueries('complete', _names, '/query/all');
 }
 
 function activateQueries(_names) {
-  actionQueries('activate', _names, '/query/active');
+  actionQueries('activate', _names, '/query/all');
 }
 
 function actionQueries(_action, _names, _redir) {

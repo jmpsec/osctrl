@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    
+    {{ template "page-header" . }}
+    
+    <div class="app-body">
+      
+      {{ template "page-sidebar" . }}
+
+      <main class="main">
+        
+        <div class="container-fluid">
+          
+          <div class="animated fadeIn">
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="nav-icon fas fa-terminal"></i> {{ .Title }}
+                <div class="card-header-actions">
+                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip" 
+                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body table-responsive">
+
+                  <table id="tableQueries" class="table table-bordered table-striped" style="width:100%">
+                    <input type="hidden" id="refresh_value" value="yes">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input type="checkbox" name="select-all" value="1" id="select-all">
+                        </th>
+                        <th>Name</th>
+                        <th>Creator</th>
+                        <th>Query</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                      </tr>
+                    </thead>
+                  </table>
+
+              </div>
+            </div>
+
+            <input type="hidden" id="csrftoken" value="thisshouldbeatoken">
+
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-danger" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Something went wrong...</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="errorModalMessageClient"></p>
+                    <p id="errorModalMessageServer"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-warning" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Confirm the action</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="confirmModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="confirm_action" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="warningModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-warning" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Action can not be completed</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p id="warningModalMessage"></p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+                
+          </div>
+
+        </div>
+
+      </main>
+      
+      {{ template "page-aside" . }}
+
+    </div>
+
+    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
+    <!-- Select for DataTables -->
+    <script src="https://cdn.datatables.net/select/1.2.7/js/dataTables.select.min.js" integrity="sha384-cOjgXKpKZwqHUxQkXUhdnJfrnLtI4RMo71zMDdhSIeb6m1tWreU56MdGcqc8l+HH" crossorigin="anonymous"></script>
+    <!-- Buttons for DataTables -->
+    <script src="https://cdn.datatables.net/buttons/1.5.2/js/dataTables.buttons.min.js" integrity="sha384-zOjU8Lmrn7aY/0op2Zr4DRXhg0el3XJ4SEMVakZ7bni+KP5F9geHOJ0cWYSvj0HN" crossorigin="anonymous"></script>
+    <!-- CoreUI JS -->
+    <script src="/static/js/coreui.min.js"></script>
+    <!-- custom JS -->
+    <script src="/static/js/functions.js"></script>
+    <script src="/static/js/settings.js"></script>
+    <script src="/static/js/login.js"></script>
+    <script src="/static/js/query.js"></script>
+    <script src="/static/js/tables.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) { 
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax;
+        var tableQueries = $('#tableQueries').DataTable({
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'tr>>" +
+               "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4'i><'col-sm-12 col-md-4'p>>",
+          processing : true,
+          ajax : {
+            url: "/query/json/{{ .Target }}",
+            dataSrc: function(json) {
+              $('.card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : "checkbox"},
+            {"data" : "name"},
+            {"data" : "creator"},
+            {"data" : "query"},
+            {"data" : "created"},
+            {"data" : "status"},
+            {"data" : "progress"}
+          ],
+          columnDefs: [
+            { width: '1%', targets: 0 },
+            { width: '8%', targets: 1 },
+            { width: '6%', targets: 2 },
+            { width: '40%', targets: 3 },
+            { width: '15%', targets: 4 },
+            { width: '10%', targets: 5 },
+            { width: '10%', targets: 6 },
+            {
+              className: 'select-checkbox',
+              targets:   0,
+              searchable:  false,
+              orderable:   false,
+            }
+          ],
+          select: {
+            style:    'os',
+            selector: 'td:first-child'
+          },
+          buttons: [
+            {
+              className: 'btn custom-size-btn btn-outline-danger',
+              text: '<i class="far fa-trash-alt"></i>',
+              titleAttr: 'Delete Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableQueries.rows('.selected').data(), function() {
+                  a.push(this);
+                });
+                var names = []
+                for (var i=0; i<a.length; i++) {
+                  var name = $.parseHTML(a[i].name);
+                  names.push(name[0].innerText)
+                }
+                if (names.length > 0) {
+                  console.log(names);
+                  confirmDeleteQueries(names);
+                } else {
+                  console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
+                }
+              }
+            },
+            {
+              className: 'btn custom-size-btn btn-outline-dark',
+              text: '<i class="fas fa-flag-checkered"></i>',
+              titleAttr: 'Complete Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableQueries.rows('.selected').data(), function() {
+                  a.push(this);
+                });
+                var names = []
+                for (var i=0; i<a.length; i++) {
+                  var name = $.parseHTML(a[i].name);
+                  names.push(name[0].innerText)
+                }
+                if (names.length > 0) {
+                  console.log(names);
+                  completeQueries(names);
+                } else {
+                  console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
+                }
+              }
+            }
+          ]
+        });
+
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+
+        // Auto-refresh table
+        setInterval(function (){
+          tableQueries.ajax.reload();
+        }, 30000 );
+      });
+    </script>
+
+  </body>
+</html>
