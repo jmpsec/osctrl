@@ -28,7 +28,10 @@
                   <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
                     <div class="card mt-2">
                       <div class="card-header">
-                        <i class="fas fa-table"></i> Tables in osquery {{ $.TablesVersion }}:
+                        <i class="fas fa-table"></i> 
+                          <a href="https://osquery.io/schema/{{ $.TablesVersion }}" target="_blank">
+                            Tables in osquery {{ $.TablesVersion }}:
+                          </a>
                         <div class="card-header-actions">
                           <div class="card-header-action">
                             <select id="select-tables" class="form-control">
@@ -42,7 +45,7 @@
                         </div>
                       </div>
                       <div class="card-body">
-                        <div id="osquery_tables" data-spy="scroll" style="height: 380px; overflow: auto; overflow-y: scroll;">
+                        <div id="osquery_tables" data-spy="scroll" style="height: 385px; overflow: auto; overflow-y: scroll;">
                           <div class="list-group" style="margin-bottom: 2px;">
                           {{range  $i, $e := $.Tables}}
                             <div class="filter-element {{ $e.Filter }}">
@@ -72,7 +75,7 @@
                       </div>
                       <div class="card-body">
         
-                        <div data-spy="scroll" style="height: 380px; overflow: auto; overflow-y: scroll;">
+                        <div data-spy="scroll" style="height: 398px; overflow: auto; overflow-y: scroll;">
                           <div class="row">
                             <div class="col-md-12">
                               <form>
