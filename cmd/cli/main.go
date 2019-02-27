@@ -135,6 +135,31 @@ func init() {
 					},
 				},
 				{
+					Name:    "edit",
+					Aliases: []string{"e"},
+					Usage:   "Edit an existing user",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "username, u",
+							Usage: "User to be edited",
+						},
+						cli.StringFlag{
+							Name:  "password, p",
+							Usage: "New password to be used",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						// Get values from flags
+						username := c.String("username")
+						if username == "" {
+							fmt.Println("username is required")
+							os.Exit(1)
+						}
+						password := c.String("password")
+						return adminUsers.ChangePassword(username, password)
+					},
+				},
+				{
 					Name:    "delete",
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing user",

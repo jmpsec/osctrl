@@ -125,3 +125,19 @@ func (m *UserManager) Delete(username string) error {
 	}
 	return nil
 }
+
+// ChangePassword for user by username
+func (m *UserManager) ChangePassword(username, password string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	passhash, err := m.HashPasswordWithSalt(password)
+	if err != nil {
+		return err
+	}
+	if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}

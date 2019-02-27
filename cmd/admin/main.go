@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
@@ -151,6 +152,14 @@ func loadOsqueryTables() error {
 	err = json.Unmarshal(byteValue, &osqueryTables)
 	if err != nil {
 		return err
+	}
+	// Add a string for platforms to be used as filter
+	for i, t := range osqueryTables {
+		filter := ""
+		for _, p := range t.Platforms {
+			filter += " filter-" + p
+		}
+		osqueryTables[i].Filter = strings.TrimSpace(filter)
 	}
 	return nil
 }

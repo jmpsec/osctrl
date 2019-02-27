@@ -280,6 +280,7 @@ type OsqueryTable struct {
 	Name      string   `json:"name"`
 	URL       string   `json:"url"`
 	Platforms []string `json:"platforms"`
+	Filter    string
 }
 
 // LoginTemplateData for passing data to the login template
