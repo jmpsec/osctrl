@@ -36,9 +36,8 @@
                         <th>
                           <input type="checkbox" name="select-all" value="1" id="select-all">
                         </th>
-                        <th>Name</th>
-                        <th>Creator</th>
                         <th>Query</th>
+                        <th>Creator</th>
                         <th>Created</th>
                         <th>Status</th>
                         <th>Progress</th>
@@ -174,26 +173,62 @@
           },
           columns : [
             {"data" : "checkbox"},
-            {"data" : "name"},
-            {"data" : "creator"},
             {"data" : "query"},
+            {"data" : "creator"},
             {"data" : "created"},
             {"data" : "status"},
             {"data" : "progress"}
           ],
           columnDefs: [
-            { width: '1%', targets: 0 },
-            { width: '8%', targets: 1 },
-            { width: '6%', targets: 2 },
-            { width: '40%', targets: 3 },
-            { width: '15%', targets: 4 },
-            { width: '10%', targets: 5 },
-            { width: '10%', targets: 6 },
             {
-              className: 'select-checkbox',
               targets:   0,
+              className: 'select-checkbox',
+              width: '1%',
+              data: 'checkbox',
               searchable:  false,
               orderable:   false,
+            },{
+              targets: 1,
+              width: '45%',
+              data: 'query',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<span style="font-family: monospace;"><a href="/query/logs/'+data.name+'">'+data.query+'</a></span>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 2,
+              data: 'creator',
+              width: '6%'
+            },{
+              targets: 3,
+              width: '15%',
+              data: 'created'
+            },{
+              targets: 4,
+              width: '10%',
+              data: 'status',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<b>'+data+'</b>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 5,
+              width: '13%',
+              data: 'progress',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return  '<span style="color:green;">'+data.executions+'</span>/' +
+                          '<span style="color:red;">'+data.errors+'</span>';
+                } else {
+                  return data;
+                }
+              }
             }
           ],
           select: {
@@ -219,8 +254,7 @@
                 });
                 var names = []
                 for (var i=0; i<a.length; i++) {
-                  var name = $.parseHTML(a[i].name);
-                  names.push(name[0].innerText)
+                  names.push(a[i].name)
                 }
                 if (names.length > 0) {
                   console.log(names);
@@ -250,8 +284,7 @@
                 });
                 var names = []
                 for (var i=0; i<a.length; i++) {
-                  var name = $.parseHTML(a[i].name);
-                  names.push(name[0].innerText)
+                  names.push(a[i].name)
                 }
                 if (names.length > 0) {
                   console.log(names);

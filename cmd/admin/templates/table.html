@@ -236,20 +236,76 @@
             {"data" : "lastseen"}
           ],
           columnDefs: [
-            { width: '1%', targets: 0 },
-            { width: '26%', targets: 1 },
-            { width: '7%', targets: 2 },
-            { width: '5%', targets: 3 },
-            { width: '3%', targets: 4 },
-            { width: '5%', targets: 5 },
-            { width: '15%', targets: 6 },
-            { width: '3%', targets: 7 },
-            { width: '10%', targets: 8 },
             {
-              className: 'select-checkbox',
               targets:   0,
+              className: 'select-checkbox',
+              width: '1%',
+              data: 'checkbox',
               searchable:  false,
-              orderable:   false,
+              orderable:   false
+            },{
+              targets: 1,
+              width: '26%',
+              data: 'uuid',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<a href="/node/'+data+'">' + data + '</a>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 2,
+              data: 'username',
+              width: '7%'
+            },{
+              targets: 3,
+              data: 'localname',
+              width: '5%'
+            },{
+              targets: 4,
+              data: 'ip',
+              width: '3%'
+            },{
+              targets: 5,
+              data: 'platform',
+              width: '5%',
+              render: function(data, type, row, meta) {
+                if (type === 'display') {
+                  switch(data) {
+                  case "ubuntu":
+                    return '<i class="fl-ubuntu-inverse"></i> ubuntu';
+                  case "unknown":
+                    return '<i class="fa fa-question-circle"></i> unknown';
+                  case "darwin":
+                    return '<i class="fab fa-apple"></i> darwin';
+                  case "centos":
+                    return '<i class="fl-centos"></i> centos';
+                  case "fedora":
+                    return '<i class="fl-fedora"></i> fedora';
+                  case "windows":
+                    return '<i class="fab fa-windows"></i> windows';
+                  case "freebsd":
+                    return '<i class="fl-freebsd"></i> freebsd';
+                  case "opensuse":
+                    return '<i class="fl-opensuse"></i> opensuse';
+                  }
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 6,
+              data: 'version',
+              width: '15%'
+            },{
+              targets: 7,
+              data: 'osquery',
+              width: '3%'
+            },{
+              targets: 8,
+              data: 'lastseen',
+              width: '10%'
             }
           ],
           select: {

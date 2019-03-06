@@ -1,86 +1,29 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/md5"
-	"crypto/rand"
-	"crypto/sha1"
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"html"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
 )
-
-// Constants for seconds
-const (
-	oneMinute        = 60
-	fiveMinutes      = 300
-	fifteenMinutes   = 900
-	thirtyMinutes    = 1800
-	fortyfiveMinutes = 2500
-	oneHour          = 3600
-	threeHours       = 10800
-	sixHours         = 21600
-	eightHours       = 28800
-	twelveHours      = 43200
-	fifteenHours     = 54000
-	twentyHours      = 72000
-	oneDay           = 86400
-	twoDays          = 172800
-	sevenDays        = 604800
-	fifteenDays      = 1296000
-)
-
-// Helper to get environment variables
-func getServerEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-// Function to generate a secure CSRF token
-func generateCSRF() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)
-}
-
-// Helper to check if the CSRF token is valid
-func checkCSRFToken(token string) bool {
-	//return (strings.TrimSpace(token) == mainCSRFToken)
-	return true
-}
 
 // Helper to generate a random enough node key
 func generateNodeKey(UUID string) string {
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
 	hasher := md5.New()
-	hasher.Write([]byte(UUID + timestamp))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-// Helper to generate a random MD5 to be used as query name
-func generateQueryName() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	hasher := md5.New()
-	hasher.Write([]byte(fmt.Sprintf("%x", b)))
+	_, _ = hasher.Write([]byte(UUID + timestamp))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
@@ -91,20 +34,6 @@ func checkValidSecret(enrollSecret string, context string) bool {
 		return false
 	}
 	return (strings.TrimSpace(enrollSecret) == ctx.Secret)
-}
-
-// Helper to check if the provided platform exists
-func checkValidPlatform(platform string) bool {
-	platforms, err := nodesmgr.GetAllPlatforms()
-	if err != nil {
-		return false
-	}
-	for _, p := range platforms {
-		if p == platform {
-			return true
-		}
-	}
-	return false
 }
 
 // Helper to check if the provided SecretPath is valid for a context
@@ -151,29 +80,6 @@ func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) nodes
 	}
 }
 
-// Helper to retrieve the osquery configuration
-// FIXME use cache for this to avoid too much I/O
-func getOsqueryConfiguration(filePath string) (string, error) {
-	// Open the file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	// Scan file line by line
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	// Iterate through lines to remove end of lines and other spaces
-	var lines []string
-	for scanner.Scan() {
-		lines = append(lines, strings.TrimSpace(scanner.Text()))
-	}
-	blob := strings.Join(lines, "")
-	// FIXME do this better, to make sure there are no spaces in the JSON
-	// JSON can have fields like "key: " or "key :value"
-	return strings.Replace(strings.Replace(blob, ": ", ":", -1), " :", ":", -1), nil
-}
-
 // Helper for debugging purposes and dump a full HTTP request
 func debugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 	if debugCheck {
@@ -188,133 +94,6 @@ func debugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 		}
 		log.Println("-------------------------------------------------------end")
 	}
-}
-
-// Helper to escape text
-func escapeText(rawString string) string {
-	return html.EscapeString(rawString)
-}
-
-// Helper to remove backslashes from text
-func removeBackslash(rawString string) string {
-	return strings.Replace(rawString, "\\", " ", -1)
-}
-
-// Helper to remove backslashes from text and encode
-func removeBackslashEncode(data []byte) string {
-	return strings.Replace(string(data), "\\", " ", -1)
-}
-
-// Helper to remove backslashes from text
-func stringEncode(data []byte) string {
-	return string(data)
-}
-
-// Helper to remove backslashes and truncate
-func noBackslashTruncate(rawString string) string {
-	return removeBackslash(rawString)[:12]
-}
-
-// Helper to generate a link to results for on-demand queries
-func resultsSearchLink(name string) string {
-	if logConfig.Splunk {
-		return strings.Replace(logConfig.SplunkCfg["search"], "{{NAME}}", removeBackslash(name), 1)
-	}
-	if logConfig.Postgres {
-		return "/query/logs/" + removeBackslash(name)
-	}
-	return ""
-}
-
-// Helper to get a string based on the difference of two times
-func stringifyTime(seconds int) string {
-	var timeStr string
-	w := make(map[int]string)
-	w[oneDay] = "day"
-	w[oneHour] = "hour"
-	w[oneMinute] = "minute"
-	// Ordering the values will prevent bad values
-	var ww [3]int
-	ww[0] = oneDay
-	ww[1] = oneHour
-	ww[2] = oneMinute
-	for _, v := range ww {
-		if seconds >= v {
-			d := seconds / v
-			dStr := strconv.Itoa(d)
-			timeStr = dStr + " " + w[v]
-			if d > 1 {
-				timeStr += "s"
-			}
-			break
-		}
-	}
-	return timeStr + " ago"
-}
-
-// Helper to get a string based on the difference of two times
-func stringifyTimeFull(seconds int) string {
-	var timeStr string
-	w := make(map[int]string)
-	w[oneDay] = "day"
-	w[oneHour] = "hour"
-	w[oneMinute] = "minute"
-	// Ordering the values will prevent bad values
-	var ww [3]int
-	ww[0] = oneDay
-	ww[1] = oneHour
-	ww[2] = oneMinute
-	secondsTime := seconds
-	for _, v := range ww {
-		if seconds >= v {
-			d := seconds / v
-			timeStr += strconv.Itoa(d) + " " + w[v]
-			if d > 1 {
-				timeStr += "s"
-			}
-			secondsTime = secondsTime - (v * d)
-		}
-	}
-	return timeStr + " ago"
-}
-
-func stringifySeconds(seconds int) string {
-	timeStr := ""
-	if seconds < 60 {
-		return strconv.Itoa(seconds) + " seconds"
-	}
-	return timeStr
-}
-
-// Helper to format past times in seconds
-func pastSeconds(t time.Time) string {
-	now := time.Now()
-	seconds := int(now.Sub(t).Seconds())
-	return strconv.Itoa(seconds)
-}
-
-// Helper to format past times in timestamp format
-func pastTimestamp(t time.Time) string {
-	return strconv.FormatInt(t.Unix(), 10)
-}
-
-// Helper to format past times only returning one value (minute, hour, day)
-func pastTimeAgo(t time.Time) string {
-	if t.IsZero() {
-		return "Never"
-	}
-	now := time.Now()
-	seconds := int(now.Sub(t).Seconds())
-	if seconds < 2 {
-		return "Just Now"
-	}
-	if seconds < oneMinute {
-		return strconv.Itoa(seconds) + " seconds ago"
-	}
-	if seconds > fifteenDays {
-		return "Since " + t.Format("Mon Jan 02 15:04:05 MST 2006")
-	}
-	return stringifyTime(seconds)
 }
 
 // Helper function to send HTTP requests
@@ -351,32 +130,6 @@ func sendRequest(secure bool, reqType, url string, params io.Reader, headers map
 	return resp.StatusCode, bodyBytes, nil
 }
 
-// Helper to generate stats for all contexts
-func getContextStats(contexts []context.TLSContext) (nodes.StatsData, error) {
-	contextStats := make(nodes.StatsData)
-	for _, c := range contexts {
-		stats, err := nodesmgr.GetStatsByContext(c.Name)
-		if err != nil {
-			return contextStats, err
-		}
-		contextStats[c.Name] = stats
-	}
-	return contextStats, nil
-}
-
-// Helper to generate stats for all platforms
-func getPlatformStats(platforms []string) (nodes.StatsData, error) {
-	platformStats := make(nodes.StatsData)
-	for _, p := range platforms {
-		stats, err := nodesmgr.GetStatsByPlatform(p)
-		if err != nil {
-			return platformStats, err
-		}
-		platformStats[p] = stats
-	}
-	return platformStats, nil
-}
-
 // Helper to remove duplicates from array of strings
 func uniq(duplicated []string) []string {
 	keys := make(map[string]bool)
@@ -388,19 +141,6 @@ func uniq(duplicated []string) []string {
 		}
 	}
 	return result
-}
-
-// Helper to calculate the osquery config_hash and skip sending a blob that won't change anything
-// https://github.com/facebook/osquery/blob/master/osquery/config/config.cpp#L911
-// osquery calculates the SHA1 of the configuration blob, then the SHA1 hash of that
-func generateOsqueryConfigHash(config string) string {
-	firstHasher := sha1.New()
-	secondHasher := sha1.New()
-	// Get SHA1 of configuration blob
-	firstHasher.Write([]byte(config))
-	// Get SHA1 of the first hash
-	secondHasher.Write([]byte(hex.EncodeToString(firstHasher.Sum(nil))))
-	return hex.EncodeToString(secondHasher.Sum(nil))
 }
 
 // Helper to determine if an IPv4 is public, based on the following:
@@ -429,9 +169,4 @@ func isPublicIP(IP net.IP) bool {
 		}
 	}
 	return false
-}
-
-// Helper to compose the Google Maps API URL including the key
-func getGoogleMapsURL() string {
-	return strings.Replace(geolocConfig.GoogleMapsCfg["api"], "{{APIKEY}}", geolocConfig.GoogleMapsCfg["apikey"], 1)
 }

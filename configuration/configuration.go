@@ -17,6 +17,7 @@ const (
 // Names for configuration values
 const (
 	FieldDebugHTTP = "debug_http"
+	ServiceMetrics = "service_metrics"
 )
 
 // ConfigValue to hold each value for configuration

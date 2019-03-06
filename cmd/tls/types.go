@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/javuto/osctrl/nodes"
 	"github.com/javuto/osctrl/queries"
 
 	"github.com/jinzhu/gorm"
@@ -20,14 +19,6 @@ type JSONConfigurationDB struct {
 
 // JSONConfigurationTLS to hold all TLS endpoint configuration values
 type JSONConfigurationTLS struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-}
-
-// JSONConfigurationAdmin to hold all Admin configuration values
-type JSONConfigurationAdmin struct {
 	Listener string `json:"listener"`
 	Port     string `json:"port"`
 	Host     string `json:"host"`
@@ -236,9 +227,6 @@ type LogGenericData struct {
 // QueryReadRequest received to get on-demand queries
 type QueryReadRequest GenericRequest
 
-// QueryReadQueries to hold the on-demand queries
-type QueryReadQueries map[string]string
-
 // QueryReadResponse for on-demand queries from nodes
 type QueryReadResponse struct {
 	Queries     queries.QueryReadQueries `json:"queries"`
@@ -266,137 +254,4 @@ type QueryWriteData struct {
 	Name   string          `json:"name"`
 	Result json.RawMessage `json:"result"`
 	Status int             `json:"status"`
-}
-
-// OsqueryTable to show tables to query
-type OsqueryTable struct {
-	Name      string   `json:"name"`
-	URL       string   `json:"url"`
-	Platforms []string `json:"platforms"`
-}
-
-// LoginTemplateData for passing data to the login template
-type LoginTemplateData struct {
-	Title string
-}
-
-// TableTemplateData for passing data to the table template
-type TableTemplateData struct {
-	Title         string
-	Selector      string
-	SelectorName  string
-	Target        string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-}
-
-// ConfTemplateData for passing data to the conf template
-type ConfTemplateData struct {
-	Title              string
-	Context            string
-	ConfigurationBlob  string
-	ConfigurationHash  string
-	QuickAddShell      string
-	QuickAddPowershell string
-	ContextStats       nodes.StatsData
-	PlatformStats      nodes.StatsData
-}
-
-// QueryRunTemplateData for passing data to the query template
-type QueryRunTemplateData struct {
-	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	UUIDs         []string
-	Hosts         []string
-	Tables        []OsqueryTable
-	TablesVersion string
-}
-
-// QueryTableTemplateData for passing data to the query template
-type QueryTableTemplateData struct {
-	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Target        string
-	Queries       []DistributedQuery
-}
-
-// QueryLogsTemplateData for passing data to the query template
-type QueryLogsTemplateData struct {
-	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Query         DistributedQuery
-	QueryTargets  []DistributedQueryTarget
-}
-
-// LocationData to hold all location related data, when enabled
-type LocationData struct {
-	GoogleMapsURL string
-	LastLocation  nodes.GeoLocationIPAddress
-}
-
-// NodeTemplateData for passing data to the query template
-type NodeTemplateData struct {
-	Title         string
-	PostgresLogs  bool
-	Node          nodes.OsqueryNode
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Location      LocationData
-	LocationShow  bool
-}
-
-// SidebarStats to get all stats
-type SidebarStats struct {
-	Context  nodes.StatsData `json:"context"`
-	Platform nodes.StatsData `json:"platform"`
-}
-
-// LoginRequest to receive login credentials
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// LogoutRequest to receive logout requests
-type LogoutRequest struct {
-	CSRFToken string `json:"csrftoken"`
-}
-
-// DistributedQueryRequest to receive query requests
-type DistributedQueryRequest struct {
-	CSRFToken string   `json:"csrftoken"`
-	Context   string   `json:"context"`
-	Platform  string   `json:"platform"`
-	UUIDs     []string `json:"uuid_list"`
-	Hosts     []string `json:"host_list"`
-	Query     string   `json:"query"`
-	Repeat    int      `json:"repeat"`
-}
-
-// DistributedQueryActionRequest to receive query requests
-type DistributedQueryActionRequest struct {
-	CSRFToken string   `json:"csrftoken"`
-	Names     []string `json:"names"`
-	Action    string   `json:"action"`
-}
-
-// NodeActionRequest to receive node action requests
-type NodeActionRequest struct {
-	CSRFToken string `json:"csrftoken"`
-	Action    string `json:"action"`
-}
-
-// NodeMultiActionRequest to receive node action requests
-type NodeMultiActionRequest struct {
-	CSRFToken string   `json:"csrftoken"`
-	Action    string   `json:"action"`
-	UUIDs     []string `json:"uuids"`
-}
-
-// AdminResponse to be returned to requests
-type AdminResponse struct {
-	Message string `json:"message"`
 }

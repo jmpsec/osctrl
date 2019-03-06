@@ -29,7 +29,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       build.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
       build.vm.provision "shell" do |s|
         s.path = "deploy/provision.sh"
-        s.args = ["--nginx", "--postgres", "-p", "all", "--tls-hostname", "10.10.10.6", "--admin-hostname", "10.10.10.6"]
+        s.args = [
+          "--nginx", "--postgres", "-p", "all", "--tls-hostname", 
+          "10.10.10.6", "--admin-hostname", "10.10.10.6", "--password", "admin"
+        ]
         privileged = false
       end
     end

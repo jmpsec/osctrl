@@ -392,3 +392,16 @@ function install_go_11() {
     go version
   fi
 }
+
+# Install Grafana 6.0.0 in Ubuntu
+function install_grafana() {
+  local __version="6.0.0"
+  local __file="grafana_${__version}_amd64.deb"
+  
+  log "Installing Grafana $__version dependencies"
+  package adduser
+  package libfontconfig
+  log "Downloading Grafana $__version package"
+  wget "https://dl.grafana.com/oss/release/$__file" -O "/tmp/grafana_${__version}_amd64.deb"
+  sudo dpkg -i "/tmp/grafana_${__version}_amd64.deb"
+}

@@ -50,8 +50,6 @@ var (
 	dbConfig     JSONConfigurationDB
 	logConfig    JSONConfigurationLogging
 	geolocConfig JSONConfigurationGeoLocation
-	// FIXME this is nasty and should not be a global but here we are
-	osqueryTables []OsqueryTable
 )
 
 // Function to load the configuration file and assign to variables
@@ -130,10 +128,16 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
-	// Make sure service has its configuration
+	// Check if service configuration for debug HTTP is ready
 	if !config.IsValue(serviceName, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceName, configuration.FieldDebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
+		}
+	}
+	// Check if service configuration for metrics
+	if !config.IsValue(serviceName, configuration.ServiceMetrics) {
+		if err := config.NewBooleanValue(serviceName, configuration.ServiceMetrics, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
 		}
 	}
 	// multiple listeners channel
@@ -161,7 +165,7 @@ func main() {
 	// Launch HTTP server for TLS endpoint
 	go func() {
 		serviceTLS := tlsConfig.Listener + ":" + tlsConfig.Port
-		log.Printf("HTTP enroll listening %s", serviceTLS)
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceTLS)
 		log.Fatal(http.ListenAndServe(serviceTLS, routerTLS))
 	}()
 

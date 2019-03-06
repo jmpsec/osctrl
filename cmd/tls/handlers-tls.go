@@ -29,7 +29,7 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Send response
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("💥"))
+	_, _ = w.Write([]byte("💥"))
 }
 
 // Handle testing requests
@@ -38,7 +38,7 @@ func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 }
 
 // Handle error requests
@@ -47,7 +47,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("oh no..."))
+	_, _ = w.Write([]byte("oh no..."))
 }
 
 // Function to handle the enroll requests from osquery nodes
@@ -118,7 +118,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Function to handle the configuration requests from osquery nodes
@@ -177,7 +177,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Function to handle the log requests from osquery nodes, both status and results
@@ -201,7 +201,6 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		r.Body, err = gzip.NewReader(r.Body)
 		if err != nil {
 			log.Printf("error decoding gzip body %v", err)
-			response = []byte("")
 		}
 		defer r.Body.Close()
 	}
@@ -212,7 +211,6 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		log.Printf("error parsing POST body %v", err)
-		response = []byte("")
 	}
 	defer r.Body.Close()
 	var nodeInvalid bool
@@ -237,7 +235,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Helper to process logs
@@ -355,7 +353,6 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		log.Printf("error parsing POST body %v", err)
-		response = []byte("")
 	}
 	var nodeInvalid bool
 	qs := make(queries.QueryReadQueries)
@@ -370,7 +367,6 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		qs, err = queriesmgr.NodeQueries(node)
 		if err != nil {
 			log.Printf("error getting queries from db %v", err)
-			response = []byte("")
 		}
 		// Refresh last query read request
 		err = nodesmgr.RefreshLastQueryRead(t.NodeKey)
@@ -393,7 +389,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Function to handle distributed query results from osquery nodes
@@ -418,7 +414,6 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		log.Printf("error parsing POST body %v", err)
-		response = []byte("")
 	}
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
@@ -446,7 +441,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Helper to process on-demand query result logs
@@ -530,5 +525,5 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", TextPlainUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(quickScript))
+	_, _ = w.Write([]byte(quickScript))
 }

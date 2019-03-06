@@ -59,13 +59,6 @@ const (
 	samlAuthLogin = "saml"
 )
 
-// Types of log types
-const (
-	statusLog = "status"
-	resultLog = "result"
-	queryLog  = "query"
-)
-
 // Global variables
 var (
 	tlsPath        context.TLSPath
@@ -213,10 +206,16 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
-	// Check if service configuration is ready
+	// Check if service configuration for debug HTTP is ready
 	if !config.IsValue(serviceNameAdmin, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceNameAdmin, configuration.FieldDebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
+		}
+	}
+	// Check if service configuration for metrics
+	if !config.IsValue(serviceNameAdmin, configuration.ServiceMetrics) {
+		if err := config.NewBooleanValue(serviceNameAdmin, configuration.ServiceMetrics, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
 		}
 	}
 	// multiple listeners channel
@@ -268,6 +267,10 @@ func main() {
 		// logout
 		routerAdmin.HandleFunc("/logout", logoutHandler).Methods("POST")
 	}
+	// Admin: testing
+	routerAdmin.HandleFunc(testingPath, testingHTTPHandler).Methods("GET")
+	// Admin: error
+	routerAdmin.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// Admin: favicon
 	routerAdmin.HandleFunc("/favicon.ico", faviconHandler)
 	// Admin: static
@@ -280,10 +283,8 @@ func main() {
 	routerAdmin.Handle("/json/context/{context}/{target}", handlerAuthCheck(http.HandlerFunc(jsonContextHandler))).Methods("GET")
 	// Admin: JSON data for platforms
 	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(jsonPlatformHandler))).Methods("GET")
-	// Admin: JSON data for status logs
-	routerAdmin.Handle("/json/status/{context}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonStatusLogsHandler))).Methods("GET")
-	// Admin: JSON data for result logs
-	routerAdmin.Handle("/json/result/{context}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonResultLogsHandler))).Methods("GET")
+	// Admin: JSON data for logs
+	routerAdmin.Handle("/json/logs/{type}/{context}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonLogsHandler))).Methods("GET")
 	// Admin: JSON data for query logs
 	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(jsonQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
@@ -303,14 +304,16 @@ func main() {
 	routerAdmin.Handle("/action/{uuid}", handlerAuthCheck(http.HandlerFunc(nodeActionHandler))).Methods("POST")
 	// Admin: multi node action
 	routerAdmin.Handle("/actions", handlerAuthCheck(http.HandlerFunc(nodeMultiActionHandler))).Methods("POST")
-	// Admin: queries
+	// Admin: run queries
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/query/all", handlerAuthCheck(http.HandlerFunc(queryAllGETHandler))).Methods("GET")
-	routerAdmin.Handle("/query/active", handlerAuthCheck(http.HandlerFunc(queryActiveGETHandler))).Methods("GET")
-	routerAdmin.Handle("/query/completed", handlerAuthCheck(http.HandlerFunc(queryCompletedGETHandler))).Methods("GET")
+	// Admin: list queries
+	routerAdmin.Handle("/query/list", handlerAuthCheck(http.HandlerFunc(queryListGETHandler))).Methods("GET")
+	// Admin: query actions
 	routerAdmin.Handle("/query/actions", handlerAuthCheck(http.HandlerFunc(queryActionsPOSTHandler))).Methods("POST")
+	// Admin: query JSON
 	routerAdmin.Handle("/query/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonQueryHandler))).Methods("GET")
+	// Admin: query logs
 	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(queryLogsHandler))).Methods("GET")
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
@@ -328,7 +331,7 @@ func main() {
 	// Launch HTTP server for admin
 	go func() {
 		serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
-		log.Printf("HTTP admin listening %s", serviceAdmin)
+		log.Printf("%s v%s - HTTP listening %s", serviceNameAdmin, serviceVersion, serviceAdmin)
 		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
 	}()
 

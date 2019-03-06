@@ -2,6 +2,7 @@ package context
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 )
@@ -27,6 +28,8 @@ const (
 	DefaultContextType = "osquery"
 	// DefaultSecretLength as default length for secrets
 	DefaultSecretLength = 64
+	// DefaultLinkExpire as default time in hours to expire enroll/remove links
+	DefaultLinkExpire = 24
 )
 
 // TLSContext to hold each of the TLS context
@@ -36,6 +39,8 @@ type TLSContext struct {
 	Hostname      string
 	Secret        string
 	SecretPath    string
+	EnrollExpire  time.Time
+	RemoveExpire  time.Time
 	Type          string
 	DebugHTTP     bool
 	Icon          string
@@ -82,6 +87,8 @@ func (context *Context) Empty(name, hostname string) TLSContext {
 		Hostname:      hostname,
 		Secret:        generateRandomString(DefaultSecretLength),
 		SecretPath:    generateKSUID(),
+		EnrollExpire:  time.Now(),
+		RemoveExpire:  time.Now(),
 		Type:          DefaultContextType,
 		DebugHTTP:     false,
 		Icon:          DefaultContextIcon,
@@ -130,7 +137,7 @@ func (context *Context) Delete(name string) error {
 	return nil
 }
 
-// UpdateConfiguration configuration for a context
+// UpdateConfiguration to update configuration for a context
 func (context *Context) UpdateConfiguration(name, configuration string) error {
 	ctx, err := context.Get(name)
 	if err != nil {
@@ -138,6 +145,23 @@ func (context *Context) UpdateConfiguration(name, configuration string) error {
 	}
 	if err := context.DB.Model(&ctx).Update("configuration", configuration).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// RotateSecrets to replace Secret and SecretPath for a context
+func (context *Context) RotateSecrets(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	rotated := ctx
+	rotated.Secret = generateRandomString(DefaultSecretLength)
+	rotated.SecretPath = generateKSUID()
+	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
 	}
 	return nil
 }

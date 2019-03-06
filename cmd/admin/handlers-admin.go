@@ -28,6 +28,24 @@ const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
 // TextPlainUTF8 for Content-Type headers, UTF charset
 const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
+// Handle testing requests
+func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("test"))
+}
+
+// Handle error requests
+func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("oh no..."))
+}
+
 // Handler to serve static content with the proper header
 func staticHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
@@ -500,12 +518,12 @@ response:
 	w.Write(response)
 }
 
-// Handler for GET requests to all queries
-func queryAllGETHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for GET requests to queries
+func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/query-all.html",
+		"tmpl_admin/queries.html",
 		"tmpl_admin/head.html",
 		"tmpl_admin/page-header.html",
 		"tmpl_admin/page-sidebar.html",
@@ -549,118 +567,6 @@ func queryAllGETHandler(w http.ResponseWriter, r *http.Request) {
 		PlatformStats: tmplPlatStats,
 		Queries:       qs,
 		Target:        "all",
-	}
-	if err := t.Execute(w, templateData); err != nil {
-		log.Printf("template error %v", err)
-		return
-	}
-}
-
-// Handler for GET requests to active queries
-func queryActiveGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
-	// Prepare template
-	t, err := template.ParseFiles(
-		"tmpl_admin/query-active.html",
-		"tmpl_admin/head.html",
-		"tmpl_admin/page-header.html",
-		"tmpl_admin/page-sidebar.html",
-		"tmpl_admin/page-aside.html")
-	if err != nil {
-		log.Printf("error getting table template: %v", err)
-		return
-	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
-	if err != nil {
-		log.Printf("error getting contexts %v", err)
-		return
-	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
-	if err != nil {
-		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get queries
-	qs, err := queriesmgr.Gets("active")
-	if err != nil {
-		log.Printf("error getting active queries: %v", err)
-		return
-	}
-	// Prepare template data
-	templateData := QueryTableTemplateData{
-		Title:         "Currently active queries",
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
-		Queries:       qs,
-		Target:        "active",
-	}
-	if err := t.Execute(w, templateData); err != nil {
-		log.Printf("template error %v", err)
-		return
-	}
-}
-
-// Handler for GET requests to completed queries
-func queryCompletedGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
-	// Prepare template
-	t, err := template.ParseFiles(
-		"tmpl_admin/query-completed.html",
-		"tmpl_admin/head.html",
-		"tmpl_admin/page-header.html",
-		"tmpl_admin/page-sidebar.html",
-		"tmpl_admin/page-aside.html")
-	if err != nil {
-		log.Printf("error getting table template: %v", err)
-		return
-	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
-	if err != nil {
-		log.Printf("error getting contexts %v", err)
-		return
-	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
-	if err != nil {
-		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get queries
-	qs, err := queriesmgr.Gets("completed")
-	if err != nil {
-		log.Printf("error getting completed queries: %v", err)
-		return
-	}
-	// Prepare template data
-	templateData := QueryTableTemplateData{
-		Title:         "Completed queries",
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
-		Queries:       qs,
-		Target:        "completed",
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1183,32 +1089,3 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 	w.Write(response)
 }
-
-// Handler for downloading packages
-/*
-func packageHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, adminConfig.DebugHTTP, false)
-	vars := mux.Vars(r)
-	// Extract context
-	// FIXME verify context
-	context, ok := vars["context"]
-	if !ok {
-		log.Println("error getting context")
-		return
-	}
-	// Extract platform
-	// FIXME verify platform
-	platform, ok := vars["platform"]
-	if !ok {
-		log.Println("error getting platform")
-		return
-	}
-	// Serve file if values are valid
-	if checkValidPackagePlatform(context, platform) {
-		_, file := path.Split(tlsConfig.Contexts[context][platform])
-		w.Header().Set("Content-Disposition", "attachment; filename="+file)
-		w.Header().Set("Content-Type", "application/octet-stream")
-		http.ServeFile(w, r, tlsConfig.Contexts[context][platform])
-	}
-}
-*/

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/javuto/osctrl/nodes"
 	"github.com/jinzhu/gorm"
@@ -119,33 +118,4 @@ func postgresQuery(data []byte, name string, node nodes.OsqueryNode, status int)
 	} else {
 		log.Printf("db.NewRecord did not return true")
 	}
-}
-
-// Function to retrieve the last status logs for a given node
-func postgresStatusLogs(uuid, context string, seconds int64) ([]OsqueryStatusData, error) {
-	var logs []OsqueryStatusData
-	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND context = ?", uuid, context).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
-		return logs, err
-	}
-	return logs, nil
-}
-
-// Function to retrieve the last result logs for a given node
-func postgresResultLogs(uuid, context string, seconds int64) ([]OsqueryResultData, error) {
-	var logs []OsqueryResultData
-	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND context = ?", uuid, context).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
-		return logs, err
-	}
-	return logs, nil
-}
-
-// Function to retrieve the query log by name
-func postgresQueryLogs(name string) ([]OsqueryQueryData, error) {
-	var logs []OsqueryQueryData
-	if err := db.Where("name = ?", name).Find(&logs).Error; err != nil {
-		return logs, err
-	}
-	return logs, nil
 }

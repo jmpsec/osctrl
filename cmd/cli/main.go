@@ -116,25 +116,7 @@ func init() {
 							Usage: "Full name for the new user",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get values from flags
-						username := c.String("username")
-						if username == "" {
-							fmt.Println("username is required")
-							os.Exit(1)
-						}
-						password := c.String("password")
-						fullname := c.String("fullname")
-						admin := c.Bool("admin")
-						user, err := adminUsers.New(username, password, fullname, admin)
-						if err != nil {
-							return err
-						}
-						if err := adminUsers.Create(user); err != nil {
-							return err
-						}
-						return nil
-					},
+					Action: addUser,
 				},
 				{
 					Name:    "edit",
@@ -150,16 +132,7 @@ func init() {
 							Usage: "New password to be used",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get values from flags
-						username := c.String("username")
-						if username == "" {
-							fmt.Println("username is required")
-							os.Exit(1)
-						}
-						password := c.String("password")
-						return adminUsers.ChangePassword(username, password)
-					},
+					Action: editUser,
 				},
 				{
 					Name:    "delete",
@@ -171,43 +144,13 @@ func init() {
 							Usage: "User to be deleted",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get values from flags
-						username := c.String("username")
-						if username == "" {
-							fmt.Println("username is required")
-							os.Exit(1)
-						}
-						return adminUsers.Delete(username)
-					},
+					Action: deleteUser,
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing users",
-					Action: func(c *cli.Context) error {
-						users, err := adminUsers.All()
-						if err != nil {
-							return err
-						}
-						if len(users) > 0 {
-							fmt.Printf("Existing users:\n")
-							for _, u := range users {
-								fmt.Printf("  Username: %s\n", u.Username)
-								fmt.Printf("  Fullname: %s\n", u.Fullname)
-								fmt.Printf("  Hashed Password: %s\n", u.PassHash)
-								fmt.Printf("  Admin? %v\n", u.Admin)
-								fmt.Printf("  CSRF: %s\n", u.CSRF)
-								fmt.Printf("  Cookie: %s\n", u.Cookie)
-								fmt.Printf("  IPAddress: %s\n", u.IPAddress)
-								fmt.Printf("  UserAgent: %s\n", u.UserAgent)
-								fmt.Println()
-							}
-						} else {
-							fmt.Printf("No users\n")
-						}
-						return nil
-					},
+					Action:  listUsers,
 				},
 			},
 		},
@@ -242,46 +185,7 @@ func init() {
 							Usage: "Certificate file to be read",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get context name
-						ctxName := c.String("name")
-						if ctxName == "" {
-							fmt.Println("Context name is required")
-							os.Exit(1)
-						}
-						// Get context hostname
-						ctxHost := c.String("hostname")
-						if ctxHost == "" {
-							fmt.Println("Context hostname is required")
-							os.Exit(1)
-						}
-						// Get configuration
-						var configuration string
-						confFile := c.String("configuration")
-						if confFile != "" {
-							configuration = context.ReadExternalFile(confFile)
-						}
-						// Get certificate
-						var certificate string
-						certFile := c.String("certificate")
-						if certFile != "" {
-							certificate = context.ReadExternalFile(certFile)
-						}
-						// Create context if it does not exist
-						if !ctxs.Exists(ctxName) {
-							newContext := ctxs.Empty(ctxName, ctxHost)
-							newContext.DebugHTTP = c.Bool("debug")
-							newContext.Configuration = configuration
-							newContext.Certificate = certificate
-							if err := ctxs.Create(newContext); err != nil {
-								return err
-							}
-						} else {
-							fmt.Printf("Context %s already exists!\n", ctxName)
-							os.Exit(1)
-						}
-						return nil
-					},
+					Action: addContext,
 				},
 				{
 					Name:    "delete",
@@ -293,15 +197,7 @@ func init() {
 							Usage: "Context to be deleted",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get context name
-						ctxName := c.String("name")
-						if ctxName == "" {
-							fmt.Println("Context name is required")
-							os.Exit(1)
-						}
-						return ctxs.Delete(ctxName)
-					},
+					Action: deleteContext,
 				},
 				{
 					Name:    "show",
@@ -313,53 +209,13 @@ func init() {
 							Usage: "Context to be displayed",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get context name
-						ctxName := c.String("name")
-						if ctxName == "" {
-							fmt.Println("Context name is required")
-							os.Exit(1)
-						}
-						ctx, err := ctxs.Get(ctxName)
-						if err != nil {
-							return err
-						}
-						fmt.Printf("Context %s\n", ctx.Name)
-						fmt.Printf(" Name: %s\n", ctx.Name)
-						fmt.Printf(" Host: %s\n", ctx.Hostname)
-						fmt.Printf(" Secret: %s\n", ctx.Secret)
-						fmt.Printf(" SecretPath: %s\n", ctx.SecretPath)
-						fmt.Printf(" Type: %v\n", ctx.Type)
-						fmt.Printf(" DebugHTTP? %v\n", ctx.DebugHTTP)
-						fmt.Printf(" Icon: %s\n", ctx.Icon)
-						fmt.Println(" Configuration: ")
-						fmt.Printf("%s\n", ctx.Configuration)
-						fmt.Println(" Certificate: ")
-						fmt.Printf("%s\n", ctx.Certificate)
-						fmt.Println()
-						return nil
-					},
+					Action: showContext,
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS contexts",
-					Action: func(c *cli.Context) error {
-						contexts, err := ctxs.All()
-						if err != nil {
-							return err
-						}
-						if len(contexts) > 0 {
-							fmt.Printf("Existing contexts:\n\n")
-							for _, ctx := range contexts {
-								fmt.Printf("  Name: %s\n", ctx.Name)
-							}
-							fmt.Println()
-						} else {
-							fmt.Printf("No contexts\n")
-						}
-						return nil
-					},
+					Action:  listContext,
 				},
 				{
 					Name:  "quick-add",
@@ -375,26 +231,7 @@ func init() {
 							Usage: "Type of one-liner",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get context name
-						ctxName := c.String("name")
-						if ctxName == "" {
-							fmt.Println("Context name is required")
-							os.Exit(1)
-						}
-						ctx, err := ctxs.Get(ctxName)
-						if err != nil {
-							return err
-						}
-						var oneLiner string
-						if c.String("target") == "sh" {
-							oneLiner, _ = context.QuickAddOneLinerShell(ctx)
-						} else if c.String("target") == "ps1" {
-							oneLiner, _ = context.QuickAddOneLinerPowershell(ctx)
-						}
-						fmt.Printf("%s\n", oneLiner)
-						return nil
-					},
+					Action: quickAddContext,
 				},
 			},
 		},

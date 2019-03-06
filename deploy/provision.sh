@@ -26,22 +26,24 @@
 #   all     Provision will deploy both the admin and the TLS endpoint.
 #
 # Optional Parameters:
-#   --public-tls-port PORT 	    Port for the TLS endpoint service. Default is 443
-#   --public-admin-port PORT 	  Port for the admin service. Default is 8443
-#   --private-tls-port PORT 	  Port for the TLS endpoint service. Default is 9000
-#   --private-admin-port PORT 	Port for the admin service. Default is 9001
+#   --public-tls-port PORT      Port for the TLS endpoint service. Default is 443
+#   --public-admin-port PORT    Port for the admin service. Default is 8443
+#   --private-tls-port PORT     Port for the TLS endpoint service. Default is 9000
+#   --private-admin-port PORT   Port for the admin service. Default is 9001
 #   --tls-hostname HOSTNAME     Hostname for the TLS endpoint service. Default is 127.0.0.1
 #   --admin-hostname HOSTNAME   Hostname for the admin service. Default is 127.0.0.1
-#   -U          --update 		    Pull from master and sync files to the current folder.
-#   -k PATH     --keyfile PATH 	Path to supplied TLS key file.
+#   -X PASS     --password      Force the admin password for the admin interface. Default is random.
+#   -U          --update        Pull from master and sync files to the current folder.
+#   -k PATH     --keyfile PATH  Path to supplied TLS key file.
 #   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle.
 #   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt.
-#   -e EMAIL    --email EMAIL 	Domain for the TLS certificate to be generated using letsencrypt.
-#   -s PATH     --source PATH 	Path to code. Default is /vagrant
-#   -S PATH     --dest PATH 	  Path to binaries. Default is /opt/osctrl
-#   -n          --nginx 		    Install and configure nginx as TLS termination.
-#   -P          --postgres 		  Install and configure PostgreSQL as backend.
-#   -D          --docker        Runs the service in docker
+#   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt.
+#   -s PATH     --source PATH   Path to code. Default is /vagrant
+#   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
+#   -n          --nginx         Install and configure nginx as TLS termination.
+#   -P          --postgres      Install and configure PostgreSQL as backend.
+#   -D          --docker        Runs the service in docker.
+#   -G          --grafana       Install and configure Grafana as metrics platform.
 #
 # Examples:
 #   Provision service in development mode, code is in /vagrant and both admin and tls:
@@ -102,6 +104,7 @@ function usage() {
   printf "  --private-admin-port PORT \tPort for the admin service. Default is 9001\n"
   printf "  --tls-hostname HOSTNAME \tHostname for the TLS endpoint service. Default is 127.0.0.1\n"
   printf "  --admin-hostname HOSTNAME \tHostname for the admin service. Default is 127.0.0.1\n"
+  printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random."
   printf "  -U          --update \t\tPull from master and sync files to the current folder.\n"
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle.\n"
   printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt.\n"
@@ -111,6 +114,7 @@ function usage() {
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination.\n"
   printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend.\n"
   printf "  -D          --docker \t\tRuns the service in docker.\n"
+  printf "  -G          --grafana \t\tInstall and configure Grafana as metrics platform."
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
@@ -139,6 +143,7 @@ CERTFILE=""
 DOMAIN=""
 EMAIL=""
 DOCKER=false
+GRAFANA=false
 NGINX=false
 POSTGRES=false
 SOURCE_PATH=/vagrant
@@ -172,7 +177,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nD:c:d:e:s:S: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,certfile:,domain:,email:,source:,dest:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nDG:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,grafana,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -268,6 +273,11 @@ while true; do
       DOCKER=true
       shift
       ;;
+    -G|--grafana)
+      SHOW_USAGE=false
+      GRAFANA=true
+      shift
+      ;;
     -k|--keyfile)
       SHOW_USAGE=false
       KEYFILE=$2
@@ -296,6 +306,11 @@ while true; do
     -S|--dest)
       SHOW_USAGE=false
       DEST_PATH=$2
+      shift 2
+      ;;
+    -X|--password)
+      SHOW_USAGE=false
+      _ADMIN_PASS=$2
       shift 2
       ;;
     --)
@@ -434,6 +449,17 @@ if [[ "$DOCKER" == false ]]; then
     fi
     configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA" 
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
+  fi
+fi
+
+# Grafana - Metrics
+if [[ "$DOCKER" == false ]]; then
+  if [[ "$GRAFANA" == true ]]; then
+    if [[ "$DISTRO" == "ubuntu" ]]; then
+      install_grafana
+    elif [[ "$DISTRO" == "centos" ]]; then
+      log "Not ready yet to install Grafana in CentOS"
+    fi
   fi
 fi
 

@@ -532,7 +532,7 @@
           searching : true,
           processing : true,
           ajax : {
-            url: "/json/status/{{ .Context }}/{{ .UUID }}",
+            url: "/json/logs/status/{{ .Context }}/{{ .UUID }}",
             dataSrc: function(json) {
               $('#status-card-header').removeClass("bg-danger");
               return json.data;
@@ -544,8 +544,8 @@
                 sort: "created.timestamp"
               }
             },
-            {"data" : "message"},
-            {"data" : "severity"}
+            {"data" : "first"},
+            {"data" : "second"}
           ],
           order: [[ 0, "desc" ]],
           columnDefs: [
@@ -579,7 +579,7 @@
           searching : true,
           processing : true,
           ajax : {
-            url: "/json/result/{{ .Context }}/{{ .UUID }}",
+            url: "/json/logs/result/{{ .Context }}/{{ .UUID }}",
             dataSrc: function(json) {
               $('#result-card-header').removeClass("bg-danger");
               return json.data;
@@ -591,8 +591,8 @@
                 sort: "created.timestamp"
               }
             },
-            {"data" : "name"},
-            {"data" : "columns"}
+            {"data" : "first"},
+            {"data" : "second"}
           ],
           order: [[ 0, "desc" ]],
           columnDefs: [
