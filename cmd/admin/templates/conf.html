@@ -209,6 +209,7 @@
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/configuration.js"></script>
+    <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       // Highlight.js initialization
       hljs.initHighlightingOnLoad();
@@ -295,6 +296,12 @@
           console.error('Action:', e.action);
           console.error('Trigger:', e.trigger);
         });
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);  
       });
     </script>
   </body>

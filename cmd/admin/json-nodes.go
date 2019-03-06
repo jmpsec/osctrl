@@ -2,12 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"html/template"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/nodes"
 )
 
 // Define targets to be used
@@ -95,7 +93,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnedJSON)
+	_, _ = w.Write(returnedJSON)
 }
 
 // Handler for JSON endpoints by platform
@@ -151,48 +149,5 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnedJSON)
-}
-
-// Handler for platform/context stats in JSON
-func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
-	vars := mux.Vars(r)
-	// Extract stats target
-	target, ok := vars["target"]
-	if !ok {
-		log.Println("error getting target")
-		return
-	}
-	var stats nodes.StatsData
-	if target == "context" {
-		contexts, err := ctxs.All()
-		if err != nil {
-			log.Printf("error getting contexts: %v", err)
-			return
-		}
-		stats, err = getContextStats(contexts)
-		if err != nil {
-			log.Printf("error getting context stats: %v", err)
-			return
-		}
-	}
-	if target == "platform" {
-		platforms, err := nodesmgr.GetAllPlatforms()
-		if err != nil {
-			log.Printf("error getting platforms: %v", err)
-			return
-		}
-		stats, err = getPlatformStats(platforms)
-		if err != nil {
-			log.Printf("error getting platform stats: %v", err)
-			return
-		}
-	}
-	// Header to serve JSON
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
-	// Prepare and fill template with data
-	t := template.Must(template.New("stats.tmpl").ParseFiles(
-		"tmpl_admin/json/stats.tmpl"))
-	t.Execute(w, stats)
+	_, _ = w.Write(returnedJSON)
 }

@@ -147,6 +147,7 @@
     <script src="/static/js/login.js"></script>
     <script src="/static/js/query.js"></script>
     <script src="/static/js/tables.js"></script>
+    <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
         $.fn.dataTable.ext.errMode = function(settings, helpPage, message) { 
@@ -306,6 +307,12 @@
         setInterval(function (){
           tableQueries.ajax.reload();
         }, 30000 );
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);  
       });
     </script>
 

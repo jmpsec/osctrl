@@ -75,6 +75,7 @@
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/tables.js"></script>
+    <script src="/static/js/stats.js"></script>
   {{ with .Query }}
     <script type="text/javascript">
       $(document).ready(function() {
@@ -128,6 +129,12 @@
             tableQueryLogs.ajax.reload();
           }
         },1000);
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);  
       });
     </script>
   {{ end }}

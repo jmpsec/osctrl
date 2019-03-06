@@ -13,50 +13,39 @@
       -->
 
       <li class="nav-title">Nodes by context</li>
-      {{range  $i, $e := $.ContextStats}}
+      {{range  $i, $e := $.Contexts}}
       <li class="nav-item nav-dropdown">
         <a class="nav-link nav-dropdown-toggle">
-          {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
-          {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
-          {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
-          {{else}}<i class="fas fa-server"></i>{{end}}
-          {{ $i }}
-          <span class="mr-4 badge badge-light">{{ $e.Total }}</span>
+          <i class="nav-icon {{ $e.Icon }}"></i>
+          <input type="hidden" class="stats-context-value" value="{{ $e.Name }}">
+          {{ $e.Name }}
+          <span class="mr-4 badge badge-light stats-context-{{ $e.Name }}-total">X</span>
         </a>
         <ul class="nav-dropdown-items">
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/active">
-              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
-              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
-              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
-              {{else}}<i class="fas fa-server"></i>{{end}}
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/active">
+              <i class="nav-icon {{ $e.Icon }}"></i>
               active
-              <span class="badge badge-success">{{ $e.Active }}</span>
+              <span class="badge badge-success stats-context-{{ $e.Name }}-active">Y</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/inactive">
-              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
-              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
-              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
-              {{else}}<i class="fas fa-server"></i>{{end}}
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/inactive">
+              <i class="nav-icon {{ $e.Icon }}"></i>
               inactive 
-              <span class="badge badge-danger">{{ $e.Inactive }}</span>
+              <span class="badge badge-danger stats-context-{{ $e.Name }}-inactive">Z</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $i }}/all">
-              {{if eq $i "prod"}}<i class="nav-icon fas fa-microchip"></i>
-              {{else if eq $i "corp"}}<i class="nav-icon far fa-building"></i>
-              {{else if eq $i "dev"}}<i class="nav-icon fas fa-wrench"></i>
-              {{else}}<i class="fas fa-server"></i>{{end}}
+            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/all">
+              <i class="nav-icon {{ $e.Icon }}"></i>
               all
-              <span class="badge badge-light">{{ $e.Total }}</span>
+              <span class="badge badge-light stats-context-{{ $e.Name }}-total">X</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/conf/{{ $i }}">
-              <i class="nav-icon fas fa-cog"></i> {{ $i }}.conf
+            <a style="padding-left: 2em;" class="nav-link" href="/conf/{{ $e.Name }}">
+              <i class="nav-icon fas fa-cog"></i> {{ $e.Name }}.conf
             </a>
           </li>
         </ul>
@@ -66,138 +55,139 @@
       <li class="divider"></li>
         
       <li class="nav-title">Nodes by Platform</li>
-      {{range  $i, $e := $.PlatformStats}}
+      {{range  $i, $e := $.Platforms}}
         
       <li class="nav-item nav-dropdown">
+        <input type="hidden" class="stats-platform-value" value="{{ $e }}">
         <a class="nav-link nav-dropdown-toggle">
-          {{if eq $i "ubuntu"}}
+          {{if eq $e "ubuntu"}}
             <i class="nav-icon fa fl-ubuntu-inverse"></i>
           {{end}}
-          {{if eq $i "darwin"}}
+          {{if eq $e "darwin"}}
             <i class="nav-icon fa fl-apple"></i>
           {{end}}
-          {{if eq $i "windows"}}
+          {{if eq $e "windows"}}
             <i class="nav-icon fab fa-windows"></i>
           {{end}}
-          {{if eq $i "centos"}}
+          {{if eq $e "centos"}}
             <i class="nav-icon fa fl-centos"></i>
           {{end}}
-          {{if eq $i "fedora"}}
+          {{if eq $e "fedora"}}
             <i class="nav-icon fa fl-centos"></i>
           {{end}}
-          {{if eq $i "debian"}}
+          {{if eq $e "debian"}}
             <i class="nav-icon fa fl-debian"></i>
           {{end}}
-          {{if eq $i "freebsd"}}
+          {{if eq $e "freebsd"}}
             <i class="nav-icon fa fl-freebsd"></i>
           {{end}}
-          {{if eq $i "opensuse"}}
+          {{if eq $e "opensuse"}}
             <i class="nav-icon fa fl-opensuse"></i>
           {{end}}
-          {{if eq $i "unknown"}}
+          {{if eq $e "unknown"}}
             <i class="nav-icon fa fa-question-circle"></i>
           {{end}}
-          {{ $i }}
-          <span class="mr-4 badge badge-light">{{ $e.Total }}</span>
+          {{ $e }}
+          <span class="mr-4 badge badge-light stats-platform-{{ $e }}-total">X</span>
         </a>
         <ul class="nav-dropdown-items">
           <li class="nav-item">
-            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/active">
-              {{if eq $i "ubuntu"}}
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $e }}/active">
+              {{if eq $e "ubuntu"}}
                 <i class="nav-icon fa fl-ubuntu-inverse"></i>
               {{end}}
-              {{if eq $i "darwin"}}
+              {{if eq $e "darwin"}}
               <i class="nav-icon fa fl-apple"></i>
               {{end}}
-              {{if eq $i "windows"}}
+              {{if eq $e "windows"}}
                 <i class="nav-icon fab fa-windows"></i>
               {{end}}
-              {{if eq $i "centos"}}
+              {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "fedora"}}
+              {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "debian"}}
+              {{if eq $e "debian"}}
                 <i class="nav-icon fa fl-debian"></i>
               {{end}}
-              {{if eq $i "freebsd"}}
+              {{if eq $e "freebsd"}}
                 <i class="nav-icon fa fl-freebsd"></i>
               {{end}}
-              {{if eq $i "opensuse"}}
+              {{if eq $e "opensuse"}}
                 <i class="nav-icon fa fl-opensuse"></i>
               {{end}}
-              {{if eq $i "unknown"}}
+              {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
               active 
-              <span class="badge badge-success">{{ $e.Active }}</span>
+              <span class="badge badge-success stats-platform-{{ $e }}-active">Y</span>
             </a>
           </li>
           <li class="nav-item">
-            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/inactive">
-              {{if eq $i "ubuntu"}}
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $e }}/inactive">
+              {{if eq $e "ubuntu"}}
                 <i class="nav-icon fa fl-ubuntu-inverse"></i>
               {{end}}
-              {{if eq $i "darwin"}}
+              {{if eq $e "darwin"}}
               <i class="nav-icon fa fl-apple"></i>
               {{end}}
-              {{if eq $i "windows"}}
+              {{if eq $e "windows"}}
                 <i class="nav-icon fab fa-windows"></i>
               {{end}}
-              {{if eq $i "centos"}}
+              {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "fedora"}}
+              {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "debian"}}
+              {{if eq $e "debian"}}
                 <i class="nav-icon fa fl-debian"></i>
               {{end}}
-              {{if eq $i "freebsd"}}
+              {{if eq $e "freebsd"}}
                 <i class="nav-icon fa fl-freebsd"></i>
               {{end}}
-              {{if eq $i "opensuse"}}
+              {{if eq $e "opensuse"}}
                 <i class="nav-icon fa fl-opensuse"></i>
               {{end}}
-              {{if eq $i "unknown"}}
+              {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
               inactive 
-              <span class="badge badge-danger">{{ $e.Inactive }}</span>
+              <span class="badge badge-danger stats-platform-{{ $e }}-inactive">Z</span>
             </a>
           </li>
           <li class="nav-item">
-            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $i }}/all">
-              {{if eq $i "ubuntu"}}
+            <a style="padding-left: 2em;" class="nav-link" href="/platform/{{ $e }}/all">
+              {{if eq $e "ubuntu"}}
                 <i class="nav-icon fa fl-ubuntu-inverse"></i>
               {{end}}
-              {{if eq $i "darwin"}}
+              {{if eq $e "darwin"}}
               <i class="nav-icon fa fl-apple"></i>
               {{end}}
-              {{if eq $i "windows"}}
+              {{if eq $e "windows"}}
                 <i class="nav-icon fab fa-windows"></i>
               {{end}}
-              {{if eq $i "centos"}}
+              {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "fedora"}}
+              {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
-              {{if eq $i "debian"}}
+              {{if eq $e "debian"}}
                 <i class="nav-icon fa fl-debian"></i>
               {{end}}
-              {{if eq $i "freebsd"}}
+              {{if eq $e "freebsd"}}
                 <i class="nav-icon fa fl-freebsd"></i>
               {{end}}
-              {{if eq $i "opensuse"}}
+              {{if eq $e "opensuse"}}
                 <i class="nav-icon fa fl-opensuse"></i>
               {{end}}
-              {{if eq $i "unknown"}}
+              {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
               all 
-              <span class="badge badge-light">{{ $e.Total }}</span>
+              <span class="badge badge-light stats-platform-{{ $e }}-total">X</span>
             </a>
           </li>
         </ul>

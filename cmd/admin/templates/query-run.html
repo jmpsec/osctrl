@@ -95,8 +95,8 @@
                                         </span>
                                         <select class="form-control" name="target_context" id="target_context" disabled>
                                           <option value=""></option>
-                                        {{ range  $i, $e := $.ContextStats }}
-                                          <option value="{{ $i }}">{{ $i }} ({{ $e.Total}} nodes)</option>
+                                        {{ range  $i, $e := $.Contexts }}
+                                          <option value="{{ $e.Name }}">{{ $e.Name }}</option>
                                         {{ end }}
                                           <option value="all">all contexts</option>
                                         </select>
@@ -119,8 +119,8 @@
                                         </span>
                                         <select class="form-control" name="target_platform" id="target_platform" disabled>
                                           <option value=""></option>
-                                        {{ range  $i, $e := $.PlatformStats }}
-                                          <option value="{{ $i }}">{{ $i }} ({{ $e.Total}} nodes)</option>
+                                        {{ range  $i, $e := $.Platforms }}
+                                          <option value="{{ $e }}">{{ $e }}</option>
                                         {{ end }}
                                           <option value="all">all platforms</option>
                                         </select>
@@ -329,6 +329,7 @@
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/query.js"></script>
+    <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
         // Codemirror editor for query
@@ -405,6 +406,12 @@
             $("div.filter-element:not(."+valueSelected+')').addClass('d-none');
           }
         });
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
       });
     </script>
 

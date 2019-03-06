@@ -19,14 +19,8 @@ import (
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
 
-// TextPlain for Content-Type headers
-const TextPlain string = "text/plain"
-
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
-
-// TextPlainUTF8 for Content-Type headers, UTF charset
-const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +28,7 @@ func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 }
 
 // Handle error requests
@@ -43,7 +37,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("oh no..."))
+	_, _ = w.Write([]byte("oh no..."))
 }
 
 // Handler to serve static content with the proper header
@@ -131,7 +125,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		session.Values["user"] = l.Username
 		session.Values["admin"] = user.Admin
 		session.Values["csrftoken"] = generateCSRF()
-		session.Save(r, w)
+		_ = session.Save(r, w)
 	} else {
 		responseMessage = "invalid credentials"
 		responseCode = http.StatusForbidden
@@ -147,7 +141,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handle POST requests to logout
@@ -175,7 +169,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		// Revoke users authentication
 		session.Values["authenticated"] = false
 		session.Values["user"] = ""
-		session.Save(r, w)
+		_ = session.Save(r, w)
 	} else {
 		responseMessage = "invalid CSRF token"
 		responseCode = http.StatusInternalServerError
@@ -191,7 +185,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler for the root path
@@ -239,36 +233,26 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:         "Nodes in " + context + " Context",
-		Selector:      "context",
-		SelectorName:  context,
-		Target:        target,
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
+		Title:        "Nodes in " + context + " Context",
+		Selector:     "context",
+		SelectorName: context,
+		Target:       target,
+		Contexts:     contexts,
+		Platforms:    platforms,
 		Settings: SettingsData{
 			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
 			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
@@ -309,36 +293,26 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:         "Nodes in " + platform + " Platform",
-		Selector:      "platform",
-		SelectorName:  platform,
-		Target:        target,
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
+		Title:        "Nodes in " + platform + " Platform",
+		Selector:     "platform",
+		SelectorName: platform,
+		Target:       target,
+		Contexts:     contexts,
+		Platforms:    platforms,
 		Settings: SettingsData{
 			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
 			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
@@ -364,26 +338,16 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
 		return
 	}
 	// Get all nodes
@@ -402,8 +366,8 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes",
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
+		Contexts:      contexts,
+		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
 		Tables:        osqueryTables,
@@ -515,7 +479,7 @@ response:
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler for GET requests to queries
@@ -532,26 +496,16 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
 		return
 	}
 	// Get queries
@@ -562,11 +516,11 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
-		Title:         "All on-demand queries",
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
-		Queries:       qs,
-		Target:        "all",
+		Title:     "All on-demand queries",
+		Contexts:  contexts,
+		Platforms: platforms,
+		Queries:   qs,
+		Target:    "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -634,7 +588,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler GET requests to see query results by name
@@ -663,26 +617,17 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts %v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
 		return
 	}
 	// Get query by name
@@ -699,11 +644,11 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
-		Title:         "Query logs " + query.Name,
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
-		Query:         query,
-		QueryTargets:  targets,
+		Title:        "Query logs " + query.Name,
+		Contexts:     contexts,
+		Platforms:    platforms,
+		Query:        query,
+		QueryTargets: targets,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -744,20 +689,10 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting contexts%v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
 		return
 	}
 	// Get configuration JSON
@@ -780,8 +715,8 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		QuickRemoveShell:      shellQuickRemove,
 		QuickAddPowershell:    powershellQuickAdd,
 		QuickRemovePowershell: powershellQuickRemove,
-		ContextStats:          tmplCtxStats,
-		PlatformStats:         tmplPlatStats,
+		Contexts:              contexts,
+		Platforms:             platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -842,7 +777,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler for node view
@@ -871,26 +806,16 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get stats for all contexts
+	// Get all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
 		log.Printf("error getting contexts%v", err)
 		return
 	}
-	tmplCtxStats, err := getContextStats(contexts)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
-		return
-	}
-	// Get stats for all platforms
+	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	tmplPlatStats, err := getPlatformStats(platforms)
-	if err != nil {
-		log.Printf("error getting context stats: %v", err)
 		return
 	}
 	// Get node by UUID
@@ -914,13 +839,13 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}*/
 	// Prepare template data
 	templateData := NodeTemplateData{
-		Title:         "Node View " + node.UUID,
-		PostgresLogs:  logConfig.Postgres,
-		Node:          node,
-		ContextStats:  tmplCtxStats,
-		PlatformStats: tmplPlatStats,
-		LocationShow:  false,
-		Location:      LocationData{},
+		Title:        "Node View " + node.UUID,
+		PostgresLogs: logConfig.Postgres,
+		Node:         node,
+		Contexts:     contexts,
+		Platforms:    platforms,
+		LocationShow: false,
+		Location:     LocationData{},
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -979,7 +904,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler for single node action
@@ -1031,7 +956,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 // Handler for POST request for settings
@@ -1087,5 +1012,5 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
-	w.Write(response)
+	_, _ = w.Write(response)
 }

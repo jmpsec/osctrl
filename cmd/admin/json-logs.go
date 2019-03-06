@@ -138,7 +138,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnedJSON)
+	_, _ = w.Write(returnedJSON)
 }
 
 // Handler for JSON query logs by query name
@@ -183,5 +183,5 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnedJSON)
+	_, _ = w.Write(returnedJSON)
 }

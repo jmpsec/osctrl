@@ -95,5 +95,5 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnedJSON)
+	_, _ = w.Write(returnedJSON)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	ctx "github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
 	"github.com/javuto/osctrl/queries"
 )
@@ -75,13 +76,13 @@ type SettingsData struct {
 
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
-	Title         string
-	Selector      string
-	SelectorName  string
-	Target        string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Settings      SettingsData
+	Title        string
+	Selector     string
+	SelectorName string
+	Target       string
+	Contexts     []ctx.TLSContext
+	Platforms    []string
+	Settings     SettingsData
 }
 
 // ConfTemplateData for passing data to the conf template
@@ -94,16 +95,16 @@ type ConfTemplateData struct {
 	QuickRemoveShell      string
 	QuickAddPowershell    string
 	QuickRemovePowershell string
-	ContextStats          nodes.StatsData
-	PlatformStats         nodes.StatsData
+	Contexts              []ctx.TLSContext
+	Platforms             []string
 	Settings              SettingsData
 }
 
 // QueryRunTemplateData for passing data to the query template
 type QueryRunTemplateData struct {
 	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
+	Contexts      []ctx.TLSContext
+	Platforms     []string
 	UUIDs         []string
 	Hosts         []string
 	Tables        []OsqueryTable
@@ -113,22 +114,22 @@ type QueryRunTemplateData struct {
 
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData struct {
-	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Target        string
-	Queries       []queries.DistributedQuery
-	Settings      SettingsData
+	Title     string
+	Contexts  []ctx.TLSContext
+	Platforms []string
+	Target    string
+	Queries   []queries.DistributedQuery
+	Settings  SettingsData
 }
 
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
-	Title         string
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Query         queries.DistributedQuery
-	QueryTargets  []queries.DistributedQueryTarget
-	Settings      SettingsData
+	Title        string
+	Contexts     []ctx.TLSContext
+	Platforms    []string
+	Query        queries.DistributedQuery
+	QueryTargets []queries.DistributedQueryTarget
+	Settings     SettingsData
 }
 
 // LocationData to hold all location related data, when enabled
@@ -139,14 +140,14 @@ type LocationData struct {
 
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
-	Title         string
-	PostgresLogs  bool
-	Node          nodes.OsqueryNode
-	ContextStats  nodes.StatsData
-	PlatformStats nodes.StatsData
-	Location      LocationData
-	LocationShow  bool
-	Settings      SettingsData
+	Title        string
+	PostgresLogs bool
+	Node         nodes.OsqueryNode
+	Contexts     []ctx.TLSContext
+	Platforms    []string
+	Location     LocationData
+	LocationShow bool
+	Settings     SettingsData
 }
 
 // LoginRequest to receive login credentials

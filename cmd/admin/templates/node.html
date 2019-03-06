@@ -478,6 +478,7 @@
     <script src="/static/js/actions.js"></script>
     <script src="/static/js/tables.js"></script>
     <script src="/static/js/login.js"></script>
+    <script src="/static/js/stats.js"></script>
   {{ if .LocationShow }}
     {{ with .LastLocation }}
     <script type="text/javascript">
@@ -620,6 +621,12 @@
             tableResultLogs.ajax.reload();
           }
         },1000);
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);  
       });
     </script>
     {{ end }}

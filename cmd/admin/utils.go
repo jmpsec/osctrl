@@ -12,9 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
 )
 
 // Constants for seconds
@@ -94,16 +91,6 @@ func removeBackslash(rawString string) string {
 	return strings.Replace(rawString, "\\", " ", -1)
 }
 
-// Helper to remove backslashes from text and encode
-func removeBackslashEncode(data []byte) string {
-	return strings.Replace(string(data), "\\", " ", -1)
-}
-
-// Helper to remove backslashes from text
-func stringEncode(data []byte) string {
-	return string(data)
-}
-
 // Helper to generate a link to results for on-demand queries
 func resultsSearchLink(name string) string {
 	if logConfig.Splunk {
@@ -163,32 +150,6 @@ func pastTimeAgo(t time.Time) string {
 		return "Since " + t.Format("Mon Jan 02 15:04:05 MST 2006")
 	}
 	return stringifyTime(seconds)
-}
-
-// Helper to generate stats for all contexts
-func getContextStats(contexts []context.TLSContext) (nodes.StatsData, error) {
-	contextStats := make(nodes.StatsData)
-	for _, c := range contexts {
-		stats, err := nodesmgr.GetStatsByContext(c.Name)
-		if err != nil {
-			return contextStats, err
-		}
-		contextStats[c.Name] = stats
-	}
-	return contextStats, nil
-}
-
-// Helper to generate stats for all platforms
-func getPlatformStats(platforms []string) (nodes.StatsData, error) {
-	platformStats := make(nodes.StatsData)
-	for _, p := range platforms {
-		stats, err := nodesmgr.GetStatsByPlatform(p)
-		if err != nil {
-			return platformStats, err
-		}
-		platformStats[p] = stats
-	}
-	return platformStats, nil
 }
 
 // Helper to calculate the osquery config_hash and skip sending a blob that won't change anything

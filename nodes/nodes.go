@@ -113,15 +113,12 @@ type NodeHistoryUsername struct {
 	Count    int
 }
 
-// NodeStats to display node stats
-type NodeStats struct {
-	Total    int
-	Active   int
-	Inactive int
+// StatsData to display node stats
+type StatsData struct {
+	Total    int `json:"total"`
+	Active   int `json:"active"`
+	Inactive int `json:"inactive"`
 }
-
-// StatsData to hold data for node stats
-type StatsData map[string]NodeStats
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
@@ -241,8 +238,8 @@ func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 
 // GetStatsByContext to populate table stats about nodes by context. Active machine is < 3 days
 // FIXME define active machine in a setting
-func (n *NodeManager) GetStatsByContext(context string) (NodeStats, error) {
-	var stats NodeStats
+func (n *NodeManager) GetStatsByContext(context string) (StatsData, error) {
+	var stats StatsData
 	if err := n.DB.Model(&OsqueryNode{}).Where("context = ?", context).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
@@ -257,8 +254,8 @@ func (n *NodeManager) GetStatsByContext(context string) (NodeStats, error) {
 
 // GetStatsByPlatform to populate table stats about nodes by platform. Active machine is < 3 days
 // FIXME define active machine in a setting
-func (n *NodeManager) GetStatsByPlatform(platform string) (NodeStats, error) {
-	var stats NodeStats
+func (n *NodeManager) GetStatsByPlatform(platform string) (StatsData, error) {
+	var stats StatsData
 	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
