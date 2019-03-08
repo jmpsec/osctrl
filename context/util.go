@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io/ioutil"
+	"time"
 
 	"github.com/segmentio/ksuid"
 )
@@ -37,4 +38,10 @@ func ReadExternalFile(path string) string {
 		return ""
 	}
 	return string(content)
+}
+
+// IsItExpired to determine if a time has expired, which makes it in the past
+func IsItExpired(t time.Time) bool {
+	now := time.Now()
+	return (int(t.Sub(now).Seconds()) <= 0)
 }

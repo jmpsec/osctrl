@@ -35,17 +35,18 @@ const (
 // TLSContext to hold each of the TLS context
 type TLSContext struct {
 	gorm.Model
-	Name          string `gorm:"index"`
-	Hostname      string
-	Secret        string
-	SecretPath    string
-	EnrollExpire  time.Time
-	RemoveExpire  time.Time
-	Type          string
-	DebugHTTP     bool
-	Icon          string
-	Configuration string
-	Certificate   string
+	Name             string `gorm:"index"`
+	Hostname         string
+	Secret           string
+	EnrollSecretPath string
+	EnrollExpire     time.Time
+	RemoveSecretPath string
+	RemoveExpire     time.Time
+	Type             string
+	DebugHTTP        bool
+	Icon             string
+	Configuration    string
+	Certificate      string
 }
 
 // TLSPath to hold all the paths for TLS
@@ -83,17 +84,18 @@ func (context *Context) Get(name string) (TLSContext, error) {
 // Empty generates an empty TLSContext with default values
 func (context *Context) Empty(name, hostname string) TLSContext {
 	return TLSContext{
-		Name:          name,
-		Hostname:      hostname,
-		Secret:        generateRandomString(DefaultSecretLength),
-		SecretPath:    generateKSUID(),
-		EnrollExpire:  time.Now(),
-		RemoveExpire:  time.Now(),
-		Type:          DefaultContextType,
-		DebugHTTP:     false,
-		Icon:          DefaultContextIcon,
-		Configuration: "",
-		Certificate:   "",
+		Name:             name,
+		Hostname:         hostname,
+		Secret:           generateRandomString(DefaultSecretLength),
+		EnrollSecretPath: generateKSUID(),
+		RemoveSecretPath: generateKSUID(),
+		EnrollExpire:     time.Now(),
+		RemoveExpire:     time.Now(),
+		Type:             DefaultContextType,
+		DebugHTTP:        false,
+		Icon:             DefaultContextIcon,
+		Configuration:    "",
+		Certificate:      "",
 	}
 }
 
@@ -157,11 +159,66 @@ func (context *Context) RotateSecrets(name string) error {
 	}
 	rotated := ctx
 	rotated.Secret = generateRandomString(DefaultSecretLength)
-	rotated.SecretPath = generateKSUID()
+	rotated.EnrollSecretPath = generateKSUID()
+	rotated.RemoveSecretPath = generateKSUID()
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
+// RotateEnroll to replace Secret and SecrtPath for enrolling in a context
+func (context *Context) RotateEnroll(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	rotated := ctx
+	rotated.EnrollSecretPath = generateKSUID()
+	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
+// ExpireEnroll to expire the enroll in a context
+func (context *Context) ExpireEnroll(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	if err := context.DB.Model(&ctx).Update("enroll_expire", time.Now()).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// RotateRemove to replace Secret and SecrtPath for enrolling in a context
+func (context *Context) RotateRemove(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	rotated := ctx
+	rotated.RemoveSecretPath = generateKSUID()
+	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
+// ExpireRemove to expire the remove in a context
+func (context *Context) ExpireRemove(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	if err := context.DB.Model(&ctx).Update("remove_expire", time.Now()).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }

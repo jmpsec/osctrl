@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	_ctx "github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
 )
 
@@ -36,13 +37,22 @@ func checkValidSecret(enrollSecret string, context string) bool {
 	return (strings.TrimSpace(enrollSecret) == ctx.Secret)
 }
 
-// Helper to check if the provided SecretPath is valid for a context
-func checkValidSecretPath(context, secretpath string) bool {
+// Helper to check if the provided SecretPath is valid for enrolling in a context
+func checkValidEnrollSecretPath(context, secretpath string) bool {
 	ctx, err := ctxs.Get(context)
 	if err != nil {
 		return false
 	}
-	return (strings.TrimSpace(secretpath) == ctx.SecretPath)
+	return ((strings.TrimSpace(secretpath) == ctx.EnrollSecretPath) && (!_ctx.IsItExpired(ctx.EnrollExpire)))
+}
+
+// Helper to check if the provided SecretPath is valid for removing in a context
+func checkValidRemoveSecretPath(context, secretpath string) bool {
+	ctx, err := ctxs.Get(context)
+	if err != nil {
+		return false
+	}
+	return ((strings.TrimSpace(secretpath) == ctx.RemoveSecretPath) && (!_ctx.IsItExpired(ctx.RemoveExpire)))
 }
 
 // Helper to convert an enrollment request into a osquery node

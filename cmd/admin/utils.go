@@ -125,7 +125,7 @@ func stringifyTime(seconds int) string {
 			break
 		}
 	}
-	return timeStr + " ago"
+	return timeStr
 }
 
 // Helper to format past times in timestamp format
@@ -149,7 +149,20 @@ func pastTimeAgo(t time.Time) string {
 	if seconds > fifteenDays {
 		return "Since " + t.Format("Mon Jan 02 15:04:05 MST 2006")
 	}
-	return stringifyTime(seconds)
+	return stringifyTime(seconds) + " ago"
+}
+
+// Helper to format future times only returning one value (minute, hour, day)
+func inFutureTime(t time.Time) string {
+	if t.IsZero() {
+		return "Never"
+	}
+	now := time.Now()
+	seconds := int(t.Sub(now).Seconds())
+	if seconds <= 0 {
+		return "Expired"
+	}
+	return "Expires in " + stringifyTime(seconds)
 }
 
 // Helper to calculate the osquery config_hash and skip sending a blob that won't change anything

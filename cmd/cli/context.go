@@ -40,8 +40,8 @@ func addContext(c *cli.Context) error {
 		newContext.DebugHTTP = c.Bool("debug")
 		newContext.Configuration = configuration
 		newContext.Certificate = certificate
-		newContext.EnrollExpire = time.Now().Add(time.Duration(context.DefaultLinkExpire) * time.Second)
-		newContext.RemoveExpire = time.Now().Add(time.Duration(context.DefaultLinkExpire) * time.Second)
+		newContext.EnrollExpire = time.Now().Add(time.Duration(context.DefaultLinkExpire) * time.Hour)
+		newContext.RemoveExpire = time.Now().Add(time.Duration(context.DefaultLinkExpire) * time.Hour)
 		if err := ctxs.Create(newContext); err != nil {
 			return err
 		}
@@ -77,9 +77,10 @@ func showContext(c *cli.Context) error {
 	fmt.Printf(" Name: %s\n", ctx.Name)
 	fmt.Printf(" Host: %s\n", ctx.Hostname)
 	fmt.Printf(" Secret: %s\n", ctx.Secret)
-	fmt.Printf(" SecretPath: %s\n", ctx.SecretPath)
 	fmt.Printf(" EnrollExpire: %v\n", ctx.EnrollExpire)
+	fmt.Printf(" EnrollSecretPath: %s\n", ctx.EnrollSecretPath)
 	fmt.Printf(" RemoveExpire: %v\n", ctx.RemoveExpire)
+	fmt.Printf(" RemoveSecretPath: %s\n", ctx.RemoveSecretPath)
 	fmt.Printf(" Type: %v\n", ctx.Type)
 	fmt.Printf(" DebugHTTP? %v\n", ctx.DebugHTTP)
 	fmt.Printf(" Icon: %s\n", ctx.Icon)

@@ -106,8 +106,7 @@ func loadConfiguration() error {
 		return err
 	}
 	// Load configuration for the auth method
-	switch adminConfig.Auth {
-	case "saml":
+	if adminConfig.Auth == "saml" {
 		samlRaw := viper.Sub("saml")
 		err = samlRaw.Unmarshal(&samlConfig)
 		if err != nil {
@@ -318,6 +317,7 @@ func main() {
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/expiration/{context}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
 	//routerAdmin.Handle("/settings", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
 	routerAdmin.Handle("/settings", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")

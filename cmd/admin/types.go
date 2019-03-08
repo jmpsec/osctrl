@@ -89,6 +89,10 @@ type TableTemplateData struct {
 type ConfTemplateData struct {
 	Title                 string
 	Context               string
+	EnrollExpiry          string
+	EnrollExpired         bool
+	RemoveExpiry          string
+	RemoveExpired         bool
 	ConfigurationBlob     string
 	ConfigurationHash     string
 	QuickAddShell         string
@@ -203,6 +207,13 @@ type SettingsRequest struct {
 type ConfigurationRequest struct {
 	CSRFToken        string `json:"csrftoken"`
 	ConfigurationB64 string `json:"configuration"`
+}
+
+// ExpirationRequest to receive expiration changes to enroll/remove nodes
+type ExpirationRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Action    string `json:"action"`
+	Type      string `json:"type"`
 }
 
 // AdminResponse to be returned to requests

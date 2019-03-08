@@ -601,13 +601,8 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("error getting name")
 		return
 	}
-	// Custom functions to handle formatting
-	funcMap := template.FuncMap{
-		"removeBackslash": removeBackslash,
-		"pastTimeAgo":     pastTimeAgo,
-	}
 	// Prepare template
-	t, err := template.New("query-logs.html").Funcs(funcMap).ParseFiles(
+	t, err := template.New("query-logs.html").ParseFiles(
 		"tmpl_admin/query-logs.html",
 		"tmpl_admin/head.html",
 		"tmpl_admin/page-header.html",
@@ -711,6 +706,10 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		ConfigurationBlob:     ctx.Configuration,
 		ConfigurationHash:     generateOsqueryConfigHash(ctx.Configuration),
 		Context:               contextVar,
+		EnrollExpiry:          strings.ToUpper(inFutureTime(ctx.EnrollExpire)),
+		EnrollExpired:         context.IsItExpired(ctx.EnrollExpire),
+		RemoveExpiry:          strings.ToUpper(inFutureTime(ctx.RemoveExpire)),
+		RemoveExpired:         context.IsItExpired(ctx.RemoveExpire),
 		QuickAddShell:         shellQuickAdd,
 		QuickRemoveShell:      shellQuickRemove,
 		QuickAddPowershell:    powershellQuickAdd,
@@ -724,17 +723,21 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler POST requests for conf
+// Handler POST requests for savin configuration
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
 	vars := mux.Vars(r)
 	// Extract context
-	// FIXME verify context
 	contextVar, ok := vars["context"]
 	if !ok {
 		log.Println("error getting context")
+		return
+	}
+	// Verify context
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
 		return
 	}
 	var c ConfigurationRequest
@@ -780,6 +783,88 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
+// Handler POST requests for savin configuration
+func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
+	vars := mux.Vars(r)
+	// Extract context
+	contextVar, ok := vars["context"]
+	if !ok {
+		log.Println("error getting context")
+		return
+	}
+	// Verify context
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
+		return
+	}
+	var e ExpirationRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&e)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(e.CSRFToken) {
+			switch e.Type {
+			case "enroll":
+				switch e.Action {
+				case "expire":
+					err = ctxs.ExpireEnroll(contextVar)
+					if err != nil {
+						responseMessage = "error expiring enroll"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					}
+				case "extend":
+					err = ctxs.RotateEnroll(contextVar)
+					if err != nil {
+						responseMessage = "error extending enroll"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					}
+				}
+			case "remove":
+				switch e.Action {
+				case "expire":
+					err = ctxs.ExpireRemove(contextVar)
+					if err != nil {
+						responseMessage = "error expiring enroll"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					}
+				case "extend":
+					err = ctxs.RotateRemove(contextVar)
+					if err != nil {
+						responseMessage = "error extending enroll"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					}
+				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+}
+
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
@@ -792,8 +877,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"removeBackslash": removeBackslash,
-		"pastTimeAgo":     pastTimeAgo,
+		"pastTimeAgo": pastTimeAgo,
 	}
 	// Prepare template
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(

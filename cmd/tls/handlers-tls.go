@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/context"
@@ -499,25 +500,32 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting context %v", err)
 		return
 	}
+	// Retrieve type of script
+	script, ok := vars["script"]
+	if !ok {
+		log.Println("Script is missing")
+		return
+	}
 	// Retrieve SecretPath variable
 	secretPath, ok := vars["secretpath"]
 	if !ok {
 		log.Println("Path is missing")
 		return
 	}
-	// Check if provided SecretPath is valid and if so, prepare script
-	if !checkValidSecretPath(_context, secretPath) {
-		log.Println("Invalid Path")
-		return
-	}
-	// Retrieve type of script
-	addScript, ok := vars["script"]
-	if !ok {
-		log.Println("Script is missing")
-		return
+	// Check if provided SecretPath is valid and is not expired
+	if strings.HasPrefix(script, "enroll") {
+		if !checkValidEnrollSecretPath(_context, secretPath) {
+			log.Println("Invalid Path")
+			return
+		}
+	} else if strings.HasPrefix(script, "remove") {
+		if !checkValidRemoveSecretPath(_context, secretPath) {
+			log.Println("Invalid Path")
+			return
+		}
 	}
 	// Prepare response with the script
-	quickScript, err := context.QuickAddScript(projectName, addScript, ctx, tlsPath)
+	quickScript, err := context.QuickAddScript(projectName, script, ctx, tlsPath)
 	if err != nil {
 		log.Printf("error getting script %v", err)
 		return

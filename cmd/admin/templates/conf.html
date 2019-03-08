@@ -4,17 +4,17 @@
   {{ template "head" . }}
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
-    
+
     {{ template "page-header" . }}
-    
+
     <div class="app-body">
-      
+
       {{ template "page-sidebar" . }}
-      
+
       <main class="main">
-        
+
         <div class="container-fluid">
-          
+
           <div class="animated fadeIn">
 
             <div class="card mt-2">
@@ -22,7 +22,7 @@
                 <i class="fa fas fa-server"></i> osquery configuration for context {{ .Context }}
                 <div class="card-header-actions">
                   <div class="card-header-action">
-                    <button id="json_save" class="btn btn-sm btn-block btn-dark" 
+                    <button id="json_save" class="btn btn-sm btn-block btn-dark"
                       data-toggle="tooltip" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
@@ -30,7 +30,7 @@
                 </div>
               </div>
               <div class="card-body">
-                
+
                 <input type="hidden" id="csrftoken" value="">
 
                 <textarea id="conf" name="conf">{{ .ConfigurationBlob }}</textarea>
@@ -48,7 +48,32 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                  <i class="fas fa-bolt"></i> Quick install/update nodes for context {{ .Context }}
+                <i class="fas fa-bolt"></i> Quick install/update nodes for context {{ .Context }}
+
+                  <div class="card-header-actions">
+                    <div class="row">
+                      <span class="align-self-center mr-1"><b>{{ .EnrollExpiry }}</b></span>
+                      {{ if not .EnrollExpired }}
+                      <div class="card-header-action mr-3">
+                        <button id="enroll_expire" class="btn btn-sm btn-block btn-danger"
+                          data-toggle="tooltip" data-placement="bottom" title="Expire" onclick="expireEnrollLink();">
+                          <i class="far fa-times-circle"></i>
+                        </button>
+                      </div>
+                      {{ end }}
+                      {{ if .EnrollExpired }}
+                      <div class="card-header-action mr-3">
+                          <button id="enroll_extend" class="btn btn-sm btn-block btn-success"
+                            data-toggle="tooltip" data-placement="bottom" title="Extend 24 hours" onclick="extendEnrollLink();">
+                            <i class="far fa-clock"></i>
+                          </button>
+                      </div>
+                      {{ end }}
+
+                    </div>
+
+                  </div>
+
               </div>
               <div class="card-body">
 
@@ -59,15 +84,16 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-sh">
+                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-sh">
                       Copy
                     </button>
-                    <div class="highlight">
+                    <div class="highlight {{ if .EnrollExpired }}stripes-red{{ end }}">
                       <code id="enroll-cmd-sh" class="bash">
                         {{ .QuickAddShell }}
                       </code>
                     </div>
                   </div>
+
                 </div>
 
                 <div class="row mb-4">
@@ -77,23 +103,47 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-ps">
+                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-ps">
                       Copy
                     </button>
-                    <div class="highlight">
+                    <div class="highlight {{ if .EnrollExpired }}stripes-red{{ end }}">
                       <code id="enroll-cmd-ps" class="bash">
                         {{ .QuickAddPowershell }}
                       </code>
                     </div>
                   </div>
                 </div>
-              
+
               </div>
             </div>
 
             <div class="card mt-2">
               <div class="card-header">
                 <i class="fas fa-exclamation-triangle"></i> Quick <span style="color:red;">remove</span> nodes for context {{ .Context }}
+                <div class="card-header-actions">
+
+                  <div class="row">
+                    <span class="align-self-center mr-1"><b>{{ .RemoveExpiry }}</b></span>
+                    {{ if not .RemoveExpired }}
+                    <div class="card-header-action mr-3">
+                      <button id="remove_expire" class="btn btn-sm btn-block btn-danger"
+                        data-toggle="tooltip" data-placement="bottom" title="Expire" onclick="expireRemoveLink();">
+                        <i class="far fa-times-circle"></i>
+                      </button>
+                    </div>
+                    {{ end }}
+                    {{ if .RemoveExpired }}
+                    <div class="card-header-action mr-3">
+                      <button id="remove_extend" class="btn btn-sm btn-block btn-success"
+                        data-toggle="tooltip" data-placement="bottom" title="Extend 24 hours" onclick="extendRemoveLink();">
+                        <i class="far fa-clock"></i>
+                      </button>
+                    </div>
+                    {{ end }}
+
+                  </div>
+
+                </div>
               </div>
               <div class="card-body">
 
@@ -104,10 +154,10 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-sh">
+                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-sh">
                       Copy
                     </button>
-                    <div class="highlight">
+                    <div class="highlight {{ if .RemoveExpired }}stripes-red{{ end }}">
                       <code id="remove-cmd-sh" class="bash">
                         {{ .QuickRemoveShell }}
                       </code>
@@ -122,17 +172,17 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-ps">
+                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-ps">
                       Copy
                     </button>
-                    <div class="highlight">
+                    <div class="highlight {{ if .RemoveExpired }}stripes-red{{ end }}">
                       <code id="remove-cmd-ps" class="bash">
                         {{ .QuickRemovePowershell }}
                       </code>
                     </div>
                   </div>
                 </div>
-              
+
               </div>
             </div>
 
@@ -184,9 +234,9 @@
         </div>
 
       </main>
-      
+
       {{ template "page-aside" . }}
-      
+
     </div>
 
     <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
@@ -301,7 +351,7 @@
         beginStats();
         var statsTimer = setInterval(function(){
           beginStats();
-        },60000);  
+        },60000);
       });
     </script>
   </body>
