@@ -1,5 +1,5 @@
 function sendQuery() {
-  var _csrftoken = $("#csrftoken").val(); 
+  var _csrftoken = $("#csrftoken").val();
   var _context = $('#target_context_switch').prop('checked') ? $("#target_context").val() : "";
   var _platform = $('#target_platform_switch').prop('checked') ? $("#target_platform").val() : "";
   var _uuid_list = $('#target_uuids_switch').prop('checked') ? $("#target_uuids").val() : [];
@@ -27,15 +27,15 @@ function sendQuery() {
   }
   var _url = '/query/run';
   var data = {
-      csrftoken: _csrftoken,
-      context: _context,
-      platform: _platform,
-      uuid_list: _uuid_list,
-      host_list: _host_list,
-      query: _query,
-      repeat: _repeat
+    csrftoken: _csrftoken,
+    context: _context,
+    platform: _platform,
+    uuid_list: _uuid_list,
+    host_list: _host_list,
+    query: _query,
+    repeat: _repeat
   };
-  sendPostRequest(data, _url, '/query/all', false);
+  sendPostRequest(data, _url, '/query/list', false);
 }
 
 function clearQuery() {
@@ -48,9 +48,9 @@ function setQuery(query) {
   editor.setValue(query);
 }
 
-$("#query").keyup(function(event) {
+$("#query").keyup(function (event) {
   if (event.keyCode === 13) {
-      $("#query_button").click();
+    $("#query_button").click();
   }
 });
 
@@ -59,21 +59,21 @@ function deleteQueries(_names) {
 }
 
 function completeQueries(_names) {
-  actionQueries('complete', _names, '/query/all');
+  actionQueries('complete', _names, '/query/list');
 }
 
 function activateQueries(_names) {
-  actionQueries('activate', _names, '/query/all');
+  actionQueries('activate', _names, '/query/list');
 }
 
 function actionQueries(_action, _names, _redir) {
   var _csrftoken = $("#csrftoken").val();
-  
+
   var _url = '/query/actions';
   var data = {
-      csrftoken: _csrftoken,
-      names: _names,
-      action: _action
+    csrftoken: _csrftoken,
+    names: _names,
+    action: _action
   };
   sendPostRequest(data, _url, _redir, false);
 }
@@ -81,7 +81,7 @@ function actionQueries(_action, _names, _redir) {
 function confirmDeleteQueries(_names) {
   var modal_message = 'Are you sure you want to delete ' + _names.length + ' query(s)?';
   $("#confirmModalMessage").text(modal_message);
-  $('#confirm_action').click(function() {
+  $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
     deleteQueries(_names);
   });

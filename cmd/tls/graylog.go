@@ -31,7 +31,7 @@ type GraylogMessage struct {
 }
 
 // Function that sends JSON logs to Graylog
-func graylogSend(data []byte, context, logType, UUID string, configData LoggingConfigurationData) {
+func graylogSend(data []byte, context, logType, uuid string, configData LoggingConfigurationData) {
 	// Prepare headers
 	headers := map[string]string{
 		"Content-Type": JSONApplication,
@@ -58,7 +58,7 @@ func graylogSend(data []byte, context, logType, UUID string, configData LoggingC
 			Level:        GraylogLevel,
 			Context:      context,
 			Type:         logType,
-			UUID:         UUID,
+			UUID:         uuid,
 		}
 		messages = append(messages, messsageData)
 	}

@@ -16,8 +16,11 @@ const (
 
 // Names for configuration values
 const (
-	FieldDebugHTTP = "debug_http"
-	ServiceMetrics = "service_metrics"
+	FieldDebugHTTP  = "debug_http"
+	ServiceMetrics  = "service_metrics"
+	MetricsHost     = "metrics_host"
+	MetricsPort     = "metrics_port"
+	MetricsProtocol = "metrics_protocol"
 )
 
 // ConfigValue to hold each value for configuration
@@ -254,6 +257,15 @@ func (conf *Configuration) IsValue(service, name string) bool {
 // DebugHTTP checks if debugging is enabled by service
 func (conf *Configuration) DebugHTTP(service string) bool {
 	value, err := conf.RetrieveValue(service, FieldDebugHTTP)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
+}
+
+// ServiceMetrics checks if metrics are enabled by service
+func (conf *Configuration) ServiceMetrics(service string) bool {
+	value, err := conf.RetrieveValue(service, ServiceMetrics)
 	if err != nil {
 		return false
 	}

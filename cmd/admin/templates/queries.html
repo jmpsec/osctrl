@@ -4,24 +4,24 @@
   {{ template "head" . }}
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
-    
+
     {{ template "page-header" . }}
-    
+
     <div class="app-body">
-      
+
       {{ template "page-sidebar" . }}
 
       <main class="main">
-        
+
         <div class="container-fluid">
-          
+
           <div class="animated fadeIn">
 
             <div class="card mt-2">
               <div class="card-header">
                 <i class="nav-icon fas fa-terminal"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip" 
+                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
@@ -117,30 +117,19 @@
               <!-- /.modal-dialog -->
             </div>
             <!-- /.modal -->
-                
+
           </div>
 
         </div>
 
       </main>
-      
+
       {{ template "page-aside" . }}
 
     </div>
 
-    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
-    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
-    <!-- Select for DataTables -->
-    <script src="https://cdn.datatables.net/select/1.2.7/js/dataTables.select.min.js" integrity="sha384-cOjgXKpKZwqHUxQkXUhdnJfrnLtI4RMo71zMDdhSIeb6m1tWreU56MdGcqc8l+HH" crossorigin="anonymous"></script>
-    <!-- Buttons for DataTables -->
-    <script src="https://cdn.datatables.net/buttons/1.5.2/js/dataTables.buttons.min.js" integrity="sha384-zOjU8Lmrn7aY/0op2Zr4DRXhg0el3XJ4SEMVakZ7bni+KP5F9geHOJ0cWYSvj0HN" crossorigin="anonymous"></script>
-    <!-- CoreUI JS -->
-    <script src="/static/js/coreui.min.js"></script>
+    {{ template "js" . }}
+
     <!-- custom JS -->
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/settings.js"></script>
@@ -150,7 +139,7 @@
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
-        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) { 
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
           console.log(message);
           $('.card-header').addClass("bg-danger");
         };
@@ -312,7 +301,7 @@
         beginStats();
         var statsTimer = setInterval(function(){
           beginStats();
-        },60000);  
+        },60000);
       });
     </script>
 

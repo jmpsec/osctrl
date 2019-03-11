@@ -4,17 +4,17 @@
   {{ template "head" . }}
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
-    
+
     {{ template "page-header" . }}
-    
+
     <div class="app-body">
-      
+
       {{ template "page-sidebar" . }}
 
       <main class="main">
-        
+
         <div class="container-fluid">
-          
+
           <div class="animated fadeIn">
 
             {{ $template := . }}
@@ -28,7 +28,7 @@
               <div class="card-body">
                 <input type="hidden" id="csrftoken" value="">
                 <div class="row">
-                  
+
                   <div class="col-md-12">
 
                     <div class="row float-right">
@@ -119,7 +119,7 @@
                                     {{if eq .Platform "windows"}}<i class='fab fa-windows'></i> windows{{end}}
                                     {{if eq .Platform "freebsd"}}<i class='fl-freebsd'></i> freebsd{{end}}
                                     {{if eq .Platform "opensuse"}}<i class='fl-opensuse'></i> opensuse{{end}}
-                                    {{if eq .Platform "unknown"}}<i class='fa fa-question-circle'></i> unknown{{end}}                  
+                                    {{if eq .Platform "unknown"}}<i class='fa fa-question-circle'></i> unknown{{end}}
                                   - {{ .PlatformVersion }}</p>
                               </div>
                             </div>
@@ -167,7 +167,7 @@
                           </div>
 
                           <div class="col-md-6">
-                            
+
                             <div class="row">
                               <label class="col-md-3 col-form-label">
                                 <small><b>Enrolled</b></small>
@@ -262,7 +262,7 @@
                             </div>
 
                           </div>
-                      
+
                         </div>
 
                       </div>
@@ -293,7 +293,7 @@
                             <i class="fas fa-stream"></i> Last 6 hours of status logs for node {{ .UUID }}
                             <div class="card-header-actions">
                               <small>Refresh in <span id="status_refresh_seconds">60</span> seconds</small>
-                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip" 
+                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip"
                                 data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('status_refresh_value', 'status_refresh_pause');">
                                 <i class="fas fa-pause"></i>
                               </button>
@@ -352,12 +352,12 @@
                       </div>
                     {{ end }}
 
-                    </div> 
+                    </div>
 
                   </div>
 
                 </div>
-              
+
               </div>
             </div>
 
@@ -458,20 +458,13 @@
         </div>
 
       </main>
-      
+
       {{ template "page-aside" . }}
 
     </div>
 
-    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js" integrity="sha384-r3v0/sXe5ocDydKBFcxP390rex2dEm9qN3Yv68S6uNX/F3b/RtMdGMUADZ8tabkz" crossorigin="anonymous"></script>
-    <script src="https://cdn.datatables.net/1.10.18/js/dataTables.bootstrap4.min.js" integrity="sha384-uiSTMvD1kcI19sAHJDVf68medP9HA2E2PzGis9Efmfsdb8p9+mvbQNgFhzii1MEX" crossorigin="anonymous"></script>
-    <!-- CoreUI JS -->
-    <script src="/static/js/coreui.min.js"></script>
+    {{ template "js" . }}
+
     <!-- custom JS -->
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/settings.js"></script>
@@ -509,7 +502,7 @@
     <script async defer src="{{ .GoogleMapsURL }}"></script>
     {{ end }}
   {{ end }}
-    
+
   {{ if .PostgresLogs }}
     {{ with .Node }}
     <script type="text/javascript">
@@ -626,7 +619,7 @@
         beginStats();
         var statsTimer = setInterval(function(){
           beginStats();
-        },60000);  
+        },60000);
       });
     </script>
     {{ end }}

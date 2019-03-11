@@ -27,7 +27,7 @@ type SplunkMessage struct {
 }
 
 // Function that sends JSON logs to Splunk HTTP Event Collector
-func splunkSend(data []byte, context, logType, UUID string, configData LoggingConfigurationData) {
+func splunkSend(data []byte, context, logType, uuid string, configData LoggingConfigurationData) {
 	// Prepare headers
 	headers := map[string]string{
 		"Authorization": "Splunk " + configData["token"],
@@ -64,7 +64,7 @@ func splunkSend(data []byte, context, logType, UUID string, configData LoggingCo
 		eventData := SplunkMessage{
 			Time:       time.Now().Unix(),
 			Host:       SplunkHost,
-			Source:     UUID,
+			Source:     uuid,
 			SourceType: sourceType,
 			Index:      SplunkIndex,
 			Event:      string(jsonEvent),

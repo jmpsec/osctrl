@@ -52,7 +52,7 @@ function package() {
 #   ...
 #   string  package_nameN
 function packages() {
-  for i in "$@"; do 
+  for i in "$@"; do
     package "$i"
   done
 }
@@ -61,7 +61,7 @@ function packages() {
 function repo_osquery_ubuntu() {
   log "Adding osquery repository keys"
   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1484120AC4E9F8A1A577AEEE97A80C63C9D8B80B
-  
+
   log "Adding osquery repository"
   sudo add-apt-repository 'deb [arch=amd64] https://pkg.osquery.io/deb deb main'
 }
@@ -136,7 +136,7 @@ function nginx_service() {
   if [[ -f "$__enabled/default" ]]; then
     sudo rm -f "$__enabled/default"
   fi
-  
+
   sudo ln -sf "$__available/$__out" "$__enabled/$__out"
 }
 
@@ -146,7 +146,7 @@ function nginx_service() {
 function self_certificates_nginx() {
   local __certs_path=$1
   local __name=$2
-  
+
   log "Deploying self-signed certificates"
 
   self_signed_cert "$__certs_path" "$__name"
@@ -247,10 +247,10 @@ function _static_files() {
   local __dest=$3
   local __from=$4
   local __target=$5
-  
+
   # Files will be linked if we are in dev
   if [[ "$__mode" == "dev" ]]; then
-    if [[ ! -d "$__dest/$__target" ]]; then 
+    if [[ ! -d "$__dest/$__target" ]]; then
       sudo ln -s "$__path/cmd/$__from" "$__dest/$__target"
     fi
   else
@@ -264,13 +264,13 @@ function install_postgresql10_xenial() {
   local __pgversion="10"
   local __pgconf=$1
   local __pgctl="/usr/lib/postgresql/10/bin/pg_ctl"
-  
+
   repo_postgres_xenial
 
   package_repo_update
-  
+
   package "postgresql-$__pgversion"
-  
+
   configure_postgres "$__pgconf" "postgresql"
 }
 
@@ -344,9 +344,9 @@ function configure_postgres() {
   local __hba=$3
 
   log "PostgreSQL permissions"
-  
+
   sudo cp "$__conf" "$__hba"
-  
+
   sudo systemctl restart "$__service"
   sudo systemctl enable "$__service"
 }
@@ -397,11 +397,45 @@ function install_go_11() {
 function install_grafana() {
   local __version="6.0.0"
   local __file="grafana_${__version}_amd64.deb"
-  
+
   log "Installing Grafana $__version dependencies"
   package adduser
   package libfontconfig
   log "Downloading Grafana $__version package"
   wget "https://dl.grafana.com/oss/release/$__file" -O "/tmp/grafana_${__version}_amd64.deb"
   sudo dpkg -i "/tmp/grafana_${__version}_amd64.deb"
+}
+
+# Configure Grafana service in Ubuntu
+function configure_grafana() {
+  log "Reloading systemd manager configuration"
+  sudo systemctl daemon-reload
+  log "Enabling Grafana service"
+  sudo systemctl enable grafana-server
+  log "Starting grafana-server"
+  sudo systemctl start grafana-server
+}
+
+# Install InfluxDB and Telegraf in Ubuntu
+function install_influx_telegraf() {
+  local __repo="/etc/apt/sources.list.d/influxdb.list"
+  log "Adding InfluxDB+Telegraf repository"
+  if [[ ! -f "$__repo" ]]; then
+    echo "deb https://repos.influxdata.com/ubuntu bionic stable" | sudo tee "$__repo"
+  fi
+  log "Import apt key"
+  sudo curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
+  sudo apt-get update
+  package influxdb
+  package telegraf
+}
+
+# Configure  InfluxDB and Telegraf in Ubuntu
+function configure_influx_telegraf() {
+  log "Enabling and starting InfluxDB service"
+  sudo systemctl enable influxdb
+  sudo systemctl start influxdb
+  log "Enabling and starting Telegraf service"
+  sudo systemctl enable telegraf
+  sudo systemctl start telegraf
 }

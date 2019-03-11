@@ -6,6 +6,7 @@ import (
 
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/metrics"
 	"github.com/javuto/osctrl/nodes"
 	"github.com/javuto/osctrl/queries"
 
@@ -47,6 +48,7 @@ var (
 	ctxs         *context.Context
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
+	_metrics     *metrics.Metrics
 	dbConfig     JSONConfigurationDB
 	logConfig    JSONConfigurationLogging
 	geolocConfig JSONConfigurationGeoLocation
@@ -115,7 +117,13 @@ func main() {
 	// Database handler
 	db = getDB()
 	// Close when exit
-	defer db.Close()
+	//defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Fatalf("Failed to close Database handler %v", err)
+		}
+	}()
 	// Automigrate tables
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
@@ -134,10 +142,28 @@ func main() {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
 		}
 	}
-	// Check if service configuration for metrics
+	// Check if service configuration for metrics is ready
 	if !config.IsValue(serviceName, configuration.ServiceMetrics) {
 		if err := config.NewBooleanValue(serviceName, configuration.ServiceMetrics, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
+		}
+	} else if config.ServiceMetrics(serviceName) {
+		// Initialize metrics if enabled
+		mProtocol, err := config.GetString(serviceName, configuration.MetricsProtocol)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
+		}
+		mHost, err := config.GetString(serviceName, configuration.MetricsHost)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (host): %v", err)
+		}
+		mPort, err := config.GetInteger(serviceName, configuration.MetricsPort)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (port): %v", err)
+		}
+		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceName)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
 	// multiple listeners channel

@@ -239,21 +239,8 @@
 
     </div>
 
-    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <!-- CoreUI JS -->
-    <script src="/static/js/coreui.min.js"></script>
-    <!-- Codemirror JS -->
-    <script src="/static/js/codemirror/codemirror.js"></script>
-    <script src="/static/js/codemirror/addon/active-line.js"></script>
-    <script src="/static/js/codemirror/addon/matchbrackets.js"></script>
-    <script src="/static/js/codemirror/mode/javascript.js"></script>
-    <!-- Clipboard.js JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js" integrity="sha384-5tfO0soa+FisnuBhaHP2VmPXQG/JZ8dLcRL43IkJFzbsXTXT6zIX8q8sIT0VSe2G" crossorigin="anonymous"></script>
-    <!-- Highlight.js JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/highlight.min.js" integrity="sha384-BlPof9RtjBqeJFskKv3sK3dh4Wk70iKlpIe92FeVN+6qxaGUOUu+mZNpALZ+K7ya" crossorigin="anonymous"></script>
+    {{ template "js" . }}
+
     <!-- custom JS -->
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/settings.js"></script>

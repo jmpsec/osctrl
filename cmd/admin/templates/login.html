@@ -5,7 +5,7 @@
 
   <body class="app flex-row align-items-center">
     <div class="container" style="margin-top: -200px;">
-      <div class="row justify-content-center">
+      <div class="row justify-content-center mt-5">
         <div class="col-md-6">
           <div class="text-center">
             <img src="/static/img/logo.png" class="img-fluid" alt="Logo">
@@ -13,7 +13,7 @@
           <div class="card mx-4 mt-4">
             <div class="card-body p-4">
               <h3>Login</h3>
-              <p class="text-muted">Get Access to {{ .Project }}</p>
+              <p class="text-muted">get access to {{ .Project }}</p>
               <div class="input-group mb-3">
                 <div class="input-group-prepend">
                   <span class="input-group-text">
@@ -31,7 +31,7 @@
                 </div>
                 <input id="login_password" type="password" class="form-control" placeholder="Password">
               </div>
-            
+
               <button type="button" id="login_button" class="btn btn-block btn-dark" onclick="sendLogin();">Login</button>
             </div>
           </div>
@@ -64,16 +64,12 @@
 
     </div>
 
-    <!-- Bootstrap: jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js" integrity="sha384-o+RDsa0aLu++PJvFqy8fFScvbHFLtbvScb8AjopnFD+iEQ7wo/CG0xlczd+2O/em" crossorigin="anonymous"></script>
-    <!-- CoreUI JS -->
-    <script src="/static/js/coreui.min.js"></script>
+    {{ template "js" . }}
+
     <!-- custom JS -->
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/login.js"></script>
-    
+
   </body>
 
 </html>

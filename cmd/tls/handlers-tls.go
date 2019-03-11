@@ -13,6 +13,24 @@ import (
 	"github.com/javuto/osctrl/queries"
 )
 
+const (
+	metricEnrollReq = "enroll-req"
+	metricEnrollErr = "enroll-err"
+	metricEnrollOK  = "enroll-ok"
+	metricLogReq    = "log-req"
+	metricLogErr    = "log-err"
+	metricLogOK     = "log-ok"
+	metricConfigReq = "config-req"
+	metricConfigErr = "config-err"
+	metricConfigOK  = "config-ok"
+	metricReadReq   = "read-req"
+	metricReadErr   = "read-err"
+	metricReadOK    = "read-ok"
+	metricWriteReq  = "write-req"
+	metricWriteErr  = "write-err"
+	metricWriteOK   = "write-ok"
+)
+
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
 
@@ -53,6 +71,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricEnrollReq)
 	// Debug HTTP
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
@@ -60,11 +79,13 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
 	if !ok {
+		incMetric(metricEnrollErr)
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
 	if !ctxs.Exists(context) {
+		incMetric(metricEnrollErr)
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -72,7 +93,9 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	var t EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
+		incMetric(metricEnrollErr)
 		log.Printf("error parsing POST body %v", err)
+		return
 	}
 	// Check if received secret is valid
 	var nodeKey string
@@ -86,11 +109,13 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		if nodesmgr.CheckByUUID(t.HostIdentifier) {
 			err := nodesmgr.Archive(t.HostIdentifier, "exists")
 			if err != nil {
+				incMetric(metricEnrollErr)
 				log.Printf("error archiving node %v", err)
 			}
 			// Update existing with new enroll data
 			err = nodesmgr.UpdateByUUID(newNode, t.HostIdentifier)
 			if err != nil {
+				incMetric(metricEnrollErr)
 				log.Printf("error updating existing node %v", err)
 			} else {
 				nodeInvalid = false
@@ -98,12 +123,14 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		} else { // New node, persist it
 			err := nodesmgr.Create(newNode)
 			if err != nil {
+				incMetric(metricEnrollErr)
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
 			}
 		}
 	} else {
+		incMetric(metricEnrollErr)
 		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
 	}
 	// Prepare response
@@ -120,10 +147,12 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+	incMetric(metricEnrollOK)
 }
 
 // Function to handle the configuration requests from osquery nodes
 func configHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricConfigReq)
 	// Debug HTTP
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
@@ -131,17 +160,20 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
 	if !ok {
+		incMetric(metricConfigErr)
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
 	if !ctxs.Exists(context) {
+		incMetric(metricConfigErr)
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
 	// Get context
 	ctx, err := ctxs.Get(context)
 	if err != nil {
+		incMetric(metricConfigErr)
 		log.Printf("error getting context %v", err)
 		return
 	}
@@ -149,6 +181,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	var t ConfigRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
+		incMetric(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -156,17 +189,20 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	if nodesmgr.CheckByKey(t.NodeKey) {
 		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
+			incMetric(metricConfigErr)
 			log.Printf("error updating IP address %v", err)
 		}
 		// Refresh last config for node
 		err = nodesmgr.RefreshLastConfig(t.NodeKey)
 		if err != nil {
+			incMetric(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
 		response = []byte(ctx.Configuration)
 	} else {
 		response, err = json.Marshal(ConfigResponse{NodeInvalid: true})
 		if err != nil {
+			incMetric(metricConfigErr)
 			log.Printf("error formating response %v", err)
 			return
 		}
@@ -179,20 +215,24 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+	incMetric(metricConfigOK)
 }
 
 // Function to handle the log requests from osquery nodes, both status and results
 func logHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricLogReq)
 	var response []byte
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
 	if !ok {
+		incMetric(metricLogErr)
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
 	if !ctxs.Exists(context) {
+		incMetric(metricLogErr)
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -201,9 +241,17 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Encoding") == "gzip" {
 		r.Body, err = gzip.NewReader(r.Body)
 		if err != nil {
+			incMetric(metricLogErr)
 			log.Printf("error decoding gzip body %v", err)
 		}
-		defer r.Body.Close()
+		//defer r.Body.Close()
+		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				incMetric(metricLogErr)
+				log.Printf("Failed to close body %v", err)
+			}
+		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
@@ -211,9 +259,18 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	var t LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
+		incMetric(metricLogErr)
 		log.Printf("error parsing POST body %v", err)
+		return
 	}
-	defer r.Body.Close()
+	//defer r.Body.Close()
+	defer func() {
+		err := r.Body.Close()
+		if err != nil {
+			incMetric(metricLogErr)
+			log.Printf("Failed to close body %v", err)
+		}
+	}()
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
 	if nodesmgr.CheckByKey(t.NodeKey) {
@@ -226,6 +283,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response, err = json.Marshal(LogResponse{NodeInvalid: nodeInvalid})
 	if err != nil {
+		incMetric(metricLogErr)
 		log.Printf("error preparing response %v", err)
 		response = []byte("")
 	}
@@ -237,6 +295,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+	incMetric(metricLogOK)
 }
 
 // Helper to process logs
@@ -245,6 +304,7 @@ func processLogs(data json.RawMessage, logType, context, ipaddress string) {
 	var logs []LogGenericData
 	err := json.Unmarshal(data, &logs)
 	if err != nil {
+		// FIXME metrics for this
 		log.Printf("error parsing log %s %v", string(data), err)
 	}
 	// Iterate through received messages to extract metadata
@@ -271,34 +331,34 @@ func processLogs(data json.RawMessage, logType, context, ipaddress string) {
 }
 
 // Helper to dispatch logs
-func dispatchLogs(data []byte, UUID, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, context string) {
+func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, context string) {
 	// Send data to storage
 	if logConfig.Graylog {
-		go graylogSend(data, context, logType, UUID, logConfig.GraylogCfg)
+		go graylogSend(data, context, logType, uuid, logConfig.GraylogCfg)
 	}
 	if logConfig.Splunk {
-		go splunkSend(data, context, logType, UUID, logConfig.SplunkCfg)
+		go splunkSend(data, context, logType, uuid, logConfig.SplunkCfg)
 	}
 	if logConfig.Postgres {
-		go postgresLog(data, context, logType, UUID)
+		go postgresLog(data, context, logType, uuid)
 	}
 	if logConfig.Stdout {
 		log.Printf("LOG: %s from context %s : %s", logType, context, string(data))
 	}
 	// Use metadata to update record
-	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, UUID)
+	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, uuid)
 	if err != nil {
 		log.Printf("error updating metadata %s", err)
 	}
 	// Refresh last logging request
 	if logType == statusLog {
-		err := nodesmgr.RefreshLastStatus(UUID)
+		err := nodesmgr.RefreshLastStatus(uuid)
 		if err != nil {
 			log.Printf("error refreshing last status %v", err)
 		}
 	}
 	if logType == resultLog {
-		err := nodesmgr.RefreshLastResult(UUID)
+		err := nodesmgr.RefreshLastResult(uuid)
 		if err != nil {
 			log.Printf("error refreshing last result %v", err)
 		}
@@ -334,17 +394,20 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 
 // Function to handle on-demand queries to osquery nodes
 func queryReadHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricReadReq)
 	// Debug HTTP
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
 	if !ok {
+		incMetric(metricReadErr)
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
 	if !ctxs.Exists(context) {
+		incMetric(metricReadErr)
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -353,7 +416,9 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	var t QueryReadRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
+		incMetric(metricReadErr)
 		log.Printf("error parsing POST body %v", err)
+		return
 	}
 	var nodeInvalid bool
 	qs := make(queries.QueryReadQueries)
@@ -362,16 +427,19 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = nodesmgr.UpdateIPAddress(r.Header.Get("X-Real-IP"), node)
 		if err != nil {
+			incMetric(metricReadErr)
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
 		qs, err = queriesmgr.NodeQueries(node)
 		if err != nil {
+			incMetric(metricReadErr)
 			log.Printf("error getting queries from db %v", err)
 		}
 		// Refresh last query read request
 		err = nodesmgr.RefreshLastQueryRead(t.NodeKey)
 		if err != nil {
+			incMetric(metricReadErr)
 			log.Printf("error refreshing last query read %v", err)
 		}
 	} else {
@@ -380,6 +448,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response for invalid key
 	response, err = json.Marshal(QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
 	if err != nil {
+		incMetric(metricReadErr)
 		log.Printf("error formating response %v", err)
 		response = []byte("")
 	}
@@ -391,21 +460,25 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+	incMetric(metricReadOK)
 }
 
 // Function to handle distributed query results from osquery nodes
 func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricWriteReq)
 	// Debug HTTP
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
 	if !ok {
+		incMetric(metricWriteErr)
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
 	if !ctxs.Exists(context) {
+		incMetric(metricWriteErr)
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
@@ -414,13 +487,16 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	var t QueryWriteRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
+		incMetric(metricWriteErr)
 		log.Printf("error parsing POST body %v", err)
+		return
 	}
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
 	if nodesmgr.CheckByKey(t.NodeKey) {
 		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
+			incMetric(metricWriteErr)
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
@@ -432,6 +508,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response, err = json.Marshal(QueryWriteResponse{NodeInvalid: nodeInvalid})
 	if err != nil {
+		incMetric(metricWriteErr)
 		log.Printf("error formating response %v", err)
 		response = []byte("")
 	}
@@ -443,6 +520,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+	incMetric(metricWriteOK)
 }
 
 // Helper to process on-demand query result logs
@@ -481,6 +559,7 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 
 // Function to handle the endpoint for quick enrollment script distribution
 func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
+	// FIXME metrics
 	// Debug HTTP
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable

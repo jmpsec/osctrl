@@ -16,11 +16,11 @@ function lineCharPosition(_pos) {
   var line = 0;
   var ttl = 0;
   $('.CodeMirror-line').each(function () {
-    console.log('Line ' + line);
+    //console.log('Line ' + line);
     var l = $(this).text().length;
     ttl += l;
     if (ttl >= _pos) {
-      return false;
+      return 'line ' + line;
     }
     line++;
   });

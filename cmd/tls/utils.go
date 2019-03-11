@@ -21,10 +21,10 @@ import (
 )
 
 // Helper to generate a random enough node key
-func generateNodeKey(UUID string) string {
+func generateNodeKey(uuid string) string {
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
 	hasher := md5.New()
-	_, _ = hasher.Write([]byte(UUID + timestamp))
+	_, _ = hasher.Write([]byte(uuid + timestamp))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
@@ -130,7 +130,13 @@ func sendRequest(secure bool, reqType, url string, params io.Reader, headers map
 	if err != nil {
 		return 0, []byte("Error sending request"), err
 	}
-	defer resp.Body.Close()
+	//defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Printf("Failed to close body %v", err)
+		}
+	}()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -160,14 +166,14 @@ func uniq(duplicated []string) []string {
 // C       		192.168.0.0      192.168.255.255
 // Link-local 169.254.0.0      169.254.255.255
 // Local      127.0.0.0        127.255.255.255
-func isPublicIP(IP net.IP) bool {
+func isPublicIP(ip net.IP) bool {
 	// Use native functions
-	if IP.IsLoopback() || IP.IsLinkLocalMulticast() || IP.IsLinkLocalUnicast() {
+	if ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() {
 		return false
 	}
 	// Check each octet
-	if ip4 := IP.To4(); ip4 != nil {
-		switch true {
+	if ip4 := ip.To4(); ip4 != nil {
+		switch {
 		case ip4[0] == 10:
 			return false
 		case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31:
@@ -179,4 +185,11 @@ func isPublicIP(IP net.IP) bool {
 		}
 	}
 	return false
+}
+
+// Helper to send metrics if it is enabled
+func incMetric(name string) {
+	if config.ServiceMetrics(serviceName) {
+		_metrics.Inc(name)
+	}
 }

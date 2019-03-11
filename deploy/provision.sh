@@ -19,9 +19,9 @@
 #   self    Provision will use a self-signed TLS certificate that will be generated.
 #   own     Provision will use the TLS certificate provided by the user.
 #   certbot Provision will generate a TLS certificate using letsencrypt/certbot. More info here: https://certbot.eff.org/
-# 
+#
 # Argument for PART:
-#   admin   Provision will deploy only the admin interface.  
+#   admin   Provision will deploy only the admin interface.
 #   tls     Provision will deploy only the TLS endpoint.
 #   all     Provision will deploy both the admin and the TLS endpoint.
 #
@@ -43,7 +43,7 @@
 #   -n          --nginx         Install and configure nginx as TLS termination.
 #   -P          --postgres      Install and configure PostgreSQL as backend.
 #   -D          --docker        Runs the service in docker.
-#   -G          --grafana       Install and configure Grafana as metrics platform.
+#   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana).
 #
 # Examples:
 #   Provision service in development mode, code is in /vagrant and both admin and tls:
@@ -114,7 +114,7 @@ function usage() {
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination.\n"
   printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend.\n"
   printf "  -D          --docker \t\tRuns the service in docker.\n"
-  printf "  -G          --grafana \t\tInstall and configure Grafana as metrics platform."
+  printf "  -M          --metrics \t\tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)."
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
@@ -143,7 +143,7 @@ CERTFILE=""
 DOMAIN=""
 EMAIL=""
 DOCKER=false
-GRAFANA=false
+METRICS=false
 NGINX=false
 POSTGRES=false
 SOURCE_PATH=/vagrant
@@ -177,7 +177,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nDG:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,grafana,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nDM:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,metrics,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -273,9 +273,9 @@ while true; do
       DOCKER=true
       shift
       ;;
-    -G|--grafana)
+    -M|--metrics)
       SHOW_USAGE=false
-      GRAFANA=true
+      METRICS=true
       shift
       ;;
     -k|--keyfile)
@@ -378,7 +378,7 @@ if [[ "$NGINX" == true ]]; then
   if [[ "$DISTRO" == "centos" ]]; then
     package epel-release
   fi
-  package nginx  
+  package nginx
 
   _certificate_name="osctrl"
   _certificates_dir="$NGINX_PATH/certs"
@@ -400,7 +400,7 @@ if [[ "$NGINX" == true ]]; then
     # FIXME: REMEMBER GENERATE THE CERTIFICATES MANUALLY!
     log "************** REMEMBER GENERATE THE CERTIFICATES MANUALLY **************"
     #sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
-    #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file" 
+    #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file"
   fi
 
   # Diffie-Hellman parameter for DHE ciphersuites
@@ -418,8 +418,8 @@ if [[ "$NGINX" == true ]]; then
   fi
 
   # Configuration for TLS service
-  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH" 
-  
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
+
   # Configuration for Admin service
   nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
 
@@ -433,7 +433,7 @@ if [[ "$DOCKER" == false ]]; then
   if [[ "$POSTGRES" == true ]]; then
     POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
     if [[ "$DISTRO" == "ubuntu" ]]; then
-      package postgresql 
+      package postgresql
       package postgresql-contrib
       POSTGRES_SERVICE="postgresql"
       POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
@@ -447,18 +447,21 @@ if [[ "$DOCKER" == false ]]; then
       POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
       POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
     fi
-    configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA" 
+    configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
   fi
 fi
 
-# Grafana - Metrics
+# Metrics - InfluxDB + Telegraf + Grafana
 if [[ "$DOCKER" == false ]]; then
-  if [[ "$GRAFANA" == true ]]; then
+  if [[ "$METRICS" == true ]]; then
     if [[ "$DISTRO" == "ubuntu" ]]; then
+      install_influx_telegraf
+      configure_influx_telegraf
       install_grafana
+      configure_grafana
     elif [[ "$DISTRO" == "centos" ]]; then
-      log "Not ready yet to install Grafana in CentOS"
+      log "Not ready yet to install metrics for CentOS"
     fi
   fi
 fi
@@ -518,7 +521,7 @@ if [[ "$MODE" == "dev" ]]; then
   __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.conf"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
   "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
-  
+
   log "Checking if service is ready"
   while true; do
     _readiness=$(curl -k --write-out %{http_code} --head --silent --output /dev/null "https://$_T_HOST")
@@ -530,7 +533,7 @@ if [[ "$MODE" == "dev" ]]; then
     fi
     sleep 1
   done
-  
+
   log "Adding host in dev context"
   eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context quick-add -n "dev" )
 fi

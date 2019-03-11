@@ -190,7 +190,13 @@ func main() {
 	// Database handler
 	db = getDB()
 	// Close when exit
-	defer db.Close()
+	//defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Fatalf("Failed to close Database handler %v", err)
+		}
+	}()
 	// Automigrate tables
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
