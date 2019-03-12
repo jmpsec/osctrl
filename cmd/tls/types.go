@@ -255,3 +255,33 @@ type QueryWriteData struct {
 	Result json.RawMessage `json:"result"`
 	Status int             `json:"status"`
 }
+
+// CarveInitRequest received to begin a carve
+type CarveInitRequest struct {
+	BlockCount int    `json:"block_count"`
+	BlockSize  int    `json:"block_size"`
+	CarveSize  int    `json:"carve_size"`
+	CarveID    string `json:"carve_id"`
+	RequestID  string `json:"request_id"`
+	NodeKey    string `json:"node_key"`
+}
+
+// CarveInitResponse for osquery nodes
+type CarveInitResponse struct {
+	Success   bool   `json:"success"`
+	SessionID string `json:"session_id"`
+}
+
+// CarveBlockRequest received to begin a carve
+type CarveBlockRequest struct {
+	BlockID   int    `json:"block_id"`
+	SessionID string `json:"session_id"`
+	RequestID string `json:"request_id"`
+	Data      string `json:"data"`
+	NodeKey   string `json:"node_key"`
+}
+
+// CarveBlockResponse for osquery nodes
+type CarveBlockResponse struct {
+	Success bool `json:"success"`
+}

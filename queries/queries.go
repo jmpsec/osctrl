@@ -16,6 +16,12 @@ const (
 	QueryTargetContext string = "context"
 	// QueryTargetUUID defines uuid as target
 	QueryTargetUUID string = "uuid"
+	// StandardQueryType defines a regular query
+	StandardQueryType string = "query"
+	// CarveQueryType defines a regular query
+	CarveQueryType string = "carve"
+	// MetadataQueryType defines a regular query
+	MetadataQueryType string = "metadata"
 )
 
 // DistributedQuery as abstraction of a distributed query
@@ -30,6 +36,7 @@ type DistributedQuery struct {
 	Completed  bool
 	Deleted    bool
 	Repeat     uint
+	Type       string
 }
 
 // DistributedQueryTarget to keep target logic for queries

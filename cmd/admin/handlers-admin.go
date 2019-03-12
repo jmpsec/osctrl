@@ -418,6 +418,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			Completed:  false,
 			Deleted:    false,
 			Repeat:     0,
+			Type:       queries.StandardQueryType,
 		}
 		if err := queriesmgr.Create(newQuery); err != nil {
 			responseMessage = "error creating query"

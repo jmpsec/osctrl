@@ -185,7 +185,9 @@ func main() {
 	routerTLS.HandleFunc("/{context}/"+tlsPath.LogPath, logHandler).Methods("POST")
 	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryReadPath, queryReadHandler).Methods("POST")
 	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryWritePath, queryWriteHandler).Methods("POST")
-	// TLS: Quick enrollment script
+	routerTLS.HandleFunc("/{context}/"+tlsPath.CarverInitPath, carveInitHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+tlsPath.CarverBlockPath, carveBlockHandler).Methods("POST")
+	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 
 	// Launch HTTP server for TLS endpoint

@@ -29,6 +29,12 @@ const (
 	metricWriteReq  = "write-req"
 	metricWriteErr  = "write-err"
 	metricWriteOK   = "write-ok"
+	metricInitReq   = "init-req"
+	metricInitErr   = "init-err"
+	metricInitOK    = "init-ok"
+	metricBlockReq  = "block-req"
+	metricBlockErr  = "block-err"
+	metricBlockOK   = "block-ok"
 )
 
 // JSONApplication for Content-Type headers
@@ -613,4 +619,137 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", TextPlainUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(quickScript))
+}
+
+// Function to initialize a file carve from a node
+func processCarveInit(req CarveInitRequest, context string) {
+	log.Printf("INIT INIT INIT INIT INIT %d %d %d %s %s", req.BlockCount, req.BlockSize, req.CarveSize, req.CarveID, req.RequestID)
+}
+
+// Function to process one block from a file carve
+func processCarveBlock(req CarveBlockRequest, context string) {
+	log.Printf("BLOCK BLOCK BLOCK BLOCK BLOCK %d %s %s", req.BlockID, req.SessionID, req.RequestID)
+	log.Printf("BLOCK BLOCK BLOCK DATA %s", req.Data)
+}
+
+// Function to handle the initialization of the file carver
+func carveInitHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricInitReq)
+	// Debug HTTP
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	// Retrieve context variable
+	vars := mux.Vars(r)
+	context, ok := vars["context"]
+	if !ok {
+		incMetric(metricInitErr)
+		log.Println("Context is missing")
+		return
+	}
+	// Check if context is valid
+	if !ctxs.Exists(context) {
+		incMetric(metricInitErr)
+		log.Printf("error unknown context (%s)", context)
+		return
+	}
+	// Decode read POST body
+	var response []byte
+	var t CarveInitRequest
+	err := json.NewDecoder(r.Body).Decode(&t)
+	if err != nil {
+		incMetric(metricInitErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	var initCarve bool
+	var carveSessionID string
+	// Check if provided node_key is valid and if so, update node
+	if nodesmgr.CheckByKey(t.NodeKey) {
+		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+		if err != nil {
+			incMetric(metricInitErr)
+			log.Printf("error updating IP Address %v", err)
+		}
+		initCarve = true
+		carveSessionID = generateCarveSessionID()
+		// Process carve init
+		go processCarveInit(t, context)
+	} else {
+		initCarve = false
+	}
+	// Prepare response
+	response, err = json.Marshal(CarveInitResponse{Success: initCarve, SessionID: carveSessionID})
+	if err != nil {
+		incMetric(metricInitErr)
+		log.Printf("error formating response %v", err)
+		response = []byte("")
+	}
+	// Debug HTTP
+	if config.DebugHTTP(serviceName) {
+		log.Printf("Response: %s", string(response))
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(response)
+	incMetric(metricInitOK)
+}
+
+// Function to handle the blocks of the file carver
+func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricBlockReq)
+	// Debug HTTP
+	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	// Retrieve context variable
+	vars := mux.Vars(r)
+	context, ok := vars["context"]
+	if !ok {
+		incMetric(metricBlockErr)
+		log.Println("Context is missing")
+		return
+	}
+	// Check if context is valid
+	if !ctxs.Exists(context) {
+		incMetric(metricBlockErr)
+		log.Printf("error unknown context (%s)", context)
+		return
+	}
+	// Decode read POST body
+	var response []byte
+	var t CarveBlockRequest
+	err := json.NewDecoder(r.Body).Decode(&t)
+	if err != nil {
+		incMetric(metricBlockErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	var blockCarve bool
+	// Check if provided node_key is valid and if so, update node
+	if nodesmgr.CheckByKey(t.NodeKey) {
+		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+		if err != nil {
+			incMetric(metricBlockErr)
+			log.Printf("error updating IP Address %v", err)
+		}
+		blockCarve = true
+		// Process received block
+		go processCarveBlock(t, context)
+	} else {
+		blockCarve = false
+	}
+	// Prepare response
+	response, err = json.Marshal(CarveBlockResponse{Success: blockCarve})
+	if err != nil {
+		incMetric(metricBlockErr)
+		log.Printf("error formating response %v", err)
+		response = []byte("")
+	}
+	// Debug HTTP
+	if config.DebugHTTP(serviceName) {
+		log.Printf("Response: %s", string(response))
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(response)
+	incMetric(metricBlockOK)
 }

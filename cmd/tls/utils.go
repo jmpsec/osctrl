@@ -18,6 +18,7 @@ import (
 
 	_ctx "github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
+	"github.com/segmentio/ksuid"
 )
 
 // Helper to generate a random enough node key
@@ -26,6 +27,13 @@ func generateNodeKey(uuid string) string {
 	hasher := md5.New()
 	_, _ = hasher.Write([]byte(uuid + timestamp))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// Helper to generate a carve session_id using KSUID
+// See https://github.com/segmentio/ksuid for more info about KSUIDs
+func generateCarveSessionID() string {
+	id := ksuid.New()
+	return id.String()
 }
 
 // Helper to check if the provided secret is valid for this context
