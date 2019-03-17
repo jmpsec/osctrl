@@ -289,6 +289,26 @@
           ]
         });
 
+        // Select and deselect all
+        tableQueries.on("click", "th.select-checkbox", function() {
+          if ($("th.select-checkbox").hasClass("selected")) {
+            tableQueries.rows().deselect();
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            tableQueries.rows().select();
+            $("th.select-checkbox").addClass("selected");
+          }
+        }).on("select deselect", function() {
+          ("Some selection or deselection going on")
+          if (tableQueries.rows({
+            selected: true
+          }).count() !== tableQueries.rows().count()) {
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            $("th.select-checkbox").addClass("selected");
+          }
+        });
+
         // Enable all tooltips
         $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
 

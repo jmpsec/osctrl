@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/carves"
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/nodes"
 
@@ -100,6 +101,16 @@ func automigrateDB() error {
 	err = db.AutoMigrate(configuration.ConfigValue{}).Error
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (config_values): %v", err)
+	}
+	// table carved_files
+	err = db.AutoMigrate(carves.CarvedFile{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
+	}
+	// table carved_blocks
+	err = db.AutoMigrate(carves.CarvedBlock{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (carved_blocks): %v", err)
 	}
 	return nil
 }

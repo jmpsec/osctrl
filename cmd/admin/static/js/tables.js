@@ -9,3 +9,10 @@ function changeTableRefresh(value_id, button_id) {
   }
   return;
 }
+
+// Function to refresh table when clicked
+function refreshTableNow(table_id) {
+  var table = $('#' + table_id).DataTable();
+  table.ajax.reload();
+  return;
+}

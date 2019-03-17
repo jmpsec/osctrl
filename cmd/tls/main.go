@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/javuto/osctrl/carves"
 	"github.com/javuto/osctrl/configuration"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/metrics"
@@ -48,6 +49,7 @@ var (
 	ctxs         *context.Context
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
+	filecarves   *carves.Carves
 	_metrics     *metrics.Metrics
 	dbConfig     JSONConfigurationDB
 	logConfig    JSONConfigurationLogging
@@ -136,6 +138,8 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
+	// Initialize carves
+	filecarves = carves.CreateFileCarves(db)
 	// Check if service configuration for debug HTTP is ready
 	if !config.IsValue(serviceName, configuration.FieldDebugHTTP) {
 		if err := config.NewBooleanValue(serviceName, configuration.FieldDebugHTTP, false); err != nil {

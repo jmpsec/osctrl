@@ -663,10 +663,9 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
-	// FIXME verify context
 	contextVar, ok := vars["context"]
 	if !ok {
-		log.Println("error getting context")
+		log.Println("context is missing")
 		return
 	}
 	// Check if context is valid

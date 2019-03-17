@@ -34,15 +34,15 @@
                     <div class="row float-right">
                       <div class="col-md-12">
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
-                        data-toggle="tooltip" data-placement="top" title="Remove node" onclick="confirmRemoveNode({{ .UUID }});">
+                        data-toggle="tooltip" data-placement="top" title="Remove" onclick="confirmRemoveNode({{ .UUID }});">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-dark"
-                        data-toggle="tooltip" data-placement="top" title="Run Query in node" onclick="showQueryNode({{ .UUID }});">
+                        data-toggle="tooltip" data-placement="top" title="Run Query" onclick="showQueryNode({{ .UUID }});">
                           <i class="fas fa-terminal"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
-                        data-toggle="tooltip" data-placement="top" title="Refresh node details" onclick="refreshCurrentNode();">
+                        data-toggle="tooltip" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
                           <i class="fas fa-sync-alt"></i>
                         </button>
                       </div>
@@ -560,7 +560,7 @@
           document.getElementById("status_refresh_seconds").textContent = timeLeftStatus;
           if (timeLeftStatus <= 0) {
             timeLeftStatus = refreshSecondsStatus;
-            tableStatusLogs.ajax.url("/json/status/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableStatusLogs.ajax.url("/json/logs/status/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
             tableStatusLogs.ajax.reload();
           }
         },1000);
@@ -610,7 +610,7 @@
           document.getElementById("result_refresh_seconds").textContent = timeLeftResult;
           if (timeLeftResult <= 0) {
             timeLeftResult = refreshSecondsResult;
-            tableResultLogs.ajax.url("/json/result/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableResultLogs.ajax.url("/json/logs/result/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
             tableResultLogs.ajax.reload();
           }
         },1000);

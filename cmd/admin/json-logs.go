@@ -62,10 +62,14 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Extract context
-	// FIXME verify context
 	context, ok := vars["context"]
 	if !ok {
-		log.Println("error getting context")
+		log.Println("context is missing")
+		return
+	}
+	// Check if context is valid
+	if !ctxs.Exists(context) {
+		log.Printf("error unknown context (%s)", context)
 		return
 	}
 	// Extract UUID

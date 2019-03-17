@@ -37,6 +37,7 @@ type DistributedQuery struct {
 	Deleted    bool
 	Repeat     uint
 	Type       string
+	File       string
 }
 
 // DistributedQueryTarget to keep target logic for queries

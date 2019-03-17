@@ -278,7 +278,6 @@ type CarveBlockRequest struct {
 	SessionID string `json:"session_id"`
 	RequestID string `json:"request_id"`
 	Data      string `json:"data"`
-	NodeKey   string `json:"node_key"`
 }
 
 // CarveBlockResponse for osquery nodes

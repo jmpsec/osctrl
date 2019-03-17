@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/carves"
 	"github.com/javuto/osctrl/context"
 	"github.com/javuto/osctrl/nodes"
 	"github.com/javuto/osctrl/queries"
@@ -622,14 +623,73 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Function to initialize a file carve from a node
-func processCarveInit(req CarveInitRequest, context string) {
-	log.Printf("INIT INIT INIT INIT INIT %d %d %d %s %s", req.BlockCount, req.BlockSize, req.CarveSize, req.CarveID, req.RequestID)
+func processCarveInit(req CarveInitRequest, sessionid, context string) {
+	// Retrieve node
+	node, err := nodesmgr.GetByKey(req.NodeKey)
+	if err != nil {
+		incMetric(metricInitErr)
+		log.Printf("error retrieving node %s", err)
+	}
+	// Prepare carve to initialize
+	carve := carves.CarvedFile{
+		CarveID:         req.CarveID,
+		RequestID:       req.RequestID,
+		SessionID:       sessionid,
+		UUID:            node.UUID,
+		Context:         context,
+		CarveSize:       req.CarveSize,
+		BlockSize:       req.BlockSize,
+		TotalBlocks:     req.BlockCount,
+		CompletedBlocks: 0,
+		CarvedPath:      "",
+		DestPath:        "",
+		Status:          carves.StatusInitialized,
+	}
+	// Create File Carve
+	err = filecarves.CreateCarve(carve)
+	if err != nil {
+		incMetric(metricInitErr)
+		log.Printf("error creating  CarvedFile %v", err)
+	}
 }
 
 // Function to process one block from a file carve
+// FIXME it can be more efficient on db access
 func processCarveBlock(req CarveBlockRequest, context string) {
-	log.Printf("BLOCK BLOCK BLOCK BLOCK BLOCK %d %s %s", req.BlockID, req.SessionID, req.RequestID)
-	log.Printf("BLOCK BLOCK BLOCK DATA %s", req.Data)
+	// Prepare carve block
+	block := carves.CarvedBlock{
+		RequestID: req.RequestID,
+		SessionID: req.SessionID,
+		Context:   context,
+		BlockID:   req.BlockID,
+		Data:      req.Data,
+	}
+	// Create Block
+	err := filecarves.CreateBlock(block)
+	if err != nil {
+		incMetric(metricBlockErr)
+		log.Printf("error creating CarvedBlock %v", err)
+	}
+	// Bump block completion
+	err = filecarves.CompleteBlock(req.SessionID)
+	if err != nil {
+		incMetric(metricBlockErr)
+		log.Printf("error completing block %v", err)
+	}
+	// If it is completed, set status
+	if filecarves.Completed(req.SessionID) {
+		err = filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID)
+		if err != nil {
+			incMetric(metricBlockErr)
+			log.Printf("error completing status %v", err)
+		}
+	} else {
+		err = filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID)
+		if err != nil {
+			incMetric(metricBlockErr)
+			log.Printf("error progressing status %v", err)
+		}
+	}
 }
 
 // Function to handle the initialization of the file carver
@@ -672,7 +732,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		go processCarveInit(t, context)
+		go processCarveInit(t, carveSessionID, context)
 	} else {
 		initCarve = false
 	}
@@ -724,12 +784,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var blockCarve bool
 	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
-		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
-		if err != nil {
-			incMetric(metricBlockErr)
-			log.Printf("error updating IP Address %v", err)
-		}
+	if filecarves.CheckCarve(t.SessionID, t.RequestID) {
 		blockCarve = true
 		// Process received block
 		go processCarveBlock(t, context)

@@ -87,9 +87,3 @@ function confirmDeleteQueries(_names) {
   });
   $("#confirmModal").modal();
 }
-
-function refreshTableNow(table_id) {
-  var table = $('#' + table_id).DataTable();
-  table.ajax.reload();
-  return;
-}

@@ -22,7 +22,7 @@ function confirmRemoveNodes(_uuids) {
 
 function removeNode(_uuid) {
   var _csrftoken = $("#csrftoken").val();
-  
+
   var _url = '/action/' + _uuid;
   var data = {
       csrftoken: _csrftoken,
@@ -33,11 +33,11 @@ function removeNode(_uuid) {
 
 function removeNodes(_uuids) {
   var _csrftoken = $("#csrftoken").val();
-  
+
   var _url = '/actions';
   var data = {
       csrftoken: _csrftoken,
-      uuids: _uuids, 
+      uuids: _uuids,
       action: 'delete'
   };
   sendPostRequest(data, _url, '/', true);
@@ -51,12 +51,6 @@ function refreshCurrentNode() {
   location.reload();
 }
 
-function refreshTableNow(table_id) {
-  var table = $('#' + table_id).DataTable();
-  table.ajax.reload();
-  return;
-}
-
 function queryNode(_uuid) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
@@ -65,7 +59,7 @@ function queryNode(_uuid) {
   if (_query.slice(-1) !== ';') {
     _query = _query + ';';
   }
-  
+
   var _url = '/query/run';
   var data = {
       csrftoken: _csrftoken,
@@ -82,7 +76,7 @@ function queryNode(_uuid) {
 function queryNodes(_uuids) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
-  
+
   var _url = '/query/run';
   var data = {
       csrftoken: _csrftoken,
