@@ -226,7 +226,7 @@ func (c *Carves) Archive(sessionid, path string) error {
 				return fmt.Errorf("Decoding first block %v", err)
 			}
 			if bytes.Compare(compressionCheck[:4], CompressionHeader) == 0 {
-				finalExtension += ".zstd"
+				finalExtension += ".zst"
 			}
 		}
 		if _, err = encF.WriteString(b.Data); err != nil {
