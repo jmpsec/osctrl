@@ -1,0 +1,28 @@
+FROM golang:latest
+LABEL maintainer="javuto"
+
+ENV GO111MODULE=on
+
+WORKDIR /github.com/javuto/osctrl
+
+#ADD deploy/docker/tls.json /config
+
+#ADD cmd/tls/ /
+#ADD cmd/tls/templates/ /tmpl_tls
+
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
+
+COPY . .
+
+RUN go build -o /github.com/javuto/osctrl/osctrl-tls
+
+RUN ls
+
+RUN ls /github.com/javuto/osctrl
+
+EXPOSE 9000
+
+ENTRYPOINT [ "/github.com/javuto/osctrl/osctrl-tls" ]

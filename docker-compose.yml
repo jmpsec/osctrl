@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+  osctrl-tls:
+    container_name: osctrl-tls
+    image: golang:latest
+    depends_on:
+      - "osctrl-db"
+    dockerfile: Dockerfile_tls
+    links:
+      - "osctrl-db"
+    ports:
+      - "9000:9000"
+    networks:
+      - private-net
+  osctrl-admin:
+    container_name: osctrl-admin
+    image: golang:latest
+    depends_on:
+      - "osctrl-db"
+    dockerfile: Dockerfile_admin
+    links:
+      - "osctrl-db"
+    ports:
+      - "9001:9001"
+    networks:
+      - private-net
+  osctrl-nginx:
+    container_name: osctrl-nginx
+    image: nginx:alpine
+    depends_on:
+      - "osctrl-tls"
+      - "osctrl-admin"
+    dockerfile: Dockerfile_nginx
+    ports:
+      - "443:443"
+      - "8443:8443"
+    networks:
+      - public-net
+      - private-net
+  osctrl-db:
+    container_name: osctrl-db
+    image: postgres:10-alpine
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: osctrl
+      POSTGRES_PASSWORD: osctrl
+      POSTGRES_DB: osctrl
+    ports:
+      - "5432:5432"
+    networks:
+      - private-net
+
+volumes:
+  db-data:
+  driver: local
+
+networks:
+  public-net:
+  private-net:

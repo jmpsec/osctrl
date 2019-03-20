@@ -19,22 +19,11 @@
     },
     "splunk": false,
     "splunkcfg": {
-      "url": "", 
+      "url": "",
       "token": "",
       "search": "results_for_{{NAME}}"
     },
     "stdout": false,
     "postgres": true
-  },
-  "geolocation": {
-    "map": false,
-    "ipstackcfg": {
-      "api": "",
-      "apikey": ""
-    },
-    "googlemapscfg": {
-      "api": "",
-      "apikey": ""
-    }
   }
 }

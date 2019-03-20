@@ -72,7 +72,6 @@ var (
 	ctxs           *context.Context
 	dbConfig       JSONConfigurationDB
 	logConfig      JSONConfigurationLogging
-	geolocConfig   JSONConfigurationGeoLocation
 	store          *sessions.CookieStore
 	adminUsers     *users.UserManager
 	storeKey       []byte
@@ -122,12 +121,6 @@ func loadConfiguration() error {
 	// Logging values
 	loggingRaw := viper.Sub("logging")
 	err = loggingRaw.Unmarshal(&logConfig)
-	if err != nil {
-		return err
-	}
-	// GeoLocation values
-	geolocRaw := viper.Sub("geolocation")
-	err = geolocRaw.Unmarshal(&geolocConfig)
 	if err != nil {
 		return err
 	}

@@ -42,7 +42,6 @@
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
 #   -n          --nginx         Install and configure nginx as TLS termination.
 #   -P          --postgres      Install and configure PostgreSQL as backend.
-#   -D          --docker        Runs the service in docker.
 #   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana).
 #
 # Examples:
@@ -113,7 +112,6 @@ function usage() {
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination.\n"
   printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend.\n"
-  printf "  -D          --docker \t\tRuns the service in docker.\n"
   printf "  -M          --metrics \t\tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)."
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
@@ -142,7 +140,6 @@ KEYFILE=""
 CERTFILE=""
 DOMAIN=""
 EMAIL=""
-DOCKER=false
 METRICS=false
 NGINX=false
 POSTGRES=false
@@ -177,7 +174,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nDM:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,docker,metrics,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nM:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -266,11 +263,6 @@ while true; do
     -P|--postgres)
       SHOW_USAGE=false
       POSTGRES=true
-      shift
-      ;;
-    -D|--docker)
-      SHOW_USAGE=false
-      DOCKER=true
       shift
       ;;
     -M|--metrics)
@@ -429,40 +421,36 @@ if [[ "$NGINX" == true ]]; then
 fi
 
 # PostgreSQL - Backend
-if [[ "$DOCKER" == false ]]; then
-  if [[ "$POSTGRES" == true ]]; then
-    POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
-    if [[ "$DISTRO" == "ubuntu" ]]; then
-      package postgresql
-      package postgresql-contrib
-      POSTGRES_SERVICE="postgresql"
-      POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
-      POSTGRES_PSQL="/usr/lib/postgresql/10/bin/psql"
-    elif [[ "$DISTRO" == "centos" ]]; then
-      sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
-      package postgresql96-server
-      package postgresql96-contrib
-      sudo /usr/pgsql-9.6/bin/postgresql96-setup initdb
-      POSTGRES_SERVICE="postgresql-9.6"
-      POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
-      POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
-    fi
-    configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
-    db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
+if [[ "$POSTGRES" == true ]]; then
+  POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    package postgresql
+    package postgresql-contrib
+    POSTGRES_SERVICE="postgresql"
+    POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
+    POSTGRES_PSQL="/usr/lib/postgresql/10/bin/psql"
+  elif [[ "$DISTRO" == "centos" ]]; then
+    sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
+    package postgresql96-server
+    package postgresql96-contrib
+    sudo /usr/pgsql-9.6/bin/postgresql96-setup initdb
+    POSTGRES_SERVICE="postgresql-9.6"
+    POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
+    POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
   fi
+  configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
+  db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
 fi
 
 # Metrics - InfluxDB + Telegraf + Grafana
-if [[ "$DOCKER" == false ]]; then
-  if [[ "$METRICS" == true ]]; then
-    if [[ "$DISTRO" == "ubuntu" ]]; then
-      install_influx_telegraf
-      configure_influx_telegraf
-      install_grafana
-      configure_grafana
-    elif [[ "$DISTRO" == "centos" ]]; then
-      log "Not ready yet to install metrics for CentOS"
-    fi
+if [[ "$METRICS" == true ]]; then
+  if [[ "$DISTRO" == "ubuntu" ]]; then
+    install_influx_telegraf
+    configure_influx_telegraf
+    install_grafana
+    configure_grafana
+  elif [[ "$DISTRO" == "centos" ]]; then
+    log "Not ready yet to install metrics for CentOS"
   fi
 fi
 
@@ -470,28 +458,31 @@ fi
 # package golang-go
 install_go_11
 
-# Build code
-cd "$SOURCE_PATH"
-make clean
-make
-
 # Prepare destination and configuration folder
 sudo mkdir -p "$DEST_PATH/config"
 
+# Build code
+cd "$SOURCE_PATH"
+make clean
+
 if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
+  # Build TLS service
+  make tls
+
   # Configure TLS service
   configure_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "TLS" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/templates" "tmpl_tls"
 
-  # Systemd services for non-docker deployments
-  if [[ "$DOCKER" == false ]]; then
-    _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
-  fi
+  # Systemd configuration for TLS service
+  _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
 if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
+  # Build Admin service
+  make admin
+
   # Configure Admin service
   configure_service "$SOURCE_PATH/deploy/$ADMIN_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "ADMIN" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
 
@@ -501,14 +492,12 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Copy osquery tables JSON file
   sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.0.json" "$DEST_PATH/data"
 
-  # Prepare static files for admin
+  # Prepare static files for Admin service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
-    # Systemd services for non-docker deployments
-  if [[ "$DOCKER" == false ]]; then
-    _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
-  fi
+  # Systemd configuration for Admin service
+  _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
 # Install CLI
@@ -543,12 +532,10 @@ log "Creating admin user"
 "$DEST_PATH"/osctrl-cli -c "$__tls_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
 
 # Ascii art is always appreciated
-if [[ "$DOCKER" == false ]]; then
-  if [[ "$DISTRO" == "ubuntu" ]]; then
-    set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
-  elif [[ "$DISTRO" == "centos" ]]; then
-    set_motd_centos "$SOURCE_PATH/deploy/motd-osctrl.sh"
-  fi
+if [[ "$DISTRO" == "ubuntu" ]]; then
+  set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
+elif [[ "$DISTRO" == "centos" ]]; then
+  set_motd_centos "$SOURCE_PATH/deploy/motd-osctrl.sh"
 fi
 
 echo

@@ -42,18 +42,17 @@ const (
 
 // Global variables
 var (
-	tlsConfig    JSONConfigurationTLS
-	tlsPath      context.TLSPath
-	db           *gorm.DB
-	config       *configuration.Configuration
-	ctxs         *context.Context
-	nodesmgr     *nodes.NodeManager
-	queriesmgr   *queries.Queries
-	filecarves   *carves.Carves
-	_metrics     *metrics.Metrics
-	dbConfig     JSONConfigurationDB
-	logConfig    JSONConfigurationLogging
-	geolocConfig JSONConfigurationGeoLocation
+	tlsConfig  JSONConfigurationTLS
+	tlsPath    context.TLSPath
+	db         *gorm.DB
+	config     *configuration.Configuration
+	ctxs       *context.Context
+	nodesmgr   *nodes.NodeManager
+	queriesmgr *queries.Queries
+	filecarves *carves.Carves
+	_metrics   *metrics.Metrics
+	dbConfig   JSONConfigurationDB
+	logConfig  JSONConfigurationLogging
 )
 
 // Function to load the configuration file and assign to variables
@@ -90,12 +89,6 @@ func loadConfiguration() error {
 	// Logging values
 	loggingRaw := viper.Sub("logging")
 	err = loggingRaw.Unmarshal(&logConfig)
-	if err != nil {
-		return err
-	}
-	// GeoLocation values
-	geolocRaw := viper.Sub("geolocation")
-	err = geolocRaw.Unmarshal(&geolocConfig)
 	if err != nil {
 		return err
 	}

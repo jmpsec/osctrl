@@ -38,16 +38,6 @@ type JSONConfigurationLogging struct {
 // LoggingConfigurationData to keep a map with details for each logging entry
 type LoggingConfigurationData map[string]string
 
-// JSONConfigurationGeoLocation to keep all the geo location configuration values
-type JSONConfigurationGeoLocation struct {
-	Maps          bool                         `json:"maps"`
-	IPStackCfg    GeoLocationConfigurationData `json:"ipstackcfg"`
-	GoogleMapsCfg GeoLocationConfigurationData `json:"googlemapscfg"`
-}
-
-// GeoLocationConfigurationData to keep a map with details for each geo location entry
-type GeoLocationConfigurationData map[string]string
-
 // GenericRequest to some endpoints
 type GenericRequest struct {
 	NodeKey string `json:"node_key"`

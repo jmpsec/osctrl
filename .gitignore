@@ -43,8 +43,9 @@ tmp
 osctrl.crt
 osctrl.secret
 
-# Key for tests
+# Certificates
 osctrl.pem
+osctrl.key
 
 # Customization
 #brand.png
