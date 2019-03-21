@@ -19,6 +19,7 @@ vendor
 glide.lock
 
 # Directories to ignore
+bin
 build
 vendor
 
@@ -39,13 +40,13 @@ tmp
 *.pkg
 *.rpm
 
-# Files related for packages
-osctrl.crt
-osctrl.secret
-
 # Certificates
+osctrl.csr
 osctrl.pem
 osctrl.key
+osctrl.crt
+osctrl.secret
+dhparam.pem
 
 # Customization
 #brand.png

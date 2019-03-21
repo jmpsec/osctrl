@@ -228,7 +228,7 @@ function _systemd() {
   sudo chmod 755 "/lib/systemd/system/$__server.service"
 
   # Copying binaries
-  sudo cp "$__path/build/$__server" "$__dest"
+  sudo cp "$__path/bin/$__server" "$__dest"
 
   # Enable and start service
   sudo systemctl enable "$__server.service"

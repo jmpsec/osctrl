@@ -1,0 +1,19 @@
+FROM nginx
+LABEL maintainer="javuto"
+
+RUN rm /etc/nginx/conf.d/*.conf
+RUN rm -rf /usr/share/nginx/html/*
+
+WORKDIR /etc/nginx
+
+ADD osctrl.crt /etc/nginx/certs/
+ADD osctrl.key /etc/nginx/certs/
+ADD dhparam.pem /etc/nginx/certs/
+
+ADD deploy/docker/tls.conf /etc/nginx/conf.d/
+ADD deploy/docker/admin.conf /etc/nginx/conf.d/
+
+EXPOSE 443
+EXPOSE 8443
+
+CMD ["nginx", "-g", "daemon off;"]

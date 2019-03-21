@@ -500,6 +500,9 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
+# Compile CLI
+make cli
+
 # Install CLI
 DEST="$DEST_PATH" make install_cli
 

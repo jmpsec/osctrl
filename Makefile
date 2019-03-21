@@ -16,7 +16,7 @@ CLI_CODE = ${CLI_DIR:=/*.go}
 
 DEST ?= /opt/osctrl
 
-OUTPUT = build
+OUTPUT = bin
 
 .PHONY: all build clean
 
@@ -67,12 +67,28 @@ install_tls:
 install_admin:
 	sudo systemctl stop $(ADMIN_NAME)
 	sudo cp $(OUTPUT)/$(ADMIN_NAME) $(DEST)
-	sudo systemctl start $(ADMIN_NAME)	
+	sudo systemctl start $(ADMIN_NAME)
 
 # Install CLI
 # optional DEST=destination_path
 install_cli:
 	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)
+
+# Build docker containers and run them (also generates new certificates)
+docker_all:
+	./docker.sh
+
+# Run docker containers
+docker_up:
+	docker-compose up
+
+# Build docker containers
+docker_build:
+	docker-compose build
+
+# Takes down docker containers
+docker_down:
+	docker-compose down
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s

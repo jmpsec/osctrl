@@ -1,8 +1,0 @@
-FROM nginx:alpine
-LABEL maintainer="javuto"
-
-#RUN rm -rf /usr/share/nginx/html/*
-
-EXPOSE 8888
-
-CMD ["nginx", "-g", "daemon off;"]

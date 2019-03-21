@@ -3,10 +3,11 @@ version: "3"
 services:
   osctrl-tls:
     container_name: osctrl-tls
-    image: golang:latest
     depends_on:
       - "osctrl-db"
-    dockerfile: Dockerfile_tls
+    build:
+      context: .
+      dockerfile: "Dockerfile-tls"
     links:
       - "osctrl-db"
     ports:
@@ -15,10 +16,11 @@ services:
       - private-net
   osctrl-admin:
     container_name: osctrl-admin
-    image: golang:latest
     depends_on:
       - "osctrl-db"
-    dockerfile: Dockerfile_admin
+    build:
+      context: .
+      dockerfile: "Dockerfile-admin"
     links:
       - "osctrl-db"
     ports:
@@ -27,11 +29,12 @@ services:
       - private-net
   osctrl-nginx:
     container_name: osctrl-nginx
-    image: nginx:alpine
     depends_on:
       - "osctrl-tls"
       - "osctrl-admin"
-    dockerfile: Dockerfile_nginx
+    build:
+      context: .
+      dockerfile: "Dockerfile-nginx"
     ports:
       - "443:443"
       - "8443:8443"
@@ -54,7 +57,6 @@ services:
 
 volumes:
   db-data:
-  driver: local
 
 networks:
   public-net:

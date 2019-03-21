@@ -1,0 +1,26 @@
+FROM golang:latest
+LABEL maintainer="javuto"
+
+ENV GO111MODULE=on
+
+WORKDIR /osctrl
+
+ADD deploy/docker/admin.json config/
+
+ADD cmd/admin/templates/ tmpl_admin
+ADD cmd/admin/static/ static
+ADD deploy/osquery/data/3.3.0.json data/
+
+COPY go.mod .
+COPY go.sum .
+
+COPY cmd/admin/ cmd/admin
+COPY cmd/cli/ cmd/cli
+COPY pkg/ pkg
+
+RUN go build -o bin/osctrl-admin cmd/admin/*.go
+RUN go build -o bin/osctrl-cli cmd/cli/*.go
+
+EXPOSE 9001
+
+ENTRYPOINT [ "bin/osctrl-admin" ]
