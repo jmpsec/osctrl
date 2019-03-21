@@ -90,6 +90,11 @@ docker_build:
 docker_down:
 	docker-compose down
 
+# Cleans docker containers and certificates
+docker_clean:
+	docker-compose rm
+	rm -Rf dhparam.pem osctrl.crt osctrl.csr osctrl.key
+
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
 gofmt-tls:
