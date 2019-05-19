@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/javuto/osctrl/configuration"
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/queries"
+	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/queries"
 
 	"github.com/gorilla/mux"
 )
@@ -122,10 +122,11 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("New session - %v", err)
 		}
+		csrfToken := generateCSRF()
 		session.Values["authenticated"] = true
 		session.Values["user"] = l.Username
 		session.Values["admin"] = user.Admin
-		session.Values["csrftoken"] = generateCSRF()
+		session.Values["csrftoken"] = csrfToken
 		_ = session.Save(r, w)
 	} else {
 		responseMessage = "invalid credentials"

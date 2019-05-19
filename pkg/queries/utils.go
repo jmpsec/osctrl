@@ -1,7 +1,7 @@
 package queries
 
 import (
-	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/pkg/nodes"
 )
 
 // Helper to decide whether if the query targets apply to a give node

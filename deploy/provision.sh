@@ -456,7 +456,7 @@ fi
 
 # Golang
 # package golang-go
-install_go_11
+install_go_12
 
 # Prepare destination and configuration folder
 sudo mkdir -p "$DEST_PATH/config"

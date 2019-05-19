@@ -12,7 +12,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Access always granted
 			h.ServeHTTP(w, r)
 		case localAuthLogin:
-			// Check if user is authenticated
+			// Check if user is already authenticated
 			session, err := store.Get(r, projectName)
 			if err != nil {
 				http.Redirect(w, r, "/login", http.StatusFound)
@@ -22,6 +22,8 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
+			// Update session for the user
+			//adminUsers.
 			// Access granted
 			h.ServeHTTP(w, r)
 		case samlAuthLogin:

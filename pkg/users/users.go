@@ -2,6 +2,7 @@ package users
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
@@ -10,14 +11,14 @@ import (
 // AdminUser to hold all users
 type AdminUser struct {
 	gorm.Model
-	Username  string `gorm:"index"`
-	Fullname  string
-	PassHash  string
-	Admin     bool
-	CSRF      string
-	Cookie    string
-	IPAddress string
-	UserAgent string
+	Username      string `gorm:"index"`
+	Fullname      string
+	PassHash      string
+	Admin         bool
+	CSRF          string
+	LastIPAddress string
+	LastUserAgent string
+	LastAccess    time.Time
 }
 
 // UserManager have all users of the system
@@ -39,7 +40,7 @@ func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash := string(hashedBytes[:])
+	hash := string(hashedBytes)
 	return hash, nil
 }
 
@@ -137,6 +138,23 @@ func (m *UserManager) ChangePassword(username, password string) error {
 		return err
 	}
 	if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// UpdateMetadata updates IP, User Agent and Last Access for a given user
+func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if err := m.DB.Model(&user).Updates(
+		AdminUser{
+			LastIPAddress: ipaddress,
+			LastUserAgent: useragent,
+			LastAccess:    time.Now(),
+		}).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil

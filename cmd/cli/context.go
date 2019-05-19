@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/javuto/osctrl/context"
+	"github.com/javuto/osctrl/pkg/context"
 	"github.com/urfave/cli"
 )
 

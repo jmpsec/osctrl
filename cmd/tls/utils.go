@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	_ctx "github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
+	_ctx "github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/segmentio/ksuid"
 )
 

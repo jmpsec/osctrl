@@ -12,11 +12,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/javuto/osctrl/configuration"
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
-	"github.com/javuto/osctrl/queries"
-	"github.com/javuto/osctrl/users"
+	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
@@ -134,7 +134,13 @@ func loadOsqueryTables() error {
 	if err != nil {
 		return err
 	}
-	defer jsonFile.Close()
+	//defer jsonFile.Close()
+	defer func() {
+		err := jsonFile.Close()
+		if err != nil {
+			log.Fatalf("Failed to close tables file %v", err)
+		}
+	}()
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &osqueryTables)
 	if err != nil {

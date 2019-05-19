@@ -11,9 +11,9 @@ import (
 // Define targets to be used
 var (
 	NodeTargets = map[string]bool{
-		"all":       true,
-		"active":    true,
-		"completed": true,
+		"all":      true,
+		"active":   true,
+		"inactive": true,
 	}
 )
 

@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/javuto/osctrl/queries"
+	"github.com/javuto/osctrl/pkg/queries"
 
 	"github.com/jinzhu/gorm"
 )

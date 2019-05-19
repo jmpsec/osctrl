@@ -10,9 +10,9 @@ Fast and efficient operative system management.
 
 ## Dependencies
 
-*(Presuming that you aready have Golang >= 1.11 installed in your system)*
+*(Presuming that you aready have Golang >= 1.12 installed in your system)*
 
-The project uses [Go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies. Make sure you have it installed, otherwise he easiest way to install the latest release on Mac or Linux is with the following script:
+The project uses [Go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies. Each package provides its own `go.mod` file and running `go build` will download all the required dependencies.
 
 ## Service configuration
 

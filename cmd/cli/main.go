@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/javuto/osctrl/configuration"
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
-	"github.com/javuto/osctrl/queries"
-	"github.com/javuto/osctrl/users"
+	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"

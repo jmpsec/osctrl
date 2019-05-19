@@ -4,12 +4,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/javuto/osctrl/carves"
-	"github.com/javuto/osctrl/configuration"
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/metrics"
-	"github.com/javuto/osctrl/nodes"
-	"github.com/javuto/osctrl/queries"
+	"github.com/javuto/osctrl/pkg/carves"
+	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/metrics"
+	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/queries"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"

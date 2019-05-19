@@ -3,7 +3,7 @@ package queries
 import (
 	"fmt"
 
-	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/jinzhu/gorm"
 )
 

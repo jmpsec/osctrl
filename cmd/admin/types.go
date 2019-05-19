@@ -1,9 +1,9 @@
 package main
 
 import (
-	ctx "github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
-	"github.com/javuto/osctrl/queries"
+	ctx "github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/queries"
 )
 
 // JSONConfigurationDB to hold all backend configuration values

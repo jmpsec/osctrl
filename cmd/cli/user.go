@@ -61,9 +61,8 @@ func listUsers(c *cli.Context) error {
 			fmt.Printf("  Hashed Password: %s\n", u.PassHash)
 			fmt.Printf("  Admin? %v\n", u.Admin)
 			fmt.Printf("  CSRF: %s\n", u.CSRF)
-			fmt.Printf("  Cookie: %s\n", u.Cookie)
-			fmt.Printf("  IPAddress: %s\n", u.IPAddress)
-			fmt.Printf("  UserAgent: %s\n", u.UserAgent)
+			fmt.Printf("  LastIPAddress: %s\n", u.LastIPAddress)
+			fmt.Printf("  LastUserAgent: %s\n", u.LastUserAgent)
 			fmt.Println()
 		}
 	} else {

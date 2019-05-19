@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/jinzhu/gorm"
 )
 

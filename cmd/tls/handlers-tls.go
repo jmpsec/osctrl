@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/carves"
-	"github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/nodes"
-	"github.com/javuto/osctrl/queries"
+	"github.com/javuto/osctrl/pkg/carves"
+	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/queries"
 )
 
 const (

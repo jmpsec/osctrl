@@ -19,7 +19,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fa fas fa-server"></i> Table of {{ .Target }} Nodes by {{ .Selector }} : {{ .SelectorName }}
+                <i class="fa fas fa-server"></i> Table of {{ .Target }} Nodes by {{ .Selector }} : <b>{{ .SelectorName }}</b>
                 <div class="card-header-actions">
                   <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
                   <button id="refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip"
@@ -265,12 +265,16 @@
                   switch(data) {
                   case "ubuntu":
                     return '<i class="fl-ubuntu-inverse"></i> ubuntu';
+                  case "debian":
+                    return '<i class="fl-debian"></i> debian';
                   case "unknown":
                     return '<i class="fa fa-question-circle"></i> unknown';
                   case "darwin":
                     return '<i class="fab fa-apple"></i> darwin';
                   case "centos":
                     return '<i class="fl-centos"></i> centos';
+                  case "rhel":
+                    return '<i class="fl-redhat"></i> redhat';
                   case "fedora":
                     return '<i class="fl-fedora"></i> fedora';
                   case "windows":

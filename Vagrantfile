@@ -25,7 +25,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       build.vm.box = box
       build.vm.network "private_network", ip: "10.10.10.6"
       # If we want to enroll nodes in the same network
-      # build.vm.network "forwarded_port", guest: 443, host: 443
+      #build.vm.network "forwarded_port", guest: 443, host: 443
       build.vm.hostname = "osctrl-Dev"
       build.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
       build.vm.provision "shell" do |s|

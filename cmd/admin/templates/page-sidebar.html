@@ -3,7 +3,7 @@
 <div class="sidebar">
   <nav class="sidebar-nav">
     <ul class="nav">
-      
+
       <!--
       <li class="nav-item">
         <a class="nav-link" href="/dashboard">
@@ -32,7 +32,7 @@
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/inactive">
               <i class="nav-icon {{ $e.Icon }}"></i>
-              inactive 
+              inactive
               <span class="badge badge-danger stats-context-{{ $e.Name }}-inactive">Z</span>
             </a>
           </li>
@@ -51,12 +51,12 @@
         </ul>
       </li>
       {{end}}
-        
+
       <li class="divider"></li>
-        
+
       <li class="nav-title">Nodes by Platform</li>
       {{range  $i, $e := $.Platforms}}
-        
+
       <li class="nav-item nav-dropdown">
         <input type="hidden" class="stats-platform-value" value="{{ $e }}">
         <a class="nav-link nav-dropdown-toggle">
@@ -71,6 +71,9 @@
           {{end}}
           {{if eq $e "centos"}}
             <i class="nav-icon fa fl-centos"></i>
+          {{end}}
+          {{if eq $e "rhel"}}
+            <i class="nav-icon fa fl-redhat"></i>
           {{end}}
           {{if eq $e "fedora"}}
             <i class="nav-icon fa fl-centos"></i>
@@ -105,6 +108,9 @@
               {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
+              {{if eq $e "rhel"}}
+                <i class="nav-icon fa fl-redhat"></i>
+              {{end}}
               {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
@@ -120,7 +126,7 @@
               {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
-              active 
+              active
               <span class="badge badge-success stats-platform-{{ $e }}-active">Y</span>
             </a>
           </li>
@@ -138,6 +144,9 @@
               {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
+              {{if eq $e "rhel"}}
+                <i class="nav-icon fa fl-redhat"></i>
+              {{end}}
               {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
@@ -153,7 +162,7 @@
               {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
-              inactive 
+              inactive
               <span class="badge badge-danger stats-platform-{{ $e }}-inactive">Z</span>
             </a>
           </li>
@@ -171,6 +180,9 @@
               {{if eq $e "centos"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
+              {{if eq $e "rhel"}}
+                <i class="nav-icon fa fl-redhat"></i>
+              {{end}}
               {{if eq $e "fedora"}}
                 <i class="nav-icon fa fl-centos"></i>
               {{end}}
@@ -186,7 +198,7 @@
               {{if eq $e "unknown"}}
                 <i class="nav-icon fa fa-question-circle"></i>
               {{end}}
-              all 
+              all
               <span class="badge badge-light stats-platform-{{ $e }}-total">X</span>
             </a>
           </li>
@@ -195,7 +207,7 @@
       {{end}}
 
       <li class="divider"></li>
-      
+
       <li class="nav-title">On-Demand Queries</li>
       <li class="nav-item">
         <a class="nav-link" href="/query/run">
@@ -207,7 +219,7 @@
           <i class="nav-icon fab fa-searchengin"></i> All Queries
         </a>
       </li>
-    
+
     </ul>
   </nav>
   <button class="sidebar-minimizer" type="button"></button>

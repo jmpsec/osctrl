@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/configuration"
-	ctx "github.com/javuto/osctrl/context"
-	"github.com/javuto/osctrl/users"
+	"github.com/javuto/osctrl/pkg/configuration"
+	ctx "github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
 

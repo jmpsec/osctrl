@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/carves"
-	"github.com/javuto/osctrl/configuration"
-	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/pkg/carves"
+	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/nodes"
 
 	"github.com/jinzhu/gorm"
 )

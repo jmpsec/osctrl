@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/nodes"
+	"github.com/javuto/osctrl/pkg/nodes"
 )
 
 // Define targets to be used
