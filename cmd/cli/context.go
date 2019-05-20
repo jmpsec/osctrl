@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/pkg/context"
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )
 
@@ -73,7 +74,6 @@ func showContext(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Context %s\n", ctx.Name)
 	fmt.Printf(" Name: %s\n", ctx.Name)
 	fmt.Printf(" Host: %s\n", ctx.Hostname)
 	fmt.Printf(" Secret: %s\n", ctx.Secret)
@@ -97,12 +97,26 @@ func listContext(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"Name",
+		"Type",
+		"Hostname",
+		"DebugHTTP?",
+	})
 	if len(contexts) > 0 {
-		fmt.Printf("Existing contexts:\n\n")
+		data := [][]string{}
 		for _, ctx := range contexts {
-			fmt.Printf("  Name: %s\n", ctx.Name)
+			c := []string{
+				ctx.Name,
+				ctx.Type,
+				ctx.Hostname,
+				stringifyBool(ctx.DebugHTTP),
+			}
+			data = append(data, c)
 		}
-		fmt.Println()
+		table.AppendBulk(data)
+		table.Render()
 	} else {
 		fmt.Printf("No contexts\n")
 	}

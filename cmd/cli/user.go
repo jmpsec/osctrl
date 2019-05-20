@@ -4,7 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
+)
+
+const (
+	// Length to truncate strings
+	lengthToTruncate = 10
 )
 
 func addUser(c *cli.Context) error {
@@ -53,18 +59,32 @@ func listUsers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"Username",
+		"Fullname",
+		"PassHash",
+		"Admin?",
+		"CSRF Token",
+		"IPAddress",
+		"UserAgent",
+	})
 	if len(users) > 0 {
-		fmt.Printf("Existing users:\n")
+		data := [][]string{}
 		for _, u := range users {
-			fmt.Printf("  Username: %s\n", u.Username)
-			fmt.Printf("  Fullname: %s\n", u.Fullname)
-			fmt.Printf("  Hashed Password: %s\n", u.PassHash)
-			fmt.Printf("  Admin? %v\n", u.Admin)
-			fmt.Printf("  CSRF: %s\n", u.CSRF)
-			fmt.Printf("  LastIPAddress: %s\n", u.LastIPAddress)
-			fmt.Printf("  LastUserAgent: %s\n", u.LastUserAgent)
-			fmt.Println()
+			u := []string{
+				u.Username,
+				u.Fullname,
+				truncateString(u.PassHash, lengthToTruncate),
+				stringifyBool(u.Admin),
+				u.CSRF,
+				u.LastIPAddress,
+				u.LastUserAgent,
+			}
+			data = append(data, u)
 		}
+		table.AppendBulk(data)
+		table.Render()
 	} else {
 		fmt.Printf("No users\n")
 	}

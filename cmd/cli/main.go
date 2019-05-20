@@ -396,27 +396,7 @@ func init() {
 					Name:    "show",
 					Aliases: []string{"s"},
 					Usage:   "Show all configuration values",
-					Action: func(c *cli.Context) error {
-						values, err := config.RetrieveAllValues()
-						if err != nil {
-							return err
-						}
-						if len(values) > 0 {
-							fmt.Printf("Configuration values:\n\n")
-							for _, v := range values {
-								fmt.Printf(" Name: %s\n", v.Name)
-								fmt.Printf(" Service: %s\n", v.Service)
-								fmt.Printf(" Type: %s\n", v.Type)
-								fmt.Printf(" String: %s\n", v.String)
-								fmt.Printf(" Integer: %d\n", v.Integer)
-								fmt.Printf(" Boolean: %v\n", v.Boolean)
-								fmt.Println()
-							}
-						} else {
-							fmt.Printf("No configuration values\n")
-						}
-						return nil
-					},
+					Action: listConfiguration,
 				},
 			},
 		},
@@ -465,33 +445,7 @@ func init() {
 							Usage:  "Show inactive nodes",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get values from flags
-						target := "active"
-						if c.Bool("all") {
-							target = "all"
-						}
-						if c.Bool("inactive") {
-							target = "inactive"
-						}
-						nodes, err := nodesmgr.Gets(target)
-						if err != nil {
-							return err
-						}
-						if len(nodes) > 0 {
-							fmt.Printf("Existing %s nodes (%d):\n", target, len(nodes))
-							for _, n := range nodes {
-								fmt.Printf("  Hostname: %s\n", n.Hostname)
-								fmt.Printf("  UUID: %s\n", n.UUID)
-								fmt.Printf("  Platform: %s\n", n.Platform)
-								fmt.Printf("  Context: %s\n", n.Context)
-								fmt.Println()
-							}
-						} else {
-							fmt.Printf("No nodes\n")
-						}
-						return nil
-					},
+					Action: listNodes,
 				},
 			},
 		},
@@ -565,38 +519,7 @@ func init() {
 							Usage:  "Show deleted queries",
 						},
 					},
-					Action: func(c *cli.Context) error {
-						// Get values from flags
-						target := "all"
-						if c.Bool("all") {
-							target = "all"
-						}
-						if c.Bool("active") {
-							target = "active"
-						}
-						if c.Bool("completed") {
-							target = "completed"
-						}
-						if c.Bool("deleted") {
-							target = "deleted"
-						}
-						qs, err := queriesmgr.Gets(target)
-						if err != nil {
-							return err
-						}
-						if len(qs) > 0 {
-							fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
-							for _, q := range qs {
-								fmt.Printf("  Name: %s\n", q.Name)
-								fmt.Printf("  Creator: %s\n", q.Creator)
-								fmt.Printf("  Query: %s\n", q.Query)
-								fmt.Println()
-							}
-						} else {
-							fmt.Printf("No nodes\n")
-						}
-						return nil
-					},
+					Action: listQueries,
 				},
 			},
 		},
