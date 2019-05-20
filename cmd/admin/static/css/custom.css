@@ -4,7 +4,7 @@
 }
 
 .navbar-brand {
-  background-image:url("/static/img/brand.png");
+  background-image: url("/static/img/brand.png");
   background-position: 50% 50%;
   background-repeat: no-repeat;
   background-size: 100%;
@@ -19,10 +19,11 @@ button.navbar-toggler:hover {
 }
 
 table.dataTable tbody tr:hover {
-  background-color:#d3d3d3 !important;
+  background-color: #d3d3d3 !important;
 }
 
-thead, th {
+thead,
+th {
   text-align: center;
 }
 
@@ -43,7 +44,7 @@ input[type=text]#query {
 }
 
 .navbar {
-  opacity:0.7;
+  opacity: 0.7;
 }
 
 body {
@@ -92,4 +93,8 @@ body {
 .stripes-green {
   color: white;
   background: repeating-linear-gradient(45deg, #ccc, #ccc 10px, #4dbd74 10px, #4dbd74 20px);
+}
+
+.sidebar .nav-link.active {
+  background: #656e75;
 }

@@ -219,7 +219,15 @@
     <script src="/static/js/enrolls.js"></script>
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
+      // Highlight.js initialization
+      hljs.initHighlightingOnLoad();
+
       $(document).ready(function() {
+        // Highlight.js initialization
+        $('code').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
+
         // Enable all tooltips
         $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
 

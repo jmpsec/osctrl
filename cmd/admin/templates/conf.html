@@ -108,8 +108,6 @@
     <script src="/static/js/configuration.js"></script>
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
-      // Highlight.js initialization
-      hljs.initHighlightingOnLoad();
       $(document).ready(function() {
         // Codemirror editor for configuration
         // JSON validity check when content is changed
@@ -151,11 +149,6 @@
           }
         });
         editorConf.setSize("100%", "100%");
-
-        // Highlight.js initialization
-        $('code').each(function(i, block) {
-          hljs.highlightBlock(block);
-        });
 
         // Enable all tooltips
         $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
