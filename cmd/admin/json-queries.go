@@ -65,7 +65,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	for _, q := range qs {
 		status := "ACTIVE"
 		if q.Completed {
-			status = "DONE"
+			status = "COMPLETED"
 		}
 		progress := make(QueryProgress)
 		progress["executions"] = q.Executions

@@ -36,6 +36,9 @@ func listQueries(c *cli.Context) error {
 		"Type",
 		"Executions",
 		"Errors",
+		"Active",
+		"Completed",
+		"Deleted",
 	})
 	if len(qs) > 0 {
 		data := [][]string{}
@@ -48,6 +51,9 @@ func listQueries(c *cli.Context) error {
 				q.Type,
 				strconv.Itoa(q.Executions),
 				strconv.Itoa(q.Errors),
+				stringifyBool(q.Active),
+				stringifyBool(q.Completed),
+				stringifyBool(q.Deleted),
 			}
 			data = append(data, _q)
 		}
