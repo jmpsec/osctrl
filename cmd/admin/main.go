@@ -322,6 +322,8 @@ func main() {
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
+	// Admin: nodes enroll
+	routerAdmin.Handle("/enroll/{context}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
 	routerAdmin.Handle("/expiration/{context}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
 	//routerAdmin.Handle("/settings", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")

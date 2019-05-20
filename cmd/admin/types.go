@@ -79,12 +79,21 @@ type TableTemplateData struct {
 type ConfTemplateData struct {
 	Title                 string
 	Context               string
+	ConfigurationBlob     string
+	ConfigurationHash     string
+	Contexts              []ctx.TLSContext
+	Platforms             []string
+	Settings              SettingsData
+}
+
+// EnrollTemplateData for passing data to the conf template
+type EnrollTemplateData struct {
+	Title                 string
+	Context               string
 	EnrollExpiry          string
 	EnrollExpired         bool
 	RemoveExpiry          string
 	RemoveExpired         bool
-	ConfigurationBlob     string
-	ConfigurationHash     string
 	QuickAddShell         string
 	QuickRemoveShell      string
 	QuickAddPowershell    string

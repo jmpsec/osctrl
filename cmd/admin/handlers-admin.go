@@ -659,7 +659,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler GET requests for conf
+// Handler GET requests for /conf
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
 	vars := mux.Vars(r)
@@ -683,13 +683,73 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-sidebar.html",
 		"tmpl_admin/components/page-aside.html")
 	if err != nil {
-		log.Printf("error getting table template: %v", err)
+		log.Printf("error getting conf template: %v", err)
 		return
 	}
 	// Get stats for all contexts
 	contexts, err := ctxs.All()
 	if err != nil {
-		log.Printf("error getting contexts%v", err)
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get configuration JSON
+	ctx, err := ctxs.Get(contextVar)
+	if err != nil {
+		log.Printf("error getting context %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := ConfTemplateData{
+		Title:             contextVar + " Configuration",
+		ConfigurationBlob: ctx.Configuration,
+		ConfigurationHash: generateOsqueryConfigHash(ctx.Configuration),
+		Context:           contextVar,
+		Contexts:          contexts,
+		Platforms:         platforms,
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Printf("template error %v", err)
+		return
+	}
+}
+
+// Handler GET requests for /enroll
+func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
+	vars := mux.Vars(r)
+	// Extract context
+	contextVar, ok := vars["context"]
+	if !ok {
+		log.Println("context is missing")
+		return
+	}
+	// Check if context is valid
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
+		return
+	}
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/enroll.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html")
+	if err != nil {
+		log.Printf("error getting enroll template: %v", err)
+		return
+	}
+	// Get stats for all contexts
+	contexts, err := ctxs.All()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -709,10 +769,8 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	powershellQuickAdd, _ := context.QuickAddOneLinerPowershell(ctx)
 	shellQuickRemove, _ := context.QuickRemoveOneLinerShell(ctx)
 	powershellQuickRemove, _ := context.QuickRemoveOneLinerPowershell(ctx)
-	templateData := ConfTemplateData{
-		Title:                 contextVar + " Configuration",
-		ConfigurationBlob:     ctx.Configuration,
-		ConfigurationHash:     generateOsqueryConfigHash(ctx.Configuration),
+	templateData := EnrollTemplateData{
+		Title:                 contextVar + " Enroll",
 		Context:               contextVar,
 		EnrollExpiry:          strings.ToUpper(inFutureTime(ctx.EnrollExpire)),
 		EnrollExpired:         context.IsItExpired(ctx.EnrollExpire),
@@ -731,7 +789,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler POST requests for savin configuration
+// Handler POST requests for saving configuration in /conf
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -791,7 +849,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
-// Handler POST requests for savin configuration
+// Handler POST requests for expiring enroll links
 func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -829,7 +887,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						log.Printf("%s %v", responseMessage, err)
 					}
 				case "extend":
-					err = ctxs.RotateEnroll(contextVar)
+					err = ctxs.RotateEnrollPath(contextVar)
 					if err != nil {
 						responseMessage = "error extending enroll"
 						responseCode = http.StatusInternalServerError

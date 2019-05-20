@@ -169,14 +169,29 @@ func (context *Context) RotateSecrets(name string) error {
 	return nil
 }
 
-// RotateEnroll to replace Secret and SecrtPath for enrolling in a context
-func (context *Context) RotateEnroll(name string) error {
+// RotateEnrollPath to replace SecretPath for enrolling in a context
+func (context *Context) RotateEnrollPath(name string) error {
 	ctx, err := context.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting context %v", err)
 	}
 	rotated := ctx
 	rotated.EnrollSecretPath = generateKSUID()
+	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
+// RotateSecret to replace the current Secret for a context
+func (context *Context) RotateSecret(name string) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	rotated := ctx
+	rotated.Secret = generateRandomString(DefaultSecretLength)
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := context.DB.Model(&ctx).Updates(rotated).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
