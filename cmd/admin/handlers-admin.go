@@ -231,7 +231,8 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -292,7 +293,8 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-header.html")
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -338,7 +340,8 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-header.html")
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -498,7 +501,8 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -615,7 +619,8 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
@@ -678,6 +683,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(
 		"tmpl_admin/conf.html",
 		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-modals.html",
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
@@ -706,10 +712,10 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:             contextVar + " Configuration",
-		Context:           ctx,
-		Contexts:          contexts,
-		Platforms:         platforms,
+		Title:     contextVar + " Configuration",
+		Context:   ctx,
+		Contexts:  contexts,
+		Platforms: platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -739,7 +745,8 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting enroll template: %v", err)
 		return
@@ -1004,7 +1011,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
 	if err != nil {
 		log.Printf("error getting table template: %v", err)
 		return
