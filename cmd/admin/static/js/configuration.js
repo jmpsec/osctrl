@@ -12,6 +12,23 @@ function saveConfiguration() {
   sendPostRequest(data, _url, '', true);
 }
 
+function saveIntervals() {
+  var _csrftoken = $("#csrftoken").val();
+  var _config = $("#conf_range").val();
+  var _log = $("#logging_range").val();
+  var _query = $("#query_range").val();
+
+  var _url = '/intervals/' + window.location.pathname.split('/').pop();
+
+  var data = {
+    csrftoken: _csrftoken,
+    config: parseInt(_config),
+    log: parseInt(_log),
+    query: parseInt(_query),
+  };
+  sendPostRequest(data, _url, '', true);
+}
+
 function lineCharPosition(_pos) {
   var line = 0;
   var ttl = 0;

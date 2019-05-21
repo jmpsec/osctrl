@@ -707,9 +707,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:             contextVar + " Configuration",
-		ConfigurationBlob: ctx.Configuration,
-		ConfigurationHash: generateOsqueryConfigHash(ctx.Configuration),
-		Context:           contextVar,
+		Context:           ctx,
 		Contexts:          contexts,
 		Platforms:         platforms,
 	}
@@ -789,7 +787,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler POST requests for saving configuration in /conf
+// Handler POST requests for saving configuration
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -829,6 +827,60 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("%s %v", responseMessage, err)
 			} else {
 				responseMessage = "Configuration saved successfully"
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+}
+
+// Handler POST requests for saving intervals
+func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
+	vars := mux.Vars(r)
+	// Extract context
+	contextVar, ok := vars["context"]
+	if !ok {
+		log.Println("error getting context")
+		return
+	}
+	// Verify context
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
+		return
+	}
+	var c IntervalsRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&c)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(c.CSRFToken) {
+			err = ctxs.UpdateIntervals(contextVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
+			if err != nil {
+				responseMessage = "error updating intervals"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+			} else {
+				responseMessage = "Intervals updated successfully"
 			}
 		} else {
 			responseMessage = "invalid CSRF token"

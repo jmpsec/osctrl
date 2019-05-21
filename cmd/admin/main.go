@@ -61,7 +61,6 @@ const (
 
 // Global variables
 var (
-	tlsPath        context.TLSPath
 	adminConfig    JSONConfigurationAdmin
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
@@ -87,16 +86,6 @@ func loadConfiguration() error {
 	err := viper.ReadInConfig()
 	if err != nil {
 		return err
-	}
-	// TLS paths
-	tlsPath = context.TLSPath{
-		EnrollPath:      context.DefaultEnrollPath,
-		LogPath:         context.DefaultLogPath,
-		ConfigPath:      context.DefaultConfigPath,
-		QueryReadPath:   context.DefaultQueryReadPath,
-		QueryWritePath:  context.DefaultQueryWritePath,
-		CarverInitPath:  context.DefaultCarverInitPath,
-		CarverBlockPath: context.DefaultCarverBlockPath,
 	}
 	// TLS Admin values
 	adminRaw := viper.Sub("admin")
@@ -322,6 +311,7 @@ func main() {
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/intervals/{context}", handlerAuthCheck(http.HandlerFunc(intervalsPOSTHandler))).Methods("POST")
 	// Admin: nodes enroll
 	routerAdmin.Handle("/enroll/{context}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
 	routerAdmin.Handle("/expiration/{context}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")

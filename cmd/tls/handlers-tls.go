@@ -611,7 +611,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Prepare response with the script
-	quickScript, err := context.QuickAddScript(projectName, script, ctx, tlsPath)
+	quickScript, err := context.QuickAddScript(projectName, script, ctx)
 	if err != nil {
 		log.Printf("error getting script %v", err)
 		return

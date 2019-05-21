@@ -77,13 +77,11 @@ type TableTemplateData struct {
 
 // ConfTemplateData for passing data to the conf template
 type ConfTemplateData struct {
-	Title                 string
-	Context               string
-	ConfigurationBlob     string
-	ConfigurationHash     string
-	Contexts              []ctx.TLSContext
-	Platforms             []string
-	Settings              SettingsData
+	Title     string
+	Context   ctx.TLSContext
+	Contexts  []ctx.TLSContext
+	Platforms []string
+	Settings  SettingsData
 }
 
 // EnrollTemplateData for passing data to the conf template
@@ -206,6 +204,14 @@ type SettingsRequest struct {
 type ConfigurationRequest struct {
 	CSRFToken        string `json:"csrftoken"`
 	ConfigurationB64 string `json:"configuration"`
+}
+
+// IntervalsRequest to receive changes to intervals
+type IntervalsRequest struct {
+	CSRFToken      string `json:"csrftoken"`
+	ConfigInterval int    `json:"config"`
+	LogInterval    int    `json:"log"`
+	QueryInterval  int    `json:"query"`
 }
 
 // ExpirationRequest to receive expiration changes to enroll/remove nodes

@@ -5,6 +5,8 @@
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
 
+    <input type="hidden" id="csrftoken" value="">
+
     {{ template "page-header" . }}
 
     <div class="app-body">
@@ -19,7 +21,51 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fa fas fa-server"></i> osquery configuration for context <b>{{ .Context }}</b>
+                <i class="far fa-clock"></i> osquery intervals for context <b>{{ .Context.Name }}</b>
+                <div class="card-header-actions">
+                  <div class="card-header-action">
+                    <button id="intervals_save" class="btn btn-sm btn-block btn-dark"
+                      data-toggle="tooltip" data-placement="bottom" title="Save Intervals" onclick="saveIntervals();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label for="conf_range">Configuration: <b><output id="conf_output">{{ .Context.ConfigInterval }}</output></b> seconds</label>
+                      <input type="range" class="form-control-range" id="conf_range"
+                        value="{{ .Context.ConfigInterval }}" min="10" max="600" step="10"
+                        oninput="conf_output.value = conf_range.value">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label for="logging_range">Logging: <b><output id="logging_output">{{ .Context.LogInterval }}</output></b> seconds</label>
+                      <input type="range" class="form-control-range" id="logging_range"
+                        value="{{ .Context.LogInterval }}" min="10" max="600" step="10"
+                        oninput="logging_output.value = logging_range.value">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label for="query_range">Query: <b><output id="query_output">{{ .Context.QueryInterval }}</output></b> seconds</label>
+                      <input type="range" class="form-control-range" id="query_range"
+                        value="{{ .Context.QueryInterval }}" min="10" max="600" step="10"
+                        oninput="query_output.value = query_range.value">
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="far fa-file-alt"></i> osquery configuration for context <b>{{ .Context.Name }}</b>
                 <div class="card-header-actions">
                   <div class="card-header-action">
                     <button id="json_save" class="btn btn-sm btn-block btn-dark"
@@ -31,9 +77,7 @@
               </div>
               <div class="card-body">
 
-                <input type="hidden" id="csrftoken" value="">
-
-                <textarea id="conf" name="conf">{{ .ConfigurationBlob }}</textarea>
+                <textarea id="conf" name="conf">{{ .Context.Configuration }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">

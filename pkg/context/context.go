@@ -12,12 +12,18 @@ const (
 	DefaultEnrollPath = "enroll"
 	// DefaultLogPath as default value for logging data from nodes
 	DefaultLogPath = "log"
+	// DefaultLogInterval as default interval for logging data from nodes
+	DefaultLogInterval = 10
 	// DefaultConfigPath as default value for configuring nodes
 	DefaultConfigPath = "config"
+	// DefaultConfigInterval as default interval for configuring nodes
+	DefaultConfigInterval = 10
 	// DefaultQueryReadPath as default value for distributing on-demand queries to nodes
 	DefaultQueryReadPath = "read"
 	// DefaultQueryWritePath as default value for collecting results from on-demand queries
 	DefaultQueryWritePath = "write"
+	// DefaultQueryInterval as default interval for distributing on-demand queries to nodes
+	DefaultQueryInterval = 10
 	// DefaultCarverInitPath as default init endpoint for the carver
 	DefaultCarverInitPath = "init"
 	// DefaultCarverBlockPath as default block endpoint for the carver
@@ -47,17 +53,16 @@ type TLSContext struct {
 	Icon             string
 	Configuration    string
 	Certificate      string
-}
-
-// TLSPath to hold all the paths for TLS
-type TLSPath struct {
-	EnrollPath      string
-	LogPath         string
-	ConfigPath      string
-	QueryReadPath   string
-	QueryWritePath  string
-	CarverInitPath  string
-	CarverBlockPath string
+	ConfigInterval   int
+	LogInterval      int
+	QueryInterval    int
+	EnrollPath       string
+	LogPath          string
+	ConfigPath       string
+	QueryReadPath    string
+	QueryWritePath   string
+	CarverInitPath   string
+	CarverBlockPath  string
 }
 
 // Context keeps all TLS Contexts
@@ -96,6 +101,16 @@ func (context *Context) Empty(name, hostname string) TLSContext {
 		Icon:             DefaultContextIcon,
 		Configuration:    "",
 		Certificate:      "",
+		ConfigInterval:   DefaultConfigInterval,
+		LogInterval:      DefaultLogInterval,
+		QueryInterval:    DefaultQueryInterval,
+		EnrollPath:       DefaultEnrollPath,
+		LogPath:          DefaultLogPath,
+		ConfigPath:       DefaultConfigPath,
+		QueryReadPath:    DefaultQueryReadPath,
+		QueryWritePath:   DefaultQueryWritePath,
+		CarverInitPath:   DefaultCarverInitPath,
+		CarverBlockPath:  DefaultCarverBlockPath,
 	}
 }
 
@@ -147,6 +162,22 @@ func (context *Context) UpdateConfiguration(name, configuration string) error {
 	}
 	if err := context.DB.Model(&ctx).Update("configuration", configuration).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// UpdateIntervals to update intervals for a context
+func (context *Context) UpdateIntervals(name string, csecs, lsecs, qsecs int) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	updated := ctx
+	updated.ConfigInterval = csecs
+	updated.LogInterval = lsecs
+	updated.QueryInterval = qsecs
+	if err := context.DB.Model(&ctx).Updates(updated).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
 	}
 	return nil
 }

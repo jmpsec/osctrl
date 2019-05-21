@@ -78,7 +78,7 @@ iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{
 }
 
 // QuickAddScript to get a quick add script for a context
-func QuickAddScript(project, script string, context TLSContext, paths TLSPath) (string, error) {
+func QuickAddScript(project, script string, context TLSContext) (string, error) {
 	var templateName, templatePath string
 	// What script is it?
 	switch script {
@@ -104,11 +104,9 @@ func QuickAddScript(project, script string, context TLSContext, paths TLSPath) (
 	data := struct {
 		Project string
 		Context TLSContext
-		Path    TLSPath
 	}{
 		Project: project,
 		Context: context,
-		Path:    paths,
 	}
 	// Compile template into buffer
 	var tpl bytes.Buffer

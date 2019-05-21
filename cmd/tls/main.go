@@ -43,7 +43,6 @@ const (
 // Global variables
 var (
 	tlsConfig  JSONConfigurationTLS
-	tlsPath    context.TLSPath
 	db         *gorm.DB
 	config     *configuration.Configuration
 	ctxs       *context.Context
@@ -69,16 +68,6 @@ func loadConfiguration() error {
 	err = tlsRaw.Unmarshal(&tlsConfig)
 	if err != nil {
 		return err
-	}
-	// TLS paths
-	tlsPath = context.TLSPath{
-		EnrollPath:      context.DefaultEnrollPath,
-		LogPath:         context.DefaultLogPath,
-		ConfigPath:      context.DefaultConfigPath,
-		QueryReadPath:   context.DefaultQueryReadPath,
-		QueryWritePath:  context.DefaultQueryWritePath,
-		CarverInitPath:  context.DefaultCarverInitPath,
-		CarverBlockPath: context.DefaultCarverBlockPath,
 	}
 	// Backend values
 	dbRaw := viper.Sub("db")
@@ -177,13 +166,14 @@ func main() {
 	// TLS: error
 	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
-	routerTLS.HandleFunc("/{context}/"+tlsPath.EnrollPath, enrollHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.ConfigPath, configHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.LogPath, logHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryReadPath, queryReadHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.QueryWritePath, queryWriteHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.CarverInitPath, carveInitHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+tlsPath.CarverBlockPath, carveBlockHandler).Methods("POST")
+	// FIXME this forces all paths to be the same
+	routerTLS.HandleFunc("/{context}/"+context.DefaultEnrollPath, enrollHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultConfigPath, configHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultLogPath, logHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultQueryReadPath, queryReadHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultQueryWritePath, queryWriteHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultCarverInitPath, carveInitHandler).Methods("POST")
+	routerTLS.HandleFunc("/{context}/"+context.DefaultCarverBlockPath, carveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 
