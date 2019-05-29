@@ -52,7 +52,9 @@
                     <tr>
                       <td>{{ $e.Name }}</td>
                       <td>{{ $e.Type }}</td>
-                      <td>Value</td>
+                      {{ if eq $e.Type "integer" }}<td>{{ $e.Integer }}</td>{{ end }}
+                      {{ if eq $e.Type "string" }}<td>{{ $e.String }}</td>{{ end }}
+                      {{ if eq $e.Type "boolean" }}<td>{{ $e.Boolean }}</td>{{ end }}
                     </tr>
                   {{ end }}
                   </tbody>
