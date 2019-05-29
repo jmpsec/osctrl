@@ -7,19 +7,7 @@
           <div class="aside-options">
             <div class="clearfix mt-4">
               <small>
-                <b>TLS endpoint HTTP debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="tls_debug_check" class="switch-input" type="checkbox" onclick="changeDebugTLS();" {{if .Settings.TLSDebugHTTP}} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Enables verbose HTTP logging for the TLS Service</small>
-            </div>
-            <div class="clearfix mt-4">
-              <small>
-                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="javascript:alert('context');">
+                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/contexts';">
                   <b>Manage Contexts</b>
                 </button>
               </small>
@@ -29,7 +17,7 @@
             </div>
             <div class="clearfix mt-4">
               <small>
-                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="javascript:alert('tls settings');">
+                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/settings/tls';">
                   <b>Change Settings</b>
                 </button>
               </small>
@@ -46,7 +34,7 @@
                 <b>Admin UI HTTP debug</b>
               </small>
               <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="admin_debug_check" class="switch-input" type="checkbox" onclick="changeDebugAdmin();" {{if .Settings.AdminDebugHTTP}} checked {{ end }}>
+                <input id="admin_debug_check" class="switch-input" type="checkbox" onclick="changeDebugAdmin();" {{ if .AdminDebugHTTP }} checked {{ end }}>
                 <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
               </label>
             </div>
@@ -55,7 +43,7 @@
             </div>
             <div class="clearfix mt-4">
               <small>
-                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="javascript:alert('admin settings');">
+                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/settings/admin';">
                   <b>Change Settings</b>
                 </button>
               </small>

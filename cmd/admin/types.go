@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/javuto/osctrl/pkg/configuration"
 	ctx "github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
@@ -58,30 +59,24 @@ type LoginTemplateData struct {
 	Project string
 }
 
-// SettingsData for passing settings data to templates
-type SettingsData struct {
-	TLSDebugHTTP   bool
-	AdminDebugHTTP bool
-}
-
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
-	Title        string
-	Selector     string
-	SelectorName string
-	Target       string
-	Contexts     []ctx.TLSContext
-	Platforms    []string
-	Settings     SettingsData
+	Title          string
+	Selector       string
+	SelectorName   string
+	Target         string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	AdminDebugHTTP bool
 }
 
 // ConfTemplateData for passing data to the conf template
 type ConfTemplateData struct {
-	Title     string
-	Context   ctx.TLSContext
-	Contexts  []ctx.TLSContext
-	Platforms []string
-	Settings  SettingsData
+	Title          string
+	Context        ctx.TLSContext
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	AdminDebugHTTP bool
 }
 
 // EnrollTemplateData for passing data to the conf template
@@ -98,39 +93,57 @@ type EnrollTemplateData struct {
 	QuickRemovePowershell string
 	Contexts              []ctx.TLSContext
 	Platforms             []string
-	Settings              SettingsData
+	AdminDebugHTTP        bool
 }
 
 // QueryRunTemplateData for passing data to the query template
 type QueryRunTemplateData struct {
-	Title         string
-	Contexts      []ctx.TLSContext
-	Platforms     []string
-	UUIDs         []string
-	Hosts         []string
-	Tables        []OsqueryTable
-	TablesVersion string
-	Settings      SettingsData
+	Title          string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	UUIDs          []string
+	Hosts          []string
+	Tables         []OsqueryTable
+	TablesVersion  string
+	AdminDebugHTTP bool
 }
 
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData struct {
-	Title     string
-	Contexts  []ctx.TLSContext
-	Platforms []string
-	Target    string
-	Queries   []queries.DistributedQuery
-	Settings  SettingsData
+	Title          string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	Target         string
+	Queries        []queries.DistributedQuery
+	AdminDebugHTTP bool
 }
 
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
-	Title        string
-	Contexts     []ctx.TLSContext
-	Platforms    []string
-	Query        queries.DistributedQuery
-	QueryTargets []queries.DistributedQueryTarget
-	Settings     SettingsData
+	Title          string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	Query          queries.DistributedQuery
+	QueryTargets   []queries.DistributedQueryTarget
+	AdminDebugHTTP bool
+}
+
+// ContextsTemplateData for passing data to the contexts template
+type ContextsTemplateData struct {
+	Title          string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	AdminDebugHTTP bool
+}
+
+// SettingsTemplateData for passing data to the settings template
+type SettingsTemplateData struct {
+	Title          string
+	Service        string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	SettingsValues []configuration.ConfigValue
+	AdminDebugHTTP bool
 }
 
 // LocationData to hold all location related data, when enabled
@@ -141,14 +154,14 @@ type LocationData struct {
 
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
-	Title        string
-	PostgresLogs bool
-	Node         nodes.OsqueryNode
-	Contexts     []ctx.TLSContext
-	Platforms    []string
-	Location     LocationData
-	LocationShow bool
-	Settings     SettingsData
+	Title          string
+	PostgresLogs   bool
+	Node           nodes.OsqueryNode
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	Location       LocationData
+	LocationShow   bool
+	AdminDebugHTTP bool
 }
 
 // LoginRequest to receive login credentials
@@ -195,9 +208,12 @@ type NodeMultiActionRequest struct {
 
 // SettingsRequest to receive changes to settings
 type SettingsRequest struct {
-	CSRFToken string `json:"csrftoken"`
-	Service   string `json:"service"`
-	DebugHTTP bool   `json:"debughttp"`
+	CSRFToken string      `json:"csrftoken"`
+	Action    string      `json:"action"`
+	DebugHTTP bool        `json:"debughttp"`
+	Type      string      `json:"type"`
+	Name      string      `json:"name"`
+	Value     interface{} `json:"value"`
 }
 
 // ConfigurationRequest to receive changes to configuration
@@ -219,6 +235,17 @@ type ExpirationRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Action    string `json:"action"`
 	Type      string `json:"type"`
+}
+
+// ContextsRequest to receive changes to contexts
+type ContextsRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Action    string `json:"action"`
+	Name      string `json:"name"`
+	Hostname  string `json:"hostname"`
+	Type      string `json:"type"`
+	Icon      string `json:"icon"`
+	DebugHTTP bool   `json:"debughttp"`
 }
 
 // AdminResponse to be returned to requests

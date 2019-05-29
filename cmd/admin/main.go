@@ -30,11 +30,11 @@ import (
 // Define endpoints
 const (
 	// Project name
-	projectName = "osctrl"
+	projectName string = "osctrl"
 	// TLS service
-	serviceTLS = "tls"
+	serviceTLS string = "tls"
 	// Admin service
-	serviceAdmin = "admin"
+	serviceAdmin string = "admin"
 	// Service name
 	serviceNameAdmin = projectName + "-" + serviceAdmin
 	// TLS service name
@@ -200,14 +200,14 @@ func main() {
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
 	// Check if service configuration for debug HTTP is ready
-	if !config.IsValue(serviceNameAdmin, configuration.FieldDebugHTTP) {
-		if err := config.NewBooleanValue(serviceNameAdmin, configuration.FieldDebugHTTP, false); err != nil {
+	if !config.IsValue(serviceAdmin, configuration.FieldDebugHTTP) {
+		if err := config.NewBooleanValue(serviceAdmin, configuration.FieldDebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
 		}
 	}
 	// Check if service configuration for metrics
-	if !config.IsValue(serviceNameAdmin, configuration.ServiceMetrics) {
-		if err := config.NewBooleanValue(serviceNameAdmin, configuration.ServiceMetrics, false); err != nil {
+	if !config.IsValue(serviceAdmin, configuration.ServiceMetrics) {
+		if err := config.NewBooleanValue(serviceAdmin, configuration.ServiceMetrics, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
 		}
 	}
@@ -316,10 +316,14 @@ func main() {
 	routerAdmin.Handle("/enroll/{context}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
 	routerAdmin.Handle("/expiration/{context}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
-	//routerAdmin.Handle("/settings", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/settings", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")
+	// Admin: manage contexts
+	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsPOSTHandler))).Methods("POST")
 	// Admin: Packages to enroll
 	//routerAdmin.Handle("/package/{context}/{platform}", handlerAuthCheck(http.HandlerFunc(packageHandler))).Methods("GET")
+
 	// SAML ACS
 	if adminConfig.Auth == samlAuthLogin {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)

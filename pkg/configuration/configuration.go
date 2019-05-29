@@ -7,20 +7,26 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Types of services
+const (
+	ServiceTLS   string = "tls"
+	ServiceAdmin string = "admin"
+)
+
 // Types of configuration values
 const (
-	TypeString  = "string"
-	TypeBoolean = "boolean"
-	TypeInteger = "integer"
+	TypeString  string = "string"
+	TypeBoolean string = "boolean"
+	TypeInteger string = "integer"
 )
 
 // Names for configuration values
 const (
-	FieldDebugHTTP  = "debug_http"
-	ServiceMetrics  = "service_metrics"
-	MetricsHost     = "metrics_host"
-	MetricsPort     = "metrics_port"
-	MetricsProtocol = "metrics_protocol"
+	FieldDebugHTTP  string = "debug_http"
+	ServiceMetrics  string = "service_metrics"
+	MetricsHost     string = "metrics_host"
+	MetricsPort     string = "metrics_port"
+	MetricsProtocol string = "metrics_protocol"
 )
 
 // ConfigValue to hold each value for configuration
@@ -67,12 +73,17 @@ func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigVal
 }
 
 // NewValue creates a new configuration value
-func (conf *Configuration) NewValue(service, name, typeValue string, values TypedValues) error {
+func (conf *Configuration) NewValue(service, name, typeValue string, value interface{}) error {
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue)
-	entry.Integer = values[TypeInteger].(int64)
-	entry.Boolean = values[TypeBoolean].(bool)
-	entry.String = values[TypeString].(string)
+	switch typeValue {
+	case TypeBoolean:
+		entry.Boolean = value.(bool)
+	case TypeInteger:
+		entry.Integer = value.(int64)
+	case TypeString:
+		entry.String = value.(string)
+	}
 	// Create record in database
 	if conf.DB.NewRecord(entry) {
 		if err := conf.DB.Create(&entry).Error; err != nil {
@@ -154,6 +165,15 @@ func (conf *Configuration) RetrieveAllValues() ([]ConfigValue, error) {
 	return values, nil
 }
 
+// RetrieveServiceValues retrieves and returns all values from backend
+func (conf *Configuration) RetrieveServiceValues(service string) ([]ConfigValue, error) {
+	var values []ConfigValue
+	if err := conf.DB.Where("service = ?", service).Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
 // RetrieveValue retrieves one value from configuration by service and name from backend
 func (conf *Configuration) RetrieveValue(service, name string) (ConfigValue, error) {
 	var value ConfigValue
@@ -205,7 +225,7 @@ func (conf *Configuration) SetBoolean(boolValue bool, service, name string) erro
 		return fmt.Errorf("SetBoolean %v %v", boolValue, err)
 	}
 	// Update
-	if err := conf.DB.Model(&value).Update(TypeBoolean, boolValue).Error; err != nil {
+	if err := conf.DB.Model(&value).Updates(map[string]interface{}{TypeBoolean: boolValue}).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetBoolean %v %s %s", boolValue, service, name)

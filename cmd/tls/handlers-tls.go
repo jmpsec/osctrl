@@ -79,7 +79,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricEnrollReq)
-	// Debug HTTP
+	// Debug HTTP for context
 	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
 	// Retrieve context variable

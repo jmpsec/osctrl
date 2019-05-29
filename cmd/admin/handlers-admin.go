@@ -22,6 +22,9 @@ const JSONApplication string = "application/json"
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
 
+// Empty default osquery configuration
+const emptyConfiguration string = "data/osquery-empty.conf"
+
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
@@ -257,10 +260,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		Target:       target,
 		Contexts:     contexts,
 		Platforms:    platforms,
-		Settings: SettingsData{
-			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
-			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
-		},
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -319,10 +319,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		Target:       target,
 		Contexts:     contexts,
 		Platforms:    platforms,
-		Settings: SettingsData{
-			TLSDebugHTTP:   config.DebugHTTP(serviceNameTLS),
-			AdminDebugHTTP: config.DebugHTTP(serviceNameAdmin),
-		},
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -380,6 +377,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		Hosts:         hosts,
 		Tables:        osqueryTables,
 		TablesVersion: osqueryTablesVersion,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -532,6 +530,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms: platforms,
 		Queries:   qs,
 		Target:    "all",
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -657,6 +656,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 		Query:        query,
 		QueryTargets: targets,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -716,6 +716,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		Context:   ctx,
 		Contexts:  contexts,
 		Platforms: platforms,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -787,6 +788,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		QuickRemovePowershell: powershellQuickRemove,
 		Contexts:              contexts,
 		Platforms:             platforms,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1057,6 +1059,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 		LocationShow: false,
 		Location:     LocationData{},
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1064,7 +1067,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler for multi node action
+// Handler POST requests for multi node action
 func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -1118,7 +1121,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
-// Handler for single node action
+// Handler POST requests for single node action
 func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -1170,18 +1173,203 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
+// Handler GET requests for /contexts
+func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/contexts.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		log.Printf("error getting contexts template: %v", err)
+		return
+	}
+	// Get stats for all contexts
+	contexts, err := ctxs.All()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := ContextsTemplateData{
+		Title:     "Manage contexts",
+		Contexts:  contexts,
+		Platforms: platforms,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Printf("template error %v", err)
+		return
+	}
+}
+
+// Handler for POST request for /contexts
+func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
+	var c ContextsRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&c)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(c.CSRFToken) {
+			switch c.Action {
+			case "create":
+				// FIXME verify fields
+				if !ctxs.Exists(c.Name) {
+					_ctx := ctxs.Empty(c.Name, c.Hostname)
+					_ctx.Icon = c.Icon
+					_ctx.Type = c.Type
+					if _ctx.Configuration == "" {
+						_ctx.Configuration = context.ReadExternalFile(emptyConfiguration)
+					}
+					err := ctxs.Create(_ctx)
+					if err != nil {
+						responseMessage = "error creating context"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					} else {
+						responseMessage = "Context created successfully"
+					}
+				}
+			case "delete":
+				// FIXME verify fields
+				if ctxs.Exists(c.Name) {
+					err := ctxs.Delete(c.Name)
+					if err != nil {
+						responseMessage = "error deleting context"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					} else {
+						responseMessage = "Context deleted successfully"
+					}
+				}
+			case "debug":
+				// FIXME verify fields
+				if ctxs.Exists(c.Name) {
+					err := ctxs.ChangeDebugHTTP(c.Name, c.DebugHTTP)
+					if err != nil {
+						responseMessage = "error changing DebugHTTP"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+					} else {
+						responseMessage = "DebugHTTP changed successfully"
+					}
+				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+}
+
+// Handler GET requests for /settings
+func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
+	vars := mux.Vars(r)
+	// Extract service
+	serviceVar, ok := vars["service"]
+	if !ok {
+		log.Println("error getting service")
+		return
+	}
+	// Verify service
+	if serviceVar != serviceTLS && serviceVar != serviceAdmin {
+		log.Printf("error unknown service (%s)", serviceVar)
+		return
+	}
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/settings.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		log.Printf("error getting contexts template: %v", err)
+		return
+	}
+	// Get stats for all contexts
+	contexts, err := ctxs.All()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get setting values
+	settings, err := config.RetrieveServiceValues(serviceVar)
+	if err != nil {
+		log.Printf("error getting settings: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := SettingsTemplateData{
+		Title:          "Manage settings",
+		Service:        serviceVar,
+		Contexts:       contexts,
+		Platforms:      platforms,
+		SettingsValues: settings,
+		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Printf("template error %v", err)
+		return
+	}
+}
+
 // Handler for POST request for settings
 func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), true)
-	/*vars := mux.Vars(r)
-	// Extract uuid
-	uuid, ok := vars["uuid"]
+	vars := mux.Vars(r)
+	// Extract service
+	serviceVar, ok := vars["service"]
 	if !ok {
-		log.Println("error getting uuid")
+		log.Println("error getting service")
 		return
-	}*/
+	}
+	// Verify service
+	if serviceVar != serviceTLS && serviceVar != serviceAdmin {
+		log.Printf("error unknown service (%s)", serviceVar)
+		return
+	}
 	var s SettingsRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&s)
@@ -1192,20 +1380,26 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(s.CSRFToken) {
-			var serviceToChange string
-			switch s.Service {
-			case serviceTLS:
-				serviceToChange = serviceNameTLS
-			case serviceAdmin:
-				serviceToChange = serviceNameAdmin
-			}
-			err := config.SetBoolean(s.DebugHTTP, serviceToChange, configuration.FieldDebugHTTP)
-			if err != nil {
-				responseMessage = "error changing settings"
-				responseCode = http.StatusInternalServerError
-				log.Printf("%s %v", responseMessage, err)
-			} else {
-				responseMessage = "Settings updated successfully"
+			switch s.Action {
+			case "add":
+				// FIXME verify type
+				err := config.NewValue(serviceVar, s.Name, s.Type, s.Value)
+				if err != nil {
+					responseMessage = "error adding setting"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				} else {
+					responseMessage = "Setting added successfully"
+				}
+			case "debug":
+				err := config.SetBoolean(s.DebugHTTP, serviceVar, configuration.FieldDebugHTTP)
+				if err != nil {
+					responseMessage = "error changing DebugHTTP"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				} else {
+					responseMessage = "DebugHTTP changed successfully"
+				}
 			}
 		} else {
 			responseMessage = "invalid CSRF token"

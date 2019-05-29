@@ -1,28 +1,35 @@
-function changeDebugTLS() {
+function addSetting() {
+  $("#addSettingModal").modal();
+}
+
+function confirmAddSetting() {
   var _csrftoken = $("#csrftoken").val();
-  var _value = $("#tls_debug_check").is(':checked');
-  var _service = 'tls';
-  
-  var _url = '/settings';
-  
+
+  var _url = window.location.pathname;
+
+  var _name = $("#setting_name").val();
+  var _type = $("#setting_type").val();
+  var _value = $("#setting_value").val();
+
   var data = {
-      csrftoken: _csrftoken,
-      service: _service,
-      debughttp: _value,
+    csrftoken: _csrftoken,
+    action: 'add',
+    name: _name,
+    type: _type,
+    value: _value,
   };
-  sendPostRequest(data, _url, '', false);
+  sendPostRequest(data, _url, _url, false);
 }
 
 function changeDebugAdmin() {
   var _csrftoken = $("#csrftoken").val();
   var _value = $("#admin_debug_check").is(':checked');
-  var _service = 'admin';
 
-  var _url = '/settings';
-  
+  var _url = '/settings/admin';
+
   var data = {
     csrftoken: _csrftoken,
-    service: _service,
+    action: 'debug',
     debughttp: _value,
   };
   sendPostRequest(data, _url, '', false);

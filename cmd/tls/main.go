@@ -20,24 +20,26 @@ import (
 // Define endpoints
 const (
 	// Project name
-	projectName = "osctrl"
+	projectName string = "osctrl"
+	// Service TLS
+	serviceTLS string = "tls"
 	// Service name
-	serviceName = projectName + "-tls"
+	serviceName string = projectName + "-" + serviceTLS
 	// Service version
-	serviceVersion = "0.0.1"
+	serviceVersion string = "0.0.1"
 	// Default endpoint to handle HTTP testing
-	testingPath = "/testing"
+	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors
-	errorPath = "/error"
+	errorPath string = "/error"
 	// Service configuration file
-	configurationFile = "config/tls.json"
+	configurationFile string = "config/" + serviceTLS + ".json"
 )
 
 // Types of log types
 const (
-	statusLog = "status"
-	resultLog = "result"
-	queryLog  = "query"
+	statusLog string = "status"
+	resultLog string = "result"
+	queryLog  string = "query"
 )
 
 // Global variables
@@ -64,7 +66,7 @@ func loadConfiguration() error {
 		return err
 	}
 	// TLS endpoint values
-	tlsRaw := viper.Sub("tls")
+	tlsRaw := viper.Sub(serviceTLS)
 	err = tlsRaw.Unmarshal(&tlsConfig)
 	if err != nil {
 		return err
@@ -122,32 +124,26 @@ func main() {
 	queriesmgr = queries.CreateQueries(db)
 	// Initialize carves
 	filecarves = carves.CreateFileCarves(db)
-	// Check if service configuration for debug HTTP is ready
-	if !config.IsValue(serviceName, configuration.FieldDebugHTTP) {
-		if err := config.NewBooleanValue(serviceName, configuration.FieldDebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
-		}
-	}
 	// Check if service configuration for metrics is ready
-	if !config.IsValue(serviceName, configuration.ServiceMetrics) {
-		if err := config.NewBooleanValue(serviceName, configuration.ServiceMetrics, false); err != nil {
+	if !config.IsValue(serviceTLS, configuration.ServiceMetrics) {
+		if err := config.NewBooleanValue(serviceTLS, configuration.ServiceMetrics, false); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
 		}
-	} else if config.ServiceMetrics(serviceName) {
+	} else if config.ServiceMetrics(serviceTLS) {
 		// Initialize metrics if enabled
-		mProtocol, err := config.GetString(serviceName, configuration.MetricsProtocol)
+		mProtocol, err := config.GetString(serviceTLS, configuration.MetricsProtocol)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
 		}
-		mHost, err := config.GetString(serviceName, configuration.MetricsHost)
+		mHost, err := config.GetString(serviceTLS, configuration.MetricsHost)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (host): %v", err)
 		}
-		mPort, err := config.GetInteger(serviceName, configuration.MetricsPort)
+		mPort, err := config.GetInteger(serviceTLS, configuration.MetricsPort)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (port): %v", err)
 		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceName)
+		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceTLS)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
@@ -179,9 +175,9 @@ func main() {
 
 	// Launch HTTP server for TLS endpoint
 	go func() {
-		serviceTLS := tlsConfig.Listener + ":" + tlsConfig.Port
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceTLS)
-		log.Fatal(http.ListenAndServe(serviceTLS, routerTLS))
+		serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
 	}()
 
 	<-finish

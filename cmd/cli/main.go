@@ -19,17 +19,17 @@ import (
 
 const (
 	// Service configuration file
-	defConfigFile = "config/tls.json"
+	defConfigFile string = "config/tls.json"
 	// Project name
-	projectName = "osctrl"
+	projectName string = "osctrl"
 	// Application name
-	appName = projectName + "-cli"
+	appName string = projectName + "-cli"
 	// Application version
-	appVersion = "0.0.1"
+	appVersion string = "0.0.1"
 	// Application usage
-	appUsage = "CLI for " + projectName
+	appUsage string = "CLI for " + projectName
 	// Application description
-	appDescription = appUsage + ", a fast and efficient operative system management"
+	appDescription string = appUsage + ", a fast and efficient operative system management"
 )
 
 // Global variables
@@ -396,7 +396,7 @@ func init() {
 					Name:    "show",
 					Aliases: []string{"s"},
 					Usage:   "Show all configuration values",
-					Action: listConfiguration,
+					Action:  listConfiguration,
 				},
 			},
 		},

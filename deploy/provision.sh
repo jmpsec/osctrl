@@ -492,6 +492,9 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   # Copy osquery tables JSON file
   sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.0.json" "$DEST_PATH/data"
 
+  # Copy empty configuration
+  sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.conf" "$DEST_PATH/data"
+
   # Prepare static files for Admin service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"

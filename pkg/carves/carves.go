@@ -14,13 +14,13 @@ import (
 
 const (
 	// StatusInitialized for initialized carves
-	StatusInitialized = "INITIALIZED"
+	StatusInitialized string = "INITIALIZED"
 	// StatusInProgress for carves that are on-going
-	StatusInProgress = "IN PROGRESS"
+	StatusInProgress string = "IN PROGRESS"
 	// StatusCompleted for carves that finalized
-	StatusCompleted = "COMPLETED"
+	StatusCompleted string = "COMPLETED"
 	// StatusArchived for carves ready to be downloaded
-	StatusArchived = "ARCHIVED"
+	StatusArchived string = "ARCHIVED"
 )
 
 var (

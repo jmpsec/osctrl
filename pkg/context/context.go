@@ -9,33 +9,33 @@ import (
 
 const (
 	// DefaultEnrollPath as default value for enrolling nodes
-	DefaultEnrollPath = "enroll"
+	DefaultEnrollPath string = "enroll"
 	// DefaultLogPath as default value for logging data from nodes
-	DefaultLogPath = "log"
+	DefaultLogPath string = "log"
 	// DefaultLogInterval as default interval for logging data from nodes
-	DefaultLogInterval = 10
+	DefaultLogInterval int = 10
 	// DefaultConfigPath as default value for configuring nodes
-	DefaultConfigPath = "config"
+	DefaultConfigPath string = "config"
 	// DefaultConfigInterval as default interval for configuring nodes
-	DefaultConfigInterval = 10
+	DefaultConfigInterval int = 10
 	// DefaultQueryReadPath as default value for distributing on-demand queries to nodes
-	DefaultQueryReadPath = "read"
+	DefaultQueryReadPath string = "read"
 	// DefaultQueryWritePath as default value for collecting results from on-demand queries
-	DefaultQueryWritePath = "write"
+	DefaultQueryWritePath string = "write"
 	// DefaultQueryInterval as default interval for distributing on-demand queries to nodes
-	DefaultQueryInterval = 10
+	DefaultQueryInterval int = 10
 	// DefaultCarverInitPath as default init endpoint for the carver
-	DefaultCarverInitPath = "init"
+	DefaultCarverInitPath string = "init"
 	// DefaultCarverBlockPath as default block endpoint for the carver
-	DefaultCarverBlockPath = "block"
+	DefaultCarverBlockPath string = "block"
 	// DefaultContextIcon as default icon to use for contexts
-	DefaultContextIcon = "fas fa-wrench"
+	DefaultContextIcon string = "fas fa-wrench"
 	// DefaultContextType as default type of context
-	DefaultContextType = "osquery"
+	DefaultContextType string = "osquery"
 	// DefaultSecretLength as default length for secrets
-	DefaultSecretLength = 64
+	DefaultSecretLength int = 64
 	// DefaultLinkExpire as default time in hours to expire enroll/remove links
-	DefaultLinkExpire = 24
+	DefaultLinkExpire int = 24
 )
 
 // TLSContext to hold each of the TLS context
@@ -154,6 +154,18 @@ func (context *Context) Delete(name string) error {
 	return nil
 }
 
+// Update TLSContext
+func (context *Context) Update(c TLSContext) error {
+	ctx, err := context.Get(c.Name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	if err := context.DB.Model(&ctx).Updates(c).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
 // UpdateConfiguration to update configuration for a context
 func (context *Context) UpdateConfiguration(name, configuration string) error {
 	ctx, err := context.Get(name)
@@ -265,6 +277,27 @@ func (context *Context) ExpireRemove(name string) error {
 	}
 	if err := context.DB.Model(&ctx).Update("remove_expire", time.Now()).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// DebugHTTP to check if the context has enabled debugging for HTTP
+func (context *Context) DebugHTTP(name string) bool {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return false
+	}
+	return ctx.DebugHTTP
+}
+
+// ChangeDebugHTTP to change the value of DebugHTTP for a context
+func (context *Context) ChangeDebugHTTP(name string, value bool) error {
+	ctx, err := context.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting context %v", err)
+	}
+	if err := context.DB.Model(&ctx).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
 	}
 	return nil
 }

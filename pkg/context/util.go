@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	errorRandomString = "SomethingRandomWentWrong"
+	errorRandomString string = "SomethingRandomWentWrong"
 )
 
 // Helper to generate a random string of n characters
