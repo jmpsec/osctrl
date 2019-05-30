@@ -177,3 +177,20 @@ func generateOsqueryConfigHash(config string) string {
 	_, _ = secondHasher.Write([]byte(hex.EncodeToString(firstHasher.Sum(nil))))
 	return hex.EncodeToString(secondHasher.Sum(nil))
 }
+
+// Helper to convert a string into integer
+func stringToInteger(s string) int64 {
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+// Helper to convert a string into boolean
+func stringToBoolean(s string) bool {
+	if (s == "yes" || s == "true" || s == "1") {
+		return true
+	}
+	return false
+}

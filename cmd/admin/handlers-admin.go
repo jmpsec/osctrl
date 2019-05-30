@@ -254,12 +254,12 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:        "Nodes in " + context + " Context",
-		Selector:     "context",
-		SelectorName: context,
-		Target:       target,
-		Contexts:     contexts,
-		Platforms:    platforms,
+		Title:          "Nodes in " + context + " Context",
+		Selector:       "context",
+		SelectorName:   context,
+		Target:         target,
+		Contexts:       contexts,
+		Platforms:      platforms,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -313,12 +313,12 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:        "Nodes in " + platform + " Platform",
-		Selector:     "platform",
-		SelectorName: platform,
-		Target:       target,
-		Contexts:     contexts,
-		Platforms:    platforms,
+		Title:          "Nodes in " + platform + " Platform",
+		Selector:       "platform",
+		SelectorName:   platform,
+		Target:         target,
+		Contexts:       contexts,
+		Platforms:      platforms,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -370,13 +370,13 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryRunTemplateData{
-		Title:         "Query osquery Nodes",
-		Contexts:      contexts,
-		Platforms:     platforms,
-		UUIDs:         uuids,
-		Hosts:         hosts,
-		Tables:        osqueryTables,
-		TablesVersion: osqueryTablesVersion,
+		Title:          "Query osquery Nodes",
+		Contexts:       contexts,
+		Platforms:      platforms,
+		UUIDs:          uuids,
+		Hosts:          hosts,
+		Tables:         osqueryTables,
+		TablesVersion:  osqueryTablesVersion,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -525,11 +525,11 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
-		Title:     "All on-demand queries",
-		Contexts:  contexts,
-		Platforms: platforms,
-		Queries:   qs,
-		Target:    "all",
+		Title:          "All on-demand queries",
+		Contexts:       contexts,
+		Platforms:      platforms,
+		Queries:        qs,
+		Target:         "all",
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -651,11 +651,11 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
-		Title:        "Query logs " + query.Name,
-		Contexts:     contexts,
-		Platforms:    platforms,
-		Query:        query,
-		QueryTargets: targets,
+		Title:          "Query logs " + query.Name,
+		Contexts:       contexts,
+		Platforms:      platforms,
+		Query:          query,
+		QueryTargets:   targets,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -712,10 +712,10 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:     contextVar + " Configuration",
-		Context:   ctx,
-		Contexts:  contexts,
-		Platforms: platforms,
+		Title:          contextVar + " Configuration",
+		Context:        ctx,
+		Contexts:       contexts,
+		Platforms:      platforms,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -788,7 +788,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		QuickRemovePowershell: powershellQuickRemove,
 		Contexts:              contexts,
 		Platforms:             platforms,
-		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP:        config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1052,13 +1052,13 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}*/
 	// Prepare template data
 	templateData := NodeTemplateData{
-		Title:        "Node View " + node.UUID,
-		PostgresLogs: logConfig.Postgres,
-		Node:         node,
-		Contexts:     contexts,
-		Platforms:    platforms,
-		LocationShow: false,
-		Location:     LocationData{},
+		Title:          "Node View " + node.UUID,
+		PostgresLogs:   logConfig.Postgres,
+		Node:           node,
+		Contexts:       contexts,
+		Platforms:      platforms,
+		LocationShow:   false,
+		Location:       LocationData{},
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -1203,9 +1203,9 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := ContextsTemplateData{
-		Title:     "Manage contexts",
-		Contexts:  contexts,
-		Platforms: platforms,
+		Title:          "Manage contexts",
+		Contexts:       contexts,
+		Platforms:      platforms,
 		AdminDebugHTTP: config.DebugHTTP(serviceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -1383,7 +1383,15 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			switch s.Action {
 			case "add":
 				// FIXME verify type
-				err := config.NewValue(serviceVar, s.Name, s.Type, s.Value)
+				var err error
+				switch s.Type {
+				case configuration.TypeBoolean:
+					err = config.NewBooleanValue(serviceVar, s.Name, stringToBoolean(s.Value))
+				case configuration.TypeInteger:
+					err = config.NewIntegerValue(serviceVar, s.Name, stringToInteger(s.Value))
+				case configuration.TypeString:
+					err = config.NewStringValue(serviceVar, s.Name, s.Value)
+				}
 				if err != nil {
 					responseMessage = "error adding setting"
 					responseCode = http.StatusInternalServerError

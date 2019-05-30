@@ -208,12 +208,12 @@ type NodeMultiActionRequest struct {
 
 // SettingsRequest to receive changes to settings
 type SettingsRequest struct {
-	CSRFToken string      `json:"csrftoken"`
-	Action    string      `json:"action"`
-	DebugHTTP bool        `json:"debughttp"`
-	Type      string      `json:"type"`
-	Name      string      `json:"name"`
-	Value     interface{} `json:"value"`
+	CSRFToken string `json:"csrftoken"`
+	Action    string `json:"action"`
+	DebugHTTP bool   `json:"debughttp"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	Value     string `json:"value"`
 }
 
 // ConfigurationRequest to receive changes to configuration

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/javuto/osctrl/pkg/carves"
 	"github.com/javuto/osctrl/pkg/configuration"
@@ -33,6 +34,8 @@ const (
 	errorPath string = "/error"
 	// Service configuration file
 	configurationFile string = "config/" + serviceTLS + ".json"
+	// Default contexts refreshing interval in seconds
+	defaultContextsRefresh int = 300
 )
 
 // Types of log types
@@ -44,16 +47,18 @@ const (
 
 // Global variables
 var (
-	tlsConfig  JSONConfigurationTLS
-	db         *gorm.DB
-	config     *configuration.Configuration
-	ctxs       *context.Context
-	nodesmgr   *nodes.NodeManager
-	queriesmgr *queries.Queries
-	filecarves *carves.Carves
-	_metrics   *metrics.Metrics
-	dbConfig   JSONConfigurationDB
-	logConfig  JSONConfigurationLogging
+	tlsConfig     JSONConfigurationTLS
+	db            *gorm.DB
+	config        *configuration.Configuration
+	ctxs          *context.Context
+	contexts      context.MapContext
+	contextTicker *time.Ticker
+	nodesmgr      *nodes.NodeManager
+	queriesmgr    *queries.Queries
+	filecarves    *carves.Carves
+	_metrics      *metrics.Metrics
+	dbConfig      JSONConfigurationDB
+	logConfig     JSONConfigurationLogging
 )
 
 // Function to load the configuration file and assign to variables
@@ -148,6 +153,12 @@ func main() {
 			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
+	// Check if service configuration for contexts refresh is ready
+	if !config.IsValue(serviceTLS, configuration.RefreshContexts) {
+		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshContexts, int64(defaultContextsRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.RefreshContexts, err)
+		}
+	}
 	// multiple listeners channel
 	finish := make(chan bool)
 
@@ -172,6 +183,21 @@ func main() {
 	routerTLS.HandleFunc("/{context}/"+context.DefaultCarverBlockPath, carveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
+
+	// Ticker to reload contexts until cache is ready
+	go func() {
+		_t := config.RefreshContexts(serviceTLS)
+		if _t == 0 {
+			_t = int64(defaultContextsRefresh)
+		}
+		contextTicker = time.NewTicker(time.Duration(_t) * time.Second)
+		for {
+			select {
+			case <-contextTicker.C:
+				go refreshContexts()
+			}
+		}
+	}()
 
 	// Launch HTTP server for TLS endpoint
 	go func() {

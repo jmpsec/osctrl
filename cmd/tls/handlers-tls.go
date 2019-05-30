@@ -52,7 +52,6 @@ const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), false)
 	// Send response
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("💥"))
@@ -60,7 +59,6 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
@@ -69,7 +67,6 @@ func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
@@ -79,8 +76,6 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricEnrollReq)
-	// Debug HTTP for context
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
 	// Retrieve context variable
 	vars := mux.Vars(r)
@@ -96,6 +91,8 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP for context
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Decode read POST body
 	var t EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -147,7 +144,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -160,8 +157,6 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the configuration requests from osquery nodes
 func configHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricConfigReq)
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	var response []byte
 	// Retrieve context variable
 	vars := mux.Vars(r)
@@ -177,6 +172,8 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP for context
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Get context
 	ctx, err := ctxs.Get(context)
 	if err != nil {
@@ -215,7 +212,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
@@ -261,7 +258,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -295,7 +292,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -402,8 +399,6 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 // Function to handle on-demand queries to osquery nodes
 func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricReadReq)
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -418,6 +413,8 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Decode read POST body
 	var response []byte
 	var t QueryReadRequest
@@ -460,7 +457,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -473,8 +470,6 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle distributed query results from osquery nodes
 func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricWriteReq)
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -489,6 +484,8 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Decode read POST body
 	var response []byte
 	var t QueryWriteRequest
@@ -520,7 +517,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -567,8 +564,6 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 // Function to handle the endpoint for quick enrollment script distribution
 func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME metrics
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	_context, ok := vars["context"]
@@ -581,6 +576,8 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", _context)
 		return
 	}
+	// Debug HTTP
+	debugHTTPDump(r, ctxs.DebugHTTP(_context), true)
 	ctx, err := ctxs.Get(_context)
 	if err != nil {
 		log.Printf("error getting context %v", err)
@@ -695,8 +692,6 @@ func processCarveBlock(req CarveBlockRequest, context string) {
 // Function to handle the initialization of the file carver
 func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricInitReq)
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -711,6 +706,8 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Decode read POST body
 	var response []byte
 	var t CarveInitRequest
@@ -744,7 +741,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -757,8 +754,6 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the blocks of the file carver
 func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricBlockReq)
-	// Debug HTTP
-	debugHTTPDump(r, config.DebugHTTP(serviceName), true)
 	// Retrieve context variable
 	vars := mux.Vars(r)
 	context, ok := vars["context"]
@@ -773,6 +768,8 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown context (%s)", context)
 		return
 	}
+	// Debug HTTP
+	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
 	// Decode read POST body
 	var response []byte
 	var t CarveBlockRequest
@@ -799,7 +796,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response

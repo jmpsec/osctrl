@@ -197,7 +197,17 @@ func isPublicIP(ip net.IP) bool {
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if config.ServiceMetrics(serviceName) {
+	if config.ServiceMetrics(serviceTLS) {
 		_metrics.Inc(name)
+	}
+}
+
+// Helper to refresh the contexts map until cache/Redis support is implemented
+func refreshContexts() {
+	log.Printf("Refreshing contexts...\n")
+	var err error
+	contexts, err = ctxs.GetMap()
+	if err != nil {
+		log.Printf("error refreshing contexts %v\n", err)
 	}
 }

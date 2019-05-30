@@ -82,7 +82,7 @@ func splunkSend(data []byte, context, logType, uuid string, configData LoggingCo
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}
-	if config.DebugHTTP(serviceName) {
+	if config.DebugHTTP(serviceTLS) {
 		log.Printf("Splunk: HTTP %d %s", resp, body)
 	}
 }

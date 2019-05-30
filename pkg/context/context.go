@@ -65,6 +65,9 @@ type TLSContext struct {
 	CarverBlockPath  string
 }
 
+// MapContext to hold the TLS contexts by name
+type MapContext map[string]TLSContext
+
 // Context keeps all TLS Contexts
 type Context struct {
 	DB *gorm.DB
@@ -140,6 +143,19 @@ func (context *Context) All() ([]TLSContext, error) {
 		return ctxs, err
 	}
 	return ctxs, nil
+}
+
+// GetMap returns the map of contexts by name
+func (context *Context) GetMap() (MapContext, error) {
+	all, err := context.All()
+	if err != nil {
+		return MapContext{}, fmt.Errorf("error getting contexts %v", err)
+	}
+	_map := make(MapContext)
+	for _, c := range all {
+		_map[c.Name] = c
+	}
+	return _map, nil
 }
 
 // Delete TLSContext by name
@@ -287,6 +303,7 @@ func (context *Context) DebugHTTP(name string) bool {
 	if err != nil {
 		return false
 	}
+	//return ((ctx.DebugHTTP || true) == false)
 	return ctx.DebugHTTP
 }
 

@@ -23,6 +23,7 @@ const (
 // Names for configuration values
 const (
 	FieldDebugHTTP  string = "debug_http"
+	RefreshContexts string = "refresh_contexts"
 	ServiceMetrics  string = "service_metrics"
 	MetricsHost     string = "metrics_host"
 	MetricsPort     string = "metrics_port"
@@ -43,20 +44,15 @@ type ConfigValue struct {
 // TypedValues to have each value by type
 type TypedValues map[string]interface{}
 
-// ServiceValues to have all configuration values by service
-type ServiceValues map[string][]ConfigValue
-
 // Configuration keeps al configuration values
 type Configuration struct {
-	DB     *gorm.DB
-	Values []ConfigValue
-	//Service ServiceValues
+	DB *gorm.DB
 }
 
 // NewConfiguration to initialize the access to configuration
 func NewConfiguration(database *gorm.DB) *Configuration {
 	var s *Configuration
-	s = &Configuration{DB: database, Values: nil}
+	s = &Configuration{DB: database}
 	return s
 }
 
@@ -73,16 +69,16 @@ func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigVal
 }
 
 // NewValue creates a new configuration value
-func (conf *Configuration) NewValue(service, name, typeValue string, value interface{}) error {
+func (conf *Configuration) NewValue(service, name, typeValue string, value TypedValues) error {
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue)
 	switch typeValue {
 	case TypeBoolean:
-		entry.Boolean = value.(bool)
+		entry.Boolean = value[TypeBoolean].(bool)
 	case TypeInteger:
-		entry.Integer = value.(int64)
+		entry.Integer = value[TypeInteger].(int64)
 	case TypeString:
-		entry.String = value.(string)
+		entry.String = value[TypeString].(string)
 	}
 	// Create record in database
 	if conf.DB.NewRecord(entry) {
@@ -92,8 +88,7 @@ func (conf *Configuration) NewValue(service, name, typeValue string, value inter
 	} else {
 		return fmt.Errorf("db.NewRecord did not return true")
 	}
-	// Reload values since they have changed
-	return conf.ReloadValues()
+	return nil
 }
 
 // NewStringValue creates a new configuration value
@@ -132,27 +127,6 @@ func (conf *Configuration) DeleteValue(service, name string) error {
 	if err := conf.DB.Delete(&value).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
-	return conf.ReloadValues()
-}
-
-// GetAllValues gets all configuration values
-func (conf *Configuration) GetAllValues() ([]ConfigValue, error) {
-	return conf.Values, nil
-}
-
-// SetAllValues sets all configuration values
-func (conf *Configuration) SetAllValues(values []ConfigValue) error {
-	conf.Values = values
-	return nil
-}
-
-// ReloadValues reloads all values from backend
-func (conf *Configuration) ReloadValues() error {
-	var values []ConfigValue
-	if err := conf.DB.Find(&values).Error; err != nil {
-		return err
-	}
-	conf.Values = values
 	return nil
 }
 
@@ -185,12 +159,7 @@ func (conf *Configuration) RetrieveValue(service, name string) (ConfigValue, err
 
 // GetValue gets one value from configuration by service and name
 func (conf *Configuration) GetValue(service, name string) (ConfigValue, error) {
-	for _, v := range conf.Values {
-		if v.Service == service && v.Name == name {
-			return v, nil
-		}
-	}
-	return ConfigValue{}, fmt.Errorf("configuration value not found")
+	return conf.RetrieveValue(service, name)
 }
 
 // SetInteger sets a numeric configuration value by service and name
@@ -205,7 +174,7 @@ func (conf *Configuration) SetInteger(intValue int64, service, name string) erro
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetInteger %d %s %s", intValue, service, name)
-	return conf.ReloadValues()
+	return nil
 }
 
 // GetInteger gets a numeric configuration value by service and name
@@ -229,7 +198,7 @@ func (conf *Configuration) SetBoolean(boolValue bool, service, name string) erro
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetBoolean %v %s %s", boolValue, service, name)
-	return conf.ReloadValues()
+	return nil
 }
 
 // GetBoolean gets a boolean configuration value by service and name
@@ -262,7 +231,7 @@ func (conf *Configuration) SetString(strValue string, service, name string) erro
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetString %s %s %s", strValue, service, name)
-	return conf.ReloadValues()
+	return nil
 }
 
 // IsValue checks if a configuration value exists by service and name
@@ -290,4 +259,13 @@ func (conf *Configuration) ServiceMetrics(service string) bool {
 		return false
 	}
 	return value.Boolean
+}
+
+// RefreshContexts checks if metrics are enabled by service
+func (conf *Configuration) RefreshContexts(service string) int64 {
+	value, err := conf.RetrieveValue(service, ServiceMetrics)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
 }
