@@ -29,6 +29,11 @@ function saveIntervals() {
   sendPostRequest(data, _url, '', true);
 }
 
+function changeIntervalValue(range_input, range_output) {
+  range_output.value = range_input.value;
+  $('#intervals_header').addClass("bg-changed");
+}
+
 function lineCharPosition(_pos) {
   var line = 0;
   var ttl = 0;

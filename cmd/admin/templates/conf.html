@@ -20,7 +20,7 @@
           <div class="animated fadeIn">
 
             <div class="card mt-2">
-              <div class="card-header">
+              <div id="intervals_header" class="card-header">
                 <i class="far fa-clock"></i> osquery intervals for context <b>{{ .Context.Name }}</b>
                 <div class="card-header-actions">
                   <div class="card-header-action">
@@ -39,7 +39,8 @@
                       <label for="conf_range">Configuration: <b><output id="conf_output">{{ .Context.ConfigInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="conf_range"
                         value="{{ .Context.ConfigInterval }}" min="10" max="600" step="10"
-                        oninput="conf_output.value = conf_range.value">
+                        oninput="changeIntervalValue(conf_range, conf_output);">
+                      <input id="conf_range_save" type="hidden" value="{{ .Context.ConfigInterval }}">
                     </div>
                   </div>
                   <div class="col-md-4">
@@ -47,7 +48,8 @@
                       <label for="logging_range">Logging: <b><output id="logging_output">{{ .Context.LogInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="logging_range"
                         value="{{ .Context.LogInterval }}" min="10" max="600" step="10"
-                        oninput="logging_output.value = logging_range.value">
+                        oninput="changeIntervalValue(logging_range, logging_output);">
+                      <input id="logging_range_save" type="hidden" value="{{ .Context.LogInterval }}">
                     </div>
                   </div>
                   <div class="col-md-4">
@@ -55,7 +57,8 @@
                       <label for="query_range">Query: <b><output id="query_output">{{ .Context.QueryInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="query_range"
                         value="{{ .Context.QueryInterval }}" min="10" max="600" step="10"
-                        oninput="query_output.value = query_range.value">
+                        oninput="changeIntervalValue(query_range, query_output);">
+                      <input id="query_range_save" type="hidden" value="{{ .Context.QueryInterval }}">
                     </div>
                   </div>
                 </div>
@@ -64,7 +67,7 @@
             </div>
 
             <div class="card mt-2">
-              <div class="card-header">
+              <div id="configuration_header" class="card-header">
                 <i class="far fa-file-alt"></i> osquery configuration for context <b>{{ .Context.Name }}</b>
                 <div class="card-header-actions">
                   <div class="card-header-action">
@@ -120,6 +123,7 @@
         });
         $('#conf').data('CodeMirrorInstance', editorConf);
         editorConf.on('change', function(_editor){
+          $('#configuration_header').addClass("bg-changed");
           var _valid = true;
           try {
             JSON.parse(_editor.getValue());

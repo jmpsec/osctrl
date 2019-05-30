@@ -19,7 +19,7 @@ var (
 
 // Handler for platform/context stats in JSON
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceNameAdmin), false)
+	debugHTTPDump(r, config.DebugHTTP(serviceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]
