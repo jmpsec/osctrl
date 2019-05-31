@@ -1400,7 +1400,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					responseMessage = "Setting added successfully"
 				}
 			case "debug":
-				err := config.SetBoolean(s.DebugHTTP, serviceVar, configuration.FieldDebugHTTP)
+				err := config.SetBoolean(s.DebugHTTP, serviceVar, configuration.DebugHTTP)
 				if err != nil {
 					responseMessage = "error changing DebugHTTP"
 					responseCode = http.StatusInternalServerError

@@ -303,7 +303,6 @@ func (context *Context) DebugHTTP(name string) bool {
 	if err != nil {
 		return false
 	}
-	//return ((ctx.DebugHTTP || true) == false)
 	return ctx.DebugHTTP
 }
 

@@ -92,7 +92,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for context
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Decode read POST body
 	var t EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -144,7 +144,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -173,7 +173,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for context
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Get context
 	ctx, err := ctxs.Get(context)
 	if err != nil {
@@ -212,7 +212,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
@@ -292,7 +292,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -414,7 +414,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t QueryReadRequest
@@ -457,7 +457,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -485,7 +485,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t QueryWriteRequest
@@ -517,7 +517,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -566,19 +566,19 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME metrics
 	// Retrieve context variable
 	vars := mux.Vars(r)
-	_context, ok := vars["context"]
+	contextVar, ok := vars["context"]
 	if !ok {
 		log.Println("Context is missing")
 		return
 	}
 	// Check if context is valid
-	if !ctxs.Exists(_context) {
-		log.Printf("error unknown context (%s)", _context)
+	if !ctxs.Exists(contextVar) {
+		log.Printf("error unknown context (%s)", contextVar)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, ctxs.DebugHTTP(_context), true)
-	ctx, err := ctxs.Get(_context)
+	debugHTTPDump(r, contexts[contextVar].DebugHTTP, true)
+	ctx, err := ctxs.Get(contextVar)
 	if err != nil {
 		log.Printf("error getting context %v", err)
 		return
@@ -597,12 +597,12 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
-		if !checkValidEnrollSecretPath(_context, secretPath) {
+		if !checkValidEnrollSecretPath(contextVar, secretPath) {
 			log.Println("Invalid Path")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
-		if !checkValidRemoveSecretPath(_context, secretPath) {
+		if !checkValidRemoveSecretPath(contextVar, secretPath) {
 			log.Println("Invalid Path")
 			return
 		}
@@ -707,7 +707,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t CarveInitRequest
@@ -741,7 +741,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -769,7 +769,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, ctxs.DebugHTTP(context), true)
+	debugHTTPDump(r, contexts[context].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t CarveBlockRequest
@@ -796,7 +796,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if config.DebugHTTP(serviceTLS) {
+	if contexts[context].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response

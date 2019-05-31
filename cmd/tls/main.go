@@ -129,6 +129,12 @@ func main() {
 	queriesmgr = queries.CreateQueries(db)
 	// Initialize carves
 	filecarves = carves.CreateFileCarves(db)
+	// Check if service configuration for debug service is ready
+	if !config.IsValue(serviceTLS, configuration.DebugService) {
+		if err := config.NewBooleanValue(serviceTLS, configuration.DebugService, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugService, err)
+		}
+	}
 	// Check if service configuration for metrics is ready
 	if !config.IsValue(serviceTLS, configuration.ServiceMetrics) {
 		if err := config.NewBooleanValue(serviceTLS, configuration.ServiceMetrics, false); err != nil {

@@ -199,10 +199,16 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
+	// Check if service configuration for debug service is ready
+	if !config.IsValue(serviceAdmin, configuration.DebugService) {
+		if err := config.NewBooleanValue(serviceAdmin, configuration.DebugService, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugService, err)
+		}
+	}
 	// Check if service configuration for debug HTTP is ready
-	if !config.IsValue(serviceAdmin, configuration.FieldDebugHTTP) {
-		if err := config.NewBooleanValue(serviceAdmin, configuration.FieldDebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.FieldDebugHTTP, err)
+	if !config.IsValue(serviceAdmin, configuration.DebugHTTP) {
+		if err := config.NewBooleanValue(serviceAdmin, configuration.DebugHTTP, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugHTTP, err)
 		}
 	}
 	// Check if service configuration for metrics
