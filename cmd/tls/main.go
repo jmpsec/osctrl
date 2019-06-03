@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/metrics"
 	"github.com/javuto/osctrl/pkg/nodes"
@@ -49,11 +49,11 @@ const (
 var (
 	tlsConfig      JSONConfigurationTLS
 	db             *gorm.DB
-	config         *configuration.Configuration
+	settingsmgr         *settings.Settings
 	ctxs           *context.Context
 	contexts       context.MapContext
 	contextTicker  *time.Ticker
-	settings       configuration.MapConfiguration
+	settingsmap       settings.MapSettings
 	settingsTicker *time.Ticker
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
@@ -123,36 +123,36 @@ func main() {
 	}
 	// Initialize context
 	ctxs = context.CreateContexts(db)
-	// Initialize configuration
-	config = configuration.NewConfiguration(db)
+	// Initialize settings
+	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
 	// Initialize carves
 	filecarves = carves.CreateFileCarves(db)
-	// Check if service configuration for debug service is ready
-	if !config.IsValue(serviceTLS, configuration.DebugService) {
-		if err := config.NewBooleanValue(serviceTLS, configuration.DebugService, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugService, err)
+	// Check if service settings for debug service is ready
+	if !settingsmgr.IsValue(serviceTLS, settings.DebugService) {
+		if err := settingsmgr.NewBooleanValue(serviceTLS, settings.DebugService, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.DebugService, err)
 		}
 	}
-	// Check if service configuration for metrics is ready
-	if !config.IsValue(serviceTLS, configuration.ServiceMetrics) {
-		if err := config.NewBooleanValue(serviceTLS, configuration.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
+	// Check if service settings for metrics is ready
+	if !settingsmgr.IsValue(serviceTLS, settings.ServiceMetrics) {
+		if err := settingsmgr.NewBooleanValue(serviceTLS, settings.ServiceMetrics, false); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
 		}
-	} else if config.ServiceMetrics(serviceTLS) {
+	} else if settingsmgr.ServiceMetrics(serviceTLS) {
 		// Initialize metrics if enabled
-		mProtocol, err := config.GetString(serviceTLS, configuration.MetricsProtocol)
+		mProtocol, err := settingsmgr.GetString(serviceTLS, settings.MetricsProtocol)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
 		}
-		mHost, err := config.GetString(serviceTLS, configuration.MetricsHost)
+		mHost, err := settingsmgr.GetString(serviceTLS, settings.MetricsHost)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (host): %v", err)
 		}
-		mPort, err := config.GetInteger(serviceTLS, configuration.MetricsPort)
+		mPort, err := settingsmgr.GetInteger(serviceTLS, settings.MetricsPort)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (port): %v", err)
 		}
@@ -161,16 +161,16 @@ func main() {
 			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
-	// Check if service configuration for contexts refresh is ready
-	if !config.IsValue(serviceTLS, configuration.RefreshContexts) {
-		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshContexts, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.RefreshContexts, err)
+	// Check if service settings for contexts refresh is ready
+	if !settingsmgr.IsValue(serviceTLS, settings.RefreshContexts) {
+		if err := settingsmgr.NewIntegerValue(serviceTLS, settings.RefreshContexts, int64(defaultRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshContexts, err)
 		}
 	}
-	// Check if service configuration for settings refresh is ready
-	if !config.IsValue(serviceTLS, configuration.RefreshSettings) {
-		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshSettings, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.RefreshSettings, err)
+	// Check if service settings for settings refresh is ready
+	if !settingsmgr.IsValue(serviceTLS, settings.RefreshSettings) {
+		if err := settingsmgr.NewIntegerValue(serviceTLS, settings.RefreshSettings, int64(defaultRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshSettings, err)
 		}
 	}
 	// multiple listeners channel
@@ -201,7 +201,7 @@ func main() {
 	// FIXME Redis cache - Ticker to reload contexts
 	// FIXME splay this?
 	go func() {
-		_t := config.RefreshContexts(serviceTLS)
+		_t := settingsmgr.RefreshContexts(serviceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
@@ -214,10 +214,10 @@ func main() {
 		}
 	}()
 
-	// FIXME - Ticker to reload configuration
+	// FIXME - Ticker to reload settings
 	// FIXME splay this?
 	go func() {
-		_t := config.RefreshSettings(serviceTLS)
+		_t := settingsmgr.RefreshSettings(serviceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}

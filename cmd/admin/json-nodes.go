@@ -37,7 +37,7 @@ type NodeJSON struct {
 
 // Handler for JSON endpoints by context
 func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -98,7 +98,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON endpoints by platform
 func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, config.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	platform, ok := vars["platform"]

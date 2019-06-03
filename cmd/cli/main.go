@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/javuto/osctrl/pkg/configuration"
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
@@ -34,15 +34,15 @@ const (
 
 // Global variables
 var (
-	db         *gorm.DB
-	dbConfig   DBConf
-	app        *cli.App
-	configFile string
-	config     *configuration.Configuration
-	nodesmgr   *nodes.NodeManager
-	queriesmgr *queries.Queries
-	adminUsers *users.UserManager
-	ctxs       *context.Context
+	db          *gorm.DB
+	dbConfig    DBConf
+	app         *cli.App
+	configFile  string
+	settingsmgr *settings.Settings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	adminUsers  *users.UserManager
+	ctxs        *context.Context
 )
 
 // Function to load the configuration file and assign to variables
@@ -236,13 +236,13 @@ func init() {
 			},
 		},
 		{
-			Name:  "configuration",
-			Usage: "Commands for configuration",
+			Name:  "settings",
+			Usage: "Commands for settings",
 			Subcommands: []cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
-					Usage:   "Add a new configuration value",
+					Usage:   "Add a new settings value",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
@@ -290,10 +290,10 @@ func init() {
 							os.Exit(1)
 						}
 						values := make(map[string]interface{})
-						values[configuration.TypeString] = c.String("string")
-						values[configuration.TypeInteger] = c.Int64("integer")
-						values[configuration.TypeBoolean] = c.Bool("boolean")
-						return config.NewValue(service, name, typeValue, values)
+						values[settings.TypeString] = c.String("string")
+						values[settings.TypeInteger] = c.Int64("integer")
+						values[settings.TypeBoolean] = c.Bool("boolean")
+						return settingsmgr.NewValue(service, name, typeValue, values)
 					},
 				},
 				{
@@ -353,12 +353,12 @@ func init() {
 						}
 						var err error
 						switch typeValue {
-						case configuration.TypeInteger:
-							err = config.SetInteger(c.Int64("integer"), service, name)
-						case configuration.TypeBoolean:
-							err = config.SetBoolean(c.Bool("true"), service, name)
-						case configuration.TypeString:
-							err = config.SetString(c.String("string"), service, name)
+						case settings.TypeInteger:
+							err = settingsmgr.SetInteger(c.Int64("integer"), service, name)
+						case settings.TypeBoolean:
+							err = settingsmgr.SetBoolean(c.Bool("true"), service, name)
+						case settings.TypeString:
+							err = settingsmgr.SetString(c.String("string"), service, name)
 						}
 						return err
 					},
@@ -389,7 +389,7 @@ func init() {
 							fmt.Println("service is required")
 							os.Exit(1)
 						}
-						return config.DeleteValue(service, name)
+						return settingsmgr.DeleteValue(service, name)
 					},
 				},
 				{
@@ -551,8 +551,8 @@ func main() {
 	adminUsers = users.CreateUserManager(db)
 	// Initialize context
 	ctxs = context.CreateContexts(db)
-	// Initialize configuration
-	config = configuration.NewConfiguration(db)
+	// Initialize settings
+	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries

@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"crypto/rand"
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -16,22 +15,22 @@ import (
 
 // Constants for seconds
 const (
-	oneMinute        = 60
-	fiveMinutes      = 300
-	fifteenMinutes   = 900
-	thirtyMinutes    = 1800
-	fortyfiveMinutes = 2500
-	oneHour          = 3600
-	threeHours       = 10800
-	sixHours         = 21600
-	eightHours       = 28800
-	twelveHours      = 43200
-	fifteenHours     = 54000
-	twentyHours      = 72000
-	oneDay           = 86400
-	twoDays          = 172800
-	sevenDays        = 604800
-	fifteenDays      = 1296000
+	oneMinute = 60
+	//fiveMinutes      = 300
+	//fifteenMinutes   = 900
+	//thirtyMinutes    = 1800
+	//fortyfiveMinutes = 2500
+	oneHour = 3600
+	//threeHours       = 10800
+	sixHours = 21600
+	//eightHours       = 28800
+	//twelveHours      = 43200
+	//fifteenHours     = 54000
+	//twentyHours      = 72000
+	oneDay = 86400
+	//twoDays          = 172800
+	//sevenDays        = 604800
+	fifteenDays = 1296000
 )
 
 // Function to generate a secure CSRF token
@@ -168,6 +167,7 @@ func inFutureTime(t time.Time) string {
 // Helper to calculate the osquery config_hash and skip sending a blob that won't change anything
 // https://github.com/facebook/osquery/blob/master/osquery/config/config.cpp#L911
 // osquery calculates the SHA1 of the configuration blob, then the SHA1 hash of that
+/*
 func generateOsqueryConfigHash(config string) string {
 	firstHasher := sha1.New()
 	secondHasher := sha1.New()
@@ -177,6 +177,7 @@ func generateOsqueryConfigHash(config string) string {
 	_, _ = secondHasher.Write([]byte(hex.EncodeToString(firstHasher.Sum(nil))))
 	return hex.EncodeToString(secondHasher.Sum(nil))
 }
+*/
 
 // Helper to convert a string into integer
 func stringToInteger(s string) int64 {
@@ -189,7 +190,7 @@ func stringToInteger(s string) int64 {
 
 // Helper to convert a string into boolean
 func stringToBoolean(s string) bool {
-	if (s == "yes" || s == "true" || s == "1") {
+	if s == "yes" || s == "true" || s == "1" {
 		return true
 	}
 	return false

@@ -10,11 +10,11 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
 	github.com/javuto/osctrl/pkg/carves v0.0.0-00010101000000-000000000000
-	github.com/javuto/osctrl/pkg/configuration v0.0.0-20190327122452-77ef9a7bbb66
 	github.com/javuto/osctrl/pkg/context v0.0.0-20190327122452-77ef9a7bbb66
 	github.com/javuto/osctrl/pkg/metrics v0.0.0-20190327122452-77ef9a7bbb66
 	github.com/javuto/osctrl/pkg/nodes v0.0.0-20190327122452-77ef9a7bbb66
 	github.com/javuto/osctrl/pkg/queries v0.0.0-20190327122452-77ef9a7bbb66
+	github.com/javuto/osctrl/pkg/settings v0.0.0-20190603162656-21b0a394b378
 	github.com/javuto/osctrl/pkg/users v0.0.0-20190327122452-77ef9a7bbb66
 	github.com/jinzhu/gorm v1.9.8
 	github.com/jonboulle/clockwork v0.1.0 // indirect
@@ -28,7 +28,7 @@ require (
 
 replace github.com/javuto/osctrl/pkg/carves => ./pkg/carves
 
-replace github.com/javuto/osctrl/pkg/configuration => ./pkg/configuration
+replace github.com/javuto/osctrl/pkg/settings => ./pkg/settings
 
 replace github.com/javuto/osctrl/pkg/context => ./pkg/context
 

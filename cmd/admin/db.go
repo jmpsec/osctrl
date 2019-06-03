@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/configuration"
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/users"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -109,10 +109,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
-	// table config_values
-	err = db.AutoMigrate(configuration.ConfigValue{}).Error
+	// table setting_values
+	err = db.AutoMigrate(settings.SettingValue{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (config_values): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
 	}
 	return nil
 }

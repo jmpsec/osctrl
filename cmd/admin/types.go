@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/javuto/osctrl/pkg/configuration"
 	ctx "github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 )
 
 // JSONConfigurationDB to hold all backend configuration values
@@ -138,12 +138,12 @@ type ContextsTemplateData struct {
 
 // SettingsTemplateData for passing data to the settings template
 type SettingsTemplateData struct {
-	Title          string
-	Service        string
-	Contexts       []ctx.TLSContext
-	Platforms      []string
-	SettingsValues []configuration.ConfigValue
-	AdminDebugHTTP bool
+	Title           string
+	Service         string
+	Contexts        []ctx.TLSContext
+	Platforms       []string
+	CurrentSettings []settings.SettingValue
+	AdminDebugHTTP  bool
 }
 
 // LocationData to hold all location related data, when enabled

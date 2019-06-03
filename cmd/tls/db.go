@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/nodes"
 
 	"github.com/jinzhu/gorm"
@@ -92,10 +92,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
-	// table config_values
-	err = db.AutoMigrate(configuration.ConfigValue{}).Error
+	// table setting_values
+	err = db.AutoMigrate(settings.SettingValue{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (config_values): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
 	}
 	// table carved_files
 	err = db.AutoMigrate(carves.CarvedFile{}).Error

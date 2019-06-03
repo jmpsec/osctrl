@@ -1,4 +1,4 @@
-package configuration
+package settings
 
 import (
 	"fmt"
@@ -13,14 +13,14 @@ const (
 	ServiceAdmin string = "admin"
 )
 
-// Types of configuration values
+// Types of settings values
 const (
 	TypeString  string = "string"
 	TypeBoolean string = "boolean"
 	TypeInteger string = "integer"
 )
 
-// Names for configuration values
+// Names for settings values
 const (
 	DebugHTTP       string = "debug_http"
 	DebugService    string = "debug_service"
@@ -32,8 +32,8 @@ const (
 	MetricsProtocol string = "metrics_protocol"
 )
 
-// ConfigValue to hold each value for configuration
-type ConfigValue struct {
+// SettingValue to hold each value for settings
+type SettingValue struct {
 	gorm.Model
 	Name    string `gorm:"index"`
 	Service string
@@ -43,24 +43,24 @@ type ConfigValue struct {
 	Integer int64
 }
 
-// MapConfiguration to hold all values by service
-type MapConfiguration map[string]ConfigValue
+// MapSettings to hold all values by service
+type MapSettings map[string]SettingValue
 
-// Configuration keeps all configuration values
-type Configuration struct {
+// Settings keeps all settings values
+type Settings struct {
 	DB *gorm.DB
 }
 
-// NewConfiguration to initialize the access to configuration
-func NewConfiguration(database *gorm.DB) *Configuration {
-	var s *Configuration
-	s = &Configuration{DB: database}
+// NewSettings to initialize the access to settings
+func NewSettings(database *gorm.DB) *Settings {
+	var s *Settings
+	s = &Settings{DB: database}
 	return s
 }
 
 // EmptyValue creates an emtpy value
-func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigValue {
-	return ConfigValue{
+func (conf *Settings) EmptyValue(service, name, typeValue string) SettingValue {
+	return SettingValue{
 		Name:    name,
 		Service: service,
 		Type:    typeValue,
@@ -70,8 +70,8 @@ func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigVal
 	}
 }
 
-// NewValue creates a new configuration value
-func (conf *Configuration) NewValue(service, name, typeValue string, value interface{}) error {
+// NewValue creates a new settings value
+func (conf *Settings) NewValue(service, name, typeValue string, value interface{}) error {
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue)
 	switch typeValue {
@@ -93,23 +93,23 @@ func (conf *Configuration) NewValue(service, name, typeValue string, value inter
 	return nil
 }
 
-// NewStringValue creates a new configuration value
-func (conf *Configuration) NewStringValue(service, name, value string) error {
+// NewStringValue creates a new settings value
+func (conf *Settings) NewStringValue(service, name, value string) error {
 	return conf.NewValue(service, name, TypeString, value)
 }
 
-// NewBooleanValue creates a new configuration value
-func (conf *Configuration) NewBooleanValue(service, name string, value bool) error {
+// NewBooleanValue creates a new settings value
+func (conf *Settings) NewBooleanValue(service, name string, value bool) error {
 	return conf.NewValue(service, name, TypeBoolean, value)
 }
 
-// NewIntegerValue creates a new configuration value
-func (conf *Configuration) NewIntegerValue(service, name string, value int64) error {
+// NewIntegerValue creates a new settings value
+func (conf *Settings) NewIntegerValue(service, name string, value int64) error {
 	return conf.NewValue(service, name, TypeInteger, value)
 }
 
-// DeleteValue deletes an existing configuration value
-func (conf *Configuration) DeleteValue(service, name string) error {
+// DeleteValue deletes an existing settings value
+func (conf *Settings) DeleteValue(service, name string) error {
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
 		return fmt.Errorf("DeleteValue %v", err)
@@ -121,8 +121,8 @@ func (conf *Configuration) DeleteValue(service, name string) error {
 }
 
 // RetrieveAllValues retrieves and returns all values from backend
-func (conf *Configuration) RetrieveAllValues() ([]ConfigValue, error) {
-	var values []ConfigValue
+func (conf *Settings) RetrieveAllValues() ([]SettingValue, error) {
+	var values []SettingValue
 	if err := conf.DB.Find(&values).Error; err != nil {
 		return values, err
 	}
@@ -130,43 +130,43 @@ func (conf *Configuration) RetrieveAllValues() ([]ConfigValue, error) {
 }
 
 // RetrieveValues retrieves and returns all values from backend
-func (conf *Configuration) RetrieveValues(service string) ([]ConfigValue, error) {
-	var values []ConfigValue
+func (conf *Settings) RetrieveValues(service string) ([]SettingValue, error) {
+	var values []SettingValue
 	if err := conf.DB.Where("service = ?", service).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
 }
 
-// RetrieveValue retrieves one value from configuration by service and name from backend
-func (conf *Configuration) RetrieveValue(service, name string) (ConfigValue, error) {
-	var value ConfigValue
+// RetrieveValue retrieves one value from settings by service and name from backend
+func (conf *Settings) RetrieveValue(service, name string) (SettingValue, error) {
+	var value SettingValue
 	if err := conf.DB.Where("service = ?", service).Where("name = ?", name).First(&value).Error; err != nil {
-		return ConfigValue{}, err
+		return SettingValue{}, err
 	}
 	return value, nil
 }
 
 // GetMap returns the map of values by service
-func (conf *Configuration) GetMap(service string) (MapConfiguration, error) {
+func (conf *Settings) GetMap(service string) (MapSettings, error) {
 	all, err := conf.RetrieveValues(service)
 	if err != nil {
-		return MapConfiguration{}, fmt.Errorf("error getting values %v", err)
+		return MapSettings{}, fmt.Errorf("error getting values %v", err)
 	}
-	_map := make(MapConfiguration)
+	_map := make(MapSettings)
 	for _, c := range all {
 		_map[c.Name] = c
 	}
 	return _map, nil
 }
 
-// GetValue gets one value from configuration by service and name
-func (conf *Configuration) GetValue(service, name string) (ConfigValue, error) {
+// GetValue gets one value from settings by service and name
+func (conf *Settings) GetValue(service, name string) (SettingValue, error) {
 	return conf.RetrieveValue(service, name)
 }
 
-// SetInteger sets a numeric configuration value by service and name
-func (conf *Configuration) SetInteger(intValue int64, service, name string) error {
+// SetInteger sets a numeric settings value by service and name
+func (conf *Settings) SetInteger(intValue int64, service, name string) error {
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
@@ -180,8 +180,8 @@ func (conf *Configuration) SetInteger(intValue int64, service, name string) erro
 	return nil
 }
 
-// GetInteger gets a numeric configuration value by service and name
-func (conf *Configuration) GetInteger(service, name string) (int64, error) {
+// GetInteger gets a numeric settings value by service and name
+func (conf *Settings) GetInteger(service, name string) (int64, error) {
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
 		return 0, err
@@ -189,8 +189,8 @@ func (conf *Configuration) GetInteger(service, name string) (int64, error) {
 	return value.Integer, nil
 }
 
-// SetBoolean sets a boolean configuration value by service and name
-func (conf *Configuration) SetBoolean(boolValue bool, service, name string) error {
+// SetBoolean sets a boolean settings value by service and name
+func (conf *Settings) SetBoolean(boolValue bool, service, name string) error {
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
@@ -204,8 +204,8 @@ func (conf *Configuration) SetBoolean(boolValue bool, service, name string) erro
 	return nil
 }
 
-// GetBoolean gets a boolean configuration value by service and name
-func (conf *Configuration) GetBoolean(service, name string) (bool, error) {
+// GetBoolean gets a boolean settings value by service and name
+func (conf *Settings) GetBoolean(service, name string) (bool, error) {
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
 		return false, err
@@ -213,8 +213,8 @@ func (conf *Configuration) GetBoolean(service, name string) (bool, error) {
 	return value.Boolean, nil
 }
 
-// GetString gets a string configuration value by service and name
-func (conf *Configuration) GetString(service, name string) (string, error) {
+// GetString gets a string settings value by service and name
+func (conf *Settings) GetString(service, name string) (string, error) {
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
 		return "", err
@@ -222,8 +222,8 @@ func (conf *Configuration) GetString(service, name string) (string, error) {
 	return value.String, nil
 }
 
-// SetString sets a boolean configuration value by service and name
-func (conf *Configuration) SetString(strValue string, service, name string) error {
+// SetString sets a boolean settings value by service and name
+func (conf *Settings) SetString(strValue string, service, name string) error {
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name)
 	if err != nil {
@@ -237,8 +237,8 @@ func (conf *Configuration) SetString(strValue string, service, name string) erro
 	return nil
 }
 
-// IsValue checks if a configuration value exists by service and name
-func (conf *Configuration) IsValue(service, name string) bool {
+// IsValue checks if a settings value exists by service and name
+func (conf *Settings) IsValue(service, name string) bool {
 	_, err := conf.RetrieveValue(service, name)
 	if err != nil {
 		return false
@@ -247,7 +247,7 @@ func (conf *Configuration) IsValue(service, name string) bool {
 }
 
 // DebugHTTP checks if http debugging is enabled by service
-func (conf *Configuration) DebugHTTP(service string) bool {
+func (conf *Settings) DebugHTTP(service string) bool {
 	value, err := conf.RetrieveValue(service, DebugHTTP)
 	if err != nil {
 		return false
@@ -256,7 +256,7 @@ func (conf *Configuration) DebugHTTP(service string) bool {
 }
 
 // DebugService checks if debugging is enabled by service
-func (conf *Configuration) DebugService(service string) bool {
+func (conf *Settings) DebugService(service string) bool {
 	value, err := conf.RetrieveValue(service, DebugService)
 	if err != nil {
 		return false
@@ -265,7 +265,7 @@ func (conf *Configuration) DebugService(service string) bool {
 }
 
 // ServiceMetrics checks if metrics are enabled by service
-func (conf *Configuration) ServiceMetrics(service string) bool {
+func (conf *Settings) ServiceMetrics(service string) bool {
 	value, err := conf.RetrieveValue(service, ServiceMetrics)
 	if err != nil {
 		return false
@@ -274,7 +274,7 @@ func (conf *Configuration) ServiceMetrics(service string) bool {
 }
 
 // RefreshContexts gets the interval in seconds to refresh contexts by service
-func (conf *Configuration) RefreshContexts(service string) int64 {
+func (conf *Settings) RefreshContexts(service string) int64 {
 	value, err := conf.RetrieveValue(service, RefreshContexts)
 	if err != nil {
 		return 0
@@ -283,7 +283,7 @@ func (conf *Configuration) RefreshContexts(service string) int64 {
 }
 
 // RefreshSettings gets the interval in seconds to refresh settings by service
-func (conf *Configuration) RefreshSettings(service string) int64 {
+func (conf *Settings) RefreshSettings(service string) int64 {
 	value, err := conf.RetrieveValue(service, RefreshSettings)
 	if err != nil {
 		return 0

@@ -197,7 +197,7 @@ func isPublicIP(ip net.IP) bool {
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if config.ServiceMetrics(serviceTLS) {
+	if settingsmgr.ServiceMetrics(serviceTLS) {
 		_metrics.Inc(name)
 	}
 }
@@ -216,7 +216,7 @@ func refreshContexts() {
 func refreshSettings() {
 	log.Printf("Refreshing settings...\n")
 	var err error
-	settings, err = config.GetMap(serviceTLS)
+	settingsmap, err = settingsmgr.GetMap(serviceTLS)
 	if err != nil {
 		log.Printf("error refreshing settings %v\n", err)
 	}

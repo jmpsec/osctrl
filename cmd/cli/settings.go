@@ -10,7 +10,7 @@ import (
 )
 
 func listConfiguration(c *cli.Context) error {
-	values, err := config.RetrieveAllValues()
+	values, err := settingsmgr.RetrieveAllValues()
 	if err != nil {
 		return err
 	}

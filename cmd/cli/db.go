@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/configuration"
+	"github.com/javuto/osctrl/pkg/settings"
 	ctx "github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/users"
 
@@ -44,10 +44,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
-	// table configuration_values
-	err = db.AutoMigrate(configuration.ConfigValue{}).Error
+	// table setting_values
+	err = db.AutoMigrate(settings.SettingValue{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (configuration_values): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
 	}
 	return nil
 }

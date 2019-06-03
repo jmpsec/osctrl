@@ -12,10 +12,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/javuto/osctrl/pkg/configuration"
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/crewjam/saml/samlsp"
@@ -37,8 +37,6 @@ const (
 	serviceAdmin string = "admin"
 	// Service name
 	serviceNameAdmin string = projectName + "-" + serviceAdmin
-	// TLS service name
-	serviceNameTLS string = projectName + "-" + serviceTLS
 	// Service version
 	serviceVersion string = "0.0.1"
 	// Default endpoint to handle HTTP testing
@@ -67,7 +65,7 @@ var (
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
-	config         *configuration.Configuration
+	settingsmgr    *settings.Settings
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
 	ctxs           *context.Context
@@ -195,28 +193,28 @@ func main() {
 	adminUsers = users.CreateUserManager(db)
 	// Initialize context
 	ctxs = context.CreateContexts(db)
-	// Initialize configuration
-	config = configuration.NewConfiguration(db)
+	// Initialize settings
+	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
-	// Check if service configuration for debug service is ready
-	if !config.IsValue(serviceAdmin, configuration.DebugService) {
-		if err := config.NewBooleanValue(serviceAdmin, configuration.DebugService, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugService, err)
+	// Check if service settings for debug service is ready
+	if !settingsmgr.IsValue(serviceAdmin, settings.DebugService) {
+		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.DebugService, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugService, err)
 		}
 	}
-	// Check if service configuration for debug HTTP is ready
-	if !config.IsValue(serviceAdmin, configuration.DebugHTTP) {
-		if err := config.NewBooleanValue(serviceAdmin, configuration.DebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.DebugHTTP, err)
+	// Check if service settings for debug HTTP is ready
+	if !settingsmgr.IsValue(serviceAdmin, settings.DebugHTTP) {
+		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.DebugHTTP, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
 		}
 	}
-	// Check if service configuration for metrics
-	if !config.IsValue(serviceAdmin, configuration.ServiceMetrics) {
-		if err := config.NewBooleanValue(serviceAdmin, configuration.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", configuration.ServiceMetrics, err)
+	// Check if service settings for metrics
+	if !settingsmgr.IsValue(serviceAdmin, settings.ServiceMetrics) {
+		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.ServiceMetrics, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
 		}
 	}
 	// multiple listeners channel
