@@ -25,6 +25,7 @@ const (
 	DebugHTTP       string = "debug_http"
 	DebugService    string = "debug_service"
 	RefreshContexts string = "refresh_contexts"
+	RefreshSettings string = "refresh_settings"
 	ServiceMetrics  string = "service_metrics"
 	MetricsHost     string = "metrics_host"
 	MetricsPort     string = "metrics_port"
@@ -42,10 +43,10 @@ type ConfigValue struct {
 	Integer int64
 }
 
-// TypedValues to have each value by type
-type TypedValues map[string]interface{}
+// MapConfiguration to hold all values by service
+type MapConfiguration map[string]ConfigValue
 
-// Configuration keeps al configuration values
+// Configuration keeps all configuration values
 type Configuration struct {
 	DB *gorm.DB
 }
@@ -70,16 +71,16 @@ func (conf *Configuration) EmptyValue(service, name, typeValue string) ConfigVal
 }
 
 // NewValue creates a new configuration value
-func (conf *Configuration) NewValue(service, name, typeValue string, value TypedValues) error {
+func (conf *Configuration) NewValue(service, name, typeValue string, value interface{}) error {
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue)
 	switch typeValue {
 	case TypeBoolean:
-		entry.Boolean = value[TypeBoolean].(bool)
+		entry.Boolean = value.(bool)
 	case TypeInteger:
-		entry.Integer = value[TypeInteger].(int64)
+		entry.Integer = value.(int64)
 	case TypeString:
-		entry.String = value[TypeString].(string)
+		entry.String = value.(string)
 	}
 	// Create record in database
 	if conf.DB.NewRecord(entry) {
@@ -94,29 +95,17 @@ func (conf *Configuration) NewValue(service, name, typeValue string, value Typed
 
 // NewStringValue creates a new configuration value
 func (conf *Configuration) NewStringValue(service, name, value string) error {
-	entry := make(TypedValues)
-	entry[TypeString] = value
-	entry[TypeInteger] = int64(0)
-	entry[TypeBoolean] = false
-	return conf.NewValue(service, name, TypeString, entry)
+	return conf.NewValue(service, name, TypeString, value)
 }
 
 // NewBooleanValue creates a new configuration value
 func (conf *Configuration) NewBooleanValue(service, name string, value bool) error {
-	entry := make(TypedValues)
-	entry[TypeBoolean] = value
-	entry[TypeInteger] = int64(0)
-	entry[TypeString] = ""
-	return conf.NewValue(service, name, TypeBoolean, entry)
+	return conf.NewValue(service, name, TypeBoolean, value)
 }
 
 // NewIntegerValue creates a new configuration value
 func (conf *Configuration) NewIntegerValue(service, name string, value int64) error {
-	entry := make(TypedValues)
-	entry[TypeInteger] = value
-	entry[TypeBoolean] = false
-	entry[TypeString] = ""
-	return conf.NewValue(service, name, TypeInteger, entry)
+	return conf.NewValue(service, name, TypeInteger, value)
 }
 
 // DeleteValue deletes an existing configuration value
@@ -140,8 +129,8 @@ func (conf *Configuration) RetrieveAllValues() ([]ConfigValue, error) {
 	return values, nil
 }
 
-// RetrieveServiceValues retrieves and returns all values from backend
-func (conf *Configuration) RetrieveServiceValues(service string) ([]ConfigValue, error) {
+// RetrieveValues retrieves and returns all values from backend
+func (conf *Configuration) RetrieveValues(service string) ([]ConfigValue, error) {
 	var values []ConfigValue
 	if err := conf.DB.Where("service = ?", service).Find(&values).Error; err != nil {
 		return values, err
@@ -156,6 +145,19 @@ func (conf *Configuration) RetrieveValue(service, name string) (ConfigValue, err
 		return ConfigValue{}, err
 	}
 	return value, nil
+}
+
+// GetMap returns the map of values by service
+func (conf *Configuration) GetMap(service string) (MapConfiguration, error) {
+	all, err := conf.RetrieveValues(service)
+	if err != nil {
+		return MapConfiguration{}, fmt.Errorf("error getting values %v", err)
+	}
+	_map := make(MapConfiguration)
+	for _, c := range all {
+		_map[c.Name] = c
+	}
+	return _map, nil
 }
 
 // GetValue gets one value from configuration by service and name
@@ -271,9 +273,18 @@ func (conf *Configuration) ServiceMetrics(service string) bool {
 	return value.Boolean
 }
 
-// RefreshContexts checks if metrics are enabled by service
+// RefreshContexts gets the interval in seconds to refresh contexts by service
 func (conf *Configuration) RefreshContexts(service string) int64 {
-	value, err := conf.RetrieveValue(service, ServiceMetrics)
+	value, err := conf.RetrieveValue(service, RefreshContexts)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// RefreshSettings gets the interval in seconds to refresh settings by service
+func (conf *Configuration) RefreshSettings(service string) int64 {
+	value, err := conf.RetrieveValue(service, RefreshSettings)
 	if err != nil {
 		return 0
 	}

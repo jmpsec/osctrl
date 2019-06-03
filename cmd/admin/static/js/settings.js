@@ -21,6 +21,22 @@ function confirmAddSetting() {
   sendPostRequest(data, _url, _url, false);
 }
 
+function changeBooleanSetting(_name) {
+  var _csrftoken = $("#csrftoken").val();
+  var _value = $("#" + _name).is(':checked');
+
+  var _url = window.location.pathname;
+
+  var data = {
+    csrftoken: _csrftoken,
+    action: 'change',
+    name: _name,
+    type: 'boolean',
+    boolean: _value,
+  };
+  sendPostRequest(data, _url, '', false);
+}
+
 function changeDebugAdmin() {
   var _csrftoken = $("#csrftoken").val();
   var _value = $("#admin_debug_check").is(':checked');

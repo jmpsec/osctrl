@@ -211,3 +211,13 @@ func refreshContexts() {
 		log.Printf("error refreshing contexts %v\n", err)
 	}
 }
+
+// Helper to refresh the settings until cache/Redis support is implemented
+func refreshSettings() {
+	log.Printf("Refreshing settings...\n")
+	var err error
+	settings, err = config.GetMap(serviceTLS)
+	if err != nil {
+		log.Printf("error refreshing settings %v\n", err)
+	}
+}

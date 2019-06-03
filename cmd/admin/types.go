@@ -210,7 +210,7 @@ type NodeMultiActionRequest struct {
 type SettingsRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Action    string `json:"action"`
-	DebugHTTP bool   `json:"debughttp"`
+	Boolean   bool   `json:"boolean"`
 	Type      string `json:"type"`
 	Name      string `json:"name"`
 	Value     string `json:"value"`

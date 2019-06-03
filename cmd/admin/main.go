@@ -36,27 +36,29 @@ const (
 	// Admin service
 	serviceAdmin string = "admin"
 	// Service name
-	serviceNameAdmin = projectName + "-" + serviceAdmin
+	serviceNameAdmin string = projectName + "-" + serviceAdmin
 	// TLS service name
-	serviceNameTLS = projectName + "-" + serviceTLS
+	serviceNameTLS string = projectName + "-" + serviceTLS
 	// Service version
-	serviceVersion = "0.0.1"
+	serviceVersion string = "0.0.1"
 	// Default endpoint to handle HTTP testing
-	testingPath = "/testing"
+	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors
-	errorPath = "/error"
+	errorPath string = "/error"
 	// Service configuration file
-	configurationFile = "config/admin.json"
+	configurationFile string = "config/admin.json"
 	// osquery version to display tables
-	osqueryTablesVersion = "3.3.0"
+	osqueryTablesVersion string = "3.3.0"
 	// JSON file with osquery tables data
-	osqueryTablesFile = "data/" + osqueryTablesVersion + ".json"
+	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// No login
-	noAuthLogin = "none"
+	noAuthLogin string = "none"
 	// Local login
-	localAuthLogin = "local"
+	localAuthLogin string = "local"
 	// SAML login
-	samlAuthLogin = "saml"
+	samlAuthLogin string = "saml"
+	// Static files folder
+	staticFilesFolder string = "./static"
 )
 
 // Global variables
@@ -274,7 +276,7 @@ func main() {
 	routerAdmin.HandleFunc("/favicon.ico", faviconHandler)
 	// Admin: static
 	routerAdmin.PathPrefix("/static/").Handler(
-		http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
+		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 
 	/////////////////////////// AUTHENTICATED CONTENT
 

@@ -61,6 +61,21 @@ body {
   -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
+.warning-back {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: #F0F0F0;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.warning-text {
+  background: #000;
+  color: #f6d415;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .btn-clipboard {
   position: absolute;
   top: 1.1rem;
@@ -90,6 +105,11 @@ body {
   background: repeating-linear-gradient(45deg, #ccc, #ccc 10px, #f86c6b 10px, #f86c6b 20px);
 }
 
+.stripes-warning {
+  color: white;
+  background: repeating-linear-gradient(45deg, #000000, #000000 10px, #f6d415 10px, #f6d415 20px);
+}
+
 .stripes-green {
   color: white;
   background: repeating-linear-gradient(45deg, #ccc, #ccc 10px, #4dbd74 10px, #4dbd74 20px);
@@ -101,4 +121,15 @@ body {
 
 .bg-changed {
   background: #ff00001a;
+}
+
+.editable-class input,
+button {
+  margin-right: 5px;
+}
+
+.editable-class input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }

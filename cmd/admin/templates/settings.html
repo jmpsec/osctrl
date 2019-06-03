@@ -21,6 +21,14 @@
 
 
             <div class="card mt-2">
+            <!--
+              <div class="warning-back stripes-warning text-center">
+                <h5 class="warning-text">
+                  <b>CAUTION:</b> Changes made to this page may break the {{ .Service }} service
+                </h5>
+              </div>
+            -->
+
               <div class="card-header">
                 <i class="fas fa-tools"></i> Settings for <b>{{ .Service }}</b> Service</b>
 
@@ -42,9 +50,9 @@
                 <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Type</th>
-                      <th>Value</th>
+                      <th width="20%">Name</th>
+                      <th width="20%">Type</th>
+                      <th width="60%">Value</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -52,9 +60,24 @@
                     <tr>
                       <td>{{ $e.Name }}</td>
                       <td>{{ $e.Type }}</td>
-                      {{ if eq $e.Type "integer" }}<td>{{ $e.Integer }}</td>{{ end }}
-                      {{ if eq $e.Type "string" }}<td>{{ $e.String }}</td>{{ end }}
-                      {{ if eq $e.Type "boolean" }}<td>{{ $e.Boolean }}</td>{{ end }}
+                      {{ if eq $e.Type "integer" }}
+                      <td>
+                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Integer }}</p>
+                      </td>
+                      {{ end }}
+                      {{ if eq $e.Type "string" }}
+                      <td>
+                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.String }}</p>
+                      </td>
+                      {{ end }}
+                      {{ if eq $e.Type "boolean" }}
+                      <td>
+                        <label class="switch switch-label switch-pill switch-success switch-sm">
+                          <input id="{{ $e.Name }}" class="switch-input" type="checkbox" onclick="changeBooleanSetting({{ $e.Name }});" {{ if $e.Boolean }} checked {{ end }}>
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </td>
+                      {{ end }}
                     </tr>
                   {{ end }}
                   </tbody>
@@ -124,6 +147,37 @@
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
+        // Editable fields
+        $(".editable-field").editable(function(value, settings) {
+			    var data = {
+            csrftoken: $("#csrftoken").val(),
+            action: 'change',
+            name: $(this).attr('id'),
+            type: $(this).attr('data-type'),
+            value: value,
+          };
+          sendPostRequest(data, window.location.pathname, '', false);
+          return value;
+		    }, {
+          indicator : "<img src='/static/img/spinner.svg' />",
+          type : "text",
+          // only limit to three letters example
+          //pattern: "[A-Za-z]{3}",
+          onedit : function() { console.log('If I return false edition will be canceled'); return true;},
+          cancel : 'Cancel',
+          cssclass : 'editable-class',
+          cancelcssclass : 'btn btn-danger',
+          submitcssclass : 'btn btn-success',
+          maxlength : 200,
+          // select all text
+          select : true,
+          label : '',
+          showfn : function(elem) { elem.fadeIn('slow') },
+          submit : 'Save',
+          tooltip : "Click to edit...",
+          width : 160
+        });
+
         // Enable all tooltips
         $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
 

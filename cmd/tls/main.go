@@ -34,8 +34,8 @@ const (
 	errorPath string = "/error"
 	// Service configuration file
 	configurationFile string = "config/" + serviceTLS + ".json"
-	// Default contexts refreshing interval in seconds
-	defaultContextsRefresh int = 300
+	// Default refreshing interval in seconds
+	defaultRefresh int = 300
 )
 
 // Types of log types
@@ -47,18 +47,20 @@ const (
 
 // Global variables
 var (
-	tlsConfig     JSONConfigurationTLS
-	db            *gorm.DB
-	config        *configuration.Configuration
-	ctxs          *context.Context
-	contexts      context.MapContext
-	contextTicker *time.Ticker
-	nodesmgr      *nodes.NodeManager
-	queriesmgr    *queries.Queries
-	filecarves    *carves.Carves
-	_metrics      *metrics.Metrics
-	dbConfig      JSONConfigurationDB
-	logConfig     JSONConfigurationLogging
+	tlsConfig      JSONConfigurationTLS
+	db             *gorm.DB
+	config         *configuration.Configuration
+	ctxs           *context.Context
+	contexts       context.MapContext
+	contextTicker  *time.Ticker
+	settings       configuration.MapConfiguration
+	settingsTicker *time.Ticker
+	nodesmgr       *nodes.NodeManager
+	queriesmgr     *queries.Queries
+	filecarves     *carves.Carves
+	_metrics       *metrics.Metrics
+	dbConfig       JSONConfigurationDB
+	logConfig      JSONConfigurationLogging
 )
 
 // Function to load the configuration file and assign to variables
@@ -161,8 +163,14 @@ func main() {
 	}
 	// Check if service configuration for contexts refresh is ready
 	if !config.IsValue(serviceTLS, configuration.RefreshContexts) {
-		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshContexts, int64(defaultContextsRefresh)); err != nil {
+		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshContexts, int64(defaultRefresh)); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", configuration.RefreshContexts, err)
+		}
+	}
+	// Check if service configuration for settings refresh is ready
+	if !config.IsValue(serviceTLS, configuration.RefreshSettings) {
+		if err := config.NewIntegerValue(serviceTLS, configuration.RefreshSettings, int64(defaultRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", configuration.RefreshSettings, err)
 		}
 	}
 	// multiple listeners channel
@@ -190,17 +198,34 @@ func main() {
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 
-	// Ticker to reload contexts until cache is ready
+	// FIXME Redis cache - Ticker to reload contexts
+	// FIXME splay this?
 	go func() {
 		_t := config.RefreshContexts(serviceTLS)
 		if _t == 0 {
-			_t = int64(defaultContextsRefresh)
+			_t = int64(defaultRefresh)
 		}
 		contextTicker = time.NewTicker(time.Duration(_t) * time.Second)
 		for {
 			select {
 			case <-contextTicker.C:
 				go refreshContexts()
+			}
+		}
+	}()
+
+	// FIXME - Ticker to reload configuration
+	// FIXME splay this?
+	go func() {
+		_t := config.RefreshSettings(serviceTLS)
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		settingsTicker = time.NewTicker(time.Duration(_t) * time.Second)
+		for {
+			select {
+			case <-settingsTicker.C:
+				go refreshSettings()
 			}
 		}
 	}()

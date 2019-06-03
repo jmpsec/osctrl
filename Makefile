@@ -74,6 +74,14 @@ install_admin:
 install_cli:
 	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)
 
+# Display systemd logs for TLS server
+logs_tls:
+	sudo journalctl -f -t $(TLS_NAME)
+
+# Display systemd logs for Admin server
+logs_admin:
+	sudo journalctl -f -t $(ADMIN_NAME)
+
 # Build docker containers and run them (also generates new certificates)
 docker_all:
 	./docker.sh
