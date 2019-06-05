@@ -58,12 +58,12 @@ var (
 	settingsmgr    *settings.Settings
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
+	usersmgr       *users.UserManager
 	ctxs           *context.Context
 	dbConfig       JSONConfigurationDB
 	logConfig      JSONConfigurationLogging
 	store          *sessions.CookieStore
 	adminUsers     *users.UserManager
-	storeKey       []byte
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
 )
@@ -147,7 +147,7 @@ func init() {
 	}
 	// Generate cookie store with proper options
 	if adminConfig.Auth != settings.AuthNone {
-		storeKey = securecookie.GenerateRandomKey(32)
+		storeKey := securecookie.GenerateRandomKey(32)
 		store = sessions.NewCookieStore(storeKey)
 		store.Options = &sessions.Options{
 			Path:     "/",
@@ -190,6 +190,8 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
+	// Initialize users
+	usersmgr = users.CreateUserManager(db)
 	log.Println("Loading service settings")
 	// Check if service settings for debug service is ready
 	if settingsmgr.DebugService(settings.ServiceAdmin) {

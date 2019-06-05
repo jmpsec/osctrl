@@ -1416,20 +1416,12 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 // Handler GET requests for /users
 func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	vars := mux.Vars(r)
-	// Extract service
-	serviceVar, ok := vars["service"]
-	if !ok {
-		log.Println("error getting service")
-		return
-	}
-	// Verify service
-	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
-		log.Printf("error unknown service (%s)", serviceVar)
-		return
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"pastTimeAgo": pastTimeAgo,
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
+	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(
 		"tmpl_admin/users.html",
 		"tmpl_admin/components/page-head.html",
 		"tmpl_admin/components/page-js.html",
@@ -1454,15 +1446,14 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get current users
-	users, err := settingsmgr.RetrieveValues(serviceVar)
+	users, err := usersmgr.All()
 	if err != nil {
-		log.Printf("error getting settings: %v", err)
+		log.Printf("error getting users: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:          "Manage users",
-		Service:        serviceVar,
 		Contexts:       contexts,
 		Platforms:      platforms,
 		CurrentUsers:   users,
@@ -1491,28 +1482,21 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
 	}
-	var s SettingsRequest
+	var u UsersRequest
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&s)
+	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		log.Printf("%s %v", responseMessage, err)
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(s.CSRFToken) {
-			switch s.Action {
+		if checkCSRFToken(u.CSRFToken) {
+			switch u.Action {
 			case "add":
-				// FIXME verify type
-				var err error
-				switch s.Type {
-				case settings.TypeBoolean:
-					err = settingsmgr.NewBooleanValue(serviceVar, s.Name, stringToBoolean(s.Value))
-				case settings.TypeInteger:
-					err = settingsmgr.NewIntegerValue(serviceVar, s.Name, stringToInteger(s.Value))
-				case settings.TypeString:
-					err = settingsmgr.NewStringValue(serviceVar, s.Name, s.Value)
-				}
+				// FIXME password complexity?
+				// FIXME check if users exists
+				_, err = usersmgr.New(u.Username, u.Password, u.Fullname, u.Admin)
 				if err != nil {
 					responseMessage = "error adding setting"
 					responseCode = http.StatusInternalServerError
@@ -1520,26 +1504,9 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					responseMessage = "Setting added successfully"
 				}
-			case "debug":
-				err := settingsmgr.SetBoolean(s.Boolean, serviceVar, settings.DebugHTTP)
-				if err != nil {
-					responseMessage = "error changing DebugHTTP"
-					responseCode = http.StatusInternalServerError
-					log.Printf("%s %v", responseMessage, err)
-				} else {
-					responseMessage = "DebugHTTP changed successfully"
-				}
-			case "change":
-				// FIXME verify type
-				var err error
-				switch s.Type {
-				case settings.TypeBoolean:
-					err = settingsmgr.SetBoolean(s.Boolean, serviceVar, s.Name)
-				case settings.TypeInteger:
-					err = settingsmgr.SetInteger(stringToInteger(s.Value), serviceVar, s.Name)
-				case settings.TypeString:
-					err = settingsmgr.SetString(s.Value, serviceVar, s.Name)
-				}
+			case "remove":
+				// FIXME check if users exists
+				err = usersmgr.Delete(u.Username)
 				if err != nil {
 					responseMessage = "error changing setting"
 					responseCode = http.StatusInternalServerError

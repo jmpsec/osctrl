@@ -42,34 +42,23 @@
                 <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
-                      <th width="20%">Name</th>
-                      <th width="20%">Type</th>
-                      <th width="60%">Value</th>
+                      <th width="10%">Username</th>
+                      <th width="13%">Fullname</th>
+                      <th width="7%">Admin?</th>
+                      <th width="10%">IP Address</th>
+                      <th width="30%">User Agent</th>
+                      <th width="20%">Last Access</th>
                     </tr>
                   </thead>
                   <tbody>
-                  {{range  $i, $e := $.CurrentSettings}}
+                  {{range  $i, $e := $.CurrentUsers}}
                     <tr>
-                      <td>{{ $e.Name }}</td>
-                      <td>{{ $e.Type }}</td>
-                      {{ if eq $e.Type "integer" }}
-                      <td>
-                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Integer }}</p>
-                      </td>
-                      {{ end }}
-                      {{ if eq $e.Type "string" }}
-                      <td>
-                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.String }}</p>
-                      </td>
-                      {{ end }}
-                      {{ if eq $e.Type "boolean" }}
-                      <td>
-                        <label class="switch switch-label switch-pill switch-success switch-sm">
-                          <input id="{{ $e.Name }}" class="switch-input" type="checkbox" onclick="changeBooleanSetting({{ $e.Name }});" {{ if $e.Boolean }} checked {{ end }}>
-                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-                        </label>
-                      </td>
-                      {{ end }}
+                      <td>{{ $e.Username }}</td>
+                      <td>{{ $e.Fullname }}</td>
+                      <td>{{ $e.Admin }}</td>
+                      <td>{{ $e.LastIPAddress }}</td>
+                      <td>{{ $e.LastUserAgent }}</td>
+                      <td>{{ pastTimeAgo $e.LastAccess }}</td>
                     </tr>
                   {{ end }}
                   </tbody>
@@ -77,40 +66,36 @@
               </div>
             </div>
 
-            <div class="modal fade" id="addSettingModal" tabindex="-1" role="dialog" aria-labelledby="addSettingModal" aria-hidden="true">
+            <div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModal" aria-hidden="true">
               <div class="modal-dialog modal-lg modal-dark" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h4 class="modal-title">Add new setting</h4>
+                    <h4 class="modal-title">Add new user</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
                   </div>
                   <div class="modal-body">
                     <div class="form-group row">
-                      <label class="col-md-2 col-form-label" for="setting_name">Name: </label>
+                      <label class="col-md-2 col-form-label" for="user_username">Username: </label>
                       <div class="col-md-4">
-                        <input class="form-control" name="setting_name" id="setting_name" type="text" autocomplete="off"
-                          autofocus>
+                        <input class="form-control" name="user_username" id="user_username" type="text" autocomplete="off" autofocus>
                       </div>
-                      <label class="col-md-2 col-form-label" for="setting_type">Type: </label>
+                      <label class="col-md-2 col-form-label" for="user_password">Password: </label>
                       <div class="col-md-4">
-                        <select class="form-control" id="setting_type" name="setting_type">
-                          <option value="integer">Integer</option>
-                          <option value="boolean">Boolean</option>
-                          <option value="string">String</option>
-                        </select>
+                        <input class="form-control" name="user_password" id="user_password" type="password" autocomplete="off">
                       </div>
+
                     </div>
                     <div class="form-group row">
-                      <label class="col-md-2 col-form-label" for="setting_value">Value: </label>
-                      <div class="col-md-10">
-                        <input class="form-control" name="setting_value" id="setting_value" type="text" autocomplete="off">
+                      <label class="col-md-2 col-form-label" for="user_fullname">Fullname: </label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="user_fullname" id="user_fullname" type="text" autocomplete="off">
                       </div>
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmAddSetting();">Add</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmAddUser();">Add</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>
@@ -134,42 +119,11 @@
 
     <!-- custom JS -->
     <script src="/static/js/functions.js"></script>
-    <script src="/static/js/settings.js"></script>
+    <script src="/static/js/users.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
-        // Editable fields
-        $(".editable-field").editable(function(value, settings) {
-			    var data = {
-            csrftoken: $("#csrftoken").val(),
-            action: 'change',
-            name: $(this).attr('id'),
-            type: $(this).attr('data-type'),
-            value: value,
-          };
-          sendPostRequest(data, window.location.pathname, '', false);
-          return value;
-		    }, {
-          indicator : "<img src='/static/img/spinner.svg' />",
-          type : "text",
-          // only limit to three letters example
-          //pattern: "[A-Za-z]{3}",
-          onedit : function() { console.log('If I return false edition will be canceled'); return true;},
-          cancel : 'Cancel',
-          cssclass : 'editable-class',
-          cancelcssclass : 'btn btn-danger',
-          submitcssclass : 'btn btn-success',
-          maxlength : 200,
-          // select all text
-          select : true,
-          label : '',
-          showfn : function(elem) { elem.fadeIn('slow') },
-          submit : 'Save',
-          tooltip : "Click to edit...",
-          width : 160
-        });
-
         // Enable all tooltips
         $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
 

@@ -5,6 +5,7 @@ import (
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/users"
 )
 
 // JSONConfigurationDB to hold all backend configuration values
@@ -157,10 +158,9 @@ type SettingsTemplateData struct {
 // UsersTemplateData for passing data to the settings template
 type UsersTemplateData struct {
 	Title          string
-	Service        string
 	Contexts       []ctx.TLSContext
 	Platforms      []string
-	CurrentUsers   []settings.SettingValue
+	CurrentUsers   []users.AdminUser
 	AdminDebugHTTP bool
 }
 
@@ -264,6 +264,16 @@ type ContextsRequest struct {
 	Type      string `json:"type"`
 	Icon      string `json:"icon"`
 	DebugHTTP bool   `json:"debughttp"`
+}
+
+// UsersRequest to receive user action requests
+type UsersRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Action    string `json:"action"`
+	Username  string `json:"username"`
+	Fullname  string `json:"fullname"`
+	Password  string `json:"password"`
+	Admin     bool   `json:"admin"`
 }
 
 // AdminResponse to be returned to requests
