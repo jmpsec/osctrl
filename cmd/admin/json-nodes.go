@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/pkg/settings"
 )
 
 // Define targets to be used
@@ -37,7 +38,7 @@ type NodeJSON struct {
 
 // Handler for JSON endpoints by context
 func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -98,7 +99,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON endpoints by platform
 func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	platform, ok := vars["platform"]

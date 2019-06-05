@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/pkg/settings"
 )
 
 // Define targets to be used
@@ -41,7 +42,7 @@ type QueryJSON struct {
 
 // Handler for JSON queries by target
 func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract target
 	target, ok := vars["target"]

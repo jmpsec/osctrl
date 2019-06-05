@@ -22,6 +22,14 @@ type JSONConfigurationAdmin struct {
 	Port     string `json:"port"`
 	Host     string `json:"host"`
 	Auth     string `json:"auth"`
+	Logging  string `json:"logging"`
+}
+
+// JSONConfigurationUsers to hold all Admin users
+type JSONConfigurationUsers struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Admin    bool   `json:"admin"`
 }
 
 // JSONConfigurationSAML to keep all SAML details for auth
@@ -144,6 +152,16 @@ type SettingsTemplateData struct {
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
 	AdminDebugHTTP  bool
+}
+
+// UsersTemplateData for passing data to the settings template
+type UsersTemplateData struct {
+	Title          string
+	Service        string
+	Contexts       []ctx.TLSContext
+	Platforms      []string
+	CurrentUsers   []settings.SettingValue
+	AdminDebugHTTP bool
 }
 
 // LocationData to hold all location related data, when enabled

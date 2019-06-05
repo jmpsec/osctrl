@@ -31,12 +31,8 @@ import (
 const (
 	// Project name
 	projectName string = "osctrl"
-	// TLS service
-	serviceTLS string = "tls"
-	// Admin service
-	serviceAdmin string = "admin"
 	// Service name
-	serviceNameAdmin string = projectName + "-" + serviceAdmin
+	serviceNameAdmin string = projectName + "-" + settings.ServiceAdmin
 	// Service version
 	serviceVersion string = "0.0.1"
 	// Default endpoint to handle HTTP testing
@@ -49,12 +45,6 @@ const (
 	osqueryTablesVersion string = "3.3.0"
 	// JSON file with osquery tables data
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
-	// No login
-	noAuthLogin string = "none"
-	// Local login
-	localAuthLogin string = "local"
-	// SAML login
-	samlAuthLogin string = "saml"
 	// Static files folder
 	staticFilesFolder string = "./static"
 )
@@ -94,8 +84,8 @@ func loadConfiguration() error {
 		return err
 	}
 	// Load configuration for the auth method
-	if adminConfig.Auth == "saml" {
-		samlRaw := viper.Sub("saml")
+	if adminConfig.Auth == settings.AuthSAML {
+		samlRaw := viper.Sub(settings.AuthSAML)
 		err = samlRaw.Unmarshal(&samlConfig)
 		if err != nil {
 			return err
@@ -156,7 +146,7 @@ func init() {
 		log.Fatalf("Error loading configuration %s", err)
 	}
 	// Generate cookie store with proper options
-	if adminConfig.Auth != noAuthLogin {
+	if adminConfig.Auth != settings.AuthNone {
 		storeKey = securecookie.GenerateRandomKey(32)
 		store = sessions.NewCookieStore(storeKey)
 		store.Options = &sessions.Options{
@@ -175,6 +165,7 @@ func init() {
 
 // Go go!
 func main() {
+	log.Println("Loading DB")
 	// Database handler
 	db = getDB()
 	// Close when exit
@@ -199,28 +190,42 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
+	log.Println("Loading service settings")
 	// Check if service settings for debug service is ready
-	if !settingsmgr.IsValue(serviceAdmin, settings.DebugService) {
-		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.DebugService, false); err != nil {
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Initializing settings")
+	}
+	// Check if service settings for debug service is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DebugService) {
+		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.DebugService, false); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.DebugService, err)
 		}
 	}
 	// Check if service settings for debug HTTP is ready
-	if !settingsmgr.IsValue(serviceAdmin, settings.DebugHTTP) {
-		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.DebugHTTP, false); err != nil {
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DebugHTTP) {
+		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.DebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
 		}
 	}
-	// Check if service settings for metrics
-	if !settingsmgr.IsValue(serviceAdmin, settings.ServiceMetrics) {
-		if err := settingsmgr.NewBooleanValue(serviceAdmin, settings.ServiceMetrics, false); err != nil {
+	// Check if service settings for metrics is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics) {
+		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
+		}
+	}
+	// Check if service settings for default context is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DefaultContext) {
+		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.DefaultContext, "dev"); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DefaultContext, err)
 		}
 	}
 	// multiple listeners channel
 	finish := make(chan bool)
 	// Start SAML Middleware if we are using SAML
-	if adminConfig.Auth == samlAuthLogin {
+	if adminConfig.Auth == settings.AuthSAML {
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: SAML keypair")
+		}
 		// Load Keypair to Sign SAML Request.
 		var err error
 		var rootURL *url.URL
@@ -254,12 +259,20 @@ func main() {
 		}
 	}
 
-	/////////////////////////// UNAUTHENTICATED CONTENT
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Creating router")
+	}
 
 	// Create router for admin
 	routerAdmin := mux.NewRouter()
+
+	/////////////////////////// UNAUTHENTICATED CONTENT
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Unauthenticated content")
+	}
+
 	// Admin: login only if local auth is enabled
-	if adminConfig.Auth == localAuthLogin {
+	if adminConfig.Auth != settings.AuthNone {
 		// login
 		routerAdmin.HandleFunc("/login", loginGETHandler).Methods("GET")
 		routerAdmin.HandleFunc("/login", loginPOSTHandler).Methods("POST")
@@ -275,8 +288,13 @@ func main() {
 	// Admin: static
 	routerAdmin.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
+	// Admin: Packages to enroll
+	//routerAdmin.HandleFunc("/package/{context}/{platform}", packageHandler).Methods("GET")
 
 	/////////////////////////// AUTHENTICATED CONTENT
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Authenticated content")
+	}
 
 	// Admin: JSON data for contexts
 	routerAdmin.Handle("/json/context/{context}/{target}", handlerAuthCheck(http.HandlerFunc(jsonContextHandler))).Methods("GET")
@@ -327,11 +345,14 @@ func main() {
 	// Admin: manage contexts
 	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsGETHandler))).Methods("GET")
 	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsPOSTHandler))).Methods("POST")
-	// Admin: Packages to enroll
-	//routerAdmin.Handle("/package/{context}/{platform}", handlerAuthCheck(http.HandlerFunc(packageHandler))).Methods("GET")
+	// Admin: manage users if authentication is enabled
+	if adminConfig.Auth != settings.AuthNone {
+		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
+		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
+	}
 
 	// SAML ACS
-	if adminConfig.Auth == samlAuthLogin {
+	if adminConfig.Auth == settings.AuthNone {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
 

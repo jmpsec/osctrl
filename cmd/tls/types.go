@@ -23,6 +23,7 @@ type JSONConfigurationTLS struct {
 	Port     string `json:"port"`
 	Host     string `json:"host"`
 	Auth     string `json:"auth"`
+	Logging  string `json:"logging"`
 }
 
 // JSONConfigurationLogging to keep all the logging configuration values

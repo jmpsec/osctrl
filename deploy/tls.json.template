@@ -3,7 +3,8 @@
     "listener": "127.0.0.1",
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
-    "auth": "none"
+    "auth": "db",
+    "logging": "db"
   },
   "db": {
     "host": "_DB_HOST",

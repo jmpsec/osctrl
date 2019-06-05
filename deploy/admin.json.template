@@ -3,7 +3,8 @@
     "listener": "127.0.0.1",
     "port": "_ADMIN_PORT",
     "host": "_ADMIN_HOST",
-    "auth": "local"
+    "auth": "db",
+    "logging": "db"
   },
   "db": {
     "host": "_DB_HOST",

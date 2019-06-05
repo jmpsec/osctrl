@@ -20,6 +20,25 @@ const (
 	TypeInteger string = "integer"
 )
 
+// Types of authentication
+const (
+	AuthNone    string = "none"
+	AuthJSON    string = "json"
+	AuthDB      string = "db"
+	AuthSAML    string = "saml"
+	AuthHeaders string = "headers"
+)
+
+// Types of logging
+const (
+	LoggingNone    string = "none"
+	LoggingStdout  string = "stdout"
+	LoggingDB      string = "db"
+	LoggingGraylog string = "graylog"
+	LoggingSplunk  string = "splunk"
+	LoggingELK     string = "elk"
+)
+
 // Names for settings values
 const (
 	DebugHTTP       string = "debug_http"
@@ -30,6 +49,7 @@ const (
 	MetricsHost     string = "metrics_host"
 	MetricsPort     string = "metrics_port"
 	MetricsProtocol string = "metrics_protocol"
+	DefaultContext  string = "default_context"
 )
 
 // SettingValue to hold each value for settings
@@ -289,4 +309,14 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 		return 0
 	}
 	return value.Integer
+}
+
+// DefaultContext gets the default context
+// FIXME customize the fallover one
+func (conf *Settings) DefaultContext(service string) string {
+	value, err := conf.RetrieveValue(service, DefaultContext)
+	if err != nil {
+		return "dev"
+	}
+	return value.String
 }

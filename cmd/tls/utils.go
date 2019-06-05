@@ -18,6 +18,7 @@ import (
 
 	_ctx "github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/segmentio/ksuid"
 )
 
@@ -197,7 +198,7 @@ func isPublicIP(ip net.IP) bool {
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if settingsmgr.ServiceMetrics(serviceTLS) {
+	if settingsmgr.ServiceMetrics(settings.ServiceTLS) {
 		_metrics.Inc(name)
 	}
 }
@@ -216,7 +217,7 @@ func refreshContexts() {
 func refreshSettings() {
 	log.Printf("Refreshing settings...\n")
 	var err error
-	settingsmap, err = settingsmgr.GetMap(serviceTLS)
+	settingsmap, err = settingsmgr.GetMap(settings.ServiceTLS)
 	if err != nil {
 		log.Printf("error refreshing settings %v\n", err)
 	}

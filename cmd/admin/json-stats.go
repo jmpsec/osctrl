@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/settings"
 )
 
 // Define targets to be used
@@ -19,7 +20,7 @@ var (
 
 // Handler for platform/context stats in JSON
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]

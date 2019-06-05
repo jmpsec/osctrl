@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 
 	"github.com/gorilla/mux"
 )
@@ -27,7 +27,7 @@ const emptyConfiguration string = "data/osquery-empty.conf"
 
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
@@ -36,7 +36,7 @@ func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
@@ -45,7 +45,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the favicon
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 
 	w.Header().Set("Content-Type", "image/png")
 	http.ServeFile(w, r, "./static/favicon.png")
@@ -53,7 +53,7 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/login.html",
@@ -76,7 +76,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for login page for POST requests
 func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	var l LoginRequest
@@ -93,11 +93,10 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("New session - %v", err)
 		}
-		csrfToken := generateCSRF()
 		session.Values["authenticated"] = true
 		session.Values["user"] = l.Username
 		session.Values["admin"] = user.Admin
-		session.Values["csrftoken"] = csrfToken
+		session.Values["csrftoken"] = generateCSRF()
 		_ = session.Save(r, w)
 	} else {
 		responseMessage = "invalid credentials"
@@ -121,7 +120,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	var l LogoutRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&l)
@@ -163,19 +162,19 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the root path
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
-	// Redirect to table for all nodes
-	// FIXME there should not be static context
-	if ctxs.Exists("corp") {
-		http.Redirect(w, r, "/context/corp/all", http.StatusFound)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	// Redirect to table for active nodes in default context
+	defaultContext := settingsmgr.DefaultContext(settings.ServiceAdmin)
+	if ctxs.Exists(defaultContext) {
+		http.Redirect(w, r, "/context/"+defaultContext+"/active", http.StatusFound)
 	} else {
-		http.Redirect(w, r, "/context/dev/all", http.StatusFound)
+		http.Redirect(w, r, "/context/dev/active", http.StatusFound)
 	}
 }
 
 // Handler for context view of the table
 func contextHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	context, ok := vars["context"]
@@ -228,7 +227,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		Target:         target,
 		Contexts:       contexts,
 		Platforms:      platforms,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -238,7 +237,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for platform view of the table
 func platformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
@@ -287,7 +286,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		Target:         target,
 		Contexts:       contexts,
 		Platforms:      platforms,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -297,7 +296,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to run queries
 func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-run.html",
@@ -345,7 +344,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		Hosts:          hosts,
 		Tables:         osqueryTables,
 		TablesVersion:  osqueryTablesVersion,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -357,7 +356,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -459,7 +458,7 @@ response:
 
 // Handler for GET requests to queries
 func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/queries.html",
@@ -498,7 +497,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:      platforms,
 		Queries:        qs,
 		Target:         "all",
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -511,7 +510,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var q DistributedQueryActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -571,7 +570,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests to see query results by name
 func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -624,7 +623,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:      platforms,
 		Query:          query,
 		QueryTargets:   targets,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -634,7 +633,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /conf
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	contextVar, ok := vars["context"]
@@ -684,7 +683,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		Context:        ctx,
 		Contexts:       contexts,
 		Platforms:      platforms,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -694,7 +693,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /enroll
 func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract context
 	contextVar, ok := vars["context"]
@@ -756,7 +755,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		QuickRemovePowershell: powershellQuickRemove,
 		Contexts:              contexts,
 		Platforms:             platforms,
-		AdminDebugHTTP:        settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP:        settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -768,7 +767,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract context
 	contextVar, ok := vars["context"]
@@ -828,7 +827,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract context
 	contextVar, ok := vars["context"]
@@ -882,7 +881,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract context
 	contextVar, ok := vars["context"]
@@ -962,7 +961,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -1027,7 +1026,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:      platforms,
 		LocationShow:   false,
 		Location:       LocationData{},
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1039,7 +1038,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var m NodeMultiActionRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&m)
@@ -1093,7 +1092,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -1143,7 +1142,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /contexts
 func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/contexts.html",
@@ -1174,7 +1173,7 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:          "Manage contexts",
 		Contexts:       contexts,
 		Platforms:      platforms,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1186,7 +1185,7 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var c ContextsRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&c)
@@ -1262,7 +1261,7 @@ func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /settings
 func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), false)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
@@ -1271,7 +1270,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Verify service
-	if serviceVar != serviceTLS && serviceVar != serviceAdmin {
+	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
 	}
@@ -1308,12 +1307,12 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := SettingsTemplateData{
-		Title:          "Manage settings",
-		Service:        serviceVar,
-		Contexts:       contexts,
-		Platforms:      platforms,
+		Title:           "Manage settings",
+		Service:         serviceVar,
+		Contexts:        contexts,
+		Platforms:       platforms,
 		CurrentSettings: _settings,
-		AdminDebugHTTP: settingsmgr.DebugHTTP(serviceAdmin),
+		AdminDebugHTTP:  settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Printf("template error %v", err)
@@ -1321,11 +1320,11 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler for POST request for settings
+// Handler for POST request for /settings
 func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(serviceAdmin), true)
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
@@ -1334,7 +1333,161 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Verify service
-	if serviceVar != serviceTLS && serviceVar != serviceAdmin {
+	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+		log.Printf("error unknown service (%s)", serviceVar)
+		return
+	}
+	var s SettingsRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&s)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(s.CSRFToken) {
+			switch s.Action {
+			case "add":
+				// FIXME verify type
+				var err error
+				switch s.Type {
+				case settings.TypeBoolean:
+					err = settingsmgr.NewBooleanValue(serviceVar, s.Name, stringToBoolean(s.Value))
+				case settings.TypeInteger:
+					err = settingsmgr.NewIntegerValue(serviceVar, s.Name, stringToInteger(s.Value))
+				case settings.TypeString:
+					err = settingsmgr.NewStringValue(serviceVar, s.Name, s.Value)
+				}
+				if err != nil {
+					responseMessage = "error adding setting"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				} else {
+					responseMessage = "Setting added successfully"
+				}
+			case "debug":
+				err := settingsmgr.SetBoolean(s.Boolean, serviceVar, settings.DebugHTTP)
+				if err != nil {
+					responseMessage = "error changing DebugHTTP"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				} else {
+					responseMessage = "DebugHTTP changed successfully"
+				}
+			case "change":
+				// FIXME verify type
+				var err error
+				switch s.Type {
+				case settings.TypeBoolean:
+					err = settingsmgr.SetBoolean(s.Boolean, serviceVar, s.Name)
+				case settings.TypeInteger:
+					err = settingsmgr.SetInteger(stringToInteger(s.Value), serviceVar, s.Name)
+				case settings.TypeString:
+					err = settingsmgr.SetString(s.Value, serviceVar, s.Name)
+				}
+				if err != nil {
+					responseMessage = "error changing setting"
+					responseCode = http.StatusInternalServerError
+					log.Printf("%s %v", responseMessage, err)
+				} else {
+					responseMessage = "Setting changed successfully"
+				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+}
+
+// Handler GET requests for /users
+func usersGETHandler(w http.ResponseWriter, r *http.Request) {
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract service
+	serviceVar, ok := vars["service"]
+	if !ok {
+		log.Println("error getting service")
+		return
+	}
+	// Verify service
+	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+		log.Printf("error unknown service (%s)", serviceVar)
+		return
+	}
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/users.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		log.Printf("error getting contexts template: %v", err)
+		return
+	}
+	// Get stats for all contexts
+	contexts, err := ctxs.All()
+	if err != nil {
+		log.Printf("error getting contexts %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get current users
+	users, err := settingsmgr.RetrieveValues(serviceVar)
+	if err != nil {
+		log.Printf("error getting settings: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := UsersTemplateData{
+		Title:          "Manage users",
+		Service:        serviceVar,
+		Contexts:       contexts,
+		Platforms:      platforms,
+		CurrentUsers:   users,
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Printf("template error %v", err)
+		return
+	}
+}
+
+// Handler for POST request for /users
+func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	vars := mux.Vars(r)
+	// Extract service
+	serviceVar, ok := vars["service"]
+	if !ok {
+		log.Println("error getting service")
+		return
+	}
+	// Verify service
+	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
 	}
