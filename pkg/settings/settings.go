@@ -50,6 +50,7 @@ const (
 	MetricsPort     string = "metrics_port"
 	MetricsProtocol string = "metrics_protocol"
 	DefaultContext  string = "default_context"
+	
 )
 
 // SettingValue to hold each value for settings

@@ -76,6 +76,8 @@ type TableTemplateData struct {
 	Target         string
 	Contexts       []ctx.TLSContext
 	Platforms      []string
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -85,6 +87,8 @@ type ConfTemplateData struct {
 	Context        ctx.TLSContext
 	Contexts       []ctx.TLSContext
 	Platforms      []string
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -102,6 +106,8 @@ type EnrollTemplateData struct {
 	QuickRemovePowershell string
 	Contexts              []ctx.TLSContext
 	Platforms             []string
+	TLSDebug              bool
+	AdminDebug            bool
 	AdminDebugHTTP        bool
 }
 
@@ -114,6 +120,8 @@ type QueryRunTemplateData struct {
 	Hosts          []string
 	Tables         []OsqueryTable
 	TablesVersion  string
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -124,6 +132,8 @@ type QueryTableTemplateData struct {
 	Platforms      []string
 	Target         string
 	Queries        []queries.DistributedQuery
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -134,6 +144,8 @@ type QueryLogsTemplateData struct {
 	Platforms      []string
 	Query          queries.DistributedQuery
 	QueryTargets   []queries.DistributedQueryTarget
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -142,6 +154,8 @@ type ContextsTemplateData struct {
 	Title          string
 	Contexts       []ctx.TLSContext
 	Platforms      []string
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
@@ -152,6 +166,8 @@ type SettingsTemplateData struct {
 	Contexts        []ctx.TLSContext
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
+	TLSDebug        bool
+	AdminDebug      bool
 	AdminDebugHTTP  bool
 }
 
@@ -161,13 +177,9 @@ type UsersTemplateData struct {
 	Contexts       []ctx.TLSContext
 	Platforms      []string
 	CurrentUsers   []users.AdminUser
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
-}
-
-// LocationData to hold all location related data, when enabled
-type LocationData struct {
-	GoogleMapsURL string
-	LastLocation  nodes.GeoLocationIPAddress
 }
 
 // NodeTemplateData for passing data to the query template
@@ -177,8 +189,8 @@ type NodeTemplateData struct {
 	Node           nodes.OsqueryNode
 	Contexts       []ctx.TLSContext
 	Platforms      []string
-	Location       LocationData
-	LocationShow   bool
+	TLSDebug       bool
+	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 

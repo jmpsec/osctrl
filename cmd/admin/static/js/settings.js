@@ -21,6 +21,32 @@ function confirmAddSetting() {
   sendPostRequest(data, _url, _url, false);
 }
 
+function confirmDeleteSetting(_name) {
+  var modal_message = 'Are you sure you want to delete the setting ' + _name + '?';
+  $("#confirmModalMessage").text(modal_message);
+  $('#confirm_action').click(function () {
+    $('#confirmModal').modal('hide');
+    deleteSetting(_name);
+  });
+  $("#confirmModal").modal();
+}
+
+function deleteSetting(_name) {
+  var _csrftoken = $("#csrftoken").val();
+
+  var _url = window.location.pathname;
+
+  var _type = $("#setting_type").val();
+  var _value = $("#setting_value").val();
+
+  var data = {
+    csrftoken: _csrftoken,
+    action: 'delete',
+    name: _name,
+  };
+  sendPostRequest(data, _url, _url, false);
+}
+
 function changeBooleanSetting(_name) {
   var _csrftoken = $("#csrftoken").val();
   var _value = $("#" + _name).is(':checked');
@@ -37,16 +63,18 @@ function changeBooleanSetting(_name) {
   sendPostRequest(data, _url, '', false);
 }
 
-function changeDebugAdmin() {
+function changeDebug(_name, service) {
   var _csrftoken = $("#csrftoken").val();
-  var _value = $("#admin_debug_check").is(':checked');
+  var _value = $("#" + _name + '_' + service).is(':checked');
 
-  var _url = '/settings/admin';
+  var _url = '/settings/' + service;
 
   var data = {
     csrftoken: _csrftoken,
-    action: 'debug',
-    debughttp: _value,
+    action: 'change',
+    name: _name,
+    type: 'boolean',
+    boolean: _value,
   };
   sendPostRequest(data, _url, '', false);
 }
