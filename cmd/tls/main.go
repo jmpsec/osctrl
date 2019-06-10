@@ -45,7 +45,7 @@ const (
 
 // Global variables
 var (
-	tlsConfig      JSONConfigurationTLS
+	tlsConfig      JSONConfigurationService
 	db             *gorm.DB
 	settingsmgr    *settings.Settings
 	ctxs           *context.Context
@@ -58,7 +58,6 @@ var (
 	filecarves     *carves.Carves
 	_metrics       *metrics.Metrics
 	dbConfig       JSONConfigurationDB
-	logConfig      JSONConfigurationLogging
 )
 
 // Function to load the configuration file and assign to variables
@@ -79,12 +78,6 @@ func loadConfiguration() error {
 	// Backend values
 	dbRaw := viper.Sub("db")
 	err = dbRaw.Unmarshal(&dbConfig)
-	if err != nil {
-		return err
-	}
-	// Logging values
-	loggingRaw := viper.Sub("logging")
-	err = loggingRaw.Unmarshal(&logConfig)
 	if err != nil {
 		return err
 	}

@@ -25,7 +25,7 @@ The most basic `tls.json` configuration file will have the following format:
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
     "auth": "none",
-    "logging": ""
+    "logging": "stdout"
   },
   "db": {
     "host": "_DB_HOST",
@@ -33,25 +33,11 @@ The most basic `tls.json` configuration file will have the following format:
     "name": "_DB_NAME",
     "username": "_DB_USERNAME",
     "password": "_DB_PASSWORD"
-  },
-  "logging": {
-    "graylog": false,
-    "graylogcfg": {
-      "url": ""
-    },
-    "splunk": false,
-    "splunkcfg": {
-      "url": "",
-      "token": "",
-      "search": "results_for_{{NAME}}"
-    },
-    "stdout": false,
-    "postgres": true
   }
 }
 ```
 
-And for `admin.json` it will look like this:
+And for `admin.json` it will look very similar:
 
 ```json
 {
@@ -60,7 +46,7 @@ And for `admin.json` it will look like this:
     "port": "_ADMIN_PORT",
     "host": "_ADMIN_HOST",
     "auth": "local",
-    "logging": ""
+    "logging": "stdout"
   },
   "db": {
     "host": "_DB_HOST",
@@ -68,20 +54,6 @@ And for `admin.json` it will look like this:
     "name": "_DB_NAME",
     "username": "_DB_USERNAME",
     "password": "_DB_PASSWORD"
-  },
-  "logging": {
-    "graylog": false,
-    "graylogcfg": {
-      "url": ""
-    },
-    "splunk": false,
-    "splunkcfg": {
-      "url": "",
-      "token": "",
-      "search": "results_for_{{NAME}}"
-    },
-    "stdout": false,
-    "postgres": true
   }
 }
 ```

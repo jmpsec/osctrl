@@ -17,13 +17,14 @@ type JSONConfigurationDB struct {
 	Password string `json:"password"`
 }
 
-// JSONConfigurationAdmin to hold all Admin configuration values
-type JSONConfigurationAdmin struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Logging  string `json:"logging"`
+// JSONConfigurationService to hold all service configuration values
+type JSONConfigurationService struct {
+	Listener   string                   `json:"listener"`
+	Port       string                   `json:"port"`
+	Host       string                   `json:"host"`
+	Auth       string                   `json:"auth"`
+	Logging    string                   `json:"logging"`
+	LoggingCfg LoggingConfigurationData `json:"loggingcfg"`
 }
 
 // JSONConfigurationUsers to hold all Admin users
@@ -39,16 +40,6 @@ type JSONConfigurationSAML struct {
 	KeyPath     string `json:"keypath"`
 	MetaDataURL string `json:"metadataurl"`
 	RootURL     string `json:"rooturl"`
-}
-
-// JSONConfigurationLogging to keep all the logging configuration values
-type JSONConfigurationLogging struct {
-	Stdout     bool                     `json:"stdout"`
-	Graylog    bool                     `json:"graylog"`
-	GraylogCfg LoggingConfigurationData `json:"graylogcfg"`
-	Splunk     bool                     `json:"splunk"`
-	SplunkCfg  LoggingConfigurationData `json:"slunkcfg"`
-	Postgres   bool                     `json:"postgres"`
 }
 
 // LoggingConfigurationData to keep a map with details for each logging entry
@@ -185,7 +176,7 @@ type UsersTemplateData struct {
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title          string
-	PostgresLogs   bool
+	Logs           string
 	Node           nodes.OsqueryNode
 	Contexts       []ctx.TLSContext
 	Platforms      []string

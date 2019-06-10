@@ -12,19 +12,5 @@
     "name": "_DB_NAME",
     "username": "_DB_USERNAME",
     "password": "_DB_PASSWORD"
-  },
-  "logging": {
-    "graylog": false,
-    "graylogcfg": {
-      "url": ""
-    },
-    "splunk": false,
-    "splunkcfg": {
-      "url": "",
-      "token": "",
-      "search": "results_for_{{NAME}}"
-    },
-    "stdout": false,
-    "postgres": true
   }
 }

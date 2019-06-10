@@ -17,23 +17,14 @@ type JSONConfigurationDB struct {
 	Password string `json:"password"`
 }
 
-// JSONConfigurationTLS to hold all TLS endpoint configuration values
-type JSONConfigurationTLS struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Logging  string `json:"logging"`
-}
-
-// JSONConfigurationLogging to keep all the logging configuration values
-type JSONConfigurationLogging struct {
-	Stdout     bool                     `json:"stdout"`
-	Graylog    bool                     `json:"graylog"`
-	GraylogCfg LoggingConfigurationData `json:"graylogcfg"`
-	Splunk     bool                     `json:"splunk"`
-	SplunkCfg  LoggingConfigurationData `json:"slunkcfg"`
-	Postgres   bool                     `json:"postgres"`
+// JSONConfigurationService to hold all service configuration values
+type JSONConfigurationService struct {
+	Listener   string                   `json:"listener"`
+	Port       string                   `json:"port"`
+	Host       string                   `json:"host"`
+	Auth       string                   `json:"auth"`
+	Logging    string                   `json:"logging"`
+	LoggingCfg LoggingConfigurationData `json:"loggingcfg"`
 }
 
 // LoggingConfigurationData to keep a map with details for each logging entry

@@ -6,6 +6,7 @@ require (
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/crewjam/saml v0.0.0-20190508002657-ca21de9dd5b9
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux v1.7.2
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3

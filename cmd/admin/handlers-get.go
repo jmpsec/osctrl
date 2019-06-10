@@ -556,8 +556,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := NodeTemplateData{
-		Title:          "Node View " + node.UUID,
-		PostgresLogs:   logConfig.Postgres,
+		Title:          "Node View " + node.Hostname,
+		Logs:           adminConfig.Logging,
 		Node:           node,
 		Contexts:       contexts,
 		Platforms:      platforms,

@@ -16,6 +16,15 @@ const (
 	SplunkIndex = "osquery"
 )
 
+// JSONConfigurationSplunk to hold all TLS endpoint configuration values
+type JSONConfigurationSplunk struct {
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
+	Logging  string `json:"logging"`
+}
+
 // SplunkMessage to handle log format to be sent to Splunk
 type SplunkMessage struct {
 	Time       int64       `json:"time"`

@@ -12,6 +12,7 @@ import (
 	"github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/javuto/osctrl/pkg/settings"
 )
 
 const (
@@ -337,16 +338,15 @@ func processLogs(data json.RawMessage, logType, context, ipaddress string) {
 // Helper to dispatch logs
 func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, context string) {
 	// Send data to storage
-	if logConfig.Graylog {
-		go graylogSend(data, context, logType, uuid, logConfig.GraylogCfg)
-	}
-	if logConfig.Splunk {
-		go splunkSend(data, context, logType, uuid, logConfig.SplunkCfg)
-	}
-	if logConfig.Postgres {
+	// FIXME allow multiple types of logging
+	switch tlsConfig.Logging {
+	case settings.LoggingGraylog:
+		go graylogSend(data, context, logType, uuid, tlsConfig.LoggingCfg)
+	case settings.LoggingSplunk:
+		go splunkSend(data, context, logType, uuid, tlsConfig.LoggingCfg)
+	case settings.LoggingDB:
 		go postgresLog(data, context, logType, uuid)
-	}
-	if logConfig.Stdout {
+	case settings.LoggingStdout:
 		log.Printf("LOG: %s from context %s : %s", logType, context, string(data))
 	}
 	// Use metadata to update record
@@ -377,16 +377,15 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 		log.Printf("error preparing data %v", err)
 	}
 	// Send data to storage
-	if logConfig.Graylog {
-		go graylogSend(data, node.Context, queryLog, node.UUID, logConfig.GraylogCfg)
-	}
-	if logConfig.Splunk {
-		go splunkSend(data, node.Context, queryLog, node.UUID, logConfig.SplunkCfg)
-	}
-	if logConfig.Postgres {
+	// FIXME allow multiple types of logging
+	switch tlsConfig.Logging {
+	case settings.LoggingGraylog:
+		go graylogSend(data, node.Context, queryLog, node.UUID, tlsConfig.LoggingCfg)
+	case settings.LoggingSplunk:
+		go splunkSend(data, node.Context, queryLog, node.UUID, tlsConfig.LoggingCfg)
+	case settings.LoggingDB:
 		go postgresQuery(data, queryData.Name, node, queryData.Status)
-	}
-	if logConfig.Stdout {
+	case settings.LoggingStdout:
 		log.Printf("QUERY: %s from context %s : %s", "query", node.Context, string(data))
 	}
 	// Refresh last query write request

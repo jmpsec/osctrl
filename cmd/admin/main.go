@@ -51,7 +51,7 @@ const (
 
 // Global variables
 var (
-	adminConfig    JSONConfigurationAdmin
+	adminConfig    JSONConfigurationService
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
@@ -61,7 +61,6 @@ var (
 	usersmgr       *users.UserManager
 	ctxs           *context.Context
 	dbConfig       JSONConfigurationDB
-	logConfig      JSONConfigurationLogging
 	store          *sessions.CookieStore
 	adminUsers     *users.UserManager
 	// FIXME this is nasty and should not be a global but here we are
@@ -94,12 +93,6 @@ func loadConfiguration() error {
 	// Backend values
 	dbRaw := viper.Sub("db")
 	err = dbRaw.Unmarshal(&dbConfig)
-	if err != nil {
-		return err
-	}
-	// Logging values
-	loggingRaw := viper.Sub("logging")
-	err = loggingRaw.Unmarshal(&logConfig)
 	if err != nil {
 		return err
 	}

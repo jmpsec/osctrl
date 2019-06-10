@@ -54,12 +54,7 @@
                       <li class="nav-item">
                         <a class="nav-link active" data-toggle="tab" href="#details" role="tab" aria-controls="details">Details</a>
                       </li>
-                    {{ if $template.LocationShow }}
-                      <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#location" role="tab" aria-controls="location">Location</a>
-                      </li>
-                    {{ end }}
-                    {{ if $template.PostgresLogs }}
+                    {{ if eq $template.Logs "db" }}
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#status-logs" role="tab" aria-controls="status-logs">Status Logs</a>
                       </li>
@@ -270,26 +265,7 @@
 
                       </div>
 
-                    {{if $template.LocationShow }}
-                      <div class="tab-pane fade" id="location" role="tabpanel">
-                        <div class="row justify-content-center mb-4">
-                          <div class="col-md-2">
-                            <button type="button" class="btn btn-block btn-outline-secondary active disabled" data-toggle="button" aria-pressed="true" autocomplete="off">Last Location</button>
-                          </div>
-                          <div class="col-md-2">
-                            <button type="button" class="btn btn-block btn-outline-secondary disabled" data-toggle="button" aria-pressed="false" autocomplete="off">All Locations</button>
-                          </div>
-                          <div class="col-md-2">
-                            <button type="button" class="btn btn-block btn-outline-secondary disabled" data-toggle="button" aria-pressed="false" autocomplete="off">Heatmap</button>
-                          </div>
-                        </div>
-                        <div class="row">
-                          <div class="col-md-12" style="width: 100%; height: 640px;" id="location_map"></div>
-                        </div>
-                      </div>
-                    {{ end }}
-
-                    {{ if $template.PostgresLogs }}
+                    {{ if eq $template.Logs "db" }}
                       <div class="tab-pane fade" id="status-logs" role="tabpanel">
                         <div class="card mt-2">
                           <div id="status-card-header" class="card-header">
@@ -322,7 +298,7 @@
                       </div>
                     {{ end }}
 
-                    {{ if $template.PostgresLogs }}
+                    {{ if eq $template.Logs "db" }}
                       <div class="tab-pane fade" id="result-logs" role="tabpanel">
                         <div class="card mt-2">
                           <div id="result-card-header" class="card-header">
@@ -386,38 +362,8 @@
     <script src="/static/js/tables.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/stats.js"></script>
-  {{ if .LocationShow }}
-    {{ with .LastLocation }}
-    <script type="text/javascript">
-      var map, infoWindow;
-      function initMap() {
-        var last_location = {lat: {{ .Latitude }}, lng: {{ .Longitude }} };
-        map = new google.maps.Map(document.getElementById('location_map'), {
-          center: last_location,
-          zoom: 10
-        });
-        var content_string = '<b>IP Address:</b> {{ .IPAddress }}<br>' +
-          '<b>Country:</b> {{ .CountryName }} {{ .EmojiFlag }}<br>' +
-          '<b>City:</b> {{ .City }}<br>';
-          infoWindow = new google.maps.InfoWindow({
-          content: content_string
-        });
-        var marker = new google.maps.Marker({
-          position: last_location,
-          map: map,
-          title: 'Last Location'
-        });
-        marker.addListener('click', function() {
-          infoWindow.open(map, marker);
-        });
-        google.maps.event.trigger(marker, 'click');
-      }
-    </script>
-    <script async defer src="{{ .GoogleMapsURL }}"></script>
-    {{ end }}
-  {{ end }}
 
-  {{ if .PostgresLogs }}
+  {{ if eq .Logs "db" }}
     {{ with .Node }}
     <script type="text/javascript">
       $(document).ready(function() {
