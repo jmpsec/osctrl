@@ -11,8 +11,7 @@
 #   -T HOSTNAME     Hostname for the TLS endpoint service. Default is 127.0.0.1
 #   -o OUTPUT_FILE  Path to the output deb file. Default is osctrl.deb
 #   -d DIRECTORY    Directory to build the package filesystem. Default is osctrl
-#   -C CONTEXT      Context to use in the flagsfile. Default is dev
-#   -
+#   -e ENVIRONMENT  Environment to use in the flagsfile. Default is dev
 
 # How does it work?
 function usage() {
@@ -25,10 +24,10 @@ function usage() {
   printf "  -T HOSTNAME \tHostname for the TLS endpoint service. Default is 127.0.0.1\n"
   printf "  -o OUTPUT_FILE \tPath to the output deb file. Default is osctrl.deb\n"
   printf "  -d DIRECTORY \tDirectory to build the package filesystem. Default is osctrl\n"
-  printf "  -C CONTEXT   \tContext to use in the flagsfile. Default is dev\n"
-  printf "  -C CONTEXT   \tContext to use in the flagsfile. Default is dev\n"
-  printf "  -C CONTEXT   \tContext to use in the flagsfile. Default is dev\n"
-  printf "  -C CONTEXT   \tContext to use in the flagsfile. Default is dev\n"
+  printf "  -e ENVIRONMENT   \tEnvironment to use in the flagsfile. Default is dev\n"
+  printf "  -e ENVIRONMENT   \tEnvironment to use in the flagsfile. Default is dev\n"
+  printf "  -e ENVIRONMENT   \tEnvironment to use in the flagsfile. Default is dev\n"
+  printf "  -e ENVIRONMENT   \tEnvironment to use in the flagsfile. Default is dev\n"
   printf "\n"
 }
 
@@ -43,7 +42,7 @@ _CERTFILE="/etc/osquery/certs/osctrl.crt"
 _TLS_HOSTNAME="127.0.0.1"
 _OUTPUT_FILE="osctrl.deb"
 _SOURCE_DIR="osctrl"
-_CONTEXT="dev"
+_ENVIRONMENT="dev"
 
 # Extract arguments
 ARGS=$(getopt -n "$0" -o hx:c:T:o:d:C: -l "help" -- "$@")
@@ -77,7 +76,7 @@ while true; do
       shift 2
       ;;
     -C)
-      _CONTEXT=$2
+      _ENVIRONMENT=$2
       shift 2
       ;;
     --)

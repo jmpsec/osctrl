@@ -12,8 +12,8 @@ const (
 	QueryTargetPlatform string = "platform"
 	// QueryTargetLocalname defines localname as target
 	QueryTargetLocalname string = "localname"
-	// QueryTargetContext defines context as target
-	QueryTargetContext string = "context"
+	// QueryTargetEnvironment defines environment as target
+	QueryTargetEnvironment string = "environment"
 	// QueryTargetUUID defines uuid as target
 	QueryTargetUUID string = "uuid"
 	// StandardQueryType defines a regular query

@@ -13,12 +13,12 @@ import (
 // Define targets to be used
 var (
 	StatsTargets = map[string]bool{
-		"context":  true,
+		"environment":  true,
 		"platform": true,
 	}
 )
 
-// Handler for platform/context stats in JSON
+// Handler for platform/environment stats in JSON
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
@@ -43,8 +43,8 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get stats
 	var stats nodes.StatsData
 	var err error
-	if target == "context" {
-		stats, err = nodesmgr.GetStatsByContext(name)
+	if target == "environment" {
+		stats, err = nodesmgr.GetStatsByEnv(name)
 		if err != nil {
 			log.Printf("error getting stats %v", err)
 			return

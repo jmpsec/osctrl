@@ -1,4 +1,4 @@
-package context
+package environments
 
 import (
 	"bytes"
@@ -6,19 +6,19 @@ import (
 )
 
 // QuickAddOneLiner generic to generate quick add one-liners
-func QuickAddOneLiner(oneliner string, context TLSContext, target string) (string, error) {
+func QuickAddOneLiner(oneliner string, environment TLSEnvironment, target string) (string, error) {
 	t, err := template.New(target).Parse(oneliner)
 	if err != nil {
 		return "", err
 	}
 	data := struct {
-		TLSHost    string
-		Context    string
-		SecretPath string
+		TLSHost     string
+		Environment string
+		SecretPath  string
 	}{
-		TLSHost:    context.Hostname,
-		Context:    context.Name,
-		SecretPath: context.EnrollSecretPath,
+		TLSHost:     environment.Hostname,
+		Environment: environment.Name,
+		SecretPath:  environment.EnrollSecretPath,
 	}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, data); err != nil {
@@ -28,19 +28,19 @@ func QuickAddOneLiner(oneliner string, context TLSContext, target string) (strin
 }
 
 // QuickRemoveOneLiner generic to generate quick remove one-liners
-func QuickRemoveOneLiner(oneliner string, context TLSContext, target string) (string, error) {
+func QuickRemoveOneLiner(oneliner string, environment TLSEnvironment, target string) (string, error) {
 	t, err := template.New(target).Parse(oneliner)
 	if err != nil {
 		return "", err
 	}
 	data := struct {
-		TLSHost    string
-		Context    string
-		SecretPath string
+		TLSHost     string
+		Environment string
+		SecretPath  string
 	}{
-		TLSHost:    context.Hostname,
-		Context:    context.Name,
-		SecretPath: context.RemoveSecretPath,
+		TLSHost:     environment.Hostname,
+		Environment: environment.Name,
+		SecretPath:  environment.RemoveSecretPath,
 	}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, data); err != nil {
@@ -50,35 +50,35 @@ func QuickRemoveOneLiner(oneliner string, context TLSContext, target string) (st
 }
 
 // QuickAddOneLinerShell to get the quick add one-liner for Linux/OSX nodes
-func QuickAddOneLinerShell(context TLSContext) (string, error) {
-	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.sh | sh`
-	return QuickAddOneLiner(s, context, "enroll.sh")
+func QuickAddOneLinerShell(environment TLSEnvironment) (string, error) {
+	s := `curl -sk https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/enroll.sh | sh`
+	return QuickAddOneLiner(s, environment, "enroll.sh")
 }
 
 // QuickRemoveOneLinerShell to get the quick remove one-liner for Linux/OSX nodes
-func QuickRemoveOneLinerShell(context TLSContext) (string, error) {
-	s := `curl -sk https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.sh | sh`
-	return QuickRemoveOneLiner(s, context, "remove.sh")
+func QuickRemoveOneLinerShell(environment TLSEnvironment) (string, error) {
+	s := `curl -sk https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/remove.sh | sh`
+	return QuickRemoveOneLiner(s, environment, "remove.sh")
 }
 
 // QuickAddOneLinerPowershell to get the quick add one-liner for Windows nodes
-func QuickAddOneLinerPowershell(context TLSContext) (string, error) {
+func QuickAddOneLinerPowershell(environment TLSEnvironment) (string, error) {
 	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/enroll.ps1'))`
-	return QuickAddOneLiner(s, context, "enroll.ps1")
+iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/enroll.ps1'))`
+	return QuickAddOneLiner(s, environment, "enroll.ps1")
 }
 
 // QuickRemoveOneLinerPowershell to get the quick remove one-liner for Windows nodes
-func QuickRemoveOneLinerPowershell(context TLSContext) (string, error) {
+func QuickRemoveOneLinerPowershell(environment TLSEnvironment) (string, error) {
 	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};
-iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Context }}/{{ .SecretPath }}/remove.ps1'))`
-	return QuickRemoveOneLiner(s, context, "remove.ps1")
+iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/remove.ps1'))`
+	return QuickRemoveOneLiner(s, environment, "remove.ps1")
 }
 
-// QuickAddScript to get a quick add script for a context
-func QuickAddScript(project, script string, context TLSContext) (string, error) {
+// QuickAddScript to get a quick add script for a environment
+func QuickAddScript(project, script string, environment TLSEnvironment) (string, error) {
 	var templateName, templatePath string
 	// What script is it?
 	switch script {
@@ -102,11 +102,11 @@ func QuickAddScript(project, script string, context TLSContext) (string, error) 
 	}
 	// Prepare template data
 	data := struct {
-		Project string
-		Context TLSContext
+		Project     string
+		Environment TLSEnvironment
 	}{
-		Project: project,
-		Context: context,
+		Project:     project,
+		Environment: environment,
 	}
 	// Compile template into buffer
 	var tpl bytes.Buffer

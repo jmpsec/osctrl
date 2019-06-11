@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
@@ -59,7 +59,7 @@ var (
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
 	usersmgr       *users.UserManager
-	ctxs           *context.Context
+	envs           *environments.Environment
 	dbConfig       JSONConfigurationDB
 	store          *sessions.CookieStore
 	adminUsers     *users.UserManager
@@ -175,8 +175,8 @@ func main() {
 	}
 	// Initialize users
 	adminUsers = users.CreateUserManager(db)
-	// Initialize context
-	ctxs = context.CreateContexts(db)
+	// Initialize environment
+	envs = environments.CreateEnvironment(db)
 	// Initialize settings
 	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
@@ -208,10 +208,10 @@ func main() {
 			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
 		}
 	}
-	// Check if service settings for default context is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DefaultContext) {
-		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.DefaultContext, "dev"); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DefaultContext, err)
+	// Check if service settings for default environment is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DefaultEnv) {
+		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.DefaultEnv, "dev"); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DefaultEnv, err)
 		}
 	}
 	// multiple listeners channel
@@ -284,25 +284,25 @@ func main() {
 	routerAdmin.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 	// Admin: Packages to enroll
-	//routerAdmin.HandleFunc("/package/{context}/{platform}", packageHandler).Methods("GET")
+	//routerAdmin.HandleFunc("/package/{environment}/{platform}", packageHandler).Methods("GET")
 
 	/////////////////////////// AUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Authenticated content")
 	}
 
-	// Admin: JSON data for contexts
-	routerAdmin.Handle("/json/context/{context}/{target}", handlerAuthCheck(http.HandlerFunc(jsonContextHandler))).Methods("GET")
+	// Admin: JSON data for environments
+	routerAdmin.Handle("/json/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(jsonEnvironmentHandler))).Methods("GET")
 	// Admin: JSON data for platforms
 	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(jsonPlatformHandler))).Methods("GET")
 	// Admin: JSON data for logs
-	routerAdmin.Handle("/json/logs/{type}/{context}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/logs/{type}/{environment}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonLogsHandler))).Methods("GET")
 	// Admin: JSON data for query logs
 	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(jsonQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
 	routerAdmin.Handle("/json/stats/{target}/{name}", handlerAuthCheck(http.HandlerFunc(jsonStatsHandler))).Methods("GET")
-	// Admin: table for contexts
-	routerAdmin.Handle("/context/{context}/{target}", handlerAuthCheck(http.HandlerFunc(contextHandler))).Methods("GET")
+	// Admin: table for environments
+	routerAdmin.Handle("/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(environmentHandler))).Methods("GET")
 	// Admin: table for platforms
 	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(platformHandler))).Methods("GET")
 	// Admin: dashboard
@@ -328,18 +328,18 @@ func main() {
 	// Admin: query logs
 	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(queryLogsHandler))).Methods("GET")
 	// Admin: nodes configuration
-	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
-	routerAdmin.Handle("/conf/{context}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/intervals/{context}", handlerAuthCheck(http.HandlerFunc(intervalsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
+	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/intervals/{environment}", handlerAuthCheck(http.HandlerFunc(intervalsPOSTHandler))).Methods("POST")
 	// Admin: nodes enroll
-	routerAdmin.Handle("/enroll/{context}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
-	routerAdmin.Handle("/expiration/{context}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
+	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
 	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
 	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")
-	// Admin: manage contexts
-	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/contexts", handlerAuthCheck(http.HandlerFunc(contextsPOSTHandler))).Methods("POST")
+	// Admin: manage environments
+	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsPOSTHandler))).Methods("POST")
 	// Admin: manage users if authentication is enabled
 	if adminConfig.Auth != settings.AuthNone {
 		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")

@@ -5,8 +5,8 @@
 # IMPORTANT! If osquery is not installed, it will be installed.
 
 _PROJECT="{{ .Project }}"
-_TLS_HOSTNAME="{{ .Context.Hostname }}"
-_SECRET="{{ .Context.Secret }}"
+_TLS_HOSTNAME="{{ .Environment.Hostname }}"
+_SECRET="{{ .Environment.Secret }}"
 _SECRET_LINUX=/etc/osquery/osquery.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
 _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
@@ -121,24 +121,24 @@ prepareFlags() {
 --force=true
 --utc=true
 --enroll_secret_path=$_SECRET_FILE
---enroll_tls_endpoint=/{{ .Context.Name }}/{{ .Context.EnrollPath }}
+--enroll_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.EnrollPath }}
 --config_plugin=tls
---config_tls_endpoint=/{{ .Context.Name }}/{{ .Context.ConfigPath }}
---config_tls_refresh={{ .Context.ConfigInterval }}
+--config_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.ConfigPath }}
+--config_tls_refresh={{ .Environment.ConfigInterval }}
 --logger_plugin=tls
 --logger_tls_compress=true
---logger_tls_endpoint=/{{ .Context.Name }}/{{ .Context.LogPath }}
---logger_tls_period={{ .Context.LogInterval }}
+--logger_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.LogPath }}
+--logger_tls_period={{ .Environment.LogInterval }}
 --disable_carver=false
 --carver_disable_function=false
---carver_start_endpoint=/{{ .Context.Name }}/{{ .Context.CarverInitPath }}
---carver_continue_endpoint=/{{ .Context.Name }}/{{ .Context.CarverBlockPath }}
+--carver_start_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverInitPath }}
+--carver_continue_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverBlockPath }}
 --disable_distributed=false
---distributed_interval={{ .Context.QueryInterval }}
+--distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
 --distributed_tls_max_attempts=3
---distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Context.QueryReadPath }}
---distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Context.QueryWritePath }}
+--distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
 --tls_hostname=$_TLS_HOSTNAME
 --tls_server_certs=$_CERT
@@ -149,7 +149,7 @@ prepareCert() {
   log "Preparing osquery certificate"
   sudo mkdir -p $(dirname "$_CERT")
   sudo sh -c "cat <<EOF > $_CERT
-{{ .Context.Certificate }}
+{{ .Environment.Certificate }}
 EOF"
 }
 

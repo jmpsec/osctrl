@@ -11,29 +11,29 @@ import (
 // OsqueryResultData to log result data to database
 type OsqueryResultData struct {
 	gorm.Model
-	UUID    string `gorm:"index"`
-	Context string
-	Name    string
-	Action  string
-	Epoch   int64
-	Columns json.RawMessage
-	Counter int
+	UUID        string `gorm:"index"`
+	Environment string
+	Name        string
+	Action      string
+	Epoch       int64
+	Columns     json.RawMessage
+	Counter     int
 }
 
 // OsqueryStatusData to log status data to database
 type OsqueryStatusData struct {
 	gorm.Model
-	UUID     string `gorm:"index"`
-	Context  string
-	Line     string
-	Message  string
-	Version  string
-	Filename string
-	Severity string
+	UUID        string `gorm:"index"`
+	Environment string
+	Line        string
+	Message     string
+	Version     string
+	Filename    string
+	Severity    string
 }
 
 // Function that sends JSON result/status logs to the configured PostgreSQL DB
-func postgresLog(data []byte, context, logType, uuid string) {
+func postgresLog(data []byte, environment, logType, uuid string) {
 	if logType == statusLog {
 		// Parse JSON
 		var logs []LogStatusData
@@ -44,13 +44,13 @@ func postgresLog(data []byte, context, logType, uuid string) {
 		// Iterate and insert in DB
 		for _, l := range logs {
 			entry := OsqueryStatusData{
-				UUID:     l.HostIdentifier,
-				Context:  context,
-				Line:     l.Line,
-				Message:  l.Message,
-				Version:  l.Version,
-				Filename: l.Filename,
-				Severity: l.Severity,
+				UUID:        l.HostIdentifier,
+				Environment: environment,
+				Line:        l.Line,
+				Message:     l.Message,
+				Version:     l.Version,
+				Filename:    l.Filename,
+				Severity:    l.Severity,
 			}
 			if db.NewRecord(entry) {
 				if err := db.Create(&entry).Error; err != nil {
@@ -71,13 +71,13 @@ func postgresLog(data []byte, context, logType, uuid string) {
 		// Iterate and insert in DB
 		for _, l := range logs {
 			entry := OsqueryResultData{
-				UUID:    l.HostIdentifier,
-				Context: context,
-				Name:    l.Name,
-				Action:  l.Action,
-				Epoch:   l.Epoch,
-				Columns: l.Columns,
-				Counter: l.Counter,
+				UUID:        l.HostIdentifier,
+				Environment: environment,
+				Name:        l.Name,
+				Action:      l.Action,
+				Epoch:       l.Epoch,
+				Columns:     l.Columns,
+				Counter:     l.Counter,
 			}
 			if db.NewRecord(entry) {
 				if err := db.Create(&entry).Error; err != nil {
@@ -93,22 +93,22 @@ func postgresLog(data []byte, context, logType, uuid string) {
 // OsqueryQueryData to log query data to database
 type OsqueryQueryData struct {
 	gorm.Model
-	UUID    string `gorm:"index"`
-	Context string
-	Name    string
-	Data    json.RawMessage
-	Status  int
+	UUID        string `gorm:"index"`
+	Environment string
+	Name        string
+	Data        json.RawMessage
+	Status      int
 }
 
 // Function that sends JSON query logs to the configured PostgreSQL DB
 func postgresQuery(data []byte, name string, node nodes.OsqueryNode, status int) {
 	// Prepare data
 	entry := OsqueryQueryData{
-		UUID:    node.UUID,
-		Context: node.Context,
-		Name:    name,
-		Data:    data,
-		Status:  status,
+		UUID:        node.UUID,
+		Environment: node.Environment,
+		Name:        name,
+		Data:        data,
+		Status:      status,
 	}
 	// Insert in DB
 	if db.NewRecord(entry) {

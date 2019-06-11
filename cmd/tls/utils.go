@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	_ctx "github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/segmentio/ksuid"
@@ -37,35 +37,35 @@ func generateCarveSessionID() string {
 	return id.String()
 }
 
-// Helper to check if the provided secret is valid for this context
-func checkValidSecret(enrollSecret string, context string) bool {
-	ctx, err := ctxs.Get(context)
+// Helper to check if the provided secret is valid for this environment
+func checkValidSecret(enrollSecret string, environment string) bool {
+	env, err := envs.Get(environment)
 	if err != nil {
 		return false
 	}
-	return (strings.TrimSpace(enrollSecret) == ctx.Secret)
+	return (strings.TrimSpace(enrollSecret) == env.Secret)
 }
 
-// Helper to check if the provided SecretPath is valid for enrolling in a context
-func checkValidEnrollSecretPath(context, secretpath string) bool {
-	ctx, err := ctxs.Get(context)
+// Helper to check if the provided SecretPath is valid for enrolling in a environment
+func checkValidEnrollSecretPath(environment, secretpath string) bool {
+	env, err := envs.Get(environment)
 	if err != nil {
 		return false
 	}
-	return ((strings.TrimSpace(secretpath) == ctx.EnrollSecretPath) && (!_ctx.IsItExpired(ctx.EnrollExpire)))
+	return ((strings.TrimSpace(secretpath) == env.EnrollSecretPath) && (!environments.IsItExpired(env.EnrollExpire)))
 }
 
-// Helper to check if the provided SecretPath is valid for removing in a context
-func checkValidRemoveSecretPath(context, secretpath string) bool {
-	ctx, err := ctxs.Get(context)
+// Helper to check if the provided SecretPath is valid for removing in a environment
+func checkValidRemoveSecretPath(environment, secretpath string) bool {
+	env, err := envs.Get(environment)
 	if err != nil {
 		return false
 	}
-	return ((strings.TrimSpace(secretpath) == ctx.RemoveSecretPath) && (!_ctx.IsItExpired(ctx.RemoveExpire)))
+	return ((strings.TrimSpace(secretpath) == env.RemoveSecretPath) && (!environments.IsItExpired(env.RemoveExpire)))
 }
 
 // Helper to convert an enrollment request into a osquery node
-func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) nodes.OsqueryNode {
+func nodeFromEnroll(req EnrollRequest, environment, ipaddress, nodekey string) nodes.OsqueryNode {
 	// Prepare the enrollment request to be stored as JSON
 	enrollRaw, err := json.Marshal(req)
 	if err != nil {
@@ -85,7 +85,7 @@ func nodeFromEnroll(req EnrollRequest, context, ipaddress, nodekey string) nodes
 		IPAddress:       ipaddress,
 		Username:        "unknown",
 		OsqueryUser:     "unknown",
-		Context:         context,
+		 Environment:         environment,
 		CPU:             strings.TrimRight(req.HostDetails.EnrollSystemInfo.CPUBrand, "\x00"),
 		Memory:          req.HostDetails.EnrollSystemInfo.PhysicalMemory,
 		HardwareSerial:  req.HostDetails.EnrollSystemInfo.HardwareSerial,
@@ -203,13 +203,13 @@ func incMetric(name string) {
 	}
 }
 
-// Helper to refresh the contexts map until cache/Redis support is implemented
-func refreshContexts() {
-	log.Printf("Refreshing contexts...\n")
+// Helper to refresh the environments map until cache/Redis support is implemented
+func refreshEnvironments() {
+	log.Printf("Refreshing environments...\n")
 	var err error
-	contexts, err = ctxs.GetMap()
+	envsmap, err = envs.GetMap()
 	if err != nil {
-		log.Printf("error refreshing contexts %v\n", err)
+		log.Printf("error refreshing environments %v\n", err)
 	}
 }
 

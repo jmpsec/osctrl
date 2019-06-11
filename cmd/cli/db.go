@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/settings"
-	ctx "github.com/javuto/osctrl/pkg/context"
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
@@ -34,10 +34,10 @@ func getDB() *gorm.DB {
 // Automigrate of tables
 func automigrateDB() error {
 	var err error
-	// table tls_contexts
-	err = db.AutoMigrate(ctx.TLSContext{}).Error
+	// table tls_environments
+	err = db.AutoMigrate(environments.TLSEnvironment{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (tls_environments): %v", err)
 	}
 	// table admin_users
 	err = db.AutoMigrate(users.AdminUser{}).Error

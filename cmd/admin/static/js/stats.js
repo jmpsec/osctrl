@@ -24,7 +24,7 @@ function statsRefresh(_target, _name) {
 }
 
 function beginStats() {
-  var _stats = ['context', 'platform'];
+  var _stats = ['environment', 'platform'];
   for (var i = 0; i<_stats.length; i++) {
     //console.log('Doing ' + _stats[i]);
     $('input[type="hidden"].stats-' + _stats[i] + '-value').each(function () {

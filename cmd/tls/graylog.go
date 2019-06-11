@@ -25,13 +25,13 @@ type GraylogMessage struct {
 	ShortMessage string `json:"short_message"`
 	Timestamp    int64  `json:"timestamp"`
 	Level        uint   `json:"level"`
-	Context      string `json:"_context"`
+	Environment  string `json:"_environment"`
 	Type         string `json:"_type"`
 	UUID         string `json:"_uuid"`
 }
 
 // Function that sends JSON logs to Graylog
-func graylogSend(data []byte, context, logType, uuid string, configData LoggingConfigurationData) {
+func graylogSend(data []byte, environment, logType, uuid string, configData LoggingConfigurationData) {
 	// Prepare headers
 	headers := map[string]string{
 		"Content-Type": JSONApplication,
@@ -56,7 +56,7 @@ func graylogSend(data []byte, context, logType, uuid string, configData LoggingC
 			ShortMessage: string(jsonMessage),
 			Timestamp:    time.Now().Unix(),
 			Level:        GraylogLevel,
-			Context:      context,
+			Environment:  environment,
 			Type:         logType,
 			UUID:         uuid,
 		}
@@ -74,7 +74,7 @@ func graylogSend(data []byte, context, logType, uuid string, configData LoggingC
 		log.Printf("Error sending request %s", err)
 		return
 	}
-	if contexts[context].DebugHTTP {
+	if envsmap[environment].DebugHTTP {
 		log.Printf("Graylog: HTTP %d %s", resp, body)
 	}
 }

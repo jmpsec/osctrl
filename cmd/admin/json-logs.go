@@ -47,7 +47,7 @@ type QueryLogJSON struct {
 	Data    string     `json:"data"`
 }
 
-// Handler GET requests for JSON status/result logs by node and context
+// Handler GET requests for JSON status/result logs by node and environment
 func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
@@ -62,15 +62,15 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("invalid log type %s", logType)
 		return
 	}
-	// Extract context
-	context, ok := vars["context"]
+	// Extract environment
+	env, ok := vars["environment"]
 	if !ok {
-		log.Println("context is missing")
+		log.Println("environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
-		log.Printf("error unknown context (%s)", context)
+	// Check if environment is valid
+	if !envs.Exists(env) {
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Extract UUID
@@ -93,7 +93,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == "status" {
-		statusLogs, err := postgresStatusLogs(UUID, context, secondsBack)
+		statusLogs, err := postgresStatusLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			return
@@ -112,7 +112,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 			logJSON = append(logJSON, _l)
 		}
 	} else if logType == "result" {
-		resultLogs, err := postgresResultLogs(UUID, context, secondsBack)
+		resultLogs, err := postgresResultLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			return

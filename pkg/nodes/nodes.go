@@ -21,7 +21,7 @@ type OsqueryNode struct {
 	IPAddress       string
 	Username        string
 	OsqueryUser     string
-	Context         string
+	Environment     string
 	CPU             string
 	Memory          string
 	HardwareSerial  string
@@ -48,7 +48,7 @@ type ArchiveOsqueryNode struct {
 	IPAddress       string
 	Username        string
 	OsqueryUser     string
-	Context         string
+	Environment     string
 	CPU             string
 	Memory          string
 	HardwareSerial  string
@@ -169,8 +169,8 @@ func (n *NodeManager) GetBySelector(stype, selector, target string) ([]OsqueryNo
 	var nodes []OsqueryNode
 	var s string
 	switch stype {
-	case "context":
-		s = "context"
+	case "environment":
+		s = "environment"
 	case "platform":
 		s = "platform"
 	}
@@ -211,9 +211,9 @@ func (n *NodeManager) Gets(target string) ([]OsqueryNode, error) {
 	return nodes, nil
 }
 
-// GetByContext to retrieve target nodes by context
-func (n *NodeManager) GetByContext(context, target string) ([]OsqueryNode, error) {
-	return n.GetBySelector("context", context, target)
+// GetByEnv to retrieve target nodes by environment
+func (n *NodeManager) GetByEnv(environment, target string) ([]OsqueryNode, error) {
+	return n.GetBySelector("environment", environment, target)
 }
 
 // GetByPlatform to retrieve target nodes by platform
@@ -236,17 +236,17 @@ func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 	return platforms, nil
 }
 
-// GetStatsByContext to populate table stats about nodes by context. Active machine is < 3 days
+// GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
 // FIXME define active machine in a setting
-func (n *NodeManager) GetStatsByContext(context string) (StatsData, error) {
+func (n *NodeManager) GetStatsByEnv(environment string) (StatsData, error) {
 	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("context = ?", context).Count(&stats.Total).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("context = ?", context).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Active).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("context = ?", context).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil
@@ -647,7 +647,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 		IPAddress:       node.IPAddress,
 		Username:        node.Username,
 		OsqueryUser:     node.OsqueryUser,
-		Context:         node.Context,
+		Environment:     node.Environment,
 		CPU:             node.CPU,
 		Memory:          node.Memory,
 		HardwareSerial:  node.HardwareSerial,

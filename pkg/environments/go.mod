@@ -1,4 +1,4 @@
-module github.com/javuto/osctrl/pkg/context
+module github.com/javuto/osctrl/pkg/environments
 
 go 1.12
 

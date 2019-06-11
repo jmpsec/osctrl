@@ -36,19 +36,19 @@ type NodeJSON struct {
 	LastSeen  string `json:"lastseen"`
 }
 
-// Handler for JSON endpoints by context
-func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for JSON endpoints by environment
+func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
-	// Extract context
-	context, ok := vars["context"]
+	// Extract environment
+	env, ok := vars["environment"]
 	if !ok {
-		log.Println("error getting context")
+		log.Println("error getting environment")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
-		log.Printf("error unknown context (%s)", context)
+	// Check if environment is valid
+	if !envs.Exists(env) {
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Extract target
@@ -62,7 +62,7 @@ func jsonContextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("invalid target %s", target)
 		return
 	}
-	nodes, err := nodesmgr.GetByContext(context, target)
+	nodes, err := nodesmgr.GetByEnv(env, target)
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		return

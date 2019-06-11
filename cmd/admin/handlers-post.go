@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
 
@@ -167,10 +167,10 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%s %v", responseMessage, err)
 			goto response
 		}
-		// Create context target
-		if (q.Context != "") && ctxs.Exists(q.Context) {
-			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetContext, q.Context); err != nil {
-				responseMessage = "error creating query context target"
+		// Create environment target
+		if (q.Environment != "") && envs.Exists(q.Environment) {
+			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, q.Environment); err != nil {
+				responseMessage = "error creating query environment target"
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
 				goto response
@@ -315,18 +315,18 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract context and verify
-	contextVar, ok := vars["context"]
-	if !ok || !ctxs.Exists(contextVar) {
+	// Extract environment and verify
+	environmentVar, ok := vars["environment"]
+	if !ok || !envs.Exists(environmentVar) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting context")
+			log.Printf("DebugService: error getting environment")
 		}
 		return
 	}
-	// Verify context
-	if !ctxs.Exists(contextVar) {
+	// Verify environment
+	if !envs.Exists(environmentVar) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error unknown context (%s)", contextVar)
+			log.Printf("DebugService: error unknown environment (%s)", environmentVar)
 		}
 		return
 	}
@@ -350,7 +350,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					log.Printf("DebugService: %s %v", responseMessage, err)
 				}
 			} else {
-				err = ctxs.UpdateConfiguration(contextVar, string(configuration))
+				err = envs.UpdateConfiguration(environmentVar, string(configuration))
 				if err != nil {
 					responseMessage = "error saving configuration"
 					responseCode = http.StatusInternalServerError
@@ -392,18 +392,18 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract context
-	contextVar, ok := vars["context"]
+	// Extract environment
+	environmentVar, ok := vars["environment"]
 	if !ok {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting context")
+			log.Printf("DebugService: error getting environment")
 		}
 		return
 	}
-	// Verify context
-	if !ctxs.Exists(contextVar) {
+	// Verify environment
+	if !envs.Exists(environmentVar) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error unknown context (%s)", contextVar)
+			log.Printf("DebugService: error unknown environment (%s)", environmentVar)
 		}
 		return
 	}
@@ -419,7 +419,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(c.CSRFToken) {
-			err = ctxs.UpdateIntervals(contextVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
+			err = envs.UpdateIntervals(environmentVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
 			if err != nil {
 				responseMessage = "error updating intervals"
 				responseCode = http.StatusInternalServerError
@@ -460,18 +460,18 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract context
-	contextVar, ok := vars["context"]
+	// Extract environment
+	environmentVar, ok := vars["environment"]
 	if !ok {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting context")
+			log.Printf("DebugService: error getting environment")
 		}
 		return
 	}
-	// Verify context
-	if !ctxs.Exists(contextVar) {
+	// Verify environment
+	if !envs.Exists(environmentVar) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error unknown context (%s)", contextVar)
+			log.Printf("DebugService: error unknown environment (%s)", environmentVar)
 		}
 		return
 	}
@@ -491,7 +491,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			case "enroll":
 				switch e.Action {
 				case "expire":
-					err = ctxs.ExpireEnroll(contextVar)
+					err = envs.ExpireEnroll(environmentVar)
 					if err != nil {
 						responseMessage = "error expiring enroll"
 						responseCode = http.StatusInternalServerError
@@ -500,7 +500,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				case "extend":
-					err = ctxs.RotateEnrollPath(contextVar)
+					err = envs.RotateEnrollPath(environmentVar)
 					if err != nil {
 						responseMessage = "error extending enroll"
 						responseCode = http.StatusInternalServerError
@@ -512,7 +512,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			case "remove":
 				switch e.Action {
 				case "expire":
-					err = ctxs.ExpireRemove(contextVar)
+					err = envs.ExpireRemove(environmentVar)
 					if err != nil {
 						responseMessage = "error expiring enroll"
 						responseCode = http.StatusInternalServerError
@@ -521,7 +521,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				case "extend":
-					err = ctxs.RotateRemove(contextVar)
+					err = envs.RotateRemove(environmentVar)
 					if err != nil {
 						responseMessage = "error extending enroll"
 						responseCode = http.StatusInternalServerError
@@ -694,12 +694,12 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler for POST request for /contexts
-func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for POST request for /environments
+func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
-	var c ContextsRequest
+	var c EnvironmentsRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
@@ -714,42 +714,42 @@ func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			switch c.Action {
 			case "create":
 				// FIXME verify fields
-				if !ctxs.Exists(c.Name) {
-					_ctx := ctxs.Empty(c.Name, c.Hostname)
-					_ctx.Icon = c.Icon
-					_ctx.Type = c.Type
-					if _ctx.Configuration == "" {
-						_ctx.Configuration = context.ReadExternalFile(emptyConfiguration)
+				if !envs.Exists(c.Name) {
+					env := envs.Empty(c.Name, c.Hostname)
+					env.Icon = c.Icon
+					env.Type = c.Type
+					if env.Configuration == "" {
+						env.Configuration = environments.ReadExternalFile(emptyConfiguration)
 					}
-					err := ctxs.Create(_ctx)
+					err := envs.Create(env)
 					if err != nil {
-						responseMessage = "error creating context"
+						responseMessage = "error creating environment"
 						responseCode = http.StatusInternalServerError
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
 					} else {
-						responseMessage = "Context created successfully"
+						responseMessage = " Environment created successfully"
 					}
 				}
 			case "delete":
 				// FIXME verify fields
-				if ctxs.Exists(c.Name) {
-					err := ctxs.Delete(c.Name)
+				if envs.Exists(c.Name) {
+					err := envs.Delete(c.Name)
 					if err != nil {
-						responseMessage = "error deleting context"
+						responseMessage = "error deleting environment"
 						responseCode = http.StatusInternalServerError
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
 					} else {
-						responseMessage = "Context deleted successfully"
+						responseMessage = " Environment deleted successfully"
 					}
 				}
 			case "debug":
 				// FIXME verify fields
-				if ctxs.Exists(c.Name) {
-					err := ctxs.ChangeDebugHTTP(c.Name, c.DebugHTTP)
+				if envs.Exists(c.Name) {
+					err := envs.ChangeDebugHTTP(c.Name, c.DebugHTTP)
 					if err != nil {
 						responseMessage = "error changing DebugHTTP"
 						responseCode = http.StatusInternalServerError
@@ -784,7 +784,7 @@ func contextsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Contexts response sent")
+		log.Println("DebugService:  Environments response sent")
 	}
 }
 

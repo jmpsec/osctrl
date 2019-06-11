@@ -7,8 +7,8 @@ import (
 // Helper to decide whether if the query targets apply to a give node
 func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
 	for _, t := range targets {
-		// Check for context match
-		if t.Type == QueryTargetContext && node.Context == t.Value {
+		// Check for environment match
+		if t.Type == QueryTargetEnvironment && node.Environment == t.Value {
 			return true
 		}
 		// Check for platform match

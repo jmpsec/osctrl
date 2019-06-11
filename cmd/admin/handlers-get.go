@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/settings"
 
 	"github.com/gorilla/mux"
@@ -41,28 +41,28 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for the root path
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	// Redirect to table for active nodes in default context
-	defaultContext := settingsmgr.DefaultContext(settings.ServiceAdmin)
-	if ctxs.Exists(defaultContext) {
-		http.Redirect(w, r, "/context/"+defaultContext+"/active", http.StatusFound)
+	// Redirect to table for active nodes in default environment
+	defaultEnvironment := settingsmgr.DefaultEnv(settings.ServiceAdmin)
+	if envs.Exists(defaultEnvironment) {
+		http.Redirect(w, r, "/environment/"+defaultEnvironment+"/active", http.StatusFound)
 	} else {
-		http.Redirect(w, r, "/context/dev/active", http.StatusFound)
+		http.Redirect(w, r, "/environment/dev/active", http.StatusFound)
 	}
 }
 
-// Handler for context view of the table
-func contextHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for environment view of the table
+func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
-	// Extract context
-	context, ok := vars["context"]
+	// Extract environment
+	env, ok := vars["environment"]
 	if !ok {
-		log.Println("error getting context")
+		log.Println("error getting environment")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
-		log.Printf("error unknown context (%s)", context)
+	// Check if environment is valid
+	if !envs.Exists(env) {
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Extract target
@@ -85,10 +85,10 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
@@ -99,11 +99,11 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:          "Nodes in " + context + " Context",
-		Selector:       "context",
-		SelectorName:   context,
+		Title:          "Nodes in " + env,
+		Selector:       "environment",
+		SelectorName:   env,
 		Target:         target,
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -114,7 +114,7 @@ func contextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Context table template served")
+		log.Println("DebugService:  Environment table template served")
 	}
 }
 
@@ -149,10 +149,10 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
@@ -163,11 +163,11 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:          "Nodes in " + platform + " Platform",
+		Title:          "Nodes in " + platform,
 		Selector:       "platform",
 		SelectorName:   platform,
 		Target:         target,
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -198,10 +198,10 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
@@ -226,7 +226,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:          "Query osquery Nodes",
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		UUIDs:          uuids,
 		Hosts:          hosts,
@@ -261,10 +261,10 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
@@ -282,7 +282,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryTableTemplateData{
 		Title:          "All on-demand queries",
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		Queries:        qs,
 		Target:         "all",
@@ -322,10 +322,10 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 
@@ -350,7 +350,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:          "Query logs " + query.Name,
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		Query:          query,
 		QueryTargets:   targets,
@@ -371,15 +371,15 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
-	// Extract context
-	contextVar, ok := vars["context"]
+	// Extract environment
+	envVar, ok := vars["environment"]
 	if !ok {
-		log.Println("context is missing")
+		log.Println("environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(contextVar) {
-		log.Printf("error unknown context (%s)", contextVar)
+	// Check if environment is valid
+	if !envs.Exists(envVar) {
+		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
 	// Prepare template
@@ -395,10 +395,10 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting conf template: %v", err)
 		return
 	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
+	// Get stats for all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -408,16 +408,16 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get configuration JSON
-	ctx, err := ctxs.Get(contextVar)
+	env, err := envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting context %v", err)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:          contextVar + " Configuration",
-		Context:        ctx,
-		Contexts:       contexts,
+		Title:          envVar + " Configuration",
+		Environment:    env,
+		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -436,15 +436,15 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
-	// Extract context
-	contextVar, ok := vars["context"]
+	// Extract environment
+	envVar, ok := vars["environment"]
 	if !ok {
-		log.Println("context is missing")
+		log.Println("environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(contextVar) {
-		log.Printf("error unknown context (%s)", contextVar)
+	// Check if environment is valid
+	if !envs.Exists(envVar) {
+		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
 	// Prepare template
@@ -460,10 +460,10 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting enroll template: %v", err)
 		return
 	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
+	// Get stats for all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -473,28 +473,28 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get configuration JSON
-	ctx, err := ctxs.Get(contextVar)
+	env, err := envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting context %v", err)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Prepare template data
-	shellQuickAdd, _ := context.QuickAddOneLinerShell(ctx)
-	powershellQuickAdd, _ := context.QuickAddOneLinerPowershell(ctx)
-	shellQuickRemove, _ := context.QuickRemoveOneLinerShell(ctx)
-	powershellQuickRemove, _ := context.QuickRemoveOneLinerPowershell(ctx)
+	shellQuickAdd, _ := environments.QuickAddOneLinerShell(env)
+	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell(env)
+	shellQuickRemove, _ := environments.QuickRemoveOneLinerShell(env)
+	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
 	templateData := EnrollTemplateData{
-		Title:                 contextVar + " Enroll",
-		Context:               contextVar,
-		EnrollExpiry:          strings.ToUpper(inFutureTime(ctx.EnrollExpire)),
-		EnrollExpired:         context.IsItExpired(ctx.EnrollExpire),
-		RemoveExpiry:          strings.ToUpper(inFutureTime(ctx.RemoveExpire)),
-		RemoveExpired:         context.IsItExpired(ctx.RemoveExpire),
+		Title:                 envVar + " Enroll",
+		EnvName:               envVar,
+		EnrollExpiry:          strings.ToUpper(inFutureTime(env.EnrollExpire)),
+		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
+		RemoveExpiry:          strings.ToUpper(inFutureTime(env.RemoveExpire)),
+		RemoveExpired:         environments.IsItExpired(env.RemoveExpire),
 		QuickAddShell:         shellQuickAdd,
 		QuickRemoveShell:      shellQuickRemove,
 		QuickAddPowershell:    powershellQuickAdd,
 		QuickRemovePowershell: powershellQuickRemove,
-		Contexts:              contexts,
+		Environments:          envAll,
 		Platforms:             platforms,
 		TLSDebug:              settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:            settingsmgr.DebugService(settings.ServiceAdmin),
@@ -536,10 +536,10 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting table template: %v", err)
 		return
 	}
-	// Get all contexts
-	contexts, err := ctxs.All()
+	// Get all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts%v", err)
+		log.Printf("error getting environments%v", err)
 		return
 	}
 	// Get all platforms
@@ -559,7 +559,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		Title:          "Node View " + node.Hostname,
 		Logs:           adminConfig.Logging,
 		Node:           node,
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -574,12 +574,12 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler GET requests for /contexts
-func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
+// Handler GET requests for /env
+func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/contexts.html",
+		"tmpl_admin/environments.html",
 		"tmpl_admin/components/page-head.html",
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
@@ -587,13 +587,13 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
-		log.Printf("error getting contexts template: %v", err)
+		log.Printf("error getting environments template: %v", err)
 		return
 	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
+	// Get stats for all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -603,9 +603,9 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template data
-	templateData := ContextsTemplateData{
-		Title:          "Manage contexts",
-		Contexts:       contexts,
+	templateData := EnvironmentsTemplateData{
+		Title:          "Manage environments",
+		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -616,7 +616,7 @@ func contextsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Contexts template served")
+		log.Println("DebugService:  Environments template served")
 	}
 }
 
@@ -645,13 +645,13 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
-		log.Printf("error getting contexts template: %v", err)
+		log.Printf("error getting environments template: %v", err)
 		return
 	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
+	// Get stats for all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -670,7 +670,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
 		Service:         serviceVar,
-		Contexts:        contexts,
+		Environments:    envAll,
 		Platforms:       platforms,
 		CurrentSettings: _settings,
 		TLSDebug:        settingsmgr.DebugService(settings.ServiceTLS),
@@ -703,13 +703,13 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
-		log.Printf("error getting contexts template: %v", err)
+		log.Printf("error getting environments template: %v", err)
 		return
 	}
-	// Get stats for all contexts
-	contexts, err := ctxs.All()
+	// Get stats for all environments
+	envAll, err := envs.All()
 	if err != nil {
-		log.Printf("error getting contexts %v", err)
+		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
@@ -727,7 +727,7 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:          "Manage users",
-		Contexts:       contexts,
+		Environments:   envAll,
 		Platforms:      platforms,
 		CurrentUsers:   users,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),

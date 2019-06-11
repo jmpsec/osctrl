@@ -25,7 +25,7 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-info-circle"></i>
                 <strong> Details of node {{ .UUID }} </strong>
-                <small>{{ .Context }}</small>
+                <small>{{ .Environment }}</small>
               </div>
               <div class="card-body">
 
@@ -72,10 +72,10 @@
 
                             <div class="row">
                               <label class="col-md-3 col-form-label">
-                                <small><b>Context</b></small>
+                                <small><b>Environment</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ .Context }}</p>
+                                <p class="form-control-static">{{ .Environment }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -386,7 +386,7 @@
           searching : true,
           processing : true,
           ajax : {
-            url: "/json/logs/status/{{ .Context }}/{{ .UUID }}",
+            url: "/json/logs/status/{{ .Environment }}/{{ .UUID }}",
             dataSrc: function(json) {
               $('#status-card-header').removeClass("bg-danger");
               return json.data;
@@ -420,7 +420,7 @@
           document.getElementById("status_refresh_seconds").textContent = timeLeftStatus;
           if (timeLeftStatus <= 0) {
             timeLeftStatus = refreshSecondsStatus;
-            tableStatusLogs.ajax.url("/json/logs/status/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableStatusLogs.ajax.url("/json/logs/status/{{ .Environment }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
             tableStatusLogs.ajax.reload();
           }
         },1000);
@@ -433,7 +433,7 @@
           searching : true,
           processing : true,
           ajax : {
-            url: "/json/logs/result/{{ .Context }}/{{ .UUID }}",
+            url: "/json/logs/result/{{ .Environment }}/{{ .UUID }}",
             dataSrc: function(json) {
               $('#result-card-header').removeClass("bg-danger");
               return json.data;
@@ -470,7 +470,7 @@
           document.getElementById("result_refresh_seconds").textContent = timeLeftResult;
           if (timeLeftResult <= 0) {
             timeLeftResult = refreshSecondsResult;
-            tableResultLogs.ajax.url("/json/logs/result/{{ .Context }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
+            tableResultLogs.ajax.url("/json/logs/result/{{ .Environment }}/{{ .UUID }}?seconds=" + refreshBackSeconds);
             tableResultLogs.ajax.reload();
           }
         },1000);

@@ -1,7 +1,7 @@
 package main
 
 import (
-	ctx "github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
@@ -65,7 +65,7 @@ type TableTemplateData struct {
 	Selector       string
 	SelectorName   string
 	Target         string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	TLSDebug       bool
 	AdminDebug     bool
@@ -75,8 +75,8 @@ type TableTemplateData struct {
 // ConfTemplateData for passing data to the conf template
 type ConfTemplateData struct {
 	Title          string
-	Context        ctx.TLSContext
-	Contexts       []ctx.TLSContext
+	Environment    environments.TLSEnvironment
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	TLSDebug       bool
 	AdminDebug     bool
@@ -86,7 +86,7 @@ type ConfTemplateData struct {
 // EnrollTemplateData for passing data to the conf template
 type EnrollTemplateData struct {
 	Title                 string
-	Context               string
+	EnvName           string
 	EnrollExpiry          string
 	EnrollExpired         bool
 	RemoveExpiry          string
@@ -95,7 +95,7 @@ type EnrollTemplateData struct {
 	QuickRemoveShell      string
 	QuickAddPowershell    string
 	QuickRemovePowershell string
-	Contexts              []ctx.TLSContext
+	Environments          []environments.TLSEnvironment
 	Platforms             []string
 	TLSDebug              bool
 	AdminDebug            bool
@@ -105,7 +105,7 @@ type EnrollTemplateData struct {
 // QueryRunTemplateData for passing data to the query template
 type QueryRunTemplateData struct {
 	Title          string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	UUIDs          []string
 	Hosts          []string
@@ -119,7 +119,7 @@ type QueryRunTemplateData struct {
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData struct {
 	Title          string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Target         string
 	Queries        []queries.DistributedQuery
@@ -131,7 +131,7 @@ type QueryTableTemplateData struct {
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
 	Title          string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Query          queries.DistributedQuery
 	QueryTargets   []queries.DistributedQueryTarget
@@ -140,10 +140,10 @@ type QueryLogsTemplateData struct {
 	AdminDebugHTTP bool
 }
 
-// ContextsTemplateData for passing data to the contexts template
-type ContextsTemplateData struct {
+//  EnvironmentsTemplateData for passing data to the environments template
+type EnvironmentsTemplateData struct {
 	Title          string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	TLSDebug       bool
 	AdminDebug     bool
@@ -154,7 +154,7 @@ type ContextsTemplateData struct {
 type SettingsTemplateData struct {
 	Title           string
 	Service         string
-	Contexts        []ctx.TLSContext
+	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
 	TLSDebug        bool
@@ -165,7 +165,7 @@ type SettingsTemplateData struct {
 // UsersTemplateData for passing data to the settings template
 type UsersTemplateData struct {
 	Title          string
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	CurrentUsers   []users.AdminUser
 	TLSDebug       bool
@@ -178,7 +178,7 @@ type NodeTemplateData struct {
 	Title          string
 	Logs           string
 	Node           nodes.OsqueryNode
-	Contexts       []ctx.TLSContext
+	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	TLSDebug       bool
 	AdminDebug     bool
@@ -198,13 +198,13 @@ type LogoutRequest struct {
 
 // DistributedQueryRequest to receive query requests
 type DistributedQueryRequest struct {
-	CSRFToken string   `json:"csrftoken"`
-	Context   string   `json:"context"`
-	Platform  string   `json:"platform"`
-	UUIDs     []string `json:"uuid_list"`
-	Hosts     []string `json:"host_list"`
-	Query     string   `json:"query"`
-	Repeat    int      `json:"repeat"`
+	CSRFToken   string   `json:"csrftoken"`
+	Environment string   `json:"environment"`
+	Platform    string   `json:"platform"`
+	UUIDs       []string `json:"uuid_list"`
+	Hosts       []string `json:"host_list"`
+	Query       string   `json:"query"`
+	Repeat      int      `json:"repeat"`
 }
 
 // DistributedQueryActionRequest to receive query requests
@@ -258,8 +258,8 @@ type ExpirationRequest struct {
 	Type      string `json:"type"`
 }
 
-// ContextsRequest to receive changes to contexts
-type ContextsRequest struct {
+// EnvironmentsRequest to receive changes to environments
+type EnvironmentsRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Action    string `json:"action"`
 	Name      string `json:"name"`

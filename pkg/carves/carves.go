@@ -35,7 +35,7 @@ type CarvedFile struct {
 	RequestID       string
 	SessionID       string
 	UUID            string `gorm:"index"`
-	Context         string
+	 Environment         string
 	CarveSize       int
 	BlockSize       int
 	TotalBlocks     int
@@ -51,7 +51,7 @@ type CarvedBlock struct {
 	gorm.Model
 	RequestID string `gorm:"index"`
 	SessionID string `gorm:"index"`
-	Context   string
+	 Environment   string
 	BlockID   int
 	Data      string
 }

@@ -12,35 +12,35 @@
       </li>
       -->
 
-      <li class="nav-title">Nodes by context</li>
-      {{range  $i, $e := $.Contexts}}
+      <li class="nav-title">Nodes by environment</li>
+      {{range  $i, $e := $.Environments}}
       <li class="nav-item nav-dropdown">
         <a class="nav-link nav-dropdown-toggle">
           <i class="nav-icon {{ $e.Icon }}"></i>
-          <input type="hidden" class="stats-context-value" value="{{ $e.Name }}">
+          <input type="hidden" class="stats-environment-value" value="{{ $e.Name }}">
           {{ $e.Name }}
-          <span class="mr-4 badge badge-light stats-context-{{ $e.Name }}-total">X</span>
+          <span class="mr-4 badge badge-light stats-environment-{{ $e.Name }}-total">X</span>
         </a>
         <ul class="nav-dropdown-items">
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/active">
+            <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/active">
               <i class="nav-icon {{ $e.Icon }}"></i>
               active
-              <span class="badge badge-success stats-context-{{ $e.Name }}-active">Y</span>
+              <span class="badge badge-success stats-environment-{{ $e.Name }}-active">Y</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/inactive">
+            <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/inactive">
               <i class="nav-icon {{ $e.Icon }}"></i>
               inactive
-              <span class="badge badge-danger stats-context-{{ $e.Name }}-inactive">Z</span>
+              <span class="badge badge-danger stats-environment-{{ $e.Name }}-inactive">Z</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
-            <a style="padding-left: 2em;" class="nav-link" href="/context/{{ $e.Name }}/all">
+            <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/all">
               <i class="nav-icon {{ $e.Icon }}"></i>
               all
-              <span class="badge badge-light stats-context-{{ $e.Name }}-total">X</span>
+              <span class="badge badge-light stats-environment-{{ $e.Name }}-total">X</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">

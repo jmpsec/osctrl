@@ -116,7 +116,7 @@ func (st *Store) New(r *http.Request, name string) (*sessions.Session, error) {
 // Save session and set cookie header
 /*
 func (st *Store) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
-	s, _ := context.Get(r, contextKey(session.Name())).(*gormSession)
+	s, _ := environment.Get(r, environmentKey(session.Name())).(*gormSession)
 
 	// delete if max age is < 0
 	if session.Options.MaxAge < 0 {

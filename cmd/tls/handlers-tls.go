@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
@@ -78,22 +78,22 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricEnrollReq)
 	var response []byte
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricEnrollErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricEnrollErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
-	// Debug HTTP for context
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	// Debug HTTP for environment
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -106,10 +106,10 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeKey string
 	var newNode nodes.OsqueryNode
 	nodeInvalid := true
-	if checkValidSecret(t.EnrollSecret, context) {
+	if checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier)
-		newNode = nodeFromEnroll(t, context, r.Header.Get("X-Real-IP"), nodeKey)
+		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
 		if nodesmgr.CheckByUUID(t.HostIdentifier) {
 			err := nodesmgr.Archive(t.HostIdentifier, "exists")
@@ -145,7 +145,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -159,27 +159,27 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 func configHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricConfigReq)
 	var response []byte
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricConfigErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricConfigErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
-	// Debug HTTP for context
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
-	// Get context
-	ctx, err := ctxs.Get(context)
+	// Debug HTTP for environment
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	// Get environment
+	e, err := envs.Get(env)
 	if err != nil {
 		incMetric(metricConfigErr)
-		log.Printf("error getting context %v", err)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Decode read POST body
@@ -203,7 +203,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 			incMetric(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
-		response = []byte(ctx.Configuration)
+		response = []byte(e.Configuration)
 	} else {
 		response, err = json.Marshal(ConfigResponse{NodeInvalid: true})
 		if err != nil {
@@ -213,7 +213,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
@@ -227,18 +227,18 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 func logHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricLogReq)
 	var response []byte
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricLogErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricLogErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Check if body is compressed, if so, uncompress
@@ -259,7 +259,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -281,7 +281,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	if nodesmgr.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		processLogs(t.Data, t.LogType, context, r.Header.Get("X-Real-IP"))
+		processLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"))
 	} else {
 		nodeInvalid = true
 	}
@@ -293,7 +293,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -304,7 +304,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper to process logs
-func processLogs(data json.RawMessage, logType, context, ipaddress string) {
+func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 	// Parse log to extract metadata
 	var logs []LogGenericData
 	err := json.Unmarshal(data, &logs)
@@ -332,22 +332,22 @@ func processLogs(data json.RawMessage, logType, context, ipaddress string) {
 	hash := uniq(hashes)[0]
 	osqueryversion := uniq(osqueryversions)[0]
 	// Dispatch logs and update metadata
-	dispatchLogs(data, uuid, ipaddress, user, osqueryuser, host, name, hash, osqueryversion, logType, context)
+	dispatchLogs(data, uuid, ipaddress, user, osqueryuser, host, name, hash, osqueryversion, logType, environment)
 }
 
 // Helper to dispatch logs
-func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, context string) {
+func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, environment string) {
 	// Send data to storage
 	// FIXME allow multiple types of logging
 	switch tlsConfig.Logging {
 	case settings.LoggingGraylog:
-		go graylogSend(data, context, logType, uuid, tlsConfig.LoggingCfg)
+		go graylogSend(data, environment, logType, uuid, tlsConfig.LoggingCfg)
 	case settings.LoggingSplunk:
-		go splunkSend(data, context, logType, uuid, tlsConfig.LoggingCfg)
+		go splunkSend(data, environment, logType, uuid, tlsConfig.LoggingCfg)
 	case settings.LoggingDB:
-		go postgresLog(data, context, logType, uuid)
+		go postgresLog(data, environment, logType, uuid)
 	case settings.LoggingStdout:
-		log.Printf("LOG: %s from context %s : %s", logType, context, string(data))
+		log.Printf("LOG: %s from environment %s : %s", logType, environment, string(data))
 	}
 	// Use metadata to update record
 	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, uuid)
@@ -380,13 +380,13 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 	// FIXME allow multiple types of logging
 	switch tlsConfig.Logging {
 	case settings.LoggingGraylog:
-		go graylogSend(data, node.Context, queryLog, node.UUID, tlsConfig.LoggingCfg)
+		go graylogSend(data, node.Environment, queryLog, node.UUID, tlsConfig.LoggingCfg)
 	case settings.LoggingSplunk:
-		go splunkSend(data, node.Context, queryLog, node.UUID, tlsConfig.LoggingCfg)
+		go splunkSend(data, node.Environment, queryLog, node.UUID, tlsConfig.LoggingCfg)
 	case settings.LoggingDB:
 		go postgresQuery(data, queryData.Name, node, queryData.Status)
 	case settings.LoggingStdout:
-		log.Printf("QUERY: %s from context %s : %s", "query", node.Context, string(data))
+		log.Printf("QUERY: %s from environment %s : %s", "query", node.Environment, string(data))
 	}
 	// Refresh last query write request
 	err = nodesmgr.RefreshLastQueryWrite(node.UUID)
@@ -398,22 +398,22 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 // Function to handle on-demand queries to osquery nodes
 func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricReadReq)
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricReadErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricReadErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t QueryReadRequest
@@ -456,7 +456,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -469,22 +469,22 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle distributed query results from osquery nodes
 func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricWriteReq)
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricWriteErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricWriteErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t QueryWriteRequest
@@ -504,7 +504,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		nodeInvalid = false
 		// Process submitted results
-		go processLogQueryResult(t.Queries, t.Statuses, t.NodeKey, context)
+		go processLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env)
 	} else {
 		nodeInvalid = true
 	}
@@ -516,7 +516,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -527,7 +527,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper to process on-demand query result logs
-func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuses, nodeKey string, context string) {
+func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuses, nodeKey string, environment string) {
 	// Retrieve node
 	node, err := nodesmgr.GetByKey(nodeKey)
 	if err != nil {
@@ -563,23 +563,23 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 // Function to handle the endpoint for quick enrollment script distribution
 func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME metrics
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	contextVar, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(contextVar) {
-		log.Printf("error unknown context (%s)", contextVar)
+	// Check if environment is valid
+	if !envs.Exists(env) {
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, contexts[contextVar].DebugHTTP, true)
-	ctx, err := ctxs.Get(contextVar)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	e, err := envs.Get(env)
 	if err != nil {
-		log.Printf("error getting context %v", err)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Retrieve type of script
@@ -596,18 +596,18 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
-		if !checkValidEnrollSecretPath(contextVar, secretPath) {
+		if !checkValidEnrollSecretPath(env, secretPath) {
 			log.Println("Invalid Path")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
-		if !checkValidRemoveSecretPath(contextVar, secretPath) {
+		if !checkValidRemoveSecretPath(env, secretPath) {
 			log.Println("Invalid Path")
 			return
 		}
 	}
 	// Prepare response with the script
-	quickScript, err := context.QuickAddScript(projectName, script, ctx)
+	quickScript, err := environments.QuickAddScript(projectName, script, e)
 	if err != nil {
 		log.Printf("error getting script %v", err)
 		return
@@ -619,7 +619,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Function to initialize a file carve from a node
-func processCarveInit(req CarveInitRequest, sessionid, context string) {
+func processCarveInit(req CarveInitRequest, sessionid, environment string) {
 	// Retrieve node
 	node, err := nodesmgr.GetByKey(req.NodeKey)
 	if err != nil {
@@ -632,7 +632,7 @@ func processCarveInit(req CarveInitRequest, sessionid, context string) {
 		RequestID:       req.RequestID,
 		SessionID:       sessionid,
 		UUID:            node.UUID,
-		Context:         context,
+		 Environment:         environment,
 		CarveSize:       req.CarveSize,
 		BlockSize:       req.BlockSize,
 		TotalBlocks:     req.BlockCount,
@@ -651,12 +651,12 @@ func processCarveInit(req CarveInitRequest, sessionid, context string) {
 
 // Function to process one block from a file carve
 // FIXME it can be more efficient on db access
-func processCarveBlock(req CarveBlockRequest, context string) {
+func processCarveBlock(req CarveBlockRequest, environment string) {
 	// Prepare carve block
 	block := carves.CarvedBlock{
 		RequestID: req.RequestID,
 		SessionID: req.SessionID,
-		Context:   context,
+		 Environment:   environment,
 		BlockID:   req.BlockID,
 		Data:      req.Data,
 	}
@@ -691,22 +691,22 @@ func processCarveBlock(req CarveBlockRequest, context string) {
 // Function to handle the initialization of the file carver
 func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricInitReq)
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricInitErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricInitErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t CarveInitRequest
@@ -728,7 +728,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		go processCarveInit(t, carveSessionID, context)
+		go processCarveInit(t, carveSessionID, env)
 	} else {
 		initCarve = false
 	}
@@ -740,7 +740,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
@@ -753,22 +753,22 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the blocks of the file carver
 func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricBlockReq)
-	// Retrieve context variable
+	// Retrieve environment variable
 	vars := mux.Vars(r)
-	context, ok := vars["context"]
+	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricBlockErr)
-		log.Println("Context is missing")
+		log.Println(" Environment is missing")
 		return
 	}
-	// Check if context is valid
-	if !ctxs.Exists(context) {
+	// Check if environment is valid
+	if !envs.Exists(env) {
 		incMetric(metricBlockErr)
-		log.Printf("error unknown context (%s)", context)
+		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, contexts[context].DebugHTTP, true)
+	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
 	var t CarveBlockRequest
@@ -783,7 +783,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	if filecarves.CheckCarve(t.SessionID, t.RequestID) {
 		blockCarve = true
 		// Process received block
-		go processCarveBlock(t, context)
+		go processCarveBlock(t, env)
 	} else {
 		blockCarve = false
 	}
@@ -795,7 +795,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte("")
 	}
 	// Debug HTTP
-	if contexts[context].DebugHTTP {
+	if envsmap[env].DebugHTTP {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response

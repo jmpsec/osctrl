@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
@@ -42,7 +42,7 @@ var (
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
 	adminUsers  *users.UserManager
-	ctxs        *context.Context
+	envs        *environments.Environment
 )
 
 // Function to load the configuration file and assign to variables
@@ -155,26 +155,27 @@ func init() {
 			},
 		},
 		{
-			Name:  "context",
-			Usage: "Commands for TLS context",
+			Name:    "environment",
+			Aliases: []string{"env"},
+			Usage:   "Commands for TLS environment",
 			Subcommands: []cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
-					Usage:   "Add a new TLS context",
+					Usage:   "Add a new TLS environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: "Context to be added",
+							Usage: " Environment to be added",
 						},
 						cli.StringFlag{
 							Name:  "hostname, host",
-							Usage: "Context host to be added",
+							Usage: " Environment host to be added",
 						},
 						cli.BoolFlag{
 							Name:   "debug, d",
 							Hidden: false,
-							Usage:  "Context debug capability",
+							Usage:  " Environment debug capability",
 						},
 						cli.StringFlag{
 							Name:  "configuration, conf",
@@ -185,45 +186,45 @@ func init() {
 							Usage: "Certificate file to be read",
 						},
 					},
-					Action: addContext,
+					Action: addEnvironment,
 				},
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
-					Usage:   "Delete an existing TLS context",
+					Usage:   "Delete an existing TLS environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: "Context to be deleted",
+							Usage: " Environment to be deleted",
 						},
 					},
-					Action: deleteContext,
+					Action: deleteEnvironment,
 				},
 				{
 					Name:    "show",
 					Aliases: []string{"s"},
-					Usage:   "Show a TLS context",
+					Usage:   "Show a TLS environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: "Context to be displayed",
+							Usage: " Environment to be displayed",
 						},
 					},
-					Action: showContext,
+					Action: showEnvironment,
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
-					Usage:   "List all existing TLS contexts",
-					Action:  listContext,
+					Usage:   "List all existing TLS environments",
+					Action:  listEnvironment,
 				},
 				{
 					Name:  "quick-add",
-					Usage: "Generates one-liner for quick adding nodes to context",
+					Usage: "Generates one-liner for quick adding nodes to environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: "Context to be used",
+							Usage: " Environment to be used",
 						},
 						cli.StringFlag{
 							Name:  "target, t",
@@ -231,7 +232,7 @@ func init() {
 							Usage: "Type of one-liner",
 						},
 					},
-					Action: quickAddContext,
+					Action: quickAddEnvironment,
 				},
 			},
 		},
@@ -549,8 +550,8 @@ func main() {
 	}
 	// Initialize users
 	adminUsers = users.CreateUserManager(db)
-	// Initialize context
-	ctxs = context.CreateContexts(db)
+	// Initialize environment
+	envs = environments.CreateEnvironment(db)
 	// Initialize settings
 	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes

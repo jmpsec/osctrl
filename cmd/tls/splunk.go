@@ -36,7 +36,7 @@ type SplunkMessage struct {
 }
 
 // Function that sends JSON logs to Splunk HTTP Event Collector
-func splunkSend(data []byte, context, logType, uuid string, configData LoggingConfigurationData) {
+func splunkSend(data []byte, environment, logType, uuid string, configData LoggingConfigurationData) {
 	// Prepare headers
 	headers := map[string]string{
 		"Authorization": "Splunk " + configData["token"],
@@ -55,7 +55,7 @@ func splunkSend(data []byte, context, logType, uuid string, configData LoggingCo
 		}
 		logs = append(logs, result)
 	} else {
-		sourceType = logType + ":" + context
+		sourceType = logType + ":" + environment
 		// For scheduled queries, convert the array in an array of multiple events
 		err := json.Unmarshal(data, &logs)
 		if err != nil {
@@ -91,7 +91,7 @@ func splunkSend(data []byte, context, logType, uuid string, configData LoggingCo
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}
-	if contexts[context].DebugHTTP {
+	if envsmap[environment].DebugHTTP {
 		log.Printf("Splunk: HTTP %d %s", resp, body)
 	}
 }

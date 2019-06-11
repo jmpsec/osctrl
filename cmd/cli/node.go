@@ -26,7 +26,7 @@ func listNodes(c *cli.Context) error {
 		"Hostname",
 		"UUID",
 		"Platform",
-		"Context",
+		" Environment",
 		"Last Status",
 		"Last Result",
 	})
@@ -38,7 +38,7 @@ func listNodes(c *cli.Context) error {
 				n.Hostname,
 				n.UUID,
 				n.Platform,
-				n.Context,
+				n.Environment,
 				pastTimeAgo(n.LastStatus),
 				pastTimeAgo(n.LastResult),
 			}

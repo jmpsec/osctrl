@@ -509,13 +509,13 @@ make cli
 # Install CLI
 DEST="$DEST_PATH" make install_cli
 
-# If we are in dev, create context and enroll host
+# If we are in dev, create environment and enroll host
 if [[ "$MODE" == "dev" ]]; then
-  log "Creating context for dev"
+  log "Creating environment for dev"
   __tls_conf="$DEST_PATH/config/$TLS_CONF"
   __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.conf"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
-  "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
+  "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
 
   log "Checking if service is ready"
   while true; do
@@ -529,8 +529,8 @@ if [[ "$MODE" == "dev" ]]; then
     sleep 1
   done
 
-  log "Adding host in dev context"
-  eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" context quick-add -n "dev" )
+  log "Adding host in dev environment"
+  eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment quick-add -n "dev" )
 fi
 
 # Create admin user

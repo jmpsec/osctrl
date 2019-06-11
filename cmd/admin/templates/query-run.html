@@ -84,23 +84,23 @@
                                 <div class="form-group row">
                                   <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
                                     <fieldset class="form-group">
-                                      <label for="target_context">By Context</label>
+                                      <label for="target_env">By Environment</label>
                                       <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                                        <input id="target_context_switch" class="switch-input" type="checkbox">
+                                        <input id="target_env_switch" class="switch-input" type="checkbox">
                                         <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                                       </label>
-                                      <div id="selector_context" class="input-group">
+                                      <div id="selector_env" class="input-group">
                                         <span class="input-group-prepend">
                                           <span class="input-group-text">
                                             <i class="fas fa-server"></i>
                                           </span>
                                         </span>
-                                        <select class="form-control" name="target_context" id="target_context" disabled>
+                                        <select class="form-control" name="target_env" id="target_env" disabled>
                                           <option value=""></option>
-                                        {{ range  $i, $e := $.Contexts }}
+                                        {{ range  $i, $e := $.Environments }}
                                           <option value="{{ $e.Name }}">{{ $e.Name }}</option>
                                         {{ end }}
-                                          <option value="all">all contexts</option>
+                                          <option value="all">all environments</option>
                                         </select>
                                       </div>
                                       <small class="text-muted">ex. dev</small>
@@ -290,7 +290,7 @@
         $('#target_platform').select2({
           theme: "classic"
         });
-        $('#target_context').select2({
+        $('#target_env').select2({
           theme: "classic"
         });
         $('#target_uuids').select2({
@@ -309,13 +309,13 @@
             $("#target_platform_switch").trigger('click');
           }
         });
-        // Context
-        $('#target_context_switch').click(function() {
-          $('#target_context').attr('disabled', !this.checked);
+        // Environment
+        $('#target_env_switch').click(function() {
+          $('#target_env').attr('disabled', !this.checked);
         });
-        $('#selector_context').click(function() {
-          if (!$("#target_context_switch")[0].checked) {
-            $("#target_context_switch").trigger('click');
+        $('#selector_env').click(function() {
+          if (!$("#target_env_switch")[0].checked) {
+            $("#target_env_switch").trigger('click');
           }
         });
         // UUIDs

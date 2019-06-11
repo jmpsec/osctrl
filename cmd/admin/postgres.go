@@ -11,7 +11,7 @@ import (
 type OsqueryResultData struct {
 	gorm.Model
 	UUID    string `gorm:"index"`
-	Context string
+	 Environment string
 	Name    string
 	Action  string
 	Epoch   int64
@@ -23,7 +23,7 @@ type OsqueryResultData struct {
 type OsqueryStatusData struct {
 	gorm.Model
 	UUID     string `gorm:"index"`
-	Context  string
+	 Environment  string
 	Line     string
 	Message  string
 	Version  string
@@ -35,27 +35,27 @@ type OsqueryStatusData struct {
 type OsqueryQueryData struct {
 	gorm.Model
 	UUID    string `gorm:"index"`
-	Context string
+	 Environment string
 	Name    string
 	Data    json.RawMessage
 	Status  int
 }
 
 // Function to retrieve the last status logs for a given node
-func postgresStatusLogs(uuid, context string, seconds int64) ([]OsqueryStatusData, error) {
+func postgresStatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
 	var logs []OsqueryStatusData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND context = ?", uuid, context).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := db.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
 }
 
 // Function to retrieve the last result logs for a given node
-func postgresResultLogs(uuid, context string, seconds int64) ([]OsqueryResultData, error) {
+func postgresResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
 	var logs []OsqueryResultData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND context = ?", uuid, context).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := db.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil

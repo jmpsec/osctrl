@@ -43,14 +43,13 @@ const (
 const (
 	DebugHTTP       string = "debug_http"
 	DebugService    string = "debug_service"
-	RefreshContexts string = "refresh_contexts"
+	RefreshEnvs     string = "refresh_envs"
 	RefreshSettings string = "refresh_settings"
 	ServiceMetrics  string = "service_metrics"
 	MetricsHost     string = "metrics_host"
 	MetricsPort     string = "metrics_port"
 	MetricsProtocol string = "metrics_protocol"
-	DefaultContext  string = "default_context"
-	
+	DefaultEnv      string = "default_env"
 )
 
 // SettingValue to hold each value for settings
@@ -294,9 +293,9 @@ func (conf *Settings) ServiceMetrics(service string) bool {
 	return value.Boolean
 }
 
-// RefreshContexts gets the interval in seconds to refresh contexts by service
-func (conf *Settings) RefreshContexts(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshContexts)
+// RefreshEnvs gets the interval in seconds to refresh environments by service
+func (conf *Settings) RefreshEnvs(service string) int64 {
+	value, err := conf.RetrieveValue(service, RefreshEnvs)
 	if err != nil {
 		return 0
 	}
@@ -312,10 +311,10 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 	return value.Integer
 }
 
-// DefaultContext gets the default context
+// DefaultEnv gets the default environment
 // FIXME customize the fallover one
-func (conf *Settings) DefaultContext(service string) string {
-	value, err := conf.RetrieveValue(service, DefaultContext)
+func (conf *Settings) DefaultEnv(service string) string {
+	value, err := conf.RetrieveValue(service, DefaultEnv)
 	if err != nil {
 		return "dev"
 	}

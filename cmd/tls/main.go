@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/metrics"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
@@ -48,9 +48,9 @@ var (
 	tlsConfig      JSONConfigurationService
 	db             *gorm.DB
 	settingsmgr    *settings.Settings
-	ctxs           *context.Context
-	contexts       context.MapContext
-	contextTicker  *time.Ticker
+	envs           *environments.Environment
+	envsmap        environments.MapEnvironments
+	envsTicker     *time.Ticker
 	settingsmap    settings.MapSettings
 	settingsTicker *time.Ticker
 	nodesmgr       *nodes.NodeManager
@@ -113,8 +113,8 @@ func main() {
 	if err := automigrateDB(); err != nil {
 		log.Fatalf("Failed to AutoMigrate: %v", err)
 	}
-	// Initialize context
-	ctxs = context.CreateContexts(db)
+	// Initialize environment
+	envs = environments.CreateEnvironment(db)
 	// Initialize settings
 	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
@@ -154,10 +154,10 @@ func main() {
 			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
-	// Check if service settings for contexts refresh is ready
-	if !settingsmgr.IsValue(settings.ServiceTLS, settings.RefreshContexts) {
-		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshContexts, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshContexts, err)
+	// Check if service settings for environments refresh is ready
+	if !settingsmgr.IsValue(settings.ServiceTLS, settings.RefreshEnvs) {
+		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshEnvs, int64(defaultRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshEnvs, err)
 		}
 	}
 	// Check if service settings for settings refresh is ready
@@ -185,31 +185,31 @@ func main() {
 	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-	routerTLS.HandleFunc("/{context}/"+context.DefaultEnrollPath, enrollHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultConfigPath, configHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultLogPath, logHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultQueryReadPath, queryReadHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultQueryWritePath, queryWriteHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultCarverInitPath, carveInitHandler).Methods("POST")
-	routerTLS.HandleFunc("/{context}/"+context.DefaultCarverBlockPath, carveBlockHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultEnrollPath, enrollHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultConfigPath, configHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultLogPath, logHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryReadPath, queryReadHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryWritePath, queryWriteHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverInitPath, carveInitHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, carveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
-	routerTLS.HandleFunc("/{context}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
+	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 
-	// FIXME Redis cache - Ticker to reload contexts
+	// FIXME Redis cache - Ticker to reload environments
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Contexts ticker")
+		log.Println("DebugService:  Environments ticker")
 	}
 	go func() {
-		_t := settingsmgr.RefreshContexts(settings.ServiceTLS)
+		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
-		contextTicker = time.NewTicker(time.Duration(_t) * time.Second)
+		envsTicker = time.NewTicker(time.Duration(_t) * time.Second)
 		for {
 			select {
-			case <-contextTicker.C:
-				go refreshContexts()
+			case <-envsTicker.C:
+				go refreshEnvironments()
 			}
 		}
 	}()

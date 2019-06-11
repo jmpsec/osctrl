@@ -43,8 +43,8 @@ function removeNodes(_uuids) {
   sendPostRequest(data, _url, '/', true);
 }
 
-function nodesView(context) {
-  window.location.href = '/context/' + context + '/active';
+function nodesView(environment) {
+  window.location.href = '/environment/' + environment + '/active';
 }
 
 function refreshCurrentNode() {
@@ -63,7 +63,7 @@ function queryNode(_uuid) {
   var _url = '/query/run';
   var data = {
       csrftoken: _csrftoken,
-      context: "",
+      environment: "",
       platform: "",
       uuid_list: [_uuid],
       host_list: [],
@@ -80,7 +80,7 @@ function queryNodes(_uuids) {
   var _url = '/query/run';
   var data = {
       csrftoken: _csrftoken,
-      context: "",
+      environment: "",
       platform: "",
       uuid_list: _uuids,
       host_list: [],

@@ -1,16 +1,16 @@
-function createContext() {
-  $("#createContextModal").modal();
+function createEnvironment() {
+  $("#createEnvironmentModal").modal();
 }
 
-function confirmCreateContext() {
+function confirmCreateEnvironment() {
   var _csrftoken = $("#csrftoken").val();
 
   var _url = window.location.pathname;
 
-  var _name = $("#context_name").val();
-  var _type = $("#context_type").val();
-  var _hostname = $("#context_host").val();
-  var _icon = $("#context_icon").val();
+  var _name = $("#environment_name").val();
+  var _type = $("#environment_type").val();
+  var _hostname = $("#environment_host").val();
+  var _icon = $("#environment_icon").val();
 
   var data = {
     csrftoken: _csrftoken,
@@ -23,17 +23,17 @@ function confirmCreateContext() {
   sendPostRequest(data, _url, _url, false);
 }
 
-function confirmDeleteContext(_context) {
-  var modal_message = 'Are you sure you want to delete the context ' + _context + '?';
+function confirmDeleteEnvironment(_env) {
+  var modal_message = 'Are you sure you want to delete the environment ' + _env + '?';
   $("#confirmModalMessage").text(modal_message);
   $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
-    deleteContext(_context);
+    delete Environment(_env);
   });
   $("#confirmModal").modal();
 }
 
-function deleteContext(_context) {
+function deleteEnvironment(_env) {
   var _csrftoken = $("#csrftoken").val();
 
   var _url = window.location.pathname;
@@ -41,14 +41,14 @@ function deleteContext(_context) {
   var data = {
     csrftoken: _csrftoken,
     action: 'delete',
-    name: _context,
+    name: _env,
   };
   sendPostRequest(data, _url, _url, false);
 }
 
-function changeDebugHTTP(_context) {
+function changeDebugHTTP(_env) {
   var _csrftoken = $("#csrftoken").val();
-  var _value = $("#" + _context + "_debug_check").is(':checked');
+  var _value = $("#" + _env + "_debug_check").is(':checked');
 
   var _url = window.location.pathname;
 
@@ -56,7 +56,7 @@ function changeDebugHTTP(_context) {
     csrftoken: _csrftoken,
     action: 'debug',
     debughttp: _value,
-    name: _context,
+    name: _env,
   };
   sendPostRequest(data, _url, '', false);
 }

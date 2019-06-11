@@ -21,7 +21,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-bolt"></i> Quick install/update nodes for context <b>{{ .Context }}</b>
+                <i class="fas fa-bolt"></i> Quick install/update nodes for environment <b>{{ .EnvName }}</b>
 
                   <div class="card-header-actions">
                     <div class="row">
@@ -52,7 +52,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or Mac to quickly add/update nodes in the context {{ .Context }}. It will install osquery in the system:
+                    Run this command in Linux or Mac to quickly add/update nodes in the environment {{ .EnvName }}. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -71,7 +71,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Windows to quickly add nodes in the context {{ .Context }}. It will install osquery in the system:
+                    Run this command in Windows to quickly add nodes in the environment {{ .EnvName }}. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -92,7 +92,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-exclamation-triangle"></i> Quick <span style="color:red;">remove</span> nodes for context <b>{{ .Context }}</b>
+                <i class="fas fa-exclamation-triangle"></i> Quick <span style="color:red;">remove</span> nodes for environment <b>{{ .EnvName }}</b>
                 <div class="card-header-actions">
 
                   <div class="row">
@@ -122,7 +122,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or Mac to quickly <span style="color:red;">remove</span> nodes in the context {{ .Context }}. It will NOT remove osquery from the system:
+                    Run this command in Linux or Mac to quickly <span style="color:red;">remove</span> nodes in the environment {{ .EnvName }}. It will NOT remove osquery from the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -140,7 +140,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the context {{ .Context }}. It will NOT remove osquery from the system:
+                    Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the environment {{ .EnvName }}. It will NOT remove osquery from the system:
                   </div>
                 </div>
                 <div class="row mb-4">

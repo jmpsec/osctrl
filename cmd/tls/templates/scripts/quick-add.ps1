@@ -13,8 +13,8 @@
 $ErrorActionPreference = "Stop"
 
 $projectName = "{{ .Project }}"
-$projectTLSHost = "{{ .Context.Hostname }}"
-$projectSecret = "{{ .Context.Secret }}"
+$projectTLSHost = "{{ .Environment.Hostname }}"
+$projectSecret = "{{ .Environment.Secret }}"
 $osqueryPath = ([System.IO.Path]::Combine('C:\', 'ProgramData', 'osquery'))
 $osqueryDaemonPath = (Join-Path $osqueryPath "osqueryd")
 $osqueryDaemon = (Join-Path $osqueryDaemonPath "osqueryd.exe")
@@ -31,30 +31,30 @@ $osqueryFlags = @"
 --force=true
 --utc=true
 --enroll_secret_path=$secretFile
---enroll_tls_endpoint=/{{ .Context.Name }}/{{ .Context.EnrollPath }}
+--enroll_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.EnrollPath }}
 --config_plugin=tls
---config_tls_endpoint=/{{ .Context.Name }}/{{ .Context.ConfigPath }}
---config_tls_refresh={{ .Context.ConfigInterval }}
+--config_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.ConfigPath }}
+--config_tls_refresh={{ .Environment.ConfigInterval }}
 --logger_plugin=tls
 --logger_tls_compress=true
---logger_tls_endpoint=/{{ .Context.Name }}/{{ .Context.LogPath }}
---logger_tls_period={{ .Context.LogInterval }}
+--logger_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.LogPath }}
+--logger_tls_period={{ .Environment.LogInterval }}
 --disable_carver=false
 --carver_disable_function=false
---carver_start_endpoint=/{{ .Context.Name }}/{{ .Context.CarverInitPath }}
---carver_continue_endpoint=/{{ .Context.Name }}/{{ .Context.CarverBlockPath }}
+--carver_start_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverInitPath }}
+--carver_continue_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverBlockPath }}
 --disable_distributed=false
---distributed_interval={{ .Context.QueryInterval }}
+--distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
 --distributed_tls_max_attempts=3
---distributed_tls_read_endpoint=/{{ .Context.Name }}/{{ .Context.QueryReadPath }}
---distributed_tls_write_endpoint=/{{ .Context.Name }}/{{ .Context.QueryWritePath }}
+--distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
 --tls_hostname=$projectTLSHost
 --tls_server_certs=$certFile
 "@
 $osqueryCertificate = @"
-{{ .Context.Certificate }}
+{{ .Environment.Certificate }}
 "@
 
 # Adapted from http://www.jonathanmedd.net/2014/01/testing-for-admin-privileges-in-powershell.html

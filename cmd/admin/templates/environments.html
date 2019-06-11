@@ -22,13 +22,13 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-tools"></i> All TLS Contexts</b>
+                <i class="fas fa-tools"></i> All TLS  Environments</b>
 
                   <div class="card-header-actions">
                     <div class="row">
                       <div class="card-header-action mr-3">
-                        <button id="context_add" class="btn btn-sm btn-block btn-dark"
-                          data-toggle="tooltip" data-placement="bottom" title="Add Context" onclick="createContext();">
+                        <button id="environment_add" class="btn btn-sm btn-block btn-dark"
+                          data-toggle="tooltip" data-placement="bottom" title="Add  Environment" onclick="createEnvironment();">
                           <i class="fas fa-plus"></i>
                         </button>
                       </div>
@@ -51,7 +51,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                  {{range  $i, $e := $.Contexts}}
+                  {{range  $i, $e := $.Environments}}
                     <tr>
                       <td><b>{{ $e.Name }}</b></td>
                       <td>{{ $e.Type }}</td>
@@ -64,7 +64,7 @@
                       </td>
                       <td>{{ $e.Icon }} <i class="{{ $e.Icon }}"></i></td>
                       <td>
-                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteContext({{ $e.Name }});">
+                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDelete Environment({{ $e.Name }});">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <!-- <button type="button" class="btn btn-sm btn-ghost-info" onclick="">
@@ -79,43 +79,43 @@
               </div>
             </div>
 
-            <div class="modal fade" id="createContextModal" tabindex="-1" role="dialog" aria-labelledby="createContextModal" aria-hidden="true">
+            <div class="modal fade" id="createEnvironmentModal" tabindex="-1" role="dialog" aria-labelledby="createEnvironmentModal" aria-hidden="true">
               <div class="modal-dialog modal-lg modal-dark" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h4 class="modal-title">Create new context</h4>
+                    <h4 class="modal-title">Create new environment</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
                   </div>
                   <div class="modal-body">
                     <div class="form-group row">
-                      <label class="col-md-2 col-form-label" for="context_name">Name: </label>
+                      <label class="col-md-2 col-form-label" for="environment_name">Name: </label>
                       <div class="col-md-4">
-                        <input class="form-control" name="context_name" id="context_name" type="text" autocomplete="off"
+                        <input class="form-control" name="environment_name" id="environment_name" type="text" autocomplete="off"
                           autofocus>
                       </div>
-                      <label class="col-md-2 col-form-label" for="context_host">Hostname: </label>
+                      <label class="col-md-2 col-form-label" for="environment_host">Hostname: </label>
                       <div class="col-md-4">
-                        <input class="form-control" name="context_host" id="context_host" type="text" autocomplete="off">
+                        <input class="form-control" name="environment_host" id="environment_host" type="text" autocomplete="off">
                       </div>
                     </div>
                     <div class="form-group row">
-                      <label class="col-md-2 col-form-label" for="context_type">Type: </label>
+                      <label class="col-md-2 col-form-label" for="environment_type">Type: </label>
                       <div class="col-md-4">
-                        <select class="form-control" id="context_type" name="context_type">
+                        <select class="form-control" id="environment_type" name="environment_type">
                           <option value="osquery">osquery</option>
                         </select>
                       </div>
-                      <label class="col-md-1 col-form-label" for="context_icon">Icon: </label>
-                      <label class="col-md-1 col-form-label"><i id="context_show_icon" class="fas fa-wrench"></i></label>
+                      <label class="col-md-1 col-form-label" for="environment_icon">Icon: </label>
+                      <label class="col-md-1 col-form-label"><i id="environment_show_icon" class="fas fa-wrench"></i></label>
                       <div class="col-md-4">
-                        <input class="form-control" name="context_icon" id="context_icon" type="text" value="fas fa-wrench">
+                        <input class="form-control" name="environment_icon" id="environment_icon" type="text" value="fas fa-wrench">
                       </div>
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmCreateContext();">Create</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmCreateEnvironment();">Create</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>
@@ -141,14 +141,14 @@
     <script src="/static/js/functions.js"></script>
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
-    <script src="/static/js/contexts.js"></script>
+    <script src="/static/js/environments.js"></script>
     <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
-        // Update icon on context creation modal
-        $('#context_icon').on('input', function() {
-          $("#context_show_icon").removeClass();
-          $("#context_show_icon").addClass($('#context_icon').val());
+        // Update icon on environment creation modal
+        $('#environment_icon').on('input', function() {
+          $("#environment_show_icon").removeClass();
+          $("#environment_show_icon").addClass($('#environment_icon').val());
         });
 
         // Enable all tooltips

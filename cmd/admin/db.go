@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/context"
+	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
@@ -99,10 +99,10 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
-	// table tls_contexts
-	err = db.AutoMigrate(context.TLSContext{}).Error
+	// table tls_environments
+	err = db.AutoMigrate(environments.TLSEnvironment{}).Error
 	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (tls_contexts): %v", err)
+		log.Fatalf("Failed to AutoMigrate table (tls_environments): %v", err)
 	}
 	// table admin_users
 	err = db.AutoMigrate(users.AdminUser{}).Error
