@@ -32,17 +32,18 @@
 #   --private-admin-port PORT   Port for the admin service. Default is 9001
 #   --tls-hostname HOSTNAME     Hostname for the TLS endpoint service. Default is 127.0.0.1
 #   --admin-hostname HOSTNAME   Hostname for the admin service. Default is 127.0.0.1
-#   -X PASS     --password      Force the admin password for the admin interface. Default is random.
-#   -U          --update        Pull from master and sync files to the current folder.
-#   -k PATH     --keyfile PATH  Path to supplied TLS key file.
-#   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle.
-#   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt.
-#   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt.
+#   -X PASS     --password      Force the admin password for the admin interface. Default is random
+#   -U          --update        Pull from master and sync files to the current folder
+#   -k PATH     --keyfile PATH  Path to supplied TLS key file
+#   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle
+#   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt
+#   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt
 #   -s PATH     --source PATH   Path to code. Default is /vagrant
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
-#   -n          --nginx         Install and configure nginx as TLS termination.
-#   -P          --postgres      Install and configure PostgreSQL as backend.
-#   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana).
+#   -n          --nginx         Install and configure nginx as TLS termination
+#   -P          --postgres      Install and configure PostgreSQL as backend
+#   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana)
+#   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #
 # Examples:
 #   Provision service in development mode, code is in /vagrant and both admin and tls:
@@ -103,16 +104,17 @@ function usage() {
   printf "  --private-admin-port PORT \tPort for the admin service. Default is 9001\n"
   printf "  --tls-hostname HOSTNAME \tHostname for the TLS endpoint service. Default is 127.0.0.1\n"
   printf "  --admin-hostname HOSTNAME \tHostname for the admin service. Default is 127.0.0.1\n"
-  printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random."
-  printf "  -U          --update \t\tPull from master and sync files to the current folder.\n"
-  printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle.\n"
-  printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt.\n"
-  printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt.\n"
+  printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random\n"
+  printf "  -U          --update \t\tPull from master and sync files to the current folder\n"
+  printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
+  printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt\n"
+  printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt\n"
   printf "  -s PATH     --source PATH \tPath to code. Default is /vagrant\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
-  printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination.\n"
-  printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend.\n"
-  printf "  -M          --metrics \t\tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)."
+  printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
+  printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend\n"
+  printf "  -M          --metrics \t\tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
+  printf "  -E          --enroll  \t\tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
@@ -141,6 +143,7 @@ CERTFILE=""
 DOMAIN=""
 EMAIL=""
 METRICS=false
+ENROLL=false
 NGINX=false
 POSTGRES=false
 SOURCE_PATH=/vagrant
@@ -174,7 +177,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nM:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nME:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -268,6 +271,11 @@ while true; do
     -M|--metrics)
       SHOW_USAGE=false
       METRICS=true
+      shift
+      ;;
+    -E|--enroll)
+      SHOW_USAGE=false
+      ENROLL=true
       shift
       ;;
     -k|--keyfile)
@@ -490,7 +498,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   sudo mkdir -p "$DEST_PATH/data"
 
   # Copy osquery tables JSON file
-  sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.0.json" "$DEST_PATH/data"
+  sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
 
   # Copy empty configuration
   sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.conf" "$DEST_PATH/data"
@@ -529,8 +537,10 @@ if [[ "$MODE" == "dev" ]]; then
     sleep 1
   done
 
-  log "Adding host in dev environment"
-  eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment quick-add -n "dev" )
+  if [[ "$ENROLL" == true ]]; then
+    log "Adding host in dev environment"
+    eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment quick-add -n "dev" )
+  fi
 fi
 
 # Create admin user

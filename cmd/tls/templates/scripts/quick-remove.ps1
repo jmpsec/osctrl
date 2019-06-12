@@ -1,10 +1,11 @@
-#requires -version 2
-
-## Tool to quick-remove Windows nodes
+##
+## {{ .Project }} - Tool to quick-remove Windows nodes
 ##
 ## IMPORTANT! osquery will not be removed.
 
 ## Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://host/path/test.ps1'))
+
+#Requires -Version 3.0
 
 # Force Powershell to use TLS 1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
@@ -35,7 +36,7 @@ function QuickRemove-Node
     Write-Host "[!] Please run this script with Admin privileges!" -foregroundcolor Red
     Exit -1
   }
-  
+
   # Stop osquery service
   $osquerydService = Get-WmiObject -Class Win32_Service -Filter "Name='$serviceName'"
   if ($osquerydService) {
@@ -44,6 +45,12 @@ function QuickRemove-Node
     Start-Sleep -s 5
     $osquerydService.Delete()
     Write-Host "System service '$serviceName' uninstalled." -foregroundcolor Cyan
+
+    # If we find zombie processes, make sure they are terminated
+    $proc = Get-Process | Where-Object { $_.ProcessName -eq 'osqueryd' }
+    if ($null -ne $proc) {
+      Stop-Process -Force $proc -ErrorAction SilentlyContinue
+    }
   }
 
   # Prepare secret

@@ -1,10 +1,11 @@
-#requires -version 2
-
-## Tool to quick-add Windows nodes
+##
+## {{ .Project }} - Tool to quick-add Windows nodes
 ##
 ## IMPORTANT! If osquery is not installed, it will be installed.
 
 ## Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://host/path/test.ps1'))
+
+#Requires -Version 3.0
 
 # Force Powershell to use TLS 1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
@@ -15,15 +16,16 @@ $ErrorActionPreference = "Stop"
 $projectName = "{{ .Project }}"
 $projectTLSHost = "{{ .Environment.Hostname }}"
 $projectSecret = "{{ .Environment.Secret }}"
-$osqueryPath = ([System.IO.Path]::Combine('C:\', 'ProgramData', 'osquery'))
+$progFiles = [System.Environment]::GetEnvironmentVariable('ProgramFiles')
+$osqueryPath = (Join-Path $progFiles "osquery")
 $osqueryDaemonPath = (Join-Path $osqueryPath "osqueryd")
 $osqueryDaemon = (Join-Path $osqueryDaemonPath "osqueryd.exe")
 $secretFile = (Join-Path $osqueryPath "osquery.secret")
 $flagsFile = (Join-Path $osqueryPath "osquery.flags")
 $certFile = (Join-Path $osqueryPath "{{ .Project }}.crt")
-$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-3.3.1.msi"
-$osqueryTempMSI = "C:\Windows\Temp\osquery-3.3.1.msi"
-$osqueryMSISize = 9953280
+$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-3.4.0.msi"
+$osqueryTempMSI = "C:\Windows\Temp\osquery-3.4.0.msi"
+#$osqueryMSISize = 9953280
 $serviceName = "osqueryd"
 $serviceDescription = "osquery daemon service"
 $osqueryFlags = @"
@@ -127,8 +129,25 @@ function Set-SafePermissions {
   return $false
 }
 
-function QuickAdd-Node
-{
+# Helper function to add to the SYSTEM path
+function Add-ToSystemPath {
+  param(
+    [string] $targetFolder = ''
+  )
+
+  $oldPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+  if (-not ($oldPath -imatch [regex]::escape($targetFolder))) {
+    $newPath = $oldPath
+    if ($oldPath[-1] -eq ';') {
+      $newPath = $newPath + $targetFolder
+    } else {
+      $newPath = $newPath + ';' + $targetFolder
+    }
+    [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+  }
+}
+
+function QuickAdd-Node {
   # Make sure we are admin
   if (-not (Test-IsAdmin)) {
     Write-Host "[!] Please run this script with Admin privileges!" -foregroundcolor Red
@@ -139,10 +158,10 @@ function QuickAdd-Node
     Write-Host "[+] $projectName needs osquery"
     Write-Host "[+] Downloading osquery"
     (New-Object System.Net.WebClient).DownloadFile($osqueryMSI, $osqueryTempMSI)
-    do {
-      Start-Sleep -Seconds 2
-      $fileSize= (Get-Item $osqueryTempMSI).Length
-    } until ($fileSize -eq $osqueryMSISize)
+    #do {
+    #  Start-Sleep -Seconds 2
+    #  $fileSize= (Get-Item $osqueryTempMSI).Length
+    #} until ($fileSize -eq $osqueryMSISize)
     Write-Host "[+] Installing osquery"
     msiexec /i $osqueryTempMSI /passive /norestart /qn
     Start-Sleep -Seconds 5
@@ -198,6 +217,10 @@ function QuickAdd-Node
     Write-Host "[+] '$serviceName' is not an installed system service." -foregroundcolor Yellow
     Exit 1
   }
+
+  # Add osquery binary path to machines path for ease of use.
+  Write-Host "[+] Adding osquery to path"
+  Add-ToSystemPath $targetFolder
 
   Write-Host "Congratulations! The node has been enrolled in $projectName"
   Write-Host "REMINDER! $serviceName has been started and enabled."

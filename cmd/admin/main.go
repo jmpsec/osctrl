@@ -42,7 +42,7 @@ const (
 	// Service configuration file
 	configurationFile string = "config/admin.json"
 	// osquery version to display tables
-	osqueryTablesVersion string = "3.3.0"
+	osqueryTablesVersion string = "3.3.2"
 	// JSON file with osquery tables data
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Static files folder
@@ -283,8 +283,6 @@ func main() {
 	// Admin: static
 	routerAdmin.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
-	// Admin: Packages to enroll
-	//routerAdmin.HandleFunc("/package/{environment}/{platform}", packageHandler).Methods("GET")
 
 	/////////////////////////// AUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {

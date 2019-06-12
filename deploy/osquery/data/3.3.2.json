@@ -2085,6 +2085,14 @@
         "hidden":false,
         "type":"text",
         "description":"Path to extension folder"
+      },
+      {
+        "index":false,
+        "name":"permissions",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The permissions required by the extension"
       }
     ],
     "description":"Chrome browser extensions."
@@ -7101,7 +7109,7 @@
         "required":false,
         "hidden":false,
         "type":"text",
-        "description":"Type of address. One of dhcp, manual, auto, other"
+        "description":"Type of address. One of dhcp, manual, auto, other, unknown"
       },
       {
         "index":false,
@@ -7408,6 +7416,59 @@
       }
     ],
     "description":"Detailed information and stats of network interfaces."
+  },
+  {
+    "cacheable":false,
+    "evented":false,
+    "name":"interface_ipv6",
+    "url":"https://github.com/facebook/osquery/blob/master/specs/posix/interface_ipv6.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "columns":[
+      {
+        "index":false,
+        "name":"interface",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"Interface name"
+      },
+      {
+        "index":false,
+        "name":"hop_limit",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"Current Hop Limit"
+      },
+      {
+        "index":false,
+        "name":"forwarding_enabled",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"Enable IP forwarding"
+      },
+      {
+        "index":false,
+        "name":"redirect_accept",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"Accept ICMP redirect messages"
+      },
+      {
+        "index":false,
+        "name":"rtadv_accept",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"Accept ICMP Router Advertisement"
+      }
+    ],
+    "description":"IPv6 configuration and stats of network interfaces."
   },
   {
     "cacheable":true,
@@ -10839,6 +10900,82 @@
   {
     "cacheable":false,
     "evented":false,
+    "name":"ntdomains",
+    "url":"https://github.com/facebook/osquery/blob/master/specs/windows/ntdomains.table",
+    "platforms":[
+      "windows"
+    ],
+    "columns":[
+      {
+        "index":false,
+        "name":"name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The label by which the object is known."
+      },
+      {
+        "index":false,
+        "name":"client_site_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The name of the site where the domain controller is configured."
+      },
+      {
+        "index":false,
+        "name":"dc_site_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The name of the site where the domain controller is located."
+      },
+      {
+        "index":false,
+        "name":"dns_forest_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The name of the root of the DNS tree."
+      },
+      {
+        "index":false,
+        "name":"domain_controller_address",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The IP Address of the discovered domain controller.."
+      },
+      {
+        "index":false,
+        "name":"domain_controller_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The name of the discovered domain controller."
+      },
+      {
+        "index":false,
+        "name":"domain_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The name of the domain."
+      },
+      {
+        "index":false,
+        "name":"status",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The current status of the domain object."
+      }
+    ],
+    "description":"Display basic NT domain information of a Windows machine."
+  },
+  {
+    "cacheable":false,
+    "evented":false,
     "name":"ntfs_acl_permissions",
     "url":"https://github.com/facebook/osquery/blob/master/specs/windows/ntfs_acl_permissions.table",
     "platforms":[
@@ -10923,6 +11060,43 @@
       }
     ],
     "description":"Apple NVRAM variable listing."
+  },
+  {
+    "cacheable":false,
+    "evented":false,
+    "name":"oem_strings",
+    "url":"https://github.com/facebook/osquery/blob/master/specs/posix/oem_strings.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "columns":[
+      {
+        "index":false,
+        "name":"handle",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"Handle, or instance number, associated with the Type 11 structure"
+      },
+      {
+        "index":false,
+        "name":"number",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"The string index of the structure"
+      },
+      {
+        "index":false,
+        "name":"value",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"The value of the OEM string"
+      }
+    ],
+    "description":"OEM defined strings retrieved from SMBIOS."
   },
   {
     "cacheable":false,
@@ -11100,6 +11274,14 @@
         "hidden":false,
         "type":"text",
         "description":"OS version codename"
+      },
+      {
+        "index":false,
+        "name":"install_date",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"The install date of the OS."
       }
     ],
     "description":"A single row containing the operating system name and version."
@@ -11970,6 +12152,62 @@
         "hidden":false,
         "type":"text",
         "description":"Hex encoded PCI Device model identifier"
+      },
+      {
+        "index":false,
+        "name":"pci_class_id",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"PCI Device class ID in hex format"
+      },
+      {
+        "index":false,
+        "name":"pci_subclass_id",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"PCI Device  subclass in hex format"
+      },
+      {
+        "index":false,
+        "name":"pci_subclass",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"PCI Device subclass"
+      },
+      {
+        "index":false,
+        "name":"subsystem_vendor_id",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"Vendor ID of PCI device subsystem"
+      },
+      {
+        "index":false,
+        "name":"subsystem_vendor",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"Vendor of PCI device subsystem"
+      },
+      {
+        "index":false,
+        "name":"subsystem_model_id",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"Model ID of PCI device subsystem"
+      },
+      {
+        "index":false,
+        "name":"subsystem_model",
+        "required":false,
+        "hidden":true,
+        "type":"text",
+        "description":"Device description of PCI device subsystem"
       }
     ],
     "description":"PCI devices active on the host system."
@@ -13584,6 +13822,30 @@
       },
       {
         "index":false,
+        "name":"elapsed_time",
+        "required":false,
+        "hidden":true,
+        "type":"bigint",
+        "description":"Elapsed time in seconds this process has been running."
+      },
+      {
+        "index":false,
+        "name":"handle_count",
+        "required":false,
+        "hidden":true,
+        "type":"bigint",
+        "description":"Total number of handles that the process has open. This number is the sum of the handles currently opened by each thread in the process."
+      },
+      {
+        "index":false,
+        "name":"percent_processor_time",
+        "required":false,
+        "hidden":true,
+        "type":"bigint",
+        "description":"Returns elapsed time that all of the threads of this process used the processor to execute instructions in 100 nanoseconds ticks."
+      },
+      {
+        "index":false,
         "name":"upid",
         "required":false,
         "hidden":false,
@@ -14010,7 +14272,7 @@
         "name":"netmask",
         "required":false,
         "hidden":false,
-        "type":"text",
+        "type":"integer",
         "description":"Netmask length"
       },
       {
@@ -14068,6 +14330,14 @@
         "hidden":false,
         "type":"text",
         "description":"Type of route"
+      },
+      {
+        "index":false,
+        "name":"hopcount",
+        "required":false,
+        "hidden":false,
+        "type":"integer",
+        "description":"Max hops expected"
       }
     ],
     "description":"The active route table for the host system."
@@ -15952,6 +16222,14 @@
         "hidden":false,
         "type":"text",
         "description":"Data type"
+      },
+      {
+        "index":false,
+        "name":"field_name",
+        "required":false,
+        "hidden":false,
+        "type":"text",
+        "description":"Specific attribute of opaque type"
       }
     ],
     "description":"sysctl names, values, and settings information."
@@ -16014,7 +16292,7 @@
         "required":false,
         "hidden":false,
         "type":"integer",
-        "description":"Max number of CPU physical cores"
+        "description":"Number of physical CPU cores in to the system"
       },
       {
         "index":false,
@@ -16022,7 +16300,7 @@
         "required":false,
         "hidden":false,
         "type":"integer",
-        "description":"Max number of CPU logical cores"
+        "description":"Number of logical CPU cores available to the system"
       },
       {
         "index":false,
@@ -16258,6 +16536,14 @@
         "hidden":false,
         "type":"text",
         "description":"Current time (ISO format) in the system"
+      },
+      {
+        "index":false,
+        "name":"win_timestamp",
+        "required":false,
+        "hidden":true,
+        "type":"bigint",
+        "description":"Timestamp value in 100 nanosecond units."
       }
     ],
     "description":"Track current date and time in the system."
