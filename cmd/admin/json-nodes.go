@@ -25,15 +25,15 @@ type ReturnedNodes struct {
 
 // NodeJSON to be used to populate JSON data for a node
 type NodeJSON struct {
-	Checkbox  string `json:"checkbox"`
-	UUID      string `json:"uuid"`
-	Username  string `json:"username"`
-	Localname string `json:"localname"`
-	IP        string `json:"ip"`
-	Platform  string `json:"platform"`
-	Version   string `json:"version"`
-	Osquery   string `json:"osquery"`
-	LastSeen  string `json:"lastseen"`
+	Checkbox  string        `json:"checkbox"`
+	UUID      string        `json:"uuid"`
+	Username  string        `json:"username"`
+	Localname string        `json:"localname"`
+	IP        string        `json:"ip"`
+	Platform  string        `json:"platform"`
+	Version   string        `json:"version"`
+	Osquery   string        `json:"osquery"`
+	LastSeen  CreationTimes `json:"lastseen"`
 }
 
 // Handler for JSON endpoints by environment
@@ -78,7 +78,10 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 			Platform:  n.Platform,
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
-			LastSeen:  pastTimeAgo(n.UpdatedAt),
+			LastSeen: CreationTimes{
+				Display:   pastTimeAgo(n.UpdatedAt),
+				Timestamp: pastTimestamp(n.UpdatedAt),
+			},
 		}
 		nJSON = append(nJSON, nj)
 	}
@@ -134,7 +137,10 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 			Platform:  n.Platform,
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
-			LastSeen:  pastTimeAgo(n.UpdatedAt),
+			LastSeen: CreationTimes{
+				Display:   pastTimeAgo(n.UpdatedAt),
+				Timestamp: pastTimestamp(n.UpdatedAt),
+			},
 		}
 		nJSON = append(nJSON, nj)
 	}

@@ -23,17 +23,17 @@ type ReturnedLogs struct {
 	Data []LogJSON `json:"data"`
 }
 
-// LogCreated to hold creation times
-type LogCreated struct {
+// CreationTimes to hold creation times
+type CreationTimes struct {
 	Display   string `json:"display"`
 	Timestamp string `json:"timestamp"`
 }
 
 // LogJSON to be used to populate JSON data for a status/result log
 type LogJSON struct {
-	Created LogCreated `json:"created"`
-	First   string     `json:"first"`
-	Second  string     `json:"second"`
+	Created CreationTimes `json:"created"`
+	First   string        `json:"first"`
+	Second  string        `json:"second"`
 }
 
 // ReturnedQueryLogs to return a JSON with query logs
@@ -43,8 +43,8 @@ type ReturnedQueryLogs struct {
 
 // QueryLogJSON to be used to populate JSON data for a query log
 type QueryLogJSON struct {
-	Created LogCreated `json:"created"`
-	Data    string     `json:"data"`
+	Created CreationTimes `json:"created"`
+	Data    string        `json:"data"`
 }
 
 // Handler GET requests for JSON status/result logs by node and environment
@@ -100,7 +100,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Prepare data to be returned
 		for _, s := range statusLogs {
-			_c := LogCreated{
+			_c := CreationTimes{
 				Display:   pastTimeAgo(s.CreatedAt),
 				Timestamp: pastTimestamp(s.CreatedAt),
 			}
@@ -119,14 +119,13 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Prepare data to be returned
 		for _, r := range resultLogs {
-			_c := LogCreated{
-				Display:   pastTimeAgo(r.CreatedAt),
-				Timestamp: pastTimestamp(r.CreatedAt),
-			}
 			_l := LogJSON{
-				Created: _c,
-				First:   r.Name,
-				Second:  string(r.Columns),
+				Created: CreationTimes{
+					Display:   pastTimeAgo(r.CreatedAt),
+					Timestamp: pastTimestamp(r.CreatedAt),
+				},
+				First:  r.Name,
+				Second: string(r.Columns),
 			}
 			logJSON = append(logJSON, _l)
 		}
@@ -166,7 +165,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare data to be returned
 	queryLogJSON := []QueryLogJSON{}
 	for _, q := range queryLogs {
-		_c := LogCreated{
+		_c := CreationTimes{
 			Display:   pastTimeAgo(q.CreatedAt),
 			Timestamp: pastTimestamp(q.CreatedAt),
 		}

@@ -88,6 +88,7 @@
                "<'row'<'col-sm-12'tr>>" +
                "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4'i><'col-sm-12 col-md-4'p>>",
           processing : true,
+          order : [[ 3, "desc" ]],
           ajax : {
             url: "/query/json/{{ .Target }}",
             dataSrc: function(json) {
@@ -99,7 +100,11 @@
             {"data" : "checkbox"},
             {"data" : "query"},
             {"data" : "creator"},
-            {"data" : "created"},
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
             {"data" : "status"},
             {"data" : "progress"}
           ],

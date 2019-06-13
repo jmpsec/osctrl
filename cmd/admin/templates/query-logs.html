@@ -31,12 +31,23 @@
                 </div>
               </div>
               <div class="card-body table-responsive">
-
-                Query: <b>{{ .Query }}</b><br>
-                Targets: <br>
-                {{ range  $i, $e := $.QueryTargets }}
-                  Type = {{ $e.Type }}, Value = {{ $e.Value }}<br>
-                {{ end }}
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                  <thead>
+                    <tr>
+                      <th width="70%">Query</th>
+                      <th width="30%" colspan="2">Target</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>{{ .Query }}</b></td>
+                      {{ range  $i, $e := $.QueryTargets }}
+                        <td>{{ $e.Type }}</td>
+                        <td>{{ $e.Value }}</td>
+                      {{ end }}
+                    </tr>
+                  </tbody>
+                </table>
                 <br>
                 <table id="tableQueryLogs" class="table table-bordered table-striped" style="width:100%">
                   <input type="hidden" id="refresh_value" value="yes">

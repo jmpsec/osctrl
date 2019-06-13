@@ -35,7 +35,7 @@ type QueryJSON struct {
 	Name     string        `json:"name"`
 	Creator  string        `json:"creator"`
 	Query    QueryData     `json:"query"`
-	Created  string        `json:"created"`
+	Created  CreationTimes `json:"created"`
 	Status   string        `json:"status"`
 	Progress QueryProgress `json:"progress"`
 }
@@ -75,10 +75,13 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		data["query"] = q.Query
 		data["name"] = q.Name
 		_q := QueryJSON{
-			Name:     q.Name,
-			Creator:  q.Creator,
-			Query:    data,
-			Created:  pastTimeAgo(q.CreatedAt),
+			Name:    q.Name,
+			Creator: q.Creator,
+			Query:   data,
+			Created: CreationTimes{
+				Display:   pastTimeAgo(q.CreatedAt),
+				Timestamp: pastTimestamp(q.CreatedAt),
+			},
 			Status:   status,
 			Progress: progress,
 		}

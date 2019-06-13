@@ -98,6 +98,7 @@
                "<'row'<'col-sm-12'tr>>" +
                "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4'i><'col-sm-12 col-md-4'p>>",
           processing : true,
+          order : [[ 8, "desc" ]],
           ajax : {
             url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
             dataSrc: function(json) {
@@ -114,7 +115,11 @@
             {"data" : "platform"},
             {"data" : "version"},
             {"data" : "osquery"},
-            {"data" : "lastseen"}
+            {"data" : {
+                _:    "lastseen.display",
+                sort: "lastseen.timestamp"
+              }
+            }
           ],
           columnDefs: [
             {
@@ -179,19 +184,9 @@
                   return data;
                 }
               }
-            },{
-              targets: 6,
-              data: 'version',
-              width: '15%'
-            },{
-              targets: 7,
-              data: 'osquery',
-              width: '3%'
-            },{
-              targets: 8,
-              data: 'lastseen',
-              width: '10%'
-            }
+            },{ targets: 6, width: '15%' },
+              { targets: 7, width: '3%' },
+              { targets: 8, width: '10%'}
           ],
           select: {
             style:    'os',
