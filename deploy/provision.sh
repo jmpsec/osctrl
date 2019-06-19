@@ -177,7 +177,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("tls" "admin" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nME:c:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -576,3 +576,6 @@ log "Completed in $_MINUTES and $_SECONDS"
 exit 0
 
 # kthxbai
+
+# Standard deployment in a linux box would be like:
+# ./deploy/provision.sh --nginx --postgres -p all --tls-hostname "dev.osctrl.net" --admin-hostname "dev.osctrl.net" -E
