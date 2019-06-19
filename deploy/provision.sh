@@ -365,6 +365,7 @@ fi
 package sudo
 package git
 package wget
+package curl
 package gcc
 package make
 package openssl
