@@ -65,9 +65,8 @@ func listUsers(c *cli.Context) error {
 		"Fullname",
 		"PassHash",
 		"Admin?",
-		"CSRF Token",
-		"IPAddress",
-		"UserAgent",
+		"Last IPAddress",
+		"Last UserAgent",
 	})
 	if len(users) > 0 {
 		data := [][]string{}
@@ -77,7 +76,6 @@ func listUsers(c *cli.Context) error {
 				u.Fullname,
 				truncateString(u.PassHash, lengthToTruncate),
 				stringifyBool(u.Admin),
-				u.CSRF,
 				u.LastIPAddress,
 				u.LastUserAgent,
 			}

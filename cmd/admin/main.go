@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
@@ -20,8 +21,6 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"
@@ -47,6 +46,8 @@ const (
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Static files folder
 	staticFilesFolder string = "./static"
+	// Default refreshing interval in seconds
+	defaultRefresh int = 300
 )
 
 // Global variables
@@ -58,11 +59,11 @@ var (
 	settingsmgr    *settings.Settings
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
-	usersmgr       *users.UserManager
+	sessionsmgr    *SessionManager
 	envs           *environments.Environment
 	dbConfig       JSONConfigurationDB
-	store          *sessions.CookieStore
 	adminUsers     *users.UserManager
+	sessionsTicker *time.Ticker
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
 )
@@ -132,22 +133,11 @@ func loadOsqueryTables() error {
 // Initialization code
 func init() {
 	// Logging flags
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(log.Lshortfile)
 	// Load configuration
 	err := loadConfiguration()
 	if err != nil {
 		log.Fatalf("Error loading configuration %s", err)
-	}
-	// Generate cookie store with proper options
-	if adminConfig.Auth != settings.AuthNone {
-		storeKey := securecookie.GenerateRandomKey(32)
-		store = sessions.NewCookieStore(storeKey)
-		store.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   86400 * 7,
-			Secure:   true,
-			HttpOnly: true,
-		}
 	}
 	// Load osquery tables JSON
 	err = loadOsqueryTables()
@@ -183,8 +173,8 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
-	// Initialize users
-	usersmgr = users.CreateUserManager(db)
+	// Initialize sessions
+	sessionsmgr = CreateSessionManager(db)
 	log.Println("Loading service settings")
 	// Check if service settings for debug service is ready
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -212,6 +202,12 @@ func main() {
 	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DefaultEnv) {
 		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.DefaultEnv, "dev"); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.DefaultEnv, err)
+		}
+	}
+	// Check if service settings for sessions cleanup is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.CleanupSessions) {
+		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanupSessions, int64(defaultRefresh)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.CleanupSessions, err)
 		}
 	}
 	// multiple listeners channel
@@ -271,8 +267,6 @@ func main() {
 		// login
 		routerAdmin.HandleFunc("/login", loginGETHandler).Methods("GET")
 		routerAdmin.HandleFunc("/login", loginPOSTHandler).Methods("POST")
-		// logout
-		routerAdmin.HandleFunc("/logout", logoutHandler).Methods("POST")
 	}
 	// Admin: testing
 	routerAdmin.HandleFunc(testingPath, testingHTTPHandler).Methods("GET")
@@ -342,12 +336,36 @@ func main() {
 	if adminConfig.Auth != settings.AuthNone {
 		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
 		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
+		// logout
+		routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutHandler))).Methods("POST")
 	}
 
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthNone {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
+
+	// FIXME Redis cache - Ticker to cleanup sessions
+	// FIXME splay this?
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Sessions ticker")
+	}
+	go func() {
+		_t := settingsmgr.CleanupSessions()
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		sessionsTicker = time.NewTicker(time.Duration(_t) * time.Second)
+		for {
+			select {
+			case <-sessionsTicker.C:
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Println("DebugService: Cleaning up sessions")
+				}
+				go sessionsmgr.Cleanup()
+			}
+		}
+	}()
 
 	// Launch HTTP server for admin
 	go func() {

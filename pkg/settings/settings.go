@@ -45,6 +45,7 @@ const (
 	DebugService    string = "debug_service"
 	RefreshEnvs     string = "refresh_envs"
 	RefreshSettings string = "refresh_settings"
+	CleanupSessions string = "cleanup_sessions"
 	ServiceMetrics  string = "service_metrics"
 	MetricsHost     string = "metrics_host"
 	MetricsPort     string = "metrics_port"
@@ -305,6 +306,15 @@ func (conf *Settings) RefreshEnvs(service string) int64 {
 // RefreshSettings gets the interval in seconds to refresh settings by service
 func (conf *Settings) RefreshSettings(service string) int64 {
 	value, err := conf.RetrieveValue(service, RefreshSettings)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// CleanupSessions gets the interval in seconds to cleanup expired sessions by service
+func (conf *Settings) CleanupSessions() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions)
 	if err != nil {
 		return 0
 	}

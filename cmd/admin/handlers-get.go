@@ -97,9 +97,13 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:          "Nodes in " + env,
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Selector:       "environment",
 		SelectorName:   env,
 		Target:         target,
@@ -161,9 +165,13 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:          "Nodes in " + platform,
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Selector:       "platform",
 		SelectorName:   platform,
 		Target:         target,
@@ -223,9 +231,13 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		uuids = append(uuids, n.UUID)
 		hosts = append(hosts, n.Localname)
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:          "Query osquery Nodes",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		UUIDs:          uuids,
@@ -279,9 +291,13 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting active queries: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := QueryTableTemplateData{
 		Title:          "All on-demand queries",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		Queries:        qs,
@@ -347,9 +363,13 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting targets %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:          "Query logs " + query.Name,
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		Query:          query,
@@ -413,9 +433,13 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:          envVar + " Configuration",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environment:    env,
 		Environments:   envAll,
 		Platforms:      platforms,
@@ -478,6 +502,8 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	shellQuickAdd, _ := environments.QuickAddOneLinerShell(env)
 	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell(env)
@@ -485,6 +511,8 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
 	templateData := EnrollTemplateData{
 		Title:                 envVar + " Enroll",
+		Username:              ctx["user"],
+		CSRFToken:             ctx["csrftoken"],
 		EnvName:               envVar,
 		EnrollExpiry:          strings.ToUpper(inFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
@@ -554,9 +582,13 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting node %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:          "Node View " + node.Hostname,
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Logs:           adminConfig.Logging,
 		Node:           node,
 		Environments:   envAll,
@@ -602,9 +634,13 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := EnvironmentsTemplateData{
 		Title:          "Manage environments",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
@@ -666,9 +702,13 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting settings: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
+		Username:        ctx["user"],
+		CSRFToken:       ctx["csrftoken"],
 		Service:         serviceVar,
 		Environments:    envAll,
 		Platforms:       platforms,
@@ -719,14 +759,18 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get current users
-	users, err := usersmgr.All()
+	users, err := adminUsers.All()
 	if err != nil {
 		log.Printf("error getting users: %v", err)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:          "Manage users",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		CurrentUsers:   users,

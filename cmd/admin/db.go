@@ -114,5 +114,11 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
 	}
+	// table user_sessions
+	err = db.AutoMigrate(&UserSession{}).Error
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate table (user_sessions): %v", err)
+	}
+
 	return nil
 }

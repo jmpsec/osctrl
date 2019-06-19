@@ -43,9 +43,8 @@ func generateCSRF() string {
 }
 
 // Helper to check if the CSRF token is valid
-func checkCSRFToken(token string) bool {
-	//return (strings.TrimSpace(token) == mainCSRFToken)
-	return true
+func checkCSRFToken(ctxToken, receivedToken string) bool {
+	return (strings.TrimSpace(ctxToken) == strings.TrimSpace(receivedToken))
 }
 
 // Helper to generate a random MD5 to be used as query name

@@ -5,8 +5,6 @@
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
 
-    <input type="hidden" id="csrftoken" value="thisshouldbeatoken">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
@@ -138,11 +136,8 @@
     {{ template "page-js" . }}
 
     <!-- custom JS -->
-    <script src="/static/js/functions.js"></script>
-    <script src="/static/js/settings.js"></script>
     <script src="/static/js/login.js"></script>
     <script src="/static/js/environments.js"></script>
-    <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
         // Update icon on environment creation modal

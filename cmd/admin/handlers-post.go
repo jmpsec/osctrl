@@ -31,17 +31,14 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check credentials
 		if access, user := adminUsers.CheckLoginCredentials(l.Username, l.Password); access {
-			session, err := store.Get(r, projectName)
+			err = sessionsmgr.Save(r, w, user)
 			if err != nil {
+				responseMessage = "session error"
+				responseCode = http.StatusForbidden
 				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Printf("DebugService: Session not found %v)", err)
+					log.Printf("DebugService: %s %v)", responseMessage, err)
 				}
 			}
-			session.Values["authenticated"] = true
-			session.Values["user"] = l.Username
-			session.Values["admin"] = user.Admin
-			session.Values["csrftoken"] = generateCSRF()
-			_ = session.Save(r, w)
 		} else {
 			responseMessage = "invalid credentials"
 			responseCode = http.StatusForbidden
@@ -75,6 +72,8 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	var l LogoutRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&l)
 	if err != nil {
@@ -85,18 +84,14 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(l.CSRFToken) {
-			// Access existing session
-			session, err := store.Get(r, projectName)
+		if checkCSRFToken(ctx["csrftoken"], l.CSRFToken) {
+			// Destroy existing session
+			err := sessionsmgr.Destroy(r)
 			if err != nil {
-				log.Printf("error accessing session [ %v ]", err)
+				log.Printf("error destroying session [ %v ]", err)
 				http.Error(w, "Session Error", http.StatusInternalServerError)
 				return
 			}
-			// Revoke users authentication
-			session.Values["authenticated"] = false
-			session.Values["user"] = ""
-			_ = session.Save(r, w)
 		} else {
 			responseMessage = "invalid CSRF token"
 			responseCode = http.StatusInternalServerError
@@ -129,6 +124,8 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
@@ -139,7 +136,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		goto response
 	}
 	// Check CSRF Token
-	if checkCSRFToken(q.CSRFToken) {
+	if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
 		// FIXME check validity of query
 		// Query can not be empty
 		if q.Query == "" {
@@ -238,6 +235,8 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var q DistributedQueryActionRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&q)
 	if err != nil {
@@ -248,7 +247,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(q.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
 			switch q.Action {
 			case "delete":
 				for _, n := range q.Names {
@@ -331,6 +330,8 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c ConfigurationRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
@@ -341,7 +342,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(c.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
 			configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
 			if err != nil {
 				responseMessage = "error decoding configuration"
@@ -408,6 +409,8 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c IntervalsRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
@@ -418,7 +421,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(c.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
 			err = envs.UpdateIntervals(environmentVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
 			if err != nil {
 				responseMessage = "error updating intervals"
@@ -476,6 +479,8 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var e ExpirationRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&e)
 	if err != nil {
@@ -486,7 +491,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(e.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], e.CSRFToken) {
 			switch e.Type {
 			case "enroll":
 				switch e.Action {
@@ -564,6 +569,8 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var m NodeMultiActionRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
@@ -574,7 +581,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(m.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], m.CSRFToken) {
 			switch m.Action {
 			case "delete":
 				okCount := 0
@@ -641,6 +648,8 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var n NodeActionRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&n)
 	if err != nil {
@@ -651,7 +660,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(n.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], n.CSRFToken) {
 			switch n.Action {
 			case "delete":
 				err := nodesmgr.ArchiveDeleteByUUID(uuid)
@@ -700,6 +709,8 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var c EnvironmentsRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
@@ -710,7 +721,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(c.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
 			switch c.Action {
 			case "create":
 				// FIXME verify fields
@@ -810,6 +821,8 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var s SettingsRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
@@ -820,7 +833,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(s.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], s.CSRFToken) {
 			switch s.Action {
 			case "add":
 				// FIXME verify type
@@ -907,23 +920,9 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
-	vars := mux.Vars(r)
-	// Extract service
-	serviceVar, ok := vars["service"]
-	if !ok {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting service")
-		}
-		return
-	}
-	// Verify service
-	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error unknown service (%s)", serviceVar)
-		}
-		return
-	}
 	var u UsersRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Parse request JSON body
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
@@ -937,32 +936,48 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(u.CSRFToken) {
+		if checkCSRFToken(ctx["csrftoken"], u.CSRFToken) {
 			switch u.Action {
 			case "add":
 				// FIXME password complexity?
-				// FIXME check if users exists
-				_, err = usersmgr.New(u.Username, u.Password, u.Fullname, u.Admin)
-				if err != nil {
-					responseMessage = "error adding setting"
+				if adminUsers.Exists(u.Username) {
+					responseMessage = "user already exists"
 					responseCode = http.StatusInternalServerError
 					if settingsmgr.DebugService(settings.ServiceAdmin) {
 						log.Printf("DebugService: %s %v", responseMessage, err)
 					}
 				} else {
-					responseMessage = "Setting added successfully"
+					newUser, err := adminUsers.New(u.Username, u.Password, u.Fullname, u.Admin)
+					if err != nil {
+						responseMessage = "error with new user"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					} else {
+						if err = adminUsers.Create(newUser); err != nil {
+							responseMessage = "error creating user"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+						}
+						responseMessage = "User added successfully"
+					}
 				}
 			case "remove":
 				// FIXME check if users exists
-				err = usersmgr.Delete(u.Username)
-				if err != nil {
-					responseMessage = "error changing setting"
-					responseCode = http.StatusInternalServerError
-					if settingsmgr.DebugService(settings.ServiceAdmin) {
-						log.Printf("DebugService: %s %v", responseMessage, err)
+				if adminUsers.Exists(u.Username) {
+					err = adminUsers.Delete(u.Username)
+					if err != nil {
+						responseMessage = "error removing user"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					} else {
+						responseMessage = "User removed"
 					}
-				} else {
-					responseMessage = "Setting changed successfully"
 				}
 			}
 		} else {

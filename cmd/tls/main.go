@@ -88,7 +88,7 @@ func loadConfiguration() error {
 // Initialization code
 func init() {
 	// Logging flags
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(log.Lshortfile)
 	// Load configuration
 	err := loadConfiguration()
 	if err != nil {
@@ -214,7 +214,7 @@ func main() {
 		}
 	}()
 
-	// FIXME - Ticker to reload settings
+	// FIXME Redis cache - Ticker to reload settings
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService: Settings ticker")

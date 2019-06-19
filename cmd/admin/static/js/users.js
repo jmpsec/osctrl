@@ -14,8 +14,8 @@ function confirmAddUser() {
   var data = {
     csrftoken: _csrftoken,
     action: 'add',
-    username: _name,
-    fullname: _type,
+    username: _username,
+    fullname: _fullname,
     password: _password,
     admin: true
   };

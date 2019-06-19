@@ -15,7 +15,6 @@ type AdminUser struct {
 	Fullname      string
 	PassHash      string
 	Admin         bool
-	CSRF          string
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time

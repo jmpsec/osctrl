@@ -5,8 +5,6 @@
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
 
-    <input type="hidden" id="csrftoken" value="thisshouldbeatoken">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
@@ -43,11 +41,11 @@
                   <thead>
                     <tr>
                       <th width="10%">Username</th>
-                      <th width="13%">Fullname</th>
-                      <th width="7%">Admin?</th>
-                      <th width="10%">IP Address</th>
-                      <th width="30%">User Agent</th>
-                      <th width="20%">Last Access</th>
+                      <th width="20%">Fullname</th>
+                      <th width="20%">Last IP</th>
+                      <th width="35%">Last UserAgent</th>
+                      <th width="5%">Admin?</th>
+                      <th width="10%">Last Session</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -55,9 +53,9 @@
                     <tr>
                       <td>{{ $e.Username }}</td>
                       <td>{{ $e.Fullname }}</td>
-                      <td>{{ $e.Admin }}</td>
                       <td>{{ $e.LastIPAddress }}</td>
                       <td>{{ $e.LastUserAgent }}</td>
+                      <td>{{ $e.Admin }}</td>
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
                     </tr>
                   {{ end }}
@@ -118,10 +116,8 @@
     {{ template "page-js" . }}
 
     <!-- custom JS -->
-    <script src="/static/js/functions.js"></script>
     <script src="/static/js/users.js"></script>
     <script src="/static/js/login.js"></script>
-    <script src="/static/js/stats.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
         // Enable all tooltips
