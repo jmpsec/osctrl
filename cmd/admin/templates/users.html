@@ -43,9 +43,10 @@
                       <th width="10%">Username</th>
                       <th width="20%">Fullname</th>
                       <th width="20%">Last IP</th>
-                      <th width="35%">Last UserAgent</th>
+                      <th width="30%">Last UserAgent</th>
                       <th width="5%">Admin?</th>
                       <th width="10%">Last Session</th>
+                      <th width="5%"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -57,6 +58,11 @@
                       <td>{{ $e.LastUserAgent }}</td>
                       <td>{{ $e.Admin }}</td>
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteUser({{ $e.Username }});">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                      </td>
                     </tr>
                   {{ end }}
                   </tbody>

@@ -150,7 +150,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		newQuery := queries.DistributedQuery{
 			Query:      q.Query,
 			Name:       queryName,
-			Creator:    "Admin",
+			Creator:    ctx["user"],
 			Executions: 0,
 			Active:     true,
 			Completed:  false,
@@ -744,17 +744,21 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			case "delete":
-				// FIXME verify fields
-				if envs.Exists(c.Name) {
-					err := envs.Delete(c.Name)
-					if err != nil {
-						responseMessage = "error deleting environment"
-						responseCode = http.StatusInternalServerError
-						if settingsmgr.DebugService(settings.ServiceAdmin) {
-							log.Printf("DebugService: %s %v", responseMessage, err)
+				if c.Name == settingsmgr.DefaultEnv(settings.ServiceAdmin) {
+					responseMessage = "Not a good idea"
+					responseCode = http.StatusInternalServerError
+				} else {
+					if envs.Exists(c.Name) {
+						err := envs.Delete(c.Name)
+						if err != nil {
+							responseMessage = "error deleting environment"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+						} else {
+							responseMessage = " Environment deleted successfully"
 						}
-					} else {
-						responseMessage = " Environment deleted successfully"
 					}
 				}
 			case "debug":
@@ -966,17 +970,21 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			case "remove":
-				// FIXME check if users exists
-				if adminUsers.Exists(u.Username) {
-					err = adminUsers.Delete(u.Username)
-					if err != nil {
-						responseMessage = "error removing user"
-						responseCode = http.StatusInternalServerError
-						if settingsmgr.DebugService(settings.ServiceAdmin) {
-							log.Printf("DebugService: %s %v", responseMessage, err)
+				if u.Username == ctx["user"] {
+					responseMessage = "Not a good idea"
+					responseCode = http.StatusInternalServerError
+				} else {
+					if adminUsers.Exists(u.Username) {
+						err = adminUsers.Delete(u.Username)
+						if err != nil {
+							responseMessage = "error removing user"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+						} else {
+							responseMessage = "User removed"
 						}
-					} else {
-						responseMessage = "User removed"
 					}
 				}
 			}

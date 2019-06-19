@@ -14,13 +14,13 @@ func addEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println(" Environment name is required")
+		fmt.Println("Environment name is required")
 		os.Exit(1)
 	}
 	// Get environment hostname
 	envHost := c.String("hostname")
 	if envHost == "" {
-		fmt.Println(" Environment hostname is required")
+		fmt.Println("Environment hostname is required")
 		os.Exit(1)
 	}
 	// Get configuration
@@ -47,7 +47,7 @@ func addEnvironment(c *cli.Context) error {
 			return err
 		}
 	} else {
-		fmt.Printf(" Environment %s already exists!\n", envName)
+		fmt.Printf("Environment %s already exists!\n", envName)
 		os.Exit(1)
 	}
 	return nil
@@ -57,7 +57,7 @@ func deleteEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println(" Environment name is required")
+		fmt.Println("Environment name is required")
 		os.Exit(1)
 	}
 	return envs.Delete(envName)
@@ -67,7 +67,7 @@ func showEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println(" Environment name is required")
+		fmt.Println("Environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -136,7 +136,7 @@ func quickAddEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println(" Environment name is required")
+		fmt.Println("Environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)

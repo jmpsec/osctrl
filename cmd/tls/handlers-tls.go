@@ -83,7 +83,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricEnrollErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -164,7 +164,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricConfigErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -232,7 +232,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricLogErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -403,7 +403,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricReadErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -474,7 +474,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricWriteErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -567,7 +567,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -696,7 +696,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricInitErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
@@ -758,7 +758,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	env, ok := vars["environment"]
 	if !ok {
 		incMetric(metricBlockErr)
-		log.Println(" Environment is missing")
+		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid

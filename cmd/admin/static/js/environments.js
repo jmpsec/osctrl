@@ -28,7 +28,7 @@ function confirmDeleteEnvironment(_env) {
   $("#confirmModalMessage").text(modal_message);
   $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
-    delete Environment(_env);
+    deleteEnvironment(_env);
   });
   $("#confirmModal").modal();
 }
