@@ -29,7 +29,7 @@ function package_repo_update() {
 #   string  package_name
 function package() {
   if [[ "$DISTRO" == "ubuntu" ]]; then
-    INSTALLED=`dpkg-query -W -f='${Status} ${Version}\n' $1 || true`
+    INSTALLED=`dpkg-query -W -f='${Status} ${Version}\n' "$1" || true`
     if [[ -n "$INSTALLED" && ! "$INSTALLED" = *"unknown ok not-installed"* ]]; then
       log "$1 is already installed. skipping."
     else
