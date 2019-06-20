@@ -508,6 +508,10 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
+  # Static files will require internet connection (CSS + JS)
+  sudo ln -s "$DEST_PATH/tmpl_admin/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+  sudo ln -s "$DEST_PATH/tmpl_admin/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+
   # Systemd configuration for Admin service
   _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
