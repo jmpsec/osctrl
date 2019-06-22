@@ -49,11 +49,6 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
 	}
-	// table geo_location_ipaddress
-	err = db.AutoMigrate(nodes.GeoLocationIPAddress{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (geo_location_ipaddress): %v", err)
-	}
 	// table node_history_hostname
 	err = db.AutoMigrate(nodes.NodeHistoryHostname{}).Error
 	if err != nil {

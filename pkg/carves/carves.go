@@ -12,6 +12,9 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Support for undocumented file carving API
+// https://github.com/mwielgoszewski/doorman/issues/120
+
 const (
 	// StatusInitialized for initialized carves
 	StatusInitialized string = "INITIALIZED"

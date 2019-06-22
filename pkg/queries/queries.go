@@ -33,6 +33,8 @@ type DistributedQuery struct {
 	Executions int
 	Errors     int
 	Active     bool
+	Hidden     bool
+	Protected  bool
 	Completed  bool
 	Deleted    bool
 	Repeat     uint
@@ -106,8 +108,12 @@ func (q *Queries) Gets(target string) ([]DistributedQuery, error) {
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ?", false, true, false).Find(&queries).Error; err != nil {
 			return queries, err
 		}
+	case "all-full":
+		if err := q.DB.Where("deleted = ? AND hidden = ?", false, true).Find(&queries).Error; err != nil {
+			return queries, err
+		}
 	case "all":
-		if err := q.DB.Where("deleted = ?", false).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND hidden = ?", false, false).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case "deleted":

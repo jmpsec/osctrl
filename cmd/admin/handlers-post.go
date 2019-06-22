@@ -229,7 +229,6 @@ response:
 }
 
 // Handler for POST requests to see completed queries
-// FIXME It needs CSRF token
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK

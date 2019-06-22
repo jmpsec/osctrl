@@ -69,26 +69,6 @@ type NodeHistoryIPAddress struct {
 	Count     int
 }
 
-// GeoLocationIPAddress to keep all the Geo Location by IP Address
-type GeoLocationIPAddress struct {
-	gorm.Model
-	IPAddress     string `gorm:"index"`
-	Alias         string
-	Type          string
-	ContinentCode string
-	ContinentName string
-	CountryCode   string
-	CountryName   string
-	RegionCode    string
-	RegionName    string
-	City          string
-	Zip           string
-	Latitude      float64
-	Longitude     float64
-	EmojiFlag     string
-	Connection    string
-}
-
 // NodeHistoryHostname to keep track of all IP Addresses for nodes
 type NodeHistoryHostname struct {
 	gorm.Model
@@ -338,11 +318,6 @@ func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localnam
 			return fmt.Errorf("incNodeHistoryIPAddress %v", err)
 		}
 	}
-	// IP Address geo location, if IP is public and Geo Location enabled
-	// FIXME this needs rewriting
-	//if err := geoLocationCheckByIPAddress(ipaddress); err != nil {
-	//	return fmt.Errorf("geoLocationCheckByIPAddress %v", err)
-	//}
 	// Osquery configuration metadata update, if different
 	if (confighash != "") && (confighash != node.ConfigHash) {
 		data.ConfigHash = confighash
@@ -383,11 +358,6 @@ func (n *NodeManager) UpdateIPAddress(ipaddress string, node OsqueryNode) error 
 			return fmt.Errorf("Update %v", err)
 		}
 	}
-	// IP Address geo location, if IP is public and Geo Location enabled
-	// FIXME needs rewriting
-	//if err := geoLocationCheckByIPAddress(ipaddress); err != nil {
-	//	return fmt.Errorf("geoLocationCheckByIPAddress %v", err)
-	//}
 	return nil
 }
 
