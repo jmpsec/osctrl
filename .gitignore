@@ -51,5 +51,9 @@ dhparam.pem
 # Customization
 #brand.png
 
+# Admin generated files
+page-head.html
+page-js.html
+
 # Random notes for debug
 notes.txt

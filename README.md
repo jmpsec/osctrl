@@ -1,6 +1,10 @@
-<div align="center">
-  <img src="logo.png" />
-</div>
+<p align="center">
+  <img alt="osctrl" src="logo.png" />
+  <p align="center">
+    <a href="https://github.com/javuto/osctrl/blob/master/LICENSE.md"><img alt="Software License" src="https://img.shields.io/badge/license-GPL3-brightgreen.svg?style=flat-square"></a>
+    <a href="https://travis-ci.org/javuto/osctrl"><img alt="Travis" src="https://img.shields.io/travis/javuto/osctrl/master.svg?style=flat-square"></a>
+  </p>
+</p>
 
 </br>
 
@@ -80,4 +84,4 @@ Ultimately you can just execute `make docker_all` and it will automagically buil
 
 ## Using vagrant
 
-Vagrant machines can be used for `osctrl` local development. Execute `vagrant up ubuntu` or `vagrant up centos` to create a local virtual machine running Ubuntu 18.04 or CentOS 7 respectively. Once it has finished deploying, `osctrl` will be ready to be used and you can access it following the instructions in the terminal.
+Vagrant machines can be used for `osctrl` local development. Execute `vagrant up` to create a local virtual machine running Ubuntu 18.04. Once it has finished deploying, `osctrl` will be ready to be used and you can access it following the instructions in the terminal.
