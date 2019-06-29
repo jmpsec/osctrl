@@ -54,7 +54,7 @@
                     <div class="form-group">
                       <label for="query_range">Query: <b><output id="query_output">{{ .Environment.QueryInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="query_range"
-                        value="{{ .Environment.QueryInterval }}" min="10" max="600" step="10"
+                        value="{{ .Environment.QueryInterval }}" min="10" max="300" step="1"
                         oninput="changeIntervalValue(query_range, query_output);">
                       <input id="query_range_save" type="hidden" value="{{ .Environment.QueryInterval }}">
                     </div>
