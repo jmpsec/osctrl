@@ -473,6 +473,11 @@
         var statsTimer = setInterval(function(){
           beginStats();
         },60000);
+
+        // Focus on input when modal opens
+        $("#queryModal").on('shown.bs.modal', function(){
+          $(this).find('#query').focus();
+        });
       });
     </script>
     {{ end }}

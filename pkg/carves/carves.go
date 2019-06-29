@@ -110,7 +110,7 @@ func (c *Carves) DeleteCarve(carveid string) error {
 	if err != nil {
 		return fmt.Errorf("getCarveByID %v", err)
 	}
-	if err := c.DB.Delete(&carve).Error; err != nil {
+	if err := c.DB.Unscoped().Delete(&carve).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
@@ -123,7 +123,7 @@ func (c *Carves) DeleteBlocks(sessionid string) error {
 		return fmt.Errorf("getBlocksBySessionID %v", err)
 	}
 	for _, b := range blocks {
-		if err := c.DB.Delete(&b).Error; err != nil {
+		if err := c.DB.Unscoped().Delete(&b).Error; err != nil {
 			return fmt.Errorf("Delete %v", err)
 		}
 	}

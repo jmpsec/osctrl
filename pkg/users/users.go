@@ -105,6 +105,25 @@ func (m *UserManager) Exists(username string) bool {
 	return (results > 0)
 }
 
+// IsAdmin checks if user is an admin
+func (m *UserManager) IsAdmin(username string) bool {
+	var results int
+	m.DB.Model(&AdminUser{}).Where("username = ? AND admin = ?", username, true).Count(&results)
+	return (results > 0)
+}
+
+// ChangeAdmin to modify the admin setting for a user
+func (m *UserManager) ChangeAdmin(username string, admin bool) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // All get all users
 func (m *UserManager) All() ([]AdminUser, error) {
 	var users []AdminUser
@@ -120,7 +139,7 @@ func (m *UserManager) Delete(username string) error {
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
-	if err := m.DB.Delete(&user).Error; err != nil {
+	if err := m.DB.Unscoped().Delete(&user).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil

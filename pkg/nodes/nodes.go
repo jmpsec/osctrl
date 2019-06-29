@@ -548,7 +548,7 @@ func (n *NodeManager) ArchiveDeleteByUUID(UUID string) error {
 	} else {
 		return fmt.Errorf("n.DB.NewRecord did not return true")
 	}
-	if err := n.DB.Delete(&node).Error; err != nil {
+	if err := n.DB.Unscoped().Delete(&node).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil

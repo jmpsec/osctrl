@@ -164,7 +164,7 @@ func (environment *Environment) Delete(name string) error {
 	if err != nil {
 		return fmt.Errorf("error getting environment %v", err)
 	}
-	if err := environment.DB.Delete(&env).Error; err != nil {
+	if err := environment.DB.Unscoped().Delete(&env).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil

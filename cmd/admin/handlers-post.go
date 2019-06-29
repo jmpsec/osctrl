@@ -972,18 +972,32 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				if u.Username == ctx["user"] {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
-				} else {
-					if adminUsers.Exists(u.Username) {
-						err = adminUsers.Delete(u.Username)
-						if err != nil {
-							responseMessage = "error removing user"
-							responseCode = http.StatusInternalServerError
-							if settingsmgr.DebugService(settings.ServiceAdmin) {
-								log.Printf("DebugService: %s %v", responseMessage, err)
-							}
-						} else {
-							responseMessage = "User removed"
+				} else if adminUsers.Exists(u.Username) {
+					err = adminUsers.Delete(u.Username)
+					if err != nil {
+						responseMessage = "error removing user"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
+					} else {
+						responseMessage = "User removed"
+					}
+				}
+			case "admin":
+				if u.Username == ctx["user"] {
+					responseMessage = "Not a good idea"
+					responseCode = http.StatusInternalServerError
+				} else if adminUsers.Exists(u.Username) {
+					err = adminUsers.ChangeAdmin(u.Username, u.Admin)
+					if err != nil {
+						responseMessage = "error changing admin"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					} else {
+						responseMessage = "Admin changed"
 					}
 				}
 			}

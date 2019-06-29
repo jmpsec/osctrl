@@ -186,6 +186,11 @@
         var statsTimer = setInterval(function(){
           beginStats();
         },60000);
+
+        // Focus on input when modal opens
+        $("#addSettingModal").on('shown.bs.modal', function(){
+          $(this).find('#setting_name').focus();
+        });
       });
     </script>
   </body>

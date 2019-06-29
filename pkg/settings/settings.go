@@ -135,7 +135,7 @@ func (conf *Settings) DeleteValue(service, name string) error {
 	if err != nil {
 		return fmt.Errorf("DeleteValue %v", err)
 	}
-	if err := conf.DB.Delete(&value).Error; err != nil {
+	if err := conf.DB.Unscoped().Delete(&value).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil

@@ -6,8 +6,6 @@
   </p>
 </p>
 
-</br>
-
 ## osctrl
 
 Fast and efficient operative system management.

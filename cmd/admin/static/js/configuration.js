@@ -10,6 +10,7 @@ function saveConfiguration() {
     configuration: btoa(_configuration),
   };
   sendPostRequest(data, _url, '', true);
+  $('#configuration_header').removeClass("bg-changed");
 }
 
 function saveIntervals() {
@@ -27,6 +28,7 @@ function saveIntervals() {
     query: parseInt(_query),
   };
   sendPostRequest(data, _url, '', true);
+  $('#intervals_header').removeClass("bg-changed");
 }
 
 function changeIntervalValue(range_input, range_output) {

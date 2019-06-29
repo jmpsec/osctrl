@@ -154,6 +154,11 @@
         var statsTimer = setInterval(function(){
           beginStats();
         },60000);
+
+        // Focus on input when modal opens
+        $("#createEnvironmentModal").on('shown.bs.modal', function(){
+          $(this).find('#environment_name').focus();
+        });
       });
     </script>
   </body>

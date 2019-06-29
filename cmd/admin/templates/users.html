@@ -44,7 +44,7 @@
                       <th width="20%">Fullname</th>
                       <th width="20%">Last IP</th>
                       <th width="30%">Last UserAgent</th>
-                      <th width="5%">Admin?</th>
+                      <th width="5%">Admin</th>
                       <th width="10%">Last Session</th>
                       <th width="5%"></th>
                     </tr>
@@ -56,7 +56,12 @@
                       <td>{{ $e.Fullname }}</td>
                       <td>{{ $e.LastIPAddress }}</td>
                       <td>{{ $e.LastUserAgent }}</td>
-                      <td>{{ $e.Admin }}</td>
+                      <td>
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-toggle="tooltip" data-placement="top" title="Change">
+                          <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser({{ $e.Username }});" {{ if $e.Admin }} checked {{ end }}>
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </td>
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteUser({{ $e.Username }});">
@@ -134,6 +139,11 @@
         var statsTimer = setInterval(function(){
           beginStats();
         },60000);
+
+        // Focus on input when modal opens
+        $("#addUserModal").on('shown.bs.modal', function(){
+          $(this).find('#user_username').focus();
+        });
       });
     </script>
   </body>

@@ -1,4 +1,7 @@
 function addUser() {
+  $("#user_username").val('');
+  $("#user_fullname").val('');
+  $("#user_password").val('');
   $("#addUserModal").modal();
 }
 
@@ -30,6 +33,21 @@ function confirmDeleteUser(_user) {
     deleteUser(_user);
   });
   $("#confirmModal").modal();
+}
+
+function changeAdminUser(_user) {
+  var _csrftoken = $("#csrftoken").val();
+  var _value = $("#" + _user).is(':checked');
+
+  var _url = window.location.pathname;
+
+  var data = {
+    csrftoken: _csrftoken,
+    action: 'admin',
+    username: _user,
+    admin: _value,
+  };
+  sendPostRequest(data, _url, '', false);
 }
 
 function deleteUser(_user) {

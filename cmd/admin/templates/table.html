@@ -200,17 +200,11 @@
                 $(node).removeClass('dt-button');
               },
               action: function(e, dt, node, config) {
-                var a = [];
+                var uuids = [];
                 $.each(tableNodes.rows('.selected').data(), function() {
-                  a.push(this);
+                  uuids.push(this.uuid);
                 });
-                var uuids = []
-                for (var i=0; i<a.length; i++) {
-                  var uuid = $.parseHTML(a[i].uuid);
-                  uuids.push(uuid[0].innerText)
-                }
                 if (uuids.length > 0) {
-                  console.log(uuids);
                   confirmRemoveNodes(uuids);
                 } else {
                   console.log('Delete: NO SELECTION');
@@ -231,17 +225,11 @@
                 $(node).removeClass('dt-button');
               },
               action: function(e, dt, node, config) {
-                var a = [];
+                var uuids = [];
                 $.each(tableNodes.rows('.selected').data(), function() {
-                  a.push(this);
+                  uuids.push(this.uuid);
                 });
-                var uuids = []
-                for (var i=0; i<a.length; i++) {
-                  var uuid = $.parseHTML(a[i].uuid);
-                  uuids.push(uuid[0].innerText)
-                }
                 if (uuids.length > 0) {
-                  console.log(uuids);
                   showQueryNodes(uuids);
                 } else {
                   console.log('Query: NO SELECTION');
@@ -295,6 +283,11 @@
         var statsTimer = setInterval(function(){
           beginStats();
         },60000);
+
+        // Focus on input when modal opens
+        $("#queryModal").on('shown.bs.modal', function(){
+          $(this).find('#query').focus();
+        });
       });
     </script>
 
