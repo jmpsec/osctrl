@@ -176,17 +176,3 @@ func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user user
 func (sm *SessionManager) Cleanup() {
 	sm.db.Delete(&UserSession{}, "expires_at <= ?", gorm.NowFunc())
 }
-
-// PeriodicCleanup runs Cleanup every interval. Close quit channel to stop.
-func (sm *SessionManager) PeriodicCleanup(interval time.Duration, quit <-chan struct{}) {
-	t := time.NewTicker(interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-t.C:
-			sm.Cleanup()
-		case <-quit:
-			return
-		}
-	}
-}

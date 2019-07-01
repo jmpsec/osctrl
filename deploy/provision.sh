@@ -129,10 +129,14 @@ function usage() {
 set -e
 
 # Values not intended to change
-TLS_CONF="tls.json"
-TLS_TEMPLATE="$TLS_CONF.template"
-ADMIN_CONF="admin.json"
-ADMIN_TEMPLATE="$ADMIN_CONF.template"
+TLS_COMPONENT="tls"
+ADMIN_COMPONENT="admin"
+TLS_CONF="$TLS_COMPONENT.json"
+ADMIN_CONF="$ADMIN_COMPONENT.json"
+DB_CONF="db.json"
+SERVICE_TEMPLATE="service.json"
+DB_TEMPLATE="db.json"
+SYSTEMD_TEMPLATE="systemd.service"
 
 # Default values for arguments
 SHOW_USAGE=false
@@ -174,7 +178,7 @@ _ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | m
 # Arrays with valid arguments
 VALID_MODE=("dev" "prod" "update")
 VALID_TYPE=("self" "own" "certbot")
-VALID_PART=("tls" "admin" "all")
+VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "all")
 
 # Extract arguments
 ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
@@ -343,12 +347,12 @@ log "Provisioning [ osctrl ][ $PART ] for $DISTRO"
 log ""
 log "  -> [$MODE] mode and with [$TYPE] certificate"
 log ""
-if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   log "  -> Deploying TLS service for ports $_T_PUB_PORT:$_T_INT_PORT"
   log "  -> Hostname for TLS endpoint: $_T_HOST"
 fi
 log ""
-if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   log "  -> Deploying Admin service for ports $_A_PUB_PORT:$_A_INT_PORT"
   log "  -> Hostname for admin: $_A_HOST"
 fi
@@ -470,30 +474,33 @@ install_go_12
 # Prepare destination and configuration folder
 sudo mkdir -p "$DEST_PATH/config"
 
+# Generate DB configuration file for services
+configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
 # Build code
 cd "$SOURCE_PATH"
 make clean
 
-if [[ "$PART" == "all" ]] || [[ "$PART" == "tls" ]]; then
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   # Build TLS service
   make tls
 
-  # Configure TLS service
-  configure_service "$SOURCE_PATH/deploy/$TLS_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "TLS" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+  # Configuration file generation for TLS service
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT"
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/templates" "tmpl_tls"
 
   # Systemd configuration for TLS service
-  _systemd "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
+  _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
-if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   # Build Admin service
   make admin
 
-  # Configure Admin service
-  configure_service "$SOURCE_PATH/deploy/$ADMIN_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "ADMIN" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+  # Configuration file generation for Admin service
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT"
 
   # Prepare data folder
   sudo mkdir -p "$DEST_PATH/data"
@@ -513,7 +520,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "admin" ]]; then
   sudo ln -fs "$SOURCE_PATH/cmd/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
 
   # Systemd configuration for Admin service
-  _systemd "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
+  _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
 # Compile CLI

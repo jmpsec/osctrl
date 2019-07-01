@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Define endpoints
 const (
 	// Project name
 	projectName string = "osctrl"
@@ -32,6 +31,8 @@ const (
 	errorPath string = "/error"
 	// Service configuration file
 	configurationFile string = "config/" + settings.ServiceTLS + ".json"
+	// DB configuration file
+	dbConfigurationFile string = "config/db.json"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 )
@@ -75,6 +76,19 @@ func loadConfiguration() error {
 	if err != nil {
 		return err
 	}
+	// No errors!
+	return nil
+}
+
+// Function to load the DB configuration file and assign to variables
+func loadDBConfiguration() error {
+	log.Printf("Loading %s", dbConfigurationFile)
+	// Load file and read config
+	viper.SetConfigFile(dbConfigurationFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
 	// Backend values
 	dbRaw := viper.Sub("db")
 	err = dbRaw.Unmarshal(&dbConfig)
@@ -90,9 +104,12 @@ func init() {
 	// Logging flags
 	log.SetFlags(log.Lshortfile)
 	// Load configuration
-	err := loadConfiguration()
-	if err != nil {
+	if err := loadConfiguration(); err != nil {
 		log.Fatalf("Error loading configuration %s", err)
+	}
+	// Load DB configuration
+	if err := loadDBConfiguration(); err != nil {
+		log.Fatalf("Error loading DB configuration %s", err)
 	}
 }
 

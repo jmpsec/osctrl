@@ -20,6 +20,8 @@ import (
 const (
 	// Service configuration file
 	defConfigFile string = "config/tls.json"
+	// DB configuration file
+	dbConfigurationFile string = "config/db.json"
 	// Project name
 	projectName string = "osctrl"
 	// Application name
@@ -49,6 +51,19 @@ var (
 func loadConfiguration() error {
 	// Load file and read config
 	viper.SetConfigFile(configFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	// No errors!
+	return nil
+}
+
+// Function to load the DB configuration file and assign to variables
+func loadDBConfiguration() error {
+	log.Printf("Loading %s", dbConfigurationFile)
+	// Load file and read config
+	viper.SetConfigFile(dbConfigurationFile)
 	err := viper.ReadInConfig()
 	if err != nil {
 		return err
@@ -526,9 +541,12 @@ func init() {
 		},
 	}
 	// Load configuration
-	err = loadConfiguration()
-	if err != nil {
-		panic(err)
+	if err := loadConfiguration(); err != nil {
+		log.Fatalf("Error loading configuration %s", err)
+	}
+	// Load DB configuration
+	if err := loadDBConfiguration(); err != nil {
+		log.Fatalf("Error loading DB configuration %s", err)
 	}
 }
 
@@ -559,8 +577,7 @@ func main() {
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
 	// Let's go!
-	err := app.Run(os.Args)
-	if err != nil {
-		panic(err)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatalf("Failed to execute %v", err)
 	}
 }

@@ -1,0 +1,26 @@
+[Unit]
+Description=_NAME
+ConditionPathExists=_DESTINATION
+After=network.target
+
+[Service]
+Type=simple
+User=_UU
+Group=_GG
+Restart=on-failure
+RestartSec=10
+
+WorkingDirectory=_DESTINATION
+ExecStart=_DESTINATION/_NAME
+
+# make sure log directory exists and owned by syslog
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/_NAME
+ExecStartPre=/bin/chown _UU:_GG /var/log/_NAME
+ExecStartPre=/bin/chmod 755 /var/log/_NAME
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=_NAME
+
+[Install]
+WantedBy=multi-user.target

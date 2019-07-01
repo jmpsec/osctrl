@@ -184,39 +184,55 @@ function certbot_certificates_nginx() {
 #   string  conf_template
 #   string  conf_destination
 #   string  service_host_port (host|port)
-#   string  service_variable
+#   string  service_name
+function configuration_service() {
+  local __conf=$1
+  local __dest=$2
+  local __tlshost=`echo $3 | cut -d"|" -f1`
+  local __tlsport=`echo $3 | cut -d"|" -f2`
+  local __service=$4
+
+  log "Generating $__dest configuration"
+
+  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_SERVICE_NAME|$__service|g" | sudo tee "$__dest"
+}
+
+# DB configuration file generation
+#   string  conf_template
+#   string  conf_destination
 #   string  db_host
 #   string  db_port
 #   string  db_name
 #   string  db_username
 #   string  db_password
-function configure_service() {
+function configuration_db() {
   local __conf=$1
   local __dest=$2
-  local __tlshost=`echo $3 | cut -d"|" -f1`
-  local __tlsport=`echo $3 | cut -d"|" -f2`
-  local __var=$4
-  local __dbhost=$5
-  local __dbport=$6
-  local __dbname=$7
-  local __dbuser=$8
-  local __dbpass=$9
+  local __dbhost=$3
+  local __dbport=$4
+  local __dbname=$5
+  local __dbuser=$6
+  local __dbpass=$7
 
   log "Generating $__dest configuration"
 
-  cat "$__conf" | sed "s|_${__var}_PORT|$__tlsport|g" | sed "s|_${__var}_HOST|$__tlshost|g" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
+  cat "$__conf" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
 }
 
 # Enable service as systemd
 #   string  service_user
+#   string  service_group
 #   string  service_name
 #   string  path_to_code
 #   string  path_destination
 function _systemd() {
   local __user=$1
-  local __server=$2
-  local __path=$3
-  local __dest=$4
+  local __group=$2
+  local __service=$3
+  local __path=$4
+  local __dest=$5
+  local __template="$__path/deploy/systemd.service"
+  local __systemd="/lib/systemd/system/$__service.service"
 
   # Creating user for services
   if [[ $(grep -c "$__user" /etc/passwd) -eq 0 ]]; then
@@ -224,15 +240,15 @@ function _systemd() {
   fi
 
   # Adding service
-  sudo cp "$__path/deploy/$__server.service" /lib/systemd/system/.
-  sudo chmod 755 "/lib/systemd/system/$__server.service"
+  cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sudo tee "$__systemd"
+  sudo chmod 755 "$__systemd"
 
   # Copying binaries
-  sudo cp "$__path/bin/$__server" "$__dest"
+  sudo cp "$__path/bin/$__service" "$__dest"
 
   # Enable and start service
-  sudo systemctl enable "$__server.service"
-  sudo systemctl start "$__server"
+  sudo systemctl enable "$__service.service"
+  sudo systemctl start "$__service"
 }
 
 # Prepare service directories and copy static files
@@ -256,22 +272,6 @@ function _static_files() {
   else
     sudo cp -R "$__path/cmd/$__from" "$__dest/$__target"
   fi
-}
-
-# Install PostgreSQL 10 in Ubuntu 16.04 (xenial)
-#   string  PostgreSQL_conf_file_location
-function install_postgresql10_xenial() {
-  local __pgversion="10"
-  local __pgconf=$1
-  local __pgctl="/usr/lib/postgresql/10/bin/pg_ctl"
-
-  repo_postgres_xenial
-
-  package_repo_update
-
-  package "postgresql-$__pgversion"
-
-  configure_postgres "$__pgconf" "postgresql"
 }
 
 # Create empty DB and username
@@ -318,20 +318,6 @@ function schema_postgresql() {
 
   log "Importing schema $__pgschema"
   sudo su - "$__pguser" -c "$__psql -U $__dbuser -d $__pgdb -f $__pgschema"
-}
-
-# Add PostgreSQL repo in Ubuntu 16.04 (xenial)
-function repo_postgres_xenial() {
-  local __pgfile="/etc/apt/sources.list.d/pgdg.list"
-
-  log "Adding PostgreSQL repository"
-  if [[ ! -f "$__pgfile" ]]; then
-    sudo add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main'
-  else
-    log "Already added"
-  fi
-  log "Adding PostgreSQL repository keys"
-  wget -q -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 }
 
 # Configure PostgreSQL

@@ -682,6 +682,7 @@ func processCarveBlock(req CarveBlockRequest, environment string) {
 			incMetric(metricBlockErr)
 			log.Printf("error completing status %v", err)
 		}
+		// FIXME convert completed carve into actual file to download
 	} else {
 		err = filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID)
 		if err != nil {

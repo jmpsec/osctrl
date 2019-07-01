@@ -40,6 +40,8 @@ const (
 	errorPath string = "/error"
 	// Service configuration file
 	configurationFile string = "config/admin.json"
+	// DB configuration file
+	dbConfigurationFile string = "config/db.json"
 	// osquery version to display tables
 	osqueryTablesVersion string = "3.3.2"
 	// JSON file with osquery tables data
@@ -91,6 +93,19 @@ func loadConfiguration() error {
 			return err
 		}
 	}
+	// No errors!
+	return nil
+}
+
+// Function to load the DB configuration file and assign to variables
+func loadDBConfiguration() error {
+	log.Printf("Loading %s", dbConfigurationFile)
+	// Load file and read config
+	viper.SetConfigFile(dbConfigurationFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
 	// Backend values
 	dbRaw := viper.Sub("db")
 	err = dbRaw.Unmarshal(&dbConfig)
@@ -135,13 +150,15 @@ func init() {
 	// Logging flags
 	log.SetFlags(log.Lshortfile)
 	// Load configuration
-	err := loadConfiguration()
-	if err != nil {
+	if err := loadConfiguration(); err != nil {
 		log.Fatalf("Error loading configuration %s", err)
 	}
+	// Load DB configuration
+	if err := loadDBConfiguration(); err != nil {
+		log.Fatalf("Error loading DB configuration %s", err)
+	}
 	// Load osquery tables JSON
-	err = loadOsqueryTables()
-	if err != nil {
+	if err := loadOsqueryTables(); err != nil {
 		log.Fatalf("Error loading osquery tables %s", err)
 	}
 }
