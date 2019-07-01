@@ -30,6 +30,7 @@ type DistributedQuery struct {
 	Name       string `gorm:"not null;unique;index"`
 	Creator    string
 	Query      string
+	Expected   int
 	Executions int
 	Errors     int
 	Active     bool
@@ -145,6 +146,20 @@ func (q *Queries) Complete(name string) error {
 	return nil
 }
 
+// VerifyComplete to mark query as completed if the expected executions are done
+func (q *Queries) VerifyComplete(name string) error {
+	query, err := q.Get(name)
+	if err != nil {
+		return err
+	}
+	if (query.Executions + query.Errors) >= query.Expected {
+		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Activate to mark query as active
 func (q *Queries) Activate(name string) error {
 	query, err := q.Get(name)
@@ -233,6 +248,18 @@ func (q *Queries) IncError(name string) error {
 		return err
 	}
 	if err := q.DB.Model(&query).Update("errors", query.Errors+1).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetExpected to set the number of expected executions for this query
+func (q *Queries) SetExpected(name string, expected int) error {
+	query, err := q.Get(name)
+	if err != nil {
+		return err
+	}
+	if err := q.DB.Model(&query).Update("expected", expected).Error; err != nil {
 		return err
 	}
 	return nil

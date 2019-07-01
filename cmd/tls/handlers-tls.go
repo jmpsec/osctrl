@@ -553,9 +553,12 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 			log.Printf("error updating query %s", err)
 		}
 		// Add a record for this query
-		err = queriesmgr.TrackExecution(q, node.UUID, statuses[q])
-		if err != nil {
+		if err := queriesmgr.TrackExecution(q, node.UUID, statuses[q]); err != nil {
 			log.Printf("error adding query execution %s", err)
+		}
+		// Check if query is completed
+		if err := queriesmgr.VerifyComplete(q); err != nil {
+			log.Printf("error verifying and completing query %s", err)
 		}
 	}
 }
@@ -632,7 +635,7 @@ func processCarveInit(req CarveInitRequest, sessionid, environment string) {
 		RequestID:       req.RequestID,
 		SessionID:       sessionid,
 		UUID:            node.UUID,
-		 Environment:         environment,
+		Environment:     environment,
 		CarveSize:       req.CarveSize,
 		BlockSize:       req.BlockSize,
 		TotalBlocks:     req.BlockCount,
@@ -654,11 +657,11 @@ func processCarveInit(req CarveInitRequest, sessionid, environment string) {
 func processCarveBlock(req CarveBlockRequest, environment string) {
 	// Prepare carve block
 	block := carves.CarvedBlock{
-		RequestID: req.RequestID,
-		SessionID: req.SessionID,
-		 Environment:   environment,
-		BlockID:   req.BlockID,
-		Data:      req.Data,
+		RequestID:   req.RequestID,
+		SessionID:   req.SessionID,
+		Environment: environment,
+		BlockID:     req.BlockID,
+		Data:        req.Data,
 	}
 	// Create Block
 	err := filecarves.CreateBlock(block)

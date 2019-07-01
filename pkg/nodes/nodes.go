@@ -120,9 +120,9 @@ func (n *NodeManager) CheckByKey(nodeKey string) bool {
 }
 
 // CheckByUUID to check if node exists by UUID
-func (n *NodeManager) CheckByUUID(UUID string) bool {
+func (n *NodeManager) CheckByUUID(uuid string) bool {
 	var results int
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ?", UUID).Count(&results)
+	n.DB.Model(&OsqueryNode{}).Where("uuid = ?", uuid).Count(&results)
 	return (results > 0)
 }
 
@@ -136,15 +136,16 @@ func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
 }
 
 // GetByUUID to retrieve full node object from DB, by uuid
-func (n *NodeManager) GetByUUID(UUID string) (OsqueryNode, error) {
+func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 	var node OsqueryNode
-	if err := n.DB.Where("uuid = ?", UUID).First(&node).Error; err != nil {
+	if err := n.DB.Where("uuid = ?", uuid).First(&node).Error; err != nil {
 		return node, err
 	}
 	return node, nil
 }
 
 // GetBySelector to retrieve target nodes by selector
+// FIXME the active/inactive value should be in a setting
 func (n *NodeManager) GetBySelector(stype, selector, target string) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
 	var s string
@@ -210,7 +211,7 @@ func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 		return platforms, nil
 	}
 	for rows.Next() {
-		rows.Scan(&platform)
+		_ = rows.Scan(&platform)
 		platforms = append(platforms, platform)
 	}
 	return platforms, nil
@@ -249,9 +250,9 @@ func (n *NodeManager) GetStatsByPlatform(platform string) (StatsData, error) {
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
-func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, osqueryversion, UUID string) error {
+func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, osqueryversion, uuid string) error {
 	// Retireve node
-	node, err := n.GetByUUID(UUID)
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -313,10 +314,8 @@ func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localnam
 		if err := n.NewHistoryIPAddress(e); err != nil {
 			return fmt.Errorf("newNodeHistoryIPAddress %v", err)
 		}
-	} else {
-		if err := n.IncHistoryIPAddress(node.UUID, ipaddress); err != nil {
-			return fmt.Errorf("incNodeHistoryIPAddress %v", err)
-		}
+	} else if err := n.IncHistoryIPAddress(node.UUID, ipaddress); err != nil {
+		return fmt.Errorf("incNodeHistoryIPAddress %v", err)
 	}
 	// Osquery configuration metadata update, if different
 	if (confighash != "") && (confighash != node.ConfigHash) {
@@ -362,8 +361,8 @@ func (n *NodeManager) UpdateIPAddress(ipaddress string, node OsqueryNode) error 
 }
 
 // UpdateIPAddressByUUID to update node IP Address by UUID
-func (n *NodeManager) UpdateIPAddressByUUID(ipaddress, UUID string) error {
-	node, err := n.GetByUUID(UUID)
+func (n *NodeManager) UpdateIPAddressByUUID(ipaddress, uuid string) error {
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -485,17 +484,17 @@ func (n *NodeManager) NewHistoryIPAddress(entry NodeHistoryIPAddress) error {
 }
 
 // GetHistoryIPAddress to retrieve the History IP Address record by UUID and the IP Address
-func (n *NodeManager) GetHistoryIPAddress(UUID, ipaddress string) (NodeHistoryIPAddress, error) {
+func (n *NodeManager) GetHistoryIPAddress(uuid, ipaddress string) (NodeHistoryIPAddress, error) {
 	var nodeip NodeHistoryIPAddress
-	if err := n.DB.Where("uuid = ? AND ip_address = ?", UUID, ipaddress).Order("updated_at").First(&nodeip).Error; err != nil {
+	if err := n.DB.Where("uuid = ? AND ip_address = ?", uuid, ipaddress).Order("updated_at").First(&nodeip).Error; err != nil {
 		return nodeip, err
 	}
 	return nodeip, nil
 }
 
 // IncHistoryIPAddress to increase the count for this IP Address
-func (n *NodeManager) IncHistoryIPAddress(UUID, ipaddress string) error {
-	nodeip, err := n.GetHistoryIPAddress(UUID, ipaddress)
+func (n *NodeManager) IncHistoryIPAddress(uuid, ipaddress string) error {
+	nodeip, err := n.GetHistoryIPAddress(uuid, ipaddress)
 	if err != nil {
 		return fmt.Errorf("getNodeHistoryIPAddress %v", err)
 	}
@@ -506,8 +505,8 @@ func (n *NodeManager) IncHistoryIPAddress(UUID, ipaddress string) error {
 }
 
 // Archive to archive osquery node by UUID
-func (n *NodeManager) Archive(UUID, trigger string) error {
-	node, err := n.GetByUUID(UUID)
+func (n *NodeManager) Archive(uuid, trigger string) error {
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -523,8 +522,8 @@ func (n *NodeManager) Archive(UUID, trigger string) error {
 }
 
 // UpdateByUUID to update an existing node record by UUID
-func (n *NodeManager) UpdateByUUID(data OsqueryNode, UUID string) error {
-	node, err := n.GetByUUID(UUID)
+func (n *NodeManager) UpdateByUUID(data OsqueryNode, uuid string) error {
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -535,8 +534,8 @@ func (n *NodeManager) UpdateByUUID(data OsqueryNode, UUID string) error {
 }
 
 // ArchiveDeleteByUUID to archive and delete an existing node record by UUID
-func (n *NodeManager) ArchiveDeleteByUUID(UUID string) error {
-	node, err := n.GetByUUID(UUID)
+func (n *NodeManager) ArchiveDeleteByUUID(uuid string) error {
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -555,8 +554,8 @@ func (n *NodeManager) ArchiveDeleteByUUID(UUID string) error {
 }
 
 // RefreshLastEventByUUID to refresh the last status log for this node
-func (n *NodeManager) RefreshLastEventByUUID(UUID, event string) error {
-	node, err := n.GetByUUID(UUID)
+func (n *NodeManager) RefreshLastEventByUUID(uuid, event string) error {
+	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
@@ -579,13 +578,13 @@ func (n *NodeManager) RefreshLastEventByKey(nodeKey, event string) error {
 }
 
 // RefreshLastStatus to refresh the last status log for this node
-func (n *NodeManager) RefreshLastStatus(UUID string) error {
-	return n.RefreshLastEventByUUID(UUID, "last_status")
+func (n *NodeManager) RefreshLastStatus(uuid string) error {
+	return n.RefreshLastEventByUUID(uuid, "last_status")
 }
 
 // RefreshLastResult to refresh the last result log for this node
-func (n *NodeManager) RefreshLastResult(UUID string) error {
-	return n.RefreshLastEventByUUID(UUID, "last_result")
+func (n *NodeManager) RefreshLastResult(uuid string) error {
+	return n.RefreshLastEventByUUID(uuid, "last_result")
 }
 
 // RefreshLastConfig to refresh the last configuration for this node
@@ -599,8 +598,8 @@ func (n *NodeManager) RefreshLastQueryRead(nodeKey string) error {
 }
 
 // RefreshLastQueryWrite to refresh the last on-demand query write for this node
-func (n *NodeManager) RefreshLastQueryWrite(UUID string) error {
-	return n.RefreshLastEventByUUID(UUID, "last_query_write")
+func (n *NodeManager) RefreshLastQueryWrite(uuid string) error {
+	return n.RefreshLastEventByUUID(uuid, "last_query_write")
 }
 
 // Helper to convert an enrolled osquery node into an archived osquery node

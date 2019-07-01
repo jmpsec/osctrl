@@ -8,7 +8,7 @@ import (
 func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
 	for _, t := range targets {
 		// Check for environment match
-		if t.Type == QueryTargetEnvironment && node.Environment == t.Value {
+		if t.Type == QueryTargetEnvironment && t.Value == node.Environment {
 			return true
 		}
 		// Check for platform match

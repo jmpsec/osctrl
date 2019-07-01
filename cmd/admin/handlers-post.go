@@ -151,6 +151,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			Query:      q.Query,
 			Name:       queryName,
 			Creator:    ctx["user"],
+			Expected:   0,
 			Executions: 0,
 			Active:     true,
 			Completed:  false,
@@ -164,6 +165,8 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%s %v", responseMessage, err)
 			goto response
 		}
+		// Temporary list of UUIDs to calculate Expected
+		var expected []string
 		// Create environment target
 		if (q.Environment != "") && envs.Exists(q.Environment) {
 			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, q.Environment); err != nil {
@@ -171,6 +174,16 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
 				goto response
+			}
+			nodes, err := nodesmgr.GetByEnv(q.Environment, "active")
+			if err != nil {
+				responseMessage = "error getting nodes by environment"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+				goto response
+			}
+			for _, n := range nodes {
+				expected = append(expected, n.UUID)
 			}
 		}
 		// Create platform target
@@ -180,6 +193,16 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				responseCode = http.StatusInternalServerError
 				log.Printf("%s %v", responseMessage, err)
 				goto response
+			}
+			nodes, err := nodesmgr.GetByPlatform(q.Platform, "active")
+			if err != nil {
+				responseMessage = "error getting nodes by platform"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s %v", responseMessage, err)
+				goto response
+			}
+			for _, n := range nodes {
+				expected = append(expected, n.UUID)
 			}
 		}
 		// Create UUIDs target
@@ -192,6 +215,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					log.Printf("%s %v", responseMessage, err)
 					goto response
 				}
+				expected = append(expected, u)
 			}
 		}
 		// Create hostnames target
@@ -205,6 +229,15 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					goto response
 				}
 			}
+		}
+		// Remove duplicates from expected
+		expectedClear := removeStringDuplicates(expected)
+		// Update value for expected
+		if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
+			responseMessage = "error setting expected"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+			goto response
 		}
 	} else {
 		responseMessage = "invalid CSRF token"

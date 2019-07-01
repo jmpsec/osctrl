@@ -85,7 +85,7 @@ func nodeFromEnroll(req EnrollRequest, environment, ipaddress, nodekey string) n
 		IPAddress:       ipaddress,
 		Username:        "unknown",
 		OsqueryUser:     "unknown",
-		 Environment:         environment,
+		Environment:     environment,
 		CPU:             strings.TrimRight(req.HostDetails.EnrollSystemInfo.CPUBrand, "\x00"),
 		Memory:          req.HostDetails.EnrollSystemInfo.PhysicalMemory,
 		HardwareSerial:  req.HostDetails.EnrollSystemInfo.HardwareSerial,
