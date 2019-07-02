@@ -62,7 +62,7 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("invalid target %s", target)
 		return
 	}
-	nodes, err := nodesmgr.GetByEnv(env, target)
+	nodes, err := nodesmgr.GetByEnv(env, target, settingsmgr.InactiveHours())
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		return
@@ -121,7 +121,7 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("invalid target %s", target)
 		return
 	}
-	nodes, err := nodesmgr.GetByPlatform(platform, target)
+	nodes, err := nodesmgr.GetByPlatform(platform, target, settingsmgr.InactiveHours())
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		return

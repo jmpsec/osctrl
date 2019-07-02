@@ -39,7 +39,7 @@ const (
 	LoggingELK     string = "elk"
 )
 
-// Names for settings values
+// Names for all possible settings values
 const (
 	DebugHTTP       string = "debug_http"
 	DebugService    string = "debug_service"
@@ -51,6 +51,7 @@ const (
 	MetricsPort     string = "metrics_port"
 	MetricsProtocol string = "metrics_protocol"
 	DefaultEnv      string = "default_env"
+	InactiveHours   string = "inactive_hours"
 )
 
 // SettingValue to hold each value for settings
@@ -89,6 +90,7 @@ func (conf *Settings) EmptyValue(service, name, typeValue string) SettingValue {
 		String:  "",
 		Integer: int64(0),
 		Boolean: false,
+		Info:    "",
 	}
 }
 
@@ -259,6 +261,30 @@ func (conf *Settings) SetString(strValue string, service, name string) error {
 	return nil
 }
 
+// GetInfo gets the info of a setting
+func (conf *Settings) GetInfo(service, name string) (string, error) {
+	value, err := conf.RetrieveValue(service, name)
+	if err != nil {
+		return "", err
+	}
+	return value.Info, nil
+}
+
+// SetInfo sets the info of a setting
+func (conf *Settings) SetInfo(info string, service, name string) error {
+	// Retrieve current value
+	value, err := conf.RetrieveValue(service, name)
+	if err != nil {
+		return fmt.Errorf("SetInfo %s %v", info, err)
+	}
+	// Update
+	if err := conf.DB.Model(&value).Update("info", info).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	log.Printf("SetInfo %s %s %s", info, service, name)
+	return nil
+}
+
 // IsValue checks if a settings value exists by service and name
 func (conf *Settings) IsValue(service, name string) bool {
 	_, err := conf.RetrieveValue(service, name)
@@ -316,6 +342,15 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 // CleanupSessions gets the interval in seconds to cleanup expired sessions by service
 func (conf *Settings) CleanupSessions() int64 {
 	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// InactiveHours gets the value in hours for a node to be inactive by service
+func (conf *Settings) InactiveHours() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, InactiveHours)
 	if err != nil {
 		return 0
 	}

@@ -175,7 +175,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("%s %v", responseMessage, err)
 				goto response
 			}
-			nodes, err := nodesmgr.GetByEnv(q.Environment, "active")
+			nodes, err := nodesmgr.GetByEnv(q.Environment, "active", settingsmgr.InactiveHours())
 			if err != nil {
 				responseMessage = "error getting nodes by environment"
 				responseCode = http.StatusInternalServerError
@@ -194,7 +194,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("%s %v", responseMessage, err)
 				goto response
 			}
-			nodes, err := nodesmgr.GetByPlatform(q.Platform, "active")
+			nodes, err := nodesmgr.GetByPlatform(q.Platform, "active", settingsmgr.InactiveHours())
 			if err != nil {
 				responseMessage = "error getting nodes by platform"
 				responseCode = http.StatusInternalServerError
@@ -772,7 +772,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
 					} else {
-						responseMessage = " Environment created successfully"
+						responseMessage = "Environment created successfully"
 					}
 				}
 			case "delete":
@@ -789,7 +789,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 								log.Printf("DebugService: %s %v", responseMessage, err)
 							}
 						} else {
-							responseMessage = " Environment deleted successfully"
+							responseMessage = "Environment deleted successfully"
 						}
 					}
 				}

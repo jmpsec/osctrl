@@ -145,8 +145,7 @@ func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 }
 
 // GetBySelector to retrieve target nodes by selector
-// FIXME the active/inactive value should be in a setting
-func (n *NodeManager) GetBySelector(stype, selector, target string) ([]OsqueryNode, error) {
+func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
 	var s string
 	switch stype {
@@ -161,11 +160,13 @@ func (n *NodeManager) GetBySelector(stype, selector, target string) ([]OsqueryNo
 			return nodes, err
 		}
 	case "active":
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		//if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case "inactive":
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		//if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	}
@@ -173,7 +174,7 @@ func (n *NodeManager) GetBySelector(stype, selector, target string) ([]OsqueryNo
 }
 
 // Gets to retrieve all/active/inactive nodes
-func (n *NodeManager) Gets(target string) ([]OsqueryNode, error) {
+func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
 	switch target {
 	case "all":
@@ -181,11 +182,13 @@ func (n *NodeManager) Gets(target string) ([]OsqueryNode, error) {
 			return nodes, err
 		}
 	case "active":
-		if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		//if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case "inactive":
-		if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		//if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	}
@@ -193,13 +196,13 @@ func (n *NodeManager) Gets(target string) ([]OsqueryNode, error) {
 }
 
 // GetByEnv to retrieve target nodes by environment
-func (n *NodeManager) GetByEnv(environment, target string) ([]OsqueryNode, error) {
-	return n.GetBySelector("environment", environment, target)
+func (n *NodeManager) GetByEnv(environment, target string, hours int64) ([]OsqueryNode, error) {
+	return n.GetBySelector("environment", environment, target, hours)
 }
 
 // GetByPlatform to retrieve target nodes by platform
-func (n *NodeManager) GetByPlatform(platform, target string) ([]OsqueryNode, error) {
-	return n.GetBySelector("platform", platform, target)
+func (n *NodeManager) GetByPlatform(platform, target string, hours int64) ([]OsqueryNode, error) {
+	return n.GetBySelector("platform", platform, target, hours)
 }
 
 // GetAllPlatforms to get all different platform with nodes in them
@@ -218,32 +221,32 @@ func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 }
 
 // GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
-// FIXME define active machine in a setting
-func (n *NodeManager) GetStatsByEnv(environment string) (StatsData, error) {
+func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
 	var stats StatsData
 	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Active).Error; err != nil {
+	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil
 }
 
 // GetStatsByPlatform to populate table stats about nodes by platform. Active machine is < 3 days
-// FIXME define active machine in a setting
-func (n *NodeManager) GetStatsByPlatform(platform string) (StatsData, error) {
+func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsData, error) {
 	var stats StatsData
 	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Active).Error; err != nil {
+	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
+	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil

@@ -48,6 +48,8 @@ const (
 	staticFilesFolder string = "./static"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
+	// Default hours to classify nodes as inactive
+	defaultInactive int = 72
 )
 
 // Global variables
@@ -199,6 +201,12 @@ func main() {
 	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.CleanupSessions) {
 		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanupSessions, int64(defaultRefresh)); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.CleanupSessions, err)
+		}
+	}
+	// Check if service settings for node inactive hours is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.InactiveHours) {
+		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.InactiveHours, int64(defaultInactive)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.InactiveHours, err)
 		}
 	}
 	// multiple listeners channel

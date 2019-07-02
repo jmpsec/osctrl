@@ -13,8 +13,8 @@ import (
 // Define targets to be used
 var (
 	StatsTargets = map[string]bool{
-		"environment":  true,
-		"platform": true,
+		"environment": true,
+		"platform":    true,
 	}
 )
 
@@ -44,13 +44,13 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	var stats nodes.StatsData
 	var err error
 	if target == "environment" {
-		stats, err = nodesmgr.GetStatsByEnv(name)
+		stats, err = nodesmgr.GetStatsByEnv(name, settingsmgr.InactiveHours())
 		if err != nil {
 			log.Printf("error getting stats %v", err)
 			return
 		}
 	} else if target == "platform" {
-		stats, err = nodesmgr.GetStatsByPlatform(name)
+		stats, err = nodesmgr.GetStatsByPlatform(name, settingsmgr.InactiveHours())
 		if err != nil {
 			log.Printf("error getting stats %v", err)
 			return

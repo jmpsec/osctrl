@@ -17,7 +17,7 @@ func listNodes(c *cli.Context) error {
 	if c.Bool("inactive") {
 		target = "inactive"
 	}
-	nodes, err := nodesmgr.Gets(target)
+	nodes, err := nodesmgr.Gets(target, settingsmgr.InactiveHours())
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func listNodes(c *cli.Context) error {
 		"Hostname",
 		"UUID",
 		"Platform",
-		" Environment",
+		"Environment",
 		"Last Status",
 		"Last Result",
 	})

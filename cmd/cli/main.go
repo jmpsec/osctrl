@@ -171,16 +171,16 @@ func init() {
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: " Environment to be added",
+							Usage: "Environment to be added",
 						},
 						cli.StringFlag{
 							Name:  "hostname, host",
-							Usage: " Environment host to be added",
+							Usage: "Environment host to be added",
 						},
 						cli.BoolFlag{
 							Name:   "debug, d",
 							Hidden: false,
-							Usage:  " Environment debug capability",
+							Usage:  "Environment debug capability",
 						},
 						cli.StringFlag{
 							Name:  "configuration, conf",
@@ -200,7 +200,7 @@ func init() {
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: " Environment to be deleted",
+							Usage: "Environment to be deleted",
 						},
 					},
 					Action: deleteEnvironment,
@@ -212,7 +212,7 @@ func init() {
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: " Environment to be displayed",
+							Usage: "Environment to be displayed",
 						},
 					},
 					Action: showEnvironment,
@@ -229,7 +229,7 @@ func init() {
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
-							Usage: " Environment to be used",
+							Usage: "Environment to be used",
 						},
 						cli.StringFlag{
 							Name:  "target, t",
@@ -276,6 +276,11 @@ func init() {
 							Name:   "boolean",
 							Hidden: false,
 							Usage:  "Value boolean",
+						},
+						cli.StringFlag{
+							Name:  "info, i",
+							Value: "",
+							Usage: "Setting info",
 						},
 					},
 					Action: func(c *cli.Context) error {
@@ -339,6 +344,11 @@ func init() {
 							Hidden: false,
 							Usage:  "Value boolean false",
 						},
+						cli.StringFlag{
+							Name:  "info, i",
+							Value: "",
+							Usage: "Setting info",
+						},
 					},
 					Action: func(c *cli.Context) error {
 						// Get values from flags
@@ -357,6 +367,7 @@ func init() {
 							fmt.Println("type is required")
 							os.Exit(1)
 						}
+						info := c.String("info")
 						var err error
 						switch typeValue {
 						case settings.TypeInteger:
@@ -365,6 +376,12 @@ func init() {
 							err = settingsmgr.SetBoolean(c.Bool("true"), service, name)
 						case settings.TypeString:
 							err = settingsmgr.SetString(c.String("string"), service, name)
+						}
+						if err != nil {
+							return err
+						}
+						if info != "" {
+							err = settingsmgr.SetInfo(info, service, name)
 						}
 						return err
 					},

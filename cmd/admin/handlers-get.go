@@ -219,7 +219,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get all nodes
-	nodes, err := nodesmgr.Gets("active")
+	nodes, err := nodesmgr.Gets("active", settingsmgr.InactiveHours())
 	if err != nil {
 		log.Printf("error getting all nodes: %v", err)
 		return

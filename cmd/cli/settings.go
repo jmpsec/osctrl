@@ -22,6 +22,7 @@ func listConfiguration(c *cli.Context) error {
 		"String",
 		"Integer",
 		"Boolean",
+		"Info",
 	})
 	if len(values) > 0 {
 		data := [][]string{}
@@ -33,6 +34,7 @@ func listConfiguration(c *cli.Context) error {
 				v.String,
 				strconv.FormatInt(v.Integer, 10),
 				stringifyBool(v.Boolean),
+				v.Info,
 			}
 			data = append(data, _v)
 		}
