@@ -31,8 +31,6 @@ const (
 	errorPath string = "/error"
 	// Service configuration file
 	configurationFile string = "config/" + settings.ServiceTLS + ".json"
-	// DB configuration file
-	dbConfigurationFile string = "config/db.json"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 )
@@ -58,7 +56,6 @@ var (
 	queriesmgr     *queries.Queries
 	filecarves     *carves.Carves
 	_metrics       *metrics.Metrics
-	dbConfig       JSONConfigurationDB
 )
 
 // Function to load the configuration file and assign to variables
@@ -80,25 +77,6 @@ func loadConfiguration() error {
 	return nil
 }
 
-// Function to load the DB configuration file and assign to variables
-func loadDBConfiguration() error {
-	log.Printf("Loading %s", dbConfigurationFile)
-	// Load file and read config
-	viper.SetConfigFile(dbConfigurationFile)
-	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-	// Backend values
-	dbRaw := viper.Sub("db")
-	err = dbRaw.Unmarshal(&dbConfig)
-	if err != nil {
-		return err
-	}
-	// No errors!
-	return nil
-}
-
 // Initialization code
 func init() {
 	// Logging flags
@@ -106,10 +84,6 @@ func init() {
 	// Load configuration
 	if err := loadConfiguration(); err != nil {
 		log.Fatalf("Error loading configuration %s", err)
-	}
-	// Load DB configuration
-	if err := loadDBConfiguration(); err != nil {
-		log.Fatalf("Error loading DB configuration %s", err)
 	}
 }
 

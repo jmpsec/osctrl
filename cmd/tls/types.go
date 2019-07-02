@@ -8,15 +8,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// JSONConfigurationDB to hold all backend configuration values
-type JSONConfigurationDB struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // JSONConfigurationService to hold all service configuration values
 type JSONConfigurationService struct {
 	Listener   string                   `json:"listener"`

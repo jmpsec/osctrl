@@ -21,7 +21,7 @@ const (
 	// Service configuration file
 	defConfigFile string = "config/tls.json"
 	// DB configuration file
-	defDBConfigFile string = "config/db.json"
+	defDBConfigurationFile string = "config/db.json"
 	// Project name
 	projectName string = "osctrl"
 	// Application name
@@ -37,10 +37,10 @@ const (
 // Global variables
 var (
 	db           *gorm.DB
-	dbConfig     DBConf
 	app          *cli.App
 	configFile   string
 	dbConfigFile string
+	dbConfig     JSONConfigurationDB
 	settingsmgr  *settings.Settings
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
@@ -60,25 +60,6 @@ func loadConfiguration() error {
 	return nil
 }
 
-// Function to load the DB configuration file and assign to variables
-func loadDBConfiguration() error {
-	log.Printf("Loading %s", dbConfigFile)
-	// Load file and read config
-	viper.SetConfigFile(dbConfigFile)
-	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-	// Backend values
-	dbRaw := viper.Sub("db")
-	err = dbRaw.Unmarshal(&dbConfig)
-	if err != nil {
-		return err
-	}
-	// No errors!
-	return nil
-}
-
 // Initialization code
 func init() {
 	// Get path of process
@@ -87,7 +68,7 @@ func init() {
 		panic(err)
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
-	dbConfigFile = filepath.Dir(executableProcess) + "/" + defDBConfigFile
+	dbConfigFile = filepath.Dir(executableProcess) + "/" + defDBConfigurationFile
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
@@ -554,7 +535,8 @@ func init() {
 		log.Fatalf("Error loading configuration %s", err)
 	}
 	// Load DB configuration
-	if err := loadDBConfiguration(); err != nil {
+	dbConfig, err = loadDBConfiguration(dbConfigFile)
+	if err != nil {
 		log.Fatalf("Error loading DB configuration %s", err)
 	}
 }
@@ -562,7 +544,7 @@ func init() {
 // Go go!
 func main() {
 	// Database handler
-	db = getDB()
+	db = getDB(dbConfig)
 	// Close when exit
 	//defer db.Close()
 	defer func() {

@@ -62,6 +62,7 @@ type SettingValue struct {
 	String  string
 	Boolean bool
 	Integer int64
+	Info    string
 }
 
 // MapSettings to hold all values by service

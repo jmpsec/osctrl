@@ -6,17 +6,57 @@ import (
 	"time"
 
 	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/spf13/viper"
 
 	"github.com/jinzhu/gorm"
 )
 
+const (
+	// DB configuration file
+	dbConfigurationFile string = "config/db.json"
+)
+
+// JSONConfigurationDB to hold all backend configuration values
+type JSONConfigurationDB struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Function to load the DB configuration file and assign to variables
+func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
+	var config JSONConfigurationDB
+	log.Printf("Loading %s", file)
+	// Load file and read config
+	viper.SetConfigFile(file)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return config, err
+	}
+	// Backend values
+	dbRaw := viper.Sub("db")
+	err = dbRaw.Unmarshal(&config)
+	if err != nil {
+		return config, err
+	}
+	// No errors!
+	return config, nil
+}
+
 // Get PostgreSQL DB using GORM
 func getDB() *gorm.DB {
+	// Load DB configuration
+	config, err := loadDBConfiguration(dbConfigurationFile)
+	if err != nil {
+		log.Fatalf("Error loading DB configuration %s", err)
+	}
 	t := "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
 	postgresDSN := fmt.Sprintf(
-		t, dbConfig.Host, dbConfig.Port, dbConfig.Name, dbConfig.Username, dbConfig.Password)
+		t, config.Host, config.Port, config.Name, config.Username, config.Password)
 	db, err := gorm.Open("postgres", postgresDSN)
 	if err != nil {
 		log.Fatalf("Failed to open database connection: %v", err)

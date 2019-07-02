@@ -12,10 +12,50 @@ import (
 	"github.com/javuto/osctrl/pkg/users"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/spf13/viper"
 )
+
+const (
+	// DB configuration file
+	dbConfigurationFile string = "config/db.json"
+)
+
+// JSONConfigurationDB to hold all backend configuration values
+type JSONConfigurationDB struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Function to load the DB configuration file and assign to variables
+func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
+	var config JSONConfigurationDB
+	log.Printf("Loading %s", file)
+	// Load file and read config
+	viper.SetConfigFile(file)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return config, err
+	}
+	// Backend values
+	dbRaw := viper.Sub("db")
+	err = dbRaw.Unmarshal(&config)
+	if err != nil {
+		return config, err
+	}
+	// No errors!
+	return config, nil
+}
 
 // Get PostgreSQL DB using GORM
 func getDB() *gorm.DB {
+	// Load DB configuration
+	dbConfig, err := loadDBConfiguration(dbConfigurationFile)
+	if err != nil {
+		log.Fatalf("Error loading DB configuration %s", err)
+	}
 	t := "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
 	postgresDSN := fmt.Sprintf(
 		t, dbConfig.Host, dbConfig.Port, dbConfig.Name, dbConfig.Username, dbConfig.Password)
