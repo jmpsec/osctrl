@@ -7,7 +7,7 @@ WORKDIR /osctrl
 
 ADD deploy/docker/tls.json config/
 
-ADD cmd/tls/templates/ tmpl_tls
+ADD cmd/tls/scripts/ scripts
 
 COPY go.mod .
 COPY go.sum .

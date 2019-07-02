@@ -84,16 +84,16 @@ func QuickAddScript(project, script string, environment TLSEnvironment) (string,
 	switch script {
 	case "enroll.sh":
 		templateName = "quick-add.sh"
-		templatePath = "tmpl_tls/scripts/quick-add.sh"
+		templatePath = "scripts/quick-add.sh"
 	case "enroll.ps1":
 		templateName = "quick-add.ps1"
-		templatePath = "tmpl_tls/scripts/quick-add.ps1"
+		templatePath = "scripts/quick-add.ps1"
 	case "remove.sh":
 		templateName = "quick-remove.sh"
-		templatePath = "tmpl_tls/scripts/quick-remove.sh"
+		templatePath = "scripts/quick-remove.sh"
 	case "remove.ps1":
 		templateName = "quick-remove.ps1"
-		templatePath = "tmpl_tls/scripts/quick-remove.ps1"
+		templatePath = "scripts/quick-remove.ps1"
 	}
 	// Prepare template
 	t, err := template.New(templateName).ParseFiles(templatePath)

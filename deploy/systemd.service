@@ -1,6 +1,6 @@
 [Unit]
 Description=_NAME
-ConditionPathExists=_DESTINATION
+ConditionPathExists=_DEST
 After=network.target
 
 [Service]
@@ -10,8 +10,8 @@ Group=_GG
 Restart=on-failure
 RestartSec=10
 
-WorkingDirectory=_DESTINATION
-ExecStart=_DESTINATION/_NAME
+WorkingDirectory=_DEST
+ExecStart=_DEST/_NAME
 
 # make sure log directory exists and owned by syslog
 PermissionsStartOnly=true

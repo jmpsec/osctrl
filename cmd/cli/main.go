@@ -21,7 +21,7 @@ const (
 	// Service configuration file
 	defConfigFile string = "config/tls.json"
 	// DB configuration file
-	dbConfigurationFile string = "config/db.json"
+	defDBConfigFile string = "config/db.json"
 	// Project name
 	projectName string = "osctrl"
 	// Application name
@@ -36,15 +36,16 @@ const (
 
 // Global variables
 var (
-	db          *gorm.DB
-	dbConfig    DBConf
-	app         *cli.App
-	configFile  string
-	settingsmgr *settings.Settings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	adminUsers  *users.UserManager
-	envs        *environments.Environment
+	db           *gorm.DB
+	dbConfig     DBConf
+	app          *cli.App
+	configFile   string
+	dbConfigFile string
+	settingsmgr  *settings.Settings
+	nodesmgr     *nodes.NodeManager
+	queriesmgr   *queries.Queries
+	adminUsers   *users.UserManager
+	envs         *environments.Environment
 )
 
 // Function to load the configuration file and assign to variables
@@ -61,9 +62,9 @@ func loadConfiguration() error {
 
 // Function to load the DB configuration file and assign to variables
 func loadDBConfiguration() error {
-	log.Printf("Loading %s", dbConfigurationFile)
+	log.Printf("Loading %s", dbConfigFile)
 	// Load file and read config
-	viper.SetConfigFile(dbConfigurationFile)
+	viper.SetConfigFile(dbConfigFile)
 	err := viper.ReadInConfig()
 	if err != nil {
 		return err
@@ -86,6 +87,7 @@ func init() {
 		panic(err)
 	}
 	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
+	dbConfigFile = filepath.Dir(executableProcess) + "/" + defDBConfigFile
 	// Initialize CLI details
 	app = cli.NewApp()
 	app.Name = appName
@@ -100,6 +102,13 @@ func init() {
 			Usage:       "Load TLS configuration from `FILE`",
 			EnvVar:      "TLS_CONFIG",
 			Destination: &configFile,
+		},
+		cli.StringFlag{
+			Name:        "db, d",
+			Value:       dbConfigFile,
+			Usage:       "Load DB configuration from `FILE`",
+			EnvVar:      "DB_CONFIG",
+			Destination: &dbConfigFile,
 		},
 	}
 	// Commands

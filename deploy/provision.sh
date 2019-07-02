@@ -489,7 +489,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT"
 
   # Prepare static files for TLS service
-  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/templates" "tmpl_tls"
+  _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
 
   # Systemd configuration for TLS service
   _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
