@@ -64,3 +64,23 @@ func listQueries(c *cli.Context) error {
 	}
 	return nil
 }
+
+func completeQuery(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("name is required")
+		os.Exit(1)
+	}
+	return queriesmgr.Complete(name)
+}
+
+func deleteQuery(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("name is required")
+		os.Exit(1)
+	}
+	return queriesmgr.Delete(name)
+}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )
@@ -44,4 +45,79 @@ func listConfiguration(c *cli.Context) error {
 		fmt.Printf("No configuration values\n")
 	}
 	return nil
+}
+
+func addSetting(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("name is required")
+		os.Exit(1)
+	}
+	service := c.String("service")
+	if service == "" {
+		fmt.Println("service is required")
+		os.Exit(1)
+	}
+	typeValue := c.String("type")
+	if typeValue == "" {
+		fmt.Println("type is required")
+		os.Exit(1)
+	}
+	values := make(map[string]interface{})
+	values[settings.TypeString] = c.String("string")
+	values[settings.TypeInteger] = c.Int64("integer")
+	values[settings.TypeBoolean] = c.Bool("boolean")
+	return settingsmgr.NewValue(service, name, typeValue, values)
+}
+
+func updateSetting(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("name is required")
+		os.Exit(1)
+	}
+	service := c.String("service")
+	if service == "" {
+		fmt.Println("service is required")
+		os.Exit(1)
+	}
+	typeValue := c.String("type")
+	if typeValue == "" {
+		fmt.Println("type is required")
+		os.Exit(1)
+	}
+	info := c.String("info")
+	var err error
+	switch typeValue {
+	case settings.TypeInteger:
+		err = settingsmgr.SetInteger(c.Int64("integer"), service, name)
+	case settings.TypeBoolean:
+		err = settingsmgr.SetBoolean(c.Bool("true"), service, name)
+	case settings.TypeString:
+		err = settingsmgr.SetString(c.String("string"), service, name)
+	}
+	if err != nil {
+		return err
+	}
+	if info != "" {
+		err = settingsmgr.SetInfo(info, service, name)
+	}
+	return err
+}
+
+func deleteSetting(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("name is required")
+		os.Exit(1)
+	}
+	service := c.String("service")
+	if service == "" {
+		fmt.Println("service is required")
+		os.Exit(1)
+	}
+	return settingsmgr.DeleteValue(service, name)
 }

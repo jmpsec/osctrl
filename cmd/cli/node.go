@@ -51,3 +51,13 @@ func listNodes(c *cli.Context) error {
 	}
 	return nil
 }
+
+func deleteNode(c *cli.Context) error {
+	// Get values from flags
+	uuid := c.String("uuid")
+	if uuid == "" {
+		fmt.Println("uuid is required")
+		os.Exit(1)
+	}
+	return nodesmgr.ArchiveDeleteByUUID(uuid)
+}
