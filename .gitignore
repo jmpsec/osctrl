@@ -23,6 +23,9 @@ bin
 build
 vendor
 
+# Plugins
+*.so
+
 # TLS Configuration
 tls.json
 

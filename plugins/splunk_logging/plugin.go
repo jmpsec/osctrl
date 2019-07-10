@@ -5,25 +5,19 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/javuto/osctrl/pkg/types"
+	"github.com/javuto/osctrl/pkg/utils"
 )
 
 const (
-	// SplunkHost as source for Splunk events
-	SplunkHost = projectName
-	// SplunkMethod to send
-	SplunkMethod = "POST"
-	// SplunkIndex to go to the right index
-	SplunkIndex = "osquery"
+	// Source for Splunk events
+	splunkHost = "osctrl"
+	// Method to send requests
+	splunkMethod string = "POST"
+	// Index to use
+	splunkIndex string = "osquery"
 )
-
-// JSONConfigurationSplunk to hold all TLS endpoint configuration values
-type JSONConfigurationSplunk struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Logging  string `json:"logging"`
-}
 
 // SplunkMessage to handle log format to be sent to Splunk
 type SplunkMessage struct {
@@ -35,17 +29,17 @@ type SplunkMessage struct {
 	Event      interface{} `json:"event"`
 }
 
-// Function that sends JSON logs to Splunk HTTP Event Collector
-func splunkSend(data []byte, environment, logType, uuid string, configData LoggingConfigurationData) {
+// SplunkSend - Function that sends JSON logs to Splunk HTTP Event Collector
+func SplunkSend(logType string, data []byte, environment, uuid, url, token string, debug bool) {
 	// Prepare headers
 	headers := map[string]string{
-		"Authorization": "Splunk " + configData["token"],
-		"Content-Type":  JSONApplication,
+		"Authorization": "Splunk " + token,
+		"Content-Type":  "application/json",
 	}
 	// Check if this is result/status or query
 	var sourceType string
 	var logs []interface{}
-	if logType == "query" {
+	if logType == types.QueryLog {
 		sourceType = logType
 		// For on-demand queries, just a JSON blob with results and statuses
 		var result interface{}
@@ -72,10 +66,10 @@ func splunkSend(data []byte, environment, logType, uuid string, configData Loggi
 		}
 		eventData := SplunkMessage{
 			Time:       time.Now().Unix(),
-			Host:       SplunkHost,
+			Host:       splunkHost,
 			Source:     uuid,
 			SourceType: sourceType,
-			Index:      SplunkIndex,
+			Index:      splunkIndex,
 			Event:      string(jsonEvent),
 		}
 		events = append(events, eventData)
@@ -86,12 +80,15 @@ func splunkSend(data []byte, environment, logType, uuid string, configData Loggi
 		log.Printf("Error parsing data %s", err)
 	}
 	jsonParam := strings.NewReader(string(jsonEvents))
+	if debug {
+		log.Printf("Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
+	}
 	// Send log with a POST to the Splunk URL
-	resp, body, err := sendRequest(true, SplunkMethod, configData["url"], jsonParam, headers)
+	resp, body, err := utils.SendRequest(true, splunkMethod, url, jsonParam, headers)
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}
-	if envsmap[environment].DebugHTTP {
+	if debug {
 		log.Printf("Splunk: HTTP %d %s", resp, body)
 	}
 }

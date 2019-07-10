@@ -5,17 +5,19 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/javuto/osctrl/pkg/utils"
 )
 
 const (
-	// GraylogVersion GELF spec version
-	GraylogVersion = "1.1"
-	// GraylogHost as source for GELF data
-	GraylogHost = projectName
-	// GraylogLevel informational
-	GraylogLevel = 6
-	// GraylogMethod to send
-	GraylogMethod = "POST"
+	// GELF spec version
+	graylogVersion = "1.1"
+	// Host as source for GELF data
+	graylogHost = "osctrl"
+	// Log Level (informational)
+	graylogLevel = 6
+	// Method to send
+	graylogMethod = "POST"
 )
 
 // GraylogMessage to handle log format to be sent to Graylog
@@ -30,11 +32,11 @@ type GraylogMessage struct {
 	UUID         string `json:"_uuid"`
 }
 
-// Function that sends JSON logs to Graylog
-func graylogSend(data []byte, environment, logType, uuid string, configData LoggingConfigurationData) {
+// GraylogSend - Function that sends JSON logs to Graylog
+func GraylogSend(logType string, data []byte, environment, uuid, url string, debug bool) {
 	// Prepare headers
 	headers := map[string]string{
-		"Content-Type": JSONApplication,
+		"Content-Type": "application/json",
 	}
 	// Convert the array in an array of multiple message
 	var logs []interface{}
@@ -51,11 +53,11 @@ func graylogSend(data []byte, environment, logType, uuid string, configData Logg
 			continue
 		}
 		messsageData := GraylogMessage{
-			Version:      GraylogVersion,
-			Host:         GraylogHost,
+			Version:      graylogVersion,
+			Host:         graylogHost,
 			ShortMessage: string(jsonMessage),
 			Timestamp:    time.Now().Unix(),
-			Level:        GraylogLevel,
+			Level:        graylogLevel,
 			Environment:  environment,
 			Type:         logType,
 			UUID:         uuid,
@@ -68,13 +70,16 @@ func graylogSend(data []byte, environment, logType, uuid string, configData Logg
 		log.Printf("Error parsing data %s", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessages))
+	if debug {
+		log.Printf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
+	}
 	// Send log with a POST to the Graylog URL
-	resp, body, err := sendRequest(true, GraylogMethod, configData["url"], jsonParam, headers)
+	resp, body, err := utils.SendRequest(true, graylogMethod, url, jsonParam, headers)
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 		return
 	}
-	if envsmap[environment].DebugHTTP {
+	if debug {
 		log.Printf("Graylog: HTTP %d %s", resp, body)
 	}
 }

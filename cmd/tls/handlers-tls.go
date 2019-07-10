@@ -12,7 +12,8 @@ import (
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
-	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
+	"github.com/javuto/osctrl/pkg/utils"
 )
 
 const (
@@ -93,9 +94,9 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
-	var t EnrollRequest
+	var t types.EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricEnrollErr)
@@ -139,7 +140,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
 	}
 	// Prepare response
-	response, err = json.Marshal(EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid})
+	response, err = json.Marshal(types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid})
 	if err != nil {
 		log.Printf("error formating response %v", err)
 		return
@@ -174,7 +175,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Get environment
 	e, err := envs.Get(env)
 	if err != nil {
@@ -183,7 +184,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Decode read POST body
-	var t ConfigRequest
+	var t types.ConfigRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricConfigErr)
@@ -205,7 +206,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		response = []byte(e.Configuration)
 	} else {
-		response, err = json.Marshal(ConfigResponse{NodeInvalid: true})
+		response, err = json.Marshal(types.ConfigResponse{NodeInvalid: true})
 		if err != nil {
 			incMetric(metricConfigErr)
 			log.Printf("error formating response %v", err)
@@ -259,9 +260,9 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Extract POST body and decode JSON
-	var t LogRequest
+	var t types.LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricLogErr)
@@ -286,7 +287,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response
-	response, err = json.Marshal(LogResponse{NodeInvalid: nodeInvalid})
+	response, err = json.Marshal(types.LogResponse{NodeInvalid: nodeInvalid})
 	if err != nil {
 		incMetric(metricLogErr)
 		log.Printf("error preparing response %v", err)
@@ -306,7 +307,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 // Helper to process logs
 func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 	// Parse log to extract metadata
-	var logs []LogGenericData
+	var logs []types.LogGenericData
 	err := json.Unmarshal(data, &logs)
 	if err != nil {
 		// FIXME metrics for this
@@ -339,29 +340,27 @@ func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, environment string) {
 	// Send data to storage
 	// FIXME allow multiple types of logging
-	switch tlsConfig.Logging {
-	case settings.LoggingGraylog:
-		go graylogSend(data, environment, logType, uuid, tlsConfig.LoggingCfg)
-	case settings.LoggingSplunk:
-		go splunkSend(data, environment, logType, uuid, tlsConfig.LoggingCfg)
-	case settings.LoggingDB:
-		go postgresLog(data, environment, logType, uuid)
-	case settings.LoggingStdout:
-		log.Printf("LOG: %s from environment %s : %s", logType, environment, string(data))
-	}
+	logsDispatcher(
+		tlsConfig.Logging,
+		logType,
+		db,
+		data,
+		environment,
+		uuid,
+		envsmap[environment].DebugHTTP)
 	// Use metadata to update record
 	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, uuid)
 	if err != nil {
 		log.Printf("error updating metadata %s", err)
 	}
 	// Refresh last logging request
-	if logType == statusLog {
+	if logType == types.StatusLog {
 		err := nodesmgr.RefreshLastStatus(uuid)
 		if err != nil {
 			log.Printf("error refreshing last status %v", err)
 		}
 	}
-	if logType == resultLog {
+	if logType == types.ResultLog {
 		err := nodesmgr.RefreshLastResult(uuid)
 		if err != nil {
 			log.Printf("error refreshing last result %v", err)
@@ -370,7 +369,7 @@ func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, loc
 }
 
 // Helper to dispatch queries
-func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
+func dispatchQueries(queryData types.QueryWriteData, node nodes.OsqueryNode) {
 	// Prepare data to send
 	data, err := json.Marshal(queryData)
 	if err != nil {
@@ -378,16 +377,16 @@ func dispatchQueries(queryData QueryWriteData, node nodes.OsqueryNode) {
 	}
 	// Send data to storage
 	// FIXME allow multiple types of logging
-	switch tlsConfig.Logging {
-	case settings.LoggingGraylog:
-		go graylogSend(data, node.Environment, queryLog, node.UUID, tlsConfig.LoggingCfg)
-	case settings.LoggingSplunk:
-		go splunkSend(data, node.Environment, queryLog, node.UUID, tlsConfig.LoggingCfg)
-	case settings.LoggingDB:
-		go postgresQuery(data, queryData.Name, node, queryData.Status)
-	case settings.LoggingStdout:
-		log.Printf("QUERY: %s from environment %s : %s", "query", node.Environment, string(data))
-	}
+	logsDispatcher(
+		tlsConfig.Logging,
+		types.QueryLog,
+		db,
+		data,
+		node.Environment,
+		node.UUID,
+		queryData.Name,
+		queryData.Status,
+		envsmap[node.Environment].DebugHTTP)
 	// Refresh last query write request
 	err = nodesmgr.RefreshLastQueryWrite(node.UUID)
 	if err != nil {
@@ -413,10 +412,10 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
-	var t QueryReadRequest
+	var t types.QueryReadRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricReadErr)
@@ -449,7 +448,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response for invalid key
-	response, err = json.Marshal(QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
+	response, err = json.Marshal(types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
 	if err != nil {
 		incMetric(metricReadErr)
 		log.Printf("error formating response %v", err)
@@ -484,10 +483,10 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
-	var t QueryWriteRequest
+	var t types.QueryWriteRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricWriteErr)
@@ -509,7 +508,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response
-	response, err = json.Marshal(QueryWriteResponse{NodeInvalid: nodeInvalid})
+	response, err = json.Marshal(types.QueryWriteResponse{NodeInvalid: nodeInvalid})
 	if err != nil {
 		incMetric(metricWriteErr)
 		log.Printf("error formating response %v", err)
@@ -527,7 +526,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper to process on-demand query result logs
-func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuses, nodeKey string, environment string) {
+func processLogQueryResult(queries types.QueryWriteQueries, statuses types.QueryWriteStatuses, nodeKey string, environment string) {
 	// Retrieve node
 	node, err := nodesmgr.GetByKey(nodeKey)
 	if err != nil {
@@ -536,7 +535,7 @@ func processLogQueryResult(queries QueryWriteQueries, statuses QueryWriteStatuse
 	// Tap into results so we can update internal metrics
 	for q, r := range queries {
 		// Dispatch query name, result and status
-		d := QueryWriteData{
+		d := types.QueryWriteData{
 			Name:   q,
 			Result: r,
 			Status: statuses[q],
@@ -579,7 +578,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	e, err := envs.Get(env)
 	if err != nil {
 		log.Printf("error getting environment %v", err)
@@ -622,7 +621,7 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Function to initialize a file carve from a node
-func processCarveInit(req CarveInitRequest, sessionid, environment string) {
+func processCarveInit(req types.CarveInitRequest, sessionid, environment string) {
 	// Retrieve node
 	node, err := nodesmgr.GetByKey(req.NodeKey)
 	if err != nil {
@@ -654,7 +653,7 @@ func processCarveInit(req CarveInitRequest, sessionid, environment string) {
 
 // Function to process one block from a file carve
 // FIXME it can be more efficient on db access
-func processCarveBlock(req CarveBlockRequest, environment string) {
+func processCarveBlock(req types.CarveBlockRequest, environment string) {
 	// Prepare carve block
 	block := carves.CarvedBlock{
 		RequestID:   req.RequestID,
@@ -683,7 +682,7 @@ func processCarveBlock(req CarveBlockRequest, environment string) {
 			log.Printf("error completing status %v", err)
 		}
 		// FIXME convert completed carve into actual file to download
-		// Check if destination folder is 
+		// Check if destination folder is
 	} else {
 		err = filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID)
 		if err != nil {
@@ -711,10 +710,10 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
-	var t CarveInitRequest
+	var t types.CarveInitRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricInitErr)
@@ -738,7 +737,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = false
 	}
 	// Prepare response
-	response, err = json.Marshal(CarveInitResponse{Success: initCarve, SessionID: carveSessionID})
+	response, err = json.Marshal(types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID})
 	if err != nil {
 		incMetric(metricInitErr)
 		log.Printf("error formating response %v", err)
@@ -773,10 +772,10 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	debugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
 	var response []byte
-	var t CarveBlockRequest
+	var t types.CarveBlockRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
 		incMetric(metricBlockErr)
@@ -793,7 +792,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		blockCarve = false
 	}
 	// Prepare response
-	response, err = json.Marshal(CarveBlockResponse{Success: blockCarve})
+	response, err = json.Marshal(types.CarveBlockResponse{Success: blockCarve})
 	if err != nil {
 		incMetric(metricBlockErr)
 		log.Printf("error formating response %v", err)

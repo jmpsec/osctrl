@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/utils"
 )
 
 // Define log types to be used
@@ -49,7 +50,7 @@ type QueryLogJSON struct {
 
 // Handler GET requests for JSON status/result logs by node and environment
 func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract type
 	logType, ok := vars["type"]
@@ -147,7 +148,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON query logs by query name
 func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract query name
 	// FIXME verify name

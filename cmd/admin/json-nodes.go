@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/utils"
 )
 
 // Define targets to be used
@@ -38,7 +39,7 @@ type NodeJSON struct {
 
 // Handler for JSON endpoints by environment
 func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	env, ok := vars["environment"]
@@ -102,7 +103,7 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON endpoints by platform
 func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	platform, ok := vars["platform"]

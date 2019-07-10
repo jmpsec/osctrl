@@ -35,13 +35,6 @@ const (
 	defaultRefresh int = 300
 )
 
-// Types of log types
-const (
-	statusLog string = "status"
-	resultLog string = "result"
-	queryLog  string = "query"
-)
-
 // Global variables
 var (
 	tlsConfig      JSONConfigurationService
@@ -87,8 +80,20 @@ func init() {
 	}
 }
 
+// Loading plugins
+func loadPlugins() error {
+	log.Println("Loading logging dispatcher plugin")
+	if err := loadLoggingDispatcherPlugin(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Go go!
 func main() {
+	if err := loadPlugins(); err != nil {
+		log.Printf("Error loading plugins - %v", err)
+	}
 	log.Println("Loading DB")
 	// Database handler
 	db = getDB()
@@ -97,7 +102,7 @@ func main() {
 	defer func() {
 		err := db.Close()
 		if err != nil {
-			log.Fatalf("Failed to close Database handler %v", err)
+			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
 	// Automigrate tables

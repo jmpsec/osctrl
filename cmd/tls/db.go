@@ -102,36 +102,6 @@ func automigrateDB() error {
 	if err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
 	}
-	// table distributed_queries
-	err = db.AutoMigrate(DistributedQuery{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
-	}
-	// table distributed_query_executions
-	err = db.AutoMigrate(DistributedQueryExecution{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
-	}
-	// table distributed_query_targets
-	err = db.AutoMigrate(DistributedQueryTarget{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
-	}
-	// table osquery_status_data
-	err = db.AutoMigrate(OsqueryStatusData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_status_data): %v", err)
-	}
-	// table osquery_result_data
-	err = db.AutoMigrate(OsqueryResultData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_result_data): %v", err)
-	}
-	// table osquery_query_data
-	err = db.AutoMigrate(OsqueryQueryData{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
-	}
 	// table setting_values
 	err = db.AutoMigrate(settings.SettingValue{}).Error
 	if err != nil {

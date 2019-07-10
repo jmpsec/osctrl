@@ -8,13 +8,14 @@ import (
 
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/utils"
 
 	"github.com/gorilla/mux"
 )
 
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/login.html",
@@ -40,7 +41,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the root path
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Redirect to table for active nodes in default environment
 	defaultEnvironment := settingsmgr.DefaultEnv(settings.ServiceAdmin)
 	if envs.Exists(defaultEnvironment) {
@@ -52,7 +53,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for environment view of the table
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	env, ok := vars["environment"]
@@ -124,7 +125,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for platform view of the table
 func platformHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
@@ -192,7 +193,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to run queries
 func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/query-run.html",
@@ -259,7 +260,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for GET requests to queries
 func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/queries.html",
@@ -317,7 +318,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests to see query results by name
 func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -389,7 +390,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /conf
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -458,7 +459,7 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /enroll
 func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -539,7 +540,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -608,7 +609,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /env
 func envsGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		"tmpl_admin/environments.html",
@@ -658,7 +659,7 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /settings
 func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
@@ -728,7 +729,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler GET requests for /users
 func usersGETHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
 		"pastTimeAgo": pastTimeAgo,

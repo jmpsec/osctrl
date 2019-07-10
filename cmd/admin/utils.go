@@ -5,9 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
-	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -68,22 +65,6 @@ func checkValidPlatform(platform string) bool {
 		}
 	}
 	return false
-}
-
-// Helper for debugging purposes and dump a full HTTP request
-func debugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
-	if debugCheck {
-		log.Println("-------------------------------------------------- request")
-		requestDump, err := httputil.DumpRequest(r, showBody)
-		if err != nil {
-			log.Printf("error while dumprequest %v", err)
-		}
-		log.Println(string(requestDump))
-		if !showBody {
-			log.Println("---------------- Skipping Request Body -------------------")
-		}
-		log.Println("-------------------------------------------------------end")
-	}
 }
 
 // Helper to remove backslashes from text

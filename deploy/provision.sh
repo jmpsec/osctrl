@@ -491,6 +491,10 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
 
+  # Prepare plugins
+  make plugins
+  sudo ln -fs "$SOURCE_PATH/plugins" "$DEST_PATH/plugins"
+
   # Systemd configuration for TLS service
   _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
 fi

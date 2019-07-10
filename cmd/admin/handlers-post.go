@@ -10,13 +10,14 @@ import (
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/utils"
 
 	"github.com/gorilla/mux"
 )
 
 // Handler for login page for POST requests
 func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	var l LoginRequest
@@ -70,7 +71,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	var l LogoutRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
@@ -123,7 +124,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	var q DistributedQueryRequest
@@ -265,7 +266,7 @@ response:
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var q DistributedQueryActionRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
@@ -344,7 +345,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "Configuration saved successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract environment and verify
 	environmentVar, ok := vars["environment"]
@@ -423,7 +424,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "Intervals updated successfully"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	environmentVar, ok := vars["environment"]
@@ -493,7 +494,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	environmentVar, ok := vars["environment"]
@@ -599,7 +600,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var m NodeMultiActionRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
@@ -669,7 +670,7 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -739,7 +740,7 @@ func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
 func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var c EnvironmentsRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
@@ -779,18 +780,16 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				if c.Name == settingsmgr.DefaultEnv(settings.ServiceAdmin) {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
-				} else {
-					if envs.Exists(c.Name) {
-						err := envs.Delete(c.Name)
-						if err != nil {
-							responseMessage = "error deleting environment"
-							responseCode = http.StatusInternalServerError
-							if settingsmgr.DebugService(settings.ServiceAdmin) {
-								log.Printf("DebugService: %s %v", responseMessage, err)
-							}
-						} else {
-							responseMessage = "Environment deleted successfully"
+				} else if envs.Exists(c.Name) {
+					err := envs.Delete(c.Name)
+					if err != nil {
+						responseMessage = "error deleting environment"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
+					} else {
+						responseMessage = "Environment deleted successfully"
 					}
 				}
 			case "debug":
@@ -839,7 +838,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
@@ -955,7 +954,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
-	debugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)

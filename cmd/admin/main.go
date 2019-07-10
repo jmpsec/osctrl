@@ -49,7 +49,7 @@ const (
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
-	defaultInactive int = 72
+	defaultInactive int = -72
 )
 
 // Global variables

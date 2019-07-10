@@ -27,7 +27,6 @@ type JSONConfigurationDB struct {
 // Function to load the DB configuration file and assign to variables
 func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
 	var config JSONConfigurationDB
-	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	err := viper.ReadInConfig()
