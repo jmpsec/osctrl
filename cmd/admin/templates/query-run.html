@@ -278,6 +278,7 @@
       $(document).ready(function() {
         // Codemirror editor for query
         var editorQuery = CodeMirror.fromTextArea(document.getElementById("query"), {
+          mode: 'text/x-sql',
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true

@@ -111,6 +111,7 @@
         // Codemirror editor for configuration
         // JSON validity check when content is changed
         var editorConf = CodeMirror.fromTextArea(document.getElementById("conf"), {
+          mode: 'application/json',
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
