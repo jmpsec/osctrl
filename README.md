@@ -18,51 +18,37 @@ The project uses [Go modules](https://github.com/golang/go/wiki/Modules) to mana
 
 ## Service configuration
 
-The most basic `tls.json` configuration file will have the following format:
+The configuration for both the `tls` and the `admin` services needs to be provided. The `[admin-tls].json` file will have the following format:
 
 ```json
 {
-  "tls": {
+  "_SERVICE": {
     "listener": "127.0.0.1",
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
     "auth": "none",
     "logging": "stdout"
-  },
-  "db": {
-    "host": "_DB_HOST",
-    "port": "_DB_PORT",
-    "name": "_DB_NAME",
-    "username": "_DB_USERNAME",
-    "password": "_DB_PASSWORD"
   }
 }
 ```
 
-And for `admin.json` it will look very similar:
+The backend configuration file, `db.json`, will look like this:
 
 ```json
-{
-  "admin": {
-    "listener": "127.0.0.1",
-    "port": "_ADMIN_PORT",
-    "host": "_ADMIN_HOST",
-    "auth": "local",
-    "logging": "stdout"
-  },
-  "db": {
-    "host": "_DB_HOST",
-    "port": "_DB_PORT",
-    "name": "_DB_NAME",
-    "username": "_DB_USERNAME",
-    "password": "_DB_PASSWORD"
-  }
+"db": {
+  "host": "_DB_HOST",
+  "port": "_DB_PORT",
+  "name": "_DB_NAME",
+  "username": "_DB_USERNAME",
+  "password": "_DB_PASSWORD"
 }
 ```
+
+The `provision.sh` script will configure all necessary files for `osctrl` to function properly.
 
 ## Using docker
 
-You can use docker to run  `osctrl` and each service has a separate `Dockerfile` to run independently. Also there is a `docker-compose.yml` with the description of all services of a functional deployment.
+You can use docker to run `osctrl` and each service has a separate `Dockerfile` to run independently. Also there is a `docker-compose.yml` with the description of all services of a functional deployment.
 
 Use the files `Dockerfile-[tls,admin,nginx]` to bring up each service, after being built. For example to build the container use:
 
@@ -78,8 +64,16 @@ docker run osctrl-tls
 
 Likewise you can build and bring up all services at once, using `docker-compose build` and `docker-compose up`.
 
-Ultimately you can just execute `make docker_all` and it will automagically build and run osctrl locally in docker.
+Ultimately you can just execute `make docker_all` and it will automagically build and run `osctrl` locally in docker.
 
 ## Using vagrant
 
 Vagrant machines can be used for `osctrl` local development. Execute `vagrant up` to create a local virtual machine running Ubuntu 18.04. Once it has finished deploying, `osctrl` will be ready to be used and you can access it following the instructions in the terminal.
+
+## Documentation
+
+The documentation about `osctrl` is here.
+
+## License
+
+`osctrl` is released under the GPL 3 license.
