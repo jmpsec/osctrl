@@ -74,10 +74,14 @@ type Settings struct {
 	DB *gorm.DB
 }
 
-// NewSettings to initialize the access to settings
-func NewSettings(database *gorm.DB) *Settings {
+// NewSettings to initialize the access to settings and table
+func NewSettings(backend *gorm.DB) *Settings {
 	var s *Settings
-	s = &Settings{DB: database}
+	s = &Settings{DB: backend}
+	// table setting_values
+	if err := backend.AutoMigrate(SettingValue{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
+	}
 	return s
 }
 

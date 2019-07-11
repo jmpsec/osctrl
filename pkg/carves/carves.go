@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -64,10 +65,18 @@ type Carves struct {
 	DB *gorm.DB
 }
 
-// CreateFileCarves to initialize the carves struct
+// CreateFileCarves to initialize the carves struct and tables
 func CreateFileCarves(backend *gorm.DB) *Carves {
 	var c *Carves
 	c = &Carves{DB: backend}
+	// table carved_files
+	if err := backend.AutoMigrate(CarvedFile{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
+	}
+	// table carved_blocks
+	if err := backend.AutoMigrate(CarvedBlock{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (carved_blocks): %v", err)
+	}
 	return c
 }
 

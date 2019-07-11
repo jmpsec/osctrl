@@ -476,10 +476,6 @@ func main() {
 			log.Fatalf("Failed to close Database handler %v", err)
 		}
 	}()
-	// Automigrate tables
-	if err := automigrateDB(); err != nil {
-		log.Fatalf("Failed to AutoMigrate: %v", err)
-	}
 	// Initialize users
 	adminUsers = users.CreateUserManager(db)
 	// Initialize environment

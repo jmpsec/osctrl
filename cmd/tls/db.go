@@ -5,12 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/nodes"
-	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/spf13/viper"
 
 	"github.com/jinzhu/gorm"
+
+	"github.com/javuto/osctrl/pkg/types"
 )
 
 const (
@@ -18,18 +17,9 @@ const (
 	dbConfigurationFile string = "config/db.json"
 )
 
-// JSONConfigurationDB to hold all backend configuration values
-type JSONConfigurationDB struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // Function to load the DB configuration file and assign to variables
-func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
-	var config JSONConfigurationDB
+func loadDBConfiguration(file string) (types.JSONConfigurationDB, error) {
+	var config types.JSONConfigurationDB
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -62,60 +52,10 @@ func getDB() *gorm.DB {
 		log.Fatalf("Failed to open database connection: %v", err)
 	}
 	// Performance settings for DB access
+	// FIXME get these from JSON
 	db.DB().SetMaxIdleConns(20)
 	db.DB().SetMaxOpenConns(100)
 	db.DB().SetConnMaxLifetime(time.Second * 30)
 
 	return db
-}
-
-// Automigrate of tables
-func automigrateDB() error {
-	var err error
-	// table osquery_nodes
-	err = db.AutoMigrate(nodes.OsqueryNode{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
-	}
-	// table archive_osquery_nodes
-	err = db.AutoMigrate(nodes.ArchiveOsqueryNode{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
-	}
-	// table node_history_ipaddress
-	err = db.AutoMigrate(nodes.NodeHistoryIPAddress{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
-	}
-	// table node_history_hostname
-	err = db.AutoMigrate(nodes.NodeHistoryHostname{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_hostname): %v", err)
-	}
-	// table node_history_localname
-	err = db.AutoMigrate(nodes.NodeHistoryLocalname{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_localname): %v", err)
-	}
-	// table node_history_username
-	err = db.AutoMigrate(nodes.NodeHistoryUsername{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
-	}
-	// table setting_values
-	err = db.AutoMigrate(settings.SettingValue{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
-	}
-	// table carved_files
-	err = db.AutoMigrate(carves.CarvedFile{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
-	}
-	// table carved_blocks
-	err = db.AutoMigrate(carves.CarvedBlock{}).Error
-	if err != nil {
-		log.Fatalf("Failed to AutoMigrate table (carved_blocks): %v", err)
-	}
-	return nil
 }

@@ -3,6 +3,7 @@ package nodes
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -105,10 +106,34 @@ type NodeManager struct {
 	DB *gorm.DB
 }
 
-// CreateNodes to initialize the nodes struct
+// CreateNodes to initialize the nodes struct and its tables
 func CreateNodes(backend *gorm.DB) *NodeManager {
 	var n *NodeManager
 	n = &NodeManager{DB: backend}
+	// table osquery_nodes
+	if err := backend.AutoMigrate(OsqueryNode{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
+	}
+	// table archive_osquery_nodes
+	if err := backend.AutoMigrate(ArchiveOsqueryNode{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
+	}
+	// table node_history_ipaddress
+	if err := backend.AutoMigrate(NodeHistoryIPAddress{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
+	}
+	// table node_history_hostname
+	if err := backend.AutoMigrate(NodeHistoryHostname{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (node_history_hostname): %v", err)
+	}
+	// table node_history_localname
+	if err := backend.AutoMigrate(NodeHistoryLocalname{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (node_history_localname): %v", err)
+	}
+	// table node_history_username
+	if err := backend.AutoMigrate(NodeHistoryUsername{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
+	}
 	return n
 }
 

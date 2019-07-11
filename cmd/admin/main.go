@@ -17,6 +17,7 @@ import (
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/crewjam/saml/samlsp"
@@ -54,7 +55,7 @@ const (
 
 // Global variables
 var (
-	adminConfig    JSONConfigurationService
+	adminConfig    types.JSONConfigurationService
 	samlMiddleware *samlsp.Middleware
 	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB

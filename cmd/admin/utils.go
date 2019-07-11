@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/javuto/osctrl/pkg/settings"
 )
 
 // Constants for seconds
@@ -67,6 +65,7 @@ func checkValidPlatform(platform string) bool {
 	return false
 }
 
+/*
 // Helper to remove backslashes from text
 func removeBackslash(rawString string) string {
 	return strings.Replace(rawString, "\\", " ", -1)
@@ -74,14 +73,15 @@ func removeBackslash(rawString string) string {
 
 // Helper to generate a link to results for on-demand queries
 func resultsSearchLink(name string) string {
-	if adminConfig.Logging == settings.LoggingSplunk {
-		return strings.Replace(adminConfig.LoggingCfg["search"], "{{NAME}}", removeBackslash(name), 1)
-	}
+		if adminConfig.Logging == settings.LoggingSplunk {
+			return strings.Replace(adminConfig.LoggingCfg["search"], "{{NAME}}", removeBackslash(name), 1)
+		}
 	if adminConfig.Logging == settings.LoggingDB {
 		return "/query/logs/" + removeBackslash(name)
 	}
 	return ""
 }
+*/
 
 // Helper to get a string based on the difference of two times
 func stringifyTime(seconds int) string {

@@ -2,6 +2,7 @@ package users
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -25,10 +26,14 @@ type UserManager struct {
 	DB *gorm.DB
 }
 
-// CreateUserManager to initialize the users struct
+// CreateUserManager to initialize the users struct and tables
 func CreateUserManager(backend *gorm.DB) *UserManager {
 	var u *UserManager
 	u = &UserManager{DB: backend}
+	// table admin_users
+	if err := backend.AutoMigrate(AdminUser{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
+	}
 	return u
 }
 

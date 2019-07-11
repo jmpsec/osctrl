@@ -2,6 +2,7 @@ package queries
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/jinzhu/gorm"
@@ -71,6 +72,18 @@ type Queries struct {
 func CreateQueries(backend *gorm.DB) *Queries {
 	var q *Queries
 	q = &Queries{DB: backend}
+	// table distributed_queries
+	if err := backend.AutoMigrate(DistributedQuery{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
+	}
+	// table distributed_query_executions
+	if err := backend.AutoMigrate(DistributedQueryExecution{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
+	}
+	// table distributed_query_targets
+	if err := backend.AutoMigrate(DistributedQueryTarget{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
+	}
 	return q
 }
 

@@ -2,6 +2,7 @@ package environments
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -73,10 +74,14 @@ type Environment struct {
 	DB *gorm.DB
 }
 
-// CreateEnvironment to initialize the environment struct
+// CreateEnvironment to initialize the environment struct and tables
 func CreateEnvironment(backend *gorm.DB) *Environment {
 	var e *Environment
 	e = &Environment{DB: backend}
+	// table tls_environments
+	if err := backend.AutoMigrate(TLSEnvironment{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (tls_environments): %v", err)
+	}
 	return e
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -37,7 +38,7 @@ const (
 
 // Global variables
 var (
-	tlsConfig      JSONConfigurationService
+	tlsConfig      types.JSONConfigurationService
 	db             *gorm.DB
 	settingsmgr    *settings.Settings
 	envs           *environments.Environment
@@ -105,10 +106,6 @@ func main() {
 			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
-	// Automigrate tables
-	if err := automigrateDB(); err != nil {
-		log.Fatalf("Failed to AutoMigrate: %v", err)
-	}
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -166,11 +163,9 @@ func main() {
 	finish := make(chan bool)
 
 	/////////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
-
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService: Creating router")
 	}
-
 	// Create router for TLS endpoint
 	routerTLS := mux.NewRouter()
 	// TLS: root
@@ -191,7 +186,8 @@ func main() {
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
 
-	// FIXME Redis cache - Ticker to reload environments
+	// Ticker to reload environments
+	// FIXME Implement Redis cache
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService:  Environments ticker")
@@ -210,7 +206,8 @@ func main() {
 		}
 	}()
 
-	// FIXME Redis cache - Ticker to reload settings
+	// Ticker to reload settings
+	// FIXME Implement Redis cache
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService: Settings ticker")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -47,7 +48,7 @@ type UserSession struct {
 	Values    sessionValues `gorm:"-"`
 }
 
-// CreateSessionManager creates a new gormstore session
+// CreateSessionManager creates a new session store in the DB and initialize the tables
 func CreateSessionManager(db *gorm.DB) *SessionManager {
 	storeKey := securecookie.GenerateRandomKey(sessionIDLen)
 	st := &SessionManager{
@@ -59,6 +60,10 @@ func CreateSessionManager(db *gorm.DB) *SessionManager {
 			Secure:   defaultSecure,
 			HttpOnly: defaultHTTPOnly,
 		},
+	}
+	// table user_sessions
+	if err := db.AutoMigrate(&UserSession{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (user_sessions): %v", err)
 	}
 	return st
 }
