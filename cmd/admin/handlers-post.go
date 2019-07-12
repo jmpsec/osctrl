@@ -899,7 +899,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				case settings.TypeInteger:
 					err = settingsmgr.SetInteger(stringToInteger(s.Value), serviceVar, s.Name)
 				case settings.TypeString:
-					err = settingsmgr.SetString(s.Value, serviceVar, s.Name)
+					err = settingsmgr.SetString(s.Value, serviceVar, s.Name, false)
 				}
 				if err != nil {
 					responseMessage = "error changing setting"

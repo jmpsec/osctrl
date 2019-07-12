@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
 )
 
 // Constants for seconds
@@ -191,4 +194,27 @@ func removeStringDuplicates(s []string) []string {
 		i++
 	}
 	return s[:i]
+}
+
+// Helper to convert from settings values to JSON configuration
+func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfigurationService {
+	var cfg types.JSONConfigurationService
+	for _, v := range values {
+		if v.Name == settings.JSONListener {
+			cfg.Listener = v.String
+		}
+		if v.Name == settings.JSONPort {
+			cfg.Port = v.String
+		}
+		if v.Name == settings.JSONHost {
+			cfg.Host = v.String
+		}
+		if v.Name == settings.JSONAuth {
+			cfg.Auth = v.String
+		}
+		if v.Name == settings.JSONLogging {
+			cfg.Logging = v.String
+		}
+	}
+	return cfg
 }

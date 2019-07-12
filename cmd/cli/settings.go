@@ -96,7 +96,7 @@ func updateSetting(c *cli.Context) error {
 	case settings.TypeBoolean:
 		err = settingsmgr.SetBoolean(c.Bool("true"), service, name)
 	case settings.TypeString:
-		err = settingsmgr.SetString(c.String("string"), service, name)
+		err = settingsmgr.SetString(c.String("string"), service, name, false)
 	}
 	if err != nil {
 		return err

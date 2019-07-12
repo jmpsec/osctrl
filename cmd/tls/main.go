@@ -53,31 +53,34 @@ var (
 )
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration() error {
-	log.Printf("Loading %s", configurationFile)
+func loadConfiguration(file string) (types.JSONConfigurationService, error) {
+	var cfg types.JSONConfigurationService
+	log.Printf("Loading %s", file)
 	// Load file and read config
-	viper.SetConfigFile(configurationFile)
+	viper.SetConfigFile(file)
 	err := viper.ReadInConfig()
 	if err != nil {
-		return err
+		return cfg, err
 	}
 	// TLS endpoint values
 	tlsRaw := viper.Sub(settings.ServiceTLS)
-	err = tlsRaw.Unmarshal(&tlsConfig)
+	err = tlsRaw.Unmarshal(&cfg)
 	if err != nil {
-		return err
+		return cfg, err
 	}
 	// No errors!
-	return nil
+	return cfg, nil
 }
 
 // Initialization code
 func init() {
+	var err error
 	// Logging flags
 	log.SetFlags(log.Lshortfile)
-	// Load configuration
-	if err := loadConfiguration(); err != nil {
-		log.Fatalf("Error loading configuration %s", err)
+	// Load TLS configuration
+	tlsConfig, err = loadConfiguration(configurationFile)
+	if err != nil {
+		log.Fatalf("Error loading %s - %s", configurationFile, err)
 	}
 }
 
@@ -158,6 +161,10 @@ func main() {
 		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshSettings, int64(defaultRefresh)); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshSettings, err)
 		}
+	}
+	// Write JSON config to settings
+	if err := settingsmgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, tlsConfig.Logging); err != nil {
+		log.Fatalf("Failed to add JSON values to configuration: %v", err)
 	}
 	// multiple listeners channel
 	finish := make(chan bool)

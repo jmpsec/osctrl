@@ -40,7 +40,7 @@ const (
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
 	// Service configuration file
-	configurationFile string = "config/admin.json"
+	configurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// osquery version to display tables
 	osqueryTablesVersion string = "3.3.2"
 	// JSON file with osquery tables data
@@ -70,38 +70,42 @@ var (
 	osqueryTables []OsqueryTable
 )
 
-// Function to load the configuration file and assign to variables
-func loadConfiguration() error {
-	log.Printf("Loading %s", configurationFile)
+// Function to load the configuration file
+func loadConfiguration(file, service string) (types.JSONConfigurationService, error) {
+	var cfg types.JSONConfigurationService
+	log.Printf("Loading %s", file)
 	// Load file and read config
-	viper.SetConfigFile(configurationFile)
+	viper.SetConfigFile(file)
 	err := viper.ReadInConfig()
 	if err != nil {
-		return err
+		return cfg, err
 	}
 	// TLS Admin values
-	adminRaw := viper.Sub("admin")
-	err = adminRaw.Unmarshal(&adminConfig)
+	adminRaw := viper.Sub(service)
+	err = adminRaw.Unmarshal(&cfg)
 	if err != nil {
-		return err
+		return cfg, err
 	}
 	// Load configuration for the auth method
-	if adminConfig.Auth == settings.AuthSAML {
-		samlRaw := viper.Sub(settings.AuthSAML)
-		err = samlRaw.Unmarshal(&samlConfig)
-		if err != nil {
-			return err
+	/*
+		if adminConfig.Auth == settings.AuthSAML {
+			samlRaw := viper.Sub(settings.AuthSAML)
+			err = samlRaw.Unmarshal(&samlConfig)
+			if err != nil {
+				return cfg, err
+			}
 		}
-	}
+	*/
 	// No errors!
-	return nil
+	return cfg, nil
 }
 
 // Function to load the JSON data for osquery tables
-func loadOsqueryTables() error {
-	jsonFile, err := os.Open(osqueryTablesFile)
+func loadOsqueryTables(file string) ([]OsqueryTable, error) {
+	var tables []OsqueryTable
+	jsonFile, err := os.Open(file)
 	if err != nil {
-		return err
+		return tables, err
 	}
 	//defer jsonFile.Close()
 	defer func() {
@@ -111,31 +115,34 @@ func loadOsqueryTables() error {
 		}
 	}()
 	byteValue, _ := ioutil.ReadAll(jsonFile)
-	err = json.Unmarshal(byteValue, &osqueryTables)
+	err = json.Unmarshal(byteValue, &tables)
 	if err != nil {
-		return err
+		return tables, err
 	}
 	// Add a string for platforms to be used as filter
-	for i, t := range osqueryTables {
+	for i, t := range tables {
 		filter := ""
 		for _, p := range t.Platforms {
 			filter += " filter-" + p
 		}
-		osqueryTables[i].Filter = strings.TrimSpace(filter)
+		tables[i].Filter = strings.TrimSpace(filter)
 	}
-	return nil
+	return tables, nil
 }
 
 // Initialization code
 func init() {
+	var err error
 	// Logging flags
 	log.SetFlags(log.Lshortfile)
-	// Load configuration
-	if err := loadConfiguration(); err != nil {
-		log.Fatalf("Error loading configuration %s", err)
+	// Load admin configuration
+	adminConfig, err = loadConfiguration(configurationFile, settings.ServiceAdmin)
+	if err != nil {
+		log.Fatalf("Error loading %s - %s", configurationFile, err)
 	}
 	// Load osquery tables JSON
-	if err := loadOsqueryTables(); err != nil {
+	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
+	if err != nil {
 		log.Fatalf("Error loading osquery tables %s", err)
 	}
 }
@@ -209,6 +216,10 @@ func main() {
 		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.InactiveHours, int64(defaultInactive)); err != nil {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.InactiveHours, err)
 		}
+	}
+	// Write JSON config to settings
+	if err := settingsmgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logging); err != nil {
+		log.Fatalf("Failed to add JSON values to configuration: %v", err)
 	}
 	// multiple listeners channel
 	finish := make(chan bool)

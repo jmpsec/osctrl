@@ -705,6 +705,11 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Get JSON values
+	svcJSON, err := settingsmgr.RetrieveAllJSON(serviceVar)
+	if err != nil {
+		log.Printf("error getting JSON values: %v", err)
+	}
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
@@ -714,6 +719,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Environments:    envAll,
 		Platforms:       platforms,
 		CurrentSettings: _settings,
+		ServiceConfig:   toJSONConfigurationService(svcJSON),
 		TLSDebug:        settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:      settingsmgr.DebugService(settings.ServiceAdmin),
 		AdminDebugHTTP:  settingsmgr.DebugHTTP(settings.ServiceAdmin),

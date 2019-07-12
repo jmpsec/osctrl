@@ -5,6 +5,7 @@ import (
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
 	"github.com/javuto/osctrl/pkg/users"
 )
 
@@ -128,6 +129,7 @@ type SettingsTemplateData struct {
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
+	ServiceConfig   types.JSONConfigurationService
 	TLSDebug        bool
 	AdminDebug      bool
 	AdminDebugHTTP  bool

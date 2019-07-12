@@ -54,11 +54,21 @@ const (
 	InactiveHours   string = "inactive_hours"
 )
 
+// Names for the values that are read from the JSON config file
+const (
+	JSONListener string = "json_listener"
+	JSONPort     string = "json_port"
+	JSONHost     string = "json_host"
+	JSONAuth     string = "json_auth"
+	JSONLogging  string = "json_logging"
+)
+
 // SettingValue to hold each value for settings
 type SettingValue struct {
 	gorm.Model
 	Name    string `gorm:"index"`
 	Service string
+	JSON    bool
 	Type    string
 	String  string
 	Boolean bool
@@ -90,6 +100,7 @@ func (conf *Settings) EmptyValue(service, name, typeValue string) SettingValue {
 	return SettingValue{
 		Name:    name,
 		Service: service,
+		JSON:    false,
 		Type:    typeValue,
 		String:  "",
 		Integer: int64(0),
@@ -114,6 +125,23 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 	if conf.DB.NewRecord(entry) {
 		if err := conf.DB.Create(&entry).Error; err != nil {
 			return fmt.Errorf("Create NewValue %v", err)
+		}
+	} else {
+		return fmt.Errorf("db.NewRecord did not return true")
+	}
+	return nil
+}
+
+// NewJSON creates a new JSON value
+func (conf *Settings) NewJSON(service, name, value string) error {
+	// Empty new JSON value
+	entry := conf.EmptyValue(service, name, TypeString)
+	entry.JSON = true
+	entry.String = value
+	// Create record in database
+	if conf.DB.NewRecord(entry) {
+		if err := conf.DB.Create(&entry).Error; err != nil {
+			return fmt.Errorf("Create NewJSON %v", err)
 		}
 	} else {
 		return fmt.Errorf("db.NewRecord did not return true")
@@ -151,16 +179,59 @@ func (conf *Settings) DeleteValue(service, name string) error {
 // RetrieveAllValues retrieves and returns all values from backend
 func (conf *Settings) RetrieveAllValues() ([]SettingValue, error) {
 	var values []SettingValue
-	if err := conf.DB.Find(&values).Error; err != nil {
+	if err := conf.DB.Where("json = ?", false).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
 }
 
+// RetrieveAllJSON retrieves and returns all JSON values from backend
+func (conf *Settings) RetrieveAllJSON(service string) ([]SettingValue, error) {
+	var values []SettingValue
+	if err := conf.DB.Where("service = ? AND json = ?", service, true).Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
+// SetJSON sets the JSON configuration value
+func (conf *Settings) SetJSON(service, name, value string) error {
+	if !conf.IsJSON(service, name) {
+		if err := conf.NewJSON(service, name, value); err != nil {
+			return err
+		}
+	} else {
+		if err := conf.SetString(value, service, name, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetAllJSON sets all the JSON configuration values
+func (conf *Settings) SetAllJSON(service, listener, port, host, auth, logging string) error {
+	if err := conf.SetJSON(service, JSONListener, listener); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(service, JSONPort, port); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(service, JSONHost, host); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(service, JSONAuth, auth); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(service, JSONLogging, logging); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RetrieveValues retrieves and returns all values from backend
 func (conf *Settings) RetrieveValues(service string) ([]SettingValue, error) {
 	var values []SettingValue
-	if err := conf.DB.Where("service = ?", service).Find(&values).Error; err != nil {
+	if err := conf.DB.Where("service = ? AND json = ?", service, false).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
@@ -169,7 +240,16 @@ func (conf *Settings) RetrieveValues(service string) ([]SettingValue, error) {
 // RetrieveValue retrieves one value from settings by service and name from backend
 func (conf *Settings) RetrieveValue(service, name string) (SettingValue, error) {
 	var value SettingValue
-	if err := conf.DB.Where("service = ?", service).Where("name = ?", name).First(&value).Error; err != nil {
+	if err := conf.DB.Where("json = ? AND service = ?", false, service).Where("name = ?", name).First(&value).Error; err != nil {
+		return SettingValue{}, err
+	}
+	return value, nil
+}
+
+// RetrieveJSON retrieves one JSON value from settings by service and name from backend
+func (conf *Settings) RetrieveJSON(service, name string) (SettingValue, error) {
+	var value SettingValue
+	if err := conf.DB.Where("json = ? AND service = ?", true, service).Where("name = ?", name).First(&value).Error; err != nil {
 		return SettingValue{}, err
 	}
 	return value, nil
@@ -251,14 +331,23 @@ func (conf *Settings) GetString(service, name string) (string, error) {
 }
 
 // SetString sets a boolean settings value by service and name
-func (conf *Settings) SetString(strValue string, service, name string) error {
+func (conf *Settings) SetString(strValue string, service, name string, _json bool) error {
+	var err error
+	var val SettingValue
 	// Retrieve current value
-	value, err := conf.RetrieveValue(service, name)
-	if err != nil {
-		return fmt.Errorf("SetString %s %v", strValue, err)
+	if _json {
+		val, err = conf.RetrieveJSON(service, name)
+		if err != nil {
+			return fmt.Errorf("SetString %s %v", strValue, err)
+		}
+	} else {
+		val, err = conf.RetrieveValue(service, name)
+		if err != nil {
+			return fmt.Errorf("SetString %s %v", strValue, err)
+		}
 	}
 	// Update
-	if err := conf.DB.Model(&value).Update(TypeString, strValue).Error; err != nil {
+	if err := conf.DB.Model(&val).Update(TypeString, strValue).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	log.Printf("SetString %s %s %s", strValue, service, name)
@@ -292,6 +381,15 @@ func (conf *Settings) SetInfo(info string, service, name string) error {
 // IsValue checks if a settings value exists by service and name
 func (conf *Settings) IsValue(service, name string) bool {
 	_, err := conf.RetrieveValue(service, name)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+// IsJSON checks if a JSON value exists by service and name
+func (conf *Settings) IsJSON(service, name string) bool {
+	_, err := conf.RetrieveJSON(service, name)
 	if err != nil {
 		return false
 	}

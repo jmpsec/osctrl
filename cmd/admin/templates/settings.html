@@ -19,6 +19,7 @@
 
 
             <div class="card mt-2">
+
             <!--
               <div class="warning-back stripes-warning text-center">
                 <h5 class="warning-text">
@@ -28,7 +29,7 @@
             -->
 
               <div class="card-header">
-                <i class="fas fa-tools"></i> Settings for <b>{{ .Service }}</b> Service</b>
+                <i class="fas fa-tools"></i> Settings for <b>{{ .Service }}</b> Service
 
                 <div class="card-header-actions">
                   <div class="row">
@@ -87,6 +88,43 @@
                   </tbody>
                 </table>
               </div>
+
+            </div>
+
+            <div class="card mt-2">
+
+              <div class="card-header">
+                <i class="fas fa-tools"></i> <b>{{ .Service }}.json</b>
+              </div>
+
+              <div class="card-body">
+
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                  <tbody>
+                    <tr>
+                      <td>Listener</td>
+                      <td><code>{{ .ServiceConfig.Listener }}</code></td>
+                    </tr>
+                    <tr>
+                      <td>Port</td>
+                      <td><code>{{ .ServiceConfig.Port }}</code></td>
+                    </tr>
+                    <tr>
+                      <td>Host</td>
+                      <td><code>{{ .ServiceConfig.Host }}</code></td>
+                    </tr>
+                    <tr>
+                      <td>Auth</td>
+                      <td><code>{{ .ServiceConfig.Auth }}</code></td>
+                    </tr>
+                    <tr>
+                      <td>Logging</td>
+                      <td><code>{{ .ServiceConfig.Logging }}</code></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
             </div>
 
             <div class="modal fade" id="addSettingModal" tabindex="-1" role="dialog" aria-labelledby="addSettingModal" aria-hidden="true">
