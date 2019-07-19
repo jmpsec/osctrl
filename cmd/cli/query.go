@@ -24,7 +24,7 @@ func listQueries(c *cli.Context) error {
 	if c.Bool("deleted") {
 		target = "deleted"
 	}
-	qs, err := queriesmgr.Gets(target)
+	qs, err := queriesmgr.GetQueries(target)
 	if err != nil {
 		return err
 	}

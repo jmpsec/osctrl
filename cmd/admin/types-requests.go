@@ -13,13 +13,24 @@ type LogoutRequest struct {
 
 // DistributedQueryRequest to receive query requests
 type DistributedQueryRequest struct {
-	CSRFToken   string   `json:"csrftoken"`
-	Environment string   `json:"environment"`
-	Platform    string   `json:"platform"`
-	UUIDs       []string `json:"uuid_list"`
-	Hosts       []string `json:"host_list"`
-	Query       string   `json:"query"`
-	Repeat      int      `json:"repeat"`
+	CSRFToken    string   `json:"csrftoken"`
+	Environments []string `json:"environment_list"`
+	Platforms    []string `json:"platform_list"`
+	UUIDs        []string `json:"uuid_list"`
+	Hosts        []string `json:"host_list"`
+	Query        string   `json:"query"`
+	Repeat       int      `json:"repeat"`
+}
+
+// DistributedCarveRequest to receive carve requests
+type DistributedCarveRequest struct {
+	CSRFToken    string   `json:"csrftoken"`
+	Environments []string `json:"environment_list"`
+	Platforms    []string `json:"platform_list"`
+	UUIDs        []string `json:"uuid_list"`
+	Hosts        []string `json:"host_list"`
+	Path         string   `json:"path"`
+	Repeat       int      `json:"repeat"`
 }
 
 // DistributedQueryActionRequest to receive query requests
@@ -28,6 +39,9 @@ type DistributedQueryActionRequest struct {
 	Names     []string `json:"names"`
 	Action    string   `json:"action"`
 }
+
+// DistributedCarvesActionRequest to receive carves requests
+type DistributedCarvesActionRequest DistributedQueryActionRequest
 
 // NodeActionRequest to receive node action requests
 type NodeActionRequest struct {

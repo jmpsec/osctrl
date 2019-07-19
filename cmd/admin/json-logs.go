@@ -50,27 +50,32 @@ type QueryLogJSON struct {
 
 // Handler GET requests for JSON status/result logs by node and environment
 func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract type
 	logType, ok := vars["type"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting log type")
 		return
 	}
 	// Verify log type
 	if !LogTypes[logType] {
+		incMetric(metricAdminErr)
 		log.Printf("invalid log type %s", logType)
 		return
 	}
 	// Extract environment
 	env, ok := vars["environment"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("environment is missing")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(env) {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
@@ -78,6 +83,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME verify UUID
 	UUID, ok := vars["uuid"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting UUID")
 		return
 	}
@@ -96,6 +102,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	if logType == "status" {
 		statusLogs, err := postgresStatusLogs(UUID, env, secondsBack)
 		if err != nil {
+			incMetric(metricAdminErr)
 			log.Printf("error getting logs %v", err)
 			return
 		}
@@ -115,6 +122,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	} else if logType == "result" {
 		resultLogs, err := postgresResultLogs(UUID, env, secondsBack)
 		if err != nil {
+			incMetric(metricAdminErr)
 			log.Printf("error getting logs %v", err)
 			return
 		}
@@ -137,9 +145,11 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize JSON
 	returnedJSON, err := json.Marshal(returned)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
+	incMetric(metricAdminOK)
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
@@ -148,18 +158,21 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for JSON query logs by query name
 func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract query name
 	// FIXME verify name
 	name, ok := vars["name"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting name")
 		return
 	}
 	// Get logs
 	queryLogs, err := postgresQueryLogs(name)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting logs %v", err)
 		return
 	}
@@ -182,9 +195,11 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize JSON
 	returnedJSON, err := json.Marshal(returned)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
+	incMetric(metricAdminOK)
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)

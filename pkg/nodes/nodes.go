@@ -151,6 +151,13 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 	return (results > 0)
 }
 
+// CheckByHost to check if node exists by Hostname
+func (n *NodeManager) CheckByHost(host string) bool {
+	var results int
+	n.DB.Model(&OsqueryNode{}).Where("hostname = ? OR localname = ?", host, host).Count(&results)
+	return (results > 0)
+}
+
 // GetByKey to retrieve full node object from DB, by node_key
 func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
 	var node OsqueryNode

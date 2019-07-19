@@ -50,6 +50,10 @@ input[type=text]#query {
   font-family: monospace;
 }
 
+input[type=text]#carve {
+  font-family: monospace;
+}
+
 .custom-size-btn {
   min-width: 40px;
   max-width: 40px;

@@ -34,16 +34,18 @@
                 <div class="row">
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label for="conf_range">Configuration: <b><output id="conf_output">{{ .Environment.ConfigInterval }}</output></b> seconds</label>
-                      <input type="range" class="form-control-range" id="conf_range"
-                        value="{{ .Environment.ConfigInterval }}" min="10" max="600" step="10"
-                        oninput="changeIntervalValue(conf_range, conf_output);">
-                      <input id="conf_range_save" type="hidden" value="{{ .Environment.ConfigInterval }}">
+                      <div class="col-md-12">
+                        <label for="conf_range">Configuration Interval: <b><output id="conf_output">{{ .Environment.ConfigInterval }}</output></b> seconds</label>
+                        <input type="range" class="form-control-range" id="conf_range"
+                          value="{{ .Environment.ConfigInterval }}" min="10" max="600" step="10"
+                          oninput="changeIntervalValue(conf_range, conf_output);">
+                        <input id="conf_range_save" type="hidden" value="{{ .Environment.ConfigInterval }}">
+                      </div>
                     </div>
                   </div>
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label for="logging_range">Logging: <b><output id="logging_output">{{ .Environment.LogInterval }}</output></b> seconds</label>
+                      <label for="logging_range">Logging Interval: <b><output id="logging_output">{{ .Environment.LogInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="logging_range"
                         value="{{ .Environment.LogInterval }}" min="10" max="600" step="10"
                         oninput="changeIntervalValue(logging_range, logging_output);">
@@ -52,7 +54,7 @@
                   </div>
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label for="query_range">Query: <b><output id="query_output">{{ .Environment.QueryInterval }}</output></b> seconds</label>
+                      <label for="query_range">Query Interval: <b><output id="query_output">{{ .Environment.QueryInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="query_range"
                         value="{{ .Environment.QueryInterval }}" min="10" max="300" step="1"
                         oninput="changeIntervalValue(query_range, query_output);">

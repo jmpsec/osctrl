@@ -39,32 +39,38 @@ type NodeJSON struct {
 
 // Handler for JSON endpoints by environment
 func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	env, ok := vars["environment"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting environment")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(env) {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
+		incMetric(metricAdminErr)
 		log.Printf("invalid target %s", target)
 		return
 	}
 	nodes, err := nodesmgr.GetByEnv(env, target, settingsmgr.InactiveHours())
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting nodes %v", err)
 		return
 	}
@@ -92,9 +98,11 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize JSON
 	returnedJSON, err := json.Marshal(returned)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
+	incMetric(metricAdminOK)
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
@@ -108,22 +116,26 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract platform
 	platform, ok := vars["platform"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting platform")
 		return
 	}
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
+		incMetric(metricAdminErr)
 		log.Printf("invalid target %s", target)
 		return
 	}
 	nodes, err := nodesmgr.GetByPlatform(platform, target, settingsmgr.InactiveHours())
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting nodes %v", err)
 		return
 	}
@@ -151,9 +163,11 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize JSON
 	returnedJSON, err := json.Marshal(returned)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
+	incMetric(metricAdminOK)
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)

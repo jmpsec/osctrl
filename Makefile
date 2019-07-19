@@ -57,6 +57,11 @@ clean:
 	rm -rf $(OUTPUT)/$(CLI_NAME)
 	rm -rf $(PLUGINS_DIR)/*.so
 
+# Remove all unused dependencies
+tidy:
+	make clean
+	go mod tidy
+
 # Install everything
 # optional DEST=destination_path
 install:

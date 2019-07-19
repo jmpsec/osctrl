@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-sidebar" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+          {{ with .Query }}
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fa fas fa-server"></i> Results for {{ .Name }}
+                <div class="card-header-actions">
+                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body table-responsive">
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                  <thead>
+                    <tr>
+                      <th width="70%">Query</th>
+                      <th width="30%" colspan="2">Target</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>{{ .Query }}</b></td>
+                      {{ range  $i, $e := $.QueryTargets }}
+                        <td>{{ $e.Type }}</td>
+                        <td>{{ $e.Value }}</td>
+                      {{ end }}
+                    </tr>
+                  </tbody>
+                </table>
+                <br>
+                <table id="tableCarveDetails" class="table table-bordered table-striped" style="width:100%">
+                  <input type="hidden" id="refresh_value" value="yes">
+                  <thead>
+                    <tr>
+                      <th>Created</th>
+                      <th>Data</th>
+                    </tr>
+                  </thead>
+                </table>
+
+              </div>
+            </div>
+          {{ end }}
+
+          </div>
+
+        </div>
+
+      </main>
+
+      {{ template "page-aside" . }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/carves.js"></script>
+    <script src="/static/js/tables.js"></script>
+  {{ with .Query }}
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax
+        var tableCarveDetails = $('#tableCarveDetails').DataTable({
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          processing : true,
+          ajax : {
+            url: "/json/query/{{ .Name }}",
+            dataSrc: function(json) {
+              $('#status-card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
+            {"data" : "data"}
+          ],
+          order: [[ 0, "desc" ]],
+          columnDefs: [
+            { width: '10%', targets: 0 },
+            { width: '90%', targets: 1 }
+          ]
+        });
+
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+
+        // Auto-refresh table
+        setInterval(function (){
+          tableCarveDetails.ajax.reload();
+        }, 30000 );
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+      });
+    </script>
+  {{ end }}
+
+  </body>
+</html>

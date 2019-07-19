@@ -13,11 +13,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/javuto/osctrl/pkg/carves"
 	"github.com/javuto/osctrl/pkg/environments"
+	"github.com/javuto/osctrl/pkg/metrics"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/types"
+
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/crewjam/saml/samlsp"
@@ -47,6 +50,8 @@ const (
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Static files folder
 	staticFilesFolder string = "./static"
+	// Carved files folder
+	carvedFilesFolder string = "carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -62,12 +67,14 @@ var (
 	settingsmgr    *settings.Settings
 	nodesmgr       *nodes.NodeManager
 	queriesmgr     *queries.Queries
+	carvesmgr      *carves.Carves
 	sessionsmgr    *SessionManager
 	envs           *environments.Environment
 	adminUsers     *users.UserManager
 	sessionsTicker *time.Ticker
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
+	_metrics      *metrics.Metrics
 )
 
 // Function to load the configuration file
@@ -174,6 +181,8 @@ func main() {
 	nodesmgr = nodes.CreateNodes(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
+	// Initialize carves
+	carvesmgr = carves.CreateFileCarves(db)
 	// Initialize sessions
 	sessionsmgr = CreateSessionManager(db)
 	log.Println("Loading service settings")
@@ -197,6 +206,24 @@ func main() {
 	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics) {
 		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
+		}
+	} else if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
+		// Initialize metrics if enabled
+		mProtocol, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsProtocol)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
+		}
+		mHost, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsHost)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (host): %v", err)
+		}
+		mPort, err := settingsmgr.GetInteger(settings.ServiceAdmin, settings.MetricsPort)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics (port): %v", err)
+		}
+		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), settings.ServiceAdmin)
+		if err != nil {
+			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
 	// Check if service settings for default environment is ready
@@ -330,6 +357,17 @@ func main() {
 	routerAdmin.Handle("/query/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonQueryHandler))).Methods("GET")
 	// Admin: query logs
 	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(queryLogsHandler))).Methods("GET")
+	// Admin: carve files
+	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(carvesRunGETHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(carvesRunPOSTHandler))).Methods("POST")
+	// Admin: list carves
+	routerAdmin.Handle("/carves/list", handlerAuthCheck(http.HandlerFunc(carvesListGETHandler))).Methods("GET")
+	// Admin: carves actions
+	routerAdmin.Handle("/carves/actions", handlerAuthCheck(http.HandlerFunc(carvesActionsPOSTHandler))).Methods("POST")
+	// Admin: carves JSON
+	routerAdmin.Handle("/carves/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonCarvesHandler))).Methods("GET")
+	// Admin: carves details
+	routerAdmin.Handle("/carves/details/{name}", handlerAuthCheck(http.HandlerFunc(carvesDetailsHandler))).Methods("GET")
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")

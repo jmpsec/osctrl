@@ -1,9 +1,9 @@
 function sendQuery() {
   var _csrftoken = $("#csrftoken").val();
-  var _env = $('#target_env_switch').prop('checked') ? $("#target_env").val() : "";
-  var _platform = $('#target_platform_switch').prop('checked') ? $("#target_platform").val() : "";
-  var _uuid_list = $('#target_uuids_switch').prop('checked') ? $("#target_uuids").val() : [];
-  var _host_list = $('#target_hosts_switch').prop('checked') ? $("#target_hosts").val() : [];
+  var _env = $("#target_env").val();
+  var _platform = $("#target_platform").val();
+  var _uuid_list = $("#target_uuids").val();
+  var _host_list = $("#target_hosts").val();
   var _repeat = $('#target_repeat').prop('checked') ? 1 : 0;
   var editor = $('.CodeMirror')[0].CodeMirror;
   var _query = editor.getValue();
@@ -28,8 +28,8 @@ function sendQuery() {
   var _url = '/query/run';
   var data = {
     csrftoken: _csrftoken,
-    environment: _env,
-    platform: _platform,
+    environment_list: _env,
+    platform_list: _platform,
     uuid_list: _uuid_list,
     host_list: _host_list,
     query: _query,

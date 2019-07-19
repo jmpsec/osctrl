@@ -25,6 +25,13 @@ const (
 	MetadataQueryType string = "metadata"
 )
 
+const (
+	// StatusActive defines active status constant
+	StatusActive string = "ACTIVE"
+	// StatusComplete defines complete status constant
+	StatusComplete string = "COMPLETE"
+)
+
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
@@ -41,7 +48,7 @@ type DistributedQuery struct {
 	Deleted    bool
 	Repeat     uint
 	Type       string
-	File       string
+	Path       string
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -91,8 +98,9 @@ func CreateQueries(backend *gorm.DB) *Queries {
 // FIXME this will impact the performance of the TLS endpoint due to being CPU and I/O hungry
 // FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, error) {
-	// Get all current active queries
-	queries, err := q.Gets("active")
+	// Get all current active queries and carvesccccccijgvvbighcllglrtditncrninnndegfhuurkgu
+
+	queries, err := q.GetActive()
 	if err != nil {
 		return QueryReadQueries{}, err
 	}
@@ -110,32 +118,51 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, error) 
 	return qs, nil
 }
 
-// Gets all queries by target (active/completed/all/deleted)
-func (q *Queries) Gets(target string) ([]DistributedQuery, error) {
+// Gets all queries by target (active/completed/all/all-full/deleted)
+func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
 	case "active":
-		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ?", true, false, false).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", true, false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case "completed":
-		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ?", false, true, false).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", false, true, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case "all-full":
-		if err := q.DB.Where("deleted = ? AND hidden = ?", false, true).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case "all":
-		if err := q.DB.Where("deleted = ? AND hidden = ?", false, false).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case "deleted":
-		if err := q.DB.Where("deleted = ?", true).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND type = ?", true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	}
 	return queries, nil
+}
+
+// GetActive all active queries and carves by target
+func (q *Queries) GetActive() ([]DistributedQuery, error) {
+	var queries []DistributedQuery
+	if err := q.DB.Where("active = ?", true).Find(&queries).Error; err != nil {
+		return queries, err
+	}
+	return queries, nil
+}
+
+// GetQueries all queries by target (active/completed/all/all-full/deleted)
+func (q *Queries) GetQueries(target string) ([]DistributedQuery, error) {
+	return q.Gets(target, StandardQueryType)
+}
+
+// GetCarves all carve queries by target (active/completed/all/all-full/deleted)
+func (q *Queries) GetCarves(target string) ([]DistributedQuery, error) {
+	return q.Gets(target, CarveQueryType)
 }
 
 // Get to get a query by name

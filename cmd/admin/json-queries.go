@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/utils"
 )
@@ -57,7 +58,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Retrieve queries for that target
-	qs, err := queriesmgr.Gets(target)
+	qs, err := queriesmgr.GetQueries(target)
 	if err != nil {
 		log.Printf("error getting queries %v", err)
 		return
@@ -65,9 +66,9 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare data to be returned
 	qJSON := []QueryJSON{}
 	for _, q := range qs {
-		status := "ACTIVE"
+		status := queries.StatusActive
 		if q.Completed {
-			status = "COMPLETED"
+			status = queries.StatusComplete
 		}
 		progress := make(QueryProgress)
 		progress["executions"] = q.Executions

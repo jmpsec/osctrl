@@ -23,8 +23,6 @@ const (
 	StatusInProgress string = "IN PROGRESS"
 	// StatusCompleted for carves that finalized
 	StatusCompleted string = "COMPLETED"
-	// StatusArchived for carves ready to be downloaded
-	StatusArchived string = "ARCHIVED"
 )
 
 var (
@@ -44,8 +42,6 @@ type CarvedFile struct {
 	BlockSize       int
 	TotalBlocks     int
 	CompletedBlocks int
-	CarvedPath      string
-	DestPath        string
 	Status          string
 	CompletedAt     time.Time
 }
@@ -94,7 +90,7 @@ func (c *Carves) CreateCarve(carve CarvedFile) error {
 
 // CheckCarve to verify a session belong to a carve
 func (c *Carves) CheckCarve(sessionid, requestid string) bool {
-	carve, err := c.GetCarveBySession(sessionid)
+	carve, err := c.GetBySession(sessionid)
 	if err != nil {
 		return false
 	}
@@ -115,7 +111,7 @@ func (c *Carves) CreateBlock(block CarvedBlock) error {
 
 // DeleteCarve to delete a carve by id
 func (c *Carves) DeleteCarve(carveid string) error {
-	carve, err := c.GetCarve(carveid)
+	carve, err := c.GetByCarve(carveid)
 	if err != nil {
 		return fmt.Errorf("getCarveByID %v", err)
 	}
@@ -139,8 +135,8 @@ func (c *Carves) DeleteBlocks(sessionid string) error {
 	return nil
 }
 
-// GetCarve to get a carve by carve id
-func (c *Carves) GetCarve(carveid string) (CarvedFile, error) {
+// GetByCarve to get a carve by carve id
+func (c *Carves) GetByCarve(carveid string) (CarvedFile, error) {
 	var carve CarvedFile
 	if err := c.DB.Where("carve_id = ?", carveid).Find(&carve).Error; err != nil {
 		return carve, err
@@ -148,13 +144,27 @@ func (c *Carves) GetCarve(carveid string) (CarvedFile, error) {
 	return carve, nil
 }
 
-// GetCarveBySession to get a carve by session id
-func (c *Carves) GetCarveBySession(sessionid string) (CarvedFile, error) {
+// GetBySession to get a carve by session id
+func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 	var carve CarvedFile
 	if err := c.DB.Where("session_id = ?", sessionid).Find(&carve).Error; err != nil {
 		return carve, err
 	}
 	return carve, nil
+}
+
+// GetByRequest to get a carve by request id
+func (c *Carves) GetByRequest(requestid string) (CarvedFile, error) {
+	var carve CarvedFile
+	if err := c.DB.Where("request_id = ?", requestid).Find(&carve).Error; err != nil {
+		return carve, err
+	}
+	return carve, nil
+}
+
+// GetByQuery to get a carve by query name
+func (c *Carves) GetByQuery(name string) (CarvedFile, error) {
+	return c.GetByRequest(name)
 }
 
 // GetBlocks to get a carve by session id
@@ -177,7 +187,7 @@ func (c *Carves) GetNodeCarves(uuid string) ([]CarvedFile, error) {
 
 // ChangeStatus to change the status of a carve
 func (c *Carves) ChangeStatus(status, sessionid string) error {
-	carve, err := c.GetCarveBySession(sessionid)
+	carve, err := c.GetBySession(sessionid)
 	if err != nil {
 		return fmt.Errorf("getCarveBySessionID %v", err)
 	}
@@ -194,7 +204,7 @@ func (c *Carves) ChangeStatus(status, sessionid string) error {
 
 // CompleteBlock to increase one block for a carve
 func (c *Carves) CompleteBlock(sessionid string) error {
-	carve, err := c.GetCarveBySession(sessionid)
+	carve, err := c.GetBySession(sessionid)
 	if err != nil {
 		return fmt.Errorf("getCarveBySessionID %v", err)
 	}
@@ -207,7 +217,7 @@ func (c *Carves) CompleteBlock(sessionid string) error {
 // Completed to check if a carve is completed
 // FIXME return error maybe?
 func (c *Carves) Completed(sessionid string) bool {
-	carve, err := c.GetCarveBySession(sessionid)
+	carve, err := c.GetBySession(sessionid)
 	if err != nil {
 		return false
 	}

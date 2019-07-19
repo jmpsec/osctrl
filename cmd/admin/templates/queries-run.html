@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-sidebar" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="nav-icon fas fa-terminal"></i> Run on-demand queries by target
+              </div>
+              <div class="card-body">
+
+                <div class="row">
+
+                  <div class="col-sm-12 col-md-4 col-lg-4 col-xl-4">
+                    <div class="card mt-2">
+                      <div class="card-header">
+                        <i class="fas fa-table"></i>
+                          <a href="https://osquery.io/schema/{{ $.TablesVersion }}" target="_blank">
+                            osquery {{ $.TablesVersion }}:
+                          </a>
+                        <div class="card-header-actions">
+                          <div class="card-header-action">
+                            <div class="form-inline">
+                              <input id="filter-tables" class="form-control" type="text" placeholder="filter">
+                              <select id="select-tables" class="form-control">
+                                <option value="filter-all">all</option>
+                                <option value="filter-darwin">darwin</option>
+                                <option value="filter-windows">windows</option>
+                                <option value="filter-linux">linux</option>
+                                <option value="filter-freebsd">freebsd</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="card-body">
+                        <div id="osquery_tables" data-spy="scroll" style="height:68vh; overflow: auto; overflow-y: scroll;">
+                          <div class="list-group" style="margin-bottom: 2px;">
+                          {{range  $i, $e := $.Tables}}
+                            <div class="filter-element {{ $e.Filter }}">
+                              <a class="list-group-item d-flex list-group-item-action justify-content-between align-items-center osquery-table" onclick="setQuery('SELECT * FROM {{ $e.Name }};');" href="#">
+                              {{ $e.Name }}
+                                <span>
+                              {{range  $ii, $ee := $e.Platforms}}
+                                {{if eq $ee "darwin"}}<i class="fa fl-apple"></i>{{end}}
+                                {{if eq $ee "windows"}}<i class="fab fa-windows"></i>{{end}}
+                                {{if eq $ee "linux"}}<i class="fab fa-linux"></i>{{end}}
+                                {{if eq $ee "freebsd"}}<i class="fl-freebsd"></i>{{end}}
+                              {{ end }}
+                                </span>
+                              </a>
+                            </div>
+                          {{ end }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-sm-12 col-md-8 col-lg-8 col-xl-8">
+
+                    <div class="card mt-2">
+                      <div class="card-header">
+                        <i class="fas fa-bullseye"></i> Select targets:
+                      </div>
+                      <div class="card-body">
+
+                        <div class="row">
+                          <div class="col-md-12">
+                            <form>
+                              <div class="form-group row">
+                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                  <fieldset class="form-group">
+                                    <label for="target_env">By Environment:</label>
+                                    <div id="selector_env" class="input-group">
+                                      <select class="form-control" name="target_env" id="target_env" multiple="multiple">
+                                        <option value=""></option>
+                                      {{ range  $i, $e := $.Environments }}
+                                        <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                                      {{ end }}
+                                        <option value="all">all environments</option>
+                                      </select>
+                                    </div>
+                                    <small class="text-muted">ex. dev</small>
+                                  </fieldset>
+                                </div>
+                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                  <fieldset class="form-group">
+                                    <label for="target_platform">By Platform:</label>
+                                    <div id="selector_platform" class="input-group">
+                                      <select class="form-control" name="target_platform" id="target_platform" multiple="multiple">
+                                        <option value=""></option>
+                                      {{ range  $i, $e := $.Platforms }}
+                                        <option value="{{ $e }}">{{ $e }}</option>
+                                      {{ end }}
+                                        <option value="all">all platforms</option>
+                                      </select>
+                                    </div>
+                                    <small class="text-muted">ex. ubuntu</small>
+                                  </fieldset>
+                                </div>
+                                <!--
+                                <div class="col-sm-4">
+                                  <fieldset class="form-group">
+                                    <label>Repeat Every</label>
+                                    <label class="switch switch-label switch-pill switch-success switch-sm float-right">
+                                      <input id="target_interval_switch" class="switch-input" type="checkbox" disabled>
+                                      <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                    </label>
+                                    <div class="input-group">
+                                      <select class="form-control" name="target_interval" id="target_interval" disabled>
+                                        <option value="0"></option>
+                                        <option value="3600">1 hour</option>
+                                        <option value="21600">6 hours</option>
+                                        <option value="43200">12 hours</option>
+                                        <option value="86400">24 hours</option>
+                                      </select>
+                                    </div>
+                                  </fieldset>
+                                </div>
+                                -->
+                              </div>
+                              <div class="form-group row">
+                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                  <fieldset class="form-group">
+                                    <label>By node UUID:</label>
+                                    <div id="selector_uuids" class="input-group">
+                                      <select class="form-control" name="target_uuids[]" id="target_uuids" multiple="multiple">
+                                        <option value=""></option>
+                                      {{ range  $i, $e := $.UUIDs }}
+                                        <option value="{{ $e }}">{{ $e }}</option>
+                                      {{ end }}
+                                      </select>
+                                    </div>
+                                    <small class="text-muted">ex. 11111111-2222-3333-4444-555555555555</small>
+                                  </fieldset>
+                                </div>
+                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                  <fieldset class="form-group">
+                                    <label>By node Hostname:</label>
+                                    <div id="selector_hosts" class="input-group">
+                                      <select class="form-control" name="target_hosts[]" id="target_hosts" multiple="multiple">
+                                        <option value=""></option>
+                                      {{ range  $i, $e := $.Hosts }}
+                                        <option value="{{ $e }}">{{ $e }}</option>
+                                      {{ end }}
+                                      </select>
+                                    </div>
+                                    <small class="text-muted">ex. MacBookPro</small>
+                                  </fieldset>
+                                </div>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    <div class="card mt-2">
+                      <div class="card-header">
+                        <span class="icon-osquery">
+                          <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> osquery SQL
+                          <div class="card-header-actions">
+                            <div class="card-header-action">
+                              <div class="row">
+                                <div class="col-sm-6 mx-auto">
+                                  <button id="query_button" type="button" class="btn btn-sm btn-outline-dark"
+                                  data-toggle="tooltip" data-placement="top" title="Send query" onclick="sendQuery();">
+                                    <i class="fas fa-search"></i> Query
+                                  </button>
+                                </div>
+                                <div class="col-sm-6 mx-auto">
+                                  <button type="button" class="btn btn-sm btn-outline-danger"
+                                  data-toggle="tooltip" data-placement="top" title="Clear query" onclick="clearQuery();">
+                                    <i class="fas fa-eraser"></i> Clear
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                      </div>
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-md-12 mx-auto">
+                            <form>
+                              <div class="form-group row">
+                                <div class="col-sm-12">
+                                  <fieldset class="form-group">
+
+                                    <textarea id="query" name="query"></textarea>
+
+                                  </fieldset>
+                                </div>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          {{ template "page-modals" . }}
+
+          </div>
+
+        </div>
+
+      </main>
+
+      {{ template "page-aside" . }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/login.js"></script>
+    <script src="/static/js/query.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Codemirror editor for query
+        var editorQuery = CodeMirror.fromTextArea(document.getElementById("query"), {
+          mode: 'text/x-sql',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true
+        });
+        editorQuery.setSize("100%", "100%");
+
+        // Select2 initialization
+        $('#target_platform').select2({
+          theme: "classic"
+        });
+        $('#target_env').select2({
+          theme: "classic"
+        });
+        $('#target_uuids').select2({
+          theme: "classic"
+        });
+        $('#target_hosts').select2({
+          theme: "classic"
+        });
+
+        // Enable all tooltips
+        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+
+        // Filter tables by input
+        $('#filter-tables').keyup(function () {
+          var filterBy = $(this).val();
+          //console.log("Filter by " + filterBy);
+          $("a.osquery-table:not(:contains("+ filterBy +"))").parent('div').addClass('d-none');
+          $("a.osquery-table:contains("+ filterBy +")").parent('div').removeClass('d-none');
+        });
+        // Filter tables by select
+        $('#select-tables').change(function () {
+          var optionSelected = $(this).find("option:selected");
+          var valueSelected  = optionSelected.val();
+          if (valueSelected === 'filter-all') {
+            //console.log("Showing all");
+            $("div.filter-element").removeClass('d-none');
+          } else {
+            //console.log("Showing " + valueSelected);
+            $("div.filter-element:not(."+valueSelected+")").addClass('d-none');
+          }
+        });
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+      });
+    </script>
+
+  </body>
+</html>

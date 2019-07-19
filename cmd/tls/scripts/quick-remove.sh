@@ -54,8 +54,13 @@ whatOS() {
 stopOsquery() {
   if [ "$OS" = "linux" ]; then
     log "Stopping $_OSQUERY_SERVICE_LINUX"
-    sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
-    sudo systemctl disable "$_OSQUERY_SERVICE_LINUX"
+    if which systemctl >/dev/null; then
+      sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
+      sudo systemctl disable "$_OSQUERY_SERVICE_LINUX"
+    else
+      sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" stop
+      sudo update-rc.d -f "$_OSQUERY_SERVICE_LINUX" remove
+    fi
   fi
   if [ "$OS" = "darwin" ]; then
     log "Stopping $_OSQUERY_SERVICE_OSX"

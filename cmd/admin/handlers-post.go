@@ -169,65 +169,75 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		// Temporary list of UUIDs to calculate Expected
 		var expected []string
 		// Create environment target
-		if (q.Environment != "") && envs.Exists(q.Environment) {
-			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, q.Environment); err != nil {
-				responseMessage = "error creating query environment target"
-				responseCode = http.StatusInternalServerError
-				log.Printf("%s %v", responseMessage, err)
-				goto response
-			}
-			nodes, err := nodesmgr.GetByEnv(q.Environment, "active", settingsmgr.InactiveHours())
-			if err != nil {
-				responseMessage = "error getting nodes by environment"
-				responseCode = http.StatusInternalServerError
-				log.Printf("%s %v", responseMessage, err)
-				goto response
-			}
-			for _, n := range nodes {
-				expected = append(expected, n.UUID)
+		if len(q.Environments) > 0 {
+			for _, e := range q.Environments {
+				if (e != "") && envs.Exists(e) {
+					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, e); err != nil {
+						responseMessage = "error creating query environment target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
+					if err != nil {
+						responseMessage = "error getting nodes by environment"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					for _, n := range nodes {
+						expected = append(expected, n.UUID)
+					}
+				}
 			}
 		}
 		// Create platform target
-		if (q.Platform != "") && checkValidPlatform(q.Platform) {
-			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, q.Platform); err != nil {
-				responseMessage = "error creating query platform target"
-				responseCode = http.StatusInternalServerError
-				log.Printf("%s %v", responseMessage, err)
-				goto response
-			}
-			nodes, err := nodesmgr.GetByPlatform(q.Platform, "active", settingsmgr.InactiveHours())
-			if err != nil {
-				responseMessage = "error getting nodes by platform"
-				responseCode = http.StatusInternalServerError
-				log.Printf("%s %v", responseMessage, err)
-				goto response
-			}
-			for _, n := range nodes {
-				expected = append(expected, n.UUID)
+		if len(q.Platforms) > 0 {
+			for _, p := range q.Platforms {
+				if (p != "") && checkValidPlatform(p) {
+					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
+						responseMessage = "error creating query platform target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
+					if err != nil {
+						responseMessage = "error getting nodes by platform"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					for _, n := range nodes {
+						expected = append(expected, n.UUID)
+					}
+				}
 			}
 		}
 		// Create UUIDs target
-		// FIXME verify UUIDs
 		if len(q.UUIDs) > 0 {
 			for _, u := range q.UUIDs {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
-					responseMessage = "error creating query UUID target"
-					responseCode = http.StatusInternalServerError
-					log.Printf("%s %v", responseMessage, err)
-					goto response
+				if (u != "") && nodesmgr.CheckByUUID(u) {
+					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
+						responseMessage = "error creating query UUID target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					expected = append(expected, u)
 				}
-				expected = append(expected, u)
 			}
 		}
 		// Create hostnames target
-		// FIXME verify localnames
 		if len(q.Hosts) > 0 {
 			for _, h := range q.Hosts {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
-					responseMessage = "error creating query hostname target"
-					responseCode = http.StatusInternalServerError
-					log.Printf("%s %v", responseMessage, err)
-					goto response
+				if (h != "") && nodesmgr.CheckByHost(h) {
+					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
+						responseMessage = "error creating query hostname target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
 				}
 			}
 		}
@@ -262,7 +272,161 @@ response:
 	}
 }
 
-// Handler for POST requests to see completed queries
+// Handler for POST requests to run file carves
+func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "The carve was created successfully"
+	responseCode := http.StatusOK
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	var c DistributedCarveRequest
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&c)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+		goto response
+	}
+	// Check CSRF Token
+	if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
+		// FIXME check validity of query
+		// Path can not be empty
+		if c.Path == "" {
+			responseMessage = "path can not be empty"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+			goto response
+		}
+		query := generateCarveQuery(c.Path, false)
+		// Prepare and create new carve
+		carveName := "carve_" + generateQueryName()
+		newQuery := queries.DistributedQuery{
+			Query:      query,
+			Name:       carveName,
+			Creator:    ctx["user"],
+			Expected:   0,
+			Executions: 0,
+			Active:     true,
+			Completed:  false,
+			Deleted:    false,
+			Repeat:     0,
+			Type:       queries.CarveQueryType,
+			Path:       c.Path,
+		}
+		if err := queriesmgr.Create(newQuery); err != nil {
+			responseMessage = "error creating carve"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+			goto response
+		}
+		// Temporary list of UUIDs to calculate Expected
+		var expected []string
+		// Create environment target
+		if len(c.Environments) > 0 {
+			for _, e := range c.Environments {
+				if (e != "") && envs.Exists(e) {
+					if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetEnvironment, e); err != nil {
+						responseMessage = "error creating carve environment target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
+					if err != nil {
+						responseMessage = "error getting nodes by environment"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					for _, n := range nodes {
+						expected = append(expected, n.UUID)
+					}
+				}
+			}
+		}
+		// Create platform target
+		if len(c.Platforms) > 0 {
+			for _, p := range c.Platforms {
+				if (p != "") && checkValidPlatform(p) {
+					if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetPlatform, p); err != nil {
+						responseMessage = "error creating carve platform target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
+					if err != nil {
+						responseMessage = "error getting nodes by platform"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					for _, n := range nodes {
+						expected = append(expected, n.UUID)
+					}
+				}
+			}
+		}
+		// Create UUIDs target
+		if len(c.UUIDs) > 0 {
+			for _, u := range c.UUIDs {
+				if (u != "") && nodesmgr.CheckByUUID(u) {
+					if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetUUID, u); err != nil {
+						responseMessage = "error creating carve UUID target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+					expected = append(expected, u)
+				}
+			}
+		}
+		// Create hostnames target
+		if len(c.Hosts) > 0 {
+			for _, h := range c.Hosts {
+				if (h != "") && nodesmgr.CheckByHost(h) {
+					if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetLocalname, h); err != nil {
+						responseMessage = "error creating carve hostname target"
+						responseCode = http.StatusInternalServerError
+						log.Printf("%s %v", responseMessage, err)
+						goto response
+					}
+				}
+			}
+		}
+		// Remove duplicates from expected
+		expectedClear := removeStringDuplicates(expected)
+		// Update value for expected
+		if err := queriesmgr.SetExpected(carveName, len(expectedClear)); err != nil {
+			responseMessage = "error setting expected"
+			responseCode = http.StatusInternalServerError
+			log.Printf("%s %v", responseMessage, err)
+			goto response
+		}
+	} else {
+		responseMessage = "invalid CSRF token"
+		responseCode = http.StatusInternalServerError
+		log.Printf("%s %v", responseMessage, err)
+	}
+response:
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		log.Printf("error formating response [ %v ]", err)
+		responseCode = http.StatusInternalServerError
+		response = []byte("error formating response")
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Carve run response sent")
+	}
+}
+
+// Handler for POST requests to queries
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -313,6 +477,67 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			if settingsmgr.DebugService(settings.ServiceAdmin) {
+				log.Printf("DebugService: %s %v", responseMessage, err)
+			}
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		responseMessage = "error formating response"
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: %s %v", responseMessage, err)
+		}
+		responseCode = http.StatusInternalServerError
+		response = []byte(responseMessage)
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Query run response sent")
+	}
+}
+
+// Handler for POST requests to carves
+func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	var q DistributedCarvesActionRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&q)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: %s %v", responseMessage, err)
+		}
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
+			switch q.Action {
+			case "delete":
+				for _, n := range q.Names {
+					err := queriesmgr.Delete(n)
+					if err != nil {
+						responseMessage = "error deleting carve"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					}
+				}
+			case "test":
+				log.Println("Testing action")
 			}
 		} else {
 			responseMessage = "invalid CSRF token"

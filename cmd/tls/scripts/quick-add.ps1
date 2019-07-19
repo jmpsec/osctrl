@@ -14,7 +14,6 @@
 $ErrorActionPreference = "Stop"
 
 $projectName = "{{ .Project }}"
-$projectTLSHost = "{{ .Environment.Hostname }}"
 $projectSecret = "{{ .Environment.Secret }}"
 $progFiles = [System.Environment]::GetEnvironmentVariable('ProgramFiles')
 $osqueryPath = (Join-Path $progFiles "osquery")
@@ -52,7 +51,7 @@ $osqueryFlags = @"
 --distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
 --distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
---tls_hostname=$projectTLSHost
+--tls_hostname={{ .Environment.Hostname }}
 --tls_server_certs=$certFile
 "@
 $osqueryCertificate = @"

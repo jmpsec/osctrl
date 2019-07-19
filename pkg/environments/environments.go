@@ -53,10 +53,15 @@ type TLSEnvironment struct {
 	DebugHTTP        bool
 	Icon             string
 	Configuration    string
+	Flags            string
 	Certificate      string
+	ConfigTLS        bool
 	ConfigInterval   int
+	LoggingTLS       bool
 	LogInterval      int
+	QueryTLS         bool
 	QueryInterval    int
+	CarvesTLS        bool
 	EnrollPath       string
 	LogPath          string
 	ConfigPath       string
@@ -107,10 +112,15 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 		Type:             DefaultEnvironmentType,
 		DebugHTTP:        false,
 		Icon:             DefaultEnvironmentIcon,
+		Flags:            "",
 		Configuration:    "",
 		Certificate:      "",
+		ConfigTLS:        true,
 		ConfigInterval:   DefaultConfigInterval,
+		LoggingTLS:       true,
 		LogInterval:      DefaultLogInterval,
+		QueryTLS:         true,
+		CarvesTLS:        true,
 		QueryInterval:    DefaultQueryInterval,
 		EnrollPath:       DefaultEnrollPath,
 		LogPath:          DefaultLogPath,
@@ -187,7 +197,7 @@ func (environment *Environment) Update(e TLSEnvironment) error {
 	return nil
 }
 
-// UpdateConfiguration to update configuration for a environment
+// UpdateConfiguration to update configuration for an environment
 func (environment *Environment) UpdateConfiguration(name, configuration string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -199,7 +209,7 @@ func (environment *Environment) UpdateConfiguration(name, configuration string) 
 	return nil
 }
 
-// UpdateIntervals to update intervals for a environment
+// UpdateIntervals to update intervals for an environment
 func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs int) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -215,7 +225,7 @@ func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs
 	return nil
 }
 
-// RotateSecrets to replace Secret and SecretPath for a environment
+// RotateSecrets to replace Secret and SecretPath for an environment
 func (environment *Environment) RotateSecrets(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -233,7 +243,7 @@ func (environment *Environment) RotateSecrets(name string) error {
 	return nil
 }
 
-// RotateEnrollPath to replace SecretPath for enrolling in a environment
+// RotateEnrollPath to replace SecretPath for enrolling in an environment
 func (environment *Environment) RotateEnrollPath(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -248,7 +258,7 @@ func (environment *Environment) RotateEnrollPath(name string) error {
 	return nil
 }
 
-// RotateSecret to replace the current Secret for a environment
+// RotateSecret to replace the current Secret for an environment
 func (environment *Environment) RotateSecret(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -263,7 +273,7 @@ func (environment *Environment) RotateSecret(name string) error {
 	return nil
 }
 
-// ExpireEnroll to expire the enroll in a environment
+// ExpireEnroll to expire the enroll in an environment
 func (environment *Environment) ExpireEnroll(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -275,7 +285,7 @@ func (environment *Environment) ExpireEnroll(name string) error {
 	return nil
 }
 
-// RotateRemove to replace Secret and SecrtPath for enrolling in a environment
+// RotateRemove to replace Secret and SecrtPath for enrolling in an environment
 func (environment *Environment) RotateRemove(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -290,7 +300,7 @@ func (environment *Environment) RotateRemove(name string) error {
 	return nil
 }
 
-// ExpireRemove to expire the remove in a environment
+// ExpireRemove to expire the remove in an environment
 func (environment *Environment) ExpireRemove(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
@@ -311,7 +321,7 @@ func (environment *Environment) DebugHTTP(name string) bool {
 	return env.DebugHTTP
 }
 
-// ChangeDebugHTTP to change the value of DebugHTTP for a environment
+// ChangeDebugHTTP to change the value of DebugHTTP for an environment
 func (environment *Environment) ChangeDebugHTTP(name string, value bool) error {
 	env, err := environment.Get(name)
 	if err != nil {

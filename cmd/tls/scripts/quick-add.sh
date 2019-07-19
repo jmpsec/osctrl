@@ -5,7 +5,6 @@
 # IMPORTANT! If osquery is not installed, it will be installed.
 
 _PROJECT="{{ .Project }}"
-_TLS_HOSTNAME="{{ .Environment.Hostname }}"
 _SECRET="{{ .Environment.Secret }}"
 _SECRET_LINUX=/etc/osquery/osquery.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
@@ -98,7 +97,11 @@ whatOS() {
 stopOsquery() {
   if [ "$OS" = "linux" ]; then
     log "Stopping $_OSQUERY_SERVICE_LINUX"
-    sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
+    if which systemctl >/dev/null; then
+      sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
+    else
+      sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" stop
+    fi
   fi
   if [ "$OS" = "darwin" ]; then
     log "Stopping $_OSQUERY_SERVICE_OSX"
@@ -140,7 +143,7 @@ prepareFlags() {
 --distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
 --distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
---tls_hostname=$_TLS_HOSTNAME
+--tls_hostname={{ .Environment.Hostname }}
 --tls_server_certs=$_CERT
 EOF"
 }
@@ -156,8 +159,13 @@ EOF"
 startOsquery() {
   if [ "$OS" = "linux" ]; then
     log "Starting $_OSQUERY_SERVICE_LINUX"
-    sudo systemctl start "$_OSQUERY_SERVICE_LINUX"
-    sudo systemctl enable "$_OSQUERY_SERVICE_LINUX"
+    if which systemctl >/dev/null; then
+      sudo systemctl start "$_OSQUERY_SERVICE_LINUX"
+      sudo systemctl enable "$_OSQUERY_SERVICE_LINUX"
+    else
+      sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" start
+      sudo update-rc.d "$_OSQUERY_SERVICE_LINUX" defaults
+    fi
   fi
   if [ "$OS" = "darwin" ]; then
     log "Starting $_OSQUERY_SERVICE_OSX"

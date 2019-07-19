@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/javuto/osctrl/pkg/carves"
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/utils"
@@ -15,6 +16,7 @@ import (
 
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
@@ -22,6 +24,7 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-head.html",
 		"tmpl_admin/components/page-js.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting login template: %v", err)
 		return
 	}
@@ -31,12 +34,14 @@ func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 		Project: projectName,
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler for the root path
@@ -53,16 +58,19 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for environment view of the table
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	env, ok := vars["environment"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting environment")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(env) {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
@@ -70,6 +78,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME verify target
 	target, ok := vars["target"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
@@ -83,18 +92,21 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
@@ -115,22 +127,26 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService:  Environment table template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler for platform view of the table
 func platformHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
 	platform, ok := vars["platform"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting platform")
 		return
 	}
@@ -138,6 +154,7 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME verify target
 	target, ok := vars["target"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
@@ -151,18 +168,21 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
@@ -183,20 +203,23 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Platform table template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler for GET requests to run queries
 func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/query-run.html",
+		"tmpl_admin/queries-run.html",
 		"tmpl_admin/components/page-head.html",
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-aside.html",
@@ -204,24 +227,28 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-header.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get all nodes
 	nodes, err := nodesmgr.Gets("active", settingsmgr.InactiveHours())
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting all nodes: %v", err)
 		return
 	}
@@ -250,16 +277,19 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler for GET requests to queries
 func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
@@ -271,24 +301,28 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get queries
-	qs, err := queriesmgr.Gets("all")
+	qs, err := queriesmgr.GetQueries("all")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting active queries: %v", err)
 		return
 	}
@@ -308,27 +342,97 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query list template served")
 	}
+	incMetric(metricAdminOK)
 }
 
-// Handler GET requests to see query results by name
-func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for GET requests to run file carves
+func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	vars := mux.Vars(r)
-	// Extract name
-	name, ok := vars["name"]
-	if !ok {
-		log.Println("error getting name")
+	// Prepare template
+	t, err := template.ParseFiles(
+		"tmpl_admin/carves-run.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting table template: %v", err)
 		return
 	}
+	// Get all environments
+	envAll, err := envs.All()
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+	// Get all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get all nodes
+	nodes, err := nodesmgr.Gets("active", settingsmgr.InactiveHours())
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting all nodes: %v", err)
+		return
+	}
+	// Convert to list of UUIDs and Hosts
+	// FIXME if the number of nodes is big, this may cause issues loading the page
+	var uuids, hosts []string
+	for _, n := range nodes {
+		uuids = append(uuids, n.UUID)
+		hosts = append(hosts, n.Localname)
+	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Prepare template data
+	templateData := CarvesRunTemplateData{
+		Title:          "Query osquery Nodes",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
+		Environments:   envAll,
+		Platforms:      platforms,
+		UUIDs:          uuids,
+		Hosts:          hosts,
+		Tables:         osqueryTables,
+		TablesVersion:  osqueryTablesVersion,
+		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
+		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Query run template served")
+	}
+	incMetric(metricAdminOK)
+}
+
+// Handler for GET requests to carves
+func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
-	t, err := template.New("query-logs.html").ParseFiles(
-		"tmpl_admin/query-logs.html",
+	t, err := template.ParseFiles(
+		"tmpl_admin/carves.html",
 		"tmpl_admin/components/page-head.html",
 		"tmpl_admin/components/page-js.html",
 		"tmpl_admin/components/page-header.html",
@@ -336,12 +440,82 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+	// Get all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get carves
+	carves := []carves.CarvedFile{}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Prepare template data
+	templateData := CarvesTableTemplateData{
+		Title:          "All carved files",
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
+		Environments:   envAll,
+		Platforms:      platforms,
+		Carves:         carves,
+		Target:         "all",
+		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
+		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Carve list template served")
+	}
+	incMetric(metricAdminOK)
+}
+
+// Handler GET requests to see query results by name
+func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract name
+	name, ok := vars["name"]
+	if !ok {
+		incMetric(metricAdminErr)
+		log.Println("error getting name")
+		return
+	}
+	// Prepare template
+	t, err := template.New("queries-logs.html").ParseFiles(
+		"tmpl_admin/queries-logs.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting table template: %v", err)
+		return
+	}
+	// Get all environments
+	envAll, err := envs.All()
+	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
@@ -349,18 +523,21 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get query by name
 	query, err := queriesmgr.Get(name)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting query %v", err)
 		return
 	}
 	// Get query targets
 	targets, err := queriesmgr.GetTargets(name)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting targets %v", err)
 		return
 	}
@@ -380,26 +557,112 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query logs template served")
 	}
+	incMetric(metricAdminOK)
+}
+
+// Handler GET requests to see carves details by name
+func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract name
+	name, ok := vars["name"]
+	if !ok {
+		incMetric(metricAdminErr)
+		log.Println("error getting name")
+		return
+	}
+	// Prepare template
+	t, err := template.New("carves-details.html").ParseFiles(
+		"tmpl_admin/carves-details.html",
+		"tmpl_admin/components/page-head.html",
+		"tmpl_admin/components/page-js.html",
+		"tmpl_admin/components/page-header.html",
+		"tmpl_admin/components/page-sidebar.html",
+		"tmpl_admin/components/page-aside.html",
+		"tmpl_admin/components/page-modals.html")
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting table template: %v", err)
+		return
+	}
+	// Get all environments
+	envAll, err := envs.All()
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+
+	// Get all platforms
+	platforms, err := nodesmgr.GetAllPlatforms()
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get query by name
+	query, err := queriesmgr.Get(name)
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting query %v", err)
+		return
+	}
+	// Get query targets
+	targets, err := queriesmgr.GetTargets(name)
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting targets %v", err)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Prepare template data
+	templateData := CarvesDetailsTemplateData{
+		Title:          "Query logs " + query.Name,
+		Username:       ctx["user"],
+		CSRFToken:      ctx["csrftoken"],
+		Environments:   envAll,
+		Platforms:      platforms,
+		Query:          query,
+		QueryTargets:   targets,
+		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
+		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Carve details template served")
+	}
+	incMetric(metricAdminOK)
 }
 
 // Handler GET requests for /conf
 func confGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("environment is missing")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(envVar) {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
@@ -413,24 +676,28 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-sidebar.html",
 		"tmpl_admin/components/page-aside.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting conf template: %v", err)
 		return
 	}
 	// Get stats for all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get configuration JSON
 	env, err := envs.Get(envVar)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -449,26 +716,31 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Conf template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler GET requests for /enroll
 func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("environment is missing")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(envVar) {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
@@ -482,24 +754,28 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting enroll template: %v", err)
 		return
 	}
 	// Get stats for all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get configuration JSON
 	env, err := envs.Get(envVar)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -530,21 +806,25 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP:        settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Enroll template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler for node view
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting uuid")
 		return
 	}
@@ -562,24 +842,28 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments%v", err)
 		return
 	}
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get node by UUID
 	node, err := nodesmgr.GetByUUID(uuid)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting node %v", err)
 		return
 	}
@@ -599,16 +883,19 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Node template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler GET requests for /env
 func envsGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
@@ -620,18 +907,21 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
 	// Get stats for all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
@@ -649,26 +939,31 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService:  Environments template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler GET requests for /settings
 func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting service")
 		return
 	}
 	// Verify service
 	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+		incMetric(metricAdminErr)
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
 	}
@@ -682,6 +977,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
@@ -694,12 +990,14 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get setting values
 	_settings, err := settingsmgr.RetrieveValues(serviceVar)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting settings: %v", err)
 		return
 	}
@@ -708,6 +1006,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get JSON values
 	svcJSON, err := settingsmgr.RetrieveAllJSON(serviceVar)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting JSON values: %v", err)
 	}
 	// Prepare template data
@@ -725,16 +1024,19 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP:  settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Settings template served")
 	}
+	incMetric(metricAdminOK)
 }
 
 // Handler GET requests for /users
 func usersGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
@@ -750,24 +1052,28 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		"tmpl_admin/components/page-aside.html",
 		"tmpl_admin/components/page-modals.html")
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
 	// Get stats for all environments
 	envAll, err := envs.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get current users
 	users, err := adminUsers.All()
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error getting users: %v", err)
 		return
 	}
@@ -786,10 +1092,12 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users template served")
 	}
+	incMetric(metricAdminOK)
 }

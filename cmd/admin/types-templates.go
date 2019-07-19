@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/javuto/osctrl/pkg/carves"
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
@@ -64,7 +65,7 @@ type EnrollTemplateData struct {
 	AdminDebugHTTP        bool
 }
 
-// QueryRunTemplateData for passing data to the query template
+// QueryRunTemplateData for passing data to the query run template
 type QueryRunTemplateData struct {
 	Title          string
 	Username       string
@@ -80,6 +81,9 @@ type QueryRunTemplateData struct {
 	AdminDebugHTTP bool
 }
 
+// CarvesRunTemplateData for passing data to the carves run template
+type CarvesRunTemplateData QueryRunTemplateData
+
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData struct {
 	Title          string
@@ -89,6 +93,36 @@ type QueryTableTemplateData struct {
 	Platforms      []string
 	Target         string
 	Queries        []queries.DistributedQuery
+	TLSDebug       bool
+	AdminDebug     bool
+	AdminDebugHTTP bool
+}
+
+// CarvesTableTemplateData for passing data to the carves template
+type CarvesTableTemplateData struct {
+	Title          string
+	Username       string
+	CSRFToken      string
+	Environments   []environments.TLSEnvironment
+	Platforms      []string
+	Target         string
+	Carves         []carves.CarvedFile
+	TLSDebug       bool
+	AdminDebug     bool
+	AdminDebugHTTP bool
+}
+
+// CarvesDetailsTemplateData for passing data to the carves details
+type CarvesDetailsTemplateData struct {
+	Title          string
+	Username       string
+	CSRFToken      string
+	Environments   []environments.TLSEnvironment
+	Platforms      []string
+	Query          queries.DistributedQuery
+	QueryTargets   []queries.DistributedQueryTarget
+	Carve          carves.CarvedFile
+	Blocks         []carves.CarvedBlock
 	TLSDebug       bool
 	AdminDebug     bool
 	AdminDebugHTTP bool

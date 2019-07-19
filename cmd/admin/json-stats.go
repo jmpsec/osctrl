@@ -21,16 +21,19 @@ var (
 
 // Handler for platform/environment stats in JSON
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
 	// Verify target
 	if !StatsTargets[target] {
+		incMetric(metricAdminErr)
 		log.Printf("invalid target %s", target)
 		return
 	}
@@ -38,6 +41,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME verify name
 	name, ok := vars["name"]
 	if !ok {
+		incMetric(metricAdminErr)
 		log.Println("error getting target name")
 		return
 	}
@@ -47,6 +51,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	if target == "environment" {
 		stats, err = nodesmgr.GetStatsByEnv(name, settingsmgr.InactiveHours())
 		if err != nil {
+			incMetric(metricAdminErr)
 			log.Printf("error getting stats %v", err)
 			return
 		}
@@ -60,9 +65,11 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize JSON
 	returnedJSON, err := json.Marshal(stats)
 	if err != nil {
+		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
+	incMetric(metricAdminOK)
 	// Header to serve JSON
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)

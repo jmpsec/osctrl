@@ -7,6 +7,12 @@ import (
 	"github.com/javuto/osctrl/pkg/utils"
 )
 
+const (
+	metricAdminReq = "admin-req"
+	metricAdminErr = "admin-err"
+	metricAdminOK  = "admin-ok"
+)
+
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
 

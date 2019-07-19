@@ -54,7 +54,14 @@ func generateQueryName() string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// Helper to check if the provided platform exists
+// Helper to generate the carve query
+func generateCarveQuery(file string, glob bool) string {
+	if glob {
+		return "SELECT * FROM carves WHERE carve=1 AND path LIKE '" + file + "';"
+	}
+	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
+}
+
 func checkValidPlatform(platform string) bool {
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
@@ -217,4 +224,11 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 		}
 	}
 	return cfg
+}
+
+// Helper to send metrics if it is enabled
+func incMetric(name string) {
+	if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
+		_metrics.Inc(name)
+	}
 }

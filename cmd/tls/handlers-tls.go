@@ -639,8 +639,6 @@ func processCarveInit(req types.CarveInitRequest, sessionid, environment string)
 		BlockSize:       req.BlockSize,
 		TotalBlocks:     req.BlockCount,
 		CompletedBlocks: 0,
-		CarvedPath:      "",
-		DestPath:        "",
 		Status:          carves.StatusInitialized,
 	}
 	// Create File Carve
@@ -663,29 +661,23 @@ func processCarveBlock(req types.CarveBlockRequest, environment string) {
 		Data:        req.Data,
 	}
 	// Create Block
-	err := filecarves.CreateBlock(block)
-	if err != nil {
+	if err := filecarves.CreateBlock(block); err != nil {
 		incMetric(metricBlockErr)
 		log.Printf("error creating CarvedBlock %v", err)
 	}
 	// Bump block completion
-	err = filecarves.CompleteBlock(req.SessionID)
-	if err != nil {
+	if err := filecarves.CompleteBlock(req.SessionID); err != nil {
 		incMetric(metricBlockErr)
 		log.Printf("error completing block %v", err)
 	}
 	// If it is completed, set status
 	if filecarves.Completed(req.SessionID) {
-		err = filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID)
-		if err != nil {
+		if err := filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
 			incMetric(metricBlockErr)
 			log.Printf("error completing status %v", err)
 		}
-		// FIXME convert completed carve into actual file to download
-		// Check if destination folder is
 	} else {
-		err = filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID)
-		if err != nil {
+		if err := filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
 			incMetric(metricBlockErr)
 			log.Printf("error progressing status %v", err)
 		}
