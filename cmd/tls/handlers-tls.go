@@ -621,12 +621,13 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Function to initialize a file carve from a node
-func processCarveInit(req types.CarveInitRequest, sessionid, environment string) {
+func processCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
 	// Retrieve node
 	node, err := nodesmgr.GetByKey(req.NodeKey)
 	if err != nil {
 		incMetric(metricInitErr)
 		log.Printf("error retrieving node %s", err)
+		return err
 	}
 	// Prepare carve to initialize
 	carve := carves.CarvedFile{
@@ -646,7 +647,9 @@ func processCarveInit(req types.CarveInitRequest, sessionid, environment string)
 	if err != nil {
 		incMetric(metricInitErr)
 		log.Printf("error creating  CarvedFile %v", err)
+		return err
 	}
+	return nil
 }
 
 // Function to process one block from a file carve
@@ -659,6 +662,7 @@ func processCarveBlock(req types.CarveBlockRequest, environment string) {
 		Environment: environment,
 		BlockID:     req.BlockID,
 		Data:        req.Data,
+		Size:        len(req.Data),
 	}
 	// Create Block
 	if err := filecarves.CreateBlock(block); err != nil {
@@ -674,17 +678,19 @@ func processCarveBlock(req types.CarveBlockRequest, environment string) {
 	if filecarves.Completed(req.SessionID) {
 		if err := filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
 			incMetric(metricBlockErr)
-			log.Printf("error completing status %v", err)
+			log.Printf("error completing carve %v", err)
 		}
 	} else {
 		if err := filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
 			incMetric(metricBlockErr)
-			log.Printf("error progressing status %v", err)
+			log.Printf("error progressing carve %v", err)
 		}
 	}
 }
 
 // Function to handle the initialization of the file carver
+// This function does not use go routines to handle requests because the session_id returned
+// must be already created in the DB, otherwise block requests will fail.
 func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricInitReq)
 	// Retrieve environment variable
@@ -712,7 +718,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
-	var initCarve bool
+	initCarve := false
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
 	if nodesmgr.CheckByKey(t.NodeKey) {
@@ -724,9 +730,11 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		go processCarveInit(t, carveSessionID, env)
-	} else {
-		initCarve = false
+		if err := processCarveInit(t, carveSessionID, env); err != nil {
+			incMetric(metricInitErr)
+			log.Printf("error procesing carve init %v", err)
+			initCarve = false
+		}
 	}
 	// Prepare response
 	response, err = json.Marshal(types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID})
@@ -774,14 +782,12 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
-	var blockCarve bool
-	// Check if provided node_key is valid and if so, update node
+	blockCarve := false
+	// Check if provided session_id matches with the request_id (carve query name)
 	if filecarves.CheckCarve(t.SessionID, t.RequestID) {
 		blockCarve = true
 		// Process received block
 		go processCarveBlock(t, env)
-	} else {
-		blockCarve = false
 	}
 	// Prepare response
 	response, err = json.Marshal(types.CarveBlockResponse{Success: blockCarve})

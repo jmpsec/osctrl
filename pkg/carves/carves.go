@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +17,8 @@ import (
 // https://github.com/mwielgoszewski/doorman/issues/120
 
 const (
+	// StatusQueried for queried carves that did not hit nodes yet
+	StatusQueried string = "QUERIED"
 	// StatusInitialized for initialized carves
 	StatusInitialized string = "INITIALIZED"
 	// StatusInProgress for carves that are on-going
@@ -29,6 +31,17 @@ var (
 	// CompressionHeader to detect the usage of compressed carves (zstd header)
 	CompressionHeader = []byte{0x28, 0xb5, 0x2f, 0xfd}
 )
+
+// MappedCarves to pass carves by query name / Request ID
+type MappedCarves map[string][]CarvedFile
+
+// QueriedCarve to be used to display the carves in a table
+type QueriedCarve struct {
+	Name    string
+	Path    string
+	Status  string
+	Creator string
+}
 
 // CarvedFile to keep track of carved files from nodes
 type CarvedFile struct {
@@ -54,6 +67,7 @@ type CarvedBlock struct {
 	Environment string
 	BlockID     int
 	Data        string
+	Size        int
 }
 
 // Carves to handle file carves from nodes
@@ -109,8 +123,8 @@ func (c *Carves) CreateBlock(block CarvedBlock) error {
 	return nil
 }
 
-// DeleteCarve to delete a carve by id
-func (c *Carves) DeleteCarve(carveid string) error {
+// Delete to delete a carve by id
+func (c *Carves) Delete(carveid string) error {
 	carve, err := c.GetByCarve(carveid)
 	if err != nil {
 		return fmt.Errorf("getCarveByID %v", err)
@@ -154,16 +168,16 @@ func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 }
 
 // GetByRequest to get a carve by request id
-func (c *Carves) GetByRequest(requestid string) (CarvedFile, error) {
-	var carve CarvedFile
-	if err := c.DB.Where("request_id = ?", requestid).Find(&carve).Error; err != nil {
-		return carve, err
+func (c *Carves) GetByRequest(requestid string) ([]CarvedFile, error) {
+	var carves []CarvedFile
+	if err := c.DB.Where("request_id = ?", requestid).Find(&carves).Error; err != nil {
+		return carves, err
 	}
-	return carve, nil
+	return carves, nil
 }
 
 // GetByQuery to get a carve by query name
-func (c *Carves) GetByQuery(name string) (CarvedFile, error) {
+func (c *Carves) GetByQuery(name string) ([]CarvedFile, error) {
 	return c.GetByRequest(name)
 }
 
@@ -174,6 +188,22 @@ func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 		return blocks, err
 	}
 	return blocks, nil
+}
+
+// CheckCompression to verify if the blocks are compressed using zstd
+func (c *Carves) CheckCompression(block CarvedBlock) (bool, error) {
+	// Make sure this is the block 0
+	if block.BlockID != 0 {
+		return false, fmt.Errorf("block_id is not 0 (%d)", block.BlockID)
+	}
+	compressionCheck, err := base64.StdEncoding.DecodeString(block.Data)
+	if err != nil {
+		return false, fmt.Errorf("Decoding first block %v", err)
+	}
+	if bytes.Compare(compressionCheck[:4], CompressionHeader) == 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 // GetNodeCarves to get all the carves for a given node
@@ -225,59 +255,57 @@ func (c *Carves) Completed(sessionid string) bool {
 }
 
 // Archive to convert finalize a completed carve and create a file ready to download
-func (c *Carves) Archive(sessionid, path string) error {
-	encodedFile := path + "/" + sessionid + ".b64"
-	finalExtension := ".tar"
-	finalFile := path + "/" + sessionid
-	// Prepare file for the encoded content
-	encF, err := os.OpenFile(encodedFile, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return fmt.Errorf("Opening encoded file %v", err)
+func (c *Carves) Archive(sessionid, path string) (map[string]string, error) {
+	res := make(map[string]string)
+	// Make sure last character is a slash
+	finalFile := path
+	if path[len(path)-1:] != "/" {
+		finalFile += "/"
+	}
+	finalFile += sessionid + ".tar"
+	// If file already exists, no need to re-generate it from blocks
+	_f, err := os.Stat(finalFile)
+	if err == nil {
+		res["file"] = finalFile
+		res["size"] = strconv.FormatInt(_f.Size(), 10)
+		return res, nil
+	}
+	_f, err = os.Stat(finalFile + ".zst")
+	if err == nil {
+		res["file"] = finalFile
+		res["size"] = strconv.FormatInt(_f.Size(), 10)
+		return res, nil
 	}
 	// Get all blocks
 	blocks, err := c.GetBlocks(sessionid)
 	if err != nil {
-		return fmt.Errorf("Getting blocks %v", err)
+		return res, fmt.Errorf("Getting blocks - %v", err)
 	}
-	// Iterate through blocks and write encoded content to file
-	// Check the first block, to see if the carve was compressed
+	zstd, err := c.CheckCompression(blocks[0])
+	if err != nil {
+		return res, fmt.Errorf("Compression check - %v", err)
+	}
+	if zstd {
+		finalFile += ".zst"
+	}
+	f, err := os.OpenFile(finalFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return res, fmt.Errorf("File creation - %v", err)
+	}
+	defer f.Close()
+	bytesWritten := 0
+	// Iterate through blocks and write decoded content to file
 	for _, b := range blocks {
-		if b.BlockID == 0 {
-			compressionCheck, err := base64.StdEncoding.DecodeString(b.Data)
-			if err != nil {
-				return fmt.Errorf("Decoding first block %v", err)
-			}
-			if bytes.Compare(compressionCheck[:4], CompressionHeader) == 0 {
-				finalExtension += ".zst"
-			}
+		toFile, err := base64.StdEncoding.DecodeString(b.Data)
+		if err != nil {
+			return res, fmt.Errorf("Decoding data - %v", err)
 		}
-		if _, err = encF.WriteString(b.Data); err != nil {
-			return fmt.Errorf("Writing encoded file %v", err)
+		if _, err := f.Write(toFile); err != nil {
+			return res, fmt.Errorf("Writing to file - %v", err)
 		}
+		bytesWritten += len(toFile)
 	}
-	// Close encoded file
-	if err := encF.Close(); err != nil {
-		return fmt.Errorf("Closing encoded file %v", err)
-	}
-	// Open encoded file again
-	encodedData, err := os.Open(encodedFile)
-	if err != nil {
-		return fmt.Errorf("Opening encoded data %v", err)
-	}
-	defer encodedData.Close()
-	// Prepare file to store the decoded data
-	decodedFile, err := os.Create(finalFile + finalExtension)
-	if err != nil {
-		return fmt.Errorf("Opening decoded file %v", err)
-	}
-	// Close output file
-	defer decodedFile.Close()
-	// Decode the base64 encoded
-	decoder := base64.NewDecoder(base64.StdEncoding, encodedData)
-	// Copy from base64 decoder to final file
-	_, err = io.Copy(decodedFile, decoder)
-	if err != nil {
-		return fmt.Errorf("Saving decoded data %v", err)
-	}
-	return nil
+	res["file"] = finalFile
+	res["size"] = strconv.Itoa(bytesWritten)
+	return res, nil
 }

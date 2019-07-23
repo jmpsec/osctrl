@@ -232,3 +232,5 @@ func incMetric(name string) {
 		_metrics.Inc(name)
 	}
 }
+
+// Helper to generate the 

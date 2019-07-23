@@ -342,10 +342,8 @@ func main() {
 	routerAdmin.Handle("/", handlerAuthCheck(http.HandlerFunc(rootHandler))).Methods("GET")
 	// Admin: node view
 	routerAdmin.Handle("/node/{uuid}", handlerAuthCheck(http.HandlerFunc(nodeHandler))).Methods("GET")
-	// Admin: single node action
-	routerAdmin.Handle("/action/{uuid}", handlerAuthCheck(http.HandlerFunc(nodeActionHandler))).Methods("POST")
 	// Admin: multi node action
-	routerAdmin.Handle("/actions", handlerAuthCheck(http.HandlerFunc(nodeMultiActionHandler))).Methods("POST")
+	routerAdmin.Handle("/node/actions", handlerAuthCheck(http.HandlerFunc(nodeActionsPOSTHandler))).Methods("POST")
 	// Admin: run queries
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunGETHandler))).Methods("GET")
 	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunPOSTHandler))).Methods("POST")
@@ -368,6 +366,8 @@ func main() {
 	routerAdmin.Handle("/carves/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonCarvesHandler))).Methods("GET")
 	// Admin: carves details
 	routerAdmin.Handle("/carves/details/{name}", handlerAuthCheck(http.HandlerFunc(carvesDetailsHandler))).Methods("GET")
+	// Admin: carves download
+	routerAdmin.Handle("/carves/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(carvesDownloadHandler))).Methods("GET")
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")

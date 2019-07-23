@@ -56,3 +56,37 @@ function confirmDeleteCarves(_names) {
   });
   $("#confirmModal").modal();
 }
+
+function deleteCarve(_ids) {
+  actionCarves('delete', _ids, window.location.pathname);
+}
+
+function confirmDeleteCarve(_ids) {
+  var modal_message = 'Are you sure you want to delete this carve?';
+  $("#confirmModalMessage").text(modal_message);
+  $('#confirm_action').click(function () {
+    $('#confirmModal').modal('hide');
+    deleteCarve(_ids);
+  });
+  $("#confirmModal").modal();
+}
+
+function actionCarves(_action, _ids, _redir) {
+  var _csrftoken = $("#csrftoken").val();
+
+  var _url = '/carves/actions';
+  var data = {
+    csrftoken: _csrftoken,
+    ids: _ids,
+    action: _action
+  };
+  sendPostRequest(data, _url, _redir, false);
+}
+
+function downloadCarve(_sessionid) {
+  location.href = "/carves/download/" + _sessionid;
+}
+
+function refreshCarveDetails() {
+  location.reload();
+}

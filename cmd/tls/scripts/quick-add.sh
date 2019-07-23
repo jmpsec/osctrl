@@ -136,6 +136,7 @@ prepareFlags() {
 --carver_disable_function=false
 --carver_start_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverInitPath }}
 --carver_continue_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverBlockPath }}
+--carver_compression=true
 --disable_distributed=false
 --distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls

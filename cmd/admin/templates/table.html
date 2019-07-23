@@ -237,6 +237,31 @@
                   $("#warningModal").modal();
                 }
               }
+            },
+            {
+              className: 'btn custom-size-btn btn-outline-info',
+              text: '<i class="fas fa-file-upload"></i>',
+              titleAttr: 'Carve File',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var uuids = [];
+                $.each(tableNodes.rows('.selected').data(), function() {
+                  uuids.push(this.uuid);
+                });
+                if (uuids.length > 0) {
+                  showCarveFiles(uuids);
+                } else {
+                  console.log('Carve: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more nodes");
+                  $("#warningModal").modal();
+                }
+              }
             }
           ]
         });
@@ -287,6 +312,10 @@
         // Focus on input when modal opens
         $("#queryModal").on('shown.bs.modal', function(){
           $(this).find('#query').focus();
+        });
+        // Focus on input when modal opens
+        $("#carveModal").on('shown.bs.modal', function(){
+          $(this).find('#carve').focus();
         });
       });
     </script>

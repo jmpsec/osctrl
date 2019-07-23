@@ -2,8 +2,10 @@ package main
 
 import (
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/javuto/osctrl/pkg/carves"
@@ -319,13 +321,6 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	// Get queries
-	qs, err := queriesmgr.GetQueries("all")
-	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error getting active queries: %v", err)
-		return
-	}
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
@@ -335,7 +330,6 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
-		Queries:        qs,
 		Target:         "all",
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -458,8 +452,6 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	// Get carves
-	carves := []carves.CarvedFile{}
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
@@ -469,7 +461,6 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
-		Carves:         carves,
 		Target:         "all",
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
@@ -519,7 +510,6 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environments %v", err)
 		return
 	}
-
 	// Get all platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
@@ -622,17 +612,37 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting targets %v", err)
 		return
 	}
+	// Get carves for this query
+	queryCarves, err := carvesmgr.GetByQuery(name)
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting carve %v", err)
+		return
+	}
+	// Get carve blocks by carve
+	blocks := make(map[string][]carves.CarvedBlock)
+	for _, c := range queryCarves {
+		bs, err := carvesmgr.GetBlocks(c.SessionID)
+		if err != nil {
+			incMetric(metricAdminErr)
+			log.Printf("error getting carve blocks %v", err)
+			break
+		}
+		blocks[c.SessionID] = bs
+	}
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
-		Title:          "Query logs " + query.Name,
+		Title:          "Carve details " + query.Name,
 		Username:       ctx["user"],
 		CSRFToken:      ctx["csrftoken"],
 		Environments:   envAll,
 		Platforms:      platforms,
 		Query:          query,
 		QueryTargets:   targets,
+		Carves:         queryCarves,
+		CarveBlocks:    blocks,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
@@ -1100,4 +1110,43 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("DebugService: Users template served")
 	}
 	incMetric(metricAdminOK)
+}
+
+// Handler for GET requests to download carves
+func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract id to download
+	carveSession, ok := vars["sessionid"]
+	if !ok {
+		incMetric(metricAdminErr)
+		log.Println("error getting carve")
+		return
+	}
+	// Prepare file to download
+	f, err := carvesmgr.Archive(carveSession, carvedFilesFolder)
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error downloading carve - %v", err)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Carve download")
+	}
+	incMetric(metricAdminOK)
+	// Send response
+	w.Header().Set("Content-Description", "File Carve Download")
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename="+f["file"])
+	w.Header().Set("Content-Transfer-Encoding", "binary")
+	w.Header().Set("Connection", "Keep-Alive")
+	w.Header().Set("Expires", "0")
+	w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+	w.Header().Set("Pragma", "public")
+	w.Header().Set("Content-Length", f["size"])
+	w.WriteHeader(http.StatusOK)
+	var fileReader io.Reader
+	fileReader, _ = os.Open(f["file"])
+	_, _ = io.Copy(w, fileReader)
 }

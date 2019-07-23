@@ -40,8 +40,7 @@
                         <th>Creator</th>
                         <th>Created</th>
                         <th>Status</th>
-                        <th>Blocks</th>
-                        <th>Size</th>
+                        <th>Targets</th>
                       </tr>
                     </thead>
                   </table>
@@ -103,8 +102,7 @@
               }
             },
             {"data" : "status"},
-            {"data" : "blocks"},
-            {"data" : "size"}
+            {"data" : "progress"}
           ],
           columnDefs: [
             {
@@ -128,7 +126,7 @@
             },{
               targets: 2,
               data: 'creator',
-              width: '6%'
+              width: '16%'
             },{
               targets: 3,
               width: '10%',
@@ -156,10 +154,6 @@
                   return data;
                 }
               }
-            }, {
-              targets: 6,
-              width: '10%',
-              data: 'size'
             }
           ],
           select: {

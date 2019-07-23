@@ -84,33 +84,24 @@ type QueryRunTemplateData struct {
 // CarvesRunTemplateData for passing data to the carves run template
 type CarvesRunTemplateData QueryRunTemplateData
 
-// QueryTableTemplateData for passing data to the query template
-type QueryTableTemplateData struct {
+// GenericTableTemplateData for passing data to a table template
+type GenericTableTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Target         string
-	Queries        []queries.DistributedQuery
 	TLSDebug       bool
 	AdminDebug     bool
 	AdminDebugHTTP bool
 }
 
+// QueryTableTemplateData for passing data to the query template
+type QueryTableTemplateData GenericTableTemplateData
+
 // CarvesTableTemplateData for passing data to the carves template
-type CarvesTableTemplateData struct {
-	Title          string
-	Username       string
-	CSRFToken      string
-	Environments   []environments.TLSEnvironment
-	Platforms      []string
-	Target         string
-	Carves         []carves.CarvedFile
-	TLSDebug       bool
-	AdminDebug     bool
-	AdminDebugHTTP bool
-}
+type CarvesTableTemplateData GenericTableTemplateData
 
 // CarvesDetailsTemplateData for passing data to the carves details
 type CarvesDetailsTemplateData struct {
@@ -121,8 +112,8 @@ type CarvesDetailsTemplateData struct {
 	Platforms      []string
 	Query          queries.DistributedQuery
 	QueryTargets   []queries.DistributedQueryTarget
-	Carve          carves.CarvedFile
-	Blocks         []carves.CarvedBlock
+	Carves         []carves.CarvedFile
+	CarveBlocks    map[string][]carves.CarvedBlock
 	TLSDebug       bool
 	AdminDebug     bool
 	AdminDebugHTTP bool

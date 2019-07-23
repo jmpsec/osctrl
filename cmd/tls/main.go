@@ -25,7 +25,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "1.0.0"
+	serviceVersion string = "0.1.2"
 	// Default endpoint to handle HTTP testing
 	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors
@@ -199,6 +199,8 @@ func main() {
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService:  Environments ticker")
 	}
+	// Refresh environments as soon as service starts
+	go refreshEnvironments()
 	go func() {
 		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
 		if _t == 0 {
@@ -219,6 +221,8 @@ func main() {
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService: Settings ticker")
 	}
+	// Refresh settings as soon as the service starts
+	go refreshSettings()
 	go func() {
 		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
 		if _t == 0 {

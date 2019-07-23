@@ -526,8 +526,8 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
 			switch q.Action {
 			case "delete":
-				for _, n := range q.Names {
-					err := queriesmgr.Delete(n)
+				for _, n := range q.IDs {
+					err := carvesmgr.Delete(n)
 					if err != nil {
 						responseMessage = "error deleting carve"
 						responseCode = http.StatusInternalServerError
@@ -562,7 +562,7 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query run response sent")
+		log.Println("DebugService: Carves action response sent")
 	}
 }
 
@@ -822,7 +822,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler POST requests for multi node action
-func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
+func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -888,76 +888,6 @@ func nodeMultiActionHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Multi-node action response sent")
-	}
-}
-
-// Handler POST requests for single node action
-func nodeActionHandler(w http.ResponseWriter, r *http.Request) {
-	responseMessage := "OK"
-	responseCode := http.StatusOK
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
-	vars := mux.Vars(r)
-	// Extract uuid
-	uuid, ok := vars["uuid"]
-	if !ok {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting uuid")
-		}
-		return
-	}
-	var n NodeActionRequest
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&n)
-	if err != nil {
-		responseMessage = "error parsing POST body"
-		responseCode = http.StatusInternalServerError
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-	} else {
-		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], n.CSRFToken) {
-			switch n.Action {
-			case "delete":
-				err := nodesmgr.ArchiveDeleteByUUID(uuid)
-				if err != nil {
-					responseMessage = "error deleting node"
-					responseCode = http.StatusInternalServerError
-					if settingsmgr.DebugService(settings.ServiceAdmin) {
-						log.Printf("DebugService: %s %v", responseMessage, err)
-					}
-				} else {
-					responseMessage = "Node has been deleted successfully"
-				}
-			case "archive":
-				log.Printf("DebugService: archiving node")
-			}
-		} else {
-			responseMessage = "invalid CSRF token"
-			responseCode = http.StatusInternalServerError
-			if settingsmgr.DebugService(settings.ServiceAdmin) {
-				log.Printf("DebugService: %s %v", responseMessage, err)
-			}
-		}
-	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Node action response sent")
 	}
 }
 

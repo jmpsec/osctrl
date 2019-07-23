@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/javuto/osctrl/pkg/carves"
+	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/utils"
 )
@@ -38,8 +40,7 @@ type CarveJSON struct {
 	Path     CarveData     `json:"path"`
 	Created  CreationTimes `json:"created"`
 	Status   string        `json:"status"`
-	Blocks   CarveProgress `json:"blocks"`
-	Size     int           `json:"size"`
+	Progress CarveProgress `json:"progress"`
 }
 
 // Handler for JSON carves by target
@@ -70,15 +71,21 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare data to be returned
 	cJSON := []CarveJSON{}
 	for _, q := range qs {
-		log.Printf("processing %s", q.Name)
 		c, err := carvesmgr.GetByQuery(q.Name)
 		if err != nil {
 			log.Printf("error getting carves %v", err)
 			continue
 		}
+		status := queries.StatusActive
+		if len(c) > 0 {
+			status = carves.StatusQueried
+		}
+		if q.Completed {
+			status = queries.StatusComplete
+		}
 		progress := make(CarveProgress)
-		progress["total"] = c.TotalBlocks
-		progress["completed"] = c.CompletedBlocks
+		progress["total"] = q.Expected
+		progress["completed"] = q.Executions
 		data := make(CarveData)
 		data["path"] = q.Path
 		data["name"] = q.Name
@@ -87,12 +94,11 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 			Creator: q.Creator,
 			Path:    data,
 			Created: CreationTimes{
-				Display:   pastTimeAgo(c.CreatedAt),
-				Timestamp: pastTimestamp(c.CreatedAt),
+				Display:   pastTimeAgo(q.CreatedAt),
+				Timestamp: pastTimestamp(q.CreatedAt),
 			},
-			Status: c.Status,
-			Blocks: progress,
-			Size:   c.CarveSize,
+			Status:   status,
+			Progress: progress,
 		}
 		cJSON = append(cJSON, _c)
 	}

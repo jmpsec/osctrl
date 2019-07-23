@@ -41,12 +41,10 @@ type DistributedQueryActionRequest struct {
 }
 
 // DistributedCarvesActionRequest to receive carves requests
-type DistributedCarvesActionRequest DistributedQueryActionRequest
-
-// NodeActionRequest to receive node action requests
-type NodeActionRequest struct {
-	CSRFToken string `json:"csrftoken"`
-	Action    string `json:"action"`
+type DistributedCarvesActionRequest struct {
+	CSRFToken string   `json:"csrftoken"`
+	IDs       []string `json:"ids"`
+	Action    string   `json:"action"`
 }
 
 // NodeMultiActionRequest to receive node action requests

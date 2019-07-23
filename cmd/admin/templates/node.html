@@ -34,12 +34,16 @@
                     <div class="row float-right">
                       <div class="col-md-12">
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
-                        data-toggle="tooltip" data-placement="top" title="Remove" onclick="confirmRemoveNode({{ .UUID }});">
+                        data-toggle="tooltip" data-placement="top" title="Remove" onclick="confirmRemoveNodes([{{ .UUID }}]);">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-dark"
-                        data-toggle="tooltip" data-placement="top" title="Run Query" onclick="showQueryNode({{ .UUID }});">
+                        data-toggle="tooltip" data-placement="top" title="Run Query" onclick="showQueryNodes([{{ .UUID }}]);">
                           <i class="fas fa-terminal"></i>
+                        </button>
+                        <button type="button" class="btn custom-size-btn btn-outline-info"
+                        data-toggle="tooltip" data-placement="top" title="Carve File" onclick="showCarveFiles([{{ .UUID }}]);">
+                          <i class="fas fa-file-upload"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
                         data-toggle="tooltip" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
@@ -477,6 +481,10 @@
         // Focus on input when modal opens
         $("#queryModal").on('shown.bs.modal', function(){
           $(this).find('#query').focus();
+        });
+        // Focus on input when modal opens
+        $("#carveModal").on('shown.bs.modal', function(){
+          $(this).find('#carve').focus();
         });
       });
     </script>

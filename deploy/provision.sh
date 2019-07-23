@@ -511,6 +511,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
 
   # Prepare carved files folder
   sudo mkdir -p "$DEST_PATH/carved_files"
+  sudo chmod 777 "$DEST_PATH/carved_files"
 
   # Copy osquery tables JSON file
   sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
