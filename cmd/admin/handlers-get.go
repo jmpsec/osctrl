@@ -54,7 +54,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	if envs.Exists(defaultEnvironment) {
 		http.Redirect(w, r, "/environment/"+defaultEnvironment+"/active", http.StatusFound)
 	} else {
-		http.Redirect(w, r, "/environment/dev/active", http.StatusFound)
+		http.Redirect(w, r, "/environments", http.StatusFound)
 	}
 }
 

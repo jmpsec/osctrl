@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/javuto/osctrl/pkg/environments"
 	"github.com/javuto/osctrl/pkg/nodes"
@@ -12,13 +11,10 @@ import (
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
-	"github.com/spf13/viper"
 	"github.com/urfave/cli"
 )
 
 const (
-	// Service configuration file
-	defConfigFile string = "config/tls.json"
 	// DB configuration file
 	defDBConfigurationFile string = "config/db.json"
 	// Project name
@@ -37,7 +33,8 @@ const (
 var (
 	db           *gorm.DB
 	app          *cli.App
-	configFile   string
+	flags        []cli.Flag
+	commands     []cli.Command
 	dbConfigFile string
 	dbConfig     JSONConfigurationDB
 	settingsmgr  *settings.Settings
@@ -45,54 +42,23 @@ var (
 	queriesmgr   *queries.Queries
 	adminUsers   *users.UserManager
 	envs         *environments.Environment
+	err          error
 )
-
-// Function to load the configuration file and assign to variables
-func loadConfiguration() error {
-	// Load file and read config
-	viper.SetConfigFile(configFile)
-	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-	// No errors!
-	return nil
-}
 
 // Initialization code
 func init() {
-	// Get path of process
-	executableProcess, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	configFile = filepath.Dir(executableProcess) + "/" + defConfigFile
-	dbConfigFile = filepath.Dir(executableProcess) + "/" + defDBConfigurationFile
-	// Initialize CLI details
-	app = cli.NewApp()
-	app.Name = appName
-	app.Usage = appUsage
-	app.Version = appVersion
-	app.Description = appDescription
-	// Flags
-	app.Flags = []cli.Flag{
+	// Initialize CLI flags
+	flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "config, c",
-			Value:       configFile,
-			Usage:       "Load TLS configuration from `FILE`",
-			EnvVar:      "TLS_CONFIG",
-			Destination: &configFile,
-		},
-		cli.StringFlag{
-			Name:        "db, d",
-			Value:       dbConfigFile,
+			Name:        "D, db",
+			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVar:      "DB_CONFIG",
 			Destination: &dbConfigFile,
 		},
 	}
-	// Commands
-	app.Commands = []cli.Command{
+	// Initialize CLI flags commands
+	commands = []cli.Command{
 		{
 			Name:  "user",
 			Usage: "Commands for users",
@@ -120,7 +86,7 @@ func init() {
 							Usage: "Full name for the new user",
 						},
 					},
-					Action: addUser,
+					Action: cliWrapper(addUser),
 				},
 				{
 					Name:    "edit",
@@ -136,7 +102,7 @@ func init() {
 							Usage: "New password to be used",
 						},
 					},
-					Action: editUser,
+					Action: cliWrapper(editUser),
 				},
 				{
 					Name:    "delete",
@@ -148,13 +114,13 @@ func init() {
 							Usage: "User to be deleted",
 						},
 					},
-					Action: deleteUser,
+					Action: cliWrapper(deleteUser),
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing users",
-					Action:  listUsers,
+					Action:  cliWrapper(listUsers),
 				},
 			},
 		},
@@ -190,7 +156,7 @@ func init() {
 							Usage: "Certificate file to be read",
 						},
 					},
-					Action: addEnvironment,
+					Action: cliWrapper(addEnvironment),
 				},
 				{
 					Name:    "delete",
@@ -202,7 +168,7 @@ func init() {
 							Usage: "Environment to be deleted",
 						},
 					},
-					Action: deleteEnvironment,
+					Action: cliWrapper(deleteEnvironment),
 				},
 				{
 					Name:    "show",
@@ -214,13 +180,13 @@ func init() {
 							Usage: "Environment to be displayed",
 						},
 					},
-					Action: showEnvironment,
+					Action: cliWrapper(showEnvironment),
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS environments",
-					Action:  listEnvironment,
+					Action:  cliWrapper(listEnvironment),
 				},
 				{
 					Name:  "quick-add",
@@ -236,7 +202,7 @@ func init() {
 							Usage: "Type of one-liner",
 						},
 					},
-					Action: quickAddEnvironment,
+					Action: cliWrapper(quickAddEnvironment),
 				},
 			},
 		},
@@ -282,7 +248,7 @@ func init() {
 							Usage: "Setting info",
 						},
 					},
-					Action: addSetting,
+					Action: cliWrapper(addSetting),
 				},
 				{
 					Name:    "update",
@@ -327,7 +293,7 @@ func init() {
 							Usage: "Setting info",
 						},
 					},
-					Action: updateSetting,
+					Action: cliWrapper(updateSetting),
 				},
 				{
 					Name:    "delete",
@@ -343,13 +309,13 @@ func init() {
 							Usage: "Value service to be deleted",
 						},
 					},
-					Action: deleteSetting,
+					Action: cliWrapper(deleteSetting),
 				},
 				{
 					Name:    "show",
 					Aliases: []string{"s"},
 					Usage:   "Show all configuration values",
-					Action:  listConfiguration,
+					Action:  cliWrapper(listConfiguration),
 				},
 			},
 		},
@@ -367,7 +333,7 @@ func init() {
 							Usage: "Node UUID to be deleted",
 						},
 					},
-					Action: deleteNode,
+					Action: cliWrapper(deleteNode),
 				},
 				{
 					Name:    "list",
@@ -390,7 +356,7 @@ func init() {
 							Usage:  "Show inactive nodes",
 						},
 					},
-					Action: listNodes,
+					Action: cliWrapper(listNodes),
 				},
 			},
 		},
@@ -408,7 +374,7 @@ func init() {
 							Usage: "Query name to be completed",
 						},
 					},
-					Action: completeQuery,
+					Action: cliWrapper(completeQuery),
 				},
 				{
 					Name:    "delete",
@@ -420,7 +386,7 @@ func init() {
 							Usage: "Query name to be deleted",
 						},
 					},
-					Action: deleteQuery,
+					Action: cliWrapper(deleteQuery),
 				},
 				{
 					Name:    "list",
@@ -448,45 +414,68 @@ func init() {
 							Usage:  "Show deleted queries",
 						},
 					},
-					Action: listQueries,
+					Action: cliWrapper(listQueries),
 				},
 			},
 		},
 	}
-	// Load configuration
-	if err := loadConfiguration(); err != nil {
-		log.Fatalf("Error loading configuration %s", err)
+}
+
+// Function to wrap actions
+func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
+	return func(c *cli.Context) error {
+		// Load DB configuration
+		dbConfig, err = loadDBConfiguration(dbConfigFile)
+		if err != nil {
+			log.Fatalf("Error loading DB configuration - %s", err)
+		}
+		// Database handler
+		db = getDB(dbConfig)
+		// Close when exit
+		//defer db.Close()
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				log.Fatalf("Failed to close Database handler - %v", err)
+			}
+		}()
+		// Initialize users
+		adminUsers = users.CreateUserManager(db)
+		// Initialize environment
+		envs = environments.CreateEnvironment(db)
+		// Initialize settings
+		settingsmgr = settings.NewSettings(db)
+		// Initialize nodes
+		nodesmgr = nodes.CreateNodes(db)
+		// Initialize queries
+		queriesmgr = queries.CreateQueries(db)
+		// Execute action
+		return action(c)
 	}
-	// Load DB configuration
-	dbConfig, err = loadDBConfiguration(dbConfigFile)
-	if err != nil {
-		log.Fatalf("Error loading DB configuration %s", err)
+}
+
+// Action to run when no flags are provided
+func cliAction(c *cli.Context) error {
+	if c.NumFlags() == 0 {
+		if err := cli.ShowAppHelp(c); err != nil {
+			log.Fatalf("Error with CLI help - %s", err)
+		}
+		return cli.NewExitError("No flags provided", 2)
 	}
+	return nil
 }
 
 // Go go!
 func main() {
-	// Database handler
-	db = getDB(dbConfig)
-	// Close when exit
-	//defer db.Close()
-	defer func() {
-		err := db.Close()
-		if err != nil {
-			log.Fatalf("Failed to close Database handler %v", err)
-		}
-	}()
-	// Initialize users
-	adminUsers = users.CreateUserManager(db)
-	// Initialize environment
-	envs = environments.CreateEnvironment(db)
-	// Initialize settings
-	settingsmgr = settings.NewSettings(db)
-	// Initialize nodes
-	nodesmgr = nodes.CreateNodes(db)
-	// Initialize queries
-	queriesmgr = queries.CreateQueries(db)
 	// Let's go!
+	app = cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
+	app.Description = appDescription
+	app.Flags = flags
+	app.Commands = commands
+	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
 		log.Fatalf("Failed to execute %v", err)
 	}

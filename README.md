@@ -50,19 +50,7 @@ The `provision.sh` script will configure all necessary files for `osctrl` to fun
 
 You can use docker to run `osctrl` and each service has a separate `Dockerfile` to run independently. Also there is a `docker-compose.yml` with the description of all services of a functional deployment.
 
-Use the files `Dockerfile-[tls,admin,nginx]` to bring up each service, after being built. For example to build the container use:
-
-```shell
-docker -t osctrl-tls -f Dockerfile-tls .
-```
-
-And after the build is successful, you can run the container as follows:
-
-```shell
-docker run osctrl-tls
-```
-
-Likewise you can build and bring up all services at once, using `docker-compose build` and `docker-compose up`.
+Inside of the `docker` folder, execute the command `./dockerize.sh -u` to build and run all containers necessary for `osctrl`.
 
 Ultimately you can just execute `make docker_all` and it will automagically build and run `osctrl` locally in docker.
 

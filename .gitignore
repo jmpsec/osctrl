@@ -26,12 +26,6 @@ vendor
 # Plugins
 *.so
 
-# TLS Configuration
-tls.json
-
-# Admin Configuration
-admin.json
-
 # Deployment related files
 osctrl.sh
 
@@ -50,6 +44,10 @@ osctrl.key
 osctrl.crt
 osctrl.secret
 dhparam.pem
+
+# Docker temporary folders
+docker/certs
+docker/config
 
 # Customization
 #brand.png

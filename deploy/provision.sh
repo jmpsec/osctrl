@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# [ osctrl 🎛 ]: Provisioning script for prod and dev
+# [ osctrl 🎛 ]: Provisioning script
 #
 # Usage: provision.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...
 #
@@ -182,6 +182,8 @@ VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "all")
 
 # Extract arguments
 ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 eval set -- "$ARGS"
 
@@ -475,7 +477,7 @@ install_go_12
 sudo mkdir -p "$DEST_PATH/config"
 
 # Generate DB configuration file for services
-configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
 
 # Build code
 cd "$SOURCE_PATH"
@@ -486,7 +488,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   make tls
 
   # Configuration file generation for TLS service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT"
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "sudo"
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
@@ -504,14 +506,14 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   make admin
 
   # Configuration file generation for Admin service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT"
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "sudo"
 
   # Prepare data folder
   sudo mkdir -p "$DEST_PATH/data"
 
   # Prepare carved files folder
   sudo mkdir -p "$DEST_PATH/carved_files"
-  sudo chmod 777 "$DEST_PATH/carved_files"
+  sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
   # Copy osquery tables JSON file
   sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
@@ -540,10 +542,10 @@ DEST="$DEST_PATH" make install_cli
 # If we are in dev, create environment and enroll host
 if [[ "$MODE" == "dev" ]]; then
   log "Creating environment for dev"
-  __tls_conf="$DEST_PATH/config/$TLS_CONF"
+  __db_conf="$DEST_PATH/config/$DB_CONF"
   __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.conf"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
-  "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
 
   log "Checking if service is ready"
   while true; do
@@ -559,13 +561,13 @@ if [[ "$MODE" == "dev" ]]; then
 
   if [[ "$ENROLL" == true ]]; then
     log "Adding host in dev environment"
-    eval $( "$DEST_PATH"/osctrl-cli -c "$__tls_conf" environment quick-add -n "dev" )
+    eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment quick-add -n "dev" )
   fi
 fi
 
 # Create admin user
 log "Creating admin user"
-"$DEST_PATH"/osctrl-cli -c "$__tls_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
+"$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
 
 # Ascii art is always appreciated
 if [[ "$DISTRO" == "ubuntu" ]]; then

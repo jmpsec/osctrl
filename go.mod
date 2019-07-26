@@ -17,7 +17,10 @@ require (
 	github.com/javuto/osctrl/pkg/types v0.1.2
 	github.com/javuto/osctrl/pkg/users v0.1.2
 	github.com/javuto/osctrl/pkg/utils v0.1.2
-	github.com/jinzhu/gorm v1.9.8
+	github.com/javuto/osctrl/plugins/db_logging v0.0.0-00010101000000-000000000000 // indirect
+	github.com/javuto/osctrl/plugins/logging_dispatcher v0.0.0-00010101000000-000000000000 // indirect
+	github.com/javuto/osctrl/plugins/splunk_logging v0.0.0-00010101000000-000000000000 // indirect
+	github.com/jinzhu/gorm v1.9.10
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
@@ -48,6 +51,6 @@ replace github.com/javuto/osctrl/plugins/logging_dispatcher => ./plugins/logging
 
 replace github.com/javuto/osctrl/plugins/db_logging => ./plugins/db_logging
 
-replace github.com/javuto/osctrl/plugins/splunk_dispatcher => ./plugins/splunk_logging
+replace github.com/javuto/osctrl/plugins/splunk_logging => ./plugins/splunk_logging
 
 replace github.com/javuto/osctrl/plugins/graylog_logging => ./plugins/graylog_logging

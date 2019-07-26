@@ -1,7 +1,7 @@
 package main
 
-// JSONConfigurationUsers to hold all Admin users
-type JSONConfigurationUsers struct {
+// JSONConfigurationUser to hold all Admin users
+type JSONConfigurationUser struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Admin    bool   `json:"admin"`

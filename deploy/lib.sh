@@ -131,13 +131,37 @@ function nginx_service() {
   sudo mkdir -p "$__available"
   sudo mkdir -p "$__enabled"
 
-  cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sudo tee "$__available/$__out"
+  nginx_generate "$__conf" "$__cert" "$__key" "$__dh" "$__pport" "$__iport" "localhost" "$__available/$__out" "sudo"
 
   if [[ -f "$__enabled/default" ]]; then
     sudo rm -f "$__enabled/default"
   fi
 
   sudo ln -sf "$__available/$__out" "$__enabled/$__out"
+}
+
+# Generate nginx configuration for a service
+#   string  configuration_template
+#   string  certificate_file
+#   string  certificate_key
+#   string  certificate_dh
+#   int     public_port
+#   int     private_port
+#   string  configuration_output
+function nginx_generate() {
+  local __conf=$1
+  local __cert=$2
+  local __key=$3
+  local __dh=$4
+  local __pport=$5
+  local __iport=$6
+  local __host=$7
+  local __out=$8
+  local __sudo=$9
+
+  log "Generating $__out configuration"
+
+  cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sed "s|PRIVATE_HOST|$__host|g" | $__sudo tee "$__out"
 }
 
 # Generate self-signed certificates for nginx
@@ -185,16 +209,19 @@ function certbot_certificates_nginx() {
 #   string  conf_destination
 #   string  service_host_port (host|port)
 #   string  service_name
+#   string  listener
 function configuration_service() {
   local __conf=$1
   local __dest=$2
   local __tlshost=`echo $3 | cut -d"|" -f1`
   local __tlsport=`echo $3 | cut -d"|" -f2`
   local __service=$4
+  local __listener=$5
+  local __sudo=$6
 
   log "Generating $__dest configuration"
 
-  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_SERVICE_NAME|$__service|g" | sudo tee "$__dest"
+  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_LISTENER|$__listener|g" | sed "s|_SERVICE_NAME|$__service|g" | $__sudo tee "$__dest"
 }
 
 # DB configuration file generation
@@ -213,10 +240,11 @@ function configuration_db() {
   local __dbname=$5
   local __dbuser=$6
   local __dbpass=$7
+  local __sudo=$8
 
   log "Generating $__dest configuration"
 
-  cat "$__conf" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | sudo tee "$__dest"
+  cat "$__conf" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | $__sudo tee "$__dest"
 }
 
 # Enable service as systemd

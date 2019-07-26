@@ -1,6 +1,6 @@
 {
   "_SERVICE_NAME": {
-    "listener": "127.0.0.1",
+    "listener": "_LISTENER",
     "port": "_SERVICE_PORT",
     "host": "_SERVICE_HOST",
     "auth": "db",

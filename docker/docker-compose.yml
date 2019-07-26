@@ -1,46 +1,6 @@
 version: "3"
 
 services:
-  osctrl-tls:
-    container_name: osctrl-tls
-    depends_on:
-      - "osctrl-db"
-    build:
-      context: .
-      dockerfile: "Dockerfile-tls"
-    links:
-      - "osctrl-db"
-    ports:
-      - "9000:9000"
-    networks:
-      - private-net
-  osctrl-admin:
-    container_name: osctrl-admin
-    depends_on:
-      - "osctrl-db"
-    build:
-      context: .
-      dockerfile: "Dockerfile-admin"
-    links:
-      - "osctrl-db"
-    ports:
-      - "9001:9001"
-    networks:
-      - private-net
-  osctrl-nginx:
-    container_name: osctrl-nginx
-    depends_on:
-      - "osctrl-tls"
-      - "osctrl-admin"
-    build:
-      context: .
-      dockerfile: "Dockerfile-nginx"
-    ports:
-      - "443:443"
-      - "8443:8443"
-    networks:
-      - public-net
-      - private-net
   osctrl-db:
     container_name: osctrl-db
     image: postgres:10-alpine
@@ -54,6 +14,55 @@ services:
       - "5432:5432"
     networks:
       - private-net
+  osctrl-tls:
+    container_name: osctrl-tls
+    depends_on:
+      - "osctrl-db"
+    build:
+      context: .
+      dockerfile: "docker/tls/Dockerfile"
+    links:
+      - "osctrl-db"
+    ports:
+      - "9000:9000"
+    networks:
+      - private-net
+    volumes:
+      - ./docker/config:/osctrl/config
+  osctrl-admin:
+    container_name: osctrl-admin
+    depends_on:
+      - "osctrl-db"
+    build:
+      context: .
+      dockerfile: "docker/admin/Dockerfile"
+    links:
+      - "osctrl-db"
+    ports:
+      - "9001:9001"
+    networks:
+      - private-net
+    volumes:
+      - ./docker/certs:/osctrl/certs
+      - ./docker/config:/osctrl/config
+  osctrl-nginx:
+    image: "nginx:1.13.5"
+    container_name: osctrl-nginx
+    depends_on:
+      - "osctrl-tls"
+      - "osctrl-admin"
+    ports:
+      - "443:443"
+      - "8443:8443"
+    expose:
+      - "443"
+      - "8443"
+    networks:
+      - public-net
+      - private-net
+    volumes:
+      - ./docker/certs:/etc/certs
+      - ./docker/config:/etc/nginx/conf.d
 
 volumes:
   db-data:

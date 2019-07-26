@@ -100,24 +100,25 @@ logs_admin:
 
 # Build docker containers and run them (also generates new certificates)
 docker_all:
-	./docker.sh
+	./docker/dockerize.sh -u -b -f
 
 # Run docker containers
 docker_up:
-	docker-compose up
+	./docker/dockerize.sh -u
 
 # Build docker containers
 docker_build:
-	docker-compose build
+	./docker/dockerize.sh -b
 
 # Takes down docker containers
 docker_down:
-	docker-compose down
+	./docker/dockerize.sh -d
 
 # Cleans docker containers and certificates
 docker_clean:
-	docker-compose rm
-	rm -Rf dhparam.pem osctrl.crt osctrl.csr osctrl.key
+	./docker/dockerize.sh -x
+	rm -Rf docker/certs/*
+	rm -Rf docker/config/*
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
