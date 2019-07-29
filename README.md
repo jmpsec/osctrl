@@ -27,7 +27,7 @@ The configuration for both the `tls` and the `admin` services needs to be provid
     "port": "_TLS_PORT",
     "host": "_TLS_HOST",
     "auth": "none",
-    "logging": "stdout"
+    "logging": "db"
   }
 }
 ```

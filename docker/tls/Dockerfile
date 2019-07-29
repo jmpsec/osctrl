@@ -26,6 +26,6 @@ RUN go build -buildmode=plugin -o plugins/splunk_logging_plugin.so plugins/splun
 RUN go build -o bin/osctrl-tls cmd/tls/*.go
 RUN go build -o bin/osctrl-cli cmd/cli/*.go
 
-EXPOSE 9000
+COPY docker/tls/wait.sh .
 
-ENTRYPOINT [ "bin/osctrl-tls" ]
+CMD [ "/bin/sh", "/osctrl/wait.sh" ]

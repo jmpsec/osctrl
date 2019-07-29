@@ -20,7 +20,7 @@ const JSONApplication string = "application/json"
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
 
 // Empty default osquery configuration
-const emptyConfiguration string = "data/osquery-empty.conf"
+const emptyConfiguration string = "data/osquery-empty.json"
 
 // Handle testing requests
 func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {

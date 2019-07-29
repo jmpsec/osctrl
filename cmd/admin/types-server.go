@@ -1,12 +1,5 @@
 package main
 
-// JSONConfigurationUser to hold all Admin users
-type JSONConfigurationUser struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Admin    bool   `json:"admin"`
-}
-
 // JSONConfigurationSAML to keep all SAML details for auth
 type JSONConfigurationSAML struct {
 	CertPath    string `json:"certpath"`

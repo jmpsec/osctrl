@@ -20,7 +20,6 @@ import (
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
 	"github.com/javuto/osctrl/pkg/types"
-
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/crewjam/saml/samlsp"
@@ -250,6 +249,7 @@ func main() {
 	}
 	// multiple listeners channel
 	finish := make(chan bool)
+
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {

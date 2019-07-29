@@ -116,7 +116,9 @@ docker_down:
 
 # Cleans docker containers and certificates
 docker_clean:
+	make docker_down
 	./docker/dockerize.sh -x
+	docker volume rm osctrl_db-data
 	rm -Rf docker/certs/*
 	rm -Rf docker/config/*
 

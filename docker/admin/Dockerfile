@@ -14,6 +14,7 @@ ADD cmd/admin/templates/components/page-js-online.html tmpl_admin/components/pag
 ADD cmd/admin/static/ static
 
 ADD deploy/osquery/data/3.3.2.json data/
+ADD deploy/osquery/osquery-empty.json data/
 
 RUN mkdir -p carved_files
 
@@ -29,11 +30,13 @@ RUN go build -o bin/osctrl-admin cmd/admin/*.go
 RUN go build -o bin/osctrl-cli cmd/cli/*.go
 
 # Create dev environment
-# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host localhost -crt certs/osctrl.crt -conf config/osquery-empty.conf
+# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host localhost -crt certs/osctrl.crt -conf config/osquery-dev.json
 
 # Create admin user
-#RUN bin/osctrl-cli -D config/db.json user add -u admin -p admin -a -n Admin
+# RUN bin/osctrl-cli -D config/db.json user add -u admin -p admin -a -n Admin
 
-EXPOSE 9001
+# ENTRYPOINT [ "bin/osctrl-admin" ]
 
-ENTRYPOINT [ "bin/osctrl-admin" ]
+COPY docker/admin/wait.sh .
+
+CMD [ "/bin/sh", "/osctrl/wait.sh" ]

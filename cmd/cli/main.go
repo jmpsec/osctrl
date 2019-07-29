@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/javuto/osctrl/pkg/nodes"
 	"github.com/javuto/osctrl/pkg/queries"
 	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/javuto/osctrl/pkg/types"
 	"github.com/javuto/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
@@ -36,7 +38,7 @@ var (
 	flags        []cli.Flag
 	commands     []cli.Command
 	dbConfigFile string
-	dbConfig     JSONConfigurationDB
+	dbConfig     types.JSONConfigurationDB
 	settingsmgr  *settings.Settings
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
@@ -418,27 +420,57 @@ func init() {
 				},
 			},
 		},
+		{
+			Name:   "check",
+			Usage:  "Checks DB connection",
+			Action: checkDB,
+		},
 	}
+}
+
+// Action for the DB check
+func checkDB(c *cli.Context) error {
+	if err := dbConnection(dbConfigFile); err != nil {
+		return fmt.Errorf("Error connecting to DB - %v", err)
+	}
+	// Initialize users
+	adminUsers = users.CreateUserManager(db)
+	// Initialize environment
+	envs = environments.CreateEnvironment(db)
+	// Initialize settings
+	settingsmgr = settings.NewSettings(db)
+	// Initialize nodes
+	nodesmgr = nodes.CreateNodes(db)
+	// Initialize queries
+	queriesmgr = queries.CreateQueries(db)
+	// Should be good
+	return nil
+}
+
+// Function to load and connect to DB
+func dbConnection(config string) error {
+	// Load DB configuration
+	dbConfig, err = loadDBConfiguration(config)
+	if err != nil {
+		return fmt.Errorf("Error loading DB configuration - %v", err)
+	}
+	// Database handler
+	db = getDB(dbConfig)
+	// Check if connection is ready
+	if err := db.DB().Ping(); err != nil {
+		return fmt.Errorf("Error pinging DB - %v", err)
+	}
+	// We are ready
+	return nil
 }
 
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		// Load DB configuration
-		dbConfig, err = loadDBConfiguration(dbConfigFile)
-		if err != nil {
-			log.Fatalf("Error loading DB configuration - %s", err)
+		// Load and connecto to DB
+		if err := dbConnection(dbConfigFile); err != nil {
+			return err
 		}
-		// Database handler
-		db = getDB(dbConfig)
-		// Close when exit
-		//defer db.Close()
-		defer func() {
-			err := db.Close()
-			if err != nil {
-				log.Fatalf("Failed to close Database handler - %v", err)
-			}
-		}()
 		// Initialize users
 		adminUsers = users.CreateUserManager(db)
 		// Initialize environment
@@ -460,7 +492,7 @@ func cliAction(c *cli.Context) error {
 		if err := cli.ShowAppHelp(c); err != nil {
 			log.Fatalf("Error with CLI help - %s", err)
 		}
-		return cli.NewExitError("No flags provided", 2)
+		return cli.NewExitError("\nNo flags provided", 2)
 	}
 	return nil
 }

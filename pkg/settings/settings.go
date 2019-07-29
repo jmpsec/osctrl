@@ -23,7 +23,6 @@ const (
 // Types of authentication
 const (
 	AuthNone    string = "none"
-	AuthJSON    string = "json"
 	AuthDB      string = "db"
 	AuthSAML    string = "saml"
 	AuthHeaders string = "headers"

@@ -5,24 +5,17 @@ import (
 	"log"
 	"time"
 
+	"github.com/javuto/osctrl/pkg/types"
+
 	"github.com/jinzhu/gorm"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"
 )
 
-// JSONConfigurationDB to hold all backend configuration values
-type JSONConfigurationDB struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // Function to load the DB configuration file and assign to variables
-func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
-	var config JSONConfigurationDB
+func loadDBConfiguration(file string) (types.JSONConfigurationDB, error) {
+	var config types.JSONConfigurationDB
 	// Load file and read config
 	viper.SetConfigFile(file)
 	err := viper.ReadInConfig()
@@ -40,7 +33,7 @@ func loadDBConfiguration(file string) (JSONConfigurationDB, error) {
 }
 
 // Get PostgreSQL DB using GORM
-func getDB(config JSONConfigurationDB) *gorm.DB {
+func getDB(config types.JSONConfigurationDB) *gorm.DB {
 	t := "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
 	postgresDSN := fmt.Sprintf(
 		t, config.Host, config.Port, config.Name, config.Username, config.Password)
@@ -50,9 +43,8 @@ func getDB(config JSONConfigurationDB) *gorm.DB {
 	}
 	// Performance settings for DB access
 	// FIXME retrieve this from JSON file instead of hardcoded
-	db.DB().SetMaxIdleConns(20)
-	db.DB().SetMaxOpenConns(100)
-	db.DB().SetConnMaxLifetime(time.Second * 30)
-
+	db.DB().SetMaxIdleConns(5)
+	db.DB().SetMaxOpenConns(20)
+	db.DB().SetConnMaxLifetime(time.Second * 5)
 	return db
 }
