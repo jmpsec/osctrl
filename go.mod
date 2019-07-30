@@ -8,19 +8,15 @@ require (
 	github.com/gorilla/mux v1.7.2
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
-	github.com/javuto/osctrl/pkg/carves v0.1.2
-	github.com/javuto/osctrl/pkg/environments v0.1.2
-	github.com/javuto/osctrl/pkg/metrics v0.1.2
-	github.com/javuto/osctrl/pkg/nodes v0.1.2
-	github.com/javuto/osctrl/pkg/queries v0.1.2
-	github.com/javuto/osctrl/pkg/settings v0.1.2
-	github.com/javuto/osctrl/pkg/types v0.1.2
-	github.com/javuto/osctrl/pkg/users v0.1.2
-	github.com/javuto/osctrl/pkg/utils v0.1.2
-	github.com/javuto/osctrl/plugins/db_logging v0.1.2 // indirect
-	github.com/javuto/osctrl/plugins/graylog_logging v0.0.0-00010101000000-000000000000 // indirect
-	github.com/javuto/osctrl/plugins/logging_dispatcher v0.1.2 // indirect
-	github.com/javuto/osctrl/plugins/splunk_logging v0.1.2 // indirect
+	github.com/javuto/osctrl/pkg/carves v0.1.3
+	github.com/javuto/osctrl/pkg/environments v0.1.3
+	github.com/javuto/osctrl/pkg/metrics v0.1.3
+	github.com/javuto/osctrl/pkg/nodes v0.1.3
+	github.com/javuto/osctrl/pkg/queries v0.1.3
+	github.com/javuto/osctrl/pkg/settings v0.1.3
+	github.com/javuto/osctrl/pkg/types v0.1.3
+	github.com/javuto/osctrl/pkg/users v0.1.3
+	github.com/javuto/osctrl/pkg/utils v0.1.3
 	github.com/jinzhu/gorm v1.9.10
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
