@@ -206,6 +206,36 @@ func init() {
 					},
 					Action: cliWrapper(quickAddEnvironment),
 				},
+				{
+					Name:  "flags",
+					Usage: "Generates the flags to run nodes in an environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Environment to be used",
+						},
+						cli.StringFlag{
+							Name:  "certificate, crt",
+							Usage: "Certificate path to be used",
+						},
+						cli.StringFlag{
+							Name:  "secret, s",
+							Usage: "Secret file path to be used",
+						},
+					},
+					Action: cliWrapper(flagsEnvironment),
+				},
+				{
+					Name:  "secret",
+					Usage: "Output the secret to enroll nodes in an environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Environment to be used",
+						},
+					},
+					Action: cliWrapper(secretEnvironment),
+				},
 			},
 		},
 		{

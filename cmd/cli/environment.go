@@ -152,3 +152,46 @@ func quickAddEnvironment(c *cli.Context) error {
 	fmt.Printf("%s\n", oneLiner)
 	return nil
 }
+
+func flagsEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
+	}
+	secret := c.String("secret")
+	if secret == "" {
+		fmt.Println("Secret file path is required")
+		os.Exit(1)
+	}
+	cert := c.String("certificate")
+	if err != nil {
+		return err
+	}
+	flags, err := environments.GenerateFlags(env, secret, cert)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", flags)
+	return nil
+}
+
+func secretEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", env.Secret)
+	return nil
+}

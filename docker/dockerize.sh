@@ -199,7 +199,7 @@ if [[ "$_BUILD" == true ]]; then
   docker-compose -f "$COMPOSERFILE" --project-directory "$ROOTDIR" build
 fi
 
-log "Access $NAME using https://localhost:8443"
+log "Access $NAME-admin using https://localhost:8443"
 
 if [[ "$_UP" == true ]]; then
   log "Running containers"

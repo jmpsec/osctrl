@@ -45,9 +45,10 @@ osctrl.crt
 osctrl.secret
 dhparam.pem
 
-# Docker temporary folders
+# Docker temporary folders and files
 docker/certs
 docker/config
+docker.flags
 
 # Customization
 #brand.png

@@ -63,6 +63,20 @@ services:
     volumes:
       - ./docker/certs:/etc/certs
       - ./docker/config:/etc/nginx/conf.d
+  osctrl-node:
+    container_name: osctrl-node
+    depends_on:
+      - "osctrl-nginx"
+    build:
+      context: .
+      dockerfile: "docker/node/Dockerfile"
+    links:
+      - "osctrl-nginx"
+    networks:
+      - public-net
+    volumes:
+      - ./docker/config:/config
+      - ./docker/certs:/certs
 
 volumes:
   db-data:

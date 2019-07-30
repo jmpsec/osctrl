@@ -30,7 +30,7 @@ RUN go build -o bin/osctrl-admin cmd/admin/*.go
 RUN go build -o bin/osctrl-cli cmd/cli/*.go
 
 # Create dev environment
-# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host localhost -crt certs/osctrl.crt -conf config/osquery-dev.json
+# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host osctrl-tls -crt certs/osctrl.crt -conf config/osquery-dev.json
 
 # Create admin user
 # RUN bin/osctrl-cli -D config/db.json user add -u admin -p admin -a -n Admin

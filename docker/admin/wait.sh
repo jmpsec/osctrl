@@ -7,8 +7,9 @@
 NAME="osctrl-admin"
 WAIT=3
 CONFIG="config"
+CERTS="certs"
 DB_JSON="$CONFIG/db.json"
-CRT_FILE="$CONFIG/osctrl.crt"
+CRT_FILE="$CERTS/osctrl.crt"
 OSQUERY_JSON="$CONFIG/osquery-dev.json"
 
 # Check if database is ready, otherwise commands will fail
@@ -20,14 +21,18 @@ done
 sleep $WAIT
 
 # Create environment dev
-OUTPUT_ENV="$(./bin/osctrl-cli -D "$DB_JSON" environment add -n dev -host localhost -crt "$CRT_FILE" -conf "$OSQUERY_JSON")"
+OUTPUT_ENV="$(./bin/osctrl-cli -D "$DB_JSON" environment add -n dev -host osctrl-nginx -crt "$CRT_FILE" -conf "$OSQUERY_JSON")"
 if [ $? -eq 0 ]; then
   echo "Created environment dev"
 else
   echo "Environment dev exists"
 fi
 
-echo $OUTPUT_ENV
+# Generate flag and secret file for enrolling nodes
+FLAGS_FILE="$CONFIG/docker.flags"
+SECRET_FILE="$CONFIG/docker.secret"
+./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "$CRT_FILE" -secret "$SECRET_FILE" > "$FLAGS_FILE"
+./bin/osctrl-cli -D "$DB_JSON" environment secret -n dev > "$SECRET_FILE"
 
 # Create admin user
 OUTPUT_ADMIN="$(./bin/osctrl-cli -D "$DB_JSON" user add -u admin -p admin -a -n Admin)"
@@ -36,8 +41,6 @@ if [ $? -eq 0 ]; then
 else
   echo "Admin user exists"
 fi
-
-echo $OUTPUT_ADMIN
 
 # Run service
 ./bin/osctrl-admin

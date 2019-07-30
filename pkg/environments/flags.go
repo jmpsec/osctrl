@@ -1,12 +1,17 @@
 package environments
 
+import (
+	"bytes"
+	"text/template"
+)
+
 const (
 	// FlagsTemplate to generate flags for enrolling nodes
 	FlagsTemplate string = `
 --host_identifier=uuid
 --force=true
 --utc=true
---enroll_secret_path=$_SECRET_FILE
+--enroll_secret_path={{ .SecretFile }}
 --enroll_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.EnrollPath }}
 --config_plugin=tls
 --config_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.ConfigPath }}
@@ -27,6 +32,30 @@ const (
 --distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
 --tls_hostname={{ .Environment.Hostname }}
---tls_server_certs=$_CERT
+--tls_server_certs={{ .CertFile }}
 `
 )
+
+type flagData struct {
+	SecretFile  string
+	CertFile    string
+	Environment TLSEnvironment
+}
+
+// GenerateFlags to generate flags
+func GenerateFlags(environment TLSEnvironment, secret, cert string) (string, error) {
+	t, err := template.New("flags").Parse(FlagsTemplate)
+	if err != nil {
+		return "", err
+	}
+	data := flagData{
+		SecretFile:  secret,
+		CertFile:    cert,
+		Environment: environment,
+	}
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, data); err != nil {
+		return "", err
+	}
+	return tpl.String(), nil
+}
