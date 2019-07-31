@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )

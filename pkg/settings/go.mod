@@ -1,4 +1,4 @@
-module github.com/javuto/osctrl/pkg/settings
+module github.com/jmpsec/osctrl/pkg/settings
 
 go 1.12
 

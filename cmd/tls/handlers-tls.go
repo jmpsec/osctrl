@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/environments"
-	"github.com/javuto/osctrl/pkg/nodes"
-	"github.com/javuto/osctrl/pkg/queries"
-	"github.com/javuto/osctrl/pkg/types"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 const (

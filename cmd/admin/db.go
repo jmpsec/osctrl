@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"

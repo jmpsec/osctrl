@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jinzhu/gorm"
 )
 

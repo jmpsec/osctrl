@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/javuto/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jinzhu/gorm"
 )
 

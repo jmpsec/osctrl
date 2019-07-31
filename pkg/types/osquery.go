@@ -3,7 +3,7 @@ package types
 import (
 	"encoding/json"
 
-	"github.com/javuto/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 )
 
 // Types of log types

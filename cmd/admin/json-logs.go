@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // Define log types to be used

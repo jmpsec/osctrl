@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/javuto/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
 // Hanlder to check access to a resource based on the authentication enabled

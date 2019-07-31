@@ -7,10 +7,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/javuto/osctrl/pkg/environments"
-	"github.com/javuto/osctrl/pkg/queries"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/utils"
 
 	"github.com/gorilla/mux"
 )

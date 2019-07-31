@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // Define targets to be used

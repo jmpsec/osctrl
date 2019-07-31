@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/environments"
-	"github.com/javuto/osctrl/pkg/nodes"
-	"github.com/javuto/osctrl/pkg/queries"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/types"
-	"github.com/javuto/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/users"
 )
 
 // LoginTemplateData for passing data to the login template

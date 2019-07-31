@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 const (

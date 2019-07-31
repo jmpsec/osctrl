@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	"github.com/javuto/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jinzhu/gorm"
 )
 

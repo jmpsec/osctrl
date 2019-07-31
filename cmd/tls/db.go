@@ -9,7 +9,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"github.com/javuto/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 const (

@@ -1,4 +1,4 @@
-module github.com/javuto/osctrl/pkg/users
+module github.com/jmpsec/osctrl/pkg/users
 
 go 1.12
 

@@ -1,4 +1,4 @@
-module github.com/javuto/osctrl/pkg/carves
+module github.com/jmpsec/osctrl/pkg/carves
 
 go 1.12
 

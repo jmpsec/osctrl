@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // Constants for seconds
@@ -233,4 +233,4 @@ func incMetric(name string) {
 	}
 }
 
-// Helper to generate the 
+// Helper to generate the

@@ -1,4 +1,4 @@
-module github.com/javuto/osctrl/pkg/nodes
+module github.com/jmpsec/osctrl/pkg/nodes
 
 go 1.12
 

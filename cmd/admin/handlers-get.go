@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/javuto/osctrl/pkg/carves"
-	"github.com/javuto/osctrl/pkg/environments"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/utils"
 
 	"github.com/gorilla/mux"
 )

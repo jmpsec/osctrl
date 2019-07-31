@@ -5,12 +5,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/javuto/osctrl/pkg/environments"
-	"github.com/javuto/osctrl/pkg/nodes"
-	"github.com/javuto/osctrl/pkg/queries"
-	"github.com/javuto/osctrl/pkg/settings"
-	"github.com/javuto/osctrl/pkg/types"
-	"github.com/javuto/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
 	"github.com/urfave/cli"

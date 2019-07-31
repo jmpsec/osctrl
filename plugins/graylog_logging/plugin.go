@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/javuto/osctrl/pkg/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 const (
