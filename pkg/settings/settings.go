@@ -94,7 +94,7 @@ func NewSettings(backend *gorm.DB) *Settings {
 	return s
 }
 
-// EmptyValue creates an emtpy value
+// EmptyValue creates an empty value
 func (conf *Settings) EmptyValue(service, name, typeValue string) SettingValue {
 	return SettingValue{
 		Name:    name,

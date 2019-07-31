@@ -8,7 +8,7 @@
 
 ## osctrl
 
-Fast and efficient operative system management.
+Fast and efficient osquery management.
 
 ## Dependencies
 
@@ -32,15 +32,17 @@ The configuration for both the `tls` and the `admin` services needs to be provid
 }
 ```
 
-The backend configuration file, `db.json`, will look like this:
+The backend configuration file, `db.json`, will look like this, according to your DB values of course:
 
 ```json
-"db": {
-  "host": "_DB_HOST",
-  "port": "_DB_PORT",
-  "name": "_DB_NAME",
-  "username": "_DB_USERNAME",
-  "password": "_DB_PASSWORD"
+{
+  "db": {
+    "host": "_DB_HOST",
+    "port": "_DB_PORT",
+    "name": "_DB_NAME",
+    "username": "_DB_USERNAME",
+    "password": "_DB_PASSWORD"
+  }
 }
 ```
 

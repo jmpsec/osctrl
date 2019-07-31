@@ -286,7 +286,7 @@ func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsDat
 
 // UpdateMetadataByUUID to update node metadata by UUID
 func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, osqueryversion, uuid string) error {
-	// Retireve node
+	// Retrieve node
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)

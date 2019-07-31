@@ -98,7 +98,7 @@ Architecture: all
 Maintainer: @javuto
 Priority: optional
 Version: 1.0
-Description: osctrl - Fast and efficient operative system management
+Description: osctrl - Fast and efficient osquery management
 EOF
 
 echo " [+] Preparing preinst script..."

@@ -16,7 +16,7 @@ sudo gem install --no-ri --no-rdoc fpm
 # Build deb package
 fpm -s dir -t deb -n osctrl -a all -d osquery -v 0.0.1 \
   --deb-priority optional \
-  --description "osctrl - Fast and efficient operative system management" \
+  --description "osctrl - Fast and efficient osquery management" \
   --config-files /etc/osquery/osquery.flags \
   --config-files /etc/osquery/osquery.secret \
   --config-files /etc/osquery/certs/osctrl.crt \

@@ -8,7 +8,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
-// Hanlder to check access to a resource based on the authentication enabled
+// Handler to check access to a resource based on the authentication enabled
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch adminConfig.Auth {
