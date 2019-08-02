@@ -1,69 +1,45 @@
+# osctrl
+
 <p align="center">
-  <img alt="osctrl" src="logo.png" />
+  <img alt="osctrl" src="logo.png" width="300" />
   <p align="center">
-    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE.md"><img alt="Software License" src="https://img.shields.io/badge/license-GPL3-brightgreen.svg?style=flat-square"></a>
-    <a href="https://travis-ci.org/jmpsec/osctrl"><img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square"></a>
+    Fast and efficient osquery management.
+  </p>
+  <p align="center">
+    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE.md">
+      <img alt="Software License" src="https://img.shields.io/badge/license-GPL3-brightgreen.svg?style=flat-square">
+    </a>
+    <a href="https://travis-ci.org/jmpsec/osctrl">
+      <img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square">
+    </a>
+    <a href="https://goreportcard.com/report/github.com/jmpsec/osctrl">
+      <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/jmpsec/osctrl?style=flat-square&fuckgithubcache=1">
+    </a>
   </p>
 </p>
 
-## osctrl
+## What is osctrl?
 
-Fast and efficient osquery management.
+**osctrl** is a fast and efficient [osquery](https://osquery.io) management solution, implementing its [remote API](https://osquery.readthedocs.io/en/stable/deployment/remote/) as TLS endpoint.
 
-## Dependencies
+With **osctrl** you can monitor all your systems running osquery, distribute its configuration fast, collect all the status and result logs and allow you to run on-demand queries.
 
-*(Presuming that you aready have Golang >= 1.12 installed in your system)*
+## Running osctrl with docker
 
-The project uses [Go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies. Each package provides its own `go.mod` file and running `go build` will download all the required dependencies.
+You can use docker to run **osctrl** and each service has a separate `Dockerfile` to run independently. Also there is a `docker-compose.yml` with the description of all services of a functional deployment.
 
-## Service configuration
+Inside of the `docker` folder, execute the command `./dockerize.sh -u` to build and run all containers necessary for **osctrl**.
 
-The configuration for both the `tls` and the `admin` services needs to be provided. The `[admin-tls].json` file will have the following format:
+Ultimately you can just execute `make docker_all` and it will automagically build and run **osctrl** locally in docker.
 
-```json
-{
-  "_SERVICE": {
-    "listener": "127.0.0.1",
-    "port": "_TLS_PORT",
-    "host": "_TLS_HOST",
-    "auth": "none",
-    "logging": "db"
-  }
-}
-```
+## Running osctrl with vagrant
 
-The backend configuration file, `db.json`, will look like this, according to your DB values of course:
-
-```json
-{
-  "db": {
-    "host": "_DB_HOST",
-    "port": "_DB_PORT",
-    "name": "_DB_NAME",
-    "username": "_DB_USERNAME",
-    "password": "_DB_PASSWORD"
-  }
-}
-```
-
-The `provision.sh` script will configure all necessary files for `osctrl` to function properly.
-
-## Using docker
-
-You can use docker to run `osctrl` and each service has a separate `Dockerfile` to run independently. Also there is a `docker-compose.yml` with the description of all services of a functional deployment.
-
-Inside of the `docker` folder, execute the command `./dockerize.sh -u` to build and run all containers necessary for `osctrl`.
-
-Ultimately you can just execute `make docker_all` and it will automagically build and run `osctrl` locally in docker.
-
-## Using vagrant
-
-Vagrant machines can be used for `osctrl` local development. Execute `vagrant up` to create a local virtual machine running Ubuntu 18.04. Once it has finished deploying, `osctrl` will be ready to be used and you can access it following the instructions in the terminal.
+Vagrant machines can be used for **osctrl** local development. Execute `vagrant up` to create a local virtual machine running Ubuntu 18.04. Once it has finished deploying, **osctrl** will be ready to be used and you can access it following the instructions in the terminal.
 
 ## Documentation
 
-The documentation about `osctrl` is here.
+You can find the documentation of the project in [https://osctrl.net](https://osctrl.net)
 
 ## License
 
-`osctrl` is released under the GPL 3 license.
+This project is released under the GPL 3 license.
