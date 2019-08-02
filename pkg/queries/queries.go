@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jinzhu/gorm"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 )
 
 const (

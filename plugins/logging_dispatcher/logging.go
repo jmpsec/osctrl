@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
-	"github.com/jinzhu/gorm"
 )
 
 const (

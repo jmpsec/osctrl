@@ -14,6 +14,7 @@ CLI_DIR = cmd/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
+PKGS_DIR = pkg
 PLUGINS_DIR = plugins
 
 DEST ?= /opt/osctrl
@@ -127,8 +128,17 @@ GOFMT_ARGS = -l -w -s
 gofmt-tls:
 	gofmt $(GOFMT_ARGS) ./$(TLS_CODE)
 
+gofmt-admin:
+	gofmt $(GOFMT_ARGS) ./$(ADMIN_CODE)
+
 gofmt-cli:
 	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
+
+gofmt-pkgs:
+	gofmt $(GOFMT_ARGS) ./$(PKGS_DIR)
+
+gofmt-plugins:
+	gofmt $(GOFMT_ARGS) ./$(PLUGINS_DIR)
 
 # Run all tests
 test:

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jinzhu/gorm"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // OsqueryResultData to log result data to database
