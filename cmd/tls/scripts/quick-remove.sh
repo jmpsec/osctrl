@@ -6,14 +6,21 @@
 
 _PROJECT="{{ .Project }}"
 _SECRET_LINUX=/etc/osquery/osquery.secret
-_SECRET_OSX=/private/var/osquery/osquery.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
 _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
+
+_SECRET_OSX=/private/var/osquery/osquery.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
 _PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist
+
+_SECRET_FREEBSD=
+_FLAGS_FREEBSD=
+_CERT_FREEBSD=
+
 _OSQUERY_SERVICE_LINUX="osqueryd"
 _OSQUERY_SERVICE_OSX="com.facebook.osqueryd"
+_OSQUERY_SERVICE_FREEBSD="osqueryd"
 
 _SECRET_FILE=""
 _FLAGS=""
@@ -68,6 +75,13 @@ stopOsquery() {
       sudo launchctl unload "$_PLIST_OSX"
       sudo rm -f "$_PLIST_OSX"
     fi
+  fi
+  if [ "$OS" = "freebsd" ]; then
+    log "Stopping $_OSQUERY_SERVICE_FREEBSD"
+    if [ "$(service osqueryd onestatus)" = "osqueryd is running." ]; then
+      sudo service "$_OSQUERY_SERVICE_FREEBSD" onestop
+    fi
+    cat /etc/rc.conf | grep "osqueryd_enable" | sed 's/YES/NO/g' | sudo tee /etc/rc.conf
   fi
 }
 

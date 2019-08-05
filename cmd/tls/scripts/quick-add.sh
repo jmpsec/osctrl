@@ -6,19 +6,28 @@
 
 _PROJECT="{{ .Project }}"
 _SECRET="{{ .Environment.Secret }}"
+
 _SECRET_LINUX=/etc/osquery/osquery.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
 _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
+
 _SECRET_OSX=/private/var/osquery/osquery.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
 _PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist
 _OSQUERY_PLIST=/private/var/osquery/com.facebook.osqueryd.plist
+
+_SECRET_FREEBSD=/usr/local/etc/osquery.secret
+_FLAGS_FREEBSD=/usr/local/etc/osquery.flags
+_CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
+
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-3.3.2.pkg"
 _OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_3.3.2_1.linux.amd64.deb"
 _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-3.3.2-1.linux.x86_64.rpm"
+
 _OSQUERY_SERVICE_LINUX="osqueryd"
 _OSQUERY_SERVICE_OSX="com.facebook.osqueryd"
+_OSQUERY_SERVICE_FREEBSD="osqueryd"
 
 _SECRET_FILE=""
 _FLAGS=""
@@ -37,6 +46,7 @@ log() {
 installOsquery() {
   log "Installing osquery for $OS"
   if [ "$OS" = "linux" ]; then
+    log "Installing osquery in Linux"
     distro=$(/usr/bin/rpm -q -f /usr/bin/rpm >/dev/null 2>&1)
     if [ "$?" = "0" ]; then
       log "RPM based system detected"
@@ -51,9 +61,14 @@ installOsquery() {
     fi
   fi
   if [ "$OS" = "darwin" ]; then
+    log "Installing osquery in OSX"
     _PKG="$(echo $_OSQUERY_PKG | cut -d"/" -f5)"
     sudo curl -# "$_OSQUERY_PKG" -o "/tmp/$_PKG"
     sudo installer -pkg "/tmp/$_PKG" -target /
+  fi
+  if [ "$OS" = "freebsd" ]; then
+    log "Installing osquery in FreeBSD"
+    sudo ASSUME_ALWAYS_YES=YES pkg install osquery
   fi
 }
 
@@ -88,6 +103,12 @@ whatOS() {
     _CERT="$_CERT_OSX"
     _SERVICE="$_OSQUERY_SERVICE_OSX"
   fi
+  if [ "$OS" = "freebsd" ]; then
+    _SECRET_FILE="$_SECRET_FREEBSD"
+    _FLAGS="$_FLAGS_FREEBSD"
+    _CERT="$_CERT_FREEBSD"
+    _SERVICE="$_OSQUERY_SERVICE_FREEBSD"
+  fi
   log "_SECRET_FILE=$_SECRET_FILE"
   log "_FLAGS=$_FLAGS"
   log "_CERT=$_CERT"
@@ -107,6 +128,12 @@ stopOsquery() {
     log "Stopping $_OSQUERY_SERVICE_OSX"
     if launchctl list | grep -qcm1 "$_OSQUERY_SERVICE_OSX"; then
       sudo launchctl unload "$_PLIST_OSX"
+    fi
+  fi
+  if [ "$OS" = "freebsd" ]; then
+    log "Stopping $_OSQUERY_SERVICE_FREEBSD"
+    if [ "$(service osqueryd onestatus)" = "osqueryd is running." ]; then
+      sudo service "$_OSQUERY_SERVICE_FREEBSD" onestop
     fi
   fi
 }
@@ -172,6 +199,11 @@ startOsquery() {
     log "Starting $_OSQUERY_SERVICE_OSX"
     sudo cp "$_OSQUERY_PLIST" "$_PLIST_OSX"
     sudo launchctl load "$_PLIST_OSX"
+  fi
+  if [ "$OS" = "freebsd" ]; then
+    log "Starting $_OSQUERY_SERVICE_FREEBSD"
+    echo 'osqueryd_enable="YES"' | sudo tee -a /etc/rc.conf
+    sudo service "$_OSQUERY_SERVICE_FREEBSD" start
   fi
 }
 

@@ -1,11 +1,11 @@
 {
   "options": {
-    "schedule_splay_percent" : 0
+    "schedule_splay_percent": 0
   },
   "schedule": {
-    "osquery_info" : {
-      "query" : "SELECT * FROM uptime;",
-      "interval" : 30
+    "osquery_info": {
+      "query": "SELECT * FROM uptime;",
+      "interval": 60
     }
   },
   "decorators": {

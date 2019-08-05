@@ -17,8 +17,10 @@ $projectName = "{{ .Project }}"
 $projectSecret = "{{ .Environment.Secret }}"
 $progFiles = [System.Environment]::GetEnvironmentVariable('ProgramFiles')
 $osqueryPath = (Join-Path $progFiles "osquery")
-$osqueryDaemonPath = (Join-Path $osqueryPath "osqueryd")
-$osqueryDaemon = (Join-Path $osqueryDaemonPath "osqueryd.exe")
+$daemonFolder = (Join-Path $osqueryPath "osqueryd")
+$extensionsFolder = (Join-Path $osqueryPath "extensions")
+$logFolder = (Join-Path $osqueryPath "log")
+$osqueryDaemon = (Join-Path $daemonFolder "osqueryd.exe")
 $secretFile = (Join-Path $osqueryPath "osquery.secret")
 $flagsFile = (Join-Path $osqueryPath "osquery.flags")
 $certFile = (Join-Path $osqueryPath "{{ .Project }}.crt")
@@ -66,8 +68,43 @@ function Test-IsAdmin {
   )
 }
 
-# A helper function to set "safe" permissions for osquery binaries
 # From https://github.com/facebook/osquery/blob/master/tools/provision/chocolatey/osquery_utils.ps1
+# Helper function to add an explicit Deny-Write ACE for the Everyone group
+function Set-DenyWriteAcl {
+  [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
+  [OutputType('System.Boolean')]
+  param(
+    [string] $targetDir = '',
+    [string] $action = ''
+  )
+  if (($action -ine 'Add') -and ($action -ine 'Remove')) {
+    Write-Debug '[-] Invalid action in Set-DenyWriteAcl.'
+    return $false
+  }
+  if ($PSCmdlet.ShouldProcess($targetDir)) {
+    $acl = Get-Acl $targetDir
+    $inheritanceFlag = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+    $propagationFlag = [System.Security.AccessControl.PropagationFlags]::None
+    $permType = [System.Security.AccessControl.AccessControlType]::Deny
+
+    $worldSIDObj = New-Object System.Security.Principal.SecurityIdentifier ('S-1-1-0')
+    $worldUser = $worldSIDObj.Translate([System.Security.Principal.NTAccount])
+    $permission = $worldUser.Value, "write", $inheritanceFlag, $propagationFlag, $permType
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $permission
+    # We only support adding or removing the ACL
+    if ($action -ieq 'add') {
+      $acl.SetAccessRule($accessRule)
+    } else {
+      $acl.RemoveAccessRule($accessRule)
+    }
+    Set-Acl $targetDir $acl
+    return $true
+  }
+  return $false
+}
+
+# From https://github.com/facebook/osquery/blob/master/tools/provision/chocolatey/osquery_utils.ps1
+# A helper function to set "safe" permissions for osquery binaries
 function Set-SafePermissions {
   [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
   [OutputType('System.Boolean')]
@@ -80,7 +117,13 @@ function Set-SafePermissions {
     # First, to ensure success, we remove the entirety of the ACL
     $acl.SetAccessRuleProtection($true, $false)
     foreach ($access in $acl.Access) {
-      $acl.RemoveAccessRule($access)
+      Try {
+        $acl.RemoveAccessRule($access)
+      } Catch [System.Management.Automation.MethodInvocationException] {
+        if ($_.FullyQualifiedErrorId -ne 'IdentityNotMappedException') {
+          Throw "Error trying to remove access ($access)"
+        }
+      }
     }
     Set-Acl $target $acl
 
@@ -169,9 +212,19 @@ function QuickAdd-Node {
     Write-Host "[+] osquery is installed"
   }
 
+  # Lastly, ensure that the Deny Write ACLs have been removed before modifying
+  Write-Host "[+] Setting Deny Write ACLs"
+  if (Test-Path $daemonFolder) {
+    Set-DenyWriteAcl $daemonFolder 'Remove'
+  }
+  if (Test-Path $extensionsFolder) {
+    Set-DenyWriteAcl $extensionsFolder 'Remove'
+  }
+  Set-DenyWriteAcl $osqueryDaemon 'Remove'
+
   # Making sure non-privileged write access is not allowed
-  Write-Host "[+] Setting osquery safe permissions"
-  Set-SafePermissions $osqueryDaemonPath
+  Write-Host "[+] Setting $daemonFolder safe permissions"
+  Set-SafePermissions $daemonFolder
 
   # Stop osquery service
   $osquerydService = Get-WmiObject -Class Win32_Service -Filter "Name='$serviceName'"
@@ -204,13 +257,29 @@ function QuickAdd-Node {
   }
   $osqueryCertificate | Out-File -FilePath $certFile -Encoding ASCII
 
-  # Start osquery
+  # Start osqueryd service
   if ($osquerydService) {
-    New-Service -BinaryPathName "$osqueryDaemon --flagfile=$flagsFile" `
-                -Name $serviceName `
-                -DisplayName $serviceName `
-                -Description $serviceDescription `
-                -StartupType Automatic
+    if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
+      Write-Debug 'Installing osquery daemon service.'
+      # If the 'install' parameter is passed, we create a Windows service with
+      # the flag file in the default location in \Program Files\osquery\
+      # the flag file in the default location in Program Files
+      $cmd = '"{0}" --flagfile="C:\Program Files\osquery\osquery.flags"' -f $osqueryDaemon
+
+      $svcArgs = @{
+        Name = $serviceName
+        BinaryPathName = $cmd
+        DisplayName = $serviceName
+        Description = $serviceDescription
+        StartupType = "Automatic"
+      }
+      New-Service @svcArgs
+
+      # If the osquery.flags file doesn't exist, we create a blank one.
+      if (-not (Test-Path "$targetFolder\osquery.flags")) {
+        Add-Content "$targetFolder\osquery.flags" $null
+      }
+    }
     Start-Service $serviceName
     Write-Host "[+] '$serviceName' system service is started." -foregroundcolor Cyan
   } else {

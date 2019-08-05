@@ -10,7 +10,7 @@ CONFIG="config"
 CERTS="certs"
 DB_JSON="$CONFIG/db.json"
 CRT_FILE="$CERTS/osctrl.crt"
-OSQUERY_JSON="$CONFIG/osquery-dev.json"
+OSQUERY_JSON="$CONFIG/osquery/osquery-dev.json"
 
 # Check if database is ready, otherwise commands will fail
 until $(./bin/osctrl-cli -D "$DB_JSON" check); do
@@ -31,7 +31,9 @@ fi
 # Generate flag and secret file for enrolling nodes
 FLAGS_FILE="$CONFIG/docker.flags"
 SECRET_FILE="$CONFIG/docker.secret"
-./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "$CRT_FILE" -secret "$SECRET_FILE" > "$FLAGS_FILE"
+# Generating flags and rewriting UUID as identifier for ephemeral, otherwise all the containers
+# will have the same UUID and it will mess things up
+./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "$CRT_FILE" -secret "$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
 ./bin/osctrl-cli -D "$DB_JSON" environment secret -n dev > "$SECRET_FILE"
 
 # Create admin user

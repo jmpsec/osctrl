@@ -63,13 +63,13 @@ services:
     volumes:
       - ./docker/certs:/etc/certs
       - ./docker/config:/etc/nginx/conf.d
-  osctrl-node:
-    container_name: osctrl-node
+  osquery-ubuntu18:
+    container_name: osquery-ubuntu18
     depends_on:
       - "osctrl-nginx"
     build:
       context: .
-      dockerfile: "docker/node/Dockerfile"
+      dockerfile: "docker/nodes/ubuntu18/Dockerfile"
     links:
       - "osctrl-nginx"
     networks:
@@ -77,6 +77,76 @@ services:
     volumes:
       - ./docker/config:/config
       - ./docker/certs:/certs
+  # osquery-ubuntu16:
+  #   container_name: osquery-ubuntu16
+  #   depends_on:
+  #     - "osctrl-nginx"
+  #   build:
+  #     context: .
+  #     dockerfile: "docker/nodes/ubuntu16/Dockerfile"
+  #   links:
+  #     - "osctrl-nginx"
+  #   networks:
+  #     - public-net
+  #   volumes:
+  #     - ./docker/config:/config
+  #     - ./docker/certs:/certs
+  # osquery-debian9:
+  #   container_name: osquery-debian9
+  #   depends_on:
+  #     - "osctrl-nginx"
+  #   build:
+  #     context: .
+  #     dockerfile: "docker/nodes/debian9/Dockerfile"
+  #   links:
+  #     - "osctrl-nginx"
+  #   networks:
+  #     - public-net
+  #   volumes:
+  #     - ./docker/config:/config
+  #     - ./docker/certs:/certs
+  # osquery-debian8:
+  #   container_name: osquery-debian8
+  #   depends_on:
+  #     - "osctrl-nginx"
+  #   build:
+  #     context: .
+  #     dockerfile: "docker/nodes/debian8/Dockerfile"
+  #   links:
+  #     - "osctrl-nginx"
+  #   networks:
+  #     - public-net
+  #   volumes:
+  #     - ./docker/config:/config
+  #     - ./docker/certs:/certs
+  # osquery-centos7:
+  #   container_name: osquery-centos7
+  #   depends_on:
+  #     - "osctrl-nginx"
+  #   build:
+  #     context: .
+  #     dockerfile: "docker/nodes/centos7/Dockerfile"
+  #   links:
+  #     - "osctrl-nginx"
+  #   networks:
+  #     - public-net
+  #   volumes:
+  #     - ./docker/config:/config
+  #     - ./docker/certs:/certs
+  # osquery-centos6:
+  #   container_name: osquery-centos6
+  #   depends_on:
+  #     - "osctrl-nginx"
+  #   build:
+  #     context: .
+  #     dockerfile: "docker/nodes/centos6/Dockerfile"
+  #   links:
+  #     - "osctrl-nginx"
+  #   networks:
+  #     - public-net
+  #   volumes:
+  #     - ./docker/config:/config
+  #     - ./docker/certs:/certs
 
 volumes:
   db-data:

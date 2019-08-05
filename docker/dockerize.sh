@@ -10,6 +10,7 @@
 #  -u	  Runs existing containers.
 #  -c	  Generates configuration files.
 #  -f	  Forces the generation of new certificates and configuration.
+#  -m   Uses mkcert (https://github.com/FiloSottile/mkcert) to generate certificate.
 #  -d	  Takes down running containers.
 #  -x	  Removes container images.
 
@@ -38,6 +39,7 @@ function usage() {
   printf "  -u\tRuns existing containers.\n"
   printf "  -c\tGenerates configuration files.\n"
   printf "  -f\tForces the generation of new certificates and configuration.\n"
+  printf "  -m\tUses mkcert (https://github.com/FiloSottile/mkcert) to generate certificate.\n"
   printf "  -d\tTakes down running containers.\n"
   printf "  -x\tRemoves container images.\n"
 }
@@ -65,11 +67,12 @@ SHOW_USAGE=true
 _BUILD=false
 _UP=false
 _FORCE=false
+_MKCERT=false
 _DOWN=false
 _REMOVE=false
 
 # Extract arguments
-while getopts 'hbufdx' c; do
+while getopts 'hbufmdx' c; do
   case $c in
     h)
       usage
@@ -86,6 +89,10 @@ while getopts 'hbufdx' c; do
     f)
       SHOW_USAGE=false
       _FORCE=true
+      ;;
+    m)
+      SHOW_USAGE=false
+      _MKCERT=true
       ;;
     d)
       SHOW_USAGE=false
@@ -132,26 +139,31 @@ KEY_FILE="$CERTSDIR/$NAME.key"
 CRT_FILE="$CERTSDIR/$NAME.crt"
 DH_FILE="$CERTSDIR/dhparam.pem"
 
-if [[ -f "$KEY_FILE" && "$_FORCE" == false ]]; then
-  log "Using existing $KEY_FILE"
-else
-  log "Generating $KEY_FILE"
-  openssl req -nodes -newkey rsa:$_BITS -keyout "$KEY_FILE" -out "$CSR_FILE" -subj "/O=$NAME"
-fi
+if [[ "$_MKCERT" == false ]]; then
+  if [[ -f "$KEY_FILE" && "$_FORCE" == false ]]; then
+    log "Using existing $KEY_FILE"
+  else
+    log "Generating $KEY_FILE"
+    openssl req -nodes -newkey rsa:$_BITS -keyout "$KEY_FILE" -out "$CSR_FILE" -subj "/O=$NAME"
+  fi
 
-if [[ -f "$CRT_FILE" && "$_FORCE" == false ]]; then
-  log "Using existing $CRT_FILE"
+  if [[ -f "$CRT_FILE" && "$_FORCE" == false ]]; then
+    log "Using existing $CRT_FILE"
+  else
+    log "Generating $CRT_FILE"
+    openssl x509 -req -days 365 -in "$CSR_FILE" -signkey "$KEY_FILE" -out "$CRT_FILE"
+  fi
 else
-  log "Generating $CRT_FILE"
-  openssl x509 -req -days 365 -in "$CSR_FILE" -signkey "$KEY_FILE" -out "$CRT_FILE"
+  log "Generating $KEY_FILE and $CRT_FILE with mkcert"
+  mkcert -key-file "$KEY_FILE" -cert-file "$CRT_FILE" "localhost"
 fi
 
 if [[ -f "$DH_FILE" && "$_FORCE" == false ]]; then
-  log "Using existing $DH_FILE"
-else
-  log "Generating $DH_FILE, it may take a bit"
-  openssl dhparam -out "$DH_FILE" $_BITS &>/dev/null
-fi
+    log "Using existing $DH_FILE"
+  else
+    log "Generating $DH_FILE, it may take a bit"
+    openssl dhparam -out "$DH_FILE" $_BITS &>/dev/null
+  fi
 
 CRT_DST="/etc/certs/$NAME.crt"
 KEY_DST="/etc/certs/$NAME.key"

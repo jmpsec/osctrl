@@ -4,7 +4,7 @@
 #
 # Usage: wait.sh
 
-NAME="osctrl-node"
+NAME="osctrl-ubuntu16"
 WAIT=3
 
 # Check if script to enroll

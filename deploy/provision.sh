@@ -543,7 +543,7 @@ DEST="$DEST_PATH" make install_cli
 if [[ "$MODE" == "dev" ]]; then
   log "Creating environment for dev"
   __db_conf="$DEST_PATH/config/$DB_CONF"
-  __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.conf"
+  __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
   "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
 
