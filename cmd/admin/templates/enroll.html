@@ -27,7 +27,7 @@
                       {{ if not .EnrollExpired }}
                       <div class="card-header-action mr-3">
                         <button id="enroll_expire" class="btn btn-sm btn-block btn-danger"
-                          data-toggle="tooltip" data-placement="bottom" title="Expire" onclick="expireEnrollLink();">
+                          data-tooltip="true" data-placement="bottom" title="Expire" onclick="expireEnrollLink();">
                           <i class="far fa-times-circle"></i>
                         </button>
                       </div>
@@ -35,7 +35,7 @@
                       {{ if .EnrollExpired }}
                       <div class="card-header-action mr-3">
                           <button id="enroll_extend" class="btn btn-sm btn-block btn-success"
-                            data-toggle="tooltip" data-placement="bottom" title="Extend 24 hours" onclick="extendEnrollLink();">
+                            data-tooltip="true" data-placement="bottom" title="Extend 24 hours" onclick="extendEnrollLink();">
                             <i class="far fa-clock"></i>
                           </button>
                       </div>
@@ -66,6 +66,8 @@
                   </div>
 
                 </div>
+
+                <hr>
 
                 <div class="row mb-4">
                   <div class="col-md-12">
@@ -98,7 +100,7 @@
                     {{ if not .RemoveExpired }}
                     <div class="card-header-action mr-3">
                       <button id="remove_expire" class="btn btn-sm btn-block btn-danger"
-                        data-toggle="tooltip" data-placement="bottom" title="Expire" onclick="expireRemoveLink();">
+                        data-tooltip="true" data-placement="bottom" title="Expire" onclick="expireRemoveLink();">
                         <i class="far fa-times-circle"></i>
                       </button>
                     </div>
@@ -106,7 +108,7 @@
                     {{ if .RemoveExpired }}
                     <div class="card-header-action mr-3">
                       <button id="remove_extend" class="btn btn-sm btn-block btn-success"
-                        data-toggle="tooltip" data-placement="bottom" title="Extend 24 hours" onclick="extendRemoveLink();">
+                        data-tooltip="true" data-placement="bottom" title="Extend 24 hours" onclick="extendRemoveLink();">
                         <i class="far fa-clock"></i>
                       </button>
                     </div>
@@ -136,6 +138,8 @@
                   </div>
                 </div>
 
+                <hr>
+
                 <div class="row mb-4">
                   <div class="col-md-12">
                     Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the environment {{ .EnvName }}. It will NOT remove osquery from the system:
@@ -150,6 +154,87 @@
                       <code id="remove-cmd-ps" class="bash">
                         {{ .QuickRemovePowershell }}
                       </code>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-key"></i> Values to manually enroll nodes for environment <b>{{ .EnvName }}</b>
+                <div class="card-header-actions">
+
+                  <div class="row">
+                    <div class="card-header-action mr-3">
+                      <button id="show_values" class="btn btn-sm btn-block btn-info"
+                        data-placement="bottom" title="Show values" data-tooltip="true"
+                        data-toggle="collapse" data-target=".manual-values">
+                        <i class="far fa-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+              <div class="card-body collapse manual-values">
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Enrollment secret:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-secret">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <code id="enroll-secret">
+                        {{ .Secret }}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Enrollment flags for osquery:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-flags">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <pre id="enroll-flags">{{ .Flags }}</pre>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <b>Note:</b> Secret and certificate path need to be changed.
+                  </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Enrollment certificate:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cert">
+                      Copy
+                    </button>
+                    <div class="highlight">
+                      <pre id="enroll-cert">{{ .Certificate }}</pre>
                     </div>
                   </div>
                 </div>
@@ -181,9 +266,12 @@
         $('code').each(function(i, block) {
           hljs.highlightBlock(block);
         });
+        $('pre').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Clipboard.js initialization
         var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
@@ -214,6 +302,22 @@
           }, 2500);
         });
         clipboard_ps.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+        var clipboard_values = new ClipboardJS('#button-clipboard-values');
+        clipboard_values.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_values.on('error', function(e) {
           $(e.trigger).text('Error');
           console.error('Action:', e.action);
           console.error('Trigger:', e.trigger);

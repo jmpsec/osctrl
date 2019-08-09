@@ -35,7 +35,7 @@
                   <div class="row">
                     <div class="card-header-action mr-3">
                       <button id="settings_add" class="btn btn-sm btn-block btn-dark"
-                        data-toggle="tooltip" data-placement="bottom" title="Add Value" onclick="addSetting();">
+                        data-tooltip="true" data-placement="bottom" title="Add Value" onclick="addSetting();">
                         <i class="fas fa-plus"></i>
                       </button>
                     </div>
@@ -62,17 +62,17 @@
                       <td>{{ $e.Type }}</td>
                       {{ if eq $e.Type "integer" }}
                       <td>
-                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Integer }}</p>
+                        <p id="{{ $e.Name }}" data-tooltip="true" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Integer }}</p>
                       </td>
                       {{ end }}
                       {{ if eq $e.Type "string" }}
                       <td>
-                        <p id="{{ $e.Name }}" data-toggle="tooltip" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.String }}</p>
+                        <p id="{{ $e.Name }}" data-tooltip="true" data-type="{{ $e.Type }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.String }}</p>
                       </td>
                       {{ end }}
                       {{ if eq $e.Type "boolean" }}
                       <td>
-                        <label class="switch switch-label switch-pill switch-success switch-sm" data-toggle="tooltip" data-placement="top" title="Change">
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="{{ $e.Name }}" class="switch-input" type="checkbox" onclick="changeBooleanSetting({{ $e.Name }});" {{ if $e.Boolean }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
@@ -217,7 +217,7 @@
         });
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Refresh sidebar stats
         beginStats();

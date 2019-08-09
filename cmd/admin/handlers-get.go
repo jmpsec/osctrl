@@ -809,6 +809,9 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		QuickRemoveShell:      shellQuickRemove,
 		QuickAddPowershell:    powershellQuickAdd,
 		QuickRemovePowershell: powershellQuickRemove,
+		Secret:                env.Secret,
+		Flags:                 env.Flags,
+		Certificate:           env.Certificate,
 		Environments:          envAll,
 		Platforms:             platforms,
 		TLSDebug:              settingsmgr.DebugService(settings.ServiceTLS),
@@ -840,7 +843,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastTimeAgo": pastTimeAgo,
+		"pastTimeAgo":   pastTimeAgo,
+		"jsonRawIndent": jsonRawIndent,
 	}
 	// Prepare template
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(

@@ -34,6 +34,9 @@ func addEnvironment(c *cli.Context) error {
 	certFile := c.String("certificate")
 	if certFile != "" {
 		certificate = environments.ReadExternalFile(certFile)
+	} else {
+		fmt.Println("Certificate path is required")
+		os.Exit(1)
 	}
 	// Create environment if it does not exist
 	if !envs.Exists(envName) {
@@ -44,6 +47,15 @@ func addEnvironment(c *cli.Context) error {
 		newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
 		newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
 		if err := envs.Create(newEnv); err != nil {
+			return err
+		}
+		// Generate flags
+		flags, err := environments.GenerateFlags(newEnv, "", "")
+		if err != nil {
+			return err
+		}
+		// Update flags in the newly created environment
+		if err := envs.UpdateFlags(envName, flags); err != nil {
 			return err
 		}
 	} else {
@@ -93,11 +105,28 @@ func showEnvironment(c *cli.Context) error {
 	fmt.Printf(" Query Interval: %d seconds\n", env.QueryInterval)
 	fmt.Printf(" Carve Init Path: /%s/%s\n", env.Name, env.CarverInitPath)
 	fmt.Printf(" Carve Block Path: /%s/%s\n", env.Name, env.CarverBlockPath)
+	fmt.Println(" Flags: ")
+	fmt.Printf("%s\n", env.Flags)
 	fmt.Println(" Configuration: ")
 	fmt.Printf("%s\n", env.Configuration)
 	fmt.Println(" Certificate: ")
 	fmt.Printf("%s\n", env.Certificate)
 	fmt.Println()
+	return nil
+}
+
+func showFlagsEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", env.Flags)
 	return nil
 }
 
@@ -160,16 +189,9 @@ func flagsEnvironment(c *cli.Context) error {
 		fmt.Println("Environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
-	}
 	secret := c.String("secret")
-	if secret == "" {
-		fmt.Println("Secret file path is required")
-		os.Exit(1)
-	}
 	cert := c.String("certificate")
+	env, err := envs.Get(envName)
 	if err != nil {
 		return err
 	}

@@ -58,6 +58,9 @@ type EnrollTemplateData struct {
 	QuickRemoveShell      string
 	QuickAddPowershell    string
 	QuickRemovePowershell string
+	Secret                string
+	Flags                 string
+	Certificate           string
 	Environments          []environments.TLSEnvironment
 	Platforms             []string
 	TLSDebug              bool

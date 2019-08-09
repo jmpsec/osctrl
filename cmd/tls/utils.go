@@ -62,7 +62,7 @@ func checkValidRemoveSecretPath(environment, secretpath string) bool {
 
 // Helper to convert an enrollment request into a osquery node
 func nodeFromEnroll(req types.EnrollRequest, environment, ipaddress, nodekey string) nodes.OsqueryNode {
-	// Prepare the enrollment request to be stored as JSON
+	// Prepare the enrollment request to be stored as raw JSON
 	enrollRaw, err := json.Marshal(req)
 	if err != nil {
 		log.Printf("error serializing enrollment: %v", err)

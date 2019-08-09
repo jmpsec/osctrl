@@ -209,6 +209,18 @@ func (environment *Environment) UpdateConfiguration(name, configuration string) 
 	return nil
 }
 
+// UpdateFlags to update flags for an environment
+func (environment *Environment) UpdateFlags(name, flags string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	if err := environment.DB.Model(&env).Update("flags", flags).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
 // UpdateIntervals to update intervals for an environment
 func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs int) error {
 	env, err := environment.Get(name)

@@ -24,7 +24,7 @@
               <div class="card-header">
                 <i class="fa fas fa-server"></i> Carved files for {{ .Name }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh details" onclick="refreshCarveDetails();">
                     <i class="fas fa-sync-alt"></i>
                   </button>
@@ -65,13 +65,13 @@
                           <div class="row">
                             <div class="col-sm-6 mx-auto">
                               <button id="download_button" type="button" class="btn btn-sm btn-outline-dark"
-                              data-toggle="tooltip" data-placement="top" title="Download" onclick="downloadCarve({{ $e.SessionID }});">
+                              data-tooltip="true" data-placement="top" title="Download" onclick="downloadCarve({{ $e.SessionID }});">
                                 <i class="fas fa-download"></i>
                               </button>
                             </div>
                             <div class="col-sm-6 mx-auto">
                               <button type="delete_button" class="btn btn-sm btn-outline-danger"
-                              data-toggle="tooltip" data-placement="top" title="Delete" onclick="confirmDeleteCarve([{{ $e.CarveID }}]);">
+                              data-tooltip="true" data-placement="top" title="Delete" onclick="confirmDeleteCarve([{{ $e.CarveID }}]);">
                                 <i class="far fa-trash-alt"></i>
                               </button>
                             </div>
@@ -196,7 +196,7 @@
     <script type="text/javascript">
       $(document).ready(function() {
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Refresh sidebar stats
         beginStats();

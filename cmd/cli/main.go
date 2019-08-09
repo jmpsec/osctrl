@@ -185,6 +185,18 @@ func init() {
 					Action: cliWrapper(showEnvironment),
 				},
 				{
+					Name:    "show-flags",
+					Aliases: []string{"s"},
+					Usage:   "Show the flags for a TLS environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Environment to be displayed",
+						},
+					},
+					Action: cliWrapper(showFlagsEnvironment),
+				},
+				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS environments",

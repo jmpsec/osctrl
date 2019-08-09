@@ -23,7 +23,7 @@
                 <div class="card-header-actions">
                   <div class="card-header-action">
                     <button id="intervals_save" class="btn btn-sm btn-block btn-dark"
-                      data-toggle="tooltip" data-placement="bottom" title="Save Intervals" onclick="saveIntervals();">
+                      data-tooltip="true" data-placement="bottom" title="Save Intervals" onclick="saveIntervals();">
                       <i class="far fa-save"></i>
                     </button>
                   </div>
@@ -72,7 +72,7 @@
                 <div class="card-header-actions">
                   <div class="card-header-action">
                     <button id="json_save" class="btn btn-sm btn-block btn-dark"
-                      data-toggle="tooltip" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
                   </div>
@@ -154,7 +154,7 @@
         editorConf.setSize("100%", "100%");
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Refresh sidebar stats
         beginStats();

@@ -26,7 +26,7 @@
                   <div class="row">
                     <div class="card-header-action mr-3">
                       <button id="users_add" class="btn btn-sm btn-block btn-dark"
-                        data-toggle="tooltip" data-placement="bottom" title="Add User" onclick="addUser();">
+                        data-tooltip="true" data-placement="bottom" title="Add User" onclick="addUser();">
                         <i class="fas fa-plus"></i>
                       </button>
                     </div>
@@ -57,7 +57,7 @@
                       <td>{{ $e.LastIPAddress }}</td>
                       <td>{{ $e.LastUserAgent }}</td>
                       <td>
-                        <label class="switch switch-label switch-pill switch-success switch-sm" data-toggle="tooltip" data-placement="top" title="Change">
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser({{ $e.Username }});" {{ if $e.Admin }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
@@ -132,7 +132,7 @@
     <script type="text/javascript">
       $(document).ready(function() {
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Refresh sidebar stats
         beginStats();

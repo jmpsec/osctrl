@@ -26,7 +26,7 @@
                     <div class="row">
                       <div class="card-header-action mr-3">
                         <button id="environment_add" class="btn btn-sm btn-block btn-dark"
-                          data-toggle="tooltip" data-placement="bottom" title="Add  Environment" onclick="createEnvironment();">
+                          data-tooltip="true" data-placement="bottom" title="Add  Environment" onclick="createEnvironment();">
                           <i class="fas fa-plus"></i>
                         </button>
                       </div>
@@ -147,7 +147,7 @@
         });
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Refresh sidebar stats
         beginStats();

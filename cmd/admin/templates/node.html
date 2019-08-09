@@ -34,19 +34,19 @@
                     <div class="row float-right">
                       <div class="col-md-12">
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
-                        data-toggle="tooltip" data-placement="top" title="Remove" onclick="confirmRemoveNodes([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes([{{ .UUID }}]);">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-dark"
-                        data-toggle="tooltip" data-placement="top" title="Run Query" onclick="showQueryNodes([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Run Query" onclick="showQueryNodes([{{ .UUID }}]);">
                           <i class="fas fa-terminal"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-info"
-                        data-toggle="tooltip" data-placement="top" title="Carve File" onclick="showCarveFiles([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles([{{ .UUID }}]);">
                           <i class="fas fa-file-upload"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
-                        data-toggle="tooltip" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
+                        data-tooltip="true" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
                           <i class="fas fa-sync-alt"></i>
                         </button>
                       </div>
@@ -55,6 +55,9 @@
                     <ul class="nav nav-tabs" role="tablist">
                       <li class="nav-item">
                         <a class="nav-link active" data-toggle="tab" href="#details" role="tab" aria-controls="details">Details</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#metadata" role="tab" aria-controls="metadata">Metadata</a>
                       </li>
                     {{ if eq $template.Logs "db" }}
                       <li class="nav-item">
@@ -267,6 +270,20 @@
 
                       </div>
 
+                      <div class="tab-pane fade" id="metadata" role="tabpanel">
+
+                        <div class="row mb-4">
+                          <div class="col-md-12">
+                            <div class="highlight">
+                              <pre id="metadata-json" class="json">{{ jsonRawIndent .RawEnrollment }}</pre>
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
                     {{ if eq $template.Logs "db" }}
                       <div class="tab-pane fade" id="status-logs" role="tabpanel">
                         <div class="card mt-2">
@@ -274,11 +291,11 @@
                             <i class="fas fa-stream"></i> Last 6 hours of status logs for node {{ .UUID }}
                             <div class="card-header-actions">
                               <small>Refresh in <span id="status_refresh_seconds">60</span> seconds</small>
-                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip"
+                              <button id="status_refresh_pause" class="btn btn-sm btn-outline-dark" data-tooltip="true"
                                 data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('status_refresh_value', 'status_refresh_pause');">
                                 <i class="fas fa-pause"></i>
                               </button>
-                              <button id="status_reload" class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                              <button id="status_reload" class="btn btn-sm btn-outline-primary" data-tooltip="true"
                                 data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableStatusLogs');">
                                 <i class="fas fa-sync-alt"></i>
                               </button>
@@ -307,11 +324,11 @@
                             <i class="fas fa-stream"></i> Last 6 hours of result logs for node {{ .UUID }}
                             <div class="card-header-actions">
                               <small>Refresh in <span id="result_refresh_seconds">60</span> seconds</small>
-                              <button id="result_refresh_pause" class="btn btn-sm btn-outline-dark" data-toggle="tooltip"
+                              <button id="result_refresh_pause" class="btn btn-sm btn-outline-dark" data-tooltip="true"
                                 data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('result_refresh_value', 'result_refresh_pause');">
                                 <i class="fas fa-pause"></i>
                               </button>
-                              <button id="result_reload" class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                              <button id="result_reload" class="btn btn-sm btn-outline-primary" data-tooltip="true"
                               data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableResultLogs');">
                                 <i class="fas fa-sync-alt"></i>
                               </button>
@@ -363,7 +380,18 @@
   {{ if eq .Logs "db" }}
     {{ with .Node }}
     <script type="text/javascript">
+      // Highlight.js code element initialization
+      hljs.initHighlightingOnLoad();
+
       $(document).ready(function() {
+        // Highlight.js code element initialization
+        $('code').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
+        $('pre').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
+
         // Handle datatable ajax error
         $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
           console.log(message);
@@ -453,7 +481,7 @@
           ]
         });
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Display the number of seconds left and refresh for result logs
         var refreshSecondsResult = 60;

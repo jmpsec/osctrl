@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -233,4 +235,11 @@ func incMetric(name string) {
 	}
 }
 
-// Helper to generate the
+// Helper to convert json.RawMessage into indented string
+func jsonRawIndent(raw json.RawMessage) string {
+	var out bytes.Buffer
+	if err := json.Indent(&out, raw, "", "    "); err != nil {
+		return string(raw)
+	}
+	return string(out.Bytes())
+}

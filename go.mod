@@ -9,18 +9,19 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
 	github.com/jinzhu/gorm v1.9.10
-	github.com/jmpsec/osctrl/pkg/carves v0.1.3
-	github.com/jmpsec/osctrl/pkg/environments v0.1.3
-	github.com/jmpsec/osctrl/pkg/metrics v0.1.3
-	github.com/jmpsec/osctrl/pkg/nodes v0.1.3
-	github.com/jmpsec/osctrl/pkg/queries v0.1.3
-	github.com/jmpsec/osctrl/pkg/settings v0.1.3
-	github.com/jmpsec/osctrl/pkg/types v0.1.3
-	github.com/jmpsec/osctrl/pkg/users v0.1.3
-	github.com/jmpsec/osctrl/pkg/utils v0.1.3
-	github.com/jmpsec/osctrl/plugins/graylog_logging v0.1.3 // indirect
-	github.com/jmpsec/osctrl/plugins/logging_dispatcher v0.1.3 // indirect
-	github.com/jmpsec/osctrl/plugins/splunk_logging v0.1.3 // indirect
+	github.com/jmpsec/osctrl/pkg/carves v0.1.4
+	github.com/jmpsec/osctrl/pkg/environments v0.1.4
+	github.com/jmpsec/osctrl/pkg/metrics v0.1.4
+	github.com/jmpsec/osctrl/pkg/nodes v0.1.4
+	github.com/jmpsec/osctrl/pkg/queries v0.1.4
+	github.com/jmpsec/osctrl/pkg/settings v0.1.4
+	github.com/jmpsec/osctrl/pkg/types v0.1.4
+	github.com/jmpsec/osctrl/pkg/users v0.1.4
+	github.com/jmpsec/osctrl/pkg/utils v0.1.4
+	github.com/jmpsec/osctrl/plugins/db_logging v0.1.4 // indirect
+	github.com/jmpsec/osctrl/plugins/graylog_logging v0.1.4 // indirect
+	github.com/jmpsec/osctrl/plugins/logging_dispatcher v0.1.4 // indirect
+	github.com/jmpsec/osctrl/plugins/splunk_logging v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect

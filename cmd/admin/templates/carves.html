@@ -21,7 +21,7 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-terminal"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-toggle="tooltip"
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableCarves');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
@@ -215,7 +215,7 @@
         });
 
         // Enable all tooltips
-        $('[data-toggle="tooltip"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Auto-refresh table
         setInterval(function (){

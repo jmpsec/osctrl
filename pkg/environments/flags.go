@@ -36,6 +36,11 @@ const (
 `
 )
 
+const (
+	emptyFlagSecret string = "__SECRET_FILE__"
+	emptyFlagCert   string = "__CERT_FILE__"
+)
+
 type flagData struct {
 	SecretFile  string
 	CertFile    string
@@ -43,15 +48,23 @@ type flagData struct {
 }
 
 // GenerateFlags to generate flags
-func GenerateFlags(environment TLSEnvironment, secret, cert string) (string, error) {
+func GenerateFlags(env TLSEnvironment, secret, certificate string) (string, error) {
 	t, err := template.New("flags").Parse(FlagsTemplate)
 	if err != nil {
 		return "", err
 	}
+	flagSecret := secret
+	if secret == "" {
+		flagSecret = emptyFlagSecret
+	}
+	flagCertificate := certificate
+	if certificate == "" {
+		flagCertificate = emptyFlagCert
+	}
 	data := flagData{
-		SecretFile:  secret,
-		CertFile:    cert,
-		Environment: environment,
+		SecretFile:  flagSecret,
+		CertFile:    flagCertificate,
+		Environment: env,
 	}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, data); err != nil {
