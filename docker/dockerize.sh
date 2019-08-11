@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# [ osctrl 🎛 ]: Script to build osctrl in docker
+# Script to build osctrl in docker
 #
-# Usage: dockerize.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...
+# Usage: dockerize.sh [-h|--help] [PARAMETER] [PARAMETER] ...
 #
 # Parameters:
 #  -h	  Shows this help message and exit.
@@ -31,17 +31,22 @@ OHNOES=41414141
 
 # How does it work?
 function usage() {
-  printf "\n[ $NAME ] : Script to build osctrl in docker\n"
   printf "\nUsage: %s -h [PARAMETER] [PARAMETER] ...\n" "${0}"
   printf "\nParameters:\n"
   printf "  -h\tShows this help message and exit.\n"
   printf "  -b\tBuilds new docker containers.\n"
-  printf "  -u\tRuns existing containers.\n"
+  printf "  -u\tRun osctrl containers.\n"
   printf "  -c\tGenerates configuration files.\n"
   printf "  -f\tForces the generation of new certificates and configuration.\n"
   printf "  -m\tUses mkcert (https://github.com/FiloSottile/mkcert) to generate certificate.\n"
   printf "  -d\tTakes down running containers.\n"
   printf "  -x\tRemoves container images.\n"
+  printf "\nExamples:\n"
+  printf "  Run dockerized osctrl building new containers and forcing to generate new configuration/certs:\n"
+  printf "\t%s -u -b -f\n" "${0}"
+  printf "  Generate only configuration files:\n"
+  printf "\t%s -c\n" "${0}"
+  printf "\n"
 }
 
 # We want the provision script to fail as soon as there are any errors

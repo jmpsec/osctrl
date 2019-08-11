@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -115,6 +114,7 @@ func uniq(duplicated []string) []string {
 // C       		192.168.0.0      192.168.255.255
 // Link-local 169.254.0.0      169.254.255.255
 // Local      127.0.0.0        127.255.255.255
+/*
 func isPublicIP(ip net.IP) bool {
 	// Use native functions
 	if ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() {
@@ -135,6 +135,7 @@ func isPublicIP(ip net.IP) bool {
 	}
 	return false
 }
+*/
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {

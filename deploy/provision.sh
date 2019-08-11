@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# [ osctrl 🎛 ]: Provisioning script
+# Provisioning script for osctrl
 #
 # Usage: provision.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...
 #
@@ -74,11 +74,6 @@ OHNOES=41414141
 
 # How does it work?
 function usage() {
-  printf "\n"
-  printf "\n"
-  printf "\n [ osctrl 🎛 ] : Provisioning script\n"
-  printf "\n"
-  printf "\n"
   printf "\nUsage: %s [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...\n" "${0}"
   printf "\nParameters:\n"
   printf "  -h, --help \t\tShows this help message and exit.\n"
@@ -94,7 +89,7 @@ function usage() {
   printf "  own \t\tProvision will use the TLS certificate provided by the user.\n"
   printf "  certbot \tProvision will generate a TLS certificate using letsencrypt/certbot. More info here: https://certbot.eff.org/\n"
   printf "\nArguments for PART:\n"
-  printf "  admin \t\tProvision will deploy only the admin interface.\n"
+  printf "  admin \tProvision will deploy only the admin interface.\n"
   printf "  tls \t\tProvision will deploy only the TLS endpoint.\n"
   printf "  all \t\tProvision will deploy both the admin and the TLS endpoint.\n"
   printf "\nOptional Parameters:\n"
@@ -112,9 +107,9 @@ function usage() {
   printf "  -s PATH     --source PATH \tPath to code. Default is /vagrant\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
-  printf "  -P          --postgres \t\tInstall and configure PostgreSQL as backend\n"
-  printf "  -M          --metrics \t\tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
-  printf "  -E          --enroll  \t\tEnroll the serve into itself using osquery. Default is disabled\n"
+  printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
+  printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
+  printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
@@ -148,6 +143,7 @@ DOMAIN=""
 EMAIL=""
 METRICS=false
 ENROLL=false
+UPDATE=false
 NGINX=false
 POSTGRES=false
 SOURCE_PATH=/vagrant
@@ -343,6 +339,13 @@ elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
 fi
 
+# Update service
+if [[ "$UPDATE" == true ]]; then
+  _log "Update not implemented yet!"
+  exit $OHNOES
+fi
+
+# We are provisioning a new machine
 log ""
 log ""
 log "Provisioning [ osctrl ][ $PART ] for $DISTRO"

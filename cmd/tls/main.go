@@ -25,7 +25,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "0.1.2"
+	serviceVersion string = "0.1.5"
 	// Default endpoint to handle HTTP testing
 	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors

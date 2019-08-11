@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# [ osctrl 🎛 ]: Provisioning script functions
+# Provisioning functions for osctrl
+#
+# Import with: source "PATH_TO/lib.sh"
 
 # Show an informational log message
 #   string  message_to_display
