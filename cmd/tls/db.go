@@ -47,10 +47,9 @@ func getDB(file string) *gorm.DB {
 		log.Fatalf("Failed to open database connection: %v", err)
 	}
 	// Performance settings for DB access
-	// FIXME get these from JSON
-	db.DB().SetMaxIdleConns(20)
-	db.DB().SetMaxOpenConns(100)
-	db.DB().SetConnMaxLifetime(time.Second * 30)
+	db.DB().SetMaxIdleConns(config.MaxIdleConns)
+	db.DB().SetMaxOpenConns(config.MaxOpenConns)
+	db.DB().SetConnMaxLifetime(time.Second * time.Duration(config.ConnMaxLifetime))
 
 	return db
 }
