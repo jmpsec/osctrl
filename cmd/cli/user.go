@@ -41,7 +41,30 @@ func editUser(c *cli.Context) error {
 		os.Exit(1)
 	}
 	password := c.String("password")
-	return adminUsers.ChangePassword(username, password)
+	if password != "" {
+		if err := adminUsers.ChangePassword(username, password); err != nil {
+			return err
+		}
+	}
+	fullname := c.String("fullname")
+	if fullname != "" {
+		if err := adminUsers.ChangeFullname(username, fullname); err != nil {
+			return err
+		}
+	}
+	admin := c.Bool("admin")
+	if admin {
+		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
+			return err
+		}
+	}
+	notAdmin := c.Bool("non-admin")
+	if notAdmin {
+		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func deleteUser(c *cli.Context) error {

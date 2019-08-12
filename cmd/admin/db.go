@@ -11,11 +11,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	// DB configuration file
-	dbConfigurationFile string = "config/db.json"
-)
-
 // Function to load the DB configuration file and assign to variables
 func loadDBConfiguration(file string) (types.JSONConfigurationDB, error) {
 	var config types.JSONConfigurationDB
@@ -37,11 +32,11 @@ func loadDBConfiguration(file string) (types.JSONConfigurationDB, error) {
 }
 
 // Get PostgreSQL DB using GORM
-func getDB() *gorm.DB {
+func getDB(file string) *gorm.DB {
 	// Load DB configuration
-	dbConfig, err := loadDBConfiguration(dbConfigurationFile)
+	dbConfig, err := loadDBConfiguration(file)
 	if err != nil {
-		log.Fatalf("Error loading DB configuration %s", err)
+		log.Fatalf("Error loading DB configuration %v", err)
 	}
 	t := "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
 	postgresDSN := fmt.Sprintf(

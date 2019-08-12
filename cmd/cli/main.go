@@ -28,7 +28,7 @@ const (
 	// Application usage
 	appUsage string = "CLI for " + projectName
 	// Application description
-	appDescription string = appUsage + ", a fast and efficient operative system management"
+	appDescription string = appUsage + ", a fast and efficient osquery management"
 )
 
 // Global variables
@@ -102,6 +102,20 @@ func init() {
 						cli.StringFlag{
 							Name:  "password, p",
 							Usage: "New password to be used",
+						},
+						cli.StringFlag{
+							Name:  "fullname, n",
+							Usage: "Full name to be used",
+						},
+						cli.BoolFlag{
+							Name:   "admin, a",
+							Hidden: false,
+							Usage:  "Make this user an admin",
+						},
+						cli.BoolFlag{
+							Name:   "non-admin, d",
+							Hidden: false,
+							Usage:  "Make this user an non-admin",
 						},
 					},
 					Action: cliWrapper(editUser),
@@ -186,7 +200,7 @@ func init() {
 				},
 				{
 					Name:    "show-flags",
-					Aliases: []string{"s"},
+					Aliases: []string{"w"},
 					Usage:   "Show the flags for a TLS environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
@@ -203,8 +217,9 @@ func init() {
 					Action:  cliWrapper(listEnvironment),
 				},
 				{
-					Name:  "quick-add",
-					Usage: "Generates one-liner for quick adding nodes to environment",
+					Name:    "quick-add",
+					Aliases: []string{"q"},
+					Usage:   "Generates one-liner for quick adding nodes to environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
@@ -219,8 +234,9 @@ func init() {
 					Action: cliWrapper(quickAddEnvironment),
 				},
 				{
-					Name:  "flags",
-					Usage: "Generates the flags to run nodes in an environment",
+					Name:    "flags",
+					Aliases: []string{"f"},
+					Usage:   "Generates the flags to run nodes in an environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
@@ -238,8 +254,9 @@ func init() {
 					Action: cliWrapper(flagsEnvironment),
 				},
 				{
-					Name:  "secret",
-					Usage: "Output the secret to enroll nodes in an environment",
+					Name:    "secret",
+					Aliases: []string{"x"},
+					Usage:   "Output the secret to enroll nodes in an environment",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",

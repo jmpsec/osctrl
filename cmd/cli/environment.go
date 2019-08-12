@@ -10,6 +10,11 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	targetShell string = "sh"
+	targetPowershell string = "ps1"
+)
+
 func addEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
@@ -173,10 +178,14 @@ func quickAddEnvironment(c *cli.Context) error {
 		return err
 	}
 	var oneLiner string
-	if c.String("target") == "sh" {
-		oneLiner, _ = environments.QuickAddOneLinerShell(env)
-	} else if c.String("target") == "ps1" {
-		oneLiner, _ = environments.QuickAddOneLinerPowershell(env)
+	switch c.String("target") {
+		case targetShell:
+			oneLiner, _ = environments.QuickAddOneLinerShell(env)
+		case targetPowershell:
+			oneLiner, _ = environments.QuickAddOneLinerPowershell(env)
+		default:
+			fmt.Printf("Invalid target! It can be %s or %s\n", targetShell, targetPowershell)
+			os.Exit(1)
 	}
 	fmt.Printf("%s\n", oneLiner)
 	return nil

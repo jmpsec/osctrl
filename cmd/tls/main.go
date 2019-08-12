@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -26,12 +29,18 @@ const (
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
 	serviceVersion string = "0.1.5"
+	// Service description
+	serviceDescription string = "TLS service for osctrl"
+	// Application description
+	appDescription string = serviceDescription + ", a fast and efficient osquery management"
 	// Default endpoint to handle HTTP testing
 	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
-	// Service configuration file
+	// Default service configuration file
 	configurationFile string = "config/" + settings.ServiceTLS + ".json"
+	// Default DB configuration file
+	dbConfigurationFile string = "config/db.json"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 )
@@ -50,6 +59,13 @@ var (
 	queriesmgr     *queries.Queries
 	filecarves     *carves.Carves
 	_metrics       *metrics.Metrics
+)
+
+// Variables for flags
+var (
+	versionFlag *bool
+	configFlag  *string
+	dbFlag      *string
 )
 
 // Function to load the configuration file and assign to variables
@@ -72,15 +88,43 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	return cfg, nil
 }
 
+// Usage for service binary
+func tlsUsage() {
+	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
+	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
+	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
+	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
+	fmt.Printf("GLOBAL OPTIONS:\n")
+	flag.PrintDefaults()
+	fmt.Printf("\n")
+}
+
+// Display binary version
+func tlsVersion() {
+	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
+	os.Exit(0)
+}
+
 // Initialization code
 func init() {
 	var err error
-	// Logging flags
+	// Command line flags
+	flag.Usage = tlsUsage
+	// Define flags
+	versionFlag = flag.Bool("v", false, "Displays the binary version.")
+	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
+	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
+	// Parse all flags
+	flag.Parse()
+	if *versionFlag {
+		tlsVersion()
+	}
+	// Logging format flags
 	log.SetFlags(log.Lshortfile)
 	// Load TLS configuration
-	tlsConfig, err = loadConfiguration(configurationFile)
+	tlsConfig, err = loadConfiguration(*configFlag)
 	if err != nil {
-		log.Fatalf("Error loading %s - %s", configurationFile, err)
+		log.Fatalf("Error loading %s - %s", *configFlag, err)
 	}
 }
 
@@ -100,7 +144,7 @@ func main() {
 	}
 	log.Println("Loading DB")
 	// Database handler
-	db = getDB()
+	db = getDB(*dbFlag)
 	// Close when exit
 	//defer db.Close()
 	defer func() {
@@ -119,53 +163,9 @@ func main() {
 	queriesmgr = queries.CreateQueries(db)
 	// Initialize carves
 	filecarves = carves.CreateFileCarves(db)
+	// Initialize service settings
 	log.Println("Loading service settings")
-	// Check if service settings for debug service is ready
-	if !settingsmgr.IsValue(settings.ServiceTLS, settings.DebugService) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceTLS, settings.DebugService, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.DebugService, err)
-		}
-	}
-	// Check if service settings for metrics is ready
-	if !settingsmgr.IsValue(settings.ServiceTLS, settings.ServiceMetrics) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceTLS, settings.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
-		}
-	} else if settingsmgr.ServiceMetrics(settings.ServiceTLS) {
-		// Initialize metrics if enabled
-		mProtocol, err := settingsmgr.GetString(settings.ServiceTLS, settings.MetricsProtocol)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
-		}
-		mHost, err := settingsmgr.GetString(settings.ServiceTLS, settings.MetricsHost)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (host): %v", err)
-		}
-		mPort, err := settingsmgr.GetInteger(settings.ServiceTLS, settings.MetricsPort)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (port): %v", err)
-		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), settings.ServiceTLS)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics: %v", err)
-		}
-	}
-	// Check if service settings for environments refresh is ready
-	if !settingsmgr.IsValue(settings.ServiceTLS, settings.RefreshEnvs) {
-		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshEnvs, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshEnvs, err)
-		}
-	}
-	// Check if service settings for settings refresh is ready
-	if !settingsmgr.IsValue(settings.ServiceTLS, settings.RefreshSettings) {
-		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshSettings, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.RefreshSettings, err)
-		}
-	}
-	// Write JSON config to settings
-	if err := settingsmgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, tlsConfig.Logging); err != nil {
-		log.Fatalf("Failed to add JSON values to configuration: %v", err)
-	}
+	loadingSettings()
 	// multiple listeners channel
 	finish := make(chan bool)
 

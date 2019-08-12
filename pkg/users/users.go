@@ -123,8 +123,10 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
-	if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
-		return err
+	if admin != user.Admin {
+		if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -160,8 +162,24 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	if err != nil {
 		return err
 	}
-	if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+	if passhash != user.PassHash {
+		if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeFullname for user by username
+func (m *UserManager) ChangeFullname(username, fullname string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if fullname != user.Fullname {
+		if err := m.DB.Model(&user).Update("fullname", fullname).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
 	}
 	return nil
 }
@@ -172,13 +190,15 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) erro
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
-	if err := m.DB.Model(&user).Updates(
-		AdminUser{
-			LastIPAddress: ipaddress,
-			LastUserAgent: useragent,
-			LastAccess:    time.Now(),
-		}).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+	if ipaddress != user.LastIPAddress || useragent != user.LastUserAgent {
+		if err := m.DB.Model(&user).Updates(
+			AdminUser{
+				LastIPAddress: ipaddress,
+				LastUserAgent: useragent,
+				LastAccess:    time.Now(),
+			}).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
 	}
 	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -29,20 +31,26 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Define endpoints
+// Constants for the service
 const (
 	// Project name
 	projectName string = "osctrl"
 	// Service name
-	serviceNameAdmin string = projectName + "-" + settings.ServiceAdmin
+	serviceName string = projectName + "-" + settings.ServiceAdmin
 	// Service version
 	serviceVersion string = "0.1.5"
+	// Service description
+	serviceDescription string = "Admin service for osctrl"
+	// Application description
+	appDescription string = serviceDescription + ", a fast and efficient osquery management"
 	// Default endpoint to handle HTTP testing
 	testingPath string = "/testing"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
-	// Service configuration file
+	// Default service configuration file
 	configurationFile string = "config/" + settings.ServiceAdmin + ".json"
+	// Default DB configuration file
+	dbConfigurationFile string = "config/db.json"
 	// osquery version to display tables
 	osqueryTablesVersion string = "3.3.2"
 	// JSON file with osquery tables data
@@ -74,6 +82,13 @@ var (
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []OsqueryTable
 	_metrics      *metrics.Metrics
+)
+
+// Variables for flags
+var (
+	versionFlag *bool
+	configFlag  *string
+	dbFlag      *string
 )
 
 // Function to load the configuration file
@@ -136,15 +151,43 @@ func loadOsqueryTables(file string) ([]OsqueryTable, error) {
 	return tables, nil
 }
 
+// Usage for service binary
+func adminUsage() {
+	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
+	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
+	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
+	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
+	fmt.Printf("GLOBAL OPTIONS:\n")
+	flag.PrintDefaults()
+	fmt.Printf("\n")
+}
+
+// Display binary version
+func adminVersion() {
+	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
+	os.Exit(0)
+}
+
 // Initialization code
 func init() {
 	var err error
-	// Logging flags
+	// Command line flags
+	flag.Usage = adminUsage
+	// Define flags
+	versionFlag = flag.Bool("v", false, "Displays the binary version.")
+	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
+	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
+	// Parse all flags
+	flag.Parse()
+	if *versionFlag {
+		adminVersion()
+	}
+	// Logging format flags
 	log.SetFlags(log.Lshortfile)
 	// Load admin configuration
-	adminConfig, err = loadConfiguration(configurationFile, settings.ServiceAdmin)
+	adminConfig, err = loadConfiguration(*configFlag, settings.ServiceAdmin)
 	if err != nil {
-		log.Fatalf("Error loading %s - %s", configurationFile, err)
+		log.Fatalf("Error loading %s - %s", *configFlag, err)
 	}
 	// Load osquery tables JSON
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
@@ -157,7 +200,7 @@ func init() {
 func main() {
 	log.Println("Loading DB")
 	// Database handler
-	db = getDB()
+	db = getDB(*dbFlag)
 	// Close when exit
 	//defer db.Close()
 	defer func() {
@@ -184,69 +227,9 @@ func main() {
 	carvesmgr = carves.CreateFileCarves(db)
 	// Initialize sessions
 	sessionsmgr = CreateSessionManager(db)
+	// Initialize service settings
 	log.Println("Loading service settings")
-	// Check if service settings for debug service is ready
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Initializing settings")
-	}
-	// Check if service settings for debug service is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DebugService) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.DebugService, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DebugService, err)
-		}
-	}
-	// Check if service settings for debug HTTP is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DebugHTTP) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.DebugHTTP, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
-		}
-	}
-	// Check if service settings for metrics is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
-		}
-	} else if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
-		// Initialize metrics if enabled
-		mProtocol, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsProtocol)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
-		}
-		mHost, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsHost)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (host): %v", err)
-		}
-		mPort, err := settingsmgr.GetInteger(settings.ServiceAdmin, settings.MetricsPort)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (port): %v", err)
-		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), settings.ServiceAdmin)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics: %v", err)
-		}
-	}
-	// Check if service settings for default environment is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DefaultEnv) {
-		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.DefaultEnv, "dev"); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DefaultEnv, err)
-		}
-	}
-	// Check if service settings for sessions cleanup is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.CleanupSessions) {
-		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanupSessions, int64(defaultRefresh)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.CleanupSessions, err)
-		}
-	}
-	// Check if service settings for node inactive hours is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.InactiveHours) {
-		if err := settingsmgr.NewIntegerValue(settings.ServiceAdmin, settings.InactiveHours, int64(defaultInactive)); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.InactiveHours, err)
-		}
-	}
-	// Write JSON config to settings
-	if err := settingsmgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logging); err != nil {
-		log.Fatalf("Failed to add JSON values to configuration: %v", err)
-	}
+	loadingSettings()
 	// multiple listeners channel
 	finish := make(chan bool)
 
@@ -419,7 +402,7 @@ func main() {
 	// Launch HTTP server for admin
 	go func() {
 		serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
-		log.Printf("%s v%s - HTTP listening %s", serviceNameAdmin, serviceVersion, serviceAdmin)
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
 		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
 	}()
 
