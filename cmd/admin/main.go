@@ -4,15 +4,10 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -119,53 +114,6 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	*/
 	// No errors!
 	return cfg, nil
-}
-
-// Function to load the JSON data for osquery tables
-func loadOsqueryTables(file string) ([]OsqueryTable, error) {
-	var tables []OsqueryTable
-	jsonFile, err := os.Open(file)
-	if err != nil {
-		return tables, err
-	}
-	//defer jsonFile.Close()
-	defer func() {
-		err := jsonFile.Close()
-		if err != nil {
-			log.Fatalf("Failed to close tables file %v", err)
-		}
-	}()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	err = json.Unmarshal(byteValue, &tables)
-	if err != nil {
-		return tables, err
-	}
-	// Add a string for platforms to be used as filter
-	for i, t := range tables {
-		filter := ""
-		for _, p := range t.Platforms {
-			filter += " filter-" + p
-		}
-		tables[i].Filter = strings.TrimSpace(filter)
-	}
-	return tables, nil
-}
-
-// Usage for service binary
-func adminUsage() {
-	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
-	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
-	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
-	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
-	fmt.Printf("GLOBAL OPTIONS:\n")
-	flag.PrintDefaults()
-	fmt.Printf("\n")
-}
-
-// Display binary version
-func adminVersion() {
-	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
-	os.Exit(0)
 }
 
 // Initialization code

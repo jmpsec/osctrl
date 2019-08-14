@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"plugin"
 )
@@ -10,6 +11,15 @@ import (
 var (
 	logsDispatcher func(logging, logType string, params ...interface{})
 )
+
+// Loading plugins
+func loadPlugins() error {
+	log.Println("Loading logging dispatcher plugin")
+	if err := loadLoggingDispatcherPlugin(); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Function to load logging dispatcher plugin
 func loadLoggingDispatcherPlugin() error {

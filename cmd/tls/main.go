@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -88,23 +86,6 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	return cfg, nil
 }
 
-// Usage for service binary
-func tlsUsage() {
-	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
-	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
-	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
-	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
-	fmt.Printf("GLOBAL OPTIONS:\n")
-	flag.PrintDefaults()
-	fmt.Printf("\n")
-}
-
-// Display binary version
-func tlsVersion() {
-	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
-	os.Exit(0)
-}
-
 // Initialization code
 func init() {
 	var err error
@@ -126,15 +107,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading %s - %s", *configFlag, err)
 	}
-}
-
-// Loading plugins
-func loadPlugins() error {
-	log.Println("Loading logging dispatcher plugin")
-	if err := loadLoggingDispatcherPlugin(); err != nil {
-		return err
-	}
-	return nil
 }
 
 // Go go!

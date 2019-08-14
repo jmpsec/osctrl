@@ -5,7 +5,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -162,4 +165,21 @@ func refreshSettings() {
 	if err != nil {
 		log.Printf("error refreshing settings %v\n", err)
 	}
+}
+
+// Usage for service binary
+func tlsUsage() {
+	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
+	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
+	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
+	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
+	fmt.Printf("GLOBAL OPTIONS:\n")
+	flag.PrintDefaults()
+	fmt.Printf("\n")
+}
+
+// Display binary version
+func tlsVersion() {
+	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
+	os.Exit(0)
 }
