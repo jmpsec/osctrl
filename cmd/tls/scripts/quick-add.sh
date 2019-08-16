@@ -120,6 +120,8 @@ stopOsquery() {
     log "Stopping $_OSQUERY_SERVICE_LINUX"
     if which systemctl >/dev/null; then
       sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
+    elif which service >/dev/null; then
+      sudo service "$_OSQUERY_SERVICE_LINUX" stop
     else
       sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" stop
     fi

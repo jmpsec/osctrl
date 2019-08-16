@@ -64,6 +64,9 @@ stopOsquery() {
     if which systemctl >/dev/null; then
       sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
       sudo systemctl disable "$_OSQUERY_SERVICE_LINUX"
+    elif which service >/dev/null; then
+      sudo service "$_OSQUERY_SERVICE_LINUX" stop
+      echo manual | sudo tee "/etc/init/$_OSQUERY_SERVICE_LINUX.override"
     else
       sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" stop
       sudo update-rc.d -f "$_OSQUERY_SERVICE_LINUX" remove

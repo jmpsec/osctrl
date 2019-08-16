@@ -146,6 +146,10 @@ test:
 	cd $(TLS_DIR) && go test -i . -v
 	# Run TLS tests
 	cd $(TLS_DIR) && go test . -v
+	# Install dependencies for Admin
+	cd $(ADMIN_DIR) && go test -i . -v
+	# Run TLS tests
+	cd $(ADMIN_DIR) && go test . -v
 	# Install dependencies for CLI
 	cd $(CLI_DIR) && go test -i . -v
 	# Run CLI tests
