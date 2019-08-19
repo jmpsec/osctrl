@@ -137,6 +137,7 @@ SYSTEMD_TEMPLATE="systemd.service"
 SHOW_USAGE=false
 MODE="dev"
 TYPE="self"
+PART="all"
 KEYFILE=""
 CERTFILE=""
 DOMAIN=""
@@ -220,7 +221,7 @@ while true; do
         PART=$2
         shift 2
       else
-        _log "Invalid server part"
+        _log "Invalid part"
         usage
         exit $OHNOES
       fi
