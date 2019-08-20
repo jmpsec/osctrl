@@ -6,10 +6,11 @@
   },
   "decorators": {
     "always": [
-      "SELECT username AS osquery_user FROM users WHERE uid == (SELECT uid FROM processes WHERE pid == (SELECT pid FROM osquery_info) LIMIT 1);",
+      "SELECT username AS osquery_user FROM users WHERE uid = (SELECT uid FROM processes WHERE pid = (SELECT pid FROM osquery_info) LIMIT 1);",
       "SELECT hostname, local_hostname FROM system_info;",
       "SELECT user || ' (' || tty || ')' AS username FROM logged_in_users WHERE type = 'user' ORDER BY time LIMIT 1;",
-      "SELECT version AS osquery_version, config_hash FROM osquery_info WHERE config_valid = 1;"
+      "SELECT version AS osquery_version, config_hash FROM osquery_info WHERE config_valid = 1;",
+      "SELECT md5 AS osquery_md5 FROM hash WHERE path = (SELECT path FROM processes WHERE pid = (SELECT pid FROM osquery_info));"
     ]
   }
 }

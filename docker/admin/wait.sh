@@ -8,9 +8,10 @@ NAME="osctrl-admin"
 WAIT=3
 CONFIG="config"
 CERTS="certs"
+DATA="data"
 DB_JSON="$CONFIG/db.json"
 CRT_FILE="$CERTS/osctrl.crt"
-OSQUERY_JSON="$CONFIG/osquery/osquery-dev.json"
+OSQUERY_JSON="$DATA/osquery-dev.json"
 
 # Check if database is ready, otherwise commands will fail
 until $(./bin/osctrl-cli -D "$DB_JSON" check); do
