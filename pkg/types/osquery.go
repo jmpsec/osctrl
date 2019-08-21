@@ -124,6 +124,7 @@ type LogDecorations struct {
 	Hostname       string `json:"hostname"`
 	OsqueryVersion string `json:"osquery_version"`
 	ConfigHash     string `json:"config_hash"`
+	DaemonHash     string `json:"osquery_md5"`
 }
 
 // LogResultData to be used processing result logs from nodes

@@ -26,6 +26,7 @@ type OsqueryNode struct {
 	CPU             string
 	Memory          string
 	HardwareSerial  string
+	DaemonHash      string
 	ConfigHash      string
 	RawEnrollment   json.RawMessage
 	LastStatus      time.Time
@@ -54,6 +55,7 @@ type ArchiveOsqueryNode struct {
 	Memory          string
 	HardwareSerial  string
 	ConfigHash      string
+	DaemonHash      string
 	RawEnrollment   json.RawMessage
 	LastStatus      time.Time
 	LastResult      time.Time
@@ -285,7 +287,7 @@ func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsDat
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
-func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, osqueryversion, uuid string) error {
+func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, daemonhash, osqueryversion, uuid string) error {
 	// Retrieve node
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
@@ -299,6 +301,7 @@ func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localnam
 		Localname:      "",
 		IPAddress:      "",
 		ConfigHash:     "",
+		DaemonHash:     "",
 		OsqueryVersion: "",
 	}
 	// System user metadata update, if different
@@ -355,6 +358,10 @@ func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localnam
 	// Osquery configuration metadata update, if different
 	if (confighash != "") && (confighash != node.ConfigHash) {
 		data.ConfigHash = confighash
+	}
+	// Osquery daemon hash update, if different
+	if (daemonhash != "") && (daemonhash != node.DaemonHash) {
+		data.DaemonHash = daemonhash
 	}
 	// Osquery version metadata update, if different
 	if (osqueryversion != "") && (osqueryversion != node.OsqueryVersion) {
@@ -655,6 +662,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 		CPU:             node.CPU,
 		Memory:          node.Memory,
 		HardwareSerial:  node.HardwareSerial,
+		DaemonHash:      node.DaemonHash,
 		ConfigHash:      node.ConfigHash,
 		RawEnrollment:   node.RawEnrollment,
 		LastStatus:      node.LastStatus,

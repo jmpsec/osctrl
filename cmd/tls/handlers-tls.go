@@ -314,7 +314,7 @@ func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 		log.Printf("error parsing log %s %v", string(data), err)
 	}
 	// Iterate through received messages to extract metadata
-	var uuids, hosts, names, users, osqueryusers, hashes, osqueryversions []string
+	var uuids, hosts, names, users, osqueryusers, hashes, dhashes, osqueryversions []string
 	for _, l := range logs {
 		uuids = append(uuids, l.HostIdentifier)
 		hosts = append(hosts, l.Decorations.Hostname)
@@ -322,6 +322,7 @@ func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 		users = append(users, l.Decorations.Username)
 		osqueryusers = append(osqueryusers, l.Decorations.OsqueryUser)
 		hashes = append(hashes, l.Decorations.ConfigHash)
+		dhashes = append(dhashes, l.Decorations.DaemonHash)
 		osqueryversions = append(osqueryversions, l.Version)
 	}
 	// FIXME it only uses the first element from the []string that uniq returns
@@ -331,13 +332,14 @@ func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 	host := uniq(hosts)[0]
 	name := uniq(names)[0]
 	hash := uniq(hashes)[0]
+	dhash := uniq(dhashes)[0]
 	osqueryversion := uniq(osqueryversions)[0]
 	// Dispatch logs and update metadata
-	dispatchLogs(data, uuid, ipaddress, user, osqueryuser, host, name, hash, osqueryversion, logType, environment)
+	dispatchLogs(data, uuid, ipaddress, user, osqueryuser, host, name, hash, dhash, osqueryversion, logType, environment)
 }
 
 // Helper to dispatch logs
-func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, osqueryversion, logType, environment string) {
+func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, dhash, osqueryversion, logType, environment string) {
 	// Send data to storage
 	// FIXME allow multiple types of logging
 	logsDispatcher(
@@ -349,7 +351,7 @@ func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, loc
 		uuid,
 		envsmap[environment].DebugHTTP)
 	// Use metadata to update record
-	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, osqueryversion, uuid)
+	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, dhash, osqueryversion, uuid)
 	if err != nil {
 		log.Printf("error updating metadata %s", err)
 	}

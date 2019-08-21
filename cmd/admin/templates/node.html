@@ -234,22 +234,11 @@
                               <label class="col-md-3 col-form-label">
                                 <small><b>
                                   <span class="icon-osquery">
-                                  <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> User
+                                  <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> User / Version
                                 </b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ .OsqueryUser }}</p>
-                              </div>
-                            </div>
-                            <div class="row">
-                              <label class="col-md-3 col-form-label">
-                                <small><b>
-                                  <span class="icon-osquery">
-                                    <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> Version
-                                </b></small>
-                              </label>
-                              <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ .OsqueryVersion }}</p>
+                                <p class="form-control-static">{{ .OsqueryUser }} - osquery {{ .OsqueryVersion }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -261,6 +250,17 @@
                               </label>
                               <div class="col-md-9 col-form-label">
                                 <p class="form-control-static">{{ .ConfigHash }}</p>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <label class="col-md-3 col-form-label">
+                                <small><b>
+                                  <span class="icon-osquery">
+                                    <span class="path1"></span><span class="path2"></span><span class="path3"></span></span> osqueryd MD5
+                                </b></small>
+                              </label>
+                              <div class="col-md-9 col-form-label">
+                                <p class="form-control-static">{{ .DaemonHash }}</p>
                               </div>
                             </div>
 

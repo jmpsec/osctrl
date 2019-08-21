@@ -46,7 +46,7 @@
                                       {{ range  $i, $e := $.Environments }}
                                         <option value="{{ $e.Name }}">{{ $e.Name }}</option>
                                       {{ end }}
-                                        <option value="all">all environments</option>
+                                        <option value="all_environments_99">all environments</option>
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. dev</small>
@@ -61,7 +61,7 @@
                                       {{ range  $i, $e := $.Platforms }}
                                         <option value="{{ $e }}">{{ $e }}</option>
                                       {{ end }}
-                                        <option value="all">all platforms</option>
+                                        <option value="all_platforms_99">all platforms</option>
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. ubuntu</small>
