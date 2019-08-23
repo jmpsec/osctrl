@@ -28,7 +28,7 @@ services:
     networks:
       - private-net
     volumes:
-      - ./docker/config:/osctrl/config
+      - ./docker/config:/osctrl-tls/config
   osctrl-admin:
     container_name: osctrl-admin
     depends_on:
@@ -43,8 +43,8 @@ services:
     networks:
       - private-net
     volumes:
-      - ./docker/certs:/osctrl/certs
-      - ./docker/config:/osctrl/config
+      - ./docker/certs:/osctrl-admin/certs
+      - ./docker/config:/osctrl-admin/config
   osctrl-nginx:
     image: "nginx:1.13.5"
     container_name: osctrl-nginx

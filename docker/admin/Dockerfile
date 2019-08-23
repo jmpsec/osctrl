@@ -3,18 +3,18 @@ LABEL maintainer="javuto"
 
 ENV GO111MODULE=on
 
-WORKDIR /osctrl
+WORKDIR /osctrl-admin
 
-#ADD /config/admin.json config/
-#ADD /config/db.json config/
+#COPY /config/admin.json config/
+#COPY /config/db.json config/
 
-ADD cmd/admin/templates/ tmpl_admin
-ADD cmd/admin/templates/components/page-head-online.html tmpl_admin/components/page-head.html
-ADD cmd/admin/templates/components/page-js-online.html tmpl_admin/components/page-js.html
-ADD cmd/admin/static/ static
+COPY cmd/admin/templates/ tmpl_admin
+COPY cmd/admin/templates/components/page-head-online.html tmpl_admin/components/page-head.html
+COPY cmd/admin/templates/components/page-js-online.html tmpl_admin/components/page-js.html
+COPY cmd/admin/static/ static
 
-ADD deploy/osquery/data/3.3.2.json data/
-ADD deploy/osquery/osquery-dev.json data/
+COPY deploy/osquery/data/3.3.2.json data/
+COPY deploy/osquery/osquery-dev.json data/
 
 RUN mkdir -p carved_files
 
@@ -39,4 +39,4 @@ RUN go build -o bin/osctrl-cli cmd/cli/*.go
 
 COPY docker/admin/wait.sh .
 
-CMD [ "/bin/sh", "/osctrl/wait.sh" ]
+CMD [ "/bin/sh", "/osctrl-admin/wait.sh" ]

@@ -3,12 +3,12 @@ LABEL maintainer="javuto"
 
 ENV GO111MODULE=on
 
-WORKDIR /osctrl
+WORKDIR /osctrl-tls
 
-#ADD /config/tls.json config/
-#ADD /config/db.json config/
+#COPY /config/tls.json config/
+#COPY /config/db.json config/
 
-ADD cmd/tls/scripts/ scripts
+COPY cmd/tls/scripts/ scripts
 
 COPY go.mod .
 COPY go.sum .
@@ -28,4 +28,4 @@ RUN go build -o bin/osctrl-cli cmd/cli/*.go
 
 COPY docker/tls/wait.sh .
 
-CMD [ "/bin/sh", "/osctrl/wait.sh" ]
+CMD [ "/bin/sh", "/osctrl-tls/wait.sh" ]
