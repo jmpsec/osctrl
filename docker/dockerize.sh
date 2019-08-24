@@ -194,14 +194,14 @@ TLS_JSON="$CONFIGDIR/tls.json"
 if [[ -f "$TLS_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $TLS_JSON"
 else
-  configuration_service "$DEPLOYDIR/service.json" "$TLS_JSON" "localhost|9000" "tls" "0.0.0.0"
+  configuration_service "$DEPLOYDIR/service.json" "$TLS_JSON" "localhost|9000" "tls" "0.0.0.0" "none" "db"
 fi
 
 ADMIN_JSON="$CONFIGDIR/admin.json"
 if [[ -f "$ADMIN_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $ADMIN_JSON"
 else
-  configuration_service "$DEPLOYDIR/service.json" "$ADMIN_JSON" "localhost|9001" "admin" "0.0.0.0"
+  configuration_service "$DEPLOYDIR/service.json" "$ADMIN_JSON" "localhost|9001" "admin" "0.0.0.0" "db" "db"
 fi
 
 DB_JSON="$CONFIGDIR/db.json"

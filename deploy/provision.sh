@@ -162,11 +162,15 @@ _DB_PORT="5432"
 _T_INT_PORT="9000"
 _T_PUB_PORT="443"
 _T_HOST="127.0.0.1"
+_T_AUTH="none"
+_T_LOGGING="db"
 
 # Admin Service
 _A_INT_PORT="9001"
 _A_PUB_PORT="8443"
 _A_HOST="127.0.0.1"
+_A_AUTH="db"
+_A_LOGGING="db"
 
 # Default admin credentials with random password
 _ADMIN_USER="admin"
@@ -492,7 +496,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   make tls
 
   # Configuration file generation for TLS service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "sudo"
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
@@ -510,7 +514,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   make admin
 
   # Configuration file generation for Admin service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "sudo"
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "sudo"
 
   # Prepare data folder
   sudo mkdir -p "$DEST_PATH/data"
