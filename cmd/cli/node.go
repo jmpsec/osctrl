@@ -28,7 +28,8 @@ func listNodes(c *cli.Context) error {
 		"Platform",
 		"Environment",
 		"Last Status",
-		"Last Result",
+		"IPAddress",
+		"Version",
 	})
 	if len(nodes) > 0 {
 		data := [][]string{}
@@ -40,7 +41,8 @@ func listNodes(c *cli.Context) error {
 				n.Platform,
 				n.Environment,
 				pastTimeAgo(n.LastStatus),
-				pastTimeAgo(n.LastResult),
+				n.IPAddress,
+				n.OsqueryVersion,
 			}
 			data = append(data, _n)
 		}
