@@ -17,15 +17,19 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	templatesFilesFolder string = "tmpl_admin"
+)
+
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/login.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html")
+		templatesFilesFolder + "/login.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting login template: %v", err)
@@ -87,13 +91,13 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/table.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/table.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -163,13 +167,13 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/table.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/table.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -222,13 +226,13 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/queries-run.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/queries-run.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -296,13 +300,13 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/queries.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/queries.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -353,13 +357,13 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/carves-run.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/carves-run.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -427,13 +431,13 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/carves.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/carves.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -492,13 +496,13 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("queries-logs.html").ParseFiles(
-		"tmpl_admin/queries-logs.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/queries-logs.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -572,13 +576,13 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("carves-details.html").ParseFiles(
-		"tmpl_admin/carves-details.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/carves-details.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -679,13 +683,13 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/conf.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-modals.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html")
+		templatesFilesFolder + "/conf.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-modals.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting conf template: %v", err)
@@ -757,13 +761,13 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/enroll.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/enroll.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting enroll template: %v", err)
@@ -849,13 +853,13 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(
-		"tmpl_admin/node.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/node.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -914,13 +918,13 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/environments.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/environments.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
@@ -984,13 +988,13 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		"tmpl_admin/settings.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/settings.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
@@ -1059,13 +1063,13 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(
-		"tmpl_admin/users.html",
-		"tmpl_admin/components/page-head.html",
-		"tmpl_admin/components/page-js.html",
-		"tmpl_admin/components/page-header.html",
-		"tmpl_admin/components/page-sidebar.html",
-		"tmpl_admin/components/page-aside.html",
-		"tmpl_admin/components/page-modals.html")
+		templatesFilesFolder + "/users.html",
+		templatesFilesFolder + "/components/page-head.html",
+		templatesFilesFolder + "/components/page-js.html",
+		templatesFilesFolder + "/components/page-header.html",
+		templatesFilesFolder + "/components/page-sidebar.html",
+		templatesFilesFolder + "/components/page-aside.html",
+		templatesFilesFolder + "/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
