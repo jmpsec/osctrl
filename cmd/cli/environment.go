@@ -39,9 +39,6 @@ func addEnvironment(c *cli.Context) error {
 	certFile := c.String("certificate")
 	if certFile != "" {
 		certificate = environments.ReadExternalFile(certFile)
-	} else {
-		fmt.Println("Certificate path is required")
-		os.Exit(1)
 	}
 	// Create environment if it does not exist
 	if !envs.Exists(envName) {
