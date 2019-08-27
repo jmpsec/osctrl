@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -1129,7 +1130,7 @@ func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare file to download
-	f, err := carvesmgr.Archive(carveSession, carvedFilesFolder)
+	result, err := carvesmgr.Archive(carveSession, carvedFilesFolder)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error downloading carve - %v", err)
@@ -1142,15 +1143,15 @@ func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Description", "File Carve Download")
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachment; filename="+f["file"])
+	w.Header().Set("Content-Disposition", "attachment; filename="+result.File)
 	w.Header().Set("Content-Transfer-Encoding", "binary")
 	w.Header().Set("Connection", "Keep-Alive")
 	w.Header().Set("Expires", "0")
 	w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
 	w.Header().Set("Pragma", "public")
-	w.Header().Set("Content-Length", f["size"])
+	w.Header().Set("Content-Length", strconv.FormatInt(result.Size, 10))
 	w.WriteHeader(http.StatusOK)
 	var fileReader io.Reader
-	fileReader, _ = os.Open(f["file"])
+	fileReader, _ = os.Open(result.File)
 	_, _ = io.Copy(w, fileReader)
 }
