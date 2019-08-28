@@ -12,9 +12,6 @@ import (
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch adminConfig.Auth {
-		case settings.AuthNone:
-			// Access always granted
-			h.ServeHTTP(w, r)
 		case settings.AuthDB:
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)

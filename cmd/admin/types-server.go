@@ -8,6 +8,14 @@ type JSONConfigurationSAML struct {
 	RootURL     string `json:"rooturl"`
 }
 
+// JSONAdminUsers to keep all admin users for auth JSON
+type JSONAdminUsers struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Fullname string `json:"fullname"`
+	Admin    bool   `json:"admin"`
+}
+
 // OsqueryTable to show tables to query
 type OsqueryTable struct {
 	Name      string   `json:"name"`

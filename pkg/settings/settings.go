@@ -23,6 +23,7 @@ const (
 // Types of authentication
 const (
 	AuthNone    string = "none"
+	AuthJSON    string = "json"
 	AuthDB      string = "db"
 	AuthSAML    string = "saml"
 	AuthHeaders string = "headers"
@@ -36,6 +37,7 @@ const (
 	LoggingGraylog string = "graylog"
 	LoggingSplunk  string = "splunk"
 	LoggingELK     string = "elk"
+	LoggingKafka   string = "kafka"
 )
 
 // Names for all possible settings values
