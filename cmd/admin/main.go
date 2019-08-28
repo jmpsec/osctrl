@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -86,6 +87,17 @@ var (
 	dbFlag      *string
 )
 
+// Valid values for auth and logging in configuration
+var validAuth = map[string]bool{
+	settings.AuthDB:      true,
+	settings.AuthSAML:    true,
+	settings.AuthHeaders: true,
+	settings.AuthJSON:    true,
+}
+var validLogging = map[string]bool{
+	settings.LoggingDB:      true,
+}
+
 // Function to load the configuration file
 func loadConfiguration(file, service string) (types.JSONConfigurationService, error) {
 	var cfg types.JSONConfigurationService
@@ -96,11 +108,18 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if err != nil {
 		return cfg, err
 	}
-	// TLS Admin values
+	// Admin values
 	adminRaw := viper.Sub(service)
 	err = adminRaw.Unmarshal(&cfg)
 	if err != nil {
 		return cfg, err
+	}
+	// Check if values are valid
+	if !validAuth[cfg.Auth] {
+		return cfg, fmt.Errorf("Invalid auth method")
+	}
+	if !validLogging[cfg.Logging] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// Load configuration for the auth method
 	/*

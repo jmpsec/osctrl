@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -66,6 +67,16 @@ var (
 	dbFlag      *string
 )
 
+// Valid values for auth and logging in configuration
+var validAuth = map[string]bool{
+	settings.AuthNone:    true,
+}
+var validLogging = map[string]bool{
+	settings.LoggingDB:      true,
+	settings.LoggingGraylog: true,
+	settings.LoggingSplunk:  true,
+}
+
 // Function to load the configuration file and assign to variables
 func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	var cfg types.JSONConfigurationService
@@ -81,6 +92,13 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	err = tlsRaw.Unmarshal(&cfg)
 	if err != nil {
 		return cfg, err
+	}
+	// Check if values are valid
+	if !validAuth[cfg.Auth] {
+		return cfg, fmt.Errorf("Invalid auth method")
+	}
+	if !validLogging[cfg.Logging] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
