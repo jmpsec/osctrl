@@ -22,13 +22,13 @@ const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
 // Empty default osquery configuration
 const emptyConfiguration string = "data/osquery-empty.json"
 
-// Handle testing requests
-func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
+// Handle health requests
+func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("test"))
+	_, _ = w.Write([]byte("✅"))
 }
 
 // Handle error requests
