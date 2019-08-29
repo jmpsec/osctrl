@@ -39,8 +39,8 @@ const (
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
-	// Default endpoint to handle HTTP testing
-	testingPath string = "/testing"
+	// Default endpoint to handle HTTP health
+	healthPath string = "/health"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
 	// Default service configuration file
@@ -95,7 +95,7 @@ var validAuth = map[string]bool{
 	settings.AuthJSON:    true,
 }
 var validLogging = map[string]bool{
-	settings.LoggingDB:      true,
+	settings.LoggingDB: true,
 }
 
 // Function to load the configuration file
@@ -256,8 +256,8 @@ func main() {
 		routerAdmin.HandleFunc("/login", loginGETHandler).Methods("GET")
 		routerAdmin.HandleFunc("/login", loginPOSTHandler).Methods("POST")
 	}
-	// Admin: testing
-	routerAdmin.HandleFunc(testingPath, testingHTTPHandler).Methods("GET")
+	// Admin: health of service
+	routerAdmin.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
 	// Admin: error
 	routerAdmin.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// Admin: favicon
@@ -324,6 +324,7 @@ func main() {
 	routerAdmin.Handle("/intervals/{environment}", handlerAuthCheck(http.HandlerFunc(intervalsPOSTHandler))).Methods("POST")
 	// Admin: nodes enroll
 	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
+	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(enrollPOSTHandler))).Methods("POST")
 	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
 	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
@@ -331,16 +332,14 @@ func main() {
 	// Admin: manage environments
 	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsGETHandler))).Methods("GET")
 	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsPOSTHandler))).Methods("POST")
-	// Admin: manage users if authentication is enabled
-	if adminConfig.Auth != settings.AuthNone {
-		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
-		routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
-		// logout
-		routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutHandler))).Methods("POST")
-	}
+	// Admin: manage users
+	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
+	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
+	// logout
+	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutHandler))).Methods("POST")
 
 	// SAML ACS
-	if adminConfig.Auth == settings.AuthNone {
+	if adminConfig.Auth == settings.AuthSAML {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
 

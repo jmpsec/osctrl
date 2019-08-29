@@ -601,21 +601,29 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
-			configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
-			if err != nil {
-				responseMessage = "error decoding configuration"
-				responseCode = http.StatusInternalServerError
-				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Printf("DebugService: %s %v", responseMessage, err)
-				}
-			} else {
-				err = envs.UpdateConfiguration(environmentVar, string(configuration))
+			if c.ConfigurationB64 != "" {
+				configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
 				if err != nil {
-					responseMessage = "error saving configuration"
+					responseMessage = "error decoding configuration"
 					responseCode = http.StatusInternalServerError
 					if settingsmgr.DebugService(settings.ServiceAdmin) {
 						log.Printf("DebugService: %s %v", responseMessage, err)
 					}
+				} else {
+					err = envs.UpdateConfiguration(environmentVar, string(configuration))
+					if err != nil {
+						responseMessage = "error saving configuration"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					}
+				}
+			} else {
+				responseMessage = "empty configuration"
+				responseCode = http.StatusInternalServerError
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Printf("DebugService: %s %v", responseMessage, err)
 				}
 			}
 		} else {
@@ -683,6 +691,24 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			err = envs.UpdateIntervals(environmentVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
 			if err != nil {
 				responseMessage = "error updating intervals"
+				responseCode = http.StatusInternalServerError
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Printf("DebugService: %s %v", responseMessage, err)
+				}
+			}
+			// After updating interval, you need to re-generate flags
+			flags, err := envs.GenerateFlagsEnv(environmentVar, "", "")
+			if err == nil {
+				// Update flags in the newly created environment
+				if err := envs.UpdateFlags(environmentVar, flags); err != nil {
+					responseMessage = "error updating flags"
+					responseCode = http.StatusInternalServerError
+					if settingsmgr.DebugService(settings.ServiceAdmin) {
+						log.Printf("DebugService: %s %v", responseMessage, err)
+					}
+				}
+			} else {
+				responseMessage = "error re-generating flags"
 				responseCode = http.StatusInternalServerError
 				if settingsmgr.DebugService(settings.ServiceAdmin) {
 					log.Printf("DebugService: %s %v", responseMessage, err)
@@ -1212,5 +1238,92 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users response sent")
+	}
+}
+
+// Handler POST requests enroll data
+func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	responseMessage := "Enroll data saved successfully"
+	responseCode := http.StatusOK
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	vars := mux.Vars(r)
+	// Extract environment and verify
+	environmentVar, ok := vars["environment"]
+	if !ok || !envs.Exists(environmentVar) {
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: error getting environment")
+		}
+		return
+	}
+	// Verify environment
+	if !envs.Exists(environmentVar) {
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: error unknown environment (%s)", environmentVar)
+		}
+		return
+	}
+	var e EnrollRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Parse request JSON body
+	err := json.NewDecoder(r.Body).Decode(&e)
+	if err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: %s %v", responseMessage, err)
+		}
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(ctx["csrftoken"], e.CSRFToken) {
+			if e.CertificateB64 != "" {
+				certificate, err := base64.StdEncoding.DecodeString(e.CertificateB64)
+				if err != nil {
+					responseMessage = "error decoding certificate"
+					responseCode = http.StatusInternalServerError
+					if settingsmgr.DebugService(settings.ServiceAdmin) {
+						log.Printf("DebugService: %s %v", responseMessage, err)
+					}
+				} else {
+					err = envs.UpdateCertificate(environmentVar, string(certificate))
+					if err != nil {
+						responseMessage = "error saving certificate"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					}
+				}
+			} else {
+				responseMessage = "empty certificate"
+				responseCode = http.StatusInternalServerError
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Printf("DebugService: %s %v", responseMessage, err)
+				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			if settingsmgr.DebugService(settings.ServiceAdmin) {
+				log.Printf("DebugService: %s %v", responseMessage, err)
+			}
+		}
+	}
+	// Prepare response
+	response, err := json.Marshal(AdminResponse{Message: responseMessage})
+	if err != nil {
+		responseMessage = "error formating response"
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: %s %v", responseMessage, err)
+		}
+		responseCode = http.StatusInternalServerError
+		response = []byte(responseMessage)
+	}
+	// Send response
+	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.WriteHeader(responseCode)
+	_, _ = w.Write(response)
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Configuration response sent")
 	}
 }

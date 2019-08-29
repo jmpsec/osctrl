@@ -2,6 +2,7 @@ package environments
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 )
 
@@ -71,4 +72,13 @@ func GenerateFlags(env TLSEnvironment, secret, certificate string) (string, erro
 		return "", err
 	}
 	return tpl.String(), nil
+}
+
+// GenerateFlagsEnv to generate flags by environment name
+func (environment *Environment) GenerateFlagsEnv(name string, secret, certificate string) (string, error) {
+	env, err := environment.Get(name)
+	if err != nil {
+		return "", fmt.Errorf("error getting environment %v", err)
+	}
+	return GenerateFlags(env, secret, certificate)
 }

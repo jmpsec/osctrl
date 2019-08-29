@@ -59,12 +59,12 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("💥"))
 }
 
-// Handle testing requests
-func testingHTTPHandler(w http.ResponseWriter, r *http.Request) {
+// Handle health requests
+func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("test"))
+	_, _ = w.Write([]byte("✅"))
 }
 
 // Handle error requests

@@ -224,8 +224,16 @@
                 <hr>
 
                 <div class="row mb-4">
-                  <div class="col-md-12">
-                    Enrollment certificate:
+                  <div class="row col-md-12">
+                    <div class="col-md-10">
+                      Enrollment certificate:
+                    </div>
+                    <div class="col-md-2">
+                      <button id="" class="btn btn-sm btn-block btn-dark"
+                        data-tooltip="true" data-placement="bottom" title="Upload new certificate" onclick="confirmUploadCertificate();">
+                        <i class="fas fa-upload"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -262,6 +270,14 @@
       hljs.initHighlightingOnLoad();
 
       $(document).ready(function() {
+        // Codemirror editor for configuration
+        var certificateBlob = CodeMirror.fromTextArea(document.getElementById("certificate"), {
+          mode: 'text/plain',
+          lineNumbers: true
+        });
+        $('#certificate').data('CodeMirrorInstance', certificateBlob);
+        certificateBlob.setSize("100%", "100%");
+
         // Highlight.js code element initialization
         $('code').each(function(i, block) {
           hljs.highlightBlock(block);

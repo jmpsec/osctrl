@@ -14,17 +14,17 @@ const (
 	// DefaultLogPath as default value for logging data from nodes
 	DefaultLogPath string = "log"
 	// DefaultLogInterval as default interval for logging data from nodes
-	DefaultLogInterval int = 10
+	DefaultLogInterval int = 600
 	// DefaultConfigPath as default value for configuring nodes
 	DefaultConfigPath string = "config"
 	// DefaultConfigInterval as default interval for configuring nodes
-	DefaultConfigInterval int = 10
+	DefaultConfigInterval int = 300
 	// DefaultQueryReadPath as default value for distributing on-demand queries to nodes
 	DefaultQueryReadPath string = "read"
 	// DefaultQueryWritePath as default value for collecting results from on-demand queries
 	DefaultQueryWritePath string = "write"
 	// DefaultQueryInterval as default interval for distributing on-demand queries to nodes
-	DefaultQueryInterval int = 10
+	DefaultQueryInterval int = 60
 	// DefaultCarverInitPath as default init endpoint for the carver
 	DefaultCarverInitPath string = "init"
 	// DefaultCarverBlockPath as default block endpoint for the carver
@@ -204,6 +204,18 @@ func (environment *Environment) UpdateConfiguration(name, configuration string) 
 		return fmt.Errorf("error getting environment %v", err)
 	}
 	if err := environment.DB.Model(&env).Update("configuration", configuration).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// UpdateCertificate to update certificate for an environment
+func (environment *Environment) UpdateCertificate(name, certificate string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	if err := environment.DB.Model(&env).Update("certificate", certificate).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil

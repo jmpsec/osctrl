@@ -136,4 +136,27 @@
           </div>
           <!-- /.modal -->
 
+        <div class="modal fade" id="certificateModal" tabindex="-1" role="dialog" aria-labelledby="certificateModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dark modal-lg" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">Upload new certificate</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <textarea id="certificate" name="certificate"></textarea>
+              </div>
+              <div class="modal-footer">
+                <button id="certificate_action" type="button" class="btn btn-dark" data-dismiss="modal">Upload</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+              </div>
+            </div>
+            <!-- /.modal-content -->
+          </div>
+          <!-- /.modal-dialog -->
+        </div>
+        <!-- /.modal -->
+
 {{ end }}

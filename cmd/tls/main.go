@@ -32,8 +32,8 @@ const (
 	serviceDescription string = "TLS service for osctrl"
 	// Application description
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
-	// Default endpoint to handle HTTP testing
-	testingPath string = "/testing"
+	// Default endpoint to handle HTTP health
+	healthPath string = "/health"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
 	// Default service configuration file
@@ -168,7 +168,7 @@ func main() {
 	// TLS: root
 	routerTLS.HandleFunc("/", okHTTPHandler)
 	// TLS: testing
-	routerTLS.HandleFunc(testingPath, testingHTTPHandler).Methods("GET")
+	routerTLS.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
 	// TLS: error
 	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
