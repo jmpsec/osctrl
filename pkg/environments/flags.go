@@ -17,6 +17,7 @@ const (
 --config_plugin=tls
 --config_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.ConfigPath }}
 --config_tls_refresh={{ .Environment.ConfigInterval }}
+--config_tls_max_attempts=5
 --logger_plugin=tls
 --logger_tls_compress=true
 --logger_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.LogPath }}
@@ -28,7 +29,7 @@ const (
 --disable_distributed=false
 --distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
---distributed_tls_max_attempts=3
+--distributed_tls_max_attempts=5
 --distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
 --distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_dump=true
@@ -49,17 +50,17 @@ type flagData struct {
 }
 
 // GenerateFlags to generate flags
-func GenerateFlags(env TLSEnvironment, secret, certificate string) (string, error) {
+func GenerateFlags(env TLSEnvironment, secretPath, certificatePath string) (string, error) {
 	t, err := template.New("flags").Parse(FlagsTemplate)
 	if err != nil {
 		return "", err
 	}
-	flagSecret := secret
-	if secret == "" {
+	flagSecret := secretPath
+	if secretPath == "" {
 		flagSecret = emptyFlagSecret
 	}
-	flagCertificate := certificate
-	if certificate == "" {
+	flagCertificate := certificatePath
+	if certificatePath == "" {
 		flagCertificate = emptyFlagCert
 	}
 	data := flagData{
@@ -75,10 +76,10 @@ func GenerateFlags(env TLSEnvironment, secret, certificate string) (string, erro
 }
 
 // GenerateFlagsEnv to generate flags by environment name
-func (environment *Environment) GenerateFlagsEnv(name string, secret, certificate string) (string, error) {
+func (environment *Environment) GenerateFlagsEnv(name string, secretPath, certificatePath string) (string, error) {
 	env, err := environment.Get(name)
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %v", err)
 	}
-	return GenerateFlags(env, secret, certificate)
+	return GenerateFlags(env, secretPath, certificatePath)
 }
