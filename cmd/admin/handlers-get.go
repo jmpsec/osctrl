@@ -139,7 +139,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService:  Environment table template served")
+		log.Println("DebugService: Environment table template served")
 	}
 	incMetric(metricAdminOK)
 }
@@ -963,7 +963,7 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService:  Environments template served")
+		log.Println("DebugService: Environments template served")
 	}
 	incMetric(metricAdminOK)
 }

@@ -8,6 +8,11 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+const (
+	// Graylog value
+	dbName string = "DB"
+)
+
 var (
 	dbLog   func(string, *gorm.DB, []byte, string, string, bool)
 	dbQuery func(*gorm.DB, []byte, string, string, string, int, bool)

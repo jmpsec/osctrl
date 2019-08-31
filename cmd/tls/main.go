@@ -187,7 +187,7 @@ func main() {
 	// FIXME Implement Redis cache
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService:  Environments ticker")
+		log.Println("DebugService: Environments ticker")
 	}
 	// Refresh environments as soon as service starts
 	go refreshEnvironments()

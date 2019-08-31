@@ -74,7 +74,7 @@ type TLSEnvironment struct {
 // MapEnvironments to hold the TLS environments by name
 type MapEnvironments map[string]TLSEnvironment
 
-// Environment keeps all TLS  Environments
+// Environment keeps all TLS Environments
 type Environment struct {
 	DB *gorm.DB
 }

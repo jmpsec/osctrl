@@ -933,6 +933,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
 			log.Printf("DebugService: %s %v", responseMessage, err)
 		}
+		goto response
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
@@ -946,6 +947,19 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					if env.Configuration == "" {
 						env.Configuration = environments.ReadExternalFile(emptyConfiguration)
 					}
+					if env.Flags == "" {
+						// Generate flags
+						flags, err := environments.GenerateFlags(env, "", "")
+						if err != nil {
+							responseMessage = "error creating environment"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+							goto response
+						}
+						env.Flags = flags
+					}
 					err := envs.Create(env)
 					if err != nil {
 						responseMessage = "error creating environment"
@@ -953,6 +967,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
+						goto response
 					} else {
 						responseMessage = "Environment created successfully"
 					}
@@ -969,6 +984,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
+						goto response
 					} else {
 						responseMessage = "Environment deleted successfully"
 					}
@@ -983,6 +999,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
+						goto response
 					} else {
 						responseMessage = "DebugHTTP changed successfully"
 					}
@@ -994,8 +1011,10 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			if settingsmgr.DebugService(settings.ServiceAdmin) {
 				log.Printf("DebugService: %s %v", responseMessage, err)
 			}
+			goto response
 		}
 	}
+response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -1011,7 +1030,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService:  Environments response sent")
+		log.Println("DebugService: Environments response sent")
 	}
 }
 

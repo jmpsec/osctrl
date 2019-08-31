@@ -8,40 +8,53 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 )
 
-const (
-	// Graylog enabled
-	graylogOn bool = false
-	// Splunk enabled
-	splunkOn bool = false
-	// DB enabled
-	dbOn bool = true
-)
-
 // Variables for configuration from JSON files
 var (
-	graylogCfg GraylogConfiguration
-	splunkCfg  SlunkConfiguration
+	graylogCfg   GraylogConfiguration
+	graylogReady bool
+	splunkCfg    SlunkConfiguration
+	splunkReady  bool
+	dbReady      bool
 )
 
 // Initialization of the plugin
 func init() {
 	var err error
-	if graylogOn {
+	if graylogEnabled {
 		graylogCfg, err = loadGraylogConfiguration()
 		if err != nil {
-			log.Fatalf("Failed to load graylog json - %v", err)
+			graylogReady = false
+			log.Printf("Failed to load graylog json - %v", err)
+		} else {
+			if err := loadGraylogPlugin(); err != nil {
+				graylogReady = false
+				log.Printf("Failed to load graylog plugin - %v", err)
+			} else {
+				graylogReady = true
+			}
 		}
 	}
-	if splunkOn {
+	if splunkEnabled {
 		splunkCfg, err = loadSplunkConfiguration()
 		if err != nil {
-			log.Fatalf("Failed to load splunk json - %v", err)
+			splunkReady = false
+			log.Printf("Failed to load splunk json - %v", err)
+		} else {
+			if err := loadSplunkPlugin(); err != nil {
+				splunkReady = false
+				log.Printf("Failed to load splunk plugin - %v", err)
+			} else {
+				splunkReady = true
+			}
 		}
 	}
-	if dbOn {
+	if dbEnabled {
 		err = loadDBPlugin()
 		if err != nil {
-			log.Fatalf("Failed to load db plugin - %v", err)
+			dbReady = false
+			log.Printf("Failed to load db plugin - %v", err)
+		} else {
+			dbReady = true
 		}
 	}
 }
@@ -55,19 +68,31 @@ func LogsDispatcher(logging, logType string, params ...interface{}) {
 	switch logging {
 	case settings.LoggingGraylog:
 		debug := params[4].(bool)
-		graylogSend(logType, data, environment, uuid, graylogCfg.URL, debug)
+		if graylogReady {
+			graylogSend(logType, data, environment, uuid, graylogCfg.URL, debug)
+		} else {
+			log.Printf("Logging with %s isn't ready - Dropping %d bytes", graylogName, len(data))
+		}
 	case settings.LoggingSplunk:
 		debug := params[4].(bool)
-		splunkSend(logType, data, environment, uuid, splunkCfg.URL, splunkCfg.Token, debug)
-	case settings.LoggingDB:
-		if logType == types.QueryLog {
-			name := params[4].(string)
-			status := params[5].(int)
-			debug := params[6].(bool)
-			dbQuery(db, data, environment, uuid, name, status, debug)
+		if splunkReady {
+			splunkSend(logType, data, environment, uuid, splunkCfg.URL, splunkCfg.Token, debug)
 		} else {
-			debug := params[4].(bool)
-			dbLog(logType, db, data, environment, uuid, debug)
+			log.Printf("Logging with %s isn't ready - Dropping %d bytes", splunkName, len(data))
+		}
+	case settings.LoggingDB:
+		if dbReady {
+			if logType == types.QueryLog {
+				name := params[4].(string)
+				status := params[5].(int)
+				debug := params[6].(bool)
+				dbQuery(db, data, environment, uuid, name, status, debug)
+			} else {
+				debug := params[4].(bool)
+				dbLog(logType, db, data, environment, uuid, debug)
+			}
+		} else {
+			log.Printf("Logging with %s isn't ready - Dropping %d bytes", dbName, len(data))
 		}
 	}
 }

@@ -340,8 +340,15 @@ func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
 
 // Helper to dispatch logs
 func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, dhash, osqueryversion, logType, environment string) {
+	// Use metadata to update record
+	if err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, dhash, osqueryversion, uuid); err != nil {
+		log.Printf("error updating metadata %s", err)
+	}
 	// Send data to storage
 	// FIXME allow multiple types of logging
+	if envsmap[environment].DebugHTTP {
+		log.Printf("dispatching logs to %s", tlsConfig.Logging)
+	}
 	logsDispatcher(
 		tlsConfig.Logging,
 		logType,
@@ -350,11 +357,6 @@ func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, loc
 		environment,
 		uuid,
 		envsmap[environment].DebugHTTP)
-	// Use metadata to update record
-	err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, dhash, osqueryversion, uuid)
-	if err != nil {
-		log.Printf("error updating metadata %s", err)
-	}
 	// Refresh last logging request
 	if logType == types.StatusLog {
 		err := nodesmgr.RefreshLastStatus(uuid)
@@ -363,8 +365,7 @@ func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, loc
 		}
 	}
 	if logType == types.ResultLog {
-		err := nodesmgr.RefreshLastResult(uuid)
-		if err != nil {
+		if err := nodesmgr.RefreshLastResult(uuid); err != nil {
 			log.Printf("error refreshing last result %v", err)
 		}
 	}
@@ -377,8 +378,15 @@ func dispatchQueries(queryData types.QueryWriteData, node nodes.OsqueryNode) {
 	if err != nil {
 		log.Printf("error preparing data %v", err)
 	}
+	// Refresh last query write request
+	if err := nodesmgr.RefreshLastQueryWrite(node.UUID); err != nil {
+		log.Printf("error refreshing last query write %v", err)
+	}
 	// Send data to storage
 	// FIXME allow multiple types of logging
+	if envsmap[node.Environment].DebugHTTP {
+		log.Printf("dispatching queries to %s", tlsConfig.Logging)
+	}
 	logsDispatcher(
 		tlsConfig.Logging,
 		types.QueryLog,
@@ -389,11 +397,6 @@ func dispatchQueries(queryData types.QueryWriteData, node nodes.OsqueryNode) {
 		queryData.Name,
 		queryData.Status,
 		envsmap[node.Environment].DebugHTTP)
-	// Refresh last query write request
-	err = nodesmgr.RefreshLastQueryWrite(node.UUID)
-	if err != nil {
-		log.Printf("error refreshing last query write %v", err)
-	}
 }
 
 // Function to handle on-demand queries to osquery nodes
