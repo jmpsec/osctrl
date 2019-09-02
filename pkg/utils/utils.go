@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 )
 
 // SendRequest - Helper function to send HTTP requests
-func SendRequest(secure bool, reqType, url string, params io.Reader, headers map[string]string) (int, []byte, error) {
+func SendRequest(reqType, url string, params io.Reader, headers map[string]string) (int, []byte, error) {
 	var client *http.Client
-	if secure {
+	if strings.HasPrefix(url, "https") {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}

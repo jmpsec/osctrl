@@ -147,8 +147,9 @@
               data: 'progress',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return  '<span style="color:green;">'+data.executions+'</span>/' +
-                          '<span style="color:red;">'+data.errors+'</span>';
+                  return  '<span style="color:black;">'+data.expected+'</span>/' +
+                          '<b><span style="color:green;">'+data.executions+'</span></b>/' +
+                          '<b><span style="color:red;">'+data.errors+'</span></b>';
                 } else {
                   return data;
                 }

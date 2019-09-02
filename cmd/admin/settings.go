@@ -44,7 +44,7 @@ func loadingSettings() {
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics (port): %v", err)
 		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), settings.ServiceAdmin)
+		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceName)
 		if err != nil {
 			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
