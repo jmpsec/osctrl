@@ -74,7 +74,7 @@ func GraylogSend(logType string, data []byte, environment, uuid, url string, deb
 		log.Printf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
 	}
 	// Send log with a POST to the Graylog URL
-	resp, body, err := utils.SendRequest(true, graylogMethod, url, jsonParam, headers)
+	resp, body, err := utils.SendRequest(graylogMethod, url, jsonParam, headers)
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 		return

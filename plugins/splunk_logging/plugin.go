@@ -84,7 +84,7 @@ func SplunkSend(logType string, data []byte, environment, uuid, url, token strin
 		log.Printf("Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
 	}
 	// Send log with a POST to the Splunk URL
-	resp, body, err := utils.SendRequest(true, splunkMethod, url, jsonParam, headers)
+	resp, body, err := utils.SendRequest(splunkMethod, url, jsonParam, headers)
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}

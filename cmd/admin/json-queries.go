@@ -71,6 +71,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 			status = queries.StatusComplete
 		}
 		progress := make(QueryProgress)
+		progress["expected"] = q.Expected
 		progress["executions"] = q.Executions
 		progress["errors"] = q.Errors
 		data := make(QueryData)
