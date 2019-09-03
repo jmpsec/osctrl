@@ -24,7 +24,7 @@ const (
 	// Application name
 	appName string = projectName + "-cli"
 	// Application version
-	appVersion string = "0.1.5"
+	appVersion string = "0.1.6"
 	// Application usage
 	appUsage string = "CLI for " + projectName
 	// Application description

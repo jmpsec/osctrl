@@ -27,7 +27,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "0.1.5"
+	serviceVersion string = "0.1.6"
 	// Service description
 	serviceDescription string = "TLS service for osctrl"
 	// Application description
