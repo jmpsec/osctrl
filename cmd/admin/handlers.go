@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	metricAdminReq = "admin-req"
-	metricAdminErr = "admin-err"
-	metricAdminOK  = "admin-ok"
+	metricAdminReq  = "admin-req"
+	metricAdminErr  = "admin-err"
+	metricAdminOK   = "admin-ok"
+	metricHealthReq = "health-req"
+	metricHealthOK  = "health-ok"
 )
 
 // JSONApplication for Content-Type headers
@@ -24,11 +26,13 @@ const emptyConfiguration string = "data/osquery-empty.json"
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("✅"))
+	incMetric(metricHealthOK)
 }
 
 // Handle error requests

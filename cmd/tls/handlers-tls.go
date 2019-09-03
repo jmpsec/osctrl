@@ -38,6 +38,8 @@ const (
 	metricBlockReq  = "block-req"
 	metricBlockErr  = "block-err"
 	metricBlockOK   = "block-ok"
+	metricHealthReq  = "health-req"
+	metricHealthOK   = "health-ok"
 )
 
 // JSONApplication for Content-Type headers
@@ -61,10 +63,12 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricHealthReq)
 	// Send response
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("✅"))
+	incMetric(metricHealthOK)
 }
 
 // Handle error requests
