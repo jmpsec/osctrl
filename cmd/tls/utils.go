@@ -142,7 +142,7 @@ func isPublicIP(ip net.IP) bool {
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if settingsmgr.ServiceMetrics(settings.ServiceTLS) {
+	if _metrics != nil && settingsmgr.ServiceMetrics(settings.ServiceTLS) {
 		_metrics.Inc(name)
 	}
 }

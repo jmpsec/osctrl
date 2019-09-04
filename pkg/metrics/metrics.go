@@ -7,7 +7,42 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/spf13/viper"
 )
+
+const (
+	// Metrics value
+	metricsName string = "metrics"
+	// Metrics configuration file
+	metricsConfigFile string = "config/" + metricsName + ".json"
+)
+
+// Configuration to hold all metrics configuration values
+type Configuration struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"`
+}
+
+// LoadConfiguration - Function to load the metrics configuration from JSON file
+func LoadConfiguration() (Configuration, error) {
+	var _metricsCfg Configuration
+	log.Printf("Loading %s", metricsConfigFile)
+	// Load file and read config
+	viper.SetConfigFile(metricsConfigFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		return _metricsCfg, err
+	}
+	cfgRaw := viper.Sub(metricsName)
+	err = cfgRaw.Unmarshal(&_metricsCfg)
+	if err != nil {
+		return _metricsCfg, err
+	}
+	// No errors!
+	return _metricsCfg, nil
+}
 
 // Helper to prepare metrics to send
 func (metrics *Metrics) metricFormat(name string, value int) string {
@@ -27,6 +62,7 @@ type Counter struct {
 
 // Metrics will be used to send metrics to grafana via TCP or UDP
 type Metrics struct {
+	Ready    bool
 	mux      sync.Mutex
 	Host     string
 	Port     int
@@ -106,6 +142,10 @@ func (metrics *Metrics) ConnectAndSend(name string, value int) {
 
 // Send to submit a metric via TCP or UDP
 func (metrics *Metrics) Send(name string, value int) error {
+	// Avoid crash
+	if !metrics.Ready {
+		return fmt.Errorf("metrics are not ready")
+	}
 	mData := metrics.metricFormat(name, value)
 	if metrics.Protocol == "udp" {
 		fmt.Fprintf(metrics.conn, mData)
@@ -122,6 +162,10 @@ func (metrics *Metrics) Send(name string, value int) error {
 
 // Inc to increase the counter for a metric
 func (metrics *Metrics) Inc(name string) {
+	// Avoid crash
+	if !metrics.Ready {
+		return
+	}
 	now := time.Now().Unix()
 	// Unlock mutex
 	metrics.mux.Lock()
@@ -165,6 +209,6 @@ func CreateMetrics(protocol string, host string, port int, tag string) (*Metrics
 	if err != nil {
 		return m, err
 	}
-
+	m.Ready = true
 	return m, nil
 }

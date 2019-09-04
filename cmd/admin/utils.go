@@ -234,7 +234,7 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
+	if _metrics != nil && settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
 		_metrics.Inc(name)
 	}
 }

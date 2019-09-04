@@ -238,6 +238,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						log.Printf("%s %v", responseMessage, err)
 						goto response
 					}
+					expected = append(expected, h)
 				}
 			}
 		}
