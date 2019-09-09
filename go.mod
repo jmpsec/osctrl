@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/crewjam/saml v0.0.0-20190508002657-ca21de9dd5b9
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.2
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
@@ -18,10 +19,6 @@ require (
 	github.com/jmpsec/osctrl/pkg/types v0.1.6
 	github.com/jmpsec/osctrl/pkg/users v0.1.6
 	github.com/jmpsec/osctrl/pkg/utils v0.1.6
-	github.com/jmpsec/osctrl/plugins/db_logging v0.1.6 // indirect
-	github.com/jmpsec/osctrl/plugins/graylog_logging v0.1.6 // indirect
-	github.com/jmpsec/osctrl/plugins/logging_dispatcher v0.1.6 // indirect
-	github.com/jmpsec/osctrl/plugins/splunk_logging v0.1.6 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect

@@ -32,7 +32,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Check credentials
 		if access, user := adminUsers.CheckLoginCredentials(l.Username, l.Password); access {
-			err = sessionsmgr.Save(r, w, user)
+			_, err = sessionsmgr.Save(r, w, user)
 			if err != nil {
 				responseMessage = "session error"
 				responseCode = http.StatusForbidden
@@ -238,6 +238,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						log.Printf("%s %v", responseMessage, err)
 						goto response
 					}
+					expected = append(expected, h)
 				}
 			}
 		}

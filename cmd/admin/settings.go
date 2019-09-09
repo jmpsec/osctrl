@@ -7,6 +7,32 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
+// Function to load the metrics settings
+func loadingMetrics() {
+	// Check if service settings for metrics is ready, initialize if so
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics) {
+		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false); err != nil {
+			log.Printf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
+		}
+	} else if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
+		_mCfg, err := metrics.LoadConfiguration()
+		if err != nil {
+			if err := settingsmgr.SetBoolean(false, settings.ServiceAdmin, settings.ServiceMetrics); err != nil {
+				log.Fatalf("Failed to disable metrics: %v", err)
+			}
+			log.Printf("Failed to initialize metrics: %v", err)
+		} else {
+			_metrics, err = metrics.CreateMetrics(_mCfg.Protocol, _mCfg.Host, _mCfg.Port, serviceName)
+			if err != nil {
+				log.Fatalf("Failed to initialize metrics: %v", err)
+				if err := settingsmgr.SetBoolean(false, settings.ServiceAdmin, settings.ServiceMetrics); err != nil {
+					log.Fatalf("Failed to disable metrics: %v", err)
+				}
+			}
+		}
+	}
+}
+
 // Function to load all settings for the service
 func loadingSettings() {
 	// Check if service settings for debug service is ready
@@ -23,30 +49,6 @@ func loadingSettings() {
 	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.DebugHTTP) {
 		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.DebugHTTP, false); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
-		}
-	}
-	// Check if service settings for metrics is ready
-	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics) {
-		if err := settingsmgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.ServiceMetrics, err)
-		}
-	} else if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
-		// Initialize metrics if enabled
-		mProtocol, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsProtocol)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
-		}
-		mHost, err := settingsmgr.GetString(settings.ServiceAdmin, settings.MetricsHost)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (host): %v", err)
-		}
-		mPort, err := settingsmgr.GetInteger(settings.ServiceAdmin, settings.MetricsPort)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (port): %v", err)
-		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceName)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics: %v", err)
 		}
 	}
 	// Check if service settings for default environment is ready
@@ -67,6 +69,8 @@ func loadingSettings() {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.InactiveHours, err)
 		}
 	}
+	// Metrics
+	loadingMetrics()
 	// Write JSON config to settings
 	if err := settingsmgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logging); err != nil {
 		log.Fatalf("Failed to add JSON values to configuration: %v", err)

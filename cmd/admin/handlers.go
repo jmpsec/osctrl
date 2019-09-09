@@ -44,6 +44,14 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("oh no..."))
 }
 
+// Handle forbidden error requests
+func forbiddenHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	// Send response
+	w.WriteHeader(http.StatusForbidden)
+	_, _ = w.Write([]byte("❌"))
+}
+
 // Handler for the favicon
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)

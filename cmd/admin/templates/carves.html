@@ -40,6 +40,7 @@
                         <th>Creator</th>
                         <th>Created</th>
                         <th>Status</th>
+                        <th>Progress</th>
                         <th>Targets</th>
                       </tr>
                     </thead>
@@ -102,11 +103,12 @@
               }
             },
             {"data" : "status"},
-            {"data" : "progress"}
+            {"data" : "progress"},
+            {"data" : "targets"}
           ],
           columnDefs: [
             {
-              targets:   0,
+              targets: 0,
               className: 'select-checkbox',
               width: '1%',
               data: 'checkbox',
@@ -126,7 +128,7 @@
             },{
               targets: 2,
               data: 'creator',
-              width: '16%'
+              width: '10%'
             },{
               targets: 3,
               width: '10%',
@@ -144,12 +146,27 @@
               }
             },{
               targets: 5,
-              width: '13%',
-              data: 'blocks',
+              width: '10%',
+              data: 'progress',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
                   return  '<b>'+data.total+'</b>/' +
                           '<b><span style="color:green;">'+data.completed+'</span></b>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 6,
+              width: '10%',
+              data: 'targets',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  var content = '';
+                  $.each(data, function() {
+                    content += this.type + ':<b>' + this.value + '</b></br>';
+                  });
+                  return content;
                 } else {
                   return data;
                 }

@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -15,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 )
@@ -90,7 +94,7 @@ func removeBackslash(rawString string) string {
 // Helper to generate a link to results for on-demand queries
 func resultsSearchLink(name string) string {
 		if adminConfig.Logging == settings.LoggingSplunk {
-			return strings.Replace(adminConfig.LoggingCfg["search"], "{{NAME}}", removeBackslash(name), 1)
+			return strings.Replace(.LoggingCfg["search"], "{{NAME}}", removeBackslash(name), 1)
 		}
 	if adminConfig.Logging == settings.LoggingDB {
 		return "/query/logs/" + removeBackslash(name)
@@ -234,7 +238,7 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 
 // Helper to send metrics if it is enabled
 func incMetric(name string) {
-	if settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
+	if _metrics != nil && settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
 		_metrics.Inc(name)
 	}
 }
@@ -293,4 +297,26 @@ func loadOsqueryTables(file string) ([]OsqueryTable, error) {
 		tables[i].Filter = strings.TrimSpace(filter)
 	}
 	return tables, nil
+}
+
+// Helper to parse JWT tokens because the SAML library is total garbage
+func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error) {
+	type TokenClaims struct {
+		jwt.StandardClaims
+		Attributes map[string][]string `json:"attr"`
+	}
+	tokenClaims := TokenClaims{}
+	token, err := jwt.ParseWithClaims(cookie, &tokenClaims, func(t *jwt.Token) (interface{}, error) {
+		secretBlock := x509.MarshalPKCS1PrivateKey(keypair.PrivateKey.(*rsa.PrivateKey))
+		return secretBlock, nil
+	})
+	if err != nil || !token.Valid {
+		return JWTData{}, err
+	}
+	return JWTData{
+		Subject:  tokenClaims.Subject,
+		Email:    tokenClaims.Attributes["mail"][0],
+		Display:  tokenClaims.Attributes["displayName"][0],
+		Username: tokenClaims.Attributes["sAMAccountName"][0],
+	}, nil
 }

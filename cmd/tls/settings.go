@@ -15,28 +15,26 @@ func loadingSettings() {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.DebugService, err)
 		}
 	}
-	// Check if service settings for metrics is ready
+	// Check if service settings for metrics is ready, initialize if so
 	if !settingsmgr.IsValue(settings.ServiceTLS, settings.ServiceMetrics) {
 		if err := settingsmgr.NewBooleanValue(settings.ServiceTLS, settings.ServiceMetrics, false); err != nil {
-			log.Fatalf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
+			log.Printf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
 		}
 	} else if settingsmgr.ServiceMetrics(settings.ServiceTLS) {
-		// Initialize metrics if enabled
-		mProtocol, err := settingsmgr.GetString(settings.ServiceTLS, settings.MetricsProtocol)
+		_mCfg, err := metrics.LoadConfiguration()
 		if err != nil {
-			log.Fatalf("Failed to initialize metrics (protocol): %v", err)
-		}
-		mHost, err := settingsmgr.GetString(settings.ServiceTLS, settings.MetricsHost)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (host): %v", err)
-		}
-		mPort, err := settingsmgr.GetInteger(settings.ServiceTLS, settings.MetricsPort)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics (port): %v", err)
-		}
-		_metrics, err = metrics.CreateMetrics(mProtocol, mHost, int(mPort), serviceName)
-		if err != nil {
-			log.Fatalf("Failed to initialize metrics: %v", err)
+			if err := settingsmgr.SetBoolean(false, settings.ServiceTLS, settings.ServiceMetrics); err != nil {
+				log.Fatalf("Failed to disable metrics: %v", err)
+			}
+			log.Printf("Failed to initialize metrics: %v", err)
+		} else {
+			_metrics, err = metrics.CreateMetrics(_mCfg.Protocol, _mCfg.Host, _mCfg.Port, serviceName)
+			if err != nil {
+				log.Fatalf("Failed to initialize metrics: %v", err)
+				if err := settingsmgr.SetBoolean(false, settings.ServiceTLS, settings.ServiceMetrics); err != nil {
+					log.Fatalf("Failed to disable metrics: %v", err)
+				}
+			}
 		}
 	}
 	// Check if service settings for environments refresh is ready

@@ -40,6 +40,13 @@ type QueryJSON struct {
 	Created  CreationTimes `json:"created"`
 	Status   string        `json:"status"`
 	Progress QueryProgress `json:"progress"`
+	Targets  []QueryTarget `json:"targets"`
+}
+
+// QueryTarget to be returned with the JSON data for a query
+type QueryTarget struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 // Handler for JSON queries by target
@@ -70,6 +77,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		if q.Completed {
 			status = queries.StatusComplete
 		}
+		// Prepare progress data
 		progress := make(QueryProgress)
 		progress["expected"] = q.Expected
 		progress["executions"] = q.Executions
@@ -77,6 +85,17 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		data := make(QueryData)
 		data["query"] = q.Query
 		data["name"] = q.Name
+		// Preparing query targets
+		ts, _ := queriesmgr.GetTargets(q.Name)
+		_ts := []QueryTarget{}
+		for _, t := range ts {
+			_t := QueryTarget{
+				Type:  t.Type,
+				Value: t.Value,
+			}
+			_ts = append(_ts, _t)
+		}
+		// Preparing JSON
 		_q := QueryJSON{
 			Name:    q.Name,
 			Creator: q.Creator,
@@ -87,6 +106,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 			},
 			Status:   status,
 			Progress: progress,
+			Targets:  _ts,
 		}
 		qJSON = append(qJSON, _q)
 	}

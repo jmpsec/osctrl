@@ -41,6 +41,13 @@ type CarveJSON struct {
 	Created  CreationTimes `json:"created"`
 	Status   string        `json:"status"`
 	Progress CarveProgress `json:"progress"`
+	Targets  []CarveTarget `json:"targets"`
+}
+
+// CarveTarget to be returned with the JSON data for a carve
+type CarveTarget struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 // Handler for JSON carves by target
@@ -89,6 +96,17 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 		data := make(CarveData)
 		data["path"] = q.Path
 		data["name"] = q.Name
+		// Preparing query targets
+		ts, _ := queriesmgr.GetTargets(q.Name)
+		_ts := []CarveTarget{}
+		for _, t := range ts {
+			_t := CarveTarget{
+				Type:  t.Type,
+				Value: t.Value,
+			}
+			_ts = append(_ts, _t)
+		}
+		// Preparing JSON
 		_c := CarveJSON{
 			Name:    q.Name,
 			Creator: q.Creator,
@@ -99,6 +117,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 			},
 			Status:   status,
 			Progress: progress,
+			Targets:  _ts,
 		}
 		cJSON = append(cJSON, _c)
 	}
