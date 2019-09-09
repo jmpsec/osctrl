@@ -1,13 +1,5 @@
 package main
 
-// JSONConfigurationSAML to keep all SAML details for auth
-type JSONConfigurationSAML struct {
-	CertPath    string `json:"certpath"`
-	KeyPath     string `json:"keypath"`
-	MetaDataURL string `json:"metadataurl"`
-	RootURL     string `json:"rooturl"`
-}
-
 // JSONAdminUsers to keep all admin users for auth JSON
 type JSONAdminUsers struct {
 	Username string `json:"username"`
@@ -22,4 +14,12 @@ type OsqueryTable struct {
 	URL       string   `json:"url"`
 	Platforms []string `json:"platforms"`
 	Filter    string
+}
+
+// JWTData to return all the fields from a JWT token
+type JWTData struct {
+	Subject  string
+	Email    string
+	Display  string
+	Username string
 }

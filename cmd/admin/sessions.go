@@ -153,28 +153,28 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 }
 
 // Save session and set cookie header
-func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser) error {
+func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(defaultCookieName); err != nil {
 		s, err = sm.New(r, user.Username, user.Admin)
 		if err != nil {
-			return err
+			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
 			s, err = sm.New(r, user.Username, user.Admin)
 			if err != nil {
-				return err
+				return s, err
 			}
 		}
 		if s.Username != user.Username {
-			return fmt.Errorf("Invalid user session (%s)", s.Username)
+			return s, fmt.Errorf("Invalid user session (%s)", s.Username)
 		}
 	}
 	http.SetCookie(w, sessions.NewCookie(defaultCookieName, s.Cookie, sm.Options))
 
-	return nil
+	return s, nil
 }
 
 // Cleanup deletes expired sessions

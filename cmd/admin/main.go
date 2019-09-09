@@ -2,13 +2,10 @@ package main
 
 import (
 	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -41,12 +38,18 @@ const (
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
 	// Default endpoint to handle HTTP health
 	healthPath string = "/health"
-	// Default endpoint to handle HTTP errors
+	// Default endpoint to handle Login
+	loginPath string = "/login"
+	// Default endpoint to handle HTTP(500) errors
 	errorPath string = "/error"
+	// Default endpoint to handle Forbidden(403) errors
+	forbiddenPath string = "/forbidden"
 	// Default service configuration file
 	configurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
 	dbConfigurationFile string = "config/db.json"
+	// Default SAML configuration file
+	samlConfigurationFile string = "config/saml.json"
 	// osquery version to display tables
 	osqueryTablesVersion string = "3.3.2"
 	// JSON file with osquery tables data
@@ -61,11 +64,9 @@ const (
 	defaultInactive int = -72
 )
 
-// Global variables
+// Global general variables
 var (
 	adminConfig    types.JSONConfigurationService
-	samlMiddleware *samlsp.Middleware
-	samlConfig     JSONConfigurationSAML
 	db             *gorm.DB
 	settingsmgr    *settings.Settings
 	nodesmgr       *nodes.NodeManager
@@ -85,6 +86,14 @@ var (
 	versionFlag *bool
 	configFlag  *string
 	dbFlag      *string
+	samlFlag    *string
+)
+
+// SAML variables
+var (
+	samlMiddleware *samlsp.Middleware
+	samlConfig     JSONConfigurationSAML
+	samlData       samlThings
 )
 
 // Valid values for auth and logging in configuration
@@ -121,16 +130,7 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validLogging[cfg.Logging] {
 		return cfg, fmt.Errorf("Invalid logging method")
 	}
-	// Load configuration for the auth method
-	/*
-		if adminConfig.Auth == settings.AuthSAML {
-			samlRaw := viper.Sub(settings.AuthSAML)
-			err = samlRaw.Unmarshal(&samlConfig)
-			if err != nil {
-				return cfg, err
-			}
-		}
-	*/
+
 	// No errors!
 	return cfg, nil
 }
@@ -144,6 +144,7 @@ func init() {
 	versionFlag = flag.Bool("v", false, "Displays the binary version.")
 	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
 	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
+	samlFlag = flag.String("S", samlConfigurationFile, "SAML configuration JSON file to use.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -155,6 +156,13 @@ func init() {
 	adminConfig, err = loadConfiguration(*configFlag, settings.ServiceAdmin)
 	if err != nil {
 		log.Fatalf("Error loading %s - %s", *configFlag, err)
+	}
+	// Load configuration for SAML if enabled
+	if adminConfig.Auth == settings.AuthSAML {
+		samlConfig, err = loadSAML(*samlFlag)
+		if err != nil {
+			log.Fatalf("Error loading %s - %s", *samlFlag, err)
+		}
 	}
 	// Load osquery tables JSON
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
@@ -205,32 +213,17 @@ func main() {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
 			log.Println("DebugService: SAML keypair")
 		}
-		// Load Keypair to Sign SAML Request.
+		// Initialize SAML keypair to sign SAML Request.
 		var err error
-		var rootURL *url.URL
-		var idpMetadataURL *url.URL
-		var keyPair tls.Certificate
-		keyPair, err = tls.LoadX509KeyPair(samlConfig.CertPath, samlConfig.KeyPath)
+		samlData, err = keypairSAML(samlConfig)
 		if err != nil {
-			log.Fatal(err)
-		}
-		keyPair.Leaf, err = x509.ParseCertificate(keyPair.Certificate[0])
-		if err != nil {
-			log.Fatal(err)
-		}
-		idpMetadataURL, err = url.Parse(samlConfig.MetaDataURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-		rootURL, err = url.Parse(samlConfig.RootURL)
-		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Can not initialize SAML keypair %s", err)
 		}
 		samlMiddleware, err = samlsp.New(samlsp.Options{
-			URL:               *rootURL,
-			Key:               keyPair.PrivateKey.(*rsa.PrivateKey),
-			Certificate:       keyPair.Leaf,
-			IDPMetadataURL:    idpMetadataURL,
+			URL:               *samlData.RootURL,
+			Key:               samlData.KeyPair.PrivateKey.(*rsa.PrivateKey),
+			Certificate:       samlData.KeyPair.Leaf,
+			IDPMetadataURL:    samlData.IdpMetadataURL,
 			AllowIDPInitiated: true,
 		})
 		if err != nil {
@@ -253,13 +246,15 @@ func main() {
 	// Admin: login only if local auth is enabled
 	if adminConfig.Auth != settings.AuthNone {
 		// login
-		routerAdmin.HandleFunc("/login", loginGETHandler).Methods("GET")
-		routerAdmin.HandleFunc("/login", loginPOSTHandler).Methods("POST")
+		routerAdmin.HandleFunc(loginPath, loginGETHandler).Methods("GET")
+		routerAdmin.HandleFunc(loginPath, loginPOSTHandler).Methods("POST")
 	}
 	// Admin: health of service
 	routerAdmin.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
 	// Admin: error
 	routerAdmin.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
+	// Admin: forbidden
+	routerAdmin.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
 	// Admin: favicon
 	routerAdmin.HandleFunc("/favicon.ico", faviconHandler)
 	// Admin: static

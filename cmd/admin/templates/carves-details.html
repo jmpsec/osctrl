@@ -35,21 +35,31 @@
                   <thead>
                     <tr>
                       <th width="45%">Path to Carve</th>
-                      <th width="45%" colspan="2">Target</th>
+                      <th width="45%">Target</th>
                       <th width="10%">Expected</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style="font-family: monospace;"><b>{{ .Path }}</b></td>
-                      {{ range  $i, $e := $.QueryTargets }}
-                        <td>{{ $e.Type }}</td>
-                        <td>{{ $e.Value }}</td>
-                      {{ end }}
-                      <td>{{ .Expected }}</td>
+                      <td style="font-size: 1.5em; font-family: monospace; text-align: center;vertical-align: middle;"><b>{{ .Path }}</b></td>
+                      <td>
+                        <table class="table table-sm table-light" style="width:100%;">
+                          <tr>
+                            <th width="50%">Type</th>
+                            <th width="50%">Value</th>
+                          <tr>
+                          {{ range  $i, $e := $.QueryTargets }}
+                            <tr style="background-color: #ffffff;">
+                              <td>{{ $e.Type }}</td>
+                              <td><b>{{ $e.Value }}</b></td>
+                            </tr>
+                          {{ end }}
+                        </table>
+                      </td>
+                      <td style="text-align: center;vertical-align: middle;">{{ .Expected }}</td>
                     </tr>
                     <tr>
-                      <td colspan="4" style="font-family: monospace;">{{ .Query }}</td>
+                      <td colspan="4" style="font-size: 1.5em; font-family: monospace;">{{ .Query }}</td>
                     </tr>
                   </tbody>
                 </table>

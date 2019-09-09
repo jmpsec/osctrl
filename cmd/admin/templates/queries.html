@@ -41,6 +41,7 @@
                         <th>Created</th>
                         <th>Status</th>
                         <th>Progress</th>
+                        <th>Targets</th>
                       </tr>
                     </thead>
                   </table>
@@ -101,7 +102,8 @@
               }
             },
             {"data" : "status"},
-            {"data" : "progress"}
+            {"data" : "progress"},
+            {"data" : "targets"}
           ],
           columnDefs: [
             {
@@ -113,7 +115,7 @@
               orderable:   false,
             },{
               targets: 1,
-              width: '45%',
+              width: '40%',
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
@@ -143,13 +145,28 @@
               }
             },{
               targets: 5,
-              width: '13%',
+              width: '8%',
               data: 'progress',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return  '<span style="color:black;">'+data.expected+'</span>/' +
-                          '<b><span style="color:green;">'+data.executions+'</span></b>/' +
-                          '<b><span style="color:red;">'+data.errors+'</span></b>';
+                  return '<span style="color:black;">'+data.expected+'</span>/' +
+                         '<b><span style="color:green;">'+data.executions+'</span></b>/' +
+                         '<b><span style="color:red;">'+data.errors+'</span></b>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 6,
+              width: '10%',
+              data: 'targets',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  var content = '';
+                  $.each(data, function() {
+                    content += this.type + ':<b>' + this.value + '</b></br>';
+                  });
+                  return content;
                 } else {
                   return data;
                 }

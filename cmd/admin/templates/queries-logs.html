@@ -32,17 +32,29 @@
                 <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
-                      <th width="70%">Query</th>
-                      <th width="30%" colspan="2">Target</th>
+                      <th width="60%">Query</th>
+                      <th width="25%">Target</th>
+                      <th width="15%">Expected</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td><b>{{ .Query }}</b></td>
-                      {{ range  $i, $e := $.QueryTargets }}
-                        <td>{{ $e.Type }}</td>
-                        <td>{{ $e.Value }}</td>
-                      {{ end }}
+                      <td style="font-size: 1.5em; font-family: monospace; text-align: center;vertical-align: middle;"><b>{{ .Query }}</b></td>
+                      <td>
+                        <table class="table table-sm table-light" style="width:100%;">
+                          <tr>
+                            <th width="50%">Type</th>
+                            <th width="50%">Value</th>
+                          <tr>
+                          {{ range  $i, $e := $.QueryTargets }}
+                            <tr style="background-color: #ffffff;">
+                              <td>{{ $e.Type }}</td>
+                              <td><b>{{ $e.Value }}</b></td>
+                            </tr>
+                          {{ end }}
+                        </table>
+                      </td>
+                      <td style="text-align: center;vertical-align: middle;">{{ .Expected }}</td>
                     </tr>
                   </tbody>
                 </table>
