@@ -24,7 +24,7 @@ const (
 	// Application name
 	appName string = projectName + "-cli"
 	// Application version
-	appVersion string = "0.1.6"
+	appVersion string = "0.1.7"
 	// Application usage
 	appUsage string = "CLI for " + projectName
 	// Application description
@@ -173,6 +173,26 @@ func init() {
 						},
 					},
 					Action: cliWrapper(addEnvironment),
+				},
+				{
+					Name:    "update",
+					Aliases: []string{"u"},
+					Usage:   "Update an existing TLS environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Environment to be updated",
+						},
+						cli.BoolFlag{
+							Name:   "debug, d",
+							Usage:  "Environment debug capability",
+						},
+						cli.StringFlag{
+							Name:  "hostname, host",
+							Usage: "Environment host to be updated",
+						},
+					},
+					Action: cliWrapper(updateEnvironment),
 				},
 				{
 					Name:    "delete",

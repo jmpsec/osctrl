@@ -33,6 +33,28 @@ func loadingMetrics() {
 	}
 }
 
+// Function to load the logging settings
+func loadingLogging() {
+	// Check if logging settings for query results link is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.QueryResultLink) {
+		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.QueryResultLink, settings.QueryLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.QueryResultLink, err)
+		}
+	}
+	// Check if logging settings for status logs link is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.StatusLogsLink) {
+		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.StatusLogsLink, settings.StatusLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+		}
+	}
+	// Check if logging settings for result logs link is ready
+	if !settingsmgr.IsValue(settings.ServiceAdmin, settings.ResultLogsLink) {
+		if err := settingsmgr.NewStringValue(settings.ServiceAdmin, settings.ResultLogsLink, settings.ResultsLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+		}
+	}
+}
+
 // Function to load all settings for the service
 func loadingSettings() {
 	// Check if service settings for debug service is ready
@@ -71,6 +93,8 @@ func loadingSettings() {
 	}
 	// Metrics
 	loadingMetrics()
+	// Logging
+	loadingLogging()
 	// Write JSON config to settings
 	if err := settingsmgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logging); err != nil {
 		log.Fatalf("Failed to add JSON values to configuration: %v", err)

@@ -27,7 +27,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "0.1.6"
+	serviceVersion string = "0.1.7"
 	// Service description
 	serviceDescription string = "TLS service for osctrl"
 	// Application description
@@ -69,7 +69,7 @@ var (
 
 // Valid values for auth and logging in configuration
 var validAuth = map[string]bool{
-	settings.AuthNone:    true,
+	settings.AuthNone: true,
 }
 var validLogging = map[string]bool{
 	settings.LoggingDB:      true,
@@ -156,6 +156,10 @@ func main() {
 	// Initialize service settings
 	log.Println("Loading service settings")
 	loadingSettings()
+	// Update settings based on logging plugins
+	log.Println("Loading logging plugin settings")
+	logsSettings(tlsConfig.Logging, settingsmgr, settingsmgr.DebugService(settings.ServiceTLS))
+
 	// multiple listeners channel
 	finish := make(chan bool)
 

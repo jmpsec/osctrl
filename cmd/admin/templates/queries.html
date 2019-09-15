@@ -119,7 +119,7 @@
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return '<span style="font-family: monospace;"><a href="/query/logs/'+data.name+'">'+data.query+'</a></span>';
+                  return '<span style="font-family: monospace; font-size: 1.3em;"><a href="'+data.link+'">'+data.query+'</a></span>';
                 } else {
                   return data;
                 }
