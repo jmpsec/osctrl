@@ -33,6 +33,7 @@
 
                     <div class="row float-right">
                       <div class="col-md-12">
+                      {{ if eq $template.Level "admin" }}
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
                         data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes([{{ .UUID }}]);">
                           <i class="far fa-trash-alt"></i>
@@ -45,6 +46,7 @@
                         data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles([{{ .UUID }}]);">
                           <i class="fas fa-file-upload"></i>
                         </button>
+                      {{ end }}
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
                         data-tooltip="true" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
                           <i class="fas fa-sync-alt"></i>
@@ -393,7 +395,9 @@
 
       </main>
 
-      {{ template "page-aside" . }}
+      {{ if eq .Level "admin" }}
+        {{ template "page-aside" . }}
+      {{ end }}
 
     </div>
 
@@ -538,6 +542,9 @@
         $("#carveModal").on('shown.bs.modal', function(){
           $(this).find('#carve').focus();
         });
+
+        // Maintain open the node's environment toggle
+        $("input[value='{{ .Environment }}']").parent().parent().addClass("open");
 
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});

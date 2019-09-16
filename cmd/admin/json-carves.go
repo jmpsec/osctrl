@@ -52,20 +52,30 @@ type CarveTarget struct {
 
 // Handler for JSON carves by target
 func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
+	incMetric(metricJSONReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("%s has insuficient permissions", ctx["user"])
+		incMetric(metricJSONErr)
+		return
+	}
 	vars := mux.Vars(r)
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
 		incMetric(metricAdminErr)
 		log.Println("error getting target")
+		incMetric(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !CarvesTargets[target] {
 		incMetric(metricAdminErr)
 		log.Printf("invalid target %s", target)
+		incMetric(metricJSONErr)
 		return
 	}
 	// Retrieve carves for that target
@@ -73,6 +83,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting query carves %v", err)
+		incMetric(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -81,6 +92,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 		c, err := carvesmgr.GetByQuery(q.Name)
 		if err != nil {
 			log.Printf("error getting carves %v", err)
+			incMetric(metricJSONErr)
 			continue
 		}
 		status := queries.StatusActive
@@ -130,6 +142,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error serializing JSON %v", err)
+		incMetric(metricJSONErr)
 		return
 	}
 	incMetric(metricAdminOK)
@@ -137,4 +150,5 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(returnedJSON)
+	incMetric(metricJSONOK)
 }

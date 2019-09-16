@@ -57,7 +57,9 @@
 
       </main>
 
-      {{ template "page-aside" . }}
+      {{ if eq .Level "admin" }}
+        {{ template "page-aside" . }}
+      {{ end }}
 
     </div>
 
@@ -82,7 +84,7 @@
           searching : true,
           dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                "<'row'<'col-sm-12'tr>>" +
-               "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4'i><'col-sm-12 col-md-4'p>>",
+               "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4 text-center'i><'col-sm-12 col-md-4'p>>",
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {

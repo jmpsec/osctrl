@@ -24,6 +24,7 @@
                   <div class="card-header-actions">
                     <div class="row">
                       <span class="align-self-center mr-1"><b>{{ .EnrollExpiry }}</b></span>
+                    {{ if eq .Level "admin" }}
                       {{ if not .EnrollExpired }}
                       <div class="card-header-action mr-3">
                         <button id="enroll_expire" class="btn btn-sm btn-block btn-danger"
@@ -40,6 +41,7 @@
                           </button>
                       </div>
                       {{ end }}
+                    {{end }}
 
                     </div>
 
@@ -97,6 +99,7 @@
 
                   <div class="row">
                     <span class="align-self-center mr-1"><b>{{ .RemoveExpiry }}</b></span>
+                  {{ if eq .Level "admin" }}
                     {{ if not .RemoveExpired }}
                     <div class="card-header-action mr-3">
                       <button id="remove_expire" class="btn btn-sm btn-block btn-danger"
@@ -113,6 +116,7 @@
                       </button>
                     </div>
                     {{ end }}
+                  {{ end }}
 
                   </div>
 
@@ -229,10 +233,12 @@
                       Enrollment certificate:
                     </div>
                     <div class="col-md-2">
+                    {{ if eq .Level "admin" }}
                       <button id="" class="btn btn-sm btn-block btn-dark"
                         data-tooltip="true" data-placement="bottom" title="Upload new certificate" onclick="confirmUploadCertificate();">
                         <i class="fas fa-upload"></i>
                       </button>
+                    {{ end }}
                     </div>
                   </div>
                 </div>
@@ -256,7 +262,9 @@
 
       </main>
 
-      {{ template "page-aside" . }}
+      {{ if eq .Level "admin" }}
+        {{ template "page-aside" . }}
+      {{ end }}
 
     </div>
 

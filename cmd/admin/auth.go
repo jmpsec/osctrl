@@ -8,6 +8,16 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
+const (
+	adminLevel string = "admin"
+	userLevel  string = "user"
+)
+
+// Helper to verify if user is an admin
+func checkAdminLevel(level string) bool {
+	return (level == adminLevel)
+}
+
 // Handler to check access to a resource based on the authentication enabled
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +38,11 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			s := make(contextValue)
 			s["user"] = session.Username
 			s["csrftoken"] = session.Values["csrftoken"].(string)
+			if session.Values["admin"].(bool) {
+				s["level"] = adminLevel
+			} else {
+				s["level"] = userLevel
+			}
 			ctx := context.WithValue(r.Context(), contextKey("session"), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
@@ -75,6 +90,11 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				s := make(contextValue)
 				s["user"] = session.Username
 				s["csrftoken"] = session.Values["csrftoken"].(string)
+				if session.Values["admin"].(bool) {
+					s["level"] = adminLevel
+				} else {
+					s["level"] = userLevel
+				}
 				ctx := context.WithValue(r.Context(), contextKey("session"), s)
 				// Access granted
 				samlMiddleware.RequireAccount(h).ServeHTTP(w, r.WithContext(ctx))

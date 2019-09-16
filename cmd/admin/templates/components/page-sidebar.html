@@ -11,7 +11,7 @@
         </a>
       </li>
       -->
-
+      
       <li class="nav-title">Nodes by environment</li>
       {{range  $i, $e := $.Environments}}
       <li class="nav-item nav-dropdown">
@@ -225,6 +225,7 @@
 
       <li class="divider"></li>
 
+    {{ if eq .Level "admin" }}
       <li class="nav-title">On-Demand Queries</li>
       <li class="nav-item">
         <a class="nav-link" href="/query/run">
@@ -250,6 +251,7 @@
           <i class="nav-icon fas fa-archive"></i> All Carved Files
         </a>
       </li>
+    {{ end }}
 
     </ul>
   </nav>
