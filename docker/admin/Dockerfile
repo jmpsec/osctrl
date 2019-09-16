@@ -13,7 +13,7 @@ COPY cmd/admin/templates/components/page-head-online.html tmpl_admin/components/
 COPY cmd/admin/templates/components/page-js-online.html tmpl_admin/components/page-js.html
 COPY cmd/admin/static/ static
 
-COPY deploy/osquery/data/3.3.2.json data/
+COPY deploy/osquery/data/4.0.1.json data/
 COPY deploy/osquery/osquery-dev.json data/
 
 RUN mkdir -p carved_files

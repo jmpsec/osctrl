@@ -18,9 +18,11 @@ const (
 
 // SlunkConfiguration to hold all splunk configuration values
 type SlunkConfiguration struct {
-	URL    string `json:"url"`
-	Token  string `json:"token"`
-	Search string `json:"search"`
+	URL     string `json:"url"`
+	Token   string `json:"token"`
+	Queries string `json:"queries"`
+	Status  string `json:"status"`
+	Results string `json:"results"`
 }
 
 // Function to load the Splunk configuration from JSON file

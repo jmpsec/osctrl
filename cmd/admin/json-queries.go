@@ -85,6 +85,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		data := make(QueryData)
 		data["query"] = q.Query
 		data["name"] = q.Name
+		data["link"] = queryResultLink(q.Name)
 		// Preparing query targets
 		ts, _ := queriesmgr.GetTargets(q.Name)
 		_ts := []QueryTarget{}

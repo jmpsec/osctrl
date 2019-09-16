@@ -20,7 +20,11 @@
           {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fa fas fa-server"></i> Results for {{ .Name }}
+                {{ if .Completed }}
+                  <i class="fas fa-flag-checkered"></i> [ <b>COMPLETED</b> ] - Results for {{ .Name }}
+                {{ else }}
+                  <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
+                {{ end }}
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
@@ -34,7 +38,7 @@
                     <tr>
                       <th width="60%">Query</th>
                       <th width="25%">Target</th>
-                      <th width="15%">Expected</th>
+                      <th width="15%">Expected / Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -54,7 +58,11 @@
                           {{ end }}
                         </table>
                       </td>
-                      <td style="text-align: center;vertical-align: middle;">{{ .Expected }}</td>
+                      <td style="text-align: center;vertical-align: middle;">
+                        <span style="color:black;">{{ .Expected }}</span>/
+                        <b><span style="color:green;">{{ .Executions }}</span></b>/
+                        <b><span style="color:red;">{{ .Errors }}</span></b>
+                      </td>
                     </tr>
                   </tbody>
                 </table>

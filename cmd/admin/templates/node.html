@@ -59,14 +59,12 @@
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#metadata" role="tab" aria-controls="metadata">Metadata</a>
                       </li>
-                    {{ if eq $template.Logs "db" }}
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#status-logs" role="tab" aria-controls="status-logs">Status Logs</a>
                       </li>
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#result-logs" role="tab" aria-controls="result-logs">Result Logs</a>
                       </li>
-                    {{ end }}
                     </ul>
 
                     <div class="tab-content">
@@ -122,6 +120,7 @@
                                     {{if eq .Platform "windows"}}<i class='fab fa-windows'></i> windows{{end}}
                                     {{if eq .Platform "freebsd"}}<i class='fl-freebsd'></i> freebsd{{end}}
                                     {{if eq .Platform "opensuse"}}<i class='fl-opensuse'></i> opensuse{{end}}
+                                    {{if eq .Platform "arch"}}<i class='fl-archlinux'></i> arch{{end}}
                                     {{if eq .Platform "unknown"}}<i class='fa fa-question-circle'></i> unknown{{end}}
                                   - {{ .PlatformVersion }}</p>
                               </div>
@@ -315,6 +314,19 @@
                           </div>
                         </div>
                       </div>
+                    {{ else }}
+                      <div class="tab-pane fade" id="status-logs" role="tabpanel">
+                        <div class="card mt-2">
+                          <div id="result-card-header" class="card-header">
+                            <i class="fas fa-stream"></i> See status logs for node {{ .UUID }}
+                          </div>
+                          <div id="status-table" class="card-body">
+                            <a href="{{ statusLogsLink .UUID }}" target="_blank">
+                              See status logs in {{ $template.Logs }}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     {{ end }}
 
                     {{ if eq $template.Logs "db" }}
@@ -348,6 +360,19 @@
                           </div>
                         </div>
                       </div>
+                    {{ else }}
+                      <div class="tab-pane fade" id="result-logs" role="tabpanel">
+                        <div class="card mt-2">
+                          <div id="result-card-header" class="card-header">
+                            <i class="fas fa-stream"></i> See result logs for node {{ .UUID }}
+                          </div>
+                          <div id="results-table" class="card-body">
+                            <a href="{{ resultLogsLink .UUID }}" target="_blank">
+                              See result logs in {{ $template.Logs }}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     {{ end }}
 
                     </div>
@@ -377,7 +402,6 @@
     <!-- custom JS -->
     <script src="/static/js/nodeactions.js"></script>
     <script src="/static/js/tables.js"></script>
-  {{ if eq .Logs "db" }}
     {{ with .Node }}
     <script type="text/javascript">
       // Highlight.js code element initialization
@@ -392,6 +416,7 @@
           hljs.highlightBlock(block);
         });
 
+      {{ if eq $template.Logs "db" }}
         // Handle datatable ajax error
         $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
           console.log(message);
@@ -480,8 +505,6 @@
             { width: '80%', targets: 2 }
           ]
         });
-        // Enable all tooltips
-        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Display the number of seconds left and refresh for result logs
         var refreshSecondsResult = 60;
@@ -499,6 +522,7 @@
             tableResultLogs.ajax.reload();
           }
         },1000);
+      {{ end }}
 
         // Refresh sidebar stats
         beginStats();
@@ -514,10 +538,12 @@
         $("#carveModal").on('shown.bs.modal', function(){
           $(this).find('#carve').focus();
         });
+
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
       });
     </script>
     {{ end }}
-  {{ end }}
 
   </body>
 </html>

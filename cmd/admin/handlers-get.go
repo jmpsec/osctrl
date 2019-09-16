@@ -850,6 +850,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"pastTimeAgo":   pastTimeAgo,
 		"jsonRawIndent": jsonRawIndent,
+		"statusLogsLink": statusLogsLink,
+		"resultLogsLink": resultLogsLink,
 	}
 	// Prepare template
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(

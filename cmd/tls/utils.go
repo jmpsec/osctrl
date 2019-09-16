@@ -74,7 +74,7 @@ func nodeFromEnroll(req types.EnrollRequest, environment, ipaddress, nodekey str
 	enrollRaw = bytes.Replace(enrollRaw, []byte("\\u0000"), []byte(""), -1)
 	return nodes.OsqueryNode{
 		NodeKey:         nodekey,
-		UUID:            req.HostIdentifier,
+		UUID:            strings.ToUpper(req.HostIdentifier),
 		Platform:        req.HostDetails.EnrollOSVersion.Platform,
 		PlatformVersion: req.HostDetails.EnrollOSVersion.Version,
 		OsqueryVersion:  req.HostDetails.EnrollOsqueryInfo.Version,

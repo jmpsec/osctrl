@@ -40,7 +40,7 @@ const (
 	LoggingKafka   string = "kafka"
 )
 
-// Names for all possible settings values
+// Names for all possible settings values for services
 const (
 	DebugHTTP       string = "debug_http"
 	DebugService    string = "debug_service"
@@ -53,6 +53,20 @@ const (
 	MetricsProtocol string = "metrics_protocol"
 	DefaultEnv      string = "default_env"
 	InactiveHours   string = "inactive_hours"
+)
+
+// Names for setting values for logging
+const (
+	QueryResultLink string = "query_result_link"
+	StatusLogsLink  string = "status_logs_link"
+	ResultLogsLink  string = "result_logs_link"
+)
+
+// Default values for the setting values for logging
+const (
+	QueryLink   string = "/query/logs/{{NAME}}"
+	StatusLink  string = "#status-logs"
+	ResultsLink string = "#result-logs"
 )
 
 // Names for the values that are read from the JSON config file
@@ -458,6 +472,33 @@ func (conf *Settings) InactiveHours() int64 {
 		return 0
 	}
 	return value.Integer
+}
+
+// QueryResultLink gets the value to be used to generate links for on-demand queries results
+func (conf *Settings) QueryResultLink() string {
+	value, err := conf.RetrieveValue(ServiceAdmin, QueryResultLink)
+	if err != nil {
+		return ""
+	}
+	return value.String
+}
+
+// StatusLogsLink gets the value to be used to generate links for status logs
+func (conf *Settings) StatusLogsLink() string {
+	value, err := conf.RetrieveValue(ServiceAdmin, StatusLogsLink)
+	if err != nil {
+		return ""
+	}
+	return value.String
+}
+
+// ResultLogsLink gets the value to be used to generate links for result logs
+func (conf *Settings) ResultLogsLink() string {
+	value, err := conf.RetrieveValue(ServiceAdmin, ResultLogsLink)
+	if err != nil {
+		return ""
+	}
+	return value.String
 }
 
 // DefaultEnv gets the default environment

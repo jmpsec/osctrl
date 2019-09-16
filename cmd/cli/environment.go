@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	targetShell string = "sh"
+	targetShell      string = "sh"
 	targetPowershell string = "ps1"
 )
 
@@ -63,6 +63,29 @@ func addEnvironment(c *cli.Context) error {
 	} else {
 		fmt.Printf("Environment %s already exists!\n", envName)
 		os.Exit(1)
+	}
+	return nil
+}
+
+func updateEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
+	}
+	debug := c.Bool("debug")
+	env.DebugHTTP = debug
+	hostname := c.String("hostname")
+	if hostname != "" {
+		env.Hostname = hostname
+	}
+	if err := envs.Update(env); err != nil {
+		return err
 	}
 	return nil
 }
@@ -176,13 +199,13 @@ func quickAddEnvironment(c *cli.Context) error {
 	}
 	var oneLiner string
 	switch c.String("target") {
-		case targetShell:
-			oneLiner, _ = environments.QuickAddOneLinerShell(env)
-		case targetPowershell:
-			oneLiner, _ = environments.QuickAddOneLinerPowershell(env)
-		default:
-			fmt.Printf("Invalid target! It can be %s or %s\n", targetShell, targetPowershell)
-			os.Exit(1)
+	case targetShell:
+		oneLiner, _ = environments.QuickAddOneLinerShell(env)
+	case targetPowershell:
+		oneLiner, _ = environments.QuickAddOneLinerPowershell(env)
+	default:
+		fmt.Printf("Invalid target! It can be %s or %s\n", targetShell, targetPowershell)
+		os.Exit(1)
 	}
 	fmt.Printf("%s\n", oneLiner)
 	return nil

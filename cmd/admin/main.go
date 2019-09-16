@@ -31,7 +31,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceAdmin
 	// Service version
-	serviceVersion string = "0.1.6"
+	serviceVersion string = "0.1.7"
 	// Service description
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
@@ -51,7 +51,7 @@ const (
 	// Default SAML configuration file
 	samlConfigurationFile string = "config/saml.json"
 	// osquery version to display tables
-	osqueryTablesVersion string = "3.3.2"
+	osqueryTablesVersion string = "4.0.1"
 	// JSON file with osquery tables data
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Static files folder
@@ -104,7 +104,8 @@ var validAuth = map[string]bool{
 	settings.AuthJSON:    true,
 }
 var validLogging = map[string]bool{
-	settings.LoggingDB: true,
+	settings.LoggingDB:     true,
+	settings.LoggingSplunk: true,
 }
 
 // Function to load the configuration file

@@ -355,7 +355,7 @@ log ""
 log ""
 log "Provisioning [ osctrl ][ $PART ] for $DISTRO"
 log ""
-log "  -> [$MODE] mode and with [$TYPE] certificate"
+log "  -> [ $MODE ] mode and with [ $TYPE ] certificate"
 log ""
 if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   log "  -> Deploying TLS service for ports $_T_PUB_PORT:$_T_INT_PORT"
@@ -524,7 +524,8 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
   # Copy osquery tables JSON file
-  sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
+  sudo cp "$SOURCE_PATH/deploy/osquery/data/4.0.1.json" "$DEST_PATH/data"
+  #sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
 
   # Copy empty configuration
   sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.json" "$DEST_PATH/data"

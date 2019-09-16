@@ -91,8 +91,9 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 			status = queries.StatusComplete
 		}
 		progress := make(CarveProgress)
-		progress["total"] = q.Expected
-		progress["completed"] = q.Executions
+		progress["expected"] = q.Expected
+		progress["executions"] = q.Executions
+		progress["errors"] = q.Errors
 		data := make(CarveData)
 		data["path"] = q.Path
 		data["name"] = q.Name

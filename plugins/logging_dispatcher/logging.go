@@ -43,6 +43,7 @@ func init() {
 		} else {
 			splunkReady = true
 		}
+		// Update settings for links to Splunk data
 	}
 	// Loading DB plugin regardless
 	err = loadDBPlugin()
@@ -51,6 +52,68 @@ func init() {
 		log.Printf("Failed to load db plugin - %v", err)
 	} else {
 		dbReady = true
+	}
+}
+
+// LogsSettings - Method to update specific logging settings
+func LogsSettings(logging string, mgr *settings.Settings, debug bool) {
+	switch logging {
+	case settings.LoggingDB:
+		if dbReady {
+			if debug {
+				log.Printf("Setting DB logging settings\n")
+			}
+			// Setting link for on-demand queries
+			var _v string
+			_v = settings.QueryLink
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.QueryResultLink, err)
+				}
+			}
+			_v = settings.StatusLink
+			// Setting link for status logs
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.StatusLogsLink, err)
+				}
+			}
+			_v = settings.ResultsLink
+			// Setting link for result logs
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.ResultLogsLink, err)
+				}
+			}
+		}
+	case settings.LoggingSplunk:
+		if splunkReady {
+			if debug {
+				log.Printf("Setting Splunk logging settings\n")
+			}
+			// Setting link for on-demand queries
+			var _v string
+			_v = splunkCfg.Queries
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.QueryResultLink, err)
+				}
+			}
+			_v = splunkCfg.Status
+			// Setting link for status logs
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.StatusLogsLink, err)
+				}
+			}
+			_v = splunkCfg.Results
+			// Setting link for result logs
+			if err := mgr.SetString(_v, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
+				if debug {
+					log.Printf("Error setting %s with %s - %v", _v, settings.ResultLogsLink, err)
+				}
+			}
+		}
 	}
 }
 
