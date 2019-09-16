@@ -35,8 +35,8 @@
                   <thead>
                     <tr>
                       <th width="45%">Path to Carve</th>
-                      <th width="45%">Target</th>
-                      <th width="10%">Expected</th>
+                      <th width="40%">Target</th>
+                      <th width="15%">Expected / Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -56,7 +56,11 @@
                           {{ end }}
                         </table>
                       </td>
-                      <td style="text-align: center;vertical-align: middle;">{{ .Expected }}</td>
+                      <td style="text-align: center;vertical-align: middle;">
+                        <span style="color:black;">{{ .Expected }}</span>/
+                        <b><span style="color:green;">{{ .Executions }}</span></b>/
+                        <b><span style="color:red;">{{ .Errors }}</span></b>
+                      </td>
                     </tr>
                     <tr>
                       <td colspan="4" style="font-size: 1.5em; font-family: monospace;">{{ .Query }}</td>

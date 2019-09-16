@@ -150,8 +150,9 @@
               data: 'progress',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return  '<b>'+data.total+'</b>/' +
-                          '<b><span style="color:green;">'+data.completed+'</span></b>';
+                  return  '<b>'+data.expected+'</b>/' +
+                          '<b><span style="color:green;">'+data.executions+'</span></b>/' +
+                          '<b><span style="color:red;">'+data.errors+'</span></b>';
                 } else {
                   return data;
                 }
