@@ -11,6 +11,9 @@ const (
 	metricAdminReq  = "admin-req"
 	metricAdminErr  = "admin-err"
 	metricAdminOK   = "admin-ok"
+	metricJSONReq   = "admin-json-req"
+	metricJSONErr   = "admin-json-err"
+	metricJSONOK    = "admin-json-ok"
 	metricHealthReq = "health-req"
 	metricHealthOK  = "health-ok"
 )
@@ -55,7 +58,6 @@ func forbiddenHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for the favicon
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-
 	w.Header().Set("Content-Type", "image/png")
 	http.ServeFile(w, r, "./static/favicon.png")
 }

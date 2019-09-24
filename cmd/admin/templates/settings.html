@@ -176,7 +176,9 @@
 
       </main>
 
-      {{ template "page-aside" . }}
+      {{ if eq .Level "admin" }}
+        {{ template "page-aside" . }}
+      {{ end }}
 
     </div>
 

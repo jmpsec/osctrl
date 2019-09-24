@@ -21,12 +21,14 @@
               <div id="intervals_header" class="card-header">
                 <i class="far fa-clock"></i> osquery intervals for environment <b>{{ .Environment.Name }}</b>
                 <div class="card-header-actions">
+                {{ if eq .Level "admin" }}
                   <div class="card-header-action">
                     <button id="intervals_save" class="btn btn-sm btn-block btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Intervals" onclick="saveIntervals();">
                       <i class="far fa-save"></i>
                     </button>
                   </div>
+                {{ end }}
                 </div>
               </div>
               <div class="card-body">
@@ -70,12 +72,14 @@
               <div id="configuration_header" class="card-header">
                 <i class="far fa-file-alt"></i> osquery configuration for environment <b>{{ .Environment.Name }}</b>
                 <div class="card-header-actions">
+                {{ if eq .Level "admin" }}
                   <div class="card-header-action">
                     <button id="json_save" class="btn btn-sm btn-block btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
                   </div>
+                {{ end }}
                 </div>
               </div>
               <div class="card-body">
@@ -99,7 +103,9 @@
 
       </main>
 
-      {{ template "page-aside" . }}
+      {{ if eq .Level "admin" }}
+        {{ template "page-aside" . }}
+      {{ end }}
 
     </div>
 

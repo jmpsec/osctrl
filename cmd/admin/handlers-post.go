@@ -125,16 +125,22 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	var q DistributedQueryRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	var q DistributedQueryRequest
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&q)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		log.Printf("%s %v", responseMessage, err)
-		goto response
+		goto send_response
 	}
 	// Check CSRF Token
 	if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
@@ -143,8 +149,8 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if q.Query == "" {
 			responseMessage = "query can not be empty"
 			responseCode = http.StatusInternalServerError
-			log.Printf("%s %v", responseMessage, err)
-			goto response
+			log.Printf("%s", responseMessage)
+			goto send_response
 		}
 		// Prepare and create new query
 		queryName := "query_" + generateQueryName()
@@ -164,7 +170,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			responseMessage = "error creating query"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
-			goto response
+			goto send_response
 		}
 		// Temporary list of UUIDs to calculate Expected
 		var expected []string
@@ -176,14 +182,14 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating query environment target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
 					if err != nil {
 						responseMessage = "error getting nodes by environment"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					for _, n := range nodes {
 						expected = append(expected, n.UUID)
@@ -199,14 +205,14 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating query platform target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
 					if err != nil {
 						responseMessage = "error getting nodes by platform"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					for _, n := range nodes {
 						expected = append(expected, n.UUID)
@@ -222,7 +228,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating query UUID target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					expected = append(expected, u)
 				}
@@ -236,7 +242,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating query hostname target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					expected = append(expected, h)
 				}
@@ -249,14 +255,14 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			responseMessage = "error setting expected"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
-			goto response
+			goto send_response
 		}
 	} else {
 		responseMessage = "invalid CSRF token"
 		responseCode = http.StatusInternalServerError
-		log.Printf("%s %v", responseMessage, err)
+		log.Printf("%s", responseMessage)
 	}
-response:
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -278,16 +284,22 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	responseMessage := "The carve was created successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	var c DistributedCarveRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	var c DistributedCarveRequest
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&c)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		log.Printf("%s %v", responseMessage, err)
-		goto response
+		goto send_response
 	}
 	// Check CSRF Token
 	if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
@@ -296,8 +308,8 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if c.Path == "" {
 			responseMessage = "path can not be empty"
 			responseCode = http.StatusInternalServerError
-			log.Printf("%s %v", responseMessage, err)
-			goto response
+			log.Printf("%s", responseMessage)
+			goto send_response
 		}
 		query := generateCarveQuery(c.Path, false)
 		// Prepare and create new carve
@@ -319,7 +331,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			responseMessage = "error creating carve"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
-			goto response
+			goto send_response
 		}
 		// Temporary list of UUIDs to calculate Expected
 		var expected []string
@@ -331,14 +343,14 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating carve environment target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
 					if err != nil {
 						responseMessage = "error getting nodes by environment"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					for _, n := range nodes {
 						expected = append(expected, n.UUID)
@@ -354,14 +366,14 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating carve platform target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
 					if err != nil {
 						responseMessage = "error getting nodes by platform"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					for _, n := range nodes {
 						expected = append(expected, n.UUID)
@@ -377,7 +389,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating carve UUID target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 					expected = append(expected, u)
 				}
@@ -391,7 +403,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "error creating carve hostname target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
-						goto response
+						goto send_response
 					}
 				}
 			}
@@ -403,14 +415,14 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			responseMessage = "error setting expected"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
-			goto response
+			goto send_response
 		}
 	} else {
 		responseMessage = "invalid CSRF token"
 		responseCode = http.StatusInternalServerError
-		log.Printf("%s %v", responseMessage, err)
+		log.Printf("%s", responseMessage)
 	}
-response:
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -435,9 +447,15 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var q DistributedQueryActionRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&q)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -487,6 +505,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -514,9 +533,15 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var q DistributedCarvesActionRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&q)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -548,6 +573,7 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -591,9 +617,15 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var c ConfigurationRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&c)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -635,6 +667,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -934,7 +967,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
 			log.Printf("DebugService: %s %v", responseMessage, err)
 		}
-		goto response
+		goto send_response
 	} else {
 		// Check CSRF Token
 		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
@@ -957,7 +990,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 							if settingsmgr.DebugService(settings.ServiceAdmin) {
 								log.Printf("DebugService: %s %v", responseMessage, err)
 							}
-							goto response
+							goto send_response
 						}
 						env.Flags = flags
 					}
@@ -968,7 +1001,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
-						goto response
+						goto send_response
 					} else {
 						responseMessage = "Environment created successfully"
 					}
@@ -985,7 +1018,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
-						goto response
+						goto send_response
 					} else {
 						responseMessage = "Environment deleted successfully"
 					}
@@ -1000,7 +1033,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
-						goto response
+						goto send_response
 					} else {
 						responseMessage = "DebugHTTP changed successfully"
 					}
@@ -1012,10 +1045,10 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			if settingsmgr.DebugService(settings.ServiceAdmin) {
 				log.Printf("DebugService: %s %v", responseMessage, err)
 			}
-			goto response
+			goto send_response
 		}
 	}
-response:
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -1059,9 +1092,15 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var s SettingsRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&s)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1132,6 +1171,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -1159,12 +1199,18 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
 	}
-	err := json.NewDecoder(r.Body).Decode(&u)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1205,6 +1251,8 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				if u.Username == ctx["user"] {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
+					log.Printf("Attempt to self remove by %s", ctx["user"])
+					goto send_response
 				} else if adminUsers.Exists(u.Username) {
 					err = adminUsers.Delete(u.Username)
 					if err != nil {
@@ -1221,6 +1269,8 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 				if u.Username == ctx["user"] {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
+					log.Printf("Attempt to change admin by %s", ctx["user"])
+					goto send_response
 				} else if adminUsers.Exists(u.Username) {
 					err = adminUsers.ChangeAdmin(u.Username, u.Admin)
 					if err != nil {
@@ -1242,6 +1292,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {
@@ -1285,9 +1336,15 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var e EnrollRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx["level"]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx["user"], responseMessage)
+		goto send_response
+	}
 	// Parse request JSON body
-	err := json.NewDecoder(r.Body).Decode(&e)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1329,6 +1386,7 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+send_response:
 	// Prepare response
 	response, err := json.Marshal(AdminResponse{Message: responseMessage})
 	if err != nil {

@@ -21,6 +21,7 @@ type TableTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Selector       string
 	SelectorName   string
 	Target         string
@@ -36,6 +37,7 @@ type ConfTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environment    environments.TLSEnvironment
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
@@ -49,6 +51,7 @@ type EnrollTemplateData struct {
 	Title                 string
 	Username              string
 	CSRFToken             string
+	Level                 string
 	EnvName               string
 	EnrollExpiry          string
 	EnrollExpired         bool
@@ -73,6 +76,7 @@ type QueryRunTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	UUIDs          []string
@@ -92,6 +96,7 @@ type GenericTableTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Target         string
@@ -111,6 +116,7 @@ type CarvesDetailsTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Query          queries.DistributedQuery
@@ -127,6 +133,7 @@ type QueryLogsTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	Query          queries.DistributedQuery
@@ -141,6 +148,7 @@ type EnvironmentsTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	TLSDebug       bool
@@ -153,6 +161,7 @@ type SettingsTemplateData struct {
 	Title           string
 	Username        string
 	CSRFToken       string
+	Level           string
 	Service         string
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
@@ -168,6 +177,7 @@ type UsersTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Environments   []environments.TLSEnvironment
 	Platforms      []string
 	CurrentUsers   []users.AdminUser
@@ -181,6 +191,7 @@ type NodeTemplateData struct {
 	Title          string
 	Username       string
 	CSRFToken      string
+	Level          string
 	Logs           string
 	Node           nodes.OsqueryNode
 	Environments   []environments.TLSEnvironment
