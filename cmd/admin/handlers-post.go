@@ -1229,7 +1229,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						log.Printf("DebugService: %s %v", responseMessage, err)
 					}
 				} else {
-					newUser, err := adminUsers.New(u.Username, u.Password, u.Fullname, u.Admin)
+					newUser, err := adminUsers.New(u.Username, u.Password, u.Email, u.Fullname, u.Admin)
 					if err != nil {
 						responseMessage = "error with new user"
 						responseCode = http.StatusInternalServerError

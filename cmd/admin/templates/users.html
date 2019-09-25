@@ -41,8 +41,9 @@
                   <thead>
                     <tr>
                       <th width="10%">Username</th>
-                      <th width="20%">Fullname</th>
-                      <th width="20%">Last IP</th>
+                      <th width="15%">Email</th>
+                      <th width="15%">Fullname</th>
+                      <th width="10%">Last IP</th>
                       <th width="30%">Last UserAgent</th>
                       <th width="5%">Admin</th>
                       <th width="10%">Last Session</th>
@@ -53,6 +54,7 @@
                   {{range  $i, $e := $.CurrentUsers}}
                     <tr>
                       <td>{{ $e.Username }}</td>
+                      <td>{{ $e.Email }}</td>
                       <td>{{ $e.Fullname }}</td>
                       <td>{{ $e.LastIPAddress }}</td>
                       <td>{{ $e.LastUserAgent }}</td>
@@ -97,6 +99,10 @@
 
                     </div>
                     <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="user_email">Email: </label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="user_email" id="user_email" type="text" autocomplete="off">
+                      </div>
                       <label class="col-md-2 col-form-label" for="user_fullname">Fullname: </label>
                       <div class="col-md-4">
                         <input class="form-control" name="user_fullname" id="user_fullname" type="text" autocomplete="off">

@@ -84,6 +84,10 @@ func init() {
 							Usage:  "Make this user an admin",
 						},
 						cli.StringFlag{
+							Name:  "email, e",
+							Usage: "Email for the new user",
+						},
+						cli.StringFlag{
 							Name:  "fullname, n",
 							Usage: "Full name for the new user",
 						},
@@ -102,6 +106,10 @@ func init() {
 						cli.StringFlag{
 							Name:  "password, p",
 							Usage: "New password to be used",
+						},
+						cli.StringFlag{
+							Name:  "email, e",
+							Usage: "Email to be used",
 						},
 						cli.StringFlag{
 							Name:  "fullname, n",
