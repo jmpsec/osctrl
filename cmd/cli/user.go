@@ -21,9 +21,10 @@ func addUser(c *cli.Context) error {
 		os.Exit(1)
 	}
 	password := c.String("password")
+	email := c.String("email")
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
-	user, err := adminUsers.New(username, password, fullname, admin)
+	user, err := adminUsers.New(username, password, email, fullname, admin)
 	if err != nil {
 		return err
 	}
@@ -43,6 +44,12 @@ func editUser(c *cli.Context) error {
 	password := c.String("password")
 	if password != "" {
 		if err := adminUsers.ChangePassword(username, password); err != nil {
+			return err
+		}
+	}
+	email := c.String("email")
+	if email != "" {
+		if err := adminUsers.ChangeEmail(username, email); err != nil {
 			return err
 		}
 	}
