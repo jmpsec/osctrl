@@ -51,13 +51,13 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				cookiev, err := r.Cookie(samlConfig.TokenName)
 				if err != nil {
 					log.Printf("error extracting JWT data: %v", err)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
+					http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 					return
 				}
 				jwtdata, err := parseJWTFromCookie(samlData.KeyPair, cookiev.Value)
 				if err != nil {
 					log.Printf("error parsing JWT: %v", err)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
+					http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 					return
 				}
 				// Check if user is already authenticated
@@ -79,6 +79,8 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 					session, err = sessionsmgr.Save(r, w, u)
 					if err != nil {
 						log.Printf("session error: %v", err)
+						http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
+						return
 					}
 				}
 				// Update metadata for the user
