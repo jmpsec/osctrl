@@ -50,6 +50,8 @@ const (
 	dbConfigurationFile string = "config/db.json"
 	// Default SAML configuration file
 	samlConfigurationFile string = "config/saml.json"
+	// Default Headers configuration file
+	headersConfigurationFile string = "config/headers.json"
 	// osquery version to display tables
 	osqueryTablesVersion string = "4.0.1"
 	// JSON file with osquery tables data
@@ -87,6 +89,7 @@ var (
 	configFlag  *string
 	dbFlag      *string
 	samlFlag    *string
+	headersFlag *string
 )
 
 // SAML variables
@@ -96,13 +99,20 @@ var (
 	samlData       samlThings
 )
 
-// Valid values for auth and logging in configuration
+// Headers variables
+var (
+	headersConfig    types.JSONConfigurationHeaders
+)
+
+// Valid values for auth in configuration
 var validAuth = map[string]bool{
 	settings.AuthDB:      true,
 	settings.AuthSAML:    true,
 	settings.AuthHeaders: true,
 	settings.AuthJSON:    true,
 }
+
+// Valid values for logging in configuration
 var validLogging = map[string]bool{
 	settings.LoggingDB:     true,
 	settings.LoggingSplunk: true,
@@ -146,6 +156,7 @@ func init() {
 	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
 	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
 	samlFlag = flag.String("S", samlConfigurationFile, "SAML configuration JSON file to use.")
+	headersFlag = flag.String("H", headersConfigurationFile, "Headers configuration JSON file to use.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -158,17 +169,29 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading %s - %s", *configFlag, err)
 	}
+
+	// Load osquery tables JSON
+	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
+	if err != nil {
+		log.Fatalf("Error loading osquery tables %s", err)
+	}
+
 	// Load configuration for SAML if enabled
 	if adminConfig.Auth == settings.AuthSAML {
 		samlConfig, err = loadSAML(*samlFlag)
 		if err != nil {
 			log.Fatalf("Error loading %s - %s", *samlFlag, err)
 		}
+		return
 	}
-	// Load osquery tables JSON
-	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
-	if err != nil {
-		log.Fatalf("Error loading osquery tables %s", err)
+
+	// Load configuration for Headers if enabled
+	if adminConfig.Auth == settings.AuthHeaders {
+		headersConfig, err = loadHeaders(*headersFlag)
+		if err != nil {
+			log.Fatalf("Error loading %s - %s", *headersFlag, err)
+		}
+		return
 	}
 }
 
