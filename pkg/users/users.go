@@ -13,6 +13,7 @@ import (
 type AdminUser struct {
 	gorm.Model
 	Username      string `gorm:"index"`
+	Email         string
 	Fullname      string
 	PassHash      string
 	Admin         bool
@@ -87,7 +88,7 @@ func (m *UserManager) Create(user AdminUser) error {
 }
 
 // New empty user
-func (m *UserManager) New(username, password, fullname string, admin bool) (AdminUser, error) {
+func (m *UserManager) New(username, password, email, fullname string, admin bool) (AdminUser, error) {
 	if !m.Exists(username) {
 		passhash, err := m.HashPasswordWithSalt(password)
 		if err != nil {
@@ -97,6 +98,7 @@ func (m *UserManager) New(username, password, fullname string, admin bool) (Admi
 			Username: username,
 			PassHash: passhash,
 			Admin:    admin,
+			Email:    email,
 			Fullname: fullname,
 		}, nil
 	}
@@ -164,6 +166,20 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	}
 	if passhash != user.PassHash {
 		if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeEmail for user by username
+func (m *UserManager) ChangeEmail(username, email string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if email != user.Email {
+		if err := m.DB.Model(&user).Update("email", email).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}
 	}

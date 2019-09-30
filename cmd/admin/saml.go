@@ -17,6 +17,7 @@ type JSONConfigurationSAML struct {
 	KeyPath     string `json:"keypath"`
 	MetaDataURL string `json:"metadataurl"`
 	RootURL     string `json:"rooturl"`
+	LoginURL    string `json:"loginurl"`
 	TokenName   string `json:"nametoken"`
 	EmailAttr   string `json:"attremail"`
 	UserAttr    string `json:"attruser"`

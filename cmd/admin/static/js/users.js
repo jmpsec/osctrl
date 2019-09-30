@@ -1,5 +1,6 @@
 function addUser() {
   $("#user_username").val('');
+  $("#user_email").val('');
   $("#user_fullname").val('');
   $("#user_password").val('');
   $("#addUserModal").modal();
@@ -11,6 +12,7 @@ function confirmAddUser() {
   var _url = window.location.pathname;
 
   var _username = $("#user_username").val();
+  var _email = $("#user_email").val();
   var _fullname = $("#user_fullname").val();
   var _password = $("#user_password").val();
 
@@ -18,9 +20,10 @@ function confirmAddUser() {
     csrftoken: _csrftoken,
     action: 'add',
     username: _username,
+    email: _email,
     fullname: _fullname,
     password: _password,
-    admin: true
+    admin: false
   };
   sendPostRequest(data, _url, _url, false);
 }

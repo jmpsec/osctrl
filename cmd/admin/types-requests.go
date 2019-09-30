@@ -107,6 +107,7 @@ type UsersRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Action    string `json:"action"`
 	Username  string `json:"username"`
+	Email     string `json:"email"`
 	Fullname  string `json:"fullname"`
 	Password  string `json:"password"`
 	Admin     bool   `json:"admin"`
