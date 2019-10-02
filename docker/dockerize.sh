@@ -67,6 +67,10 @@ CERTSDIR="$DOCKERDIR/certs"
 CONFIGDIR="$DOCKERDIR/config"
 COMPOSERFILE="$DOCKERDIR/docker-compose.yml"
 
+# Directories to generate certificates and configuration
+mkdir -p "$CERTSDIR"
+mkdir -p "$CONFIGDIR"
+
 # Default values for arguments
 SHOW_USAGE=true
 _BUILD=false
