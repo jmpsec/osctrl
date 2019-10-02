@@ -106,6 +106,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 		case settings.AuthHeaders:
 			username := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.UserName)
+			email := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.Email)
 			groups := strings.Split(r.Header.Get(headersConfig.TrustedPrefix+headersConfig.Groups), ",")
 		    fullname := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.DisplayName)
 
@@ -135,21 +136,18 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 
-			if !adminUsers.Exists(username) {
-			  log.Printf("User not found, creating: %s", username)
-			  _, err := adminUsers.New(username, "", fullname, (s["level"] == adminLevel))
-
-			  if err != nil {
-				log.Printf("Error creating user %s: %v", username, err)
-				http.Redirect(w, r, forbiddenPath, http.StatusFound)
-				return
-			  }
-			} else {
-			  if err := adminUsers.UpdateMetadata(r.RemoteAddr, r.Header.Get("User-Agent"), username); err != nil {
-				log.Printf("error updating metadata for user %s: %v", username, err)
-			  }
+			newUser, err := adminUsers.New(username, "", email, fullname, (s["level"] == adminLevel))
+			if err != nil {
+			  log.Printf("Error with new user %s: %v", username, err)
+			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
+			  return
 			}
 
+			if err := adminUsers.Create(newUser); err != nil {
+			  log.Printf("Error creating user %s: %v", username, err)
+			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
+			  return
+			}
 			// _, session := sessionsmgr.CheckAuth(r)
 			// s["csrftoken"] = session.Values["csrftoken"].(string)
 			ctx := context.WithValue(r.Context(), contextKey("session"), s)
