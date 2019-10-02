@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/settings"
 )
@@ -104,8 +105,55 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				samlMiddleware.RequireAccount(h).ServeHTTP(w, r)
 			}
 		case settings.AuthHeaders:
-			// Access always granted
-			h.ServeHTTP(w, r)
+			username := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.UserName)
+			email := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.Email)
+			groups := strings.Split(r.Header.Get(headersConfig.TrustedPrefix+headersConfig.Groups), ",")
+		    fullname := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.DisplayName)
+
+			// A username is required to use this system
+			if username == "" {
+				http.Redirect(w, r, forbiddenPath, http.StatusBadRequest)
+				return
+			}
+
+			s := make(contextValue)
+			s["user"] = username
+
+			for _, group := range groups {
+				if group == headersConfig.AdminGroup {
+					s["level"] = adminLevel
+					// We can break because there is no greater permission level
+					break
+				} else if group == headersConfig.UserGroup {
+					s["level"] = userLevel
+					// We can't break because we might still find a higher permission level
+				}
+			}
+
+			// This user didn't present a group that has permission to use the service
+			if _, ok := s["level"]; !ok {
+				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
+				return
+			}
+
+			newUser, err := adminUsers.New(username, "", email, fullname, (s["level"] == adminLevel))
+			if err != nil {
+			  log.Printf("Error with new user %s: %v", username, err)
+			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
+			  return
+			}
+
+			if err := adminUsers.Create(newUser); err != nil {
+			  log.Printf("Error creating user %s: %v", username, err)
+			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
+			  return
+			}
+			// _, session := sessionsmgr.CheckAuth(r)
+			// s["csrftoken"] = session.Values["csrftoken"].(string)
+			ctx := context.WithValue(r.Context(), contextKey("session"), s)
+
+			// Access granted
+			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 }
