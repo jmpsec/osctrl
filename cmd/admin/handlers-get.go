@@ -19,6 +19,9 @@ import (
 
 const (
 	templatesFilesFolder string = "tmpl_admin"
+	ctxUser              string = "user"
+	ctxLevel             string = "level"
+	ctxCSRF              string = "csrftoken"
 )
 
 // Handler for login page for GET requests
@@ -95,8 +98,8 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -121,18 +124,13 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:          "Nodes in " + env,
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Selector:       "environment",
-		SelectorName:   env,
-		Target:         target,
-		Environments:   envAll,
-		Platforms:      platforms,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Nodes in " + env,
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Selector:     "environment",
+		SelectorName: env,
+		Target:       target,
+		Environments: envAll,
+		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -171,8 +169,8 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/table.html",
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
 		templatesFilesFolder+"/components/page-header.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
@@ -198,18 +196,13 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:          "Nodes in " + platform,
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Selector:       "platform",
-		SelectorName:   platform,
-		Target:         target,
-		Environments:   envAll,
-		Platforms:      platforms,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Nodes in " + platform,
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Selector:     "platform",
+		SelectorName: platform,
+		Target:       target,
+		Environments: envAll,
+		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -229,8 +222,8 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -239,8 +232,8 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/queries-run.html",
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
 		templatesFilesFolder+"/components/page-header.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
@@ -278,19 +271,14 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryRunTemplateData{
-		Title:          "Query osquery Nodes",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		UUIDs:          uuids,
-		Hosts:          hosts,
-		Tables:         osqueryTables,
-		TablesVersion:  osqueryTablesVersion,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:         "Query osquery Nodes",
+		Metadata:      templateMetadata(ctx, serviceName, serviceVersion),
+		Environments:  envAll,
+		Platforms:     platforms,
+		UUIDs:         uuids,
+		Hosts:         hosts,
+		Tables:        osqueryTables,
+		TablesVersion: osqueryTablesVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -310,8 +298,8 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -321,8 +309,8 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -345,16 +333,11 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
-		Title:          "All on-demand queries",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		Target:         "all",
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "All on-demand queries",
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -374,8 +357,8 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -384,8 +367,8 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/carves-run.html",
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
 		templatesFilesFolder+"/components/page-header.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
@@ -423,19 +406,14 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
-		Title:          "Query osquery Nodes",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		UUIDs:          uuids,
-		Hosts:          hosts,
-		Tables:         osqueryTables,
-		TablesVersion:  osqueryTablesVersion,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:         "Query osquery Nodes",
+		Metadata:      templateMetadata(ctx, serviceName, serviceVersion),
+		Environments:  envAll,
+		Platforms:     platforms,
+		UUIDs:         uuids,
+		Hosts:         hosts,
+		Tables:        osqueryTables,
+		TablesVersion: osqueryTablesVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -455,8 +433,8 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -466,8 +444,8 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -490,16 +468,11 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
-		Title:          "All carved files",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		Target:         "all",
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "All carved files",
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -519,8 +492,8 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -538,8 +511,8 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -576,17 +549,12 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
-		Title:          "Query logs " + query.Name,
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		Query:          query,
-		QueryTargets:   targets,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Query logs " + query.Name,
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		Query:        query,
+		QueryTargets: targets,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -606,8 +574,8 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -625,8 +593,8 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -682,19 +650,14 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
-		Title:          "Carve details " + query.Name,
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		Query:          query,
-		QueryTargets:   targets,
-		Carves:         queryCarves,
-		CarveBlocks:    blocks,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Carve details " + query.Name,
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		Query:        query,
+		QueryTargets: targets,
+		Carves:       queryCarves,
+		CarveBlocks:  blocks,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -732,8 +695,8 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-modals.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html")
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html")
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting conf template: %v", err)
@@ -764,16 +727,11 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:          envVar + " Configuration",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environment:    env,
-		Environments:   envAll,
-		Platforms:      platforms,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        envVar + " Configuration",
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environment:  env,
+		Environments: envAll,
+		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -810,8 +768,8 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -848,9 +806,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
 	templateData := EnrollTemplateData{
 		Title:                 envVar + " Enroll",
-		Username:              ctx["user"],
-		CSRFToken:             ctx["csrftoken"],
-		Level:                 ctx["level"],
+		Metadata:              templateMetadata(ctx, serviceName, serviceVersion),
 		EnvName:               envVar,
 		EnrollExpiry:          strings.ToUpper(inFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
@@ -865,9 +821,6 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		Certificate:           env.Certificate,
 		Environments:          envAll,
 		Platforms:             platforms,
-		TLSDebug:              settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:            settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP:        settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -905,8 +858,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -938,17 +891,12 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := NodeTemplateData{
-		Title:          "Node View " + node.Hostname,
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Logs:           adminConfig.Logging,
-		Node:           node,
-		Environments:   envAll,
-		Platforms:      platforms,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Node View " + node.Hostname,
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Logs:         adminConfig.Logging,
+		Node:         node,
+		Environments: envAll,
+		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -968,8 +916,8 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -979,8 +927,8 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -1003,15 +951,10 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := EnvironmentsTemplateData{
-		Title:          "Manage environments",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Manage environments",
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -1032,8 +975,8 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -1056,8 +999,8 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -1093,17 +1036,12 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
-		Username:        ctx["user"],
-		CSRFToken:       ctx["csrftoken"],
-		Level:           ctx["level"],
+		Metadata:        templateMetadata(ctx, serviceName, serviceVersion),
 		Service:         serviceVar,
 		Environments:    envAll,
 		Platforms:       platforms,
 		CurrentSettings: _settings,
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
-		TLSDebug:        settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:      settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP:  settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -1123,8 +1061,8 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}
@@ -1138,8 +1076,8 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html",
 		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-sidebar.html",
-		templatesFilesFolder+"/components/page-aside.html",
+		templatesFilesFolder+"/components/page-aside-left.html",
+		templatesFilesFolder+"/components/page-aside-right.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -1169,16 +1107,11 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := UsersTemplateData{
-		Title:          "Manage users",
-		Username:       ctx["user"],
-		CSRFToken:      ctx["csrftoken"],
-		Level:          ctx["level"],
-		Environments:   envAll,
-		Platforms:      platforms,
-		CurrentUsers:   users,
-		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
-		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
-		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		Title:        "Manage users",
+		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		CurrentUsers: users,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		incMetric(metricAdminErr)
@@ -1199,8 +1132,8 @@ func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
 	}

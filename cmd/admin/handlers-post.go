@@ -85,7 +85,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], l.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], l.CSRFToken) {
 			// Destroy existing session
 			err := sessionsmgr.Destroy(r)
 			if err != nil {
@@ -129,10 +129,10 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -143,7 +143,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		goto send_response
 	}
 	// Check CSRF Token
-	if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
+	if checkCSRFToken(ctx[ctxCSRF], q.CSRFToken) {
 		// FIXME check validity of query
 		// Query can not be empty
 		if q.Query == "" {
@@ -157,7 +157,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		newQuery := queries.DistributedQuery{
 			Query:      q.Query,
 			Name:       queryName,
-			Creator:    ctx["user"],
+			Creator:    ctx[ctxUser],
 			Expected:   0,
 			Executions: 0,
 			Active:     true,
@@ -288,10 +288,10 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -302,7 +302,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		goto send_response
 	}
 	// Check CSRF Token
-	if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
+	if checkCSRFToken(ctx[ctxCSRF], c.CSRFToken) {
 		// FIXME check validity of query
 		// Path can not be empty
 		if c.Path == "" {
@@ -317,7 +317,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		newQuery := queries.DistributedQuery{
 			Query:      query,
 			Name:       carveName,
-			Creator:    ctx["user"],
+			Creator:    ctx[ctxUser],
 			Expected:   0,
 			Executions: 0,
 			Active:     true,
@@ -448,10 +448,10 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -463,7 +463,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], q.CSRFToken) {
 			switch q.Action {
 			case "delete":
 				for _, n := range q.Names {
@@ -534,10 +534,10 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -549,7 +549,7 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], q.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], q.CSRFToken) {
 			switch q.Action {
 			case "delete":
 				for _, n := range q.IDs {
@@ -618,10 +618,10 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -633,7 +633,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], c.CSRFToken) {
 			if c.ConfigurationB64 != "" {
 				configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
 				if err != nil {
@@ -721,7 +721,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], c.CSRFToken) {
 			err = envs.UpdateIntervals(environmentVar, c.ConfigInterval, c.LogInterval, c.QueryInterval)
 			if err != nil {
 				responseMessage = "error updating intervals"
@@ -809,7 +809,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], e.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], e.CSRFToken) {
 			switch e.Type {
 			case "enroll":
 				switch e.Action {
@@ -899,7 +899,7 @@ func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], m.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], m.CSRFToken) {
 			switch m.Action {
 			case "delete":
 				okCount := 0
@@ -970,7 +970,7 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		goto send_response
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], c.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], c.CSRFToken) {
 			switch c.Action {
 			case "create":
 				// FIXME verify fields
@@ -1093,10 +1093,10 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -1108,7 +1108,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], s.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], s.CSRFToken) {
 			switch s.Action {
 			case "add":
 				// FIXME verify type
@@ -1200,10 +1200,10 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -1218,7 +1218,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], u.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], u.CSRFToken) {
 			switch u.Action {
 			case "add":
 				// FIXME password complexity?
@@ -1248,10 +1248,10 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			case "remove":
-				if u.Username == ctx["user"] {
+				if u.Username == ctx[ctxUser] {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
-					log.Printf("Attempt to self remove by %s", ctx["user"])
+					log.Printf("Attempt to self remove by %s", ctx[ctxUser])
 					goto send_response
 				} else if adminUsers.Exists(u.Username) {
 					err = adminUsers.Delete(u.Username)
@@ -1266,10 +1266,10 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			case "admin":
-				if u.Username == ctx["user"] {
+				if u.Username == ctx[ctxUser] {
 					responseMessage = "Not a good idea"
 					responseCode = http.StatusInternalServerError
-					log.Printf("Attempt to change admin by %s", ctx["user"])
+					log.Printf("Attempt to change admin by %s", ctx[ctxUser])
 					goto send_response
 				} else if adminUsers.Exists(u.Username) {
 					err = adminUsers.ChangeAdmin(u.Username, u.Admin)
@@ -1337,10 +1337,10 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
+	if !checkAdminLevel(ctx[ctxLevel]) {
 		responseMessage = "insuficient permissions"
 		responseCode = http.StatusForbidden
-		log.Printf("%s has %s", ctx["user"], responseMessage)
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
 		goto send_response
 	}
 	// Parse request JSON body
@@ -1352,7 +1352,7 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Check CSRF Token
-		if checkCSRFToken(ctx["csrftoken"], e.CSRFToken) {
+		if checkCSRFToken(ctx[ctxCSRF], e.CSRFToken) {
 			if e.CertificateB64 != "" {
 				certificate, err := base64.StdEncoding.DecodeString(e.CertificateB64)
 				if err != nil {

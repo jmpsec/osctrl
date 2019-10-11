@@ -1,6 +1,8 @@
-{{ define "page-aside" }}
+{{ define "page-aside-right" }}
 
       <aside class="aside-menu">
+
+      {{ with .Metadata }}
 
         <div class="tab-pane p-3">
           <h6>TLS Server Settings</h6>
@@ -87,6 +89,9 @@
             </div>
           </div>
           <hr>
+          <div class="server-version">
+            <small class="text-muted">{{ .Service }} {{ .Version }}</small>
+          </div>
           <!--
           <h6>System Utilization</h6>
           <div class="text-uppercase mb-1 mt-4">
@@ -128,6 +133,8 @@
           -->
 
         </div>
+
+      {{ end }}
 
       </aside>
 

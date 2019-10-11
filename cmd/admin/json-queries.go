@@ -56,8 +56,8 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx["level"]) {
-		log.Printf("%s has insuficient permissions", ctx["user"])
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return
 	}
