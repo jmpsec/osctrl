@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 
+  {{ $metadata := .Metadata }}
+
   {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
@@ -9,7 +11,7 @@
 
     <div class="app-body">
 
-      {{ template "page-sidebar" . }}
+      {{ template "page-aside-left" . }}
 
       <main class="main">
 
@@ -66,9 +68,9 @@
 
       </main>
 
-      {{ if eq .Level "admin" }}
-        {{ template "page-aside" . }}
-      {{ end }}
+    {{ if eq $metadata.Level "admin" }}
+        {{ template "page-aside-right" . }}
+    {{ end }}
 
     </div>
 
@@ -191,7 +193,7 @@
             style:    'os',
             selector: 'td:first-child'
           },
-        {{ if eq .Level "admin" }}
+        {{ if eq $metadata.Level "admin" }}
           buttons: [
             {
               className: 'btn custom-size-btn btn-outline-danger',

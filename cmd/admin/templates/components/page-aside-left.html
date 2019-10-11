@@ -1,4 +1,4 @@
-{{ define "page-sidebar" }}
+{{ define "page-aside-left" }}
 
 <div class="sidebar">
   <nav class="sidebar-nav">
@@ -11,7 +11,7 @@
         </a>
       </li>
       -->
-      
+
       <li class="nav-title">Nodes by environment</li>
       {{range  $i, $e := $.Environments}}
       <li class="nav-item nav-dropdown">
@@ -225,6 +225,7 @@
 
       <li class="divider"></li>
 
+  {{ with .Metadata }}
     {{ if eq .Level "admin" }}
       <li class="nav-title">On-Demand Queries</li>
       <li class="nav-item">
@@ -252,6 +253,7 @@
         </a>
       </li>
     {{ end }}
+  {{ end }}
 
     </ul>
   </nav>

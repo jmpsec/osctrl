@@ -322,3 +322,17 @@ func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error)
 		Username: tokenClaims.Attributes["sAMAccountName"][0],
 	}, nil
 }
+
+// Helper to prepare template metadata
+func templateMetadata(ctx contextValue, service, version string) TemplateMetadata {
+	return TemplateMetadata{
+		Username:  ctx[ctxUser],
+		Level:     ctx[ctxLevel],
+		CSRFToken: ctx[ctxCSRF],
+		Service:   service,
+		Version:   version,
+		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
+		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
+		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+	}
+}

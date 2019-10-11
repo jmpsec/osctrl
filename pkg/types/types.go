@@ -23,14 +23,14 @@ type JSONConfigurationService struct {
 
 // JSONConfigurationHeaders to keep all SAML details for auth
 type JSONConfigurationHeaders struct {
-	TrustedPrefix		string `json:"trustedPrefix"`
-	AdminGroup			string `json:"adminGroup"`
-	UserGroup			string `json:"userGroup"`
-	Email				string `json:"email"`
-	UserName			string `json:"userName"`
-	FirstName			string `json:"firstName"`
-	LastName			string `json:"lastName"`
-	DisplayName			string `json:"displayName"`
-	DistinguishedName	string `json:"distinguishedName"`
-	Groups				string `json:"groups"`
+	TrustedPrefix     string `json:"trustedPrefix"`
+	AdminGroup        string `json:"adminGroup"`
+	UserGroup         string `json:"userGroup"`
+	Email             string `json:"email"`
+	UserName          string `json:"userName"`
+	FirstName         string `json:"firstName"`
+	LastName          string `json:"lastName"`
+	DisplayName       string `json:"displayName"`
+	DistinguishedName string `json:"distinguishedName"`
+	Groups            string `json:"groups"`
 }
