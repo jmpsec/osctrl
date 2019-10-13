@@ -42,44 +42,42 @@ func GraylogSend(logType string, data []byte, environment, uuid, url string, deb
 	var logs []interface{}
 	err := json.Unmarshal(data, &logs)
 	if err != nil {
-		log.Printf("error parsing log %s %v", string(data), err)
+		log.Printf("error parsing logs %s %v", string(data), err)
 	}
 	// Prepare data to send
-	var messages []GraylogMessage
 	for _, l := range logs {
-		jsonMessage, err := json.Marshal(l)
+		logMessage, err := json.Marshal(l)
 		if err != nil {
-			log.Printf("Error parsing data %s", err)
+			log.Printf("error parsing log %s", err)
 			continue
 		}
 		messsageData := GraylogMessage{
 			Version:      graylogVersion,
 			Host:         graylogHost,
-			ShortMessage: string(jsonMessage),
+			ShortMessage: string(logMessage),
 			Timestamp:    time.Now().Unix(),
 			Level:        graylogLevel,
 			Environment:  environment,
 			Type:         logType,
 			UUID:         uuid,
 		}
-		messages = append(messages, messsageData)
-	}
-	// Serialize data using GELF
-	jsonMessages, err := json.Marshal(messages)
-	if err != nil {
-		log.Printf("Error parsing data %s", err)
-	}
-	jsonParam := strings.NewReader(string(jsonMessages))
-	if debug {
-		log.Printf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
-	}
-	// Send log with a POST to the Graylog URL
-	resp, body, err := utils.SendRequest(graylogMethod, url, jsonParam, headers)
-	if err != nil {
-		log.Printf("Error sending request %s", err)
-		return
-	}
-	if debug {
-		log.Printf("Graylog: HTTP %d %s", resp, body)
+		// Serialize data using GELF
+		jsonMessage, err := json.Marshal(messsageData)
+		if err != nil {
+			log.Printf("error marshaling data %s", err)
+		}
+		jsonParam := strings.NewReader(string(jsonMessage))
+		if debug {
+			log.Printf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
+		}
+		// Send log with a POST to the Graylog URL
+		resp, body, err := utils.SendRequest(graylogMethod, url, jsonParam, headers)
+		if err != nil {
+			log.Printf("error sending request %s", err)
+			return
+		}
+		if debug {
+			log.Printf("Graylog: HTTP %d %s", resp, body)
+		}
 	}
 }
