@@ -35,7 +35,9 @@ echo
 
 read -p " -> Github token? " TOKEN
 
-echo "[+] Sending POST request to https://api.github.com/repos/$REPO/releases?access_token=$TOKEN"
+echo "[+] Sending POST request to Github API"
 echo
 
-echo "curl --data \"$(generate_post_data)\" \"https://api.github.com/repos/$REPO/releases?access_token=$TOKEN\""
+curl --data "$(generate_post_data)" "https://api.github.com/repos/$REPO/releases?access_token=$TOKEN"
+
+echo "[+] Done"
