@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
@@ -40,9 +41,19 @@ func GraylogSend(logType string, data []byte, environment, uuid, url string, deb
 	}
 	// Convert the array in an array of multiple message
 	var logs []interface{}
-	err := json.Unmarshal(data, &logs)
-	if err != nil {
-		log.Printf("error parsing logs %s %v", string(data), err)
+	if logType == types.QueryLog {
+		// For on-demand queries, just a JSON blob with results and statuses
+		var result interface{}
+		err := json.Unmarshal(data, &result)
+		if err != nil {
+			log.Printf("error parsing data %s %v", string(data), err)
+		}
+		logs = append(logs, result)
+	} else {
+		err := json.Unmarshal(data, &logs)
+		if err != nil {
+			log.Printf("error parsing logs %s %v", string(data), err)
+		}
 	}
 	// Prepare data to send
 	for _, l := range logs {
