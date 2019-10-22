@@ -108,7 +108,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			username := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.UserName)
 			email := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.Email)
 			groups := strings.Split(r.Header.Get(headersConfig.TrustedPrefix+headersConfig.Groups), ",")
-		    fullname := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.DisplayName)
+			fullname := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.DisplayName)
 
 			// A username is required to use this system
 			if username == "" {
@@ -138,15 +138,15 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 
 			newUser, err := adminUsers.New(username, "", email, fullname, (s["level"] == adminLevel))
 			if err != nil {
-			  log.Printf("Error with new user %s: %v", username, err)
-			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
-			  return
+				log.Printf("Error with new user %s: %v", username, err)
+				http.Redirect(w, r, forbiddenPath, http.StatusFound)
+				return
 			}
 
 			if err := adminUsers.Create(newUser); err != nil {
-			  log.Printf("Error creating user %s: %v", username, err)
-			  http.Redirect(w, r, forbiddenPath, http.StatusFound)
-			  return
+				log.Printf("Error creating user %s: %v", username, err)
+				http.Redirect(w, r, forbiddenPath, http.StatusFound)
+				return
 			}
 			// _, session := sessionsmgr.CheckAuth(r)
 			// s["csrftoken"] = session.Values["csrftoken"].(string)
