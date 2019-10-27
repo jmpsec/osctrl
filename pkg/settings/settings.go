@@ -11,6 +11,7 @@ import (
 const (
 	ServiceTLS   string = "tls"
 	ServiceAdmin string = "admin"
+	ServiceAPI   string = "api"
 )
 
 // Types of settings values
@@ -27,6 +28,7 @@ const (
 	AuthDB      string = "db"
 	AuthSAML    string = "saml"
 	AuthHeaders string = "headers"
+	AuthJWT     string = "jwt"
 )
 
 // Types of logging

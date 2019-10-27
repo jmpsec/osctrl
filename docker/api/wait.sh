@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# [ osctrl 🎛 ]: Script to wait for database to initialize osctrl-tls
+# [ osctrl 🎛 ]: Script to wait for database to initialize osctrl-api
 #
 # Usage: wait.sh
 
-NAME="osctrl-tls"
+NAME="osctrl-api"
 WAIT=3
 CONFIG="config"
 DB_JSON="$CONFIG/db.json"

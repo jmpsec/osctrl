@@ -44,7 +44,7 @@ type UserSession struct {
 	IPAddress string
 	UserAgent string
 	ExpiresAt time.Time
-	Cookie    string        `gorm:"index"`
+	Cookie    string `gorm:"index"`
 	Values    sessionValues `gorm:"-"`
 }
 

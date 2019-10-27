@@ -3,9 +3,11 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
+IP_ADDRESS = "10.10.10.6"
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/bionic64"
-  config.vm.network "private_network", ip: "10.10.10.6"
+  config.vm.network "private_network", ip: IP_ADDRESS
   # If we want to enroll nodes in the same network
   #config.vm.network "forwarded_port", guest: 443, host: 443
   config.vm.hostname = "osctrl-Dev"
@@ -13,8 +15,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision "shell" do |s|
     s.path = "deploy/provision.sh"
     s.args = [
-      "--nginx", "--postgres", "-E", "--metrics", "--tls-hostname",
-      "10.10.10.6", "--admin-hostname", "10.10.10.6", "--password", "admin"
+      "--nginx", "--postgres", "-E", "--metrics", "--all-hostname",
+      IP_ADDRESS, "--password", "admin"
     ]
     privileged = false
   end

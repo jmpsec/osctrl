@@ -72,6 +72,7 @@ func generateCarveQuery(file string, glob bool) string {
 	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
 }
 
+// Helper to verify if a platform is valid
 func checkValidPlatform(platform string) bool {
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {

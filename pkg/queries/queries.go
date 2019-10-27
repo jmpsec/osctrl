@@ -32,6 +32,19 @@ const (
 	StatusComplete string = "COMPLETE"
 )
 
+const (
+	// TargetAll for all queries
+	TargetAll string = "all"
+	// TargetAllFull for all queries including hidden ones
+	TargetAllFull string = "all-full"
+	// TargetActive for active queries
+	TargetActive string = "active"
+	// TargetCompleted for completed queries
+	TargetCompleted string = "completed"
+	// TargetDeleted for deleted queries
+	TargetDeleted string = "deleted"
+)
+
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
@@ -98,7 +111,7 @@ func CreateQueries(backend *gorm.DB) *Queries {
 // FIXME this will impact the performance of the TLS endpoint due to being CPU and I/O hungry
 // FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, error) {
-	// Get all current active queries and carvesccccccijgvvbighcllglrtditncrninnndegfhuurkgu
+	// Get all current active queries and carves
 
 	queries, err := q.GetActive()
 	if err != nil {
@@ -122,23 +135,23 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, error) 
 func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
-	case "active":
+	case TargetActive:
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", true, false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "completed":
+	case TargetCompleted:
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", false, true, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "all-full":
+	case TargetAllFull:
 		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "all":
+	case TargetAll:
 		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "deleted":
+	case TargetDeleted:
 		if err := q.DB.Where("deleted = ? AND type = ?", true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}

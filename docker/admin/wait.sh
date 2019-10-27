@@ -46,4 +46,4 @@ else
 fi
 
 # Run service
-./bin/osctrl-admin
+./bin/$NAME

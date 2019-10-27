@@ -16,10 +16,12 @@ type AdminUser struct {
 	Email         string
 	Fullname      string
 	PassHash      string
+	APIToken      string
 	Admin         bool
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
+	LastTokenUse  time.Time
 }
 
 // UserManager have all users of the system
@@ -38,15 +40,25 @@ func CreateUserManager(backend *gorm.DB) *UserManager {
 	return u
 }
 
-// HashPasswordWithSalt to hash a password before store it
-func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
-	saltedBytes := []byte(password)
+// HashTextWithSalt to hash text before store it
+func (m *UserManager) HashTextWithSalt(text string) (string, error) {
+	saltedBytes := []byte(text)
 	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
 	hash := string(hashedBytes)
 	return hash, nil
+}
+
+// HashPasswordWithSalt to hash a password before store it
+func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
+	return m.HashTextWithSalt(password)
+}
+
+// HashTokenWithSalt to hash an API token before store it
+func (m *UserManager) HashTokenWithSalt(apikey string) (string, error) {
+	return m.HashTextWithSalt(apikey)
 }
 
 // CheckLoginCredentials to check provided login credentials by matching hashes
@@ -172,6 +184,20 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	return nil
 }
 
+// ChangeToken for user by username
+func (m *UserManager) ChangeToken(username, token string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if token != user.APIToken {
+		if err := m.DB.Model(&user).Update("api_token", token).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
 // ChangeEmail for user by username
 func (m *UserManager) ChangeEmail(username, email string) error {
 	user, err := m.Get(username)
@@ -206,15 +232,13 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) erro
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
-	if ipaddress != user.LastIPAddress || useragent != user.LastUserAgent {
-		if err := m.DB.Model(&user).Updates(
-			AdminUser{
-				LastIPAddress: ipaddress,
-				LastUserAgent: useragent,
-				LastAccess:    time.Now(),
-			}).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
-		}
+	if err := m.DB.Model(&user).Updates(
+		AdminUser{
+			LastIPAddress: ipaddress,
+			LastUserAgent: useragent,
+			LastAccess:    time.Now(),
+		}).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }

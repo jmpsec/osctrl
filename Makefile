@@ -10,6 +10,10 @@ ADMIN_DIR = cmd/admin
 ADMIN_NAME = osctrl-admin
 ADMIN_CODE = ${ADMIN_DIR:=/*.go}
 
+API_DIR = cmd/api
+API_NAME = osctrl-api
+API_CODE = ${API_DIR:=/*.go}
+
 CLI_DIR = cmd/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
@@ -30,6 +34,7 @@ build:
 	make plugins
 	make tls
 	make admin
+	make api
 	make cli
 
 # Build TLS endpoint
@@ -39,6 +44,10 @@ tls:
 # Build Admin UI
 admin:
 	go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
+
+# Build API
+api:
+	go build -o $(OUTPUT)/$(API_NAME) $(API_CODE)
 
 # Build the CLI
 cli:
@@ -55,6 +64,7 @@ plugins:
 clean:
 	rm -rf $(OUTPUT)/$(TLS_NAME)
 	rm -rf $(OUTPUT)/$(ADMIN_NAME)
+	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
 	rm -rf $(PLUGINS_DIR)/*.so
 
@@ -70,6 +80,7 @@ install:
 	make build
 	make install_tls
 	make install_admin
+	make install_api
 	make install_cli
 
 # Install TLS server and restart service
@@ -86,6 +97,13 @@ install_admin:
 	sudo cp $(OUTPUT)/$(ADMIN_NAME) $(DEST)
 	sudo systemctl start $(ADMIN_NAME)
 
+# Install API server and restart service
+# optional DEST=destination_path
+install_api:
+	sudo systemctl stop $(API_NAME)
+	sudo cp $(OUTPUT)/$(API_NAME) $(DEST)
+	sudo systemctl start $(API_NAME)
+
 # Install CLI
 # optional DEST=destination_path
 install_cli:
@@ -98,6 +116,10 @@ logs_tls:
 # Display systemd logs for Admin server
 logs_admin:
 	sudo journalctl -f -t $(ADMIN_NAME)
+
+# Display systemd logs for API server
+logs_api:
+	sudo journalctl -f -t $(API_NAME)
 
 # Build docker containers and run them (also generates new certificates)
 docker_all:
@@ -131,6 +153,9 @@ gofmt-tls:
 gofmt-admin:
 	gofmt $(GOFMT_ARGS) ./$(ADMIN_CODE)
 
+gofmt-api:
+	gofmt $(GOFMT_ARGS) ./$(API_CODE)
+
 gofmt-cli:
 	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
 
@@ -148,8 +173,12 @@ test:
 	cd $(TLS_DIR) && go test . -v
 	# Install dependencies for Admin
 	cd $(ADMIN_DIR) && go test -i . -v
-	# Run TLS tests
+	# Run Admin tests
 	cd $(ADMIN_DIR) && go test . -v
+	# Install dependencies for API
+	cd $(API_DIR) && go test -i . -v
+	# Run API tests
+	cd $(API_DIR) && go test . -v
 	# Install dependencies for CLI
 	cd $(CLI_DIR) && go test -i . -v
 	# Run CLI tests
