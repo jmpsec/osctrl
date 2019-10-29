@@ -9,7 +9,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
-// GET Handler for single JSON environment
+// GET Handler to return one environment as JSON
 func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
@@ -18,7 +18,14 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	name, ok := vars["name"]
 	if !ok {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting name", nil)
+		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
 	// Get environment by name
@@ -27,9 +34,9 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIErr)
 		if err.Error() == "record not found" {
 			log.Printf("environment not found: %s", name)
-			apiHTTPResponse(w, JSONApplicationUTF8, http.StatusNotFound, ApiErrorResponse{Error: "environment not found"})
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
 		} else {
-			apiErrorResponse(w, "error getting environment", err)
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -38,15 +45,22 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIOK)
 }
 
-// GET Handler for multiple JSON environments
+// GET Handler to return all environments as JSON
 func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+		return
+	}
 	// Get platforms
 	envAll, err := envs.All()
 	if err != nil {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting environments", err)
+		apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 		return
 	}
 	// Header to serve JSON

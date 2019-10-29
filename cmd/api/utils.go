@@ -100,24 +100,31 @@ func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interfa
 	content, err := json.Marshal(data)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		content = []byte("error serializing:  " + fmt.Sprint("%v", err))
+		log.Printf("error serializing response: %v", err)
+		content = []byte("error serializing response")
 	}
 	w.WriteHeader(code)
 	_, _ = w.Write(content)
 }
 
 // Helper to handle API error responses
-func apiErrorResponse(w http.ResponseWriter, msg string, err error) {
-	errorTxt := fmt.Sprintf("%s", msg)
-	if err != nil {
-		errorTxt = fmt.Sprintf("%s: %v", msg, err)
-	}
-	log.Printf(errorTxt)
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusInternalServerError, ApiErrorResponse{Error: errorTxt})
+func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
+	log.Printf("%s: %v", msg, err)
+	apiHTTPResponse(w, JSONApplicationUTF8, code, ApiErrorResponse{Error: msg})
 }
 
-// Helper to generate a random MD5 to be used as query name
+// Helper to generate a random query name
 func generateQueryName() string {
+	return "query_" + randomForNames()
+}
+
+// Helper to generate a random carve name
+func generateCarveName() string {
+	return "carve_" + randomForNames()
+}
+
+// Helper to generate a random MD5 to be used with queries/carves
+func randomForNames() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	hasher := md5.New()

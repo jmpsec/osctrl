@@ -169,6 +169,14 @@ type QueryReadResponse struct {
 	NodeInvalid bool                     `json:"node_invalid"`
 }
 
+// AcceleratedQueryReadResponse for accelerated on-demand queries from nodes
+// https://github.com/osquery/osquery/blob/master/osquery/distributed/distributed.cpp#L219-L231
+type AcceleratedQueryReadResponse struct {
+	Queries     queries.QueryReadQueries `json:"queries"`
+	NodeInvalid bool                     `json:"node_invalid"`
+	Accelerated int                      `json:"accelerated"`
+}
+
 // QueryWriteQueries to hold the on-demand queries results
 type QueryWriteQueries map[string]json.RawMessage
 

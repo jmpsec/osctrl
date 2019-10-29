@@ -1,6 +1,6 @@
 {
   "jwt": {
     "jwtSecret": "_JWT_SECRET",
-    "daysToExpire": 365
+    "daysToExpire": 3
   }
 }

@@ -545,6 +545,9 @@ sudo mkdir -p "$DEST_PATH/config"
 # Generate DB configuration file for services
 configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
 
+# JWT configuration
+cat "$SOURCE_PATH/deploy/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
+
 # Build code
 cd "$SOURCE_PATH"
 make clean
@@ -609,9 +612,6 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
 
   # Systemd configuration for API service
   _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH"
-
-  # API JWT configuration
-  cat "$SOURCE_PATH/deploy/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
 fi
 
 # Compile CLI

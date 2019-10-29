@@ -19,7 +19,6 @@ type DistributedQueryRequest struct {
 	UUIDs        []string `json:"uuid_list"`
 	Hosts        []string `json:"host_list"`
 	Query        string   `json:"query"`
-	Repeat       int      `json:"repeat"`
 }
 
 // DistributedCarveRequest to receive carve requests
@@ -30,7 +29,6 @@ type DistributedCarveRequest struct {
 	UUIDs        []string `json:"uuid_list"`
 	Hosts        []string `json:"host_list"`
 	Path         string   `json:"path"`
-	Repeat       int      `json:"repeat"`
 }
 
 // DistributedQueryActionRequest to receive query requests

@@ -50,6 +50,8 @@ const (
 	dbConfigurationFile string = "config/db.json"
 	// Default SAML configuration file
 	samlConfigurationFile string = "config/saml.json"
+	// Default JWT configuration file
+	jwtConfigurationFile string = "config/jwt.json"
 	// Default Headers configuration file
 	headersConfigurationFile string = "config/headers.json"
 	// osquery version to display tables
@@ -90,6 +92,7 @@ var (
 	dbFlag      *string
 	samlFlag    *string
 	headersFlag *string
+	jwtFlag     *string
 )
 
 // SAML variables
@@ -101,7 +104,12 @@ var (
 
 // Headers variables
 var (
-	headersConfig    types.JSONConfigurationHeaders
+	headersConfig types.JSONConfigurationHeaders
+)
+
+// JWT variables
+var (
+	jwtConfig types.JSONConfigurationJWT
 )
 
 // Valid values for auth in configuration
@@ -157,6 +165,7 @@ func init() {
 	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
 	samlFlag = flag.String("S", samlConfigurationFile, "SAML configuration JSON file to use.")
 	headersFlag = flag.String("H", headersConfigurationFile, "Headers configuration JSON file to use.")
+	jwtFlag = flag.String("J", jwtConfigurationFile, "JWT configuration JSON file to use.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -169,13 +178,11 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error loading %s - %s", *configFlag, err)
 	}
-
 	// Load osquery tables JSON
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
 	if err != nil {
 		log.Fatalf("Error loading osquery tables %s", err)
 	}
-
 	// Load configuration for SAML if enabled
 	if adminConfig.Auth == settings.AuthSAML {
 		samlConfig, err = loadSAML(*samlFlag)
@@ -184,7 +191,6 @@ func init() {
 		}
 		return
 	}
-
 	// Load configuration for Headers if enabled
 	if adminConfig.Auth == settings.AuthHeaders {
 		headersConfig, err = loadHeaders(*headersFlag)
@@ -193,6 +199,12 @@ func init() {
 		}
 		return
 	}
+	// Load JWT configuration
+	jwtConfig, err = loadJWTConfiguration(*jwtFlag)
+	if err != nil {
+		log.Fatalf("Error loading %s - %s", *jwtFlag, err)
+	}
+	return
 }
 
 // Go go!

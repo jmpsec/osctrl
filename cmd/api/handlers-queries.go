@@ -20,7 +20,14 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	name, ok := vars["name"]
 	if !ok {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting name", nil)
+		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
 	// Get query by name
@@ -29,9 +36,9 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIErr)
 		if err.Error() == "record not found" {
 			log.Printf("query not found: %s", name)
-			apiHTTPResponse(w, JSONApplicationUTF8, http.StatusNotFound, ApiErrorResponse{Error: "query not found"})
+			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
 		} else {
-			apiErrorResponse(w, "error getting query", err)
+			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -44,35 +51,41 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+		return
+	}
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error parsing POST body", err)
+		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		return
 	}
 	// FIXME check validity of query
 	// Query can not be empty
 	if q.Query == "" {
-		apiErrorResponse(w, "query can not be empty", nil)
+		apiErrorResponse(w, "query can not be empty", http.StatusInternalServerError, nil)
 		return
 	}
 	// Prepare and create new query
-	queryName := "query_" + generateQueryName()
+	queryName := generateQueryName()
 	newQuery := queries.DistributedQuery{
 		Query:      q.Query,
 		Name:       queryName,
-		Creator:    "API",
+		Creator:    ctx["user"],
 		Expected:   0,
 		Executions: 0,
 		Active:     true,
 		Completed:  false,
 		Deleted:    false,
-		Repeat:     0,
 		Type:       queries.StandardQueryType,
 	}
 	if err := queriesmgr.Create(newQuery); err != nil {
-		apiErrorResponse(w, "error creating query", err)
+		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
 	// Temporary list of UUIDs to calculate Expected
@@ -82,12 +95,12 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, e := range q.Environments {
 			if (e != "") && envs.Exists(e) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, e); err != nil {
-					apiErrorResponse(w, "error creating query environment target", err)
+					apiErrorResponse(w, "error creating query environment target", http.StatusInternalServerError, err)
 					return
 				}
 				nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
 				if err != nil {
-					apiErrorResponse(w, "error getting nodes by environment", err)
+					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					return
 				}
 				for _, n := range nodes {
@@ -101,12 +114,12 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(p) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
-					apiErrorResponse(w, "error creating query platform target", err)
+					apiErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
 					return
 				}
 				nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
 				if err != nil {
-					apiErrorResponse(w, "error getting nodes by platform", err)
+					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					return
 				}
 				for _, n := range nodes {
@@ -120,7 +133,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, u := range q.UUIDs {
 			if (u != "") && nodesmgr.CheckByUUID(u) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
-					apiErrorResponse(w, "error creating query UUID target", err)
+					apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
 					return
 				}
 				expected = append(expected, u)
@@ -132,7 +145,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, h := range q.Hosts {
 			if (h != "") && nodesmgr.CheckByHost(h) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
-					apiErrorResponse(w, "error creating query hostname target", err)
+					apiErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
 					return
 				}
 				expected = append(expected, h)
@@ -143,7 +156,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
 	if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
-		apiErrorResponse(w, "error setting expected", err)
+		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		return
 	}
 	// Return query name as serialized response
@@ -159,13 +172,13 @@ func apiQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	queries, err := queriesmgr.GetQueries(queries.TargetAllFull)
 	if err != nil {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting queries", err)
+		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		return
 	}
 	if len(queries) == 0 {
 		incMetric(metricAPIErr)
 		log.Printf("no queries")
-		apiHTTPResponse(w, JSONApplicationUTF8, http.StatusNotFound, ApiErrorResponse{Error: "no queries"})
+		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON

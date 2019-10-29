@@ -32,7 +32,16 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), true)
 	// Send response
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, errorContent)
+	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, okContent)
+	incMetric(metricHealthOK)
+}
+
+// Handle root requests
+func rootHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricHealthReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), true)
+	// Send response
+	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, okContent)
 	incMetric(metricHealthOK)
 }
 

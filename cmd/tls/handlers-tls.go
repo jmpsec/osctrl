@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
@@ -38,8 +39,8 @@ const (
 	metricBlockReq  = "block-req"
 	metricBlockErr  = "block-err"
 	metricBlockOK   = "block-ok"
-	metricHealthReq  = "health-req"
-	metricHealthOK   = "health-ok"
+	metricHealthReq = "health-req"
+	metricHealthOK  = "health-ok"
 )
 
 // JSONApplication for Content-Type headers
@@ -431,7 +432,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
-	var nodeInvalid bool
+	var nodeInvalid, accelerate bool
 	qs := make(queries.QueryReadQueries)
 	// Lookup node by node_key
 	node, err := nodesmgr.GetByKey(t.NodeKey)
@@ -442,7 +443,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
-		qs, err = queriesmgr.NodeQueries(node)
+		qs, accelerate, err = queriesmgr.NodeQueries(node)
 		if err != nil {
 			incMetric(metricReadErr)
 			log.Printf("error getting queries from db %v", err)
@@ -455,9 +456,15 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		nodeInvalid = true
+		accelerate = false
 	}
-	// Prepare response for invalid key
-	response, err = json.Marshal(types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
+	// Prepare response and serialize queries
+	if accelerate {
+		sAccelerate := int(settingsmap[settings.AcceleratedSeconds].Integer)
+		response, err = json.Marshal(types.AcceleratedQueryReadResponse{Queries: qs, Accelerated: sAccelerate, NodeInvalid: nodeInvalid})
+	} else {
+		response, err = json.Marshal(types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
+	}
 	if err != nil {
 		incMetric(metricReadErr)
 		log.Printf("error formating response %v", err)

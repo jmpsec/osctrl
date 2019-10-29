@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/users"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -47,7 +48,8 @@ const (
 	// HTTP health path
 	healthPath string = "/health"
 	// HTTP errors path
-	errorPath string = "/error"
+	errorPath     string = "/error"
+	forbiddenPath string = "/forbidden"
 	// API prefix path
 	apiPrefixPath string = "/api"
 	// API version path
@@ -69,6 +71,7 @@ var (
 	apiConfig      types.JSONConfigurationService
 	jwtConfig      types.JSONConfigurationJWT
 	db             *gorm.DB
+	apiUsers       *users.UserManager
 	settingsmgr    *settings.Settings
 	envs           *environments.Environment
 	envsmap        environments.MapEnvironments
@@ -173,6 +176,8 @@ func main() {
 			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
+	// Initialize users
+	apiUsers = users.CreateUserManager(db)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -197,24 +202,27 @@ func main() {
 	// Create router for API endpoint
 	routerAPI := mux.NewRouter()
 	// API: root
-	routerAPI.HandleFunc("/", forbiddenHTTPHandler)
+	routerAPI.HandleFunc("/", rootHTTPHandler)
 	// API: testing
 	routerAPI.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
 	// API: error
 	routerAPI.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
+	// API: forbidden
+	routerAPI.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
 
+	/////////////////////////// AUTHENTICATED
 	// API: nodes
-	routerAPI.HandleFunc(_apiPath(apiNodesPath)+"/{uuid}", apiNodeHandler).Methods("GET")
-	routerAPI.HandleFunc(_apiPath(apiNodesPath), apiNodesHandler).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{uuid}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath), handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
 	// API: queries
-	routerAPI.HandleFunc(_apiPath(apiQueriesPath)+"/{name}", apiQueryShowHandler).Methods("GET")
-	routerAPI.HandleFunc(_apiPath(apiQueriesPath), apiQueriesRunHandler).Methods("POST")
-	routerAPI.HandleFunc(_apiPath(apiQueriesPath), apiQueriesShowHandler).Methods("GET")
+	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiQueriesShowHandler))).Methods("GET")
 	// API: platforms
-	routerAPI.HandleFunc(_apiPath(apiPlatformsPath), apiPlatformsHandler).Methods("GET")
+	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	// API: environments
-	routerAPI.HandleFunc(_apiPath(apiEnvironmentsPath)+"/{name}", apiEnvironmentHandler).Methods("GET")
-	routerAPI.HandleFunc(_apiPath(apiEnvironmentsPath), apiEnvironmentsHandler).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{name}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 
 	// Ticker to reload environments
 	// FIXME Implement Redis cache

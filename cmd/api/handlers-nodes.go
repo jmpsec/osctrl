@@ -18,7 +18,14 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	uuid, ok := vars["uuid"]
 	if !ok {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting uuid", nil)
+		apiErrorResponse(w, "error getting uuid", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
 	// Get node by UUID
@@ -27,9 +34,9 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIErr)
 		if err.Error() == "record not found" {
 			log.Printf("node not found: %s", uuid)
-			apiHTTPResponse(w, JSONApplicationUTF8, http.StatusNotFound, ApiErrorResponse{Error: "node not found"})
+			apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		} else {
-			apiErrorResponse(w, "error getting node", err)
+			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -42,17 +49,24 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !checkAdminLevel(ctx["level"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+		return
+	}
 	// Get nodes
 	nodes, err := nodesmgr.Gets("all", 0)
 	if err != nil {
 		incMetric(metricAPIErr)
-		apiErrorResponse(w, "error getting nodes", err)
+		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
 	if len(nodes) == 0 {
 		incMetric(metricAPIErr)
 		log.Printf("no nodes")
-		apiHTTPResponse(w, JSONApplicationUTF8, http.StatusNotFound, ApiErrorResponse{Error: "no nodes"})
+		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON

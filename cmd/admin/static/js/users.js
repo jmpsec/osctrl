@@ -65,3 +65,8 @@ function deleteUser(_user) {
   };
   sendPostRequest(data, _url, _url, false);
 }
+
+function showAPIToken(_token) {
+  $("#user_api_token").val(_token);
+  $("#apiTokenModal").modal();
+}
