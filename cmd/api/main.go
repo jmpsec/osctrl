@@ -98,9 +98,7 @@ var validAuth = map[string]bool{
 	settings.AuthJWT:  true,
 }
 var validLogging = map[string]bool{
-	settings.LoggingDB:      true,
-	settings.LoggingGraylog: true,
-	settings.LoggingSplunk:  true,
+	settings.LoggingNone:      true,
 }
 
 // Function to load the configuration file and assign to variables

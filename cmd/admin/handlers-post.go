@@ -1232,7 +1232,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 							}
 						}
 						if newUser.Admin {
-							token, err := adminUsers.CreateToken(newUser.Username, adminLevel, jwtConfig.DaysToExpire, jwtConfig.JWTSecret)
+							token, exp, err := adminUsers.CreateToken(newUser.Username, adminLevel, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
 							if err != nil {
 								responseMessage = "error creating token"
 								responseCode = http.StatusInternalServerError
@@ -1241,7 +1241,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 								}
 								goto send_response
 							}
-							if err = adminUsers.ChangeToken(newUser.Username, token); err != nil {
+							if err = adminUsers.UpdateToken(newUser.Username, token, exp); err != nil {
 								responseMessage = "error saving token"
 								responseCode = http.StatusInternalServerError
 								if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1287,7 +1287,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 					if u.Admin {
-						token, err := adminUsers.CreateToken(u.Username, adminLevel, jwtConfig.DaysToExpire, jwtConfig.JWTSecret)
+						token, exp, err := adminUsers.CreateToken(u.Username, adminLevel, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
 						if err != nil {
 							responseMessage = "error creating token"
 							responseCode = http.StatusInternalServerError
@@ -1296,7 +1296,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 							}
 							goto send_response
 						}
-						if err = adminUsers.ChangeToken(u.Username, token); err != nil {
+						if err = adminUsers.UpdateToken(u.Username, token, exp); err != nil {
 							responseMessage = "error saving token"
 							responseCode = http.StatusInternalServerError
 							if settingsmgr.DebugService(settings.ServiceAdmin) {

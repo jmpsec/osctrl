@@ -70,7 +70,7 @@
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
                       <td>
                         {{ if $e.Admin }}
-                        <button type="button" class="btn btn-sm btn-ghost-info" onclick="showAPIToken({{ $e.APIToken }});">
+                        <button type="button" class="btn btn-sm btn-ghost-info" onclick="showAPIToken({{ $e.APIToken }}, {{ $e.TokenExpire }}, {{ $e.Username }});">
                           <i class="fas fa-key"></i>
                         </button>
                         {{ end }}
@@ -146,8 +146,16 @@
                         <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" disabled>
                       </div>
                     </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="user_token_expiration">Expiration: </label>
+                      <div class="col-md-10">
+                        <input class="form-control" name="user_token_expiration" id="user_token_expiration" type="text" autocomplete="off" disabled>
+                      </div>
+                      <input type="hidden" id="user_token_username" value="">
+                    </div>
                   </div>
                   <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>

@@ -37,6 +37,6 @@ type JSONConfigurationHeaders struct {
 
 // JSONConfigurationJWT to hold all JWT configuration values
 type JSONConfigurationJWT struct {
-	JWTSecret    string `json:"jwtSecret"`
-	DaysToExpire int    `json:"daysToExpire"`
+	JWTSecret     string `json:"jwtSecret"`
+	HoursToExpire int    `json:"hoursToExpire"`
 }

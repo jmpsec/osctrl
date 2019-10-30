@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -376,4 +377,25 @@ func templateMetadata(ctx contextValue, service, version string) TemplateMetadat
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
+}
+
+// Helper to send HTTP response
+func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interface{}) {
+	if cType != "" {
+		w.Header().Set(contentType, cType)
+	}
+	content, err := json.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error serializing response: %v", err)
+		content = []byte("error serializing response")
+	}
+	w.WriteHeader(code)
+	_, _ = w.Write(content)
+}
+
+// Helper to handle admin error responses
+func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
+	log.Printf("%s: %v", msg, err)
+	apiHTTPResponse(w, JSONApplicationUTF8, code, AdminResponse{Message: msg})
 }

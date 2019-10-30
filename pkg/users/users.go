@@ -18,6 +18,7 @@ type AdminUser struct {
 	Fullname      string
 	PassHash      string
 	APIToken      string
+	TokenExpire   time.Time
 	Admin         bool
 	LastIPAddress string
 	LastUserAgent string
@@ -82,8 +83,8 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 }
 
 // CreateToken to create a new JWT token for a given user
-func (m *UserManager) CreateToken(username, level string, expireDays int, jwtSecret string) (string, error) {
-	expirationTime := time.Now().Add(time.Hour * 24 * time.Duration(expireDays))
+func (m *UserManager) CreateToken(username, level string, expireHours int, jwtSecret string) (string, time.Time, error) {
+	expirationTime := time.Now().Add(time.Hour * time.Duration(expireHours))
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
@@ -98,9 +99,9 @@ func (m *UserManager) CreateToken(username, level string, expireDays int, jwtSec
 	// Create the JWT string
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
-		return "", err
+		return "", time.Now(), err
 	}
-	return tokenString, nil
+	return tokenString, expirationTime, nil
 }
 
 // CheckToken to verify if a token used is valid
@@ -226,14 +227,19 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	return nil
 }
 
-// ChangeToken for user by username
-func (m *UserManager) ChangeToken(username, token string) error {
+// UpdateToken for user by username
+func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 	user, err := m.Get(username)
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
 	if token != user.APIToken {
-		if err := m.DB.Model(&user).Update("api_token", token).Error; err != nil {
+		if err := m.DB.Model(&user).Updates(
+			AdminUser{
+				APIToken:    token,
+				TokenExpire: exp,
+				LastAccess:  time.Now(),
+			}).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}
 	}
@@ -285,8 +291,8 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) erro
 	return nil
 }
 
-// UpdateToken updates IP and Last Access for a user's token
-func (m *UserManager) UpdateToken(ipaddress, username string) error {
+// UpdateTokenIPAddress updates IP and Last Access for a user's token
+func (m *UserManager) UpdateTokenIPAddress(ipaddress, username string) error {
 	user, err := m.Get(username)
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)

@@ -115,3 +115,16 @@ type UsersRequest struct {
 type AdminResponse struct {
 	Message string `json:"message"`
 }
+
+// TokenRequest to receive API token related requests
+type TokenRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Username  string `json:"username"`
+}
+
+// TokenResponse to be returned to API token requests
+type TokenResponse struct {
+	Token        string `json:"token"`
+	Expiration   string `json:"expiration"`
+	ExpirationTS string `json:"exp_ts"`
+}

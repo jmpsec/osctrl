@@ -14,12 +14,18 @@ const (
 	metricJSONReq   = "admin-json-req"
 	metricJSONErr   = "admin-json-err"
 	metricJSONOK    = "admin-json-ok"
+	metricTokenReq  = "admin-token-req"
+	metricTokenErr  = "admin-token-err"
+	metricTokenOK   = "admin-token-ok"
 	metricHealthReq = "health-req"
 	metricHealthOK  = "health-ok"
 )
 
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
+
+// ContentType for header key
+const contentType string = "Content-Type"
 
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"

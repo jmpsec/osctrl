@@ -1068,7 +1068,8 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastTimeAgo": pastTimeAgo,
+		"pastTimeAgo":  pastTimeAgo,
+		"inFutureTime": inFutureTime,
 	}
 	// Prepare template
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(

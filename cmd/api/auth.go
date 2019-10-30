@@ -66,7 +66,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 			// Update metadata for the user
-			err := apiUsers.UpdateToken(r.Header.Get("X-Real-IP"), claims.Username)
+			err := apiUsers.UpdateTokenIPAddress(r.Header.Get("X-Real-IP"), claims.Username)
 			if err != nil {
 				log.Printf("error updating token for user %s: %v", claims.Username, err)
 			}
