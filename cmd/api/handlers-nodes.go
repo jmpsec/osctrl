@@ -23,7 +23,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !checkAdminLevel(ctx["level"]) {
+	if !apiUsers.IsAdmin(ctx["user"]) {
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -51,7 +51,7 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !checkAdminLevel(ctx["level"]) {
+	if !apiUsers.IsAdmin(ctx["user"]) {
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return

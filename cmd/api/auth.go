@@ -50,12 +50,14 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Set middleware values
 			s := make(contextValue)
 			s["user"] = usernameAPI
-			s["level"] = adminLevel
 			ctx := context.WithValue(r.Context(), contextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthJWT:
+			// Set middleware values
+			//utils.DebugHTTPDump(r, true, true)
 			token := extractHeaderToken(r)
+			log.Printf("Using token [%s]", token)
 			if token == "" {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
@@ -73,7 +75,6 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Set middleware values
 			s := make(contextValue)
 			s["user"] = claims.Username
-			s["level"] = claims.Level
 			ctx := context.WithValue(r.Context(), contextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))

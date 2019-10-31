@@ -190,7 +190,7 @@ _P_INT_PORT="9002"
 _P_PUB_PORT="8444"
 _P_HOST="$ALL_HOST"
 _P_AUTH="jwt"
-_P_LOGGING="db"
+_P_LOGGING="none"
 
 # Default admin credentials with random password
 _ADMIN_USER="admin"

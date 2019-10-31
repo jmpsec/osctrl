@@ -74,6 +74,8 @@ function showAPIToken(_token, _exp, _username) {
 }
 
 function refreshUserToken() {
+  $("#refreshTokenButton").prop("disabled", true);
+  $("#refreshTokenButton").html('<i class="fa fa-cog fa-spin fa-2x fa-fw"></i>');
   var _csrftoken = $("#csrftoken").val();
   var _username = $("#user_token_username").val();
 
@@ -85,5 +87,7 @@ function refreshUserToken() {
     console.log(data);
     $("#user_api_token").val(data.token);
     $("#user_token_expiration").val(data.exp_ts);
+    $("#refreshTokenButton").prop("disabled", false);
+    $("#refreshTokenButton").text('Refresh');
   });
 }

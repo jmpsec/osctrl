@@ -189,7 +189,6 @@ func init() {
 		if err != nil {
 			log.Fatalf("Error loading %s - %s", *samlFlag, err)
 		}
-		return
 	}
 	// Load configuration for Headers if enabled
 	if adminConfig.Auth == settings.AuthHeaders {
@@ -197,14 +196,12 @@ func init() {
 		if err != nil {
 			log.Fatalf("Error loading %s - %s", *headersFlag, err)
 		}
-		return
 	}
 	// Load JWT configuration
 	jwtConfig, err = loadJWTConfiguration(*jwtFlag)
 	if err != nil {
 		log.Fatalf("Error loading %s - %s", *jwtFlag, err)
 	}
-	return
 }
 
 // Go go!

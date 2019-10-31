@@ -29,7 +29,6 @@ type AdminUser struct {
 // TokenClaims to hold user claims when using JWT
 type TokenClaims struct {
 	Username string `json:"username"`
-	Level    string `json:"level"`
 	jwt.StandardClaims
 }
 
@@ -83,12 +82,11 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 }
 
 // CreateToken to create a new JWT token for a given user
-func (m *UserManager) CreateToken(username, level string, expireHours int, jwtSecret string) (string, time.Time, error) {
+func (m *UserManager) CreateToken(username string, expireHours int, jwtSecret string) (string, time.Time, error) {
 	expirationTime := time.Now().Add(time.Hour * time.Duration(expireHours))
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
-		Level:    level,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),

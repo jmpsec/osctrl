@@ -102,7 +102,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if user.Admin {
-					token, exp, err := adminUsers.CreateToken(user.Username, "admin", jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+					token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
 					if err != nil {
 						adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 						return
