@@ -1,4 +1,4 @@
-function sendPostRequest(req_data, req_url, _redir, _modal) {
+function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
   $.ajax({
     url: req_url,
     dataType: 'json',
@@ -6,7 +6,7 @@ function sendPostRequest(req_data, req_url, _redir, _modal) {
     contentType: 'application/json',
     data: JSON.stringify(req_data),
     processData: false,
-    success: function(data, textStatus, jQxhr){
+    success: function (data, textStatus, jQxhr) {
       console.log('OK');
       console.log(data);
       if (_modal) {
@@ -16,8 +16,11 @@ function sendPostRequest(req_data, req_url, _redir, _modal) {
       if (_redir !== "") {
         window.location.replace(_redir);
       }
+      if (_callback) {
+        _callback(data);
+      }
     },
-    error: function(jqXhr, textStatus, errorThrown){
+    error: function (jqXhr, textStatus, errorThrown) {
       var _clientmsg = 'Client: ' + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
       var _servermsg = 'Server: ' + _serverJSON.message;

@@ -21,7 +21,7 @@ type JSONConfigurationService struct {
 	Logging  string `json:"logging"`
 }
 
-// JSONConfigurationHeaders to keep all SAML details for auth
+// JSONConfigurationHeaders to keep all headers details for auth
 type JSONConfigurationHeaders struct {
 	TrustedPrefix     string `json:"trustedPrefix"`
 	AdminGroup        string `json:"adminGroup"`
@@ -33,4 +33,10 @@ type JSONConfigurationHeaders struct {
 	DisplayName       string `json:"displayName"`
 	DistinguishedName string `json:"distinguishedName"`
 	Groups            string `json:"groups"`
+}
+
+// JSONConfigurationJWT to hold all JWT configuration values
+type JSONConfigurationJWT struct {
+	JWTSecret     string `json:"jwtSecret"`
+	HoursToExpire int    `json:"hoursToExpire"`
 }

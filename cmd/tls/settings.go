@@ -15,6 +15,12 @@ func loadingSettings() {
 			log.Fatalf("Failed to add %s to configuration: %v", settings.DebugService, err)
 		}
 	}
+	// Check if service settings for accelerated seconds is ready
+	if !settingsmgr.IsValue(settings.ServiceTLS, settings.AcceleratedSeconds) {
+		if err := settingsmgr.NewIntegerValue(settings.ServiceTLS, settings.AcceleratedSeconds, int64(defaultAccelerate)); err != nil {
+			log.Fatalf("Failed to add %s to configuration: %v", settings.AcceleratedSeconds, err)
+		}
+	}
 	// Check if service settings for metrics is ready, initialize if so
 	if !settingsmgr.IsValue(settings.ServiceTLS, settings.ServiceMetrics) {
 		if err := settingsmgr.NewBooleanValue(settings.ServiceTLS, settings.ServiceMetrics, false); err != nil {

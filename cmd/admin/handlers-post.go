@@ -153,19 +153,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			goto send_response
 		}
 		// Prepare and create new query
-		queryName := "query_" + generateQueryName()
-		newQuery := queries.DistributedQuery{
-			Query:      q.Query,
-			Name:       queryName,
-			Creator:    ctx[ctxUser],
-			Expected:   0,
-			Executions: 0,
-			Active:     true,
-			Completed:  false,
-			Deleted:    false,
-			Repeat:     0,
-			Type:       queries.StandardQueryType,
-		}
+		newQuery := newQueryReady(ctx[ctxUser], q.Query)
 		if err := queriesmgr.Create(newQuery); err != nil {
 			responseMessage = "error creating query"
 			responseCode = http.StatusInternalServerError
@@ -178,7 +166,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if len(q.Environments) > 0 {
 			for _, e := range q.Environments {
 				if (e != "") && envs.Exists(e) {
-					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, e); err != nil {
+					if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetEnvironment, e); err != nil {
 						responseMessage = "error creating query environment target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
@@ -201,7 +189,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if len(q.Platforms) > 0 {
 			for _, p := range q.Platforms {
 				if (p != "") && checkValidPlatform(p) {
-					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
+					if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetPlatform, p); err != nil {
 						responseMessage = "error creating query platform target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
@@ -224,7 +212,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if len(q.UUIDs) > 0 {
 			for _, u := range q.UUIDs {
 				if (u != "") && nodesmgr.CheckByUUID(u) {
-					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
+					if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetUUID, u); err != nil {
 						responseMessage = "error creating query UUID target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
@@ -238,7 +226,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		if len(q.Hosts) > 0 {
 			for _, h := range q.Hosts {
 				if (h != "") && nodesmgr.CheckByHost(h) {
-					if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
+					if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetLocalname, h); err != nil {
 						responseMessage = "error creating query hostname target"
 						responseCode = http.StatusInternalServerError
 						log.Printf("%s %v", responseMessage, err)
@@ -251,7 +239,7 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		// Remove duplicates from expected
 		expectedClear := removeStringDuplicates(expected)
 		// Update value for expected
-		if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
+		if err := queriesmgr.SetExpected(newQuery.Name, len(expectedClear)); err != nil {
 			responseMessage = "error setting expected"
 			responseCode = http.StatusInternalServerError
 			log.Printf("%s %v", responseMessage, err)
@@ -313,7 +301,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		query := generateCarveQuery(c.Path, false)
 		// Prepare and create new carve
-		carveName := "carve_" + generateQueryName()
+		carveName := generateCarveName()
 		newQuery := queries.DistributedQuery{
 			Query:      query,
 			Name:       carveName,
@@ -323,7 +311,6 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			Active:     true,
 			Completed:  false,
 			Deleted:    false,
-			Repeat:     0,
 			Type:       queries.CarveQueryType,
 			Path:       c.Path,
 		}
@@ -1244,6 +1231,25 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 								log.Printf("DebugService: %s %v", responseMessage, err)
 							}
 						}
+						if newUser.Admin {
+							token, exp, err := adminUsers.CreateToken(newUser.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+							if err != nil {
+								responseMessage = "error creating token"
+								responseCode = http.StatusInternalServerError
+								if settingsmgr.DebugService(settings.ServiceAdmin) {
+									log.Printf("DebugService: %s %v", responseMessage, err)
+								}
+								goto send_response
+							}
+							if err = adminUsers.UpdateToken(newUser.Username, token, exp); err != nil {
+								responseMessage = "error saving token"
+								responseCode = http.StatusInternalServerError
+								if settingsmgr.DebugService(settings.ServiceAdmin) {
+									log.Printf("DebugService: %s %v", responseMessage, err)
+								}
+								goto send_response
+							}
+						}
 						responseMessage = "User added successfully"
 					}
 				}
@@ -1279,9 +1285,27 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						if settingsmgr.DebugService(settings.ServiceAdmin) {
 							log.Printf("DebugService: %s %v", responseMessage, err)
 						}
-					} else {
-						responseMessage = "Admin changed"
 					}
+					if u.Admin {
+						token, exp, err := adminUsers.CreateToken(u.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+						if err != nil {
+							responseMessage = "error creating token"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+							goto send_response
+						}
+						if err = adminUsers.UpdateToken(u.Username, token, exp); err != nil {
+							responseMessage = "error saving token"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+							goto send_response
+						}
+					}
+					responseMessage = "Admin changed"
 				}
 			}
 		} else {

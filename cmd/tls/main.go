@@ -42,6 +42,8 @@ const (
 	dbConfigurationFile string = "config/db.json"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
+	// Default accelerate interval in seconds
+	defaultAccelerate int = 300
 )
 
 // Global variables

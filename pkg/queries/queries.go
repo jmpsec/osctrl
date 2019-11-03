@@ -32,6 +32,19 @@ const (
 	StatusComplete string = "COMPLETE"
 )
 
+const (
+	// TargetAll for all queries
+	TargetAll string = "all"
+	// TargetAllFull for all queries including hidden ones
+	TargetAllFull string = "all-full"
+	// TargetActive for active queries
+	TargetActive string = "active"
+	// TargetCompleted for completed queries
+	TargetCompleted string = "completed"
+	// TargetDeleted for deleted queries
+	TargetDeleted string = "deleted"
+)
+
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
@@ -46,7 +59,6 @@ type DistributedQuery struct {
 	Protected  bool
 	Completed  bool
 	Deleted    bool
-	Repeat     uint
 	Type       string
 	Path       string
 }
@@ -67,7 +79,7 @@ type DistributedQueryExecution struct {
 	Result int
 }
 
-// QueryReadQueries to hold the on-demand queries
+// QueryReadQueries to hold all the on-demand queries
 type QueryReadQueries map[string]string
 
 // Queries to handle on-demand queries
@@ -97,48 +109,51 @@ func CreateQueries(backend *gorm.DB) *Queries {
 // NodeQueries to get all queries that belong to the provided node
 // FIXME this will impact the performance of the TLS endpoint due to being CPU and I/O hungry
 // FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
-func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, error) {
-	// Get all current active queries and carvesccccccijgvvbighcllglrtditncrninnndegfhuurkgu
-
+func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
+	acelerate := false
+	// Get all current active queries and carves
 	queries, err := q.GetActive()
 	if err != nil {
-		return QueryReadQueries{}, err
+		return QueryReadQueries{}, false, err
 	}
 	// Iterate through active queries, see if they target this node and prepare data in the same loop
 	qs := make(QueryReadQueries)
 	for _, _q := range queries {
 		targets, err := q.GetTargets(_q.Name)
 		if err != nil {
-			return QueryReadQueries{}, err
+			return QueryReadQueries{}, false, err
+		}
+		if len(targets) == 1 {
+			acelerate = true
 		}
 		if isQueryTarget(node, targets) && q.NotYetExecuted(_q.Name, node.UUID) {
 			qs[_q.Name] = _q.Query
 		}
 	}
-	return qs, nil
+	return qs, acelerate, nil
 }
 
 // Gets all queries by target (active/completed/all/all-full/deleted)
 func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
-	case "active":
+	case TargetActive:
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", true, false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "completed":
+	case TargetCompleted:
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", false, true, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "all-full":
+	case TargetAllFull:
 		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "all":
+	case TargetAll:
 		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
-	case "deleted":
+	case TargetDeleted:
 		if err := q.DB.Where("deleted = ? AND type = ?", true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}

@@ -71,6 +71,9 @@ COMPOSERFILE="$DOCKERDIR/docker-compose.yml"
 mkdir -p "$CERTSDIR"
 mkdir -p "$CONFIGDIR"
 
+# Secret for API JWT
+_JWT_SECRET="$(head -c64 < /dev/random | base64 | head -n 1 | openssl dgst -sha256 | cut -d " " -f1)"
+
 # Default values for arguments
 SHOW_USAGE=true
 _BUILD=false
@@ -178,7 +181,7 @@ CRT_DST="/etc/certs/$NAME.crt"
 KEY_DST="/etc/certs/$NAME.key"
 DH_DST="/etc/certs/dhparam.pem"
 
-log "Preparing configuration"
+log "Preparing configuration for nginx"
 
 TLS_CONF="$CONFIGDIR/tls.conf"
 if [[ -f "$TLS_CONF" && "$_FORCE" == false ]]; then
@@ -194,6 +197,14 @@ else
   nginx_generate "$DEPLOYDIR/nginx/ssl.conf" "$CRT_DST" "$KEY_DST" "$DH_DST" "8443" "9001" "osctrl-admin" "$ADMIN_CONF"
 fi
 
+API_CONF="$CONFIGDIR/api.conf"
+if [[ -f "$API_CONF" && "$_FORCE" == false ]]; then
+  log "Using existing $API_CONF"
+else
+  nginx_generate "$DEPLOYDIR/nginx/ssl.conf" "$CRT_DST" "$KEY_DST" "$DH_DST" "8444" "9002" "osctrl-api" "$API_CONF"
+fi
+
+log "Preparing configuration for TLS"
 TLS_JSON="$CONFIGDIR/tls.json"
 if [[ -f "$TLS_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $TLS_JSON"
@@ -201,6 +212,7 @@ else
   configuration_service "$DEPLOYDIR/service.json" "$TLS_JSON" "localhost|9000" "tls" "0.0.0.0" "none" "db"
 fi
 
+log "Preparing configuration for Admin"
 ADMIN_JSON="$CONFIGDIR/admin.json"
 if [[ -f "$ADMIN_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $ADMIN_JSON"
@@ -208,6 +220,23 @@ else
   configuration_service "$DEPLOYDIR/service.json" "$ADMIN_JSON" "localhost|9001" "admin" "0.0.0.0" "db" "db"
 fi
 
+log "Preparing configuration for API"
+API_JSON="$CONFIGDIR/api.json"
+if [[ -f "$API_JSON" && "$_FORCE" == false ]]; then
+  log "Using existing $API_JSON"
+else
+  configuration_service "$DEPLOYDIR/service.json" "$API_JSON" "localhost|9002" "api" "0.0.0.0" "jwt" "db"
+fi
+
+log "Preparing configuration for JWT"
+JWT_JSON="$CONFIGDIR/jwt.json"
+if [[ -f "$JWT_JSON" && "$_FORCE" == false ]]; then
+  log "Using existing $JWT_JSON"
+else
+  cat "$DEPLOYDIR/jwt.json" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | tee "$JWT_JSON"
+fi
+
+log "Preparing configuration for backend"
 DB_JSON="$CONFIGDIR/db.json"
 if [[ -f "$DB_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $DB_JSON"

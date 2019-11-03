@@ -13,12 +13,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 )
@@ -55,13 +57,52 @@ func checkCSRFToken(ctxToken, receivedToken string) bool {
 	return (strings.TrimSpace(ctxToken) == strings.TrimSpace(receivedToken))
 }
 
-// Helper to generate a random MD5 to be used as query name
+// Helper to generate a random query name
 func generateQueryName() string {
+	return "query_" + randomForNames()
+}
+
+// Helper to generate a random carve name
+func generateCarveName() string {
+	return "carve_" + randomForNames()
+}
+
+// Helper to generate a random MD5 to be used with queries/carves
+func randomForNames() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	hasher := md5.New()
 	_, _ = hasher.Write([]byte(fmt.Sprintf("%x", b)))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// Helper to determine if a query may be a carve
+func newQueryReady(user, query string) queries.DistributedQuery {
+	if strings.Contains(query, "carve(") || strings.Contains(query, "carve=1") {
+		return queries.DistributedQuery{
+			Query:      query,
+			Name:       generateCarveName(),
+			Creator:    user,
+			Expected:   0,
+			Executions: 0,
+			Active:     true,
+			Completed:  false,
+			Deleted:    false,
+			Type:       queries.CarveQueryType,
+			Path:       query,
+		}
+	}
+	return queries.DistributedQuery{
+		Query:      query,
+		Name:       generateQueryName(),
+		Creator:    user,
+		Expected:   0,
+		Executions: 0,
+		Active:     true,
+		Completed:  false,
+		Deleted:    false,
+		Type:       queries.StandardQueryType,
+	}
 }
 
 // Helper to generate the carve query
@@ -72,6 +113,7 @@ func generateCarveQuery(file string, glob bool) string {
 	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
 }
 
+// Helper to verify if a platform is valid
 func checkValidPlatform(platform string) bool {
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
@@ -326,13 +368,34 @@ func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error)
 // Helper to prepare template metadata
 func templateMetadata(ctx contextValue, service, version string) TemplateMetadata {
 	return TemplateMetadata{
-		Username:  ctx[ctxUser],
-		Level:     ctx[ctxLevel],
-		CSRFToken: ctx[ctxCSRF],
-		Service:   service,
-		Version:   version,
+		Username:       ctx[ctxUser],
+		Level:          ctx[ctxLevel],
+		CSRFToken:      ctx[ctxCSRF],
+		Service:        service,
+		Version:        version,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
 	}
+}
+
+// Helper to send HTTP response
+func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interface{}) {
+	if cType != "" {
+		w.Header().Set(contentType, cType)
+	}
+	content, err := json.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error serializing response: %v", err)
+		content = []byte("error serializing response")
+	}
+	w.WriteHeader(code)
+	_, _ = w.Write(content)
+}
+
+// Helper to handle admin error responses
+func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
+	log.Printf("%s: %v", msg, err)
+	apiHTTPResponse(w, JSONApplicationUTF8, code, AdminResponse{Message: msg})
 }

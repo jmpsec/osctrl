@@ -11,6 +11,7 @@ import (
 const (
 	ServiceTLS   string = "tls"
 	ServiceAdmin string = "admin"
+	ServiceAPI   string = "api"
 )
 
 // Types of settings values
@@ -27,6 +28,7 @@ const (
 	AuthDB      string = "db"
 	AuthSAML    string = "saml"
 	AuthHeaders string = "headers"
+	AuthJWT     string = "jwt"
 )
 
 // Types of logging
@@ -42,17 +44,18 @@ const (
 
 // Names for all possible settings values for services
 const (
-	DebugHTTP       string = "debug_http"
-	DebugService    string = "debug_service"
-	RefreshEnvs     string = "refresh_envs"
-	RefreshSettings string = "refresh_settings"
-	CleanupSessions string = "cleanup_sessions"
-	ServiceMetrics  string = "service_metrics"
-	MetricsHost     string = "metrics_host"
-	MetricsPort     string = "metrics_port"
-	MetricsProtocol string = "metrics_protocol"
-	DefaultEnv      string = "default_env"
-	InactiveHours   string = "inactive_hours"
+	DebugHTTP          string = "debug_http"
+	DebugService       string = "debug_service"
+	RefreshEnvs        string = "refresh_envs"
+	RefreshSettings    string = "refresh_settings"
+	CleanupSessions    string = "cleanup_sessions"
+	ServiceMetrics     string = "service_metrics"
+	MetricsHost        string = "metrics_host"
+	MetricsPort        string = "metrics_port"
+	MetricsProtocol    string = "metrics_protocol"
+	DefaultEnv         string = "default_env"
+	InactiveHours      string = "inactive_hours"
+	AcceleratedSeconds string = "accelerated_seconds"
 )
 
 // Names for setting values for logging

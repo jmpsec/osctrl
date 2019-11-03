@@ -28,10 +28,14 @@
 # Optional Parameters:
 #   --public-tls-port PORT      Port for the TLS endpoint service. Default is 443
 #   --public-admin-port PORT    Port for the admin service. Default is 8443
+#   --public-api-port PORT      Port for the API service. Default is 8444
 #   --private-tls-port PORT     Port for the TLS endpoint service. Default is 9000
 #   --private-admin-port PORT   Port for the admin service. Default is 9001
+#   --private-api-port PORT     Port for the API service. Default is 9002
+#   --all-hostname HOSTNAME     Hostname for all the services. Default is 127.0.0.1
 #   --tls-hostname HOSTNAME     Hostname for the TLS endpoint service. Default is 127.0.0.1
 #   --admin-hostname HOSTNAME   Hostname for the admin service. Default is 127.0.0.1
+#   --api-hostname HOSTNAME     Hostname for the API service. Default is 127.0.0.1
 #   -X PASS     --password      Force the admin password for the admin interface. Default is random
 #   -U          --update        Pull from master and sync files to the current folder
 #   -k PATH     --keyfile PATH  Path to supplied TLS key file
@@ -46,7 +50,7 @@
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #
 # Examples:
-#   Provision service in development mode, code is in /vagrant and both admin and tls:
+#   Provision service in development mode, code is in /vagrant and all components (admin, tls, api):
 #     provision.sh -m dev -s /vagrant -p all
 #   Provision service in production mode using my own certificate and only with TLS endpoint:
 #     provision.sh -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls
@@ -95,10 +99,14 @@ function usage() {
   printf "\nOptional Parameters:\n"
   printf "  --public-tls-port PORT \tPort for the TLS endpoint service. Default is 443\n"
   printf "  --public-admin-port PORT \tPort for the admin service. Default is 8443\n"
+  printf "  --public-api-port PORT \tPort for the API service. Default is 8444\n"
   printf "  --private-tls-port PORT \tPort for the TLS endpoint service. Default is 9000\n"
   printf "  --private-admin-port PORT \tPort for the admin service. Default is 9001\n"
+  printf "  --private-api-port PORT \tPort for the API service. Default is 9002\n"
+  printf "  --all-hostname HOSTNAME \tHostname for all the services. Default is 127.0.0.1\n"
   printf "  --tls-hostname HOSTNAME \tHostname for the TLS endpoint service. Default is 127.0.0.1\n"
   printf "  --admin-hostname HOSTNAME \tHostname for the admin service. Default is 127.0.0.1\n"
+  printf "  --api-hostname HOSTNAME \tHostname for the API service. Default is 127.0.0.1\n"
   printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random\n"
   printf "  -U          --update \t\tPull from master and sync files to the current folder\n"
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
@@ -111,7 +119,7 @@ function usage() {
   printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "\nExamples:\n"
-  printf "  Provision service in development mode, code is in /vagrant and both admin and tls:\n"
+  printf "  Provision service in development mode, code is in /vagrant and all components (admin, tls, api):\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
   printf "  Provision service in production mode using my own certificate and only with TLS endpoint:\n"
   printf "\t%s -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls\n" "${0}"
@@ -126,11 +134,15 @@ set -e
 # Values not intended to change
 TLS_COMPONENT="tls"
 ADMIN_COMPONENT="admin"
+API_COMPONENT="api"
 TLS_CONF="$TLS_COMPONENT.json"
 ADMIN_CONF="$ADMIN_COMPONENT.json"
+API_CONF="$API_COMPONENT.json"
 DB_CONF="db.json"
+JWT_CONF="jwt.json"
 SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
+JWT_TEMPLATE="jwt.json"
 SYSTEMD_TEMPLATE="systemd.service"
 
 # Default values for arguments
@@ -149,6 +161,7 @@ NGINX=false
 POSTGRES=false
 SOURCE_PATH=/vagrant
 DEST_PATH=/opt/osctrl
+ALL_HOST="127.0.0.1"
 
 # Backend values
 _DB_HOST="localhost"
@@ -161,28 +174,38 @@ _DB_PORT="5432"
 # TLS Service
 _T_INT_PORT="9000"
 _T_PUB_PORT="443"
-_T_HOST="127.0.0.1"
+_T_HOST="$ALL_HOST"
 _T_AUTH="none"
 _T_LOGGING="db"
 
 # Admin Service
 _A_INT_PORT="9001"
 _A_PUB_PORT="8443"
-_A_HOST="127.0.0.1"
+_A_HOST="$ALL_HOST"
 _A_AUTH="db"
 _A_LOGGING="db"
+
+# API Service
+_P_INT_PORT="9002"
+_P_PUB_PORT="8444"
+_P_HOST="$ALL_HOST"
+_P_AUTH="jwt"
+_P_LOGGING="none"
 
 # Default admin credentials with random password
 _ADMIN_USER="admin"
 _ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | md5sum | cut -d " " -f1)
 
+# Secret for API JWT
+_JWT_SECRET="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | sha256sum | cut -d " " -f1)"
+
 # Arrays with valid arguments
 VALID_MODE=("dev" "prod" "update")
 VALID_TYPE=("self" "own" "certbot")
-VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "all")
+VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,tls-hostname:,admin-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -250,6 +273,16 @@ while true; do
       _A_INT_PORT=$2
       shift 2
       ;;
+    --public-api-port)
+      SHOW_USAGE=false
+      _P_PUB_PORT=$2
+      shift 2
+      ;;
+    --private-api-port)
+      SHOW_USAGE=false
+      _P_INT_PORT=$2
+      shift 2
+      ;;
     --tls-hostname)
       SHOW_USAGE=false
       _T_HOST=$2
@@ -258,6 +291,19 @@ while true; do
     --admin-hostname)
       SHOW_USAGE=false
       _A_HOST=$2
+      shift 2
+      ;;
+    --api-hostname)
+      SHOW_USAGE=false
+      _P_HOST=$2
+      shift 2
+      ;;
+    --all-hostname)
+      SHOW_USAGE=false
+      ALL_HOST=$2
+      _T_HOST=$ALL_HOST
+      _A_HOST=$ALL_HOST
+      _P_HOST=$ALL_HOST
       shift 2
       ;;
     -U|--update)
@@ -357,16 +403,25 @@ log "Provisioning [ osctrl ][ $PART ] for $DISTRO"
 log ""
 log "  -> [ $MODE ] mode and with [ $TYPE ] certificate"
 log ""
+
 if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   log "  -> Deploying TLS service for ports $_T_PUB_PORT:$_T_INT_PORT"
   log "  -> Hostname for TLS endpoint: $_T_HOST"
 fi
 log ""
+
 if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   log "  -> Deploying Admin service for ports $_A_PUB_PORT:$_A_INT_PORT"
   log "  -> Hostname for admin: $_A_HOST"
 fi
 log ""
+
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
+  log "  -> Deploying API service for ports $_P_PUB_PORT:$_P_INT_PORT"
+  log "  -> Hostname for API: $_P_HOST"
+fi
+log ""
+
 log ""
 
 # Update distro
@@ -438,6 +493,9 @@ if [[ "$NGINX" == true ]]; then
   # Configuration for Admin service
   nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
 
+  # Configuration for API service
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
+
   # Restart nginx
   sudo nginx -t
   sudo service nginx restart
@@ -486,6 +544,9 @@ sudo mkdir -p "$DEST_PATH/config"
 
 # Generate DB configuration file for services
 configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+
+# JWT configuration
+cat "$SOURCE_PATH/deploy/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
 
 # Build code
 cd "$SOURCE_PATH"
@@ -540,6 +601,17 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
 
   # Systemd configuration for Admin service
   _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
+fi
+
+if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
+  # Build API service
+  make api
+
+  # Configuration file generation for API service
+  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
+
+  # Systemd configuration for API service
+  _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH"
 fi
 
 # Compile CLI
@@ -609,4 +681,4 @@ exit 0
 # kthxbai
 
 # Standard deployment in a linux box would be like:
-# ./deploy/provision.sh --nginx --postgres -p all --tls-hostname "dev.osctrl.net" --admin-hostname "dev.osctrl.net" -E
+# ./deploy/provision.sh --nginx --postgres -p all --all-hostname "dev.osctrl.net" -E

@@ -45,12 +45,28 @@ services:
     volumes:
       - ./docker/certs:/osctrl-admin/certs
       - ./docker/config:/osctrl-admin/config
+  osctrl-api:
+    container_name: osctrl-api
+    depends_on:
+      - "osctrl-db"
+    build:
+      context: .
+      dockerfile: "docker/api/Dockerfile"
+    links:
+      - "osctrl-db"
+    ports:
+      - "9002:9002"
+    networks:
+      - private-net
+    volumes:
+      - ./docker/config:/osctrl-api/config
   osctrl-nginx:
     image: "nginx:1.13.5"
     container_name: osctrl-nginx
     depends_on:
       - "osctrl-tls"
       - "osctrl-admin"
+      - "osctrl-api"
     ports:
       - "443:443"
       - "8443:8443"

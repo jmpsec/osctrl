@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,10 +17,19 @@ type AdminUser struct {
 	Email         string
 	Fullname      string
 	PassHash      string
+	APIToken      string
+	TokenExpire   time.Time
 	Admin         bool
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
+	LastTokenUse  time.Time
+}
+
+// TokenClaims to hold user claims when using JWT
+type TokenClaims struct {
+	Username string `json:"username"`
+	jwt.StandardClaims
 }
 
 // UserManager have all users of the system
@@ -38,15 +48,20 @@ func CreateUserManager(backend *gorm.DB) *UserManager {
 	return u
 }
 
-// HashPasswordWithSalt to hash a password before store it
-func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
-	saltedBytes := []byte(password)
+// HashTextWithSalt to hash text before store it
+func (m *UserManager) HashTextWithSalt(text string) (string, error) {
+	saltedBytes := []byte(text)
 	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
 	hash := string(hashedBytes)
 	return hash, nil
+}
+
+// HashPasswordWithSalt to hash a password before store it
+func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
+	return m.HashTextWithSalt(password)
 }
 
 // CheckLoginCredentials to check provided login credentials by matching hashes
@@ -64,6 +79,44 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 		return false, AdminUser{}
 	}
 	return true, user
+}
+
+// CreateToken to create a new JWT token for a given user
+func (m *UserManager) CreateToken(username string, expireHours int, jwtSecret string) (string, time.Time, error) {
+	expirationTime := time.Now().Add(time.Hour * time.Duration(expireHours))
+	// Create the JWT claims, which includes the username, level and expiry time
+	claims := &TokenClaims{
+		Username: username,
+		StandardClaims: jwt.StandardClaims{
+			// In JWT, the expiry time is expressed as unix milliseconds
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+	// Declare the token with the algorithm used for signing, and the claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// Create the JWT string
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", time.Now(), err
+	}
+	return tokenString, expirationTime, nil
+}
+
+// CheckToken to verify if a token used is valid
+func (m *UserManager) CheckToken(jwtSecret, tokenStr string) (TokenClaims, bool) {
+	claims := &TokenClaims{}
+	tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtSecret), nil
+	})
+	if err != nil {
+		log.Printf("Error %v", err)
+		return *claims, false
+	}
+	if !tkn.Valid {
+		log.Println("Not valid")
+		return *claims, false
+	}
+	return *claims, true
 }
 
 // Get user by username
@@ -172,6 +225,25 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	return nil
 }
 
+// UpdateToken for user by username
+func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if token != user.APIToken {
+		if err := m.DB.Model(&user).Updates(
+			AdminUser{
+				APIToken:    token,
+				TokenExpire: exp,
+				LastAccess:  time.Now(),
+			}).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
 // ChangeEmail for user by username
 func (m *UserManager) ChangeEmail(username, email string) error {
 	user, err := m.Get(username)
@@ -206,15 +278,29 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) erro
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
 	}
-	if ipaddress != user.LastIPAddress || useragent != user.LastUserAgent {
-		if err := m.DB.Model(&user).Updates(
-			AdminUser{
-				LastIPAddress: ipaddress,
-				LastUserAgent: useragent,
-				LastAccess:    time.Now(),
-			}).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
-		}
+	if err := m.DB.Model(&user).Updates(
+		AdminUser{
+			LastIPAddress: ipaddress,
+			LastUserAgent: useragent,
+			LastAccess:    time.Now(),
+		}).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// UpdateTokenIPAddress updates IP and Last Access for a user's token
+func (m *UserManager) UpdateTokenIPAddress(ipaddress, username string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	if err := m.DB.Model(&user).Updates(
+		AdminUser{
+			LastIPAddress: ipaddress,
+			LastTokenUse:  time.Now(),
+		}).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }

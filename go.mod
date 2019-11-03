@@ -19,10 +19,6 @@ require (
 	github.com/jmpsec/osctrl/pkg/types v0.1.9
 	github.com/jmpsec/osctrl/pkg/users v0.1.9
 	github.com/jmpsec/osctrl/pkg/utils v0.1.9
-	github.com/jmpsec/osctrl/plugins/db_logging v0.1.9 // indirect
-	github.com/jmpsec/osctrl/plugins/graylog_logging v0.1.9 // indirect
-	github.com/jmpsec/osctrl/plugins/logging_dispatcher v0.1.9 // indirect
-	github.com/jmpsec/osctrl/plugins/splunk_logging v0.1.9 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect

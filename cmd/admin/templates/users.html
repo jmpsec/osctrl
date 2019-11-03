@@ -44,11 +44,12 @@
                     <tr>
                       <th width="10%">Username</th>
                       <th width="15%">Email</th>
-                      <th width="15%">Fullname</th>
+                      <th width="10%">Fullname</th>
                       <th width="10%">Last IP</th>
                       <th width="30%">Last UserAgent</th>
                       <th width="5%">Admin</th>
                       <th width="10%">Last Session</th>
+                      <th width="5%"></th>
                       <th width="5%"></th>
                     </tr>
                   </thead>
@@ -67,6 +68,13 @@
                         </label>
                       </td>
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
+                      <td>
+                        {{ if $e.Admin }}
+                        <button type="button" class="btn btn-sm btn-ghost-info" onclick="showAPIToken({{ $e.APIToken }}, {{ $e.TokenExpire }}, {{ $e.Username }});">
+                          <i class="fas fa-key"></i>
+                        </button>
+                        {{ end }}
+                      </td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteUser({{ $e.Username }});">
                           <i class="far fa-trash-alt"></i>
@@ -113,6 +121,41 @@
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmAddUser();">Add</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="apiTokenModal" tabindex="-1" role="dialog" aria-labelledby="apiTokenModal" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">API Token</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="user_api_token">API Token: </label>
+                      <div class="col-md-10">
+                        <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" disabled>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="user_token_expiration">Expiration: </label>
+                      <div class="col-md-10">
+                        <input class="form-control" name="user_token_expiration" id="user_token_expiration" type="text" autocomplete="off" disabled>
+                      </div>
+                      <input type="hidden" id="user_token_username" value="">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="refreshTokenButton" type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>
