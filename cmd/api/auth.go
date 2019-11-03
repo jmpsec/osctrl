@@ -49,7 +49,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 		case settings.AuthNone:
 			// Set middleware values
 			s := make(contextValue)
-			s["user"] = usernameAPI
+			s["user"] = "admin"
 			ctx := context.WithValue(r.Context(), contextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
@@ -57,7 +57,6 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Set middleware values
 			//utils.DebugHTTPDump(r, true, true)
 			token := extractHeaderToken(r)
-			log.Printf("Using token [%s]", token)
 			if token == "" {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return

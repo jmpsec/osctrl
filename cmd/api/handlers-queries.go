@@ -169,7 +169,7 @@ func apiQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get queries
-	queries, err := queriesmgr.GetQueries(queries.TargetAllFull)
+	queries, err := queriesmgr.GetQueries(queries.TargetAll)
 	if err != nil {
 		incMetric(metricAPIErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
@@ -183,5 +183,41 @@ func apiQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
+	incMetric(metricAPIOK)
+}
+
+// GET Handler to return a single query results in JSON
+func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAPIReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	vars := mux.Vars(r)
+	// Extract name
+	name, ok := vars["name"]
+	if !ok {
+		incMetric(metricAPIErr)
+		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.IsAdmin(ctx["user"]) {
+		log.Printf("attempt to use API by user %s", ctx["user"])
+		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+		return
+	}
+	// Get query by name
+	queryLogs, err := postgresQueryLogs(name)
+	if err != nil {
+		incMetric(metricAPIErr)
+		if err.Error() == "record not found" {
+			log.Printf("query not found: %s", name)
+			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		} else {
+			apiErrorResponse(w, "error getting results", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	// Serialize and serve JSON
+	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queryLogs)
 	incMetric(metricAPIOK)
 }
