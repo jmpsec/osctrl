@@ -132,6 +132,7 @@ function usage() {
 set -e
 
 # Values not intended to change
+_NAME="osctrl"
 TLS_COMPONENT="tls"
 ADMIN_COMPONENT="admin"
 API_COMPONENT="api"
@@ -399,7 +400,7 @@ fi
 # We are provisioning a new machine
 log ""
 log ""
-log "Provisioning [ osctrl ][ $PART ] for $DISTRO"
+log "Provisioning [ $_NAME ][ $PART ] for $DISTRO"
 log ""
 log "  -> [ $MODE ] mode and with [ $TYPE ] certificate"
 log ""
@@ -450,18 +451,30 @@ if [[ "$NGINX" == true ]]; then
   fi
   package nginx
 
-  _certificate_name="osctrl"
   _certificates_dir="$NGINX_PATH/certs"
   sudo mkdir -p "$_certificates_dir"
 
-  _cert_file="$_certificates_dir/$_certificate_name.crt"
-  _key_file="$_certificates_dir/$_certificate_name.key"
+  _cert_file="$_certificates_dir/$_NAME.crt"
+  _key_file="$_certificates_dir/$_NAME.key"
+  _cert_file_a="$_certificates_dir/$_NAME-admin.crt"
+  _key_file_a="$_certificates_dir/$_NAME-admin.key"
   _dh_file="$_certificates_dir/dhparam.pem"
   _dh_bits="1024"
 
   # Self-signed certificates for dev
   if [[ "$MODE" == "dev" ]]; then
-    self_certificates_nginx "$_certificates_dir" "$_certificate_name"
+    # Do we have certificates already for admin/API?
+    if [[ -f "$SOURCE_PATH/certs/$_NAME-admin.crt" ]] && [[ -f "$SOURCE_PATH/certs/$_NAME-admin.key" ]]; then
+      log "Using existing certificate"
+      sudo cp "$SOURCE_PATH/certs/$_NAME-admin.crt" "$_cert_file_a"
+      log "Using existing key"
+      sudo cp "$SOURCE_PATH/certs/$_NAME-admin.key" "$_key_file_a"
+    else
+      log "Deploying self-signed certificates for admin/API"
+      self_signed_cert "$_certificates_dir" "$_NAME-admin" "$_dh_bits"
+    fi
+    log "Deploying self-signed certificates"
+    self_signed_cert "$_certificates_dir" "$_NAME" "$_dh_bits"
   fi
   # Certbot certificates for prod and 4096 dhparam file
   if [[ "$MODE" == "prod" ]]; then
@@ -491,10 +504,10 @@ if [[ "$NGINX" == true ]]; then
   nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
 
   # Configuration for Admin service
-  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
 
   # Configuration for API service
-  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
+  nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
 
   # Restart nginx
   sudo nginx -t

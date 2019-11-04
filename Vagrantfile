@@ -3,7 +3,7 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
-IP_ADDRESS = "10.10.10.6"
+IP_ADDRESS = "10.10.10.5"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/bionic64"

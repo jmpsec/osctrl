@@ -38,6 +38,7 @@ tmp
 *.rpm
 
 # Certificates
+certs
 osctrl.csr
 osctrl.pem
 osctrl.key

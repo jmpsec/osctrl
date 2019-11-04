@@ -20,5 +20,5 @@
 --distributed_tls_read_endpoint=/dev/osquery_read
 --distributed_tls_write_endpoint=/dev/osquery_write
 --tls_dump=true
---tls_hostname=10.10.10.6
+--tls_hostname=10.10.10.5
 --tls_server_certs=/private/var/osquery/certs/osctrl.crt

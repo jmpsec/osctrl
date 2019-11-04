@@ -77,20 +77,7 @@ function install_fpm() {
   sudo gem install --no-ri --no-rdoc fpm
 }
 
-# Generate self-signed certificates
-#   string  path_to_certs
-#   string  certificate_name
-function self_signed_cert() {
-  local __certs=$1
-  local __name=$2
-
-  local __csr="$__certs/$__name.csr"
-  local __devcert="$__certs/$__name.crt"
-  local __devkey="$__certs/$__name.key"
-
-  sudo openssl req -nodes -newkey rsa:2048 -keyout "$__devkey" -out "$__csr" -subj "/O=osctrl"
-  sudo openssl x509 -req -days 365 -in "$__csr" -signkey "$__devkey" -out "$__devcert"
-}
+# Generate
 
 # Configure main nginx
 #   string  configuration_template
@@ -166,16 +153,21 @@ function nginx_generate() {
   cat "$__conf" | sed "s|PUBLIC_PORT|$__pport|g" | sed "s|CER_FILE|$__cert|g" | sed "s|KEY_FILE|$__key|g" | sed "s|DHPARAM_FILE|$__dh|g" | sed "s|PRIVATE_PORT|$__iport|g" | sed "s|PRIVATE_HOST|$__host|g" | $__sudo tee "$__out"
 }
 
-# Generate self-signed certificates for nginx
-#   string  certs_directory
+# Generate self-signed certificates
+#   string  path_to_certs
 #   string  certificate_name
-function self_certificates_nginx() {
-  local __certs_path=$1
+#   int     rsa_bits
+function self_signed_cert() {
+  local __certs=$1
   local __name=$2
+  local __bits=$3
 
-  log "Deploying self-signed certificates"
+  local __csr="$__certs/$__name.csr"
+  local __devcert="$__certs/$__name.crt"
+  local __devkey="$__certs/$__name.key"
 
-  self_signed_cert "$__certs_path" "$__name"
+  sudo openssl req -nodes -newkey rsa:$__bits -keyout "$__devkey" -out "$__csr" -subj "/O=$__name"
+  sudo openssl x509 -req -days 365 -in "$__csr" -signkey "$__devkey" -out "$__devcert"
 }
 
 # Generate certbot certificates for nginx

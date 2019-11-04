@@ -121,6 +121,18 @@ logs_admin:
 logs_api:
 	sudo journalctl -f -t $(API_NAME)
 
+# Destroy existing vagrant development VM
+vagrant_destroy:
+	rm -Rf certs/*
+	vagrant destroy -f
+
+# Bring up a vagrant VM for local development
+vagrant_up:
+	make vagrant_destroy
+	mkdir -p "certs"
+	mkcert -key-file "certs/osctrl-admin.key" -cert-file "certs/osctrl-admin.crt" "osctrl.dev"
+	vagrant up
+
 # Build docker containers and run them (also generates new certificates)
 docker_all:
 	./docker/dockerize.sh -u -b -f
