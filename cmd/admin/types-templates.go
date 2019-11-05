@@ -116,6 +116,7 @@ type QueryLogsTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
+	ResultsLink  string
 	QueryTargets []queries.DistributedQueryTarget
 	Metadata     TemplateMetadata
 }

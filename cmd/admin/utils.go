@@ -133,8 +133,10 @@ func removeBackslash(rawString string) string {
 }
 
 // Helper to generate a link to results for on-demand queries
-func queryResultLink(name string) string {
-	return strings.Replace(settingsmgr.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
+func queryResultLink(name string) (string, string) {
+	defaultLink := strings.Replace(settings.QueryLink, "{{NAME}}", removeBackslash(name), 1)
+	dbLink := strings.Replace(settingsmgr.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
+	return defaultLink, dbLink
 }
 
 // Helper to generate a link to results for status logs

@@ -18,7 +18,10 @@ const (
 
 // GraylogConfiguration to hold all graylog configuration values
 type GraylogConfiguration struct {
-	URL string `json:"url"`
+	URL     string `json:"url"`
+	Queries string `json:"queries"`
+	Status  string `json:"status"`
+	Results string `json:"results"`
 }
 
 // Function to load the Graylog configuration from JSON file

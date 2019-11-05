@@ -547,6 +547,11 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting targets %v", err)
 		return
 	}
+	defLink, dbLink := queryResultLink(query.Name)
+	resLink := ""
+	if defLink != dbLink {
+		resLink = dbLink
+	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
@@ -554,6 +559,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		Environments: envAll,
 		Platforms:    platforms,
 		Query:        query,
+		ResultsLink:  resLink,
 		QueryTargets: targets,
 	}
 	if err := t.Execute(w, templateData); err != nil {
