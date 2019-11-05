@@ -148,19 +148,19 @@ func LogsDispatcher(logging, logType string, params ...interface{}) {
 		} else {
 			log.Printf("Logging with %s isn't ready [%s] - Dropping %d bytes", splunkName, splunkCfg.URL, len(data))
 		}
-	case settings.LoggingDB:
-		if dbReady {
-			if logType == types.QueryLog {
-				name := params[4].(string)
-				status := params[5].(int)
-				debug := params[6].(bool)
-				dbQuery(db, data, environment, uuid, name, status, debug)
-			} else {
-				debug := params[4].(bool)
-				dbLog(logType, db, data, environment, uuid, debug)
-			}
-		} else {
-			log.Printf("Logging with %s isn't ready - Dropping %d bytes", dbName, len(data))
-		}
+	}
+	// Logging to DB happens anyway
+	if dbReady {
+		if logType == types.QueryLog {
+			name := params[4].(string)
+			status := params[5].(int)
+			debug := params[6].(bool)
+			dbQuery(db, data, environment, uuid, name, status, debug)
+		} /*else {
+			debug := params[4].(bool)
+			dbLog(logType, db, data, environment, uuid, debug)
+		}*/
+	} else {
+		log.Printf("Logging with %s isn't ready - Dropping %d bytes", dbName, len(data))
 	}
 }

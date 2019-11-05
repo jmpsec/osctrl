@@ -19,6 +19,7 @@
 
           <div class="animated fadeIn">
 
+          {{ $template := . }}
           {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
@@ -26,6 +27,9 @@
                   <i class="fas fa-flag-checkered"></i> [ <b>COMPLETED</b> ] - Results for {{ .Name }}
                 {{ else }}
                   <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
+                {{ end }}
+                {{ if $template.ResultsLink }}
+                  - <a href="{{ $template.ResultsLink }}" _target="_blank"><i class="fas fa-external-link-alt"></i></a>
                 {{ end }}
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"

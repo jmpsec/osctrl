@@ -157,3 +157,8 @@ button {
   align-items: center;
   justify-content: center;
 }
+
+.query-link {
+  font-family: monospace;
+  font-size: 1.3em;
+}
