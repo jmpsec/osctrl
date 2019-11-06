@@ -33,16 +33,22 @@ const (
 )
 
 const (
-	// TargetAll for all queries
+	// TargetAll for all queries but hidden
 	TargetAll string = "all"
 	// TargetAllFull for all queries including hidden ones
 	TargetAllFull string = "all-full"
 	// TargetActive for active queries
 	TargetActive string = "active"
+	// TargetHiddenActive for hidden active queries
+	TargetHiddenActive string = "hidden-active"
 	// TargetCompleted for completed queries
 	TargetCompleted string = "completed"
+	// TargetHiddenCompleted for hidden completed queries
+	TargetHiddenCompleted string = "hidden-completed"
 	// TargetDeleted for deleted queries
 	TargetDeleted string = "deleted"
+	// TargetHidden for hidden queries
+	TargetHidden string = "hidden"
 )
 
 // DistributedQuery as abstraction of a distributed query
@@ -133,7 +139,7 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	return qs, acelerate, nil
 }
 
-// Gets all queries by target (active/completed/all/all-full/deleted)
+// Gets all queries by target (active/completed/all/all-full/deleted/hidden)
 func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
@@ -145,8 +151,12 @@ func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", false, true, false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
+	case TargetHiddenCompleted:
+		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND hidden = ? AND type = ?", false, true, false, true, qtype).Find(&queries).Error; err != nil {
+			return queries, err
+		}
 	case TargetAllFull:
-		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND type = ?", false, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetAll:
@@ -155,6 +165,10 @@ func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 		}
 	case TargetDeleted:
 		if err := q.DB.Where("deleted = ? AND type = ?", true, qtype).Find(&queries).Error; err != nil {
+			return queries, err
+		}
+	case TargetHidden:
+		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	}
@@ -170,12 +184,12 @@ func (q *Queries) GetActive() ([]DistributedQuery, error) {
 	return queries, nil
 }
 
-// GetQueries all queries by target (active/completed/all/all-full/deleted)
+// GetQueries all queries by target (active/completed/all/all-full/deleted/hidden)
 func (q *Queries) GetQueries(target string) ([]DistributedQuery, error) {
 	return q.Gets(target, StandardQueryType)
 }
 
-// GetCarves all carve queries by target (active/completed/all/all-full/deleted)
+// GetCarves all carve queries by target (active/completed/all/all-full/deleted/hidden)
 func (q *Queries) GetCarves(target string) ([]DistributedQuery, error) {
 	return q.Gets(target, CarveQueryType)
 }
@@ -335,4 +349,27 @@ func (q *Queries) TrackExecution(name, uuid string, result int) error {
 		return fmt.Errorf("db.NewRecord did not return true")
 	}
 	return nil
+}
+
+// Helper to decide whether if the query targets apply to a give node
+func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
+	for _, t := range targets {
+		// Check for environment match
+		if t.Type == QueryTargetEnvironment && t.Value == node.Environment {
+			return true
+		}
+		// Check for platform match
+		if t.Type == QueryTargetPlatform && node.Platform == t.Value {
+			return true
+		}
+		// Check for UUID match
+		if t.Type == QueryTargetUUID && node.UUID == t.Value {
+			return true
+		}
+		// Check for localname match
+		if t.Type == QueryTargetLocalname && node.Localname == t.Value {
+			return true
+		}
+	}
+	return false
 }
