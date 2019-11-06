@@ -112,7 +112,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 					response = TokenResponse{
-						Token:        user.APIToken,
+						Token:        token,
 						ExpirationTS: exp.String(),
 						Expiration:   exp.String(),
 					}
