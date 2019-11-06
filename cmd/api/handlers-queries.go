@@ -82,6 +82,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Active:     true,
 		Completed:  false,
 		Deleted:    false,
+		Hidden:     true,
 		Type:       queries.StandardQueryType,
 	}
 	if err := queriesmgr.Create(newQuery); err != nil {
@@ -164,12 +165,34 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIOK)
 }
 
-// GET Handler to return multiple queries in JSON
-func apiQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
+// GET Handler to return all queries in JSON
+func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get queries
-	queries, err := queriesmgr.GetQueries(queries.TargetAll)
+	queries, err := queriesmgr.GetQueries(queries.TargetCompleted)
+	if err != nil {
+		incMetric(metricAPIErr)
+		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
+		return
+	}
+	if len(queries) == 0 {
+		incMetric(metricAPIErr)
+		log.Printf("no queries")
+		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
+		return
+	}
+	// Serialize and serve JSON
+	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
+	incMetric(metricAPIOK)
+}
+
+// GET Handler to return hidden queries in JSON
+func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAPIReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get queries
+	queries, err := queriesmgr.GetQueries(queries.TargetHiddenCompleted)
 	if err != nil {
 		incMetric(metricAPIErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)

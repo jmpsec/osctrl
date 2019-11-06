@@ -58,6 +58,8 @@ const (
 	apiNodesPath string = "/nodes"
 	// API queries path
 	apiQueriesPath string = "/queries"
+	// API all queries path
+	apiAllQueriesPath string = "/all-queries"
 	// API carves path
 	apiCarvesPath string = "/carves"
 	// API platforms path
@@ -219,10 +221,12 @@ func main() {
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiQueriesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiQueriesShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiHiddenQueriesShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiHiddenQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/results/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/results/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiAllQueriesPath), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiAllQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
 	// API: platforms
 	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")

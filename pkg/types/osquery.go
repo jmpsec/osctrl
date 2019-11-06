@@ -174,7 +174,7 @@ type QueryReadResponse struct {
 type AcceleratedQueryReadResponse struct {
 	Queries     queries.QueryReadQueries `json:"queries"`
 	NodeInvalid bool                     `json:"node_invalid"`
-	Accelerated int                      `json:"accelerated"`
+	Accelerate  int                      `json:"accelerate"`
 }
 
 // QueryWriteQueries to hold the on-demand queries results

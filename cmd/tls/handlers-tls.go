@@ -461,7 +461,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response and serialize queries
 	if accelerate {
 		sAccelerate := int(settingsmap[settings.AcceleratedSeconds].Integer)
-		response, err = json.Marshal(types.AcceleratedQueryReadResponse{Queries: qs, Accelerated: sAccelerate, NodeInvalid: nodeInvalid})
+		response, err = json.Marshal(types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid})
 	} else {
 		response, err = json.Marshal(types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
 	}
