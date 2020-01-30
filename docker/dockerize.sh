@@ -225,7 +225,7 @@ API_JSON="$CONFIGDIR/api.json"
 if [[ -f "$API_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $API_JSON"
 else
-  configuration_service "$DEPLOYDIR/service.json" "$API_JSON" "localhost|9002" "api" "0.0.0.0" "jwt" "db"
+  configuration_service "$DEPLOYDIR/service.json" "$API_JSON" "localhost|9002" "api" "0.0.0.0" "jwt" "none"
 fi
 
 log "Preparing configuration for JWT"
