@@ -24,6 +24,26 @@ const (
 	ctxCSRF              string = "csrftoken"
 )
 
+// TemplateFiles for building UI layout
+type TemplateFiles struct {
+	filepaths []string
+}
+
+// NewTemplateFiles defines based on layout and default static pages
+func NewTemplateFiles(base string, layoutFilename string) *TemplateFiles {
+	paths := []string{
+		base + "/" + layoutFilename,
+		base + "/components/page-head.html",
+		base + "/components/page-js.html",
+		base + "/components/page-header.html",
+		base + "/components/page-aside-left.html",
+		base + "/components/page-aside-right.html",
+		base + "/components/page-modals.html",
+	}
+	tf := TemplateFiles{filepaths: paths}
+	return &tf
+}
+
 // Handler for login page for GET requests
 func loginGETHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAdminReq)
@@ -93,14 +113,9 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/table.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "table.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
+
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -304,14 +319,8 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/queries.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -363,14 +372,8 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/carves-run.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-run.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -439,14 +442,8 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/carves.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -506,14 +503,8 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.New("queries-logs.html").ParseFiles(
-		templatesFilesFolder+"/queries-logs.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries-logs.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -594,14 +585,8 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.New("carves-details.html").ParseFiles(
-		templatesFilesFolder+"/carves-details.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-details.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -695,14 +680,8 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/conf.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-modals.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "conf.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting conf template: %v", err)
@@ -769,14 +748,8 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/enroll.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "enroll.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting enroll template: %v", err)
@@ -859,14 +832,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		"resultLogsLink": resultLogsLink,
 	}
 	// Prepare template
-	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(
-		templatesFilesFolder+"/node.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
+	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -928,14 +895,8 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/environments.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
@@ -1000,14 +961,8 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	t, err := template.ParseFiles(
-		templatesFilesFolder+"/settings.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "settings.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
@@ -1078,14 +1033,8 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 		"inFutureTime": inFutureTime,
 	}
 	// Prepare template
-	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(
-		templatesFilesFolder+"/users.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-modals.html")
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "users.html").filepaths
+	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
