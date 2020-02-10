@@ -315,6 +315,20 @@ func adminVersion() {
 	os.Exit(0)
 }
 
+// Helper to verify the service is valid
+func checkTargetService(service string) bool {
+	if (service == settings.ServiceTLS) {
+		return true
+	}
+	if (service == settings.ServiceAdmin) {
+		return true
+	}
+	if (service == settings.ServiceAPI) {
+		return true
+	}
+	return false
+}
+
 // Function to load the JSON data for osquery tables
 func loadOsqueryTables(file string) ([]OsqueryTable, error) {
 	var tables []OsqueryTable
@@ -377,7 +391,9 @@ func templateMetadata(ctx contextValue, service, version string) TemplateMetadat
 		Version:        version,
 		TLSDebug:       settingsmgr.DebugService(settings.ServiceTLS),
 		AdminDebug:     settingsmgr.DebugService(settings.ServiceAdmin),
+		APIDebug:       settingsmgr.DebugService(settings.ServiceAPI),
 		AdminDebugHTTP: settingsmgr.DebugHTTP(settings.ServiceAdmin),
+		APIDebugHTTP:   settingsmgr.DebugHTTP(settings.ServiceAPI),
 	}
 }
 

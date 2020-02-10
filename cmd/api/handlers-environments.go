@@ -43,6 +43,9 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, env)
 	incMetric(metricAPIOK)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Printf("DebugService: Returned environment %s", name)
+	}
 }
 
 // GET Handler to return all environments as JSON
@@ -66,4 +69,7 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Header to serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, envAll)
 	incMetric(metricAPIOK)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Println("DebugService: Returned environments")
+	}
 }

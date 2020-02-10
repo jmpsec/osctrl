@@ -136,7 +136,16 @@ func main() {
 	}
 	log.Println("Loading DB")
 	// Database handler
-	db = getDB(*dbFlag)
+	//db = getDB(*dbFlag)
+	for {
+		db = getDB(*dbFlag)
+		if db != nil {
+			log.Println("Database ready!")
+			break
+		}
+		log.Println("Database NOT ready! waiting...")
+		time.Sleep(5 * time.Second)
+	}
 	// Close when exit
 	//defer db.Close()
 	defer func() {

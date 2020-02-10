@@ -55,7 +55,6 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthJWT:
 			// Set middleware values
-			//utils.DebugHTTPDump(r, true, true)
 			token := extractHeaderToken(r)
 			if token == "" {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)

@@ -29,4 +29,7 @@ func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, platforms)
 	incMetric(metricAPIOK)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Println("DebugService: Returned platforms")
+	}
 }

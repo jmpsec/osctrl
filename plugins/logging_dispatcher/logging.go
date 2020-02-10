@@ -156,10 +156,12 @@ func LogsDispatcher(logging, logType string, params ...interface{}) {
 			status := params[5].(int)
 			debug := params[6].(bool)
 			dbQuery(db, data, environment, uuid, name, status, debug)
-		} /*else {
-			debug := params[4].(bool)
-			dbLog(logType, db, data, environment, uuid, debug)
-		}*/
+		} else {
+			if logging == settings.LoggingDB {
+				debug := params[4].(bool)
+				dbLog(logType, db, data, environment, uuid, debug)
+			}
+		}
 	} else {
 		log.Printf("Logging with %s isn't ready - Dropping %d bytes", dbName, len(data))
 	}

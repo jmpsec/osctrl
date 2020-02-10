@@ -1070,7 +1070,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Verify service
-	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+	if !checkTargetService(serviceVar) {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
 			log.Printf("DebugService: error unknown service (%s)", serviceVar)
 		}

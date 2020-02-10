@@ -955,7 +955,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Verify service
-	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+	if !checkTargetService(serviceVar) {
 		incMetric(metricAdminErr)
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
