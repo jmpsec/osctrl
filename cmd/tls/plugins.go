@@ -27,7 +27,7 @@ func loadPlugins() error {
 // Function to load logging dispatcher plugin
 func loadLoggingDispatcherPlugin() error {
 	var ok bool
-	plugins, err := filepath.Glob("/osctrl-tls/bin/logging_dispatcher_plugin.so")
+	plugins, err := filepath.Glob("plugins/logging_dispatcher_plugin.so")
 	if err != nil {
 		return err
 	}
