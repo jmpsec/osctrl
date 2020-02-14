@@ -895,7 +895,7 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "environments.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
