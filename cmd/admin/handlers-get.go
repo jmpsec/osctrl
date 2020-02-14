@@ -895,7 +895,7 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "environments.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		incMetric(metricAdminErr)
@@ -955,7 +955,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Verify service
-	if serviceVar != settings.ServiceTLS && serviceVar != settings.ServiceAdmin {
+	if !checkTargetService(serviceVar) {
 		incMetric(metricAdminErr)
 		log.Printf("error unknown service (%s)", serviceVar)
 		return

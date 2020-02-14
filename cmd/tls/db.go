@@ -44,7 +44,9 @@ func getDB(file string) *gorm.DB {
 		t, config.Host, config.Port, config.Name, config.Username, config.Password)
 	db, err := gorm.Open("postgres", postgresDSN)
 	if err != nil {
-		log.Fatalf("Failed to open database connection: %v", err)
+		//log.Fatalf("Failed to open database connection: %v", err)
+		log.Printf("Failed to open database connection: %v", err)
+		return nil
 	}
 	// Performance settings for DB access
 	db.DB().SetMaxIdleConns(config.MaxIdleConns)

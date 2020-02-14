@@ -44,6 +44,9 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, query)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Printf("DebugService: Returned query %s", name)
+	}
 	incMetric(metricAPIOK)
 }
 

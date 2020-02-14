@@ -43,6 +43,9 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, node)
 	incMetric(metricAPIOK)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Printf("DebugService: Returned node %s", uuid)
+	}
 }
 
 // GET Handler for multiple JSON nodes
@@ -72,4 +75,7 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, nodes)
 	incMetric(metricAPIOK)
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Println("DebugService: Returned nodes")
+	}
 }
