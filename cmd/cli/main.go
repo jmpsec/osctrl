@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 
 	"github.com/jinzhu/gorm"
@@ -38,7 +38,6 @@ var (
 	flags        []cli.Flag
 	commands     []cli.Command
 	dbConfigFile string
-	dbConfig     types.JSONConfigurationDB
 	settingsmgr  *settings.Settings
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
@@ -192,8 +191,8 @@ func init() {
 							Usage: "Environment to be updated",
 						},
 						cli.BoolFlag{
-							Name:   "debug, d",
-							Usage:  "Environment debug capability",
+							Name:  "debug, d",
+							Usage: "Environment debug capability",
 						},
 						cli.StringFlag{
 							Name:  "hostname, host",
@@ -536,13 +535,15 @@ func checkDB(c *cli.Context) error {
 
 // Function to load and connect to DB
 func dbConnection(config string) error {
-	// Load DB configuration
-	dbConfig, err = loadDBConfiguration(config)
-	if err != nil {
-		return fmt.Errorf("Error loading DB configuration - %v", err)
-	}
 	// Database handler
-	db = getDB(dbConfig)
+	dbConfig, err := backend.LoadConfiguration(dbConfigFile, backend.DBKey)
+	if err != nil {
+		log.Fatalf("Failed to load DB configuration - %v", err)
+	}
+	db, err = backend.GetDB(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to load DB - %v", err)
+	}
 	// Check if connection is ready
 	if err := db.DB().Ping(); err != nil {
 		return fmt.Errorf("Error pinging DB - %v", err)

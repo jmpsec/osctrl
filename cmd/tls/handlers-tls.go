@@ -354,10 +354,8 @@ func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, loc
 	if envsmap[environment].DebugHTTP {
 		log.Printf("dispatching logs to %s", tlsConfig.Logging)
 	}
-	logsDispatcher(
-		tlsConfig.Logging,
+	loggerTLS.Log(
 		logType,
-		db,
 		data,
 		environment,
 		uuid,
@@ -392,10 +390,8 @@ func dispatchQueries(queryData types.QueryWriteData, node nodes.OsqueryNode) {
 	if envsmap[node.Environment].DebugHTTP {
 		log.Printf("dispatching queries to %s", tlsConfig.Logging)
 	}
-	logsDispatcher(
-		tlsConfig.Logging,
+	loggerTLS.QueryLog(
 		types.QueryLog,
-		db,
 		data,
 		node.Environment,
 		node.UUID,

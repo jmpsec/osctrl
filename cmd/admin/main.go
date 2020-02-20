@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/metrics"
@@ -20,7 +21,6 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"
 )
 
@@ -206,15 +206,21 @@ func init() {
 
 // Go go!
 func main() {
-	log.Println("Loading DB")
 	// Database handler
-	db = getDB(*dbFlag)
+	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
+	if err != nil {
+		log.Fatalf("Failed to load DB configuration - %v", err)
+	}
+	db, err = backend.GetDB(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to load DB - %v", err)
+	}
 	// Close when exit
 	//defer db.Close()
 	defer func() {
 		err := db.Close()
 		if err != nil {
-			log.Fatalf("Failed to close Database handler %v", err)
+			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
 	// Automigrate tables

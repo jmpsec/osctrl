@@ -19,19 +19,17 @@ CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
 PKGS_DIR = pkg
-PLUGINS_DIR = plugins
 
 DEST ?= /opt/osctrl
 
 OUTPUT = bin
 
-.PHONY: all build clean plugins
+.PHONY: all build clean
 
 all: build
 
 # Build code according to caller OS and architecture
 build:
-	make plugins
 	make tls
 	make admin
 	make api
@@ -53,20 +51,12 @@ api:
 cli:
 	go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
 
-# Build plugins
-plugins:
-	go build -buildmode=plugin -o $(PLUGINS_DIR)/logging_dispatcher_plugin.so $(PLUGINS_DIR)/logging_dispatcher/*.go
-	go build -buildmode=plugin -o $(PLUGINS_DIR)/db_logging_plugin.so $(PLUGINS_DIR)/db_logging/*.go
-	go build -buildmode=plugin -o $(PLUGINS_DIR)/graylog_logging_plugin.so $(PLUGINS_DIR)/graylog_logging/*.go
-	go build -buildmode=plugin -o $(PLUGINS_DIR)/splunk_logging_plugin.so $(PLUGINS_DIR)/splunk_logging/*.go
-
 # Delete all compiled binaries
 clean:
 	rm -rf $(OUTPUT)/$(TLS_NAME)
 	rm -rf $(OUTPUT)/$(ADMIN_NAME)
 	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
-	rm -rf $(PLUGINS_DIR)/*.so
 
 # Remove all unused dependencies
 tidy:
@@ -173,9 +163,6 @@ gofmt-cli:
 
 gofmt-pkgs:
 	gofmt $(GOFMT_ARGS) ./$(PKGS_DIR)
-
-gofmt-plugins:
-	gofmt $(GOFMT_ARGS) ./$(PLUGINS_DIR)
 
 # Run all tests
 test:

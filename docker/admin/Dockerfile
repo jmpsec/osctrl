@@ -24,7 +24,6 @@ COPY go.sum .
 COPY cmd/admin/ cmd/admin
 COPY cmd/cli/ cmd/cli
 COPY pkg/ pkg
-COPY plugins/ plugins
 
 RUN go build -o bin/osctrl-admin cmd/admin/*.go
 RUN go build -o bin/osctrl-cli cmd/cli/*.go

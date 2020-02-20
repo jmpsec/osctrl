@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -17,7 +19,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/spf13/viper"
 )
 
@@ -60,6 +61,7 @@ var (
 	queriesmgr     *queries.Queries
 	filecarves     *carves.Carves
 	_metrics       *metrics.Metrics
+	loggerTLS      *logging.LoggerTLS
 )
 
 // Variables for flags
@@ -131,12 +133,15 @@ func init() {
 
 // Go go!
 func main() {
-	if err := loadPlugins(); err != nil {
-		log.Printf("Error loading plugins - %v", err)
-	}
-	log.Println("Loading DB")
 	// Database handler
-	db = getDB(*dbFlag)
+	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
+	if err != nil {
+		log.Fatalf("Failed to load DB configuration - %v", err)
+	}
+	db, err = backend.GetDB(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to load DB - %v", err)
+	}
 	// Close when exit
 	//defer db.Close()
 	defer func() {
@@ -158,9 +163,12 @@ func main() {
 	// Initialize service settings
 	log.Println("Loading service settings")
 	loadingSettings()
-	// Update settings based on logging plugins
-	log.Println("Loading logging plugin settings")
-	logsSettings(tlsConfig.Logging, settingsmgr, settingsmgr.DebugService(settings.ServiceTLS))
+	// Initialize TLS logger
+	log.Println("Loading TLS logger")
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr)
+	if err != nil {
+		log.Printf("Error loading logger - %s: %v", tlsConfig.Logging, err)
+	}
 
 	// multiple listeners channel
 	finish := make(chan bool)
