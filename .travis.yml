@@ -15,6 +15,6 @@ notifications:
   email: false
 
 script:
-  - go build -o bin/osctrl-tls cmd/tls/*.go
-  - go build -o bin/osctrl-admin cmd/admin/*.go
-  - go build -o bin/osctrl-cli cmd/cli/*.go
+  - go build -o bin/osctrl-tls tls/*.go
+  - go build -o bin/osctrl-admin admin/*.go
+  - go build -o bin/osctrl-cli cli/*.go
