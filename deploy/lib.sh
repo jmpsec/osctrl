@@ -258,7 +258,7 @@ function _systemd() {
   local __service=$3
   local __path=$4
   local __dest=$5
-  local __template="$__path/deploy/systemd.service"
+  local __template="$__path/deploy/config/systemd.service"
   local __systemd="/lib/systemd/system/$__service.service"
 
   # Creating user for services
@@ -294,10 +294,10 @@ function _static_files() {
   # Files will be linked if we are in dev
   if [[ "$__mode" == "dev" ]]; then
     if [[ ! -d "$__dest/$__target" ]]; then
-      sudo ln -s "$__path/cmd/$__from" "$__dest/$__target"
+      sudo ln -s "$__path/$__from" "$__dest/$__target"
     fi
   else
-    sudo cp -R "$__path/cmd/$__from" "$__dest/$__target"
+    sudo cp -R "$__path/$__from" "$__dest/$__target"
   fi
 }
 

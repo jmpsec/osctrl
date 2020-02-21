@@ -11,17 +11,17 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
 	github.com/jinzhu/gorm v1.9.12
-	github.com/jmpsec/osctrl/pkg/backend v0.1.9
-	github.com/jmpsec/osctrl/pkg/carves v0.1.9
-	github.com/jmpsec/osctrl/pkg/environments v0.1.9
-	github.com/jmpsec/osctrl/pkg/logging v0.1.9
-	github.com/jmpsec/osctrl/pkg/metrics v0.1.9
-	github.com/jmpsec/osctrl/pkg/nodes v0.1.9
-	github.com/jmpsec/osctrl/pkg/queries v0.1.9
-	github.com/jmpsec/osctrl/pkg/settings v0.1.9
-	github.com/jmpsec/osctrl/pkg/types v0.1.9
-	github.com/jmpsec/osctrl/pkg/users v0.1.9
-	github.com/jmpsec/osctrl/pkg/utils v0.1.9
+	github.com/jmpsec/osctrl/backend v0.1.9
+	github.com/jmpsec/osctrl/carves v0.1.9
+	github.com/jmpsec/osctrl/environments v0.1.9
+	github.com/jmpsec/osctrl/logging v0.1.9
+	github.com/jmpsec/osctrl/metrics v0.1.9
+	github.com/jmpsec/osctrl/nodes v0.1.9
+	github.com/jmpsec/osctrl/queries v0.1.9
+	github.com/jmpsec/osctrl/settings v0.1.9
+	github.com/jmpsec/osctrl/types v0.1.9
+	github.com/jmpsec/osctrl/users v0.1.9
+	github.com/jmpsec/osctrl/utils v0.1.9
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
@@ -30,24 +30,24 @@ require (
 	github.com/urfave/cli v1.20.0
 )
 
-replace github.com/jmpsec/osctrl/pkg/backend => ./pkg/backend
+replace github.com/jmpsec/osctrl/backend => ./backend
 
-replace github.com/jmpsec/osctrl/pkg/carves => ./pkg/carves
+replace github.com/jmpsec/osctrl/carves => ./carves
 
-replace github.com/jmpsec/osctrl/pkg/settings => ./pkg/settings
+replace github.com/jmpsec/osctrl/settings => ./settings
 
-replace github.com/jmpsec/osctrl/pkg/environments => ./pkg/environments
+replace github.com/jmpsec/osctrl/environments => ./environments
 
-replace github.com/jmpsec/osctrl/pkg/metrics => ./pkg/metrics
+replace github.com/jmpsec/osctrl/metrics => ./metrics
 
-replace github.com/jmpsec/osctrl/pkg/nodes => ./pkg/nodes
+replace github.com/jmpsec/osctrl/nodes => ./nodes
 
-replace github.com/jmpsec/osctrl/pkg/queries => ./pkg/queries
+replace github.com/jmpsec/osctrl/queries => ./queries
 
-replace github.com/jmpsec/osctrl/pkg/types => ./pkg/types
+replace github.com/jmpsec/osctrl/types => ./types
 
-replace github.com/jmpsec/osctrl/pkg/users => ./pkg/users
+replace github.com/jmpsec/osctrl/users => ./users
 
-replace github.com/jmpsec/osctrl/pkg/utils => ./pkg/utils
+replace github.com/jmpsec/osctrl/utils => ./utils
 
-replace github.com/jmpsec/osctrl/pkg/logging => ./pkg/logging
+replace github.com/jmpsec/osctrl/logging => ./logging

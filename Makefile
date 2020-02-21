@@ -2,31 +2,27 @@ export GO111MODULE=on
 
 SHELL := /bin/bash
 
-TLS_DIR = cmd/tls
+TLS_DIR = tls
 TLS_NAME = osctrl-tls
 TLS_CODE = ${TLS_DIR:=/*.go}
 
-ADMIN_DIR = cmd/admin
+ADMIN_DIR = admin
 ADMIN_NAME = osctrl-admin
 ADMIN_CODE = ${ADMIN_DIR:=/*.go}
 
-API_DIR = cmd/api
+API_DIR = api
 API_NAME = osctrl-api
 API_CODE = ${API_DIR:=/*.go}
 
-CLI_DIR = cmd/cli
+CLI_DIR = cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
-
-PKGS_DIR = pkg
 
 DEST ?= /opt/osctrl
 
 OUTPUT = bin
 
-.PHONY: all build clean
-
-all: build
+.PHONY: build clean tls admin cli api
 
 # Build code according to caller OS and architecture
 build:
@@ -125,24 +121,24 @@ vagrant_up:
 
 # Build docker containers and run them (also generates new certificates)
 docker_all:
-	./docker/dockerize.sh -u -b -f
+	./deploy/docker/dockerize.sh -u -b -f
 
 # Run docker containers
 docker_up:
-	./docker/dockerize.sh -u
+	./deploy/docker/dockerize.sh -u
 
 # Build docker containers
 docker_build:
-	./docker/dockerize.sh -b
+	./deploy/docker/dockerize.sh -b
 
 # Takes down docker containers
 docker_down:
-	./docker/dockerize.sh -d
+	./deploy/docker/dockerize.sh -d
 
 # Cleans docker containers and certificates
 docker_clean:
 	make docker_down
-	./docker/dockerize.sh -x
+	./deploy/docker/dockerize.sh -x
 	docker volume rm osctrl_db-data
 	rm -Rf docker/certs/*
 	rm -Rf docker/config/*
@@ -160,9 +156,6 @@ gofmt-api:
 
 gofmt-cli:
 	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
-
-gofmt-pkgs:
-	gofmt $(GOFMT_ARGS) ./$(PKGS_DIR)
 
 # Run all tests
 test:
