@@ -13,6 +13,4 @@ COPY . .
 RUN go build -o bin/osctrl-tls tls/*.go
 RUN go build -o bin/osctrl-cli cli/*.go
 
-COPY deploy/docker/tls/wait.sh .
-
-CMD [ "/bin/sh", "/osctrl-tls/wait.sh" ]
+ENTRYPOINT [ "/osctrl-tls/bin/osctrl-tls" ]
