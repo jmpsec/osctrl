@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/utils"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
 )
 
 // Define targets to be used
@@ -134,7 +134,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(returnedJSON)
 	incMetric(metricJSONOK)

@@ -10,6 +10,15 @@ import (
 	"strings"
 )
 
+// JSONApplication for Content-Type headers
+const JSONApplication string = "application/json"
+
+// JSONApplicationUTF8 for Content-Type headers, UTF charset
+const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
+
+// ContentType for header key
+const ContentType string = "Content-Type"
+
 // SendRequest - Helper function to send HTTP requests
 func SendRequest(reqType, url string, params io.Reader, headers map[string]string) (int, []byte, error) {
 	var client *http.Client

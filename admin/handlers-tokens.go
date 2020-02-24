@@ -60,7 +60,7 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(returnedJSON)
 	incMetric(metricTokenOK)
@@ -131,6 +131,6 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, response)
+	apiHTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricTokenOK)
 }

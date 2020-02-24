@@ -9,8 +9,8 @@ import (
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/utils"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
 
 	"github.com/gorilla/mux"
 )
@@ -59,7 +59,7 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -112,7 +112,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -259,7 +259,7 @@ send_response:
 		response = []byte("error formating response")
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -418,7 +418,7 @@ send_response:
 		response = []byte("error formating response")
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -504,7 +504,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -572,7 +572,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -666,7 +666,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -754,7 +754,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -860,7 +860,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -930,7 +930,7 @@ func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1047,7 +1047,7 @@ send_response:
 		}
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1170,7 +1170,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1328,7 +1328,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1422,7 +1422,7 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(responseCode)
 	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {

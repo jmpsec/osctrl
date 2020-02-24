@@ -21,8 +21,9 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/utils"
 )
 
 // Constants for seconds
@@ -400,7 +401,7 @@ func templateMetadata(ctx contextValue, service, version string) TemplateMetadat
 // Helper to send HTTP response
 func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interface{}) {
 	if cType != "" {
-		w.Header().Set(contentType, cType)
+		w.Header().Set(utils.ContentType, cType)
 	}
 	content, err := json.Marshal(data)
 	if err != nil {
@@ -415,5 +416,5 @@ func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interfa
 // Helper to handle admin error responses
 func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
 	log.Printf("%s: %v", msg, err)
-	apiHTTPResponse(w, JSONApplicationUTF8, code, AdminResponse{Message: msg})
+	apiHTTPResponse(w, utils.JSONApplicationUTF8, code, AdminResponse{Message: msg})
 }

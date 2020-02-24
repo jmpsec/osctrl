@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/utils"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/utils"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +33,7 @@ type SlunkConfiguration struct {
 // LoggerSplunk will be used to log data using Splunk
 type LoggerSplunk struct {
 	Configuration SlunkConfiguration
+	Headers       map[string]string
 	Enabled       bool
 }
 
@@ -43,7 +44,11 @@ func CreateLoggerSplunk() (*LoggerSplunk, error) {
 	}
 	l := &LoggerSplunk{
 		Configuration: config,
-		Enabled:       true,
+		Headers: map[string]string{
+			"Authorization":   "Splunk " + config.Token,
+			utils.ContentType: utils.JSONApplicationUTF8,
+		},
+		Enabled: true,
 	}
 	return l, nil
 }
@@ -69,7 +74,8 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 
 const (
 	// Method to send requests
-	SplunkMethod string = "POST"
+	SplunkMethod      = "POST"
+	SplunkContentType = "application/json"
 )
 
 // SplunkMessage to handle log format to be sent to Splunk
@@ -105,10 +111,8 @@ func (logSP *LoggerSplunk) Settings(mgr *settings.Settings) {
 
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid string, debug bool) {
-	// Prepare headers
-	headers := map[string]string{
-		"Authorization": "Splunk " + logSP.Configuration.Token,
-		"Content-Type":  "application/json",
+	if debug {
+		log.Printf("DebugService: Send %s via splunk", logType)
 	}
 	// Check if this is result/status or query
 	var sourceType string
@@ -155,14 +159,14 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 	}
 	jsonParam := strings.NewReader(string(jsonEvents))
 	if debug {
-		log.Printf("Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
+		log.Printf("DebugService: Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
 	}
 	// Send log with a POST to the Splunk URL
-	resp, body, err := utils.SendRequest(SplunkMethod, logSP.Configuration.URL, jsonParam, headers)
+	resp, body, err := utils.SendRequest(SplunkMethod, logSP.Configuration.URL, jsonParam, logSP.Headers)
 	if err != nil {
 		log.Printf("Error sending request %s", err)
 	}
 	if debug {
-		log.Printf("Splunk: HTTP %d %s", resp, body)
+		log.Printf("DebugService: HTTP %d %s", resp, body)
 	}
 }

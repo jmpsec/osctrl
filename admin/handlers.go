@@ -21,15 +21,6 @@ const (
 	metricHealthOK  = "health-ok"
 )
 
-// JSONApplication for Content-Type headers
-const JSONApplication string = "application/json"
-
-// ContentType for header key
-const contentType string = "Content-Type"
-
-// JSONApplicationUTF8 for Content-Type headers, UTF charset
-const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
-
 // Empty default osquery configuration
 const emptyConfiguration string = "data/osquery-empty.json"
 
@@ -38,7 +29,7 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("✅"))
 	incMetric(metricHealthOK)
@@ -48,7 +39,7 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
 	_, _ = w.Write([]byte("oh no..."))
 }

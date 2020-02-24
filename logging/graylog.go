@@ -50,6 +50,7 @@ func LoadGraylog(file string) (GraylogConfiguration, error) {
 // LoggerGraylog will be used to log data using Graylog
 type LoggerGraylog struct {
 	Configuration GraylogConfiguration
+	Headers       map[string]string
 	Enabled       bool
 }
 
@@ -59,7 +60,10 @@ func CreateLoggerGraylog() (*LoggerGraylog, error) {
 		return nil, err
 	}
 	l := &LoggerGraylog{
-		Enabled:       true,
+		Enabled: true,
+		Headers: map[string]string{
+			utils.ContentType: utils.JSONApplicationUTF8,
+		},
 		Configuration: config,
 	}
 	return l, nil
@@ -93,9 +97,8 @@ func (logGL *LoggerGraylog) Settings(mgr *settings.Settings) {
 
 // GraylogSend - Function that sends JSON logs to Graylog
 func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid string, debug bool) {
-	// Prepare headers
-	headers := map[string]string{
-		"Content-Type": "application/json",
+	if debug {
+		log.Printf("DebugService: Send %s via graylog", logType)
 	}
 	// Convert the array in an array of multiple message
 	var logs []interface{}
@@ -137,16 +140,16 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 		}
 		jsonParam := strings.NewReader(string(jsonMessage))
 		if debug {
-			log.Printf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
+			log.Printf("DebugService: Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
 		}
 		// Send log with a POST to the Graylog URL
-		resp, body, err := utils.SendRequest(GraylogMethod, logGL.Configuration.URL, jsonParam, headers)
+		resp, body, err := utils.SendRequest(GraylogMethod, logGL.Configuration.URL, jsonParam, logGL.Headers)
 		if err != nil {
 			log.Printf("error sending request %s", err)
 			return
 		}
 		if debug {
-			log.Printf("Graylog: HTTP %d %s", resp, body)
+			log.Printf("DebugService: HTTP %d %s", resp, body)
 		}
 	}
 }

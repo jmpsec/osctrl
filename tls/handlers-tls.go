@@ -9,12 +9,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/utils"
-	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/utils"
 )
 
 const (
@@ -66,7 +66,7 @@ func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("✅"))
 	incMetric(metricHealthOK)
@@ -75,7 +75,7 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusInternalServerError)
 	_, _ = w.Write([]byte("oh no..."))
 }
@@ -155,7 +155,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricEnrollOK)
@@ -223,7 +223,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricConfigOK)
@@ -303,7 +303,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricLogOK)
@@ -471,7 +471,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricReadOK)
@@ -531,7 +531,7 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricWriteOK)
@@ -760,7 +760,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricInitOK)
@@ -813,7 +813,7 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set("Content-Type", JSONApplicationUTF8)
+	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
 	incMetric(metricBlockOK)
