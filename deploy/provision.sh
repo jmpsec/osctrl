@@ -556,10 +556,10 @@ install_go_12
 sudo mkdir -p "$DEST_PATH/config"
 
 # Generate DB configuration file for services
-configuration_db "$SOURCE_PATH/deploy/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
 
 # JWT configuration
-cat "$SOURCE_PATH/deploy/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
+cat "$SOURCE_PATH/deploy/config/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
 
 # Build code
 cd "$SOURCE_PATH"
@@ -570,14 +570,10 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
   make tls
 
   # Configuration file generation for TLS service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
+  configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
 
   # Prepare static files for TLS service
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
-
-  # Prepare plugins
-  make plugins
-  sudo ln -fs "$SOURCE_PATH/plugins" "$DEST_PATH/plugins"
 
   # Systemd configuration for TLS service
   _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
@@ -588,7 +584,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   make admin
 
   # Configuration file generation for Admin service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "sudo"
+  configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "sudo"
 
   # Prepare data folder
   sudo mkdir -p "$DEST_PATH/data"
@@ -609,8 +605,8 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
   # Static files will require internet connection (CSS + JS)
-  sudo ln -fs "$SOURCE_PATH/cmd/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-  sudo ln -fs "$SOURCE_PATH/cmd/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+  sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+  sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
 
   # Systemd configuration for Admin service
   _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
