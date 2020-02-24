@@ -68,6 +68,11 @@ const (
 	defaultInactive int = -72
 )
 
+var (
+	// Wait for backend in seconds
+	backendWait = 7 * time.Second
+)
+
 // Global general variables
 var (
 	adminConfig    types.JSONConfigurationService
@@ -211,9 +216,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load DB configuration - %v", err)
 	}
-	db, err = backend.GetDB(dbConfig)
+	for {
+		db, err = backend.GetDB(dbConfig)
+		if db != nil {
+			log.Println("Connection to backend successful!")
+			break
+		}
+		log.Println("Backend NOT ready! waiting...")
+		time.Sleep(backendWait)
+	}
 	if err != nil {
-		log.Fatalf("Failed to load DB - %v", err)
+		log.Fatalf("Failed to connect to backend - %v", err)
 	}
 	// Close when exit
 	//defer db.Close()
