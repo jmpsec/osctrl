@@ -19,6 +19,12 @@ const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
 // ContentType for header key
 const ContentType string = "Content-Type"
 
+// UserAgent for header key
+const UserAgent string = "User-Agent"
+
+// osctrlUserAgent for customized User-Agent
+const osctrlUserAgent string = "osctrl-http-client/1.1"
+
 // SendRequest - Helper function to send HTTP requests
 func SendRequest(reqType, url string, params io.Reader, headers map[string]string) (int, []byte, error) {
 	var client *http.Client
@@ -34,6 +40,8 @@ func SendRequest(reqType, url string, params io.Reader, headers map[string]strin
 	if err != nil {
 		return 0, []byte("Cound not prepare request"), err
 	}
+	// Set custom User-Agent
+	req.Header.Set(UserAgent, osctrlUserAgent)
 	// Prepare headers
 	for key, value := range headers {
 		req.Header.Add(key, value)
