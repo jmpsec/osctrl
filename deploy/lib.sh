@@ -166,7 +166,7 @@ function self_signed_cert() {
   local __devcert="$__certs/$__name.crt"
   local __devkey="$__certs/$__name.key"
 
-  sudo openssl req -nodes -newkey rsa:$__bits -keyout "$__devkey" -out "$__csr" -subj "/O=$__name"
+  sudo openssl req -nodes -newkey rsa:$__bits -keyout "$__devkey" -out "$__csr" -subj "/O=localhost"
   sudo openssl x509 -req -days 365 -in "$__csr" -signkey "$__devkey" -out "$__devcert"
 }
 
