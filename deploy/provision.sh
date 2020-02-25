@@ -594,8 +594,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
   # Copy osquery tables JSON file
-  sudo cp "$SOURCE_PATH/deploy/osquery/data/4.0.1.json" "$DEST_PATH/data"
-  #sudo cp "$SOURCE_PATH/deploy/osquery/data/3.3.2.json" "$DEST_PATH/data"
+  sudo cp "$SOURCE_PATH/deploy/osquery/data/4.1.2.json" "$DEST_PATH/data"
 
   # Copy empty configuration
   sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.json" "$DEST_PATH/data"
@@ -617,7 +616,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
   make api
 
   # Configuration file generation for API service
-  configuration_service "$SOURCE_PATH/deploy/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
+  configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
 
   # Systemd configuration for API service
   _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH"
@@ -671,6 +670,7 @@ log "Your osctrl is ready 👌🏽"
 echo
 if [[ "$MODE" == "dev" ]]; then
   log " -> https://$_A_HOST:$_A_PUB_PORT"
+  log " -> https://osctrl.dev:$_A_PUB_PORT"
   echo
   log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
   echo

@@ -55,7 +55,7 @@ const (
 	// Default Headers configuration file
 	headersConfigurationFile string = "config/headers.json"
 	// osquery version to display tables
-	osqueryTablesVersion string = "4.0.1"
+	osqueryTablesVersion string = "4.1.2"
 	// JSON file with osquery tables data
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Static files folder
