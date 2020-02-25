@@ -22,7 +22,9 @@ DEST ?= /opt/osctrl
 
 OUTPUT = bin
 
-.PHONY: build clean tls admin cli api
+STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
+
+.PHONY: build static clean tls admin cli api
 
 # Build code according to caller OS and architecture
 build:
@@ -31,21 +33,44 @@ build:
 	make api
 	make cli
 
+# Build everything statically
+static:
+	make tls-static
+	make admin-static
+	make api-static
+	make cli-static
+
 # Build TLS endpoint
 tls:
 	go build -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
+
+# Build TLS endpoint statically
+tls-static:
+	go build $(STATIC_ARGS) -o $(OUTPUT)/$(TLS_NAME) -a $(TLS_CODE)
 
 # Build Admin UI
 admin:
 	go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
 
+# Build Admin UI statically
+admin-static:
+	go build $(STATIC_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) -a $(ADMIN_CODE)
+
 # Build API
 api:
 	go build -o $(OUTPUT)/$(API_NAME) $(API_CODE)
 
+# Build API statically
+api-static:
+	go build $(STATIC_ARGS) -o $(OUTPUT)/$(API_NAME) -a $(API_CODE)
+
 # Build the CLI
 cli:
 	go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
+
+# Build the CLI statically
+cli-static:
+	go build $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
 
 # Delete all compiled binaries
 clean:
