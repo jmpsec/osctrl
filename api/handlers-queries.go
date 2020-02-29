@@ -7,19 +7,25 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/utils"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
+)
+
+const (
+	metricAPIQueriesReq = "queries-req"
+	metricAPIQueriesErr = "queries-err"
+	metricAPIQueriesOK  = "queries-ok"
 )
 
 // GET Handler to return a single query in JSON
 func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		return
 	}
@@ -33,7 +39,7 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Get query by name
 	query, err := queriesmgr.Get(name)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		if err.Error() == "record not found" {
 			log.Printf("query not found: %s", name)
 			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
@@ -47,12 +53,12 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned query %s", name)
 	}
-	incMetric(metricAPIOK)
+	incMetric(metricAPIQueriesOK)
 }
 
 // POST Handler to run a query
 func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
@@ -64,7 +70,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		return
 	}
@@ -165,62 +171,62 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Return query name as serialized response
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, ApiQueriesResponse{Name: newQuery.Name})
-	incMetric(metricAPIOK)
+	incMetric(metricAPIQueriesOK)
 }
 
 // GET Handler to return all queries in JSON
 func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get queries
 	queries, err := queriesmgr.GetQueries(queries.TargetCompleted)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		return
 	}
 	if len(queries) == 0 {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		log.Printf("no queries")
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIQueriesOK)
 }
 
 // GET Handler to return hidden queries in JSON
 func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get queries
 	queries, err := queriesmgr.GetQueries(queries.TargetHiddenCompleted)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		return
 	}
 	if len(queries) == 0 {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		log.Printf("no queries")
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIQueriesOK)
 }
 
 // GET Handler to return a single query results in JSON
 func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		return
 	}
@@ -234,7 +240,7 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get query by name
 	queryLogs, err := postgresQueryLogs(name)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIQueriesErr)
 		if err.Error() == "record not found" {
 			log.Printf("query not found: %s", name)
 			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
@@ -245,5 +251,5 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queryLogs)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIQueriesOK)
 }
