@@ -35,14 +35,14 @@ func CreateLoggerTLS(logging string, mgr *settings.Settings) (*LoggerTLS, error)
 		}
 		g.Settings(mgr)
 		l.Graylog = g
-	case settings.LoggingDB:
-		d, err := CreateLoggerDB()
-		if err != nil {
-			return nil, err
-		}
-		d.Settings(mgr)
-		l.DB = d
 	}
+	// Initialize the DB logger anyway
+	d, err := CreateLoggerDB()
+	if err != nil {
+		return nil, err
+	}
+	d.Settings(mgr)
+	l.DB = d
 	return l, nil
 }
 
