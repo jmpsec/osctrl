@@ -8,9 +8,15 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	metricAPIPlatformsReq = "platforms-req"
+	metricAPIPlatformsErr = "platforms-err"
+	metricAPIPlatformsOK  = "platforms-ok"
+)
+
 // GET Handler for multiple JSON platforms
 func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIPlatformsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
@@ -22,13 +28,13 @@ func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get platforms
 	platforms, err := nodesmgr.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIPlatformsErr)
 		apiErrorResponse(w, "error getting platforms", http.StatusInternalServerError, err)
 		return
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, platforms)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIPlatformsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned platforms")
 	}

@@ -9,15 +9,21 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	metricAPIEnvsReq = "envs-req"
+	metricAPIEnvsErr = "envs-err"
+	metricAPIEnvsOK  = "envs-ok"
+)
+
 // GET Handler to return one environment as JSON
 func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIEnvsErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		return
 	}
@@ -31,7 +37,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Get environment by name
 	env, err := envs.Get(name)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIEnvsErr)
 		if err.Error() == "record not found" {
 			log.Printf("environment not found: %s", name)
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
@@ -42,7 +48,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Header to serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, env)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIEnvsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned environment %s", name)
 	}
@@ -50,7 +56,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET Handler to return all environments as JSON
 func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
@@ -62,13 +68,13 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get platforms
 	envAll, err := envs.All()
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPIEnvsErr)
 		apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 		return
 	}
 	// Header to serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, envAll)
-	incMetric(metricAPIOK)
+	incMetric(metricAPIEnvsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned environments")
 	}

@@ -9,15 +9,21 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	metricAPINodesReq = "nodes-req"
+	metricAPINodesErr = "nodes-err"
+	metricAPINodesOK  = "nodes-ok"
+)
+
 // GET Handler for single JSON nodes
 func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPINodesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
 	if !ok {
-		incMetric(metricAPIErr)
+		incMetric(metricAPINodesErr)
 		apiErrorResponse(w, "error getting uuid", http.StatusInternalServerError, nil)
 		return
 	}
@@ -31,7 +37,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Get node by UUID
 	node, err := nodesmgr.GetByUUID(uuid)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPINodesErr)
 		if err.Error() == "record not found" {
 			log.Printf("node not found: %s", uuid)
 			apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
@@ -42,7 +48,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, node)
-	incMetric(metricAPIOK)
+	incMetric(metricAPINodesOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned node %s", uuid)
 	}
@@ -50,7 +56,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET Handler for multiple JSON nodes
 func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPIReq)
+	incMetric(metricAPINodesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
@@ -62,19 +68,19 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Get nodes
 	nodes, err := nodesmgr.Gets("all", 0)
 	if err != nil {
-		incMetric(metricAPIErr)
+		incMetric(metricAPINodesErr)
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
 	if len(nodes) == 0 {
-		incMetric(metricAPIErr)
+		incMetric(metricAPINodesErr)
 		log.Printf("no nodes")
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, nodes)
-	incMetric(metricAPIOK)
+	incMetric(metricAPINodesOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned nodes")
 	}

@@ -57,6 +57,8 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		if logTLS.Graylog.Enabled {
 			logTLS.Graylog.Send(logType, data, environment, uuid, debug)
 		}
+	// TODO: Log to db to keep 24 hours of logs locally
+	// https://github.com/jmpsec/osctrl/issues/19
 	case settings.LoggingDB:
 		if logTLS.DB.Enabled {
 			logTLS.DB.Log(logType, data, environment, uuid, debug)
@@ -75,9 +77,9 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		if logTLS.Graylog.Enabled {
 			logTLS.Graylog.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingDB:
-		if logTLS.DB.Enabled {
-			logTLS.DB.Query(data, environment, uuid, name, status, debug)
-		}
+	}
+	// Logging to DB happens anyway
+	if logTLS.DB.Enabled {
+		logTLS.DB.Query(data, environment, uuid, name, status, debug)
 	}
 }
