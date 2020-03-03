@@ -152,24 +152,18 @@ log "Preparing certificates for $NAME-nginx"
 # This is for development purposes, in production environments use 2048 or 4096 bits
 _BITS="1024"
 
-CSR_FILE="$CERTSDIR/$NAME.csr"
 KEY_FILE="$CERTSDIR/$NAME.key"
 CRT_FILE="$CERTSDIR/$NAME.crt"
 DH_FILE="$CERTSDIR/dhparam.pem"
 
 if [[ "$_MKCERT" == false ]]; then
-  if [[ -f "$KEY_FILE" && "$_FORCE" == false ]]; then
-    log "Using existing $KEY_FILE"
+  if [[ -f "$KEY_FILE" ]] && [[ -f "$CRT_FILE" ]] && [[ "$_FORCE" == false ]]; then
+    log "Using existing $KEY_FILE and $CRT_FILE"
   else
-    log "Generating $KEY_FILE"
-    openssl req -nodes -newkey rsa:$_BITS -keyout "$KEY_FILE" -out "$CSR_FILE" -subj "/O=$NAME"
-  fi
-
-  if [[ -f "$CRT_FILE" && "$_FORCE" == false ]]; then
-    log "Using existing $CRT_FILE"
-  else
-    log "Generating $CRT_FILE"
-    openssl x509 -req -days 365 -in "$CSR_FILE" -signkey "$KEY_FILE" -out "$CRT_FILE"
+    log "Generating $KEY_FILE and $CRT_FILE"
+    openssl req -x509 -newkey rsa:$_BITS -sha256 -days 365 -nodes \
+    -keyout "$KEY_FILE" -out "$CRT_FILE" -subj "/CN=osctrl-nginx" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
   fi
 else
   log "Generating $KEY_FILE and $CRT_FILE with mkcert"

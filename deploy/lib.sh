@@ -157,17 +157,21 @@ function nginx_generate() {
 #   string  path_to_certs
 #   string  certificate_name
 #   int     rsa_bits
+#   string  certificate_domain
+#   string  certificate_ip
 function self_signed_cert() {
   local __certs=$1
   local __name=$2
   local __bits=$3
+  local __host=$4
+  local __ip=$5
 
-  local __csr="$__certs/$__name.csr"
   local __devcert="$__certs/$__name.crt"
   local __devkey="$__certs/$__name.key"
 
-  sudo openssl req -nodes -newkey rsa:$__bits -keyout "$__devkey" -out "$__csr" -subj "/O=localhost"
-  sudo openssl x509 -req -days 365 -in "$__csr" -signkey "$__devkey" -out "$__devcert"
+  sudo openssl req -x509 -newkey rsa:$__bits -sha256 -days 365 -nodes \
+  -keyout "$__devkey" -out "$__devcert" -subj "/CN=$__host" \
+  -addext "subjectAltName=IP:$__ip"
 }
 
 # Generate certbot certificates for nginx

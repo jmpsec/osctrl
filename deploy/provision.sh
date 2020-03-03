@@ -145,6 +145,7 @@ SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
 JWT_TEMPLATE="jwt.json"
 SYSTEMD_TEMPLATE="systemd.service"
+DEV_HOST="osctrl.dev"
 
 # Default values for arguments
 SHOW_USAGE=false
@@ -471,10 +472,10 @@ if [[ "$NGINX" == true ]]; then
       sudo cp "$SOURCE_PATH/certs/$_NAME-admin.key" "$_key_file_a"
     else
       log "Deploying self-signed certificates for admin/API"
-      self_signed_cert "$_certificates_dir" "$_NAME-admin" "$_dh_bits"
+      self_signed_cert "$_certificates_dir" "$_NAME-admin" "$_dh_bits" "$DEV_HOST" "$_A_HOST"
     fi
     log "Deploying self-signed certificates"
-    self_signed_cert "$_certificates_dir" "$_NAME" "$_dh_bits"
+    self_signed_cert "$_certificates_dir" "$_NAME" "$_dh_bits" "$DEV_HOST" "$_A_HOST"
   fi
   # Certbot certificates for prod and 4096 dhparam file
   if [[ "$MODE" == "prod" ]]; then
@@ -594,7 +595,7 @@ if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
   sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
   # Copy osquery tables JSON file
-  sudo cp "$SOURCE_PATH/deploy/osquery/data/4.1.2.json" "$DEST_PATH/data"
+  sudo cp "$SOURCE_PATH/deploy/osquery/data/4.2.0.json" "$DEST_PATH/data"
 
   # Copy empty configuration
   sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.json" "$DEST_PATH/data"
@@ -670,7 +671,7 @@ log "Your osctrl is ready 👌🏽"
 echo
 if [[ "$MODE" == "dev" ]]; then
   log " -> https://$_A_HOST:$_A_PUB_PORT"
-  log " -> https://osctrl.dev:$_A_PUB_PORT"
+  log " -> https://$DEV_HOST:$_A_PUB_PORT"
   echo
   log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
   echo
