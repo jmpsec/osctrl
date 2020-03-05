@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
 )
 
 // Helper to send metrics if it is enabled
@@ -92,25 +92,10 @@ func removeStringDuplicates(s []string) []string {
 	return s[:i]
 }
 
-// Helper to send HTTP response
-func apiHTTPResponse(w http.ResponseWriter, cType string, code int, data interface{}) {
-	if cType != "" {
-		w.Header().Set(contentType, cType)
-	}
-	content, err := json.Marshal(data)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error serializing response: %v", err)
-		content = []byte("error serializing response")
-	}
-	w.WriteHeader(code)
-	_, _ = w.Write(content)
-}
-
 // Helper to handle API error responses
 func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
 	log.Printf("%s: %v", msg, err)
-	apiHTTPResponse(w, JSONApplicationUTF8, code, ApiErrorResponse{Error: msg})
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, ApiErrorResponse{Error: msg})
 }
 
 // Helper to generate a random query name

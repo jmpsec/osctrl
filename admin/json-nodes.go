@@ -103,9 +103,7 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
 	incMetric(metricJSONOK)
 }
 
@@ -169,8 +167,6 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
 	incMetric(metricJSONOK)
 }

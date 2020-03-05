@@ -10,6 +10,12 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	metricTokenReq = "admin-token-req"
+	metricTokenErr = "admin-token-err"
+	metricTokenOK  = "admin-token-ok"
+)
+
 // TokenJSON to be used to populate a JSON token
 type TokenJSON struct {
 	Token     string `json:"token"`
@@ -131,6 +137,6 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricTokenOK)
 }

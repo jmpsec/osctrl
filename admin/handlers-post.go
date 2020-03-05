@@ -15,8 +15,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	metricAdminReq = "admin-req"
+	metricAdminErr = "admin-err"
+	metricAdminOK  = "admin-ok"
+)
+
 // Handler for login page for POST requests
 func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
@@ -59,16 +66,16 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handle POST requests to logout
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
@@ -78,6 +85,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse request JSON body
 	err := json.NewDecoder(r.Body).Decode(&l)
 	if err != nil {
+		incMetric(metricAdminErr)
 		responseMessage = "error parsing POST body"
 		responseCode = http.StatusInternalServerError
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -112,16 +120,16 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Logout response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST requests to run queries
 func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "The query was created successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -259,16 +267,16 @@ send_response:
 		response = []byte("error formating response")
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST requests to run file carves
 func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "The carve was created successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -418,16 +426,16 @@ send_response:
 		response = []byte("error formating response")
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve run response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST requests to queries
 func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -504,16 +512,16 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST requests to carves
 func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -572,16 +580,16 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carves action response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler POST requests for saving configuration
 func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "Configuration saved successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -666,16 +674,16 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Configuration response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler POST requests for saving intervals
 func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "Intervals updated successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -754,16 +762,16 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Intervals response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler POST requests for expiring enroll links
 func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -860,16 +868,16 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Expiration response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler POST requests for multi node action
 func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -930,16 +938,16 @@ func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Multi-node action response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST request for /environments
 func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -1047,16 +1055,16 @@ send_response:
 		}
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Environments response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST request for /settings
 func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -1170,16 +1178,16 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Settings response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler for POST request for /users
 func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "OK"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -1328,16 +1336,16 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }
 
 // Handler POST requests enroll data
 func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
 	responseMessage := "Enroll data saved successfully"
 	responseCode := http.StatusOK
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
@@ -1422,10 +1430,9 @@ send_response:
 		response = []byte(responseMessage)
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(responseCode)
-	_, _ = w.Write(response)
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Configuration response sent")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	incMetric(metricAdminOK)
 }

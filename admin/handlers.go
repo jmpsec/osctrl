@@ -8,15 +8,9 @@ import (
 )
 
 const (
-	metricAdminReq  = "admin-req"
-	metricAdminErr  = "admin-err"
-	metricAdminOK   = "admin-ok"
 	metricJSONReq   = "admin-json-req"
 	metricJSONErr   = "admin-json-err"
 	metricJSONOK    = "admin-json-ok"
-	metricTokenReq  = "admin-token-req"
-	metricTokenErr  = "admin-token-err"
-	metricTokenOK   = "admin-token-ok"
 	metricHealthReq = "health-req"
 	metricHealthOK  = "health-ok"
 )
@@ -24,14 +18,15 @@ const (
 // Empty default osquery configuration
 const emptyConfiguration string = "data/osquery-empty.json"
 
+var errorContent = []byte("❌")
+var okContent = []byte("✅")
+
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("✅"))
+	utils.HTTPResponse(w, "", http.StatusOK, okContent)
 	incMetric(metricHealthOK)
 }
 
@@ -39,17 +34,14 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusInternalServerError)
-	_, _ = w.Write([]byte("oh no..."))
+	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("oh no..."))
 }
 
 // Handle forbidden error requests
 func forbiddenHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	w.WriteHeader(http.StatusForbidden)
-	_, _ = w.Write([]byte("❌"))
+	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
 }
 
 // Handler for the favicon

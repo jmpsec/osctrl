@@ -149,11 +149,8 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricJSONErr)
 		return
 	}
-	incMetric(metricAdminOK)
 	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
 	incMetric(metricJSONOK)
 }
 
@@ -200,10 +197,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricJSONErr)
 		return
 	}
-	incMetric(metricAdminOK)
 	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
 	incMetric(metricJSONOK)
 }

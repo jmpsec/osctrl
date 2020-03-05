@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -18,66 +17,52 @@ import (
 )
 
 const (
-	metricEnrollReq = "enroll-req"
-	metricEnrollErr = "enroll-err"
-	metricEnrollOK  = "enroll-ok"
-	metricLogReq    = "log-req"
-	metricLogErr    = "log-err"
-	metricLogOK     = "log-ok"
-	metricConfigReq = "config-req"
-	metricConfigErr = "config-err"
-	metricConfigOK  = "config-ok"
-	metricReadReq   = "read-req"
-	metricReadErr   = "read-err"
-	metricReadOK    = "read-ok"
-	metricWriteReq  = "write-req"
-	metricWriteErr  = "write-err"
-	metricWriteOK   = "write-ok"
-	metricInitReq   = "init-req"
-	metricInitErr   = "init-err"
-	metricInitOK    = "init-ok"
-	metricBlockReq  = "block-req"
-	metricBlockErr  = "block-err"
-	metricBlockOK   = "block-ok"
-	metricHealthReq = "health-req"
-	metricHealthOK  = "health-ok"
+	metricEnrollReq   = "enroll-req"
+	metricEnrollErr   = "enroll-err"
+	metricEnrollOK    = "enroll-ok"
+	metricLogReq      = "log-req"
+	metricLogErr      = "log-err"
+	metricLogOK       = "log-ok"
+	metricConfigReq   = "config-req"
+	metricConfigErr   = "config-err"
+	metricConfigOK    = "config-ok"
+	metricReadReq     = "read-req"
+	metricReadErr     = "read-err"
+	metricReadOK      = "read-ok"
+	metricWriteReq    = "write-req"
+	metricWriteErr    = "write-err"
+	metricWriteOK     = "write-ok"
+	metricInitReq     = "init-req"
+	metricInitErr     = "init-err"
+	metricInitOK      = "init-ok"
+	metricBlockReq    = "block-req"
+	metricBlockErr    = "block-err"
+	metricBlockOK     = "block-ok"
+	metricHealthReq   = "health-req"
+	metricHealthOK    = "health-ok"
+	metricOnelinerReq = "oneliner-req"
+	metricOnelinerErr = "oneliner-err"
+	metricOnelinerOk  = "oneliner-ok"
 )
-
-// JSONApplication for Content-Type headers
-const JSONApplication string = "application/json"
-
-// TextPlain for Content-Type headers
-const TextPlain string = "text/plain"
-
-// JSONApplicationUTF8 for Content-Type headers, UTF charset
-const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
-
-// TextPlainUTF8 for Content-Type headers, UTF charset
-const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("💥"))
+	utils.HTTPResponse(w, "", http.StatusOK, []byte("💥"))
 }
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("✅"))
+	utils.HTTPResponse(w, "", http.StatusOK, []byte("✅"))
 	incMetric(metricHealthOK)
 }
 
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusInternalServerError)
-	_, _ = w.Write([]byte("oh no..."))
+	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
 }
 
 // Function to handle the enroll requests from osquery nodes
@@ -155,9 +140,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricEnrollOK)
 }
 
@@ -223,9 +206,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Configuration: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricConfigOK)
 }
 
@@ -303,101 +284,8 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricLogOK)
-}
-
-// Helper to process logs
-func processLogs(data json.RawMessage, logType, environment, ipaddress string) {
-	// Parse log to extract metadata
-	var logs []types.LogGenericData
-	err := json.Unmarshal(data, &logs)
-	if err != nil {
-		// FIXME metrics for this
-		log.Printf("error parsing log %s %v", string(data), err)
-	}
-	// Iterate through received messages to extract metadata
-	var uuids, hosts, names, users, osqueryusers, hashes, dhashes, osqueryversions []string
-	for _, l := range logs {
-		uuids = append(uuids, l.HostIdentifier)
-		hosts = append(hosts, l.Decorations.Hostname)
-		names = append(names, l.Decorations.LocalHostname)
-		users = append(users, l.Decorations.Username)
-		osqueryusers = append(osqueryusers, l.Decorations.OsqueryUser)
-		hashes = append(hashes, l.Decorations.ConfigHash)
-		dhashes = append(dhashes, l.Decorations.DaemonHash)
-		osqueryversions = append(osqueryversions, l.Version)
-	}
-	// FIXME it only uses the first element from the []string that uniq returns
-	uuid := uniq(uuids)[0]
-	user := uniq(users)[0]
-	osqueryuser := uniq(osqueryusers)[0]
-	host := uniq(hosts)[0]
-	name := uniq(names)[0]
-	hash := uniq(hashes)[0]
-	dhash := uniq(dhashes)[0]
-	osqueryversion := uniq(osqueryversions)[0]
-	// Dispatch logs and update metadata
-	dispatchLogs(data, uuid, ipaddress, user, osqueryuser, host, name, hash, dhash, osqueryversion, logType, environment)
-}
-
-// Helper to dispatch logs
-func dispatchLogs(data []byte, uuid, ipaddress, user, osqueryuser, hostname, localname, hash, dhash, osqueryversion, logType, environment string) {
-	// Use metadata to update record
-	if err := nodesmgr.UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, hash, dhash, osqueryversion, uuid); err != nil {
-		log.Printf("error updating metadata %s", err)
-	}
-	// Send data to storage
-	// FIXME allow multiple types of logging
-	if envsmap[environment].DebugHTTP {
-		log.Printf("dispatching logs to %s", tlsConfig.Logging)
-	}
-	loggerTLS.Log(
-		logType,
-		data,
-		environment,
-		uuid,
-		envsmap[environment].DebugHTTP)
-	// Refresh last logging request
-	if logType == types.StatusLog {
-		err := nodesmgr.RefreshLastStatus(uuid)
-		if err != nil {
-			log.Printf("error refreshing last status %v", err)
-		}
-	}
-	if logType == types.ResultLog {
-		if err := nodesmgr.RefreshLastResult(uuid); err != nil {
-			log.Printf("error refreshing last result %v", err)
-		}
-	}
-}
-
-// Helper to dispatch queries
-func dispatchQueries(queryData types.QueryWriteData, node nodes.OsqueryNode) {
-	// Prepare data to send
-	data, err := json.Marshal(queryData)
-	if err != nil {
-		log.Printf("error preparing data %v", err)
-	}
-	// Refresh last query write request
-	if err := nodesmgr.RefreshLastQueryWrite(node.UUID); err != nil {
-		log.Printf("error refreshing last query write %v", err)
-	}
-	// Send data to storage
-	// FIXME allow multiple types of logging
-	if envsmap[node.Environment].DebugHTTP {
-		log.Printf("dispatching queries to %s", tlsConfig.Logging)
-	}
-	loggerTLS.QueryLog(
-		types.QueryLog,
-		data,
-		node.Environment,
-		node.UUID,
-		queryData.Name,
-		queryData.Status,
-		envsmap[node.Environment].DebugHTTP)
 }
 
 // Function to handle on-demand queries to osquery nodes
@@ -471,9 +359,7 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricReadOK)
 }
 
@@ -531,61 +417,24 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricWriteOK)
-}
-
-// Helper to process on-demand query result logs
-func processLogQueryResult(queries types.QueryWriteQueries, statuses types.QueryWriteStatuses, nodeKey string, environment string) {
-	// Retrieve node
-	node, err := nodesmgr.GetByKey(nodeKey)
-	if err != nil {
-		log.Printf("error retrieving node %s", err)
-	}
-	// Tap into results so we can update internal metrics
-	for q, r := range queries {
-		// Dispatch query name, result and status
-		d := types.QueryWriteData{
-			Name:   q,
-			Result: r,
-			Status: statuses[q],
-		}
-		go dispatchQueries(d, node)
-		// Update internal metrics per query
-		var err error
-		if statuses[q] != 0 {
-			err = queriesmgr.IncError(q)
-		} else {
-			err = queriesmgr.IncExecution(q)
-		}
-		if err != nil {
-			log.Printf("error updating query %s", err)
-		}
-		// Add a record for this query
-		if err := queriesmgr.TrackExecution(q, node.UUID, statuses[q]); err != nil {
-			log.Printf("error adding query execution %s", err)
-		}
-		// Check if query is completed
-		if err := queriesmgr.VerifyComplete(q); err != nil {
-			log.Printf("error verifying and completing query %s", err)
-		}
-	}
 }
 
 // Function to handle the endpoint for quick enrollment script distribution
 func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
-	// FIXME metrics
+	incMetric(metricOnelinerReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
+		incMetric(metricOnelinerErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
 	if !envs.Exists(env) {
+		incMetric(metricOnelinerErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
@@ -593,29 +442,34 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	e, err := envs.Get(env)
 	if err != nil {
+		incMetric(metricOnelinerErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Retrieve type of script
 	script, ok := vars["script"]
 	if !ok {
+		incMetric(metricOnelinerErr)
 		log.Println("Script is missing")
 		return
 	}
 	// Retrieve SecretPath variable
 	secretPath, ok := vars["secretpath"]
 	if !ok {
+		incMetric(metricOnelinerErr)
 		log.Println("Path is missing")
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
 		if !checkValidEnrollSecretPath(env, secretPath) {
+			incMetric(metricOnelinerErr)
 			log.Println("Invalid Path")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
 		if !checkValidRemoveSecretPath(env, secretPath) {
+			incMetric(metricOnelinerErr)
 			log.Println("Invalid Path")
 			return
 		}
@@ -623,81 +477,13 @@ func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response with the script
 	quickScript, err := environments.QuickAddScript(projectName, script, e)
 	if err != nil {
+		incMetric(metricOnelinerErr)
 		log.Printf("error getting script %v", err)
 		return
 	}
 	// Send response
-	w.Header().Set("Content-Type", TextPlainUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(quickScript))
-}
-
-// Function to initialize a file carve from a node
-func processCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
-	// Retrieve node
-	node, err := nodesmgr.GetByKey(req.NodeKey)
-	if err != nil {
-		incMetric(metricInitErr)
-		log.Printf("error retrieving node %s", err)
-		return err
-	}
-	// Prepare carve to initialize
-	carve := carves.CarvedFile{
-		CarveID:         req.CarveID,
-		RequestID:       req.RequestID,
-		SessionID:       sessionid,
-		UUID:            node.UUID,
-		Environment:     environment,
-		CarveSize:       req.CarveSize,
-		BlockSize:       req.BlockSize,
-		TotalBlocks:     req.BlockCount,
-		CompletedBlocks: 0,
-		Status:          carves.StatusInitialized,
-	}
-	// Create File Carve
-	err = filecarves.CreateCarve(carve)
-	if err != nil {
-		incMetric(metricInitErr)
-		log.Printf("error creating  CarvedFile %v", err)
-		return err
-	}
-	return nil
-}
-
-// Function to process one block from a file carve
-// FIXME it can be more efficient on db access
-func processCarveBlock(req types.CarveBlockRequest, environment string) {
-	// Prepare carve block
-	block := carves.CarvedBlock{
-		RequestID:   req.RequestID,
-		SessionID:   req.SessionID,
-		Environment: environment,
-		BlockID:     req.BlockID,
-		Data:        req.Data,
-		Size:        len(req.Data),
-	}
-	// Create Block
-	if err := filecarves.CreateBlock(block); err != nil {
-		incMetric(metricBlockErr)
-		log.Printf("error creating CarvedBlock %v", err)
-	}
-	// Bump block completion
-	if err := filecarves.CompleteBlock(req.SessionID); err != nil {
-		incMetric(metricBlockErr)
-		log.Printf("error completing block %v", err)
-	}
-	// If it is completed, set status
-	if filecarves.Completed(req.SessionID) {
-		if err := filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
-			incMetric(metricBlockErr)
-			log.Printf("error completing carve %v", err)
-		}
-	} else {
-		if err := filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
-			incMetric(metricBlockErr)
-			log.Printf("error progressing carve %v", err)
-		}
-	}
+	utils.HTTPResponse(w, utils.TextPlainUTF8, http.StatusOK, []byte(quickScript))
+	incMetric(metricOnelinerOk)
 }
 
 // Function to handle the initialization of the file carver
@@ -760,9 +546,7 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricInitOK)
 }
 
@@ -813,8 +597,6 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Response: %s", string(response))
 	}
 	// Send response
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricBlockOK)
 }

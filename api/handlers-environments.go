@@ -25,11 +25,13 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		incMetric(metricAPIEnvsErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, errorContent)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIEnvsErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -47,11 +49,11 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, env)
-	incMetric(metricAPIEnvsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned environment %s", name)
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+	incMetric(metricAPIEnvsOK)
 }
 
 // GET Handler to return all environments as JSON
@@ -61,6 +63,7 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIEnvsErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -73,9 +76,9 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Header to serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, envAll)
-	incMetric(metricAPIEnvsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned environments")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envAll)
+	incMetric(metricAPIEnvsOK)
 }

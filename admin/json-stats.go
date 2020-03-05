@@ -69,9 +69,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error serializing JSON %v", err)
 		return
 	}
-	incMetric(metricAdminOK)
 	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
+	incMetric(metricJSONOK)
 }

@@ -49,10 +49,10 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, query)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned query %s", name)
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, query)
 	incMetric(metricAPIQueriesOK)
 }
 
@@ -170,7 +170,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Return query name as serialized response
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, ApiQueriesResponse{Name: newQuery.Name})
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, ApiQueriesResponse{Name: newQuery.Name})
 	incMetric(metricAPIQueriesOK)
 }
 
@@ -192,7 +192,7 @@ func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 	incMetric(metricAPIQueriesOK)
 }
 
@@ -214,7 +214,7 @@ func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queries)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 	incMetric(metricAPIQueriesOK)
 }
 
@@ -233,6 +233,7 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIQueriesErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -250,6 +251,6 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, queryLogs)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queryLogs)
 	incMetric(metricAPIQueriesOK)
 }
