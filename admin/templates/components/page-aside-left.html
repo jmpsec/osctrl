@@ -57,6 +57,9 @@
       </li>
       {{end}}
 
+{{ with .Metadata }}
+
+    {{ if eq .Level "admin" }}
       <li class="divider"></li>
 
       <li class="nav-title">Nodes by Platform</li>
@@ -222,10 +225,10 @@
         </ul>
       </li>
       {{end}}
+    {{end}}
 
       <li class="divider"></li>
 
-  {{ with .Metadata }}
     {{ if eq .Level "admin" }}
       <li class="nav-title">On-Demand Queries</li>
       <li class="nav-item">
