@@ -195,7 +195,7 @@
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableQueries.rows('.selected').data(), function() {
+                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
                   a.push(this);
                 });
                 var names = []
@@ -225,7 +225,7 @@
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableQueries.rows('.selected').data(), function() {
+                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
                   a.push(this);
                 });
                 var names = []

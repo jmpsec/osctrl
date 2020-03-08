@@ -196,7 +196,7 @@
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableCarves.rows('.selected').data(), function() {
+                $.each(tableCarves.rows({search:'applied', selected: true}).data(), function() {
                   a.push(this);
                 });
                 var names = []
@@ -219,17 +219,18 @@
         // Select and deselect all
         tableCarves.on("click", "th.select-checkbox", function() {
           if ($("th.select-checkbox").hasClass("selected")) {
-            tableCarves.rows().deselect();
+            tableCarves.rows({search:'applied'}).deselect();
             $("th.select-checkbox").removeClass("selected");
           } else {
-            tableCarves.rows().select();
+            tableCarves.rows({search:'applied'}).select();
             $("th.select-checkbox").addClass("selected");
           }
         }).on("select deselect", function() {
           ("Some selection or deselection going on")
           if (tableCarves.rows({
-            selected: true
-          }).count() !== tableCarves.rows().count()) {
+            selected: true,
+            search:'applied'
+          }).count() !== tableCarves.rows({search:'applied'}).count()) {
             $("th.select-checkbox").removeClass("selected");
           } else {
             $("th.select-checkbox").addClass("selected");
