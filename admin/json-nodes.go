@@ -103,6 +103,14 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricJSONReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricJSONErr)
+		return
+	}
 	vars := mux.Vars(r)
 	// Extract platform
 	platform, ok := vars["platform"]
