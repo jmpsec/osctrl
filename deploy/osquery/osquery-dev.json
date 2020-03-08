@@ -1,9 +1,10 @@
 {
   "options": {
-    "schedule_splay_percent": 0
+    "schedule_splay_percent": 0,
+    "verbose": true
   },
   "schedule": {
-    "osquery_info": {
+    "uptime": {
       "query": "SELECT * FROM uptime;",
       "interval": 60
     }

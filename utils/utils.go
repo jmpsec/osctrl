@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +16,12 @@ const JSONApplication string = "application/json"
 
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
+
+// TextPlain for Content-Type headers
+const TextPlain string = "text/plain"
+
+// TextPlainUTF8 for Content-Type headers, UTF charset
+const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
 // ContentType for header key
 const ContentType string = "Content-Type"
@@ -81,4 +88,26 @@ func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 		}
 		log.Println("-------------------------------------------------------end")
 	}
+}
+
+// HTTPResponse - Helper to send HTTP response
+func HTTPResponse(w http.ResponseWriter, cType string, code int, data interface{}) {
+	if cType != "" {
+		w.Header().Set(ContentType, cType)
+	}
+	// Serialize if is not a []byte
+	var content []byte
+	if x, ok := data.([]byte); ok {
+		content = x
+	} else {
+		var err error
+		content, err = json.Marshal(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("error serializing response: %v", err)
+			content = []byte("error serializing response")
+		}
+	}
+	w.WriteHeader(code)
+	_, _ = w.Write(content)
 }

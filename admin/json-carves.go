@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -66,24 +65,21 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
-		incMetric(metricAdminErr)
-		log.Println("error getting target")
 		incMetric(metricJSONErr)
+		log.Println("error getting target")
 		return
 	}
 	// Verify target
 	if !CarvesTargets[target] {
-		incMetric(metricAdminErr)
-		log.Printf("invalid target %s", target)
 		incMetric(metricJSONErr)
+		log.Printf("invalid target %s", target)
 		return
 	}
 	// Retrieve carves for that target
 	qs, err := queriesmgr.GetCarves(target)
 	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error getting query carves %v", err)
 		incMetric(metricJSONErr)
+		log.Printf("error getting query carves %v", err)
 		return
 	}
 	// Prepare data to be returned
@@ -137,18 +133,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	returned := ReturnedCarves{
 		Data: cJSON,
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error serializing JSON %v", err)
-		incMetric(metricJSONErr)
-		return
-	}
-	incMetric(metricAdminOK)
-	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricJSONOK)
 }

@@ -21,6 +21,7 @@ func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIPlatformsErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -33,9 +34,9 @@ func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, platforms)
-	incMetric(metricAPIPlatformsOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned platforms")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, platforms)
+	incMetric(metricAPIPlatformsOK)
 }

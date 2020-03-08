@@ -10,6 +10,12 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	metricTokenReq = "admin-token-req"
+	metricTokenErr = "admin-token-err"
+	metricTokenOK  = "admin-token-ok"
+)
+
 // TokenJSON to be used to populate a JSON token
 type TokenJSON struct {
 	Token     string `json:"token"`
@@ -52,17 +58,8 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 			ExpiresTS: user.TokenExpire.String(),
 		}
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		log.Printf("error serializing JSON %v", err)
-		incMetric(metricTokenErr)
-		return
-	}
-	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricTokenOK)
 }
 
@@ -131,6 +128,6 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricTokenOK)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -142,18 +141,8 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	returned := ReturnedLogs{
 		Data: logJSON,
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		log.Printf("error serializing JSON %v", err)
-		incMetric(metricJSONErr)
-		return
-	}
-	incMetric(metricAdminOK)
-	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricJSONOK)
 }
 
@@ -193,17 +182,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	returned := ReturnedQueryLogs{
 		Data: queryLogJSON,
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		log.Printf("error serializing JSON %v", err)
-		incMetric(metricJSONErr)
-		return
-	}
-	incMetric(metricAdminOK)
-	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricJSONOK)
 }

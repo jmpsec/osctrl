@@ -30,6 +30,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPINodesErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -47,11 +48,11 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, node)
-	incMetric(metricAPINodesOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned node %s", uuid)
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
+	incMetric(metricAPINodesOK)
 }
 
 // GET Handler for multiple JSON nodes
@@ -61,6 +62,7 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPINodesErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -79,9 +81,9 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	apiHTTPResponse(w, JSONApplicationUTF8, http.StatusOK, nodes)
-	incMetric(metricAPINodesOK)
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned nodes")
 	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
+	incMetric(metricAPINodesOK)
 }
