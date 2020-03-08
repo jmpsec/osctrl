@@ -22,6 +22,8 @@ var (
 func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAdminReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]
@@ -55,6 +57,12 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if target == "platform" {
+		// Check permissions
+		if !checkAdminLevel(ctx[ctxLevel]) {
+			log.Printf("%s has insuficient permissions", ctx[ctxUser])
+			incMetric(metricJSONErr)
+			return
+		}
 		stats, err = nodesmgr.GetStatsByPlatform(name, settingsmgr.InactiveHours())
 		if err != nil {
 			log.Printf("error getting stats %v", err)
