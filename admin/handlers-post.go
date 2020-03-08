@@ -1147,6 +1147,29 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						responseMessage = "User added successfully"
 					}
 				}
+			case "edit":
+				if u.Fullname != "" {
+					if err := adminUsers.ChangeFullname(u.Username, u.Fullname); err != nil {
+						responseMessage = "error changing fullname"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					} else {
+						responseMessage = "User updated successfully"
+					}
+				}
+				if u.Email != "" {
+					if err := adminUsers.ChangeEmail(u.Username, u.Email); err != nil {
+						responseMessage = "error changing email"
+						responseCode = http.StatusInternalServerError
+						if settingsmgr.DebugService(settings.ServiceAdmin) {
+							log.Printf("DebugService: %s %v", responseMessage, err)
+						}
+					} else {
+						responseMessage = "User updated successfully"
+					}
+				}
 			case "remove":
 				if u.Username == ctx[ctxUser] {
 					responseMessage = "Not a good idea"

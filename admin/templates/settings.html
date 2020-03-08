@@ -203,9 +203,7 @@
 		    }, {
           indicator : "<img src='/static/img/spinner.svg' />",
           type : "text",
-          // only limit to three letters example
-          //pattern: "[A-Za-z]{3}",
-          onedit : function() { console.log('If I return false edition will be canceled'); return true;},
+          onedit : function() { return true;},
           cancel : 'Cancel',
           cssclass : 'editable-class',
           cancelcssclass : 'btn btn-danger',

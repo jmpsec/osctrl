@@ -49,16 +49,19 @@
                       <th width="30%">Last UserAgent</th>
                       <th width="5%">Admin</th>
                       <th width="10%">Last Session</th>
-                      <th width="5%"></th>
-                      <th width="5%"></th>
+                      <th width="10%"></th>
                     </tr>
                   </thead>
                   <tbody>
                   {{range  $i, $e := $.CurrentUsers}}
                     <tr>
                       <td>{{ $e.Username }}</td>
-                      <td>{{ $e.Email }}</td>
-                      <td>{{ $e.Fullname }}</td>
+                      <td>
+                        <p id="email" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Email }}</p>
+                      </td>
+                      <td>
+                        <p id="fullname" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Fullname }}</p>
+                      </td>
                       <td>{{ $e.LastIPAddress }}</td>
                       <td>{{ $e.LastUserAgent }}</td>
                       <td>
@@ -70,13 +73,13 @@
                       <td>{{ pastTimeAgo $e.LastAccess }}</td>
                       <td>
                         {{ if $e.Admin }}
-                        <button type="button" class="btn btn-sm btn-ghost-info" onclick="showAPIToken({{ $e.APIToken }}, {{ $e.TokenExpire }}, {{ $e.Username }});">
+                        <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="Show API Token"
+                        onclick="showAPIToken({{ $e.APIToken }}, {{ $e.TokenExpire }}, {{ $e.Username }});">
                           <i class="fas fa-key"></i>
                         </button>
                         {{ end }}
-                      </td>
-                      <td>
-                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteUser({{ $e.Username }});">
+                        <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
+                        onclick="confirmDeleteUser({{ $e.Username }});">
                           <i class="far fa-trash-alt"></i>
                         </button>
                       </td>
@@ -184,6 +187,40 @@
     <script src="/static/js/login.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
+        // Editable fields
+        $(".editable-field").editable(function(value, settings) {
+			    var data = {
+            csrftoken: $("#csrftoken").val(),
+            action: 'edit',
+            username: $(this).attr('data-user'),
+          };
+          var type_edit = $(this).attr('id');
+          if (type_edit === 'email') {
+            data.email = value;
+          }
+          if (type_edit === 'fullname') {
+            data.fullname = value;
+          }
+          console.log(settings);
+          sendPostRequest(data, window.location.pathname, '', false);
+          return value;
+		    }, {
+          indicator : "<img src='/static/img/spinner.svg' />",
+          type : "text",
+          onedit : function() { return true;},
+          cancel : 'Cancel',
+          cssclass : 'editable-class',
+          cancelcssclass : 'btn btn-danger',
+          submitcssclass : 'btn btn-success',
+          maxlength : 200,
+          // select all text
+          select : true,
+          label : '',
+          showfn : function(elem) { elem.fadeIn('slow') },
+          submit : 'Save',
+          tooltip : "Click to edit...",
+          width : 160
+        });
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
