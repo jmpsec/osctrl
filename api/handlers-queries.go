@@ -32,6 +32,7 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIQueriesErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -63,6 +64,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIQueriesErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
@@ -95,6 +97,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Type:       queries.StandardQueryType,
 	}
 	if err := queriesmgr.Create(newQuery); err != nil {
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
@@ -124,11 +127,13 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(p) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
+					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
 					return
 				}
 				nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
 				if err != nil {
+					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					return
 				}
@@ -142,6 +147,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	if len(q.UUIDs) > 0 {
 		for _, u := range q.UUIDs {
 			if (u != "") && nodesmgr.CheckByUUID(u) {
+				incMetric(metricAPIQueriesErr)
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
 					apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
 					return
@@ -155,6 +161,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, h := range q.Hosts {
 			if (h != "") && nodesmgr.CheckByHost(h) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
+					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
 					return
 				}
@@ -166,6 +173,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
 	if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
+		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		return
 	}

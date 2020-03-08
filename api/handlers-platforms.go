@@ -21,6 +21,7 @@ func apiPlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.IsAdmin(ctx["user"]) {
+		incMetric(metricAPIPlatformsErr)
 		log.Printf("attempt to use API by user %s", ctx["user"])
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return

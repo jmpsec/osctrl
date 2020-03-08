@@ -48,14 +48,14 @@ const (
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, "💥")
+	utils.HTTPResponse(w, "", http.StatusOK, []byte("💥"))
 }
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, "✅")
+	utils.HTTPResponse(w, "", http.StatusOK, []byte("✅"))
 	incMetric(metricHealthOK)
 }
 

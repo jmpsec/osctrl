@@ -23,7 +23,7 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), true)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, okContent)
+	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
 	incMetric(metricHealthOK)
 }
 
@@ -32,8 +32,8 @@ func rootHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), true)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, okContent)
-	incMetric(metricHealthOK)
+	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
+	incMetric(metricAPIOK)
 }
 
 // Handle error requests
@@ -41,7 +41,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), true)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusInternalServerError, errorContent)
+	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(errorContent))
 	incMetric(metricAPIErr)
 }
 
@@ -50,6 +50,6 @@ func forbiddenHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
+	utils.HTTPResponse(w, "", http.StatusForbidden, []byte(errorContent))
 	incMetric(metricAPIErr)
 }
