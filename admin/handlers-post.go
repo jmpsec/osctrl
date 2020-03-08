@@ -55,21 +55,11 @@ func loginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -109,21 +99,11 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Logout response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -259,18 +239,11 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s", responseMessage)
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		log.Printf("error formating response [ %v ]", err)
-		responseCode = http.StatusInternalServerError
-		response = []byte("error formating response")
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -418,18 +391,11 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s", responseMessage)
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		log.Printf("error formating response [ %v ]", err)
-		responseCode = http.StatusInternalServerError
-		response = []byte("error formating response")
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve run response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -501,21 +467,11 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -569,21 +525,11 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carves action response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -663,21 +609,11 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Configuration response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -751,21 +687,11 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Intervals response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -857,21 +783,11 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Expiration response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -927,21 +843,11 @@ func nodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s", responseMessage)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Multi-node action response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -1044,21 +950,11 @@ func envsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Environments response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -1167,21 +1063,11 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Settings response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -1325,21 +1211,11 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }
 
@@ -1419,20 +1295,10 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 send_response:
-	// Prepare response
-	response, err := json.Marshal(AdminResponse{Message: responseMessage})
-	if err != nil {
-		responseMessage = "error formating response"
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s %v", responseMessage, err)
-		}
-		responseCode = http.StatusInternalServerError
-		response = []byte(responseMessage)
-	}
-	// Send response
+	// Serialize and send response
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Configuration response sent")
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, response)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
 	incMetric(metricAdminOK)
 }

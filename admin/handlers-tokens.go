@@ -58,17 +58,8 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 			ExpiresTS: user.TokenExpire.String(),
 		}
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		log.Printf("error serializing JSON %v", err)
-		incMetric(metricTokenErr)
-		return
-	}
-	// Header to serve JSON
-	w.Header().Set(utils.ContentType, utils.JSONApplicationUTF8)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(returnedJSON)
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricTokenOK)
 }
 

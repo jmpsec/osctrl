@@ -48,14 +48,14 @@ const (
 // Handler to be used as health check
 func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, []byte("💥"))
+	utils.HTTPResponse(w, "", http.StatusOK, "💥")
 }
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
 	// Send response
-	utils.HTTPResponse(w, "", http.StatusOK, []byte("✅"))
+	utils.HTTPResponse(w, "", http.StatusOK, "✅")
 	incMetric(metricHealthOK)
 }
 
@@ -68,7 +68,6 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the enroll requests from osquery nodes
 func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricEnrollReq)
-	var response []byte
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
@@ -129,17 +128,12 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricEnrollErr)
 		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
 	}
-	// Prepare response
-	response, err = json.Marshal(types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid})
-	if err != nil {
-		log.Printf("error formating response %v", err)
-		return
-	}
+	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
-	// Send response
+	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricEnrollOK)
 }
@@ -147,7 +141,7 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the configuration requests from osquery nodes
 func configHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricConfigReq)
-	var response []byte
+	var response interface{}
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
@@ -194,16 +188,15 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		response = []byte(e.Configuration)
 	} else {
-		response, err = json.Marshal(types.ConfigResponse{NodeInvalid: true})
-		if err != nil {
-			incMetric(metricConfigErr)
-			log.Printf("error formating response %v", err)
-			return
-		}
+		response = types.ConfigResponse{NodeInvalid: true}
 	}
 	// Debug HTTP
 	if envsmap[env].DebugHTTP {
-		log.Printf("Configuration: %s", string(response))
+		if x, ok := response.([]byte); ok {
+			log.Printf("Configuration: %s", string(x))
+		} else {
+			log.Printf("Configuration: %+v", response)
+		}
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -213,7 +206,6 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 // Function to handle the log requests from osquery nodes, both status and results
 func logHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricLogReq)
-	var response []byte
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
@@ -273,17 +265,12 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response
-	response, err = json.Marshal(types.LogResponse{NodeInvalid: nodeInvalid})
-	if err != nil {
-		incMetric(metricLogErr)
-		log.Printf("error preparing response %v", err)
-		response = []byte("")
-	}
+	response := types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
-	// Send response
+	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricLogOK)
 }
@@ -308,7 +295,6 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
 	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
-	var response []byte
 	var t types.QueryReadRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
@@ -343,22 +329,18 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 		accelerate = false
 	}
 	// Prepare response and serialize queries
+	var response interface{}
 	if accelerate {
 		sAccelerate := int(settingsmap[settings.AcceleratedSeconds].Integer)
-		response, err = json.Marshal(types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid})
+		response = types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid}
 	} else {
-		response, err = json.Marshal(types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid})
-	}
-	if err != nil {
-		incMetric(metricReadErr)
-		log.Printf("error formating response %v", err)
-		response = []byte("")
+		response = types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid}
 	}
 	// Debug HTTP
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
-	// Send response
+	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	incMetric(metricReadOK)
 }
@@ -383,7 +365,6 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
 	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
-	var response []byte
 	var t types.QueryWriteRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
@@ -406,15 +387,10 @@ func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
 		nodeInvalid = true
 	}
 	// Prepare response
-	response, err = json.Marshal(types.QueryWriteResponse{NodeInvalid: nodeInvalid})
-	if err != nil {
-		incMetric(metricWriteErr)
-		log.Printf("error formating response %v", err)
-		response = []byte("")
-	}
+	response:= types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -508,7 +484,6 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
 	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
-	var response []byte
 	var t types.CarveInitRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
@@ -535,15 +510,10 @@ func carveInitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Prepare response
-	response, err = json.Marshal(types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID})
-	if err != nil {
-		incMetric(metricInitErr)
-		log.Printf("error formating response %v", err)
-		response = []byte("")
-	}
+	response:=types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -570,7 +540,6 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
 	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
 	// Decode read POST body
-	var response []byte
 	var t types.CarveBlockRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
@@ -586,15 +555,9 @@ func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
 		go processCarveBlock(t, env)
 	}
 	// Prepare response
-	response, err = json.Marshal(types.CarveBlockResponse{Success: blockCarve})
-	if err != nil {
-		incMetric(metricBlockErr)
-		log.Printf("error formating response %v", err)
-		response = []byte("")
-	}
-	// Debug HTTP
+	response:=types.CarveBlockResponse{Success: blockCarve}
 	if envsmap[env].DebugHTTP {
-		log.Printf("Response: %s", string(response))
+		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)

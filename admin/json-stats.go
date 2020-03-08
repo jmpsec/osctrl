@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -62,14 +61,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(stats)
-	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error serializing JSON %v", err)
-		return
-	}
-	// Header to serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, stats)
 	incMetric(metricJSONOK)
 }

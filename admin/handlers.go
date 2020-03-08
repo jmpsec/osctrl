@@ -18,8 +18,8 @@ const (
 // Empty default osquery configuration
 const emptyConfiguration string = "data/osquery-empty.json"
 
-var errorContent = []byte("❌")
-var okContent = []byte("✅")
+const errorContent = "❌"
+const okContent = "✅"
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {

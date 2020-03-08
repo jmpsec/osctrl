@@ -15,8 +15,8 @@ const (
 	metricHealthOK  = "health-ok"
 )
 
-var errorContent = []byte("❌")
-var okContent = []byte("✅")
+const errorContent = "❌"
+const okContent = "✅"
 
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {

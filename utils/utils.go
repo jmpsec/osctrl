@@ -95,11 +95,18 @@ func HTTPResponse(w http.ResponseWriter, cType string, code int, data interface{
 	if cType != "" {
 		w.Header().Set(ContentType, cType)
 	}
-	content, err := json.Marshal(data)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error serializing response: %v", err)
-		content = []byte("error serializing response")
+	// Serialize if is not a []byte
+	var content []byte
+	if x, ok := data.([]byte); ok {
+		content = x
+	} else {
+		var err error
+		content, err = json.Marshal(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("error serializing response: %v", err)
+			content = []byte("error serializing response")
+		}
 	}
 	w.WriteHeader(code)
 	_, _ = w.Write(content)

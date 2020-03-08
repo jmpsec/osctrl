@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -134,14 +133,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	returned := ReturnedCarves{
 		Data: cJSON,
 	}
-	// Serialize JSON
-	returnedJSON, err := json.Marshal(returned)
-	if err != nil {
-		incMetric(metricJSONErr)
-		log.Printf("error serializing JSON %v", err)
-		return
-	}
-	// Header to serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returnedJSON)
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 	incMetric(metricJSONOK)
 }

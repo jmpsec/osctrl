@@ -48,7 +48,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Header to serve JSON
+	// Serialize and serve JSON
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned environment %s", name)
 	}
@@ -75,7 +75,7 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 		return
 	}
-	// Header to serve JSON
+	// Serialize and serve JSON
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned environments")
 	}
