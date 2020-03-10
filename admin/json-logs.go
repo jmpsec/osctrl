@@ -88,7 +88,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Extract parameter for seconds
 	// If parameter is not present or invalid, it defaults to 6 hours back
-	secondsBack := int64(sixHours)
+	secondsBack := int64(utils.SixHours)
 	seconds, ok := r.URL.Query()["seconds"]
 	if ok {
 		s, err := strconv.ParseInt(seconds[0], 10, 64)
@@ -108,8 +108,8 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		// Prepare data to be returned
 		for _, s := range statusLogs {
 			_c := CreationTimes{
-				Display:   pastTimeAgo(s.CreatedAt),
-				Timestamp: pastTimestamp(s.CreatedAt),
+				Display:   utils.PastFutureTimes(s.CreatedAt),
+				Timestamp: utils.TimeTimestamp(s.CreatedAt),
 			}
 			_l := LogJSON{
 				Created: _c,
@@ -129,8 +129,8 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		for _, r := range resultLogs {
 			_l := LogJSON{
 				Created: CreationTimes{
-					Display:   pastTimeAgo(r.CreatedAt),
-					Timestamp: pastTimestamp(r.CreatedAt),
+					Display:   utils.PastFutureTimes(r.CreatedAt),
+					Timestamp: utils.TimeTimestamp(r.CreatedAt),
 				},
 				First:  r.Name,
 				Second: string(r.Columns),
@@ -170,8 +170,8 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	queryLogJSON := []QueryLogJSON{}
 	for _, q := range queryLogs {
 		_c := CreationTimes{
-			Display:   pastTimeAgo(q.CreatedAt),
-			Timestamp: pastTimestamp(q.CreatedAt),
+			Display:   utils.PastFutureTimes(q.CreatedAt),
+			Timestamp: utils.TimeTimestamp(q.CreatedAt),
 		}
 		_l := QueryLogJSON{
 			Created: _c,

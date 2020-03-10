@@ -22,7 +22,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-user-cog"></i> Admin Users
+                <i class="fas fa-user-cog"></i> System Users
 
                 <div class="card-header-actions">
                   <div class="row">
@@ -70,14 +70,12 @@
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </td>
-                      <td>{{ pastTimeAgo $e.LastAccess }}</td>
+                      <td>{{ pastFutureTimes $e.LastAccess }}</td>
                       <td>
-                        {{ if $e.Admin }}
                         <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="Show API Token"
-                        onclick="showAPIToken({{ $e.APIToken }}, {{ $e.TokenExpire }}, {{ $e.Username }});">
+                        onclick="showAPIToken({{ $e.APIToken }}, {{ pastFutureTimes $e.TokenExpire }}, {{ $e.Username }});">
                           <i class="fas fa-key"></i>
                         </button>
-                        {{ end }}
                         <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
                         onclick="confirmDeleteUser({{ $e.Username }});">
                           <i class="far fa-trash-alt"></i>
@@ -146,13 +144,16 @@
                     <div class="form-group row">
                       <label class="col-md-2 col-form-label" for="user_api_token">API Token: </label>
                       <div class="col-md-10">
-                        <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" disabled>
+                        <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" readonly>
                       </div>
+                      <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#user_api_token">
+                      Copy
+                    </button>
                     </div>
                     <div class="form-group row">
                       <label class="col-md-2 col-form-label" for="user_token_expiration">Expiration: </label>
                       <div class="col-md-10">
-                        <input class="form-control" name="user_token_expiration" id="user_token_expiration" type="text" autocomplete="off" disabled>
+                        <input class="form-control" name="user_token_expiration" id="user_token_expiration" type="text" autocomplete="off" readonly>
                       </div>
                       <input type="hidden" id="user_token_username" value="">
                     </div>
@@ -223,6 +224,56 @@
         });
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Clipboard.js initialization
+        var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
+        clipboard_sh.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_sh.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+        var clipboard_ps = new ClipboardJS('#button-clipboard-ps');
+        clipboard_ps.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_ps.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+        var clipboard_values = new ClipboardJS('#button-clipboard-values');
+        clipboard_values.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_values.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
 
         // Refresh sidebar stats
         beginStats();

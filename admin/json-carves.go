@@ -121,8 +121,8 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 			Creator: q.Creator,
 			Path:    data,
 			Created: CreationTimes{
-				Display:   pastTimeAgo(q.CreatedAt),
-				Timestamp: pastTimestamp(q.CreatedAt),
+				Display:   utils.PastFutureTimes(q.CreatedAt),
+				Timestamp: utils.TimeTimestamp(q.CreatedAt),
 			},
 			Status:   status,
 			Progress: progress,

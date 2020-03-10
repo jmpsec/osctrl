@@ -54,8 +54,8 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 		// Prepare data to be returned
 		returned = TokenJSON{
 			Token:     user.APIToken,
-			Expires:   user.TokenExpire.String(),
-			ExpiresTS: user.TokenExpire.String(),
+			Expires:   utils.PastFutureTimes(user.TokenExpire),
+			ExpiresTS: utils.TimeTimestamp(user.TokenExpire),
 		}
 	}
 	// Serve JSON
@@ -88,7 +88,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("DebugService: Decoding POST body")
 	}
 	var t TokenRequest
-	response := TokenResponse{}
+	var response TokenResponse
 	if err := json.NewDecoder(r.Body).Decode(&t); err == nil {
 		// Check CSRF Token
 		if checkCSRFToken(ctx[ctxCSRF], t.CSRFToken) {
@@ -98,21 +98,25 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
 					return
 				}
-				if user.Admin {
-					token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
-					if err != nil {
-						adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-						return
-					}
-					if err = adminUsers.UpdateToken(user.Username, token, exp); err != nil {
-						adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
-						return
-					}
-					response = TokenResponse{
-						Token:        token,
-						ExpirationTS: exp.String(),
-						Expiration:   exp.String(),
-					}
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Println("DebugService: Creating token")
+				}
+				token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+				if err != nil {
+					adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
+					return
+				}
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Println("DebugService: Updating token")
+				}
+				if err := adminUsers.UpdateToken(user.Username, token, exp); err != nil {
+					adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
+					return
+				}
+				response = TokenResponse{
+					Token:        token,
+					ExpirationTS: utils.TimeTimestamp(exp),
+					Expiration:   utils.PastFutureTimes(exp),
 				}
 			} else {
 				adminErrorResponse(w, "user not found", http.StatusNotFound, nil)

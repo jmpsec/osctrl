@@ -4,14 +4,24 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 )
 
 const (
 	adminLevel string = "admin"
 	userLevel  string = "user"
+)
+
+const (
+	ctxUser  = "user"
+	ctxEmail = "email"
+	ctxCSRF  = "csrftoken"
+	ctxAdmin = "admin"
+	ctxLevel = "user"
 )
 
 // Helper to verify if user is an admin
@@ -30,11 +40,6 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
-			// Update metadata for the user
-			err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username)
-			if err != nil {
-				log.Printf("error updating metadata for user %s: %v", session.Username, err)
-			}
 			// Set middleware values
 			s := make(contextValue)
 			s["user"] = session.Username
@@ -45,6 +50,11 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				s["level"] = userLevel
 			}
 			ctx := context.WithValue(r.Context(), contextKey("session"), s)
+			// Update metadata for the user
+			err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
+			if err != nil {
+				log.Printf("error updating metadata for user %s: %v", session.Username, err)
+			}
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthSAML:
@@ -84,11 +94,6 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 						return
 					}
 				}
-				// Update metadata for the user
-				err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username)
-				if err != nil {
-					log.Printf("error updating metadata for user %s: %v", session.Username, err)
-				}
 				// Set middleware values
 				s := make(contextValue)
 				s["user"] = session.Username
@@ -99,6 +104,11 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 					s["level"] = userLevel
 				}
 				ctx := context.WithValue(r.Context(), contextKey("session"), s)
+				// Update metadata for the user
+				err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
+				if err != nil {
+					log.Printf("error updating metadata for user %s: %v", session.Username, err)
+				}
 				// Access granted
 				samlMiddleware.RequireAccount(h).ServeHTTP(w, r.WithContext(ctx))
 			} else {
@@ -109,16 +119,15 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			email := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.Email)
 			groups := strings.Split(r.Header.Get(headersConfig.TrustedPrefix+headersConfig.Groups), ",")
 			fullname := r.Header.Get(headersConfig.TrustedPrefix + headersConfig.DisplayName)
-
 			// A username is required to use this system
 			if username == "" {
 				http.Redirect(w, r, forbiddenPath, http.StatusBadRequest)
 				return
 			}
-
+			// Set middleware values
 			s := make(contextValue)
 			s["user"] = username
-
+			s["csrftoken"] = generateCSRF()
 			for _, group := range groups {
 				if group == headersConfig.AdminGroup {
 					s["level"] = adminLevel
@@ -129,20 +138,17 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 					// We can't break because we might still find a higher permission level
 				}
 			}
-
 			// This user didn't present a group that has permission to use the service
 			if _, ok := s["level"]; !ok {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-
 			newUser, err := adminUsers.New(username, "", email, fullname, (s["level"] == adminLevel))
 			if err != nil {
 				log.Printf("Error with new user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
 				return
 			}
-
 			if err := adminUsers.Create(newUser); err != nil {
 				log.Printf("Error creating user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
@@ -151,9 +157,18 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// _, session := sessionsmgr.CheckAuth(r)
 			// s["csrftoken"] = session.Values["csrftoken"].(string)
 			ctx := context.WithValue(r.Context(), contextKey("session"), s)
-
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
+}
+
+// Helper to prepare context based on the user
+func prepareContext(user users.AdminUser) contextValue {
+	s := make(contextValue)
+	s[ctxUser] = user.Username
+	s[ctxEmail] = user.Email
+	s[ctxCSRF] = user.CSRFToken
+	s[ctxAdmin] = strconv.FormatBool(user.Admin)
+	return s
 }

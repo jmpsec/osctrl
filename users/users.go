@@ -20,6 +20,7 @@ type AdminUser struct {
 	APIToken      string
 	TokenExpire   time.Time
 	Admin         bool
+	CSRFToken     string
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
@@ -90,6 +91,7 @@ func (m *UserManager) CreateToken(username string, expireHours int, jwtSecret st
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
+			Issuer:    "admin",
 		},
 	}
 	// Declare the token with the algorithm used for signing, and the claims
@@ -273,7 +275,7 @@ func (m *UserManager) ChangeFullname(username, fullname string) error {
 }
 
 // UpdateMetadata updates IP, User Agent and Last Access for a given user
-func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) error {
+func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken string) error {
 	user, err := m.Get(username)
 	if err != nil {
 		return fmt.Errorf("error getting user %v", err)
@@ -282,6 +284,7 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username string) erro
 		AdminUser{
 			LastIPAddress: ipaddress,
 			LastUserAgent: useragent,
+			CSRFToken:     csrftoken,
 			LastAccess:    time.Now(),
 		}).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
