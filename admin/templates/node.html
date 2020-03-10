@@ -179,7 +179,7 @@
                                 <small><b>Enrolled</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .CreatedAt }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .CreatedAt }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -187,7 +187,7 @@
                                 <small><b>Last Status</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .LastStatus }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .LastStatus }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -195,7 +195,7 @@
                                 <small><b>Last Result</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .LastResult }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .LastResult }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -203,7 +203,7 @@
                                 <small><b>Last Config</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .LastConfig }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .LastConfig }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -211,7 +211,7 @@
                                 <small><b>Query Read</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .LastQueryRead }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .LastQueryRead }}</p>
                               </div>
                             </div>
                             <div class="row">
@@ -219,7 +219,7 @@
                                 <small><b>Query Write</b></small>
                               </label>
                               <div class="col-md-9 col-form-label">
-                                <p class="form-control-static">{{ pastTimeAgo .LastQueryWrite }}</p>
+                                <p class="form-control-static">{{ pastFutureTimes .LastQueryWrite }}</p>
                               </div>
                             </div>
                             <div class="row">

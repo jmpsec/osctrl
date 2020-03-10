@@ -86,7 +86,7 @@ function refreshUserToken() {
   sendPostRequest(data, '/tokens/' + _username + '/refresh', '', false, function (data) {
     console.log(data);
     $("#user_api_token").val(data.token);
-    $("#user_token_expiration").val(data.exp_ts);
+    $("#user_token_expiration").val(data.expiration);
     $("#refreshTokenButton").prop("disabled", false);
     $("#refreshTokenButton").text('Refresh');
   });

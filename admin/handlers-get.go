@@ -10,18 +10,15 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/utils"
-	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
 
 	"github.com/gorilla/mux"
 )
 
 const (
 	templatesFilesFolder string = "tmpl_admin"
-	ctxUser              string = "user"
-	ctxLevel             string = "level"
-	ctxCSRF              string = "csrftoken"
 )
 
 // TemplateFiles for building UI layout
@@ -787,9 +784,9 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:                 envVar + " Enroll",
 		Metadata:              templateMetadata(ctx, serviceName, serviceVersion),
 		EnvName:               envVar,
-		EnrollExpiry:          strings.ToUpper(inFutureTime(env.EnrollExpire)),
+		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
-		RemoveExpiry:          strings.ToUpper(inFutureTime(env.RemoveExpire)),
+		RemoveExpiry:          strings.ToUpper(utils.InFutureTime(env.RemoveExpire)),
 		RemoveExpired:         environments.IsItExpired(env.RemoveExpire),
 		QuickAddShell:         shellQuickAdd,
 		QuickRemoveShell:      shellQuickRemove,
@@ -826,10 +823,10 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastTimeAgo":    pastTimeAgo,
-		"jsonRawIndent":  jsonRawIndent,
-		"statusLogsLink": statusLogsLink,
-		"resultLogsLink": resultLogsLink,
+		"pastFutureTimes": utils.PastFutureTimes,
+		"jsonRawIndent":   jsonRawIndent,
+		"statusLogsLink":  statusLogsLink,
+		"resultLogsLink":  resultLogsLink,
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
@@ -1029,8 +1026,8 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastTimeAgo":  pastTimeAgo,
-		"inFutureTime": inFutureTime,
+		"pastFutureTimes": utils.PastFutureTimes,
+		"inFutureTime":    utils.InFutureTime,
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "users.html").filepaths

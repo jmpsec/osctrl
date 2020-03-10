@@ -85,8 +85,8 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
 			LastSeen: CreationTimes{
-				Display:   pastTimeAgo(n.UpdatedAt),
-				Timestamp: pastTimestamp(n.UpdatedAt),
+				Display:   utils.PastFutureTimes(n.UpdatedAt),
+				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
 			},
 		}
 		nJSON = append(nJSON, nj)
@@ -150,8 +150,8 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
 			LastSeen: CreationTimes{
-				Display:   pastTimeAgo(n.UpdatedAt),
-				Timestamp: pastTimestamp(n.UpdatedAt),
+				Display:   utils.PastFutureTimes(n.UpdatedAt),
+				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
 			},
 		}
 		nJSON = append(nJSON, nj)

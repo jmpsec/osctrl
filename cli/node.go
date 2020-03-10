@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )
@@ -40,7 +41,7 @@ func listNodes(c *cli.Context) error {
 				n.UUID,
 				n.Platform,
 				n.Environment,
-				pastTimeAgo(n.LastStatus),
+				utils.PastFutureTimes(n.LastStatus),
 				n.IPAddress,
 				n.OsqueryVersion,
 			}
