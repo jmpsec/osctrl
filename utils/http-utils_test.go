@@ -49,7 +49,15 @@ func TestSendRequest(t *testing.T) {
 	server := serverMock()
 	defer server.Close()
 
-	code, body, err := SendRequest(http.MethodPost, server.URL+"/server/testing", nil, map[string]string{})
+	var code int
+	var body []byte
+	var err error
+
+	code, _, err = SendRequest(http.MethodPost, server.URL+"/notfound", nil, map[string]string{})
+	assert.NoError(t, err)
+	assert.Equal(t, code, http.StatusNotFound)
+
+	code, body, err = SendRequest(http.MethodPost, server.URL+"/server/testing", nil, map[string]string{})
 	assert.NoError(t, err)
 	assert.Equal(t, code, http.StatusOK)
 	assert.Equal(t, body, []byte("the test works"))
