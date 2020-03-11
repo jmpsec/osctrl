@@ -182,8 +182,14 @@ gofmt-api:
 gofmt-cli:
 	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
 
+# Run tests for modules
+modules-test:
+	cd utils && go test -i . -v
+	cd utils && go test . -v
+
 # Run all tests
 test:
+	make modules-test
 	# Install dependencies for TLS
 	cd $(TLS_DIR) && go test -i . -v
 	# Run TLS tests

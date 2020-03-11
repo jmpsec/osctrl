@@ -10,11 +10,11 @@ var (
 	OneMinute = 60 * time.Second
 	// OneHour - 3600 seconds
 	OneHour = 60 * time.Minute
-	// SixHours -
+	// SixHours - 21600 seconds
 	SixHours = 6 * time.Hour
-	// OneDay -
+	// OneDay - 86400 seconds
 	OneDay = 24 * time.Hour
-	// FifteenDays -
+	// FifteenDays - 1296000 seconds
 	FifteenDays = 15 * OneDay
 )
 
@@ -85,8 +85,11 @@ func InFutureTime(t time.Time) string {
 	}
 	now := time.Now()
 	seconds := int(t.Sub(now).Seconds())
-	if seconds <= 0 {
+	if seconds <= 2 {
 		return "Expired"
+	}
+	if seconds < DurationSeconds(OneMinute) {
+		return "Expires in " + strconv.Itoa(seconds) + " seconds"
 	}
 	return "Expires in " + StringifyTime(seconds)
 }
