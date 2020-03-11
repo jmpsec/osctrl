@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -74,20 +75,27 @@ func SendRequest(reqType, url string, params io.Reader, headers map[string]strin
 	return resp.StatusCode, bodyBytes, nil
 }
 
-// DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
-func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
+// DebugHTTP - Helper for debugging purposes and dump a full HTTP request
+func DebugHTTP(r *http.Request, debugCheck bool, showBody bool) string {
+	var debug string
 	if debugCheck {
-		log.Println("-------------------------------------------------- request")
+		debug = fmt.Sprintf("%s\n", "---------------- request")
 		requestDump, err := httputil.DumpRequest(r, showBody)
 		if err != nil {
 			log.Printf("error while dumprequest %v", err)
 		}
-		log.Println(string(requestDump))
+		debug += fmt.Sprintf("%s\n", string(requestDump))
 		if !showBody {
-			log.Println("---------------- Skipping Request Body -------------------")
+			debug += fmt.Sprintf("%s\n", "---------------- No Body")
 		}
-		log.Println("-------------------------------------------------------end")
+		debug += fmt.Sprintf("%s\n", "---------------- end")
 	}
+	return debug
+}
+
+// DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
+func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
+	log.Println(DebugHTTP(r, debugCheck, showBody))
 }
 
 // HTTPResponse - Helper to send HTTP response

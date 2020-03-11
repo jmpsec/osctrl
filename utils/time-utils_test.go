@@ -20,7 +20,7 @@ func TestStringifyTime(t *testing.T) {
 		{456435277, "5282 days"},
 	}
 	for _, test := range tests {
-		assert.Equal(StringifyTime(test.input), test.expected)
+		assert.Equal(test.expected, StringifyTime(test.input))
 	}
 }
 
@@ -37,7 +37,7 @@ func TestDurationSeconds(t *testing.T) {
 		{15 * OneDay, 1296000},
 	}
 	for _, test := range tests {
-		assert.Equal(DurationSeconds(test.input), test.expected)
+		assert.Equal(test.expected, DurationSeconds(test.input))
 	}
 }
 
@@ -54,7 +54,7 @@ func TestTimeTimestamp(t *testing.T) {
 		{time.Date(2020, time.February, 29, 23, 59, 0, 0, time.UTC), "1583020740"},
 	}
 	for _, test := range tests {
-		assert.Equal(TimeTimestamp(test.input), test.expected)
+		assert.Equal(test.expected, TimeTimestamp(test.input))
 	}
 }
 
@@ -77,7 +77,7 @@ func TestPastFutureTimes(t *testing.T) {
 		{time.Time{}, "Never"},
 	}
 	for _, test := range tests {
-		assert.Equal(PastFutureTimes(test.input), test.expected)
+		assert.Equal(test.expected, PastFutureTimes(test.input))
 	}
 }
 
@@ -96,7 +96,7 @@ func TestPastTimeAgo(t *testing.T) {
 		{time.Time{}, "Never"},
 	}
 	for _, test := range tests {
-		assert.Equal(PastTimeAgo(test.input), test.expected)
+		assert.Equal(test.expected, PastTimeAgo(test.input))
 	}
 }
 
@@ -114,6 +114,6 @@ func TestInFutureTime(t *testing.T) {
 		{time.Time{}, "Never"},
 	}
 	for _, test := range tests {
-		assert.Equal(InFutureTime(test.input), test.expected)
+		assert.Equal(test.expected, InFutureTime(test.input))
 	}
 }
