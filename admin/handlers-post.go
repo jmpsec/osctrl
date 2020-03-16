@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 
 	"github.com/gorilla/mux"
@@ -1125,7 +1126,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 								log.Printf("DebugService: %s %v", responseMessage, err)
 							}
 						}
-						if newUser.Admin {
+						if u.Token {
 							token, exp, err := adminUsers.CreateToken(newUser.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
 							if err != nil {
 								responseMessage = "error creating token"
@@ -1204,6 +1205,24 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 					if u.Admin {
+						namesEnvs, err := envs.Names()
+						if err != nil {
+							responseMessage = "error getting environments"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+							goto send_response
+						}
+						perms := adminUsers.GenPermissions(namesEnvs, u.Admin)
+						if err := adminUsers.ChangePermissions(u.Username, perms); err != nil {
+							responseMessage = "error changing permissions"
+							responseCode = http.StatusInternalServerError
+							if settingsmgr.DebugService(settings.ServiceAdmin) {
+								log.Printf("DebugService: %s %v", responseMessage, err)
+							}
+							goto send_response
+						}
 						token, exp, err := adminUsers.CreateToken(u.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
 						if err != nil {
 							responseMessage = "error creating token"
@@ -1224,6 +1243,73 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					responseMessage = "Admin changed"
 				}
+			}
+		} else {
+			responseMessage = "invalid CSRF token"
+			responseCode = http.StatusInternalServerError
+			if settingsmgr.DebugService(settings.ServiceAdmin) {
+				log.Printf("DebugService: %s %v", responseMessage, err)
+			}
+		}
+	}
+send_response:
+	// Serialize and send response
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Users response sent")
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, responseCode, AdminResponse{Message: responseMessage})
+	incMetric(metricAdminOK)
+}
+
+// Handler for POST request for /users/permissions
+func permissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	responseMessage := "OK"
+	responseCode := http.StatusOK
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+	vars := mux.Vars(r)
+	// Extract username and verify
+	usernameVar, ok := vars["username"]
+	if !ok || !adminUsers.Exists(usernameVar) {
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: error getting username")
+		}
+		return
+	}
+	var p PermissionsRequest
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		responseMessage = "insuficient permissions"
+		responseCode = http.StatusForbidden
+		log.Printf("%s has %s", ctx[ctxUser], responseMessage)
+		goto send_response
+	}
+	// Parse request JSON body
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		responseMessage = "error parsing POST body"
+		responseCode = http.StatusInternalServerError
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: %s %v", responseMessage, err)
+		}
+	} else {
+		// Check CSRF Token
+		if checkCSRFToken(ctx[ctxCSRF], p.CSRFToken) {
+			// TODO verify environments
+			perms := users.UserPermissions{
+				Environments: p.Environments,
+				Query:        p.Query,
+				Carve:        p.Carve,
+			}
+			if err := adminUsers.ChangePermissions(usernameVar, perms); err != nil {
+				responseMessage = "error changing permissions"
+				responseCode = http.StatusInternalServerError
+				log.Printf("%s has %s", ctx[ctxUser], responseMessage)
+				goto send_response
 			}
 		} else {
 			responseMessage = "invalid CSRF token"

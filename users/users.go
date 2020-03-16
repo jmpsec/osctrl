@@ -1,12 +1,14 @@
 package users
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,10 +23,21 @@ type AdminUser struct {
 	TokenExpire   time.Time
 	Admin         bool
 	CSRFToken     string
+	Permissions   postgres.Jsonb
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
 	LastTokenUse  time.Time
+}
+
+// EnvPermissions to hold permissions for environments
+type EnvPermissions map[string]bool
+
+// UserPermissions to abstract the permissions for a user
+type UserPermissions struct {
+	Environments EnvPermissions `json:"environments"`
+	Query        bool           `json:"query"`
+	Carve        bool           `json:"carve"`
 }
 
 // TokenClaims to hold user claims when using JWT
@@ -149,12 +162,17 @@ func (m *UserManager) New(username, password, email, fullname string, admin bool
 		if err != nil {
 			return AdminUser{}, err
 		}
+		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, admin))
+		if err != nil {
+			permsRaw = []byte("{}")
+		}
 		return AdminUser{
-			Username: username,
-			PassHash: passhash,
-			Admin:    admin,
-			Email:    email,
-			Fullname: fullname,
+			Username:    username,
+			PassHash:    passhash,
+			Admin:       admin,
+			Permissions: postgres.Jsonb{RawMessage: permsRaw},
+			Email:       email,
+			Fullname:    fullname,
 		}, nil
 	}
 	return AdminUser{}, fmt.Errorf("%s already exists", username)
@@ -186,6 +204,49 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 		}
 	}
 	return nil
+}
+
+// GenPermissions to generate the struct with empty permissions
+func (m *UserManager) GenPermissions(environments []string, level bool) UserPermissions {
+	envs := make(EnvPermissions)
+	for _, e := range environments {
+		envs[e] = level
+	}
+	perms := UserPermissions{
+		Environments: envs,
+		Query:        level,
+		Carve:        level,
+	}
+	return perms
+}
+
+// ChangePermissions for setting user permissions by username
+func (m *UserManager) ChangePermissions(username string, permissions UserPermissions) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	rawPerms, err := json.Marshal(permissions)
+	if err != nil {
+		return err
+	}
+	if err := m.DB.Model(&user).Update("permissions", postgres.Jsonb{RawMessage: rawPerms}).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
+	}
+	return nil
+}
+
+// GetPermissions to extract permissions by username
+func (m *UserManager) GetPermissions(username string) (UserPermissions, error) {
+	var perms UserPermissions
+	user, err := m.Get(username)
+	if err != nil {
+		return perms, fmt.Errorf("error getting user %v", err)
+	}
+	if err := json.Unmarshal(user.Permissions.RawMessage, &perms); err != nil {
+		return perms, fmt.Errorf("error parsing permissions %v", err)
+	}
+	return perms, nil
 }
 
 // All get all users
@@ -238,7 +299,6 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 			AdminUser{
 				APIToken:    token,
 				TokenExpire: exp,
-				LastAccess:  time.Now(),
 			}).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}

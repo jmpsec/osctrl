@@ -1077,6 +1077,38 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAdminOK)
 }
 
+// Handler for platform/environment stats in JSON
+func permissionsGETHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAdminReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract username and verify
+	usernameVar, ok := vars["username"]
+	if !ok || !adminUsers.Exists(usernameVar) {
+		if settingsmgr.DebugService(settings.ServiceAdmin) {
+			log.Printf("DebugService: error getting username")
+		}
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkAdminLevel(ctx[ctxLevel]) {
+		incMetric(metricAdminErr)
+		log.Println("insuficient permissions")
+		return
+	}
+	// Get permissions
+	permissions, err := adminUsers.GetPermissions(usernameVar)
+	if err != nil {
+		incMetric(metricAdminErr)
+		log.Printf("error getting permissions %v", err)
+	}
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, permissions)
+	incMetric(metricJSONOK)
+}
+
 // Handler for GET requests to download carves
 func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAdminReq)

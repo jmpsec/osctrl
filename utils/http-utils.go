@@ -95,7 +95,9 @@ func DebugHTTP(r *http.Request, debugCheck bool, showBody bool) string {
 
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
 func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
-	log.Println(DebugHTTP(r, debugCheck, showBody))
+	if debugCheck {
+		log.Println(DebugHTTP(r, debugCheck, showBody))
+	}
 }
 
 // HTTPResponse - Helper to send HTTP response
