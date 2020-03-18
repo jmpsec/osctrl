@@ -124,8 +124,8 @@ func queryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var q DistributedQueryRequest
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	// Check permissions for query
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -301,7 +301,7 @@ func carvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -489,7 +489,7 @@ func queryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -577,7 +577,7 @@ func carvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -666,7 +666,7 @@ func confPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, true, environmentVar) {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -766,7 +766,7 @@ func intervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, true, environmentVar) {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -866,7 +866,7 @@ func expirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, true, environmentVar) {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1160,7 +1160,7 @@ func settingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1278,7 +1278,7 @@ func usersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1518,7 +1518,7 @@ func permissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -1603,7 +1603,7 @@ func enrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, true, environmentVar) {
 		responseMessage := fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser])
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, AdminResponse{Message: responseMessage})
 		if settingsmgr.DebugService(settings.ServiceAdmin) {

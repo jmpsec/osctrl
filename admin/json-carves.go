@@ -56,7 +56,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return

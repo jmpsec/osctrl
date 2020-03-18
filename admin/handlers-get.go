@@ -101,6 +101,14 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], false, false, true, env) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricTokenErr)
+		return
+	}
 	// Extract target
 	// FIXME verify target
 	target, ok := vars["target"]
@@ -132,8 +140,6 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env,
@@ -176,6 +182,14 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("error getting target")
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricTokenErr)
+		return
+	}
 	// Prepare template
 	t, err := template.ParseFiles(
 		templatesFilesFolder+"/table.html",
@@ -204,8 +218,6 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + platform,
@@ -234,7 +246,7 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -310,7 +322,7 @@ func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -363,7 +375,7 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -433,7 +445,7 @@ func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -486,7 +498,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -568,7 +580,7 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -676,6 +688,14 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], false, false, true, envVar) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricAdminErr)
+		return
+	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "conf.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
@@ -705,8 +725,6 @@ func confGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:        envVar + " Configuration",
@@ -744,6 +762,14 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], false, false, true, envVar) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricAdminErr)
+		return
+	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "enroll.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
@@ -773,8 +799,6 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Prepare template data
 	shellQuickAdd, _ := environments.QuickAddOneLinerShell(env)
 	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell(env)
@@ -886,7 +910,7 @@ func envsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -939,7 +963,7 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -1019,7 +1043,7 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return
@@ -1093,9 +1117,9 @@ func permissionsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
-		log.Println("insuficient permissions")
 		return
 	}
 	// Get permissions
@@ -1117,7 +1141,7 @@ func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkAdminLevel(ctx[ctxLevel]) {
+	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricAdminErr)
 		return

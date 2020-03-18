@@ -185,6 +185,15 @@ func (m *UserManager) Exists(username string) bool {
 	return (results > 0)
 }
 
+// ExistsGet checks if user exists and returns the user
+func (m *UserManager) ExistsGet(username string) (bool, AdminUser) {
+	user, err := m.Get(username)
+	if err != nil {
+		return false, AdminUser{}
+	}
+	return true, user
+}
+
 // IsAdmin checks if user is an admin
 func (m *UserManager) IsAdmin(username string) bool {
 	var results int
@@ -244,6 +253,15 @@ func (m *UserManager) GetPermissions(username string) (UserPermissions, error) {
 		return perms, fmt.Errorf("error getting user %v", err)
 	}
 	if err := json.Unmarshal(user.Permissions.RawMessage, &perms); err != nil {
+		return perms, fmt.Errorf("error parsing permissions %v", err)
+	}
+	return perms, nil
+}
+
+// ConvertPermissions to convert from stored Jsonb to struct
+func (m *UserManager) ConvertPermissions(raw json.RawMessage) (UserPermissions, error) {
+	var perms UserPermissions
+	if err := json.Unmarshal(raw, &perms); err != nil {
 		return perms, fmt.Errorf("error parsing permissions %v", err)
 	}
 	return perms, nil

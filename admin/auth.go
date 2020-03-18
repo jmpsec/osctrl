@@ -25,8 +25,54 @@ const (
 )
 
 // Helper to verify if user is an admin
-func checkAdminLevel(level string) bool {
-	return (level == adminLevel)
+func checkAdminLevel(user users.AdminUser) bool {
+	return user.Admin
+}
+
+// Helper to check if query access is granted
+func checkQueryLevel(permissions users.UserPermissions) bool {
+	return permissions.Query
+}
+
+// Helper to check if carve access is granted
+func checkCarveLevel(permissions users.UserPermissions) bool {
+	return permissions.Carve
+}
+
+// Helper to check if environment access is granted
+func checkEnvironmentLevel(permissions users.UserPermissions, environment string) bool {
+	return permissions.Environments[environment]
+}
+
+// Helper to check permissions for a user
+func checkPermissions(username string, query, carve, env bool, environment string) bool {
+	exist, user := adminUsers.ExistsGet(username)
+	if !exist {
+		return false
+	}
+	// Admin always have access
+	if user.Admin {
+		return true
+	}
+	perms, err := adminUsers.ConvertPermissions(user.Permissions.RawMessage)
+	if err != nil {
+		log.Printf("error converting permissions %v", err)
+		return false
+	}
+	// Check for query access
+	if query {
+		return checkQueryLevel(perms)
+	}
+	// Check for carve access
+	if carve {
+		return checkCarveLevel(perms)
+	}
+	// Check for environment access
+	if env {
+		return checkEnvironmentLevel(perms, environment)
+	}
+	// At this point, no access granted
+	return false
 }
 
 // Handler to check access to a resource based on the authentication enabled
