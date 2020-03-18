@@ -182,6 +182,19 @@ func (conf *Settings) NewIntegerValue(service, name string, value int64) error {
 	return conf.NewValue(service, name, TypeInteger, value)
 }
 
+// VerifyType to make sure type is valid
+func (conf *Settings) VerifyType(sType string) bool {
+	validTypes := map[string]bool{
+		TypeString:  true,
+		TypeBoolean: true,
+		TypeInteger: true,
+	}
+	if !validTypes[sType] {
+		return false
+	}
+	return true
+}
+
 // DeleteValue deletes an existing settings value
 func (conf *Settings) DeleteValue(service, name string) error {
 	value, err := conf.RetrieveValue(service, name)
