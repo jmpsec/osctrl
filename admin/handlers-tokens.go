@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -31,24 +32,24 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
 	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricTokenErr)
+		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser]), http.StatusForbidden, nil)
+		incMetric(metricAdminErr)
 		return
 	}
 	vars := mux.Vars(r)
 	// Extract username
 	username, ok := vars["username"]
 	if !ok {
-		log.Println("error getting username")
-		incMetric(metricTokenErr)
+		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
+		incMetric(metricAdminErr)
 		return
 	}
 	returned := TokenJSON{}
 	if adminUsers.Exists(username) {
 		user, err := adminUsers.Get(username)
 		if err != nil {
-			log.Println("error getting user")
-			incMetric(metricTokenErr)
+			adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
+			incMetric(metricAdminErr)
 			return
 		}
 		// Prepare data to be returned
@@ -76,11 +77,11 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vars := mux.Vars(r)
-	// Extract username
+	// Extract username and verify
 	username, ok := vars["username"]
-	if !ok {
-		incMetric(metricTokenErr)
+	if !ok || !adminUsers.Exists(username) {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
+		incMetric(metricAdminErr)
 		return
 	}
 	// Parse request JSON body
@@ -90,46 +91,43 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	var t TokenRequest
 	var response TokenResponse
 	if err := json.NewDecoder(r.Body).Decode(&t); err == nil {
-		// Check CSRF Token
-		if checkCSRFToken(ctx[ctxCSRF], t.CSRFToken) {
-			if adminUsers.Exists(username) {
-				user, err := adminUsers.Get(username)
-				if err != nil {
-					adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
-					return
-				}
-				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Println("DebugService: Creating token")
-				}
-				token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
-				if err != nil {
-					adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-					return
-				}
-				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Println("DebugService: Updating token")
-				}
-				if err := adminUsers.UpdateToken(user.Username, token, exp); err != nil {
-					adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
-					return
-				}
-				response = TokenResponse{
-					Token:        token,
-					ExpirationTS: utils.TimeTimestamp(exp),
-					Expiration:   utils.PastFutureTimes(exp),
-				}
-			} else {
-				adminErrorResponse(w, "user not found", http.StatusNotFound, nil)
-				return
-			}
-		} else {
-			adminErrorResponse(w, "invalid CSRF token", http.StatusForbidden, nil)
-			return
-		}
-	} else {
-		incMetric(metricTokenErr)
-		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, nil)
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		incMetric(metricAdminErr)
 		return
+	}
+	// Check CSRF Token
+	if !checkCSRFToken(ctx[ctxCSRF], t.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		incMetric(metricAdminErr)
+		return
+	}
+	user, err := adminUsers.Get(username)
+	if err != nil {
+		adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
+		incMetric(metricAdminErr)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Creating token")
+	}
+	token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+	if err != nil {
+		adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
+		incMetric(metricAdminErr)
+		return
+	}
+	if settingsmgr.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Updating token")
+	}
+	if err := adminUsers.UpdateToken(user.Username, token, exp); err != nil {
+		adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
+		incMetric(metricAdminErr)
+		return
+	}
+	response = TokenResponse{
+		Token:        token,
+		ExpirationTS: utils.TimeTimestamp(exp),
+		Expiration:   utils.PastFutureTimes(exp),
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)

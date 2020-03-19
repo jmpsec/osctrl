@@ -319,3 +319,8 @@ func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) 
 	log.Printf("%s: %v", msg, err)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, AdminResponse{Message: msg})
 }
+
+// Helper to handle admin ok responses
+func adminOKResponse(w http.ResponseWriter, msg string) {
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, AdminResponse{Message: msg})
+}
