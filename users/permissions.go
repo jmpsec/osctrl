@@ -3,6 +3,7 @@ package users
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 // EnvPermissions to hold permissions for environments
@@ -47,7 +48,28 @@ func (m *UserManager) GenPermissions(environments []string, level bool) UserPerm
 
 // CheckPermissions to verify access for a username
 func (m *UserManager) CheckPermissions(username string, level AccessLevel, environment string) bool {
-
+	exist, user := m.ExistsGet(username)
+	if !exist {
+		log.Printf("user %s does not exist", username)
+		return false
+	}
+	// Admin has the highest level of access
+	if user.Admin {
+		return true
+	}
+	perms, err := m.ConvertPermissions(user.Permissions.RawMessage)
+	if err != nil {
+		log.Printf("error converting permissions %v", err)
+		return false
+	}
+	switch level {
+	case QueryLevel:
+		return perms.Query
+	case CarveLevel:
+		return perms.Carve
+	case EnvLevel:
+		return perms.Environments[environment]
+	}
 	return false
 }
 

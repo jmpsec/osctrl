@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -31,7 +32,7 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser]), http.StatusForbidden, nil)
 		incMetric(metricAdminErr)
 		return
@@ -71,7 +72,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		adminErrorResponse(w, "insuficient permissions", http.StatusForbidden, nil)
 		incMetric(metricTokenErr)
 		return

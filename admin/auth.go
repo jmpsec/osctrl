@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
@@ -14,65 +13,37 @@ import (
 const (
 	adminLevel string = "admin"
 	userLevel  string = "user"
+	queryLevel string = "query"
+	carveLevel string = "carve"
 )
 
 const (
 	ctxUser  = "user"
 	ctxEmail = "email"
 	ctxCSRF  = "csrftoken"
-	ctxAdmin = "admin"
-	ctxLevel = "user"
+	ctxLevel = "level"
 )
 
-// Helper to verify if user is an admin
-func checkAdminLevel(user users.AdminUser) bool {
-	return user.Admin
-}
-
-// Helper to check if query access is granted
-func checkQueryLevel(permissions users.UserPermissions) bool {
-	return permissions.Query
-}
-
-// Helper to check if carve access is granted
-func checkCarveLevel(permissions users.UserPermissions) bool {
-	return permissions.Carve
-}
-
-// Helper to check if environment access is granted
-func checkEnvironmentLevel(permissions users.UserPermissions, environment string) bool {
-	return permissions.Environments[environment]
-}
-
-// Helper to check permissions for a user
-func checkPermissions(username string, query, carve, env bool, environment string) bool {
-	exist, user := adminUsers.ExistsGet(username)
-	if !exist {
-		return false
-	}
-	// Admin always have access
+// Helper to convert permissions for a user to a level for context
+func levelPermissions(user users.AdminUser) string {
 	if user.Admin {
-		return true
+		return adminLevel
 	}
 	perms, err := adminUsers.ConvertPermissions(user.Permissions.RawMessage)
 	if err != nil {
 		log.Printf("error converting permissions %v", err)
-		return false
+		return userLevel
 	}
 	// Check for query access
-	if query {
-		return checkQueryLevel(perms)
+	if perms.Query {
+		return queryLevel
 	}
 	// Check for carve access
-	if carve {
-		return checkCarveLevel(perms)
-	}
-	// Check for environment access
-	if env {
-		return checkEnvironmentLevel(perms, environment)
+	if perms.Carve {
+		return carveLevel
 	}
 	// At this point, no access granted
-	return false
+	return userLevel
 }
 
 // Handler to check access to a resource based on the authentication enabled
@@ -88,13 +59,9 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Set middleware values
 			s := make(contextValue)
-			s["user"] = session.Username
-			s["csrftoken"] = session.Values["csrftoken"].(string)
-			if session.Values["admin"].(bool) {
-				s["level"] = adminLevel
-			} else {
-				s["level"] = userLevel
-			}
+			s[ctxUser] = session.Username
+			s[ctxCSRF] = session.Values[ctxCSRF].(string)
+			s[ctxLevel] = session.Values[ctxLevel].(string)
 			ctx := context.WithValue(r.Context(), contextKey("session"), s)
 			// Update metadata for the user
 			err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
@@ -142,13 +109,9 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				}
 				// Set middleware values
 				s := make(contextValue)
-				s["user"] = session.Username
-				s["csrftoken"] = session.Values["csrftoken"].(string)
-				if session.Values["admin"].(bool) {
-					s["level"] = adminLevel
-				} else {
-					s["level"] = userLevel
-				}
+				s[ctxUser] = session.Username
+				s[ctxCSRF] = session.Values[ctxCSRF].(string)
+				s[ctxLevel] = session.Values[ctxLevel].(string)
 				ctx := context.WithValue(r.Context(), contextKey("session"), s)
 				// Update metadata for the user
 				err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
@@ -172,24 +135,24 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Set middleware values
 			s := make(contextValue)
-			s["user"] = username
-			s["csrftoken"] = generateCSRF()
+			s[ctxUser] = username
+			s[ctxCSRF] = generateCSRF()
 			for _, group := range groups {
 				if group == headersConfig.AdminGroup {
-					s["level"] = adminLevel
+					s[ctxLevel] = adminLevel
 					// We can break because there is no greater permission level
 					break
 				} else if group == headersConfig.UserGroup {
-					s["level"] = userLevel
+					s[ctxLevel] = userLevel
 					// We can't break because we might still find a higher permission level
 				}
 			}
 			// This user didn't present a group that has permission to use the service
-			if _, ok := s["level"]; !ok {
+			if _, ok := s[ctxLevel]; !ok {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-			newUser, err := adminUsers.New(username, "", email, fullname, (s["level"] == adminLevel))
+			newUser, err := adminUsers.New(username, "", email, fullname, (s[ctxLevel] == adminLevel))
 			if err != nil {
 				log.Printf("Error with new user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
@@ -215,6 +178,6 @@ func prepareContext(user users.AdminUser) contextValue {
 	s[ctxUser] = user.Username
 	s[ctxEmail] = user.Email
 	s[ctxCSRF] = user.CSRFToken
-	s[ctxAdmin] = strconv.FormatBool(user.Admin)
+	s[ctxLevel] = levelPermissions(user)
 	return s
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -50,6 +51,12 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 	var stats nodes.StatsData
 	var err error
 	if target == "environment" {
+		// Check permissions
+		if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, name) {
+			log.Printf("%s has insuficient permissions", ctx[ctxUser])
+			incMetric(metricJSONErr)
+			return
+		}
 		stats, err = nodesmgr.GetStatsByEnv(name, settingsmgr.InactiveHours())
 		if err != nil {
 			incMetric(metricAdminErr)
@@ -58,7 +65,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if target == "platform" {
 		// Check permissions
-		if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+		if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 			log.Printf("%s has insuficient permissions", ctx[ctxUser])
 			incMetric(metricJSONErr)
 			return
