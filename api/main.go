@@ -249,8 +249,8 @@ func main() {
 	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	// API: environments
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{name}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{name}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{environment}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{environment}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 

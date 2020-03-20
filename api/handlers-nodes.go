@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -23,28 +25,27 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract uuid
 	uuid, ok := vars["uuid"]
 	if !ok {
-		incMetric(metricAPINodesErr)
 		apiErrorResponse(w, "error getting uuid", http.StatusInternalServerError, nil)
+		incMetric(metricAPINodesErr)
+		return
+	}
+	// Get node by UUID
+	// FIXME keep a cache of nodes by UUID
+	node, err := nodesmgr.GetByUUID(uuid)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		}
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.IsAdmin(ctx["user"]) {
-		incMetric(metricAPINodesErr)
-		log.Printf("attempt to use API by user %s", ctx["user"])
-		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
-		return
-	}
-	// Get node by UUID
-	node, err := nodesmgr.GetByUUID(uuid)
-	if err != nil {
-		incMetric(metricAPINodesErr)
-		if err.Error() == "record not found" {
-			log.Printf("node not found: %s", uuid)
-			apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
-		} else {
-			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
-		}
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, node.Environment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -61,23 +62,21 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.IsAdmin(ctx["user"]) {
-		incMetric(metricAPINodesErr)
-		log.Printf("attempt to use API by user %s", ctx["user"])
-		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get nodes
 	nodes, err := nodesmgr.Gets("all", 0)
 	if err != nil {
-		incMetric(metricAPINodesErr)
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+		incMetric(metricAPINodesErr)
 		return
 	}
 	if len(nodes) == 0 {
-		incMetric(metricAPINodesErr)
-		log.Printf("no nodes")
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
+		incMetric(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON

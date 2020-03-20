@@ -30,16 +30,6 @@ type AdminUser struct {
 	LastTokenUse  time.Time
 }
 
-// EnvPermissions to hold permissions for environments
-type EnvPermissions map[string]bool
-
-// UserPermissions to abstract the permissions for a user
-type UserPermissions struct {
-	Environments EnvPermissions `json:"environments"`
-	Query        bool           `json:"query"`
-	Carve        bool           `json:"carve"`
-}
-
 // TokenClaims to hold user claims when using JWT
 type TokenClaims struct {
 	Username string `json:"username"`
@@ -215,20 +205,6 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 	return nil
 }
 
-// GenPermissions to generate the struct with empty permissions
-func (m *UserManager) GenPermissions(environments []string, level bool) UserPermissions {
-	envs := make(EnvPermissions)
-	for _, e := range environments {
-		envs[e] = level
-	}
-	perms := UserPermissions{
-		Environments: envs,
-		Query:        level,
-		Carve:        level,
-	}
-	return perms
-}
-
 // ChangePermissions for setting user permissions by username
 func (m *UserManager) ChangePermissions(username string, permissions UserPermissions) error {
 	user, err := m.Get(username)
@@ -243,28 +219,6 @@ func (m *UserManager) ChangePermissions(username string, permissions UserPermiss
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil
-}
-
-// GetPermissions to extract permissions by username
-func (m *UserManager) GetPermissions(username string) (UserPermissions, error) {
-	var perms UserPermissions
-	user, err := m.Get(username)
-	if err != nil {
-		return perms, fmt.Errorf("error getting user %v", err)
-	}
-	if err := json.Unmarshal(user.Permissions.RawMessage, &perms); err != nil {
-		return perms, fmt.Errorf("error parsing permissions %v", err)
-	}
-	return perms, nil
-}
-
-// ConvertPermissions to convert from stored Jsonb to struct
-func (m *UserManager) ConvertPermissions(raw json.RawMessage) (UserPermissions, error) {
-	var perms UserPermissions
-	if err := json.Unmarshal(raw, &perms); err != nil {
-		return perms, fmt.Errorf("error parsing permissions %v", err)
-	}
-	return perms, nil
 }
 
 // All get all users

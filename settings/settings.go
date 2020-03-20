@@ -102,6 +102,13 @@ type Settings struct {
 	DB *gorm.DB
 }
 
+// ValidTypes to check validity of settings type
+var ValidTypes = map[string]struct{}{
+  TypeString: struct{}{},
+  TypeBoolean: struct{}{},
+  TypeInteger: struct{}{},
+}
+
 // NewSettings to initialize the access to settings and table
 func NewSettings(backend *gorm.DB) *Settings {
 	var s *Settings
@@ -184,15 +191,8 @@ func (conf *Settings) NewIntegerValue(service, name string, value int64) error {
 
 // VerifyType to make sure type is valid
 func (conf *Settings) VerifyType(sType string) bool {
-	validTypes := map[string]bool{
-		TypeString:  true,
-		TypeBoolean: true,
-		TypeInteger: true,
-	}
-	if !validTypes[sType] {
-		return false
-	}
-	return true
+	_, ok := ValidTypes[sType]
+  return ok
 }
 
 // DeleteValue deletes an existing settings value
