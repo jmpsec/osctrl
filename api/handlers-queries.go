@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -25,28 +27,26 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.IsAdmin(ctx["user"]) {
-		incMetric(metricAPIQueriesErr)
-		log.Printf("attempt to use API by user %s", ctx["user"])
-		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get query by name
 	query, err := queriesmgr.Get(name)
 	if err != nil {
-		incMetric(metricAPIQueriesErr)
 		if err.Error() == "record not found" {
-			log.Printf("query not found: %s", name)
-			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+			apiErrorResponse(w, "query not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
 		}
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -63,23 +63,23 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.IsAdmin(ctx["user"]) {
-		incMetric(metricAPIQueriesErr)
-		log.Printf("attempt to use API by user %s", ctx["user"])
-		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	var q DistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// FIXME check validity of query
 	// Query can not be empty
 	if q.Query == "" {
 		apiErrorResponse(w, "query can not be empty", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Prepare and create new query
@@ -87,7 +87,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	newQuery := queries.DistributedQuery{
 		Query:      q.Query,
 		Name:       queryName,
-		Creator:    ctx["user"],
+		Creator:    ctx[ctxUser],
 		Expected:   0,
 		Executions: 0,
 		Active:     true,
@@ -97,8 +97,8 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Type:       queries.StandardQueryType,
 	}
 	if err := queriesmgr.Create(newQuery); err != nil {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Temporary list of UUIDs to calculate Expected
@@ -109,11 +109,13 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 			if (e != "") && envs.Exists(e) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, e); err != nil {
 					apiErrorResponse(w, "error creating query environment target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
 				if err != nil {
 					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				for _, n := range nodes {
@@ -127,14 +129,14 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(p) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
-					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
 				if err != nil {
-					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				for _, n := range nodes {
@@ -147,9 +149,9 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	if len(q.UUIDs) > 0 {
 		for _, u := range q.UUIDs {
 			if (u != "") && nodesmgr.CheckByUUID(u) {
-				incMetric(metricAPIQueriesErr)
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
 					apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				expected = append(expected, u)
@@ -161,8 +163,8 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		for _, h := range q.Hosts {
 			if (h != "") && nodesmgr.CheckByHost(h) {
 				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
-					incMetric(metricAPIQueriesErr)
 					apiErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
 					return
 				}
 				expected = append(expected, h)
@@ -173,8 +175,8 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
 	if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Return query name as serialized response
@@ -186,17 +188,23 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
+		return
+	}
 	// Get queries
 	queries, err := queriesmgr.GetQueries(queries.TargetCompleted)
 	if err != nil {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	if len(queries) == 0 {
-		incMetric(metricAPIQueriesErr)
-		log.Printf("no queries")
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -208,17 +216,23 @@ func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
+		return
+	}
 	// Get queries
 	queries, err := queriesmgr.GetQueries(queries.TargetHiddenCompleted)
 	if err != nil {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	if len(queries) == 0 {
-		incMetric(metricAPIQueriesErr)
-		log.Printf("no queries")
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -234,28 +248,26 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAPIQueriesErr)
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.IsAdmin(ctx["user"]) {
-		incMetric(metricAPIQueriesErr)
-		log.Printf("attempt to use API by user %s", ctx["user"])
-		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get query by name
 	queryLogs, err := postgresQueryLogs(name)
 	if err != nil {
-		incMetric(metricAPIQueriesErr)
 		if err.Error() == "record not found" {
-			log.Printf("query not found: %s", name)
-			apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+			apiErrorResponse(w, "query not found", http.StatusNotFound, err)
 		} else {
-			apiErrorResponse(w, "error getting results", http.StatusInternalServerError, err)
+			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
 		}
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Serialize and serve JSON

@@ -24,7 +24,6 @@ func loadHeaders(file string) (types.JSONConfigurationHeaders, error) {
 	if err != nil {
 		return cfg, err
 	}
-
 	// No errors!
 	return cfg, nil
 }

@@ -62,13 +62,31 @@
                       <td>
                         <p id="fullname" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Fullname }}</p>
                       </td>
-                      <td>{{ $e.LastIPAddress }}</td>
-                      <td>{{ $e.LastUserAgent }}</td>
+                      <td>
+                      {{ if eq $e.LastIPAddress "" }}
+                        None
+                      {{ else }}
+                        {{ $e.LastIPAddress }}
+                      {{ end }}
+                      </td>
+                      <td>
+                      {{ if eq $e.LastUserAgent "" }}
+                        None
+                      {{ else }}
+                        {{ $e.LastUserAgent }}
+                      {{ end }}
+                      </td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser({{ $e.Username }});" {{ if $e.Admin }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
+                      {{ if not $e.Admin }}
+                        <button id="permissions-button-{{ $e.Username }}" type="button" class="btn btn-sm btn-ghost-primary" data-tooltip="true" data-placement="top" title="Permissions"
+                          onclick="showPermissions({{ $e.Username }});">
+                          <i class="fas fa-cogs"></i>
+                        </button>
+                      {{ end }}
                       </td>
                       <td>{{ pastFutureTimes $e.LastAccess }}</td>
                       <td>
@@ -119,6 +137,22 @@
                         <input class="form-control" name="user_fullname" id="user_fullname" type="text" autocomplete="off">
                       </div>
                     </div>
+                    <div class="form-group row">
+                      <label class="col-md-3 col-form-label" for="user_admin">Enable Admin Level: </label>
+                      <div class="col-md-3">
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="user_admin" class="switch-input" type="checkbox">
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </div>
+                      <label class="col-md-3 col-form-label" for="user_token">Create API Token: </label>
+                      <div class="col-md-3">
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="user_token" class="switch-input" type="checkbox">
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="confirmAddUser();">Add</button>
@@ -146,9 +180,7 @@
                       <div class="col-md-10">
                         <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" readonly>
                       </div>
-                      <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#user_api_token">
-                      Copy
-                    </button>
+                      <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#user_api_token">Copy</button>
                     </div>
                     <div class="form-group row">
                       <label class="col-md-2 col-form-label" for="user_token_expiration">Expiration: </label>
@@ -160,6 +192,84 @@
                   </div>
                   <div class="modal-footer">
                     <button id="refreshTokenButton" type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="permissionsModal" tabindex="-1" role="dialog" aria-labelledby="permissionsModal" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">User Permissions</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group row">
+                      <table class="table table-responsive-sm table-bordered table-striped text-center">
+                        <thead>
+                          <tr>
+                            <th width="60%">Environments</th>
+                            <th width="20%">Run Queries</th>
+                            <th width="20%">Carve Files</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>
+                              <table width="100%">
+                              {{range  $i, $e := $.Environments}}
+                                <tr>
+                                  <td>
+                                    <div class="row">
+                                      <div class="col-md-2 centered">
+                                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                                          <input id="{{ $e.Name }}" class="switch-input switch-env-permission" type="checkbox" onclick="savePermissions();">
+                                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                        </label>
+                                      </div>
+                                      <div class="col-md-10 centered">
+                                        Access to environment <b>{{ $e.Name }}</b>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              {{ end }}
+                              </table>
+                            </td>
+                            <td>
+                              <div class="row">
+                                <div class="col-md-12 centered">
+                                  <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                                    <input id="permission-queries" class="switch-input" type="checkbox" onclick="savePermissions();">
+                                    <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                  </label>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="row">
+                                <div class="col-md-12 centered">
+                                  <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                                    <input id="permission-carves" class="switch-input" type="checkbox" onclick="savePermissions();">
+                                    <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                  </label>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <input type="hidden" id="username_permissions" value="">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>

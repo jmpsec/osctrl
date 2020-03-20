@@ -58,7 +58,7 @@ func jsonStatsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if target == "platform" {
 		// Check permissions
-		if !checkAdminLevel(ctx[ctxLevel]) {
+		if !checkPermissions(ctx[ctxUser], false, false, false, "") {
 			log.Printf("%s has insuficient permissions", ctx[ctxUser])
 			incMetric(metricJSONErr)
 			return

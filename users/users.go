@@ -1,12 +1,14 @@
 package users
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,6 +23,7 @@ type AdminUser struct {
 	TokenExpire   time.Time
 	Admin         bool
 	CSRFToken     string
+	Permissions   postgres.Jsonb
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
@@ -149,12 +152,17 @@ func (m *UserManager) New(username, password, email, fullname string, admin bool
 		if err != nil {
 			return AdminUser{}, err
 		}
+		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, admin))
+		if err != nil {
+			permsRaw = []byte("{}")
+		}
 		return AdminUser{
-			Username: username,
-			PassHash: passhash,
-			Admin:    admin,
-			Email:    email,
-			Fullname: fullname,
+			Username:    username,
+			PassHash:    passhash,
+			Admin:       admin,
+			Permissions: postgres.Jsonb{RawMessage: permsRaw},
+			Email:       email,
+			Fullname:    fullname,
 		}, nil
 	}
 	return AdminUser{}, fmt.Errorf("%s already exists", username)
@@ -165,6 +173,15 @@ func (m *UserManager) Exists(username string) bool {
 	var results int
 	m.DB.Model(&AdminUser{}).Where("username = ?", username).Count(&results)
 	return (results > 0)
+}
+
+// ExistsGet checks if user exists and returns the user
+func (m *UserManager) ExistsGet(username string) (bool, AdminUser) {
+	user, err := m.Get(username)
+	if err != nil {
+		return false, AdminUser{}
+	}
+	return true, user
 }
 
 // IsAdmin checks if user is an admin
@@ -184,6 +201,22 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 		if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// ChangePermissions for setting user permissions by username
+func (m *UserManager) ChangePermissions(username string, permissions UserPermissions) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %v", err)
+	}
+	rawPerms, err := json.Marshal(permissions)
+	if err != nil {
+		return err
+	}
+	if err := m.DB.Model(&user).Update("permissions", postgres.Jsonb{RawMessage: rawPerms}).Error; err != nil {
+		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }
@@ -238,7 +271,6 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 			AdminUser{
 				APIToken:    token,
 				TokenExpire: exp,
-				LastAccess:  time.Now(),
 			}).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}

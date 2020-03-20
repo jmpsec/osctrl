@@ -160,6 +160,19 @@ func (environment *Environment) All() ([]TLSEnvironment, error) {
 	return envs, nil
 }
 
+// Names gets just all TLS Environment names
+func (environment *Environment) Names() ([]string, error) {
+	envs, err := environment.All()
+	if err != nil {
+		return []string{}, err
+	}
+	names := []string{}
+	for _, e := range envs {
+		names = append(names, e.Name)
+	}
+	return names, err
+}
+
 // GetMap returns the map of environments by name
 func (environment *Environment) GetMap() (MapEnvironments, error) {
 	all, err := environment.All()

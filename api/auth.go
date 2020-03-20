@@ -23,6 +23,10 @@ const (
 )
 
 const (
+	ctxUser  = "user"
+)
+
+const (
 	adminLevel string = "admin"
 	userLevel  string = "user"
 )

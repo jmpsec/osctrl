@@ -78,6 +78,14 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricJSONErr)
 		return
 	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], false, false, true, env) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricJSONErr)
+		return
+	}
 	// Extract UUID
 	// FIXME verify UUID
 	UUID, ok := vars["uuid"]
@@ -150,6 +158,14 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricJSONReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
+		incMetric(metricJSONErr)
+		return
+	}
 	vars := mux.Vars(r)
 	// Extract query name
 	// FIXME verify name

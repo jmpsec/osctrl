@@ -108,7 +108,16 @@ type UsersRequest struct {
 	Email     string `json:"email"`
 	Fullname  string `json:"fullname"`
 	Password  string `json:"password"`
+	Token     bool   `json:"token"`
 	Admin     bool   `json:"admin"`
+}
+
+// PermissionsRequest to receive user permissions changes requests
+type PermissionsRequest struct {
+	CSRFToken    string          `json:"csrftoken"`
+	Environments map[string]bool `json:"environments"`
+	Query        bool            `json:"query"`
+	Carve        bool            `json:"carve"`
 }
 
 // AdminResponse to be returned to requests

@@ -381,11 +381,13 @@ func main() {
 	// Admin: manage users
 	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
 	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(permissionsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(permissionsPOSTHandler))).Methods("POST")
 	// Admin: manage tokens
 	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(tokensGETHandler))).Methods("GET")
 	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(tokensPOSTHandler))).Methods("POST")
 	// logout
-	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutHandler))).Methods("POST")
+	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutPOSTHandler))).Methods("POST")
 
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
