@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -51,6 +52,14 @@ func jsonEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if environment is valid
 	if !envs.Exists(env) {
 		log.Printf("error unknown environment (%s)", env)
+		incMetric(metricJSONErr)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	// Check permissions
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, env) {
+		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return
 	}
@@ -106,7 +115,7 @@ func jsonPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], false, false, false, "") {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return

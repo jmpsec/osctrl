@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -81,7 +82,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], false, false, true, env) {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, env) {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return
@@ -161,7 +162,7 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], true, false, false, "") {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return

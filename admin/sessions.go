@@ -110,7 +110,7 @@ func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) 
 }
 
 // New creates a session with name without adding it to the registry.
-func (sm *SessionManager) New(r *http.Request, username string, admin bool) (UserSession, error) {
+func (sm *SessionManager) New(r *http.Request, username, level string) (UserSession, error) {
 	session := UserSession{
 		Username:  username,
 		IPAddress: r.Header.Get("X-Real-IP"),
@@ -119,9 +119,9 @@ func (sm *SessionManager) New(r *http.Request, username string, admin bool) (Use
 	}
 	values := make(sessionValues)
 	values["auth"] = true
-	values["admin"] = admin
-	values["username"] = username
-	values["csrftoken"] = generateCSRF()
+	values[ctxLevel] = level
+	values[ctxUser] = username
+	values[ctxCSRF] = generateCSRF()
 	session.Values = values
 	cookie, err := securecookie.EncodeMulti(defaultCookieName, session.Values, sm.Codecs...)
 	if err != nil {
@@ -156,14 +156,14 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(defaultCookieName); err != nil {
-		s, err = sm.New(r, user.Username, user.Admin)
+		s, err = sm.New(r, user.Username, levelPermissions(user))
 		if err != nil {
 			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
-			s, err = sm.New(r, user.Username, user.Admin)
+			s, err = sm.New(r, user.Username, levelPermissions(user))
 			if err != nil {
 				return s, err
 			}

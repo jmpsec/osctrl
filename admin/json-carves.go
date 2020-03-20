@@ -8,6 +8,7 @@ import (
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -56,7 +57,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
-	if !checkPermissions(ctx[ctxUser], false, true, false, "") {
+	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
 		log.Printf("%s has insuficient permissions", ctx[ctxUser])
 		incMetric(metricJSONErr)
 		return

@@ -229,7 +229,7 @@
 
       <li class="divider"></li>
 
-    {{ if eq .Level "admin" }}
+    {{ if or (eq .Level "query") (eq .Level "admin") }}
       <li class="nav-title">On-Demand Queries</li>
       <li class="nav-item">
         <a class="nav-link" href="/query/run">
@@ -243,7 +243,8 @@
       </li>
 
       <li class="divider"></li>
-
+    {{end }}
+    {{ if or (eq .Level "carve") (eq .Level "admin") }}
       <li class="nav-title">File Carving</li>
       <li class="nav-item">
         <a class="nav-link" href="/carves/run">
