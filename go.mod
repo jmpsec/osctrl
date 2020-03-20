@@ -11,17 +11,17 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
 	github.com/jinzhu/gorm v1.9.12
-	github.com/jmpsec/osctrl/backend v0.2.0
-	github.com/jmpsec/osctrl/carves v0.2.0
-	github.com/jmpsec/osctrl/environments v0.2.0
-	github.com/jmpsec/osctrl/logging v0.2.0
-	github.com/jmpsec/osctrl/metrics v0.2.0
-	github.com/jmpsec/osctrl/nodes v0.2.0
-	github.com/jmpsec/osctrl/queries v0.2.0
-	github.com/jmpsec/osctrl/settings v0.2.0
-	github.com/jmpsec/osctrl/types v0.2.0
-	github.com/jmpsec/osctrl/users v0.2.0
-	github.com/jmpsec/osctrl/utils v0.2.0
+	github.com/jmpsec/osctrl/backend v0.2.1
+	github.com/jmpsec/osctrl/carves v0.2.1
+	github.com/jmpsec/osctrl/environments v0.2.1
+	github.com/jmpsec/osctrl/logging v0.2.1
+	github.com/jmpsec/osctrl/metrics v0.2.1
+	github.com/jmpsec/osctrl/nodes v0.2.1
+	github.com/jmpsec/osctrl/queries v0.2.1
+	github.com/jmpsec/osctrl/settings v0.2.1
+	github.com/jmpsec/osctrl/types v0.2.1
+	github.com/jmpsec/osctrl/users v0.2.1
+	github.com/jmpsec/osctrl/utils v0.2.1
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
