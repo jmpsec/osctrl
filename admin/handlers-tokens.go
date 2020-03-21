@@ -68,7 +68,7 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 // Handle POST request for /tokens/{username}/refresh
 func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricTokenReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
 	// Get context data
 	ctx := r.Context().Value(contextKey("session")).(contextValue)
 	// Check permissions
@@ -90,8 +90,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("DebugService: Decoding POST body")
 	}
 	var t TokenRequest
-	var response TokenResponse
-	if err := json.NewDecoder(r.Body).Decode(&t); err == nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		incMetric(metricAdminErr)
 		return
@@ -125,7 +124,7 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAdminErr)
 		return
 	}
-	response = TokenResponse{
+	response := TokenResponse{
 		Token:        token,
 		ExpirationTS: utils.TimeTimestamp(exp),
 		Expiration:   utils.PastFutureTimes(exp),
