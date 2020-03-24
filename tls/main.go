@@ -192,18 +192,16 @@ func main() {
 		log.Println("DebugService: Environments refresher")
 	}
 	// Refresh environments as soon as service starts
-	go refreshEnvironments()
 	go func() {
 		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
+			envsmap = refreshEnvironments()
 			time.Sleep(time.Duration(_t) * time.Second)
-			go refreshEnvironments()
 		}
 	}()
-
 	// Sleep to reload settings
 	// FIXME Implement Redis cache
 	// FIXME splay this?
@@ -211,38 +209,29 @@ func main() {
 		log.Println("DebugService: Settings refresher")
 	}
 	// Refresh settings as soon as the service starts
-	go refreshSettings()
 	go func() {
 		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
+			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
-			go refreshSettings()
 		}
 	}()
 
 	// Initialize TLS handlers before router
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
-		handlers.WithEnvsMap(envsmap),
+		handlers.WithEnvsMap(&envsmap),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithSettingsMap(settingsmap),
+		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithMetrics(_metrics),
 		handlers.WithLogs(loggerTLS),
 	)
-	// Keeping maps updated in the handlers
-	go func() {
-		for {
-			time.Sleep(time.Duration(defaultMapRefresh) * time.Second)
-			handlersTLS.EnvsMap = envsmap
-			handlersTLS.SettingsMap = settingsmap
-		}
-	}()
 
 	/////////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	if settingsmgr.DebugService(settings.ServiceTLS) {

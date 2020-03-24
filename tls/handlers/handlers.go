@@ -51,12 +51,12 @@ const (
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
 	Envs        *environments.Environment
-	EnvsMap     environments.MapEnvironments
+	EnvsMap     *environments.MapEnvironments
 	Nodes       *nodes.NodeManager
 	Queries     *queries.Queries
 	Carves      *carves.Carves
 	Settings    *settings.Settings
-	SettingsMap settings.MapSettings
+	SettingsMap *settings.MapSettings
 	Metrics     *metrics.Metrics
 	Logs        *logging.LoggerTLS
 }
@@ -69,9 +69,21 @@ func WithEnvs(envs *environments.Environment) HandlersOption {
 	}
 }
 
-func WithEnvsMap(envsmap environments.MapEnvironments) HandlersOption {
+func WithEnvsMap(envsmap *environments.MapEnvironments) HandlersOption {
 	return func(h *HandlersTLS) {
 		h.EnvsMap = envsmap
+	}
+}
+
+func WithSettings(settings *settings.Settings) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Settings = settings
+	}
+}
+
+func WithSettingsMap(settingsmap *settings.MapSettings) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.SettingsMap = settingsmap
 	}
 }
 
@@ -90,18 +102,6 @@ func WithQueries(queries *queries.Queries) HandlersOption {
 func WithCarves(carves *carves.Carves) HandlersOption {
 	return func(h *HandlersTLS) {
 		h.Carves = carves
-	}
-}
-
-func WithSettings(settings *settings.Settings) HandlersOption {
-	return func(h *HandlersTLS) {
-		h.Settings = settings
-	}
-}
-
-func WithSettingsMap(settingsmap settings.MapSettings) HandlersOption {
-	return func(h *HandlersTLS) {
-		h.SettingsMap = settingsmap
 	}
 }
 
@@ -171,7 +171,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -218,7 +218,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -245,7 +245,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Get environment
 	e, err := h.Envs.Get(env)
 	if err != nil {
@@ -279,7 +279,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		response = types.ConfigResponse{NodeInvalid: true}
 	}
 	// Debug HTTP
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		if x, ok := response.([]byte); ok {
 			log.Printf("Configuration: %s", string(x))
 		} else {
@@ -326,7 +326,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t types.LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -348,14 +348,14 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		h.Logs.ProcessLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"), h.EnvsMap[env].DebugHTTP)
+		h.Logs.ProcessLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"), (*h.EnvsMap)[env].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
 	response := types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -381,7 +381,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -419,13 +419,13 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response and serialize queries
 	var response interface{}
 	if accelerate {
-		sAccelerate := int(h.SettingsMap[settings.AcceleratedSeconds].Integer)
+		sAccelerate := int((*h.SettingsMap)[settings.AcceleratedSeconds].Integer)
 		response = types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid}
 	} else {
 		response = types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid}
 	}
 	// Debug HTTP
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -451,7 +451,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -470,14 +470,14 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		nodeInvalid = false
 		// Process submitted results
-		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env, h.EnvsMap[env].DebugHTTP)
+		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env, (*h.EnvsMap)[env].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
 	response := types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
@@ -503,7 +503,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	e, err := h.Envs.Get(env)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
@@ -570,7 +570,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -600,7 +600,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
@@ -626,7 +626,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
@@ -644,7 +644,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
-	if h.EnvsMap[env].DebugHTTP {
+	if (*h.EnvsMap)[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response

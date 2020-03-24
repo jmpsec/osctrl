@@ -148,23 +148,25 @@ func incMetric(name string) {
 }
 
 // Helper to refresh the environments map until cache/Redis support is implemented
-func refreshEnvironments() {
+func refreshEnvironments() environments.MapEnvironments {
 	log.Printf("Refreshing environments...\n")
-	var err error
-	envsmap, err = envs.GetMap()
+	_envsmap, err := envs.GetMap()
 	if err != nil {
 		log.Printf("error refreshing environments %v\n", err)
+		return environments.MapEnvironments{}
 	}
+	return _envsmap
 }
 
 // Helper to refresh the settings until cache/Redis support is implemented
-func refreshSettings() {
+func refreshSettings() settings.MapSettings {
 	log.Printf("Refreshing settings...\n")
-	var err error
-	settingsmap, err = settingsmgr.GetMap(settings.ServiceTLS)
+	_settingsmap, err := settingsmgr.GetMap(settings.ServiceTLS)
 	if err != nil {
 		log.Printf("error refreshing settings %v\n", err)
+		return settings.MapSettings{}
 	}
+	return _settingsmap
 }
 
 // Usage for service binary
