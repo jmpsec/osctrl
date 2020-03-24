@@ -19,6 +19,7 @@ require (
 	github.com/jmpsec/osctrl/nodes v0.2.1
 	github.com/jmpsec/osctrl/queries v0.2.1
 	github.com/jmpsec/osctrl/settings v0.2.1
+	github.com/jmpsec/osctrl/tls/handlers v0.2.1
 	github.com/jmpsec/osctrl/types v0.2.1
 	github.com/jmpsec/osctrl/users v0.2.1
 	github.com/jmpsec/osctrl/utils v0.2.1
@@ -51,3 +52,5 @@ replace github.com/jmpsec/osctrl/users => ./users
 replace github.com/jmpsec/osctrl/utils => ./utils
 
 replace github.com/jmpsec/osctrl/logging => ./logging
+
+replace github.com/jmpsec/osctrl/tls/handlers => ./tls/handlers

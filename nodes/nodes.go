@@ -287,7 +287,7 @@ func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsDat
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
-func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localname, ipaddress, confighash, daemonhash, osqueryversion, uuid string) error {
+func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) error {
 	// Retrieve node
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
@@ -305,67 +305,67 @@ func (n *NodeManager) UpdateMetadataByUUID(user, osqueryuser, hostname, localnam
 		OsqueryVersion: "",
 	}
 	// System user metadata update, if different
-	if (user != "") && (user != node.Username) {
-		data.Username = user
+	if (metadata.Username != "") && (metadata.Username != node.Username) {
+		data.Username = metadata.Username
 		e := NodeHistoryUsername{
 			UUID:     node.UUID,
-			Username: user,
+			Username: metadata.Username,
 		}
 		if err := n.NewHistoryUsername(e); err != nil {
 			return fmt.Errorf("newNodeHistoryUsername %v", err)
 		}
 	}
 	// Osquery user metadata update, if different
-	if (osqueryuser != "") && (osqueryuser != node.OsqueryUser) {
-		data.OsqueryUser = osqueryuser
+	if (metadata.OsqueryUser != "") && (metadata.OsqueryUser != node.OsqueryUser) {
+		data.OsqueryUser = metadata.OsqueryUser
 	}
 	// Hostname metadata update, if different
-	if (hostname != "") && (hostname != node.Hostname) {
-		data.Hostname = hostname
+	if (metadata.Hostname != "") && (metadata.Hostname != node.Hostname) {
+		data.Hostname = metadata.Hostname
 		e := NodeHistoryHostname{
 			UUID:     node.UUID,
-			Hostname: hostname,
+			Hostname: metadata.Hostname,
 		}
 		if err := n.NewHistoryHostname(e); err != nil {
 			return fmt.Errorf("newNodeHistoryHostname %v", err)
 		}
 	}
 	// Localname metadata update, if different
-	if (localname != "") && (localname != node.Localname) {
-		data.Localname = localname
+	if (metadata.Localname != "") && (metadata.Localname != node.Localname) {
+		data.Localname = metadata.Localname
 		e := NodeHistoryLocalname{
 			UUID:      node.UUID,
-			Localname: localname,
+			Localname: metadata.Localname,
 		}
 		if err := n.NewHistoryLocalname(e); err != nil {
 			return fmt.Errorf("newNodeHistoryLocalname %v", err)
 		}
 	}
 	// IP Address metadata update, if different
-	if (ipaddress != "") && (ipaddress != node.IPAddress) {
-		data.IPAddress = ipaddress
+	if (metadata.IPAddress != "") && (metadata.IPAddress != node.IPAddress) {
+		data.IPAddress = metadata.IPAddress
 		e := NodeHistoryIPAddress{
 			UUID:      node.UUID,
-			IPAddress: ipaddress,
+			IPAddress: metadata.IPAddress,
 			Count:     1,
 		}
 		if err := n.NewHistoryIPAddress(e); err != nil {
 			return fmt.Errorf("newNodeHistoryIPAddress %v", err)
 		}
-	} else if err := n.IncHistoryIPAddress(node.UUID, ipaddress); err != nil {
+	} else if err := n.IncHistoryIPAddress(node.UUID, metadata.IPAddress); err != nil {
 		return fmt.Errorf("incNodeHistoryIPAddress %v", err)
 	}
 	// Osquery configuration metadata update, if different
-	if (confighash != "") && (confighash != node.ConfigHash) {
-		data.ConfigHash = confighash
+	if (metadata.ConfigHash != "") && (metadata.ConfigHash != node.ConfigHash) {
+		data.ConfigHash = metadata.ConfigHash
 	}
 	// Osquery daemon hash update, if different
-	if (daemonhash != "") && (daemonhash != node.DaemonHash) {
-		data.DaemonHash = daemonhash
+	if (metadata.DaemonHash != "") && (metadata.DaemonHash != node.DaemonHash) {
+		data.DaemonHash = metadata.DaemonHash
 	}
 	// Osquery version metadata update, if different
-	if (osqueryversion != "") && (osqueryversion != node.OsqueryVersion) {
-		data.OsqueryVersion = osqueryversion
+	if (metadata.OsqueryVersion != "") && (metadata.OsqueryVersion != node.OsqueryVersion) {
+		data.OsqueryVersion = metadata.OsqueryVersion
 	}
 	if err := n.DB.Model(&node).Updates(data).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)

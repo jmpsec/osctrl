@@ -631,8 +631,14 @@ DEST="$DEST_PATH" make install_cli
 
 # If we are in dev, create environment and enroll host
 if [[ "$MODE" == "dev" ]]; then
-  log "Creating environment for dev"
   __db_conf="$DEST_PATH/config/$DB_CONF"
+
+  # Create admin user
+  log "Creating admin user"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
+
+  # Create environment for dev
+  log "Creating environment for dev"
   __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
   "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
@@ -649,15 +655,12 @@ if [[ "$MODE" == "dev" ]]; then
     sleep 1
   done
 
+  # Enroll host in environment
   if [[ "$ENROLL" == true ]]; then
     log "Adding host in dev environment"
     eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment quick-add -n "dev" )
   fi
 fi
-
-# Create admin user
-log "Creating admin user"
-"$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
 
 # Ascii art is always appreciated
 if [[ "$DISTRO" == "ubuntu" ]]; then

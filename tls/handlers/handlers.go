@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"compress/gzip"
@@ -8,7 +8,10 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/logging"
+	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -45,50 +48,135 @@ const (
 	metricOnelinerOk  = "oneliner-ok"
 )
 
-// Handler to be used as health check
-func okHTTPHandler(w http.ResponseWriter, r *http.Request) {
+// HandlersTLS to keep all handlers for TLS
+type HandlersTLS struct {
+	Envs        *environments.Environment
+	EnvsMap     environments.MapEnvironments
+	Nodes       *nodes.NodeManager
+	Queries     *queries.Queries
+	Carves      *carves.Carves
+	Settings    *settings.Settings
+	SettingsMap settings.MapSettings
+	Metrics     *metrics.Metrics
+	Logs        *logging.LoggerTLS
+}
+
+type HandlersOption func(*HandlersTLS)
+
+func WithEnvs(envs *environments.Environment) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Envs = envs
+	}
+}
+
+func WithEnvsMap(envsmap environments.MapEnvironments) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.EnvsMap = envsmap
+	}
+}
+
+func WithNodes(nodes *nodes.NodeManager) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Nodes = nodes
+	}
+}
+
+func WithQueries(queries *queries.Queries) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Queries = queries
+	}
+}
+
+func WithCarves(carves *carves.Carves) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Carves = carves
+	}
+}
+
+func WithSettings(settings *settings.Settings) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Settings = settings
+	}
+}
+
+func WithSettingsMap(settingsmap settings.MapSettings) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.SettingsMap = settingsmap
+	}
+}
+
+func WithMetrics(metrics *metrics.Metrics) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Metrics = metrics
+	}
+}
+
+func WithLogs(logs *logging.LoggerTLS) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Logs = logs
+	}
+}
+
+// CreateHandlersTLS to initialize the TLS handlers struct
+func CreateHandlersTLS(opts ...HandlersOption) *HandlersTLS {
+	h := &HandlersTLS{}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
+}
+
+// Helper to send metrics if it is enabled
+func (h *HandlersTLS) Inc(name string) {
+	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceTLS) {
+		h.Metrics.Inc(name)
+	}
+}
+
+// RootHandler to be used as health check
+func (h *HandlersTLS) RootHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte("💥"))
 }
 
-// Handle health requests
-func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricHealthReq)
+// HealthHandler for health requests
+func (h *HandlersTLS) HealthHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricHealthReq)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte("✅"))
-	incMetric(metricHealthOK)
+	h.Inc(metricHealthOK)
 }
 
-// Handle error requests
-func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
+// ErrorHandler for error requests
+func (h *HandlersTLS) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
 }
 
-// Function to handle the enroll requests from osquery nodes
-func enrollHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricEnrollReq)
+// EnrollHandler - Function to handle the enroll requests from osquery nodes
+func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricEnrollReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricEnrollErr)
+		h.Inc(metricEnrollErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricEnrollErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricEnrollErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricEnrollErr)
+		h.Inc(metricEnrollErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -96,72 +184,72 @@ func enrollHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeKey string
 	var newNode nodes.OsqueryNode
 	nodeInvalid := true
-	if checkValidSecret(t.EnrollSecret, env) {
+	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier)
 		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
-		if nodesmgr.CheckByUUID(t.HostIdentifier) {
-			err := nodesmgr.Archive(t.HostIdentifier, "exists")
+		if h.Nodes.CheckByUUID(t.HostIdentifier) {
+			err := h.Nodes.Archive(t.HostIdentifier, "exists")
 			if err != nil {
-				incMetric(metricEnrollErr)
+				h.Inc(metricEnrollErr)
 				log.Printf("error archiving node %v", err)
 			}
 			// Update existing with new enroll data
-			err = nodesmgr.UpdateByUUID(newNode, t.HostIdentifier)
+			err = h.Nodes.UpdateByUUID(newNode, t.HostIdentifier)
 			if err != nil {
-				incMetric(metricEnrollErr)
+				h.Inc(metricEnrollErr)
 				log.Printf("error updating existing node %v", err)
 			} else {
 				nodeInvalid = false
 			}
 		} else { // New node, persist it
-			err := nodesmgr.Create(newNode)
+			err := h.Nodes.Create(newNode)
 			if err != nil {
-				incMetric(metricEnrollErr)
+				h.Inc(metricEnrollErr)
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
 			}
 		}
 	} else {
-		incMetric(metricEnrollErr)
+		h.Inc(metricEnrollErr)
 		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricEnrollOK)
+	h.Inc(metricEnrollOK)
 }
 
-// Function to handle the configuration requests from osquery nodes
-func configHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricConfigReq)
+// ConfigHandler - Function to handle the configuration requests from osquery nodes
+func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricConfigReq)
 	var response interface{}
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricConfigErr)
+		h.Inc(metricConfigErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricConfigErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricConfigErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Get environment
-	e, err := envs.Get(env)
+	e, err := h.Envs.Get(env)
 	if err != nil {
-		incMetric(metricConfigErr)
+		h.Inc(metricConfigErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -169,21 +257,21 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.ConfigRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricConfigErr)
+		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
-		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if h.Nodes.CheckByKey(t.NodeKey) {
+		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
-			incMetric(metricConfigErr)
+			h.Inc(metricConfigErr)
 			log.Printf("error updating IP address %v", err)
 		}
 		// Refresh last config for node
-		err = nodesmgr.RefreshLastConfig(t.NodeKey)
+		err = h.Nodes.RefreshLastConfig(t.NodeKey)
 		if err != nil {
-			incMetric(metricConfigErr)
+			h.Inc(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
 		response = []byte(e.Configuration)
@@ -191,7 +279,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		response = types.ConfigResponse{NodeInvalid: true}
 	}
 	// Debug HTTP
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		if x, ok := response.([]byte); ok {
 			log.Printf("Configuration: %s", string(x))
 		} else {
@@ -200,23 +288,23 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricConfigOK)
+	h.Inc(metricConfigOK)
 }
 
-// Function to handle the log requests from osquery nodes, both status and results
-func logHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricLogReq)
+// LogHandler - Function to handle the log requests from osquery nodes, both status and results
+func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricLogReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricLogErr)
+		h.Inc(metricLogErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricLogErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricLogErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
@@ -225,25 +313,25 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Encoding") == "gzip" {
 		r.Body, err = gzip.NewReader(r.Body)
 		if err != nil {
-			incMetric(metricLogErr)
+			h.Inc(metricLogErr)
 			log.Printf("error decoding gzip body %v", err)
 		}
 		//defer r.Body.Close()
 		defer func() {
 			err := r.Body.Close()
 			if err != nil {
-				incMetric(metricLogErr)
+				h.Inc(metricLogErr)
 				log.Printf("Failed to close body %v", err)
 			}
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t types.LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricLogErr)
+		h.Inc(metricLogErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -251,77 +339,77 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		err := r.Body.Close()
 		if err != nil {
-			incMetric(metricLogErr)
+			h.Inc(metricLogErr)
 			log.Printf("Failed to close body %v", err)
 		}
 	}()
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
+	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		processLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"))
+		h.Logs.ProcessLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"), h.EnvsMap[env].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
 	response := types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricLogOK)
+	h.Inc(metricLogOK)
 }
 
-// Function to handle on-demand queries to osquery nodes
-func queryReadHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricReadReq)
+// QueryReadHandler - Function to handle on-demand queries to osquery nodes
+func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricReadReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricReadErr)
+		h.Inc(metricReadErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricReadErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricReadErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricReadErr)
+		h.Inc(metricReadErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	var nodeInvalid, accelerate bool
 	qs := make(queries.QueryReadQueries)
 	// Lookup node by node_key
-	node, err := nodesmgr.GetByKey(t.NodeKey)
+	node, err := h.Nodes.GetByKey(t.NodeKey)
 	if err == nil {
-		err = nodesmgr.UpdateIPAddress(r.Header.Get("X-Real-IP"), node)
+		err = h.Nodes.UpdateIPAddress(r.Header.Get("X-Real-IP"), node)
 		if err != nil {
-			incMetric(metricReadErr)
+			h.Inc(metricReadErr)
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
-		qs, accelerate, err = queriesmgr.NodeQueries(node)
+		qs, accelerate, err = h.Queries.NodeQueries(node)
 		if err != nil {
-			incMetric(metricReadErr)
+			h.Inc(metricReadErr)
 			log.Printf("error getting queries from db %v", err)
 		}
 		// Refresh last query read request
-		err = nodesmgr.RefreshLastQueryRead(t.NodeKey)
+		err = h.Nodes.RefreshLastQueryRead(t.NodeKey)
 		if err != nil {
-			incMetric(metricReadErr)
+			h.Inc(metricReadErr)
 			log.Printf("error refreshing last query read %v", err)
 		}
 	} else {
@@ -331,235 +419,235 @@ func queryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response and serialize queries
 	var response interface{}
 	if accelerate {
-		sAccelerate := int(settingsmap[settings.AcceleratedSeconds].Integer)
+		sAccelerate := int(h.SettingsMap[settings.AcceleratedSeconds].Integer)
 		response = types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid}
 	} else {
 		response = types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid}
 	}
 	// Debug HTTP
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricReadOK)
+	h.Inc(metricReadOK)
 }
 
 // Function to handle distributed query results from osquery nodes
-func queryWriteHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricWriteReq)
+func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricWriteReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricWriteErr)
+		h.Inc(metricWriteErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricWriteErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricWriteErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricWriteErr)
+		h.Inc(metricWriteErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
-		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if h.Nodes.CheckByKey(t.NodeKey) {
+		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
-			incMetric(metricWriteErr)
+			h.Inc(metricWriteErr)
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
 		// Process submitted results
-		go processLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env)
+		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env, h.EnvsMap[env].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
-	response:= types.QueryWriteResponse{NodeInvalid: nodeInvalid}
+	response := types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricWriteOK)
+	h.Inc(metricWriteOK)
 }
 
-// Function to handle the endpoint for quick enrollment script distribution
-func quickEnrollHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricOnelinerReq)
+// QuickEnrollHandler - Function to handle the endpoint for quick enrollment script distribution
+func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricOnelinerReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricOnelinerErr)
+		h.Inc(metricOnelinerErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricOnelinerErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricOnelinerErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
-	e, err := envs.Get(env)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
+	e, err := h.Envs.Get(env)
 	if err != nil {
-		incMetric(metricOnelinerErr)
+		h.Inc(metricOnelinerErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Retrieve type of script
 	script, ok := vars["script"]
 	if !ok {
-		incMetric(metricOnelinerErr)
+		h.Inc(metricOnelinerErr)
 		log.Println("Script is missing")
 		return
 	}
 	// Retrieve SecretPath variable
 	secretPath, ok := vars["secretpath"]
 	if !ok {
-		incMetric(metricOnelinerErr)
+		h.Inc(metricOnelinerErr)
 		log.Println("Path is missing")
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
-		if !checkValidEnrollSecretPath(env, secretPath) {
-			incMetric(metricOnelinerErr)
+		if !h.checkValidEnrollSecretPath(env, secretPath) {
+			h.Inc(metricOnelinerErr)
 			log.Println("Invalid Path")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
-		if !checkValidRemoveSecretPath(env, secretPath) {
-			incMetric(metricOnelinerErr)
+		if !h.checkValidRemoveSecretPath(env, secretPath) {
+			h.Inc(metricOnelinerErr)
 			log.Println("Invalid Path")
 			return
 		}
 	}
 	// Prepare response with the script
-	quickScript, err := environments.QuickAddScript(projectName, script, e)
+	quickScript, err := environments.QuickAddScript("", script, e)
 	if err != nil {
-		incMetric(metricOnelinerErr)
+		h.Inc(metricOnelinerErr)
 		log.Printf("error getting script %v", err)
 		return
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.TextPlainUTF8, http.StatusOK, []byte(quickScript))
-	incMetric(metricOnelinerOk)
+	h.Inc(metricOnelinerOk)
 }
 
-// Function to handle the initialization of the file carver
+// CarveInitHandler - Function to handle the initialization of the file carver
 // This function does not use go routines to handle requests because the session_id returned
 // must be already created in the DB, otherwise block requests will fail.
-func carveInitHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricInitReq)
+func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricInitReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricInitErr)
+		h.Inc(metricInitErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricInitErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricInitErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricInitErr)
+		h.Inc(metricInitErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	initCarve := false
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
-	if nodesmgr.CheckByKey(t.NodeKey) {
-		err = nodesmgr.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
+	if h.Nodes.CheckByKey(t.NodeKey) {
+		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
 		if err != nil {
-			incMetric(metricInitErr)
+			h.Inc(metricInitErr)
 			log.Printf("error updating IP Address %v", err)
 		}
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		if err := processCarveInit(t, carveSessionID, env); err != nil {
-			incMetric(metricInitErr)
+		if err := h.ProcessCarveInit(t, carveSessionID, env); err != nil {
+			h.Inc(metricInitErr)
 			log.Printf("error procesing carve init %v", err)
 			initCarve = false
 		}
 	}
 	// Prepare response
-	response:=types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
+	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
-	if envsmap[env].DebugHTTP {
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricInitOK)
+	h.Inc(metricInitOK)
 }
 
-// Function to handle the blocks of the file carver
-func carveBlockHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricBlockReq)
+// CarveBlockHandler - Function to handle the blocks of the file carver
+func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricBlockReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricBlockErr)
+		h.Inc(metricBlockErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricBlockErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricBlockErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, envsmap[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, h.EnvsMap[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		incMetric(metricBlockErr)
+		h.Inc(metricBlockErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	blockCarve := false
 	// Check if provided session_id matches with the request_id (carve query name)
-	if filecarves.CheckCarve(t.SessionID, t.RequestID) {
+	if h.Carves.CheckCarve(t.SessionID, t.RequestID) {
 		blockCarve = true
 		// Process received block
-		go processCarveBlock(t, env)
+		go h.ProcessCarveBlock(t, env)
 	}
 	// Prepare response
-	response:=types.CarveBlockResponse{Success: blockCarve}
-	if envsmap[env].DebugHTTP {
+	response := types.CarveBlockResponse{Success: blockCarve}
+	if h.EnvsMap[env].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricBlockOK)
+	h.Inc(metricBlockOK)
 }
