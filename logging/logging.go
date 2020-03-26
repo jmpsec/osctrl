@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 )
 
@@ -10,15 +12,19 @@ type LoggerTLS struct {
 	Graylog *LoggerGraylog
 	Splunk  *LoggerSplunk
 	Logging string
+	Nodes   *nodes.NodeManager
+	Queries *queries.Queries
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging string, mgr *settings.Settings) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
 		DB:      &LoggerDB{},
 		Splunk:  &LoggerSplunk{},
 		Logging: logging,
 		Graylog: &LoggerGraylog{},
+		Nodes:   nodes,
+		Queries: queries,
 	}
 	switch logging {
 	case settings.LoggingSplunk:

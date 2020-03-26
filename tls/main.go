@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 
 	"github.com/gorilla/mux"
@@ -45,6 +46,8 @@ const (
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
 	defaultAccelerate int = 300
+	// Default value for keeping maps updated in handlers
+	defaultMapRefresh int = 60
 )
 
 var (
@@ -54,19 +57,18 @@ var (
 
 // Global variables
 var (
-	tlsConfig      types.JSONConfigurationService
-	db             *gorm.DB
-	settingsmgr    *settings.Settings
-	envs           *environments.Environment
-	envsmap        environments.MapEnvironments
-	envsTicker     *time.Ticker
-	settingsmap    settings.MapSettings
-	settingsTicker *time.Ticker
-	nodesmgr       *nodes.NodeManager
-	queriesmgr     *queries.Queries
-	filecarves     *carves.Carves
-	_metrics       *metrics.Metrics
-	loggerTLS      *logging.LoggerTLS
+	tlsConfig   types.JSONConfigurationService
+	db          *gorm.DB
+	settingsmgr *settings.Settings
+	envs        *environments.Environment
+	envsmap     environments.MapEnvironments
+	settingsmap settings.MapSettings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
+	_metrics    *metrics.Metrics
+	loggerTLS   *logging.LoggerTLS
+	handlersTLS *handlers.HandlersTLS
 )
 
 // Variables for flags
@@ -178,13 +180,58 @@ func main() {
 	loadingSettings()
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
 		log.Printf("Error loading logger - %s: %v", tlsConfig.Logging, err)
 	}
 
-	// multiple listeners channel
-	finish := make(chan bool)
+	// Sleep to reload environments
+	// FIXME Implement Redis cache
+	// FIXME splay this?
+	if settingsmgr.DebugService(settings.ServiceTLS) {
+		log.Println("DebugService: Environments refresher")
+	}
+	// Refresh environments as soon as service starts
+	go func() {
+		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		for {
+			envsmap = refreshEnvironments()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+	// Sleep to reload settings
+	// FIXME Implement Redis cache
+	// FIXME splay this?
+	if settingsmgr.DebugService(settings.ServiceTLS) {
+		log.Println("DebugService: Settings refresher")
+	}
+	// Refresh settings as soon as the service starts
+	go func() {
+		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		for {
+			settingsmap = refreshSettings()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+
+	// Initialize TLS handlers before router
+	handlersTLS = handlers.CreateHandlersTLS(
+		handlers.WithEnvs(envs),
+		handlers.WithEnvsMap(&envsmap),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(filecarves),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithSettingsMap(&settingsmap),
+		handlers.WithMetrics(_metrics),
+		handlers.WithLogs(loggerTLS),
+	)
 
 	/////////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	if settingsmgr.DebugService(settings.ServiceTLS) {
@@ -193,66 +240,27 @@ func main() {
 	// Create router for TLS endpoint
 	routerTLS := mux.NewRouter()
 	// TLS: root
-	routerTLS.HandleFunc("/", okHTTPHandler)
+	routerTLS.HandleFunc("/", handlersTLS.RootHandler)
 	// TLS: testing
-	routerTLS.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
+	routerTLS.HandleFunc(healthPath, handlersTLS.HealthHandler).Methods("GET")
 	// TLS: error
-	routerTLS.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
+	routerTLS.HandleFunc(errorPath, handlersTLS.ErrorHandler).Methods("GET")
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultEnrollPath, enrollHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultConfigPath, configHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultLogPath, logHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryReadPath, queryReadHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryWritePath, queryWriteHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverInitPath, carveInitHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, carveBlockHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultEnrollPath, handlersTLS.EnrollHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultConfigPath, handlersTLS.ConfigHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultLogPath, handlersTLS.LogHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryReadPath, handlersTLS.QueryReadHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryWritePath, handlersTLS.QueryWriteHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverInitPath, handlersTLS.CarveInitHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
-	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", quickEnrollHandler).Methods("GET")
+	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
 
-	// Ticker to reload environments
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Environments ticker")
-	}
-	// Refresh environments as soon as service starts
-	go refreshEnvironments()
-	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		envsTicker = time.NewTicker(time.Duration(_t) * time.Second)
-		for {
-			select {
-			case <-envsTicker.C:
-				go refreshEnvironments()
-			}
-		}
-	}()
+	//////////////////////////////// Everything is ready at this point!
 
-	// Ticker to reload settings
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Settings ticker")
-	}
-	// Refresh settings as soon as the service starts
-	go refreshSettings()
-	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		settingsTicker = time.NewTicker(time.Duration(_t) * time.Second)
-		for {
-			select {
-			case <-settingsTicker.C:
-				go refreshSettings()
-			}
-		}
-	}()
+	// multiple listeners channel
+	finish := make(chan bool)
 
 	// Launch HTTP server for TLS endpoint
 	go func() {

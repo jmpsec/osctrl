@@ -256,8 +256,6 @@ func main() {
 	// Initialize service settings
 	log.Println("Loading service settings")
 	loadingSettings()
-	// multiple listeners channel
-	finish := make(chan bool)
 
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
@@ -415,6 +413,9 @@ func main() {
 			}
 		}
 	}()
+
+	// multiple listeners channel
+	finish := make(chan bool)
 
 	// Launch HTTP server for admin
 	go func() {

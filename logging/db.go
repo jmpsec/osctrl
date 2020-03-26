@@ -7,8 +7,8 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/jmpsec/osctrl/backend"
-	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 )
 
 const (
@@ -82,19 +82,28 @@ func CreateLoggerDB() (*LoggerDB, error) {
 func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
 	log.Printf("Setting DB logging settings\n")
 	// Setting link for on-demand queries
-	v := settings.QueryLink
-	if err := mgr.SetString(v, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", v, settings.QueryResultLink, err)
+	if !mgr.IsValue(settings.ServiceAdmin, settings.QueryResultLink) {
+		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.QueryResultLink, settings.QueryLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.QueryResultLink, err)
+		}
+	} else if err := mgr.SetString(settings.QueryLink, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
+		log.Printf("Error setting %s with %s - %v", settings.QueryResultLink, settings.QueryLink, err)
 	}
-	v = settings.StatusLink
 	// Setting link for status logs
-	if err := mgr.SetString(v, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", v, settings.StatusLogsLink, err)
+	if !mgr.IsValue(settings.ServiceAdmin, settings.StatusLogsLink) {
+		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.StatusLogsLink, settings.StatusLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+		}
+	} else if err := mgr.SetString(settings.StatusLink, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
+		log.Printf("Error setting %s with %s - %v", settings.StatusLogsLink, settings.StatusLink, err)
 	}
-	v = settings.ResultsLink
 	// Setting link for result logs
-	if err := mgr.SetString(v, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", v, settings.ResultLogsLink, err)
+	if !mgr.IsValue(settings.ServiceAdmin, settings.ResultLogsLink) {
+		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.ResultLogsLink, settings.ResultsLink); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+		}
+	} else if err := mgr.SetString(settings.ResultsLink, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
+		log.Printf("Error setting %s with %s - %v", settings.ResultLogsLink, settings.ResultsLink, err)
 	}
 }
 

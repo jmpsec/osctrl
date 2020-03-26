@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"log"
@@ -7,12 +7,12 @@ import (
 	"github.com/jmpsec/osctrl/types"
 )
 
-// Function to initialize a file carve from a node
-func processCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
+// ProcessCarveInit - Function to initialize a file carve from a node
+func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
 	// Retrieve node
-	node, err := nodesmgr.GetByKey(req.NodeKey)
+	node, err := h.Nodes.GetByKey(req.NodeKey)
 	if err != nil {
-		incMetric(metricInitErr)
+		h.Inc(metricInitErr)
 		log.Printf("error retrieving node %s", err)
 		return err
 	}
@@ -30,18 +30,18 @@ func processCarveInit(req types.CarveInitRequest, sessionid, environment string)
 		Status:          carves.StatusInitialized,
 	}
 	// Create File Carve
-	err = filecarves.CreateCarve(carve)
+	err = h.Carves.CreateCarve(carve)
 	if err != nil {
-		incMetric(metricInitErr)
+		h.Inc(metricInitErr)
 		log.Printf("error creating  CarvedFile %v", err)
 		return err
 	}
 	return nil
 }
 
-// Function to process one block from a file carve
+// ProcessCarveBlock - Function to process one block from a file carve
 // FIXME it can be more efficient on db access
-func processCarveBlock(req types.CarveBlockRequest, environment string) {
+func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment string) {
 	// Prepare carve block
 	block := carves.CarvedBlock{
 		RequestID:   req.RequestID,
@@ -52,24 +52,24 @@ func processCarveBlock(req types.CarveBlockRequest, environment string) {
 		Size:        len(req.Data),
 	}
 	// Create Block
-	if err := filecarves.CreateBlock(block); err != nil {
-		incMetric(metricBlockErr)
+	if err := h.Carves.CreateBlock(block); err != nil {
+		h.Inc(metricBlockErr)
 		log.Printf("error creating CarvedBlock %v", err)
 	}
 	// Bump block completion
-	if err := filecarves.CompleteBlock(req.SessionID); err != nil {
-		incMetric(metricBlockErr)
+	if err := h.Carves.CompleteBlock(req.SessionID); err != nil {
+		h.Inc(metricBlockErr)
 		log.Printf("error completing block %v", err)
 	}
 	// If it is completed, set status
-	if filecarves.Completed(req.SessionID) {
-		if err := filecarves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
-			incMetric(metricBlockErr)
+	if h.Carves.Completed(req.SessionID) {
+		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
+			h.Inc(metricBlockErr)
 			log.Printf("error completing carve %v", err)
 		}
 	} else {
-		if err := filecarves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
-			incMetric(metricBlockErr)
+		if err := h.Carves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
+			h.Inc(metricBlockErr)
 			log.Printf("error progressing carve %v", err)
 		}
 	}

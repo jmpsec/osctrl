@@ -18,3 +18,5 @@ script:
   - go build -o bin/osctrl-tls tls/*.go
   - go build -o bin/osctrl-admin admin/*.go
   - go build -o bin/osctrl-cli cli/*.go
+  - go test ./utils -v
+  - go test ./tls/handlers -v

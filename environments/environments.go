@@ -177,7 +177,7 @@ func (environment *Environment) Names() ([]string, error) {
 func (environment *Environment) GetMap() (MapEnvironments, error) {
 	all, err := environment.All()
 	if err != nil {
-		return MapEnvironments{}, fmt.Errorf("error getting environments %v", err)
+		return nil, fmt.Errorf("error getting environments %v", err)
 	}
 	_map := make(MapEnvironments)
 	for _, e := range all {
