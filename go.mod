@@ -16,8 +16,8 @@ require (
 	github.com/jmpsec/osctrl/environments v0.2.1
 	github.com/jmpsec/osctrl/logging v0.2.1
 	github.com/jmpsec/osctrl/metrics v0.2.1
-	github.com/jmpsec/osctrl/nodes v0.2.1
-	github.com/jmpsec/osctrl/queries v0.2.1
+	github.com/jmpsec/osctrl/nodes v0.0.0-20200321003619-c21be7214ee4
+	github.com/jmpsec/osctrl/queries v0.0.0-20200321003619-c21be7214ee4
 	github.com/jmpsec/osctrl/settings v0.2.1
 	github.com/jmpsec/osctrl/tls/handlers v0.2.1
 	github.com/jmpsec/osctrl/types v0.2.1
@@ -26,7 +26,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
-	github.com/segmentio/ksuid v1.0.2
 	github.com/spf13/viper v1.6.2
 	github.com/urfave/cli v1.20.0
 )

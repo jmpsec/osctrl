@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
+	"crypto/sha1"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -17,11 +17,12 @@ import (
 )
 
 // Helper to generate a random enough node key
-func generateNodeKey(uuid string) string {
-	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
-	hasher := md5.New()
+func generateNodeKey(uuid string, ts time.Time) string {
+	timestamp := strconv.FormatInt(ts.UTC().UnixNano(), 10)
+	hasher := sha1.New()
 	_, _ = hasher.Write([]byte(uuid + timestamp))
-	return hex.EncodeToString(hasher.Sum(nil))
+	bs := hasher.Sum(nil)
+	return fmt.Sprintf("%x", bs)
 }
 
 // Helper to generate a carve session_id using KSUID

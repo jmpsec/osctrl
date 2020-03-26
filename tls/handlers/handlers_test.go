@@ -37,4 +37,3 @@ func TestErrorHandler(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	assert.Equal(t, "uh oh...", rr.Body.String())
 }
-

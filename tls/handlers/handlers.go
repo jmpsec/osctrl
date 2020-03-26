@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/carves"
@@ -186,7 +187,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	nodeInvalid := true
 	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
-		nodeKey = generateNodeKey(t.HostIdentifier)
+		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
 		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
 		if h.Nodes.CheckByUUID(t.HostIdentifier) {
