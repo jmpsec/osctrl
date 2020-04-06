@@ -26,14 +26,9 @@ const (
 )
 
 // Helper to convert permissions for a user to a level for context
-func levelPermissions(user users.AdminUser) string {
+func levelPermissions(user users.AdminUser, perms users.UserPermissions) string {
 	if user.Admin {
 		return adminLevel
-	}
-	perms, err := adminUsers.ConvertPermissions(user.Permissions.RawMessage)
-	if err != nil {
-		log.Printf("error converting permissions %v", err)
-		return userLevel
 	}
 	// Check for query access
 	if perms.Query {
@@ -99,8 +94,14 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
+					permissions, err := adminUsers.ConvertPermissions(u.Permissions.RawMessage)
+					if err != nil {
+						log.Printf("error getting permissions for %s: %v", jwtdata.Username, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
 					// Create new session
-					session, err = sessionsmgr.Save(r, w, u)
+					session, err = sessionsmgr.Save(r, w, u, permissions)
 					if err != nil {
 						log.Printf("session error: %v", err)
 						http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
@@ -170,14 +171,4 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
-}
-
-// Helper to prepare context based on the user
-func prepareContext(user users.AdminUser) sessions.ContextValue {
-	s := make(sessions.ContextValue)
-	s[ctxUser] = user.Username
-	s[ctxEmail] = user.Email
-	s[ctxCSRF] = user.CSRFToken
-	s[ctxLevel] = levelPermissions(user)
-	return s
 }

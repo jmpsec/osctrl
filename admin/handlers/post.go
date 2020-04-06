@@ -37,7 +37,11 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricAdminErr)
 		return
 	}
-	_, err := h.Sessions.Save(r, w, user)
+	permissions, err := h.Users.ConvertPermissions(user.Permissions.RawMessage)
+	if err != nil {
+		
+	}
+	_, err = h.Sessions.Save(r, w, user, permissions)
 	if err != nil {
 		adminErrorResponse(w, "session error", http.StatusForbidden, err)
 		h.Inc(metricAdminErr)

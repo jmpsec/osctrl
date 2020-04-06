@@ -170,17 +170,17 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 }
 
 // Save session and set cookie header
-func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser) (UserSession, error) {
+func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, perms users.UserPermissions) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(sm.CookieName); err != nil {
-		s, err = sm.New(r, user.Username, LevelPermissions(user))
+		s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
 		if err != nil {
 			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
-			s, err = sm.New(r, user.Username, LevelPermissions(user))
+			s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
 			if err != nil {
 				return s, err
 			}
@@ -207,8 +207,20 @@ func GenerateCSRF() string {
 }
 
 // Helper to convert permissions for a user to a level for context
-func LevelPermissions(user users.AdminUser) string {
-	return ""
+func LevelPermissions(user users.AdminUser, perms users.UserPermissions) string {
+	if user.Admin {
+		return AdminLevel
+	}
+	// Check for query access
+	if perms.Query {
+		return QueryLevel
+	}
+	// Check for carve access
+	if perms.Carve {
+		return CarveLevel
+	}
+	// At this point, no access granted
+	return UserLevel
 }
 
 // Helper to check if the CSRF token is valid

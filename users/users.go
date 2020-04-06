@@ -46,7 +46,7 @@ type UserManager struct {
 // CreateUserManager to initialize the users struct and tables
 func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) *UserManager {
 	var u *UserManager
-	u = &UserManager{DB: backend}
+	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
 	if err := backend.AutoMigrate(AdminUser{}).Error; err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
