@@ -520,7 +520,7 @@ func checkDB(c *cli.Context) error {
 		return fmt.Errorf("Error connecting to DB - %v", err)
 	}
 	// Initialize users
-	adminUsers = users.CreateUserManager(db)
+	adminUsers = users.CreateUserManager(db, nil)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -560,7 +560,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			return err
 		}
 		// Initialize users
-		adminUsers = users.CreateUserManager(db)
+		adminUsers = users.CreateUserManager(db, nil)
 		// Initialize environment
 		envs = environments.CreateEnvironment(db)
 		// Initialize settings

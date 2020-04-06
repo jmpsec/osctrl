@@ -37,14 +37,12 @@ func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
 	var config JSONConfigurationDB
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return config, err
 	}
 	// Backend values
 	dbRaw := viper.Sub(key)
-	err = dbRaw.Unmarshal(&config)
-	if err != nil {
+	if err := dbRaw.Unmarshal(&config); err != nil {
 		return config, err
 	}
 	// No errors!

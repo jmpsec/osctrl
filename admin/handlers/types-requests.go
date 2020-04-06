@@ -1,4 +1,4 @@
-package main
+package handlers
 
 // LoginRequest to receive login credentials
 type LoginRequest struct {

@@ -1,21 +1,18 @@
-package main
+package handlers
 
 import (
-	"html/template"
-	"io"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
+	"text/template"
 
+	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -25,6 +22,22 @@ const (
 // TemplateFiles for building UI layout
 type TemplateFiles struct {
 	filepaths []string
+}
+
+// Helper to prepare template metadata
+func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version string) TemplateMetadata {
+	return TemplateMetadata{
+		Username:       ctx[sessions.CtxUser],
+		Level:          ctx[sessions.CtxLevel],
+		CSRFToken:      ctx[sessions.CtxCSRF],
+		Service:        "osctrl-admin",
+		Version:        version,
+		TLSDebug:       h.Settings.DebugService(settings.ServiceTLS),
+		AdminDebug:     h.Settings.DebugService(settings.ServiceAdmin),
+		APIDebug:       h.Settings.DebugService(settings.ServiceAPI),
+		AdminDebugHTTP: h.Settings.DebugHTTP(settings.ServiceAdmin),
+		APIDebugHTTP:   h.Settings.DebugHTTP(settings.ServiceAPI),
+	}
 }
 
 // NewTemplateFiles defines based on layout and default static pages
@@ -42,79 +55,67 @@ func NewTemplateFiles(base string, layoutFilename string) *TemplateFiles {
 	return &tf
 }
 
-// Handler for login page for GET requests
-func loginGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// LoginHandler for login page for GET requests
+func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		templatesFilesFolder+"/login.html",
 		templatesFilesFolder+"/components/page-head.html",
 		templatesFilesFolder+"/components/page-js.html")
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting login template: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := LoginTemplateData{
-		Title:   "Login to " + projectName,
-		Project: projectName,
+		Title:   "Login to osctrl",
+		Project: "osctrl",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for the root path
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	// Redirect to table for active nodes in default environment
-	defaultEnvironment := settingsmgr.DefaultEnv(settings.ServiceAdmin)
-	if envs.Exists(defaultEnvironment) {
-		http.Redirect(w, r, "/environment/"+defaultEnvironment+"/active", http.StatusFound)
-	} else {
-		http.Redirect(w, r, "/environments", http.StatusFound)
-	}
-}
-
-// Handler for environment view of the table
-func environmentHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// EnvironmentHandler for environment view of the table
+func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	env, ok := vars["environment"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
-		incMetric(metricAdminErr)
+	if !h.Envs.Exists(env) {
+		h.Inc(metricAdminErr)
 		log.Printf("error unknown environment (%s)", env)
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, env) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricTokenErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricTokenErr)
 		return
 	}
 	// Extract target
 	// FIXME verify target
 	target, ok := vars["target"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
@@ -123,28 +124,28 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(tempateFiles...)
 
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env,
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Selector:     "environment",
 		SelectorName: env,
 		Target:       target,
@@ -152,26 +153,26 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Environment table template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for platform view of the table
-func platformHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// PlatformHandler for platform view of the table
+func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
 	platform, ok := vars["platform"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting platform")
 		return
 	}
@@ -179,16 +180,16 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 	// FIXME verify target
 	target, ok := vars["target"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting target")
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricTokenErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricTokenErr)
 		return
 	}
 	// Prepare template
@@ -201,28 +202,28 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-header.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + platform,
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Selector:     "platform",
 		SelectorName: platform,
 		Target:       target,
@@ -230,26 +231,26 @@ func platformHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Platform table template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for GET requests to run queries
-func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// QueryRunGETHandler for GET requests to run queries
+func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
@@ -262,28 +263,28 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 		templatesFilesFolder+"/components/page-header.html",
 		templatesFilesFolder+"/components/page-modals.html")
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get all nodes
-	nodes, err := nodesmgr.Gets("active", settingsmgr.InactiveHours())
+	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours())
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting all nodes: %v", err)
 		return
 	}
@@ -297,116 +298,116 @@ func queryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes",
-		Metadata:      templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  envAll,
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
-		Tables:        osqueryTables,
+		Tables:        h.OsqueryTables,
 		TablesVersion: osqueryTablesVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for GET requests to queries
-func queryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// QueryListGETHandler for GET requests to queries
+func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
 		Title:        "All on-demand queries",
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query list template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for GET requests to run file carves
-func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// CarvesRunGETHandler for GET requests to run file carves
+func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-run.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get all nodes
-	nodes, err := nodesmgr.Gets("active", settingsmgr.InactiveHours())
+	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours())
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting all nodes: %v", err)
 		return
 	}
@@ -420,95 +421,95 @@ func carvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
 		Title:         "Query osquery Nodes",
-		Metadata:      templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  envAll,
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
-		Tables:        osqueryTables,
+		Tables:        h.OsqueryTables,
 		TablesVersion: osqueryTablesVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for GET requests to carves
-func carvesListGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// CarvesListGETHandler for GET requests to carves
+func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
 		Title:        "All carved files",
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve list template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests to see query results by name
-func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// QueryLogsHandler for GET requests to see query results by name
+func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting name")
 		return
 	}
@@ -516,39 +517,39 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries-logs.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get query by name
-	query, err := queriesmgr.Get(name)
+	query, err := h.Queries.Get(name)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting query %v", err)
 		return
 	}
 	// Get query targets
-	targets, err := queriesmgr.GetTargets(name)
+	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting targets %v", err)
 		return
 	}
-	defLink, dbLink := queryResultLink(query.Name)
+	defLink, dbLink := h.queryResultLink(query.Name)
 	resLink := ""
 	if defLink != dbLink {
 		resLink = dbLink
@@ -556,7 +557,7 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 		Query:        query,
@@ -564,33 +565,33 @@ func queryLogsHandler(w http.ResponseWriter, r *http.Request) {
 		QueryTargets: targets,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query logs template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests to see carves details by name
-func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// CarvesDetailsHandler for GET requests to see carves details by name
+func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting name")
 		return
 	}
@@ -598,52 +599,52 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-details.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get query by name
-	query, err := queriesmgr.Get(name)
+	query, err := h.Queries.Get(name)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting query %v", err)
 		return
 	}
 	// Get query targets
-	targets, err := queriesmgr.GetTargets(name)
+	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting targets %v", err)
 		return
 	}
 	// Get carves for this query
-	queryCarves, err := carvesmgr.GetByQuery(name)
+	queryCarves, err := h.Carves.GetByQuery(name)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting carve %v", err)
 		return
 	}
 	// Get carve blocks by carve
 	blocks := make(map[string][]carves.CarvedBlock)
 	for _, c := range queryCarves {
-		bs, err := carvesmgr.GetBlocks(c.SessionID)
+		bs, err := h.Carves.GetBlocks(c.SessionID)
 		if err != nil {
-			incMetric(metricAdminErr)
+			h.Inc(metricAdminErr)
 			log.Printf("error getting carve blocks %v", err)
 			break
 		}
@@ -652,7 +653,7 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 		Query:        query,
@@ -661,142 +662,142 @@ func carvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		CarveBlocks:  blocks,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve details template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests for /conf
-func confGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// ConfGETHandler for GET requests for /conf
+func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(envVar) {
-		incMetric(metricAdminErr)
+	if !h.Envs.Exists(envVar) {
+		h.Inc(metricAdminErr)
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, envVar) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, envVar) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "conf.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting conf template: %v", err)
 		return
 	}
 	// Get stats for all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get configuration JSON
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:        envVar + " Configuration",
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environment:  env,
 		Environments: envAll,
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Conf template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests for /enroll
-func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// EnrollGETHandler for GET requests for /enroll
+func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(envVar) {
-		incMetric(metricAdminErr)
+	if !h.Envs.Exists(envVar) {
+		h.Inc(metricAdminErr)
 		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, envVar) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, envVar) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "enroll.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting enroll template: %v", err)
 		return
 	}
 	// Get stats for all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get configuration JSON
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -807,7 +808,7 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
 	templateData := EnrollTemplateData{
 		Title:                 envVar + " Enroll",
-		Metadata:              templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
 		EnvName:               envVar,
 		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
@@ -824,25 +825,25 @@ func enrollGETHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:             platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Enroll template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler for node view
-func nodeHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// NodeHandler for node view
+func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting uuid")
 		return
 	}
@@ -850,141 +851,141 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"pastFutureTimes": utils.PastFutureTimes,
 		"jsonRawIndent":   jsonRawIndent,
-		"statusLogsLink":  statusLogsLink,
-		"resultLogsLink":  resultLogsLink,
+		"statusLogsLink":  h.statusLogsLink,
+		"resultLogsLink":  h.resultLogsLink,
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
 		return
 	}
 	// Get node by UUID
-	node, err := nodesmgr.GetByUUID(uuid)
+	node, err := h.Nodes.GetByUUID(uuid)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting node %v", err)
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, node.Environment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, node.Environment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Get all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments%v", err)
 		return
 	}
 	// Get all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:        "Node View " + node.Hostname,
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
-		Logs:         adminConfig.Logging,
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Logs:         h.AdminConfig.Logging,
 		Node:         node,
 		Environments: envAll,
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Node template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests for /env
-func envsGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// EnvsGETHandler for GET requests for /env
+func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "environments.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
 	// Get stats for all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := EnvironmentsTemplateData{
 		Title:        "Manage environments",
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Environments template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests for /settings
-func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// SettingsGETHandler for GET requests for /settings
+func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Extract service
 	serviceVar, ok := vars["service"]
 	if !ok {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Println("error getting service")
 		return
 	}
 	// Verify service
 	if !checkTargetService(serviceVar) {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error unknown service (%s)", serviceVar)
 		return
 	}
@@ -992,40 +993,40 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "settings.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
 	// Get stats for all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get setting values
-	_settings, err := settingsmgr.RetrieveValues(serviceVar)
+	_settings, err := h.Settings.RetrieveValues(serviceVar)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting settings: %v", err)
 		return
 	}
 	// Get JSON values
-	svcJSON, err := settingsmgr.RetrieveAllJSON(serviceVar)
+	svcJSON, err := h.Settings.RetrieveAllJSON(serviceVar)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting JSON values: %v", err)
 	}
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
-		Metadata:        templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:        h.TemplateMetadata(ctx, h.ServiceVersion),
 		Service:         serviceVar,
 		Environments:    envAll,
 		Platforms:       platforms,
@@ -1033,26 +1034,26 @@ func settingsGETHandler(w http.ResponseWriter, r *http.Request) {
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Settings template served")
 	}
-	incMetric(metricAdminOK)
+	h.Inc(metricAdminOK)
 }
 
-// Handler GET requests for /users
-func usersGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// UsersGETHandler for GET requests for /users
+func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Custom functions to handle formatting
@@ -1064,125 +1065,46 @@ func usersGETHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "users.html").filepaths
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments template: %v", err)
 		return
 	}
 	// Get stats for all environments
-	envAll, err := envs.All()
+	envAll, err := h.Envs.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting environments %v", err)
 		return
 	}
 	// Get stats for all platforms
-	platforms, err := nodesmgr.GetAllPlatforms()
+	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
 	// Get current users
-	users, err := adminUsers.All()
+	users, err := h.Users.All()
 	if err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("error getting users: %v", err)
 		return
 	}
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:        "Manage users",
-		Metadata:     templateMetadata(ctx, serviceName, serviceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
 		CurrentUsers: users,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		log.Printf("template error %v", err)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users template served")
 	}
-	incMetric(metricAdminOK)
-}
-
-// Handler for platform/environment stats in JSON
-func permissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	vars := mux.Vars(r)
-	// Extract username and verify
-	usernameVar, ok := vars["username"]
-	if !ok || !adminUsers.Exists(usernameVar) {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting username")
-		}
-		return
-	}
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
-		return
-	}
-	// Get permissions
-	permissions, err := adminUsers.GetPermissions(usernameVar)
-	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error getting permissions %v", err)
-	}
-	// Serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, permissions)
-	incMetric(metricJSONOK)
-}
-
-// Handler for GET requests to download carves
-func carvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAdminReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
-	vars := mux.Vars(r)
-	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
-	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricAdminErr)
-		return
-	}
-	// Extract id to download
-	carveSession, ok := vars["sessionid"]
-	if !ok {
-		incMetric(metricAdminErr)
-		log.Println("error getting carve")
-		return
-	}
-	// Prepare file to download
-	result, err := carvesmgr.Archive(carveSession, carvedFilesFolder)
-	if err != nil {
-		incMetric(metricAdminErr)
-		log.Printf("error downloading carve - %v", err)
-		return
-	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carve download")
-	}
-	incMetric(metricAdminOK)
-	// Send response
-	w.Header().Set("Content-Description", "File Carve Download")
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachment; filename="+result.File)
-	w.Header().Set("Content-Transfer-Encoding", "binary")
-	w.Header().Set("Connection", "Keep-Alive")
-	w.Header().Set("Expires", "0")
-	w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-	w.Header().Set("Pragma", "public")
-	w.Header().Set("Content-Length", strconv.FormatInt(result.Size, 10))
-	w.WriteHeader(http.StatusOK)
-	var fileReader io.Reader
-	fileReader, _ = os.Open(result.File)
-	_, _ = io.Copy(w, fileReader)
+	h.Inc(metricAdminOK)
 }

@@ -31,13 +31,11 @@ func LoadConfiguration() (Configuration, error) {
 	log.Printf("Loading %s", metricsConfigFile)
 	// Load file and read config
 	viper.SetConfigFile(metricsConfigFile)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return _metricsCfg, err
 	}
 	cfgRaw := viper.Sub(metricsName)
-	err = cfgRaw.Unmarshal(&_metricsCfg)
-	if err != nil {
+	if err := cfgRaw.Unmarshal(&_metricsCfg); err != nil {
 		return _metricsCfg, err
 	}
 	// No errors!
@@ -115,17 +113,15 @@ func (metrics *Metrics) Connect() error {
 func (metrics *Metrics) Disconnect() error {
 	err := metrics.conn.Close()
 	metrics.conn = nil
-
 	return err
 }
 
 // ConnectAndSend to connect and submit a metric via TCP or UDP
 func (metrics *Metrics) ConnectAndSend(name string, value int) {
-	err := metrics.Connect()
-	if err != nil {
+	if err := metrics.Connect(); err != nil {
 		log.Printf("error connecting %v", err)
 	}
-	err = metrics.Send(name, value)
+	err := metrics.Send(name, value)
 	i := 0
 	for err != nil {
 		log.Printf("Something happened %v", err)
@@ -205,8 +201,7 @@ func CreateMetrics(protocol string, host string, port int, tag string) (*Metrics
 	m.conn = nil
 	m.Counters = make(map[string]Counter)
 	// Connect
-	err := m.Connect()
-	if err != nil {
+	if err := m.Connect(); err != nil {
 		return m, err
 	}
 	m.Ready = true

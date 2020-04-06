@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -7,15 +7,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
-)
-
-const (
-	metricTokenReq = "admin-token-req"
-	metricTokenErr = "admin-token-err"
-	metricTokenOK  = "admin-token-ok"
 )
 
 // TokenJSON to be used to populate a JSON token
@@ -25,16 +20,16 @@ type TokenJSON struct {
 	ExpiresTS string `json:"expires_ts"`
 }
 
-// Handle GET requests for /tokens/{username}
-func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricTokenReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// TokensGETHandler for GET requests for /tokens/{username}
+func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricTokenReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[ctxUser]), http.StatusForbidden, nil)
-		incMetric(metricAdminErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+		h.Inc(metricAdminErr)
 		return
 	}
 	vars := mux.Vars(r)
@@ -42,15 +37,15 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 	username, ok := vars["username"]
 	if !ok {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
 	returned := TokenJSON{}
-	if adminUsers.Exists(username) {
-		user, err := adminUsers.Get(username)
+	if h.Users.Exists(username) {
+		user, err := h.Users.Get(username)
 		if err != nil {
 			adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
-			incMetric(metricAdminErr)
+			h.Inc(metricAdminErr)
 			return
 		}
 		// Prepare data to be returned
@@ -62,66 +57,66 @@ func tokensGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	incMetric(metricTokenOK)
+	h.Inc(metricTokenOK)
 }
 
-// Handle POST request for /tokens/{username}/refresh
-func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricTokenReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), true)
+// TokensPOSTHandler for POST request for /tokens/{username}/refresh
+func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricTokenReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		adminErrorResponse(w, "insuficient permissions", http.StatusForbidden, nil)
-		incMetric(metricTokenErr)
+		h.Inc(metricTokenErr)
 		return
 	}
 	vars := mux.Vars(r)
 	// Extract username and verify
 	username, ok := vars["username"]
-	if !ok || !adminUsers.Exists(username) {
+	if !ok || !h.Users.Exists(username) {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Parse request JSON body
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
 	}
 	var t TokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
 	// Check CSRF Token
-	if !checkCSRFToken(ctx[ctxCSRF], t.CSRFToken) {
+	if !checkCSRFToken(ctx[sessions.CtxCSRF], t.CSRFToken) {
 		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
-	user, err := adminUsers.Get(username)
+	user, err := h.Users.Get(username)
 	if err != nil {
 		adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Creating token")
 	}
-	token, exp, err := adminUsers.CreateToken(user.Username, jwtConfig.HoursToExpire, jwtConfig.JWTSecret)
+	token, exp, err := h.Users.CreateToken(user.Username)
 	if err != nil {
 		adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Updating token")
 	}
-	if err := adminUsers.UpdateToken(user.Username, token, exp); err != nil {
+	if err := h.Users.UpdateToken(user.Username, token, exp); err != nil {
 		adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
-		incMetric(metricAdminErr)
+		h.Inc(metricAdminErr)
 		return
 	}
 	response := TokenResponse{
@@ -131,5 +126,5 @@ func tokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
-	incMetric(metricTokenOK)
+	h.Inc(metricTokenOK)
 }

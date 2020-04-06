@@ -19,16 +19,10 @@ func (l *LoggerTLS) DispatchLogs(data []byte, uuid, logType, environment string,
 	if debug {
 		log.Printf("dispatching logs to %s", l.Logging)
 	}
-	l.Log(
-		logType,
-		data,
-		environment,
-		uuid,
-		debug)
+	l.Log(logType, data, environment, uuid, debug)
 	// Refresh last logging request
 	if logType == types.StatusLog {
-		err := l.Nodes.RefreshLastStatus(uuid)
-		if err != nil {
+		if err := l.Nodes.RefreshLastStatus(uuid); err != nil {
 			log.Printf("error refreshing last status %v", err)
 		}
 	}

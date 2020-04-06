@@ -59,13 +59,11 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return _splunkCfg, err
 	}
 	cfgRaw := viper.Sub(SplunkName)
-	err = cfgRaw.Unmarshal(&_splunkCfg)
-	if err != nil {
+	if err := cfgRaw.Unmarshal(&_splunkCfg); err != nil {
 		return _splunkCfg, err
 	}
 	// No errors!
@@ -73,8 +71,9 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 }
 
 const (
-	// Method to send requests
-	SplunkMethod      = "POST"
+	// SplunkMethod Method to send requests
+	SplunkMethod = "POST"
+	// SplunkContentType Content Type for requests
 	SplunkContentType = "application/json"
 )
 
@@ -121,16 +120,14 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 		sourceType = logType
 		// For on-demand queries, just a JSON blob with results and statuses
 		var result interface{}
-		err := json.Unmarshal(data, &result)
-		if err != nil {
+		if err := json.Unmarshal(data, &result); err != nil {
 			log.Printf("error parsing data %s %v", string(data), err)
 		}
 		logs = append(logs, result)
 	} else {
 		sourceType = logType + ":" + environment
 		// For scheduled queries, convert the array in an array of multiple events
-		err := json.Unmarshal(data, &logs)
-		if err != nil {
+		if err := json.Unmarshal(data, &logs); err != nil {
 			log.Printf("error parsing log %s %v", string(data), err)
 		}
 	}

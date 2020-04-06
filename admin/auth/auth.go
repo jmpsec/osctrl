@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"context"
@@ -11,61 +11,76 @@ import (
 	"github.com/jmpsec/osctrl/users"
 )
 
-const (
-	adminLevel string = "admin"
-	userLevel  string = "user"
-	queryLevel string = "query"
-	carveLevel string = "carve"
-)
+// AdminAuth to handle authentication for admin
+type AdminAuth struct {
+	Users    *users.UserManager
+	Sessions *sessions.SessionManager
+}
 
-const (
-	ctxUser  = "user"
-	ctxEmail = "email"
-	ctxCSRF  = "csrftoken"
-	ctxLevel = "level"
-)
+type AuthOption func(*AdminAuth)
 
-// Helper to convert permissions for a user to a level for context
-func levelPermissions(user users.AdminUser) string {
-	if user.Admin {
-		return adminLevel
+func WithSessions(sessions *sessions.SessionManager) AuthOption {
+	return func(a *AdminAuth) {
+		a.Sessions = sessions
 	}
-	perms, err := adminUsers.ConvertPermissions(user.Permissions.RawMessage)
+}
+
+func WithUsers(users *users.UserManager) AuthOption {
+	return func(a *AdminAuth) {
+		a.Users = users
+	}
+}
+
+// CreateAdminAuth to initialize the Admin handlers struct
+func CreateAdminAuth(opts ...AuthOption) *AdminAuth {
+	a := &AdminAuth{}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
+}
+
+// LevelPermissions to convert permissions for a user to a level for context
+func (a *AdminAuth) LevelPermissions(user users.AdminUser) string {
+	if user.Admin {
+		return sessions.AdminLevel
+	}
+	perms, err := a.Users.ConvertPermissions(user.Permissions.RawMessage)
 	if err != nil {
 		log.Printf("error converting permissions %v", err)
-		return userLevel
+		return sessions.UserLevel
 	}
 	// Check for query access
 	if perms.Query {
-		return queryLevel
+		return sessions.QueryLevel
 	}
 	// Check for carve access
 	if perms.Carve {
-		return carveLevel
+		return sessions.CarveLevel
 	}
 	// At this point, no access granted
-	return userLevel
+	return sessions.UserLevel
 }
 
 // Handler to check access to a resource based on the authentication enabled
-func handlerAuthCheck(h http.Handler) http.Handler {
+func (a *AdminAuth) HandlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch adminConfig.Auth {
 		case settings.AuthDB:
 			// Check if user is already authenticated
-			authenticated, session := sessionsmgr.CheckAuth(r)
+			authenticated, session := a.Sessions.CheckAuth(r)
 			if !authenticated {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 			// Set middleware values
 			s := make(sessions.ContextValue)
-			s[ctxUser] = session.Username
-			s[ctxCSRF] = session.Values[ctxCSRF].(string)
-			s[ctxLevel] = session.Values[ctxLevel].(string)
+			s[sessions.CtxUser] = session.Username
+			s[sessions.CtxCSRF] = session.Values[sessions.CtxCSRF].(string)
+			s[sessions.CtxLevel] = session.Values[sessions.CtxLevel].(string)
 			ctx := context.WithValue(r.Context(), sessions.ContextKey("session"), s)
 			// Update metadata for the user
-			if err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"]); err != nil {
+			if err := a.Users.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"]); err != nil {
 				log.Printf("error updating metadata for user %s: %v", session.Username, err)
 			}
 			// Access granted
@@ -85,22 +100,22 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 					return
 				}
 				// Check if user is already authenticated
-				authenticated, session := sessionsmgr.CheckAuth(r)
+				authenticated, session := a.Sessions.CheckAuth(r)
 				if !authenticated {
 					// Create user if it does not exist
-					if !adminUsers.Exists(jwtdata.Username) {
+					if !a.Users.Exists(jwtdata.Username) {
 						log.Printf("user not found: %s", jwtdata.Username)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
-					u, err := adminUsers.Get(jwtdata.Username)
+					u, err := a.Users.Get(jwtdata.Username)
 					if err != nil {
 						log.Printf("error getting user %s: %v", jwtdata.Username, err)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
 					// Create new session
-					session, err = sessionsmgr.Save(r, w, u)
+					session, err = a.Sessions.Save(r, w, u)
 					if err != nil {
 						log.Printf("session error: %v", err)
 						http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
@@ -109,12 +124,12 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				}
 				// Set middleware values
 				s := make(sessions.ContextValue)
-				s[ctxUser] = session.Username
-				s[ctxCSRF] = session.Values[ctxCSRF].(string)
-				s[ctxLevel] = session.Values[ctxLevel].(string)
+				s[sessions.CtxUser] = session.Username
+				s[sessions.CtxCSRF] = session.Values[sessions.CtxCSRF].(string)
+				s[sessions.CtxLevel] = session.Values[sessions.CtxLevel].(string)
 				ctx := context.WithValue(r.Context(), sessions.ContextKey("session"), s)
 				// Update metadata for the user
-				err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
+				err = a.Users.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
 				if err != nil {
 					log.Printf("error updating metadata for user %s: %v", session.Username, err)
 				}
@@ -135,30 +150,30 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Set middleware values
 			s := make(sessions.ContextValue)
-			s[ctxUser] = username
-			s[ctxCSRF] = generateCSRF()
+			s[sessions.CtxUser] = username
+			s[sessions.CtxCSRF] = generateCSRF()
 			for _, group := range groups {
 				if group == headersConfig.AdminGroup {
-					s[ctxLevel] = adminLevel
+					s[sessions.CtxLevel] = sessions.AdminLevel
 					// We can break because there is no greater permission level
 					break
 				} else if group == headersConfig.UserGroup {
-					s[ctxLevel] = userLevel
+					s[sessions.CtxLevel] = sessions.UserLevel
 					// We can't break because we might still find a higher permission level
 				}
 			}
 			// This user didn't present a group that has permission to use the service
-			if _, ok := s[ctxLevel]; !ok {
+			if _, ok := s[sessions.CtxLevel]; !ok {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-			newUser, err := adminUsers.New(username, "", email, fullname, (s[ctxLevel] == adminLevel))
+			newUser, err := a.Users.New(username, "", email, fullname, (s[sessions.CtxLevel] == sessions.AdminLevel))
 			if err != nil {
 				log.Printf("Error with new user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
 				return
 			}
-			if err := adminUsers.Create(newUser); err != nil {
+			if err := a.Users.Create(newUser); err != nil {
 				log.Printf("Error creating user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
 				return
@@ -175,9 +190,31 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 // Helper to prepare context based on the user
 func prepareContext(user users.AdminUser) sessions.ContextValue {
 	s := make(sessions.ContextValue)
-	s[ctxUser] = user.Username
-	s[ctxEmail] = user.Email
-	s[ctxCSRF] = user.CSRFToken
-	s[ctxLevel] = levelPermissions(user)
+	s[sessions.CtxUser] = user.Username
+	s[sessions.CtxEmail] = user.Email
+	s[sessions.CtxCSRF] = user.CSRFToken
+	s[sessions.CtxLevel] = levelPermissions(user)
 	return s
+}
+
+// Helper to parse JWT tokens because the SAML library is total garbage
+func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error) {
+	type TokenClaims struct {
+		jwt.StandardClaims
+		Attributes map[string][]string `json:"attr"`
+	}
+	tokenClaims := TokenClaims{}
+	token, err := jwt.ParseWithClaims(cookie, &tokenClaims, func(t *jwt.Token) (interface{}, error) {
+		secretBlock := x509.MarshalPKCS1PrivateKey(keypair.PrivateKey.(*rsa.PrivateKey))
+		return secretBlock, nil
+	})
+	if err != nil || !token.Valid {
+		return JWTData{}, err
+	}
+	return JWTData{
+		Subject:  tokenClaims.Subject,
+		Email:    tokenClaims.Attributes["mail"][0],
+		Display:  tokenClaims.Attributes["displayName"][0],
+		Username: tokenClaims.Attributes["sAMAccountName"][0],
+	}, nil
 }

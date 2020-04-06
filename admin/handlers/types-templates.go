@@ -1,13 +1,13 @@
-package main
+package handlers
 
 import (
-	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/users"
 )
 
 // LoginTemplateData for passing data to the login template
@@ -77,7 +77,7 @@ type QueryRunTemplateData struct {
 	Platforms     []string
 	UUIDs         []string
 	Hosts         []string
-	Tables        []OsqueryTable
+	Tables        []types.OsqueryTable
 	TablesVersion string
 	Metadata      TemplateMetadata
 }

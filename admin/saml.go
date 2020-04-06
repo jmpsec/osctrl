@@ -37,17 +37,14 @@ func loadSAML(file string) (JSONConfigurationSAML, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// SAML values
 	samlRaw := viper.Sub(settings.AuthSAML)
-	err = samlRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := samlRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
-
 	// No errors!
 	return cfg, nil
 }

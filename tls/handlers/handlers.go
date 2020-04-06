@@ -127,7 +127,7 @@ func CreateHandlersTLS(opts ...HandlersOption) *HandlersTLS {
 	return h
 }
 
-// Helper to send metrics if it is enabled
+// Inc - Helper to send metrics if it is enabled
 func (h *HandlersTLS) Inc(name string) {
 	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceTLS) {
 		h.Metrics.Inc(name)
@@ -175,8 +175,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -191,22 +190,19 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
 		if h.Nodes.CheckByUUID(t.HostIdentifier) {
-			err := h.Nodes.Archive(t.HostIdentifier, "exists")
-			if err != nil {
+			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error archiving node %v", err)
 			}
 			// Update existing with new enroll data
-			err = h.Nodes.UpdateByUUID(newNode, t.HostIdentifier)
-			if err != nil {
+			if err := h.Nodes.UpdateByUUID(newNode, t.HostIdentifier); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error updating existing node %v", err)
 			} else {
 				nodeInvalid = false
 			}
 		} else { // New node, persist it
-			err := h.Nodes.Create(newNode)
-			if err != nil {
+			if err := h.Nodes.Create(newNode); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error creating node %v", err)
 			} else {
@@ -319,8 +315,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		//defer r.Body.Close()
 		defer func() {
-			err := r.Body.Close()
-			if err != nil {
+			if err := r.Body.Close(); err != nil {
 				h.Inc(metricLogErr)
 				log.Printf("Failed to close body %v", err)
 			}
@@ -338,8 +333,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	//defer r.Body.Close()
 	defer func() {
-		err := r.Body.Close()
-		if err != nil {
+		if err := r.Body.Close(); err != nil {
 			h.Inc(metricLogErr)
 			log.Printf("Failed to close body %v", err)
 		}
@@ -385,8 +379,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		h.Inc(metricReadErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -455,8 +448,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		h.Inc(metricWriteErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -464,8 +456,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
 	if h.Nodes.CheckByKey(t.NodeKey) {
-		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
-		if err != nil {
+		if err := h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey); err != nil {
 			h.Inc(metricWriteErr)
 			log.Printf("error updating IP Address %v", err)
 		}
@@ -574,8 +565,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -584,8 +574,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
 	if h.Nodes.CheckByKey(t.NodeKey) {
-		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey)
-		if err != nil {
+		if err := h.Nodes.UpdateIPAddressByKey(r.Header.Get("X-Real-IP"), t.NodeKey); err != nil {
 			h.Inc(metricInitErr)
 			log.Printf("error updating IP Address %v", err)
 		}
@@ -630,8 +619,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error parsing POST body %v", err)
 		return

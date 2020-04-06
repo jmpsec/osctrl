@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"log"
@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
@@ -48,43 +49,43 @@ type QueryLogJSON struct {
 	Data    string        `json:"data"`
 }
 
-// Handler GET requests for JSON status/result logs by node and environment
-func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricJSONReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// JSONLogsHandler GET requests for JSON status/result logs by node and environment
+func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricJSONReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract type
 	logType, ok := vars["type"]
 	if !ok {
 		log.Println("error getting log type")
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify log type
 	if !LogTypes[logType] {
 		log.Printf("invalid log type %s", logType)
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	env, ok := vars["environment"]
 	if !ok {
 		log.Println("environment is missing")
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Check if environment is valid
-	if !envs.Exists(env) {
+	if !h.Envs.Exists(env) {
 		log.Printf("error unknown environment (%s)", env)
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, env) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricJSONErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract UUID
@@ -92,7 +93,7 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	UUID, ok := vars["uuid"]
 	if !ok {
 		log.Println("error getting UUID")
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract parameter for seconds
@@ -108,10 +109,10 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == "status" {
-		statusLogs, err := postgresStatusLogs(UUID, env, secondsBack)
+		statusLogs, err := h.postgresStatusLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
-			incMetric(metricJSONErr)
+			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -128,10 +129,10 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 			logJSON = append(logJSON, _l)
 		}
 	} else if logType == "result" {
-		resultLogs, err := postgresResultLogs(UUID, env, secondsBack)
+		resultLogs, err := h.postgresResultLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
-			incMetric(metricJSONErr)
+			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -152,19 +153,19 @@ func jsonLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	incMetric(metricJSONOK)
+	h.Inc(metricJSONOK)
 }
 
-// Handler for JSON query logs by query name
-func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricJSONReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// JSONQueryLogsHandler for JSON query logs by query name
+func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricJSONReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricJSONErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricJSONErr)
 		return
 	}
 	vars := mux.Vars(r)
@@ -173,14 +174,14 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	name, ok := vars["name"]
 	if !ok {
 		log.Println("error getting name")
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Get logs
-	queryLogs, err := postgresQueryLogs(name)
+	queryLogs, err := h.postgresQueryLogs(name)
 	if err != nil {
 		log.Printf("error getting logs %v", err)
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -201,5 +202,5 @@ func jsonQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	incMetric(metricJSONOK)
+	h.Inc(metricJSONOK)
 }

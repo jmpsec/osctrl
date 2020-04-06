@@ -75,20 +75,18 @@ var (
 
 // Global variables
 var (
-	apiConfig      types.JSONConfigurationService
-	jwtConfig      types.JSONConfigurationJWT
-	db             *gorm.DB
-	apiUsers       *users.UserManager
-	settingsmgr    *settings.Settings
-	envs           *environments.Environment
-	envsmap        environments.MapEnvironments
-	envsTicker     *time.Ticker
-	settingsmap    settings.MapSettings
-	settingsTicker *time.Ticker
-	nodesmgr       *nodes.NodeManager
-	queriesmgr     *queries.Queries
-	filecarves     *carves.Carves
-	_metrics       *metrics.Metrics
+	apiConfig   types.JSONConfigurationService
+	jwtConfig   types.JSONConfigurationJWT
+	db          *gorm.DB
+	apiUsers    *users.UserManager
+	settingsmgr *settings.Settings
+	envs        *environments.Environment
+	envsmap     environments.MapEnvironments
+	settingsmap settings.MapSettings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
+	_metrics    *metrics.Metrics
 )
 
 // Variables for flags
@@ -114,14 +112,12 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// TLS endpoint values
 	tlsRaw := viper.Sub(settings.ServiceAPI)
-	err = tlsRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := tlsRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// Check if values are valid
@@ -195,7 +191,7 @@ func main() {
 		}
 	}()
 	// Initialize users
-	apiUsers = users.CreateUserManager(db)
+	apiUsers = users.CreateUserManager(db, &jwtConfig)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -210,8 +206,41 @@ func main() {
 	log.Println("Loading service settings")
 	loadingSettings()
 
-	// multiple listeners channel
-	finish := make(chan bool)
+	// Ticker to reload environments
+	// FIXME Implement Redis cache
+	// FIXME splay this?
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Println("DebugService: Environments ticker")
+	}
+	// Refresh environments as soon as service starts
+	go func() {
+		_t := settingsmgr.RefreshEnvs(settings.ServiceAPI)
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		for {
+			envsmap = refreshEnvironments()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+
+	// Ticker to reload settings
+	// FIXME Implement Redis cache
+	// FIXME splay this?
+	if settingsmgr.DebugService(settings.ServiceAPI) {
+		log.Println("DebugService: Settings ticker")
+	}
+	// Refresh settings as soon as the service starts
+	go func() {
+		_t := settingsmgr.RefreshSettings(settings.ServiceAPI)
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		for {
+			settingsmap = refreshSettings()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
 
 	/////////////////////////// API
 	if settingsmgr.DebugService(settings.ServiceAPI) {
@@ -254,49 +283,8 @@ func main() {
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 
-	// Ticker to reload environments
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Environments ticker")
-	}
-	// Refresh environments as soon as service starts
-	go refreshEnvironments()
-	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		envsTicker = time.NewTicker(time.Duration(_t) * time.Second)
-		for {
-			select {
-			case <-envsTicker.C:
-				go refreshEnvironments()
-			}
-		}
-	}()
-
-	// Ticker to reload settings
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Settings ticker")
-	}
-	// Refresh settings as soon as the service starts
-	go refreshSettings()
-	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		settingsTicker = time.NewTicker(time.Duration(_t) * time.Second)
-		for {
-			select {
-			case <-settingsTicker.C:
-				go refreshSettings()
-			}
-		}
-	}()
+	// multiple listeners channel
+	finish := make(chan bool)
 
 	// Launch HTTP server for TLS endpoint
 	go func() {
