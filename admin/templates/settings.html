@@ -75,13 +75,13 @@
                       {{ if eq $e.Type "boolean" }}
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                          <input id="{{ $e.Name }}" class="switch-input" type="checkbox" onclick="changeBooleanSetting({{ $e.Name }});" {{ if $e.Boolean }} checked {{ end }}>
+                          <input id="{{ $e.Name }}" class="switch-input" type="checkbox" onclick="changeBooleanSetting('{{ $e.Name }}');" {{ if $e.Boolean }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </td>
                       {{ end }}
                       <td>
-                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteSetting({{ $e.Name }});">
+                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteSetting('{{ $e.Name }}');">
                           <i class="far fa-trash-alt"></i>
                         </button>
                       </td>

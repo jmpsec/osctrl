@@ -37,15 +37,15 @@
                       <div class="col-md-12">
                       {{ if eq $metadata.Level "admin" }}
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
-                        data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes(['{{ .UUID }}']);">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-dark"
-                        data-tooltip="true" data-placement="top" title="Run Query" onclick="showQueryNodes([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Run Query" onclick="showQueryNodes(['{{ .UUID }}']);">
                           <i class="fab fa-searchengin"></i>
                         </button>
                         <button type="button" class="btn custom-size-btn btn-outline-info"
-                        data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles([{{ .UUID }}]);">
+                        data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles(['{{ .UUID }}']);">
                           <i class="fas fa-file-upload"></i>
                         </button>
                       {{ end }}
