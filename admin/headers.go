@@ -14,14 +14,12 @@ func loadHeaders(file string) (types.JSONConfigurationHeaders, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// Header values
 	headersRaw := viper.Sub(settings.AuthHeaders)
-	err = headersRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := headersRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// No errors!

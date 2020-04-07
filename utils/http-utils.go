@@ -61,8 +61,7 @@ func SendRequest(reqType, url string, params io.Reader, headers map[string]strin
 	}
 	//defer resp.Body.Close()
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
+		if err := resp.Body.Close(); err != nil {
 			log.Printf("Failed to close body %v", err)
 		}
 	}()

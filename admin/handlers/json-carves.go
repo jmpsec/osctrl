@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -50,46 +51,46 @@ type CarveTarget struct {
 	Value string `json:"value"`
 }
 
-// Handler for JSON carves by target
-func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricJSONReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+// JSONCarvesHandler for JSON carves by target
+func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricJSONReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricJSONErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricJSONErr)
 		return
 	}
 	vars := mux.Vars(r)
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		log.Println("error getting target")
 		return
 	}
 	// Verify target
 	if !CarvesTargets[target] {
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		log.Printf("invalid target %s", target)
 		return
 	}
 	// Retrieve carves for that target
-	qs, err := queriesmgr.GetCarves(target)
+	qs, err := h.Queries.GetCarves(target)
 	if err != nil {
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		log.Printf("error getting query carves %v", err)
 		return
 	}
 	// Prepare data to be returned
 	cJSON := []CarveJSON{}
 	for _, q := range qs {
-		c, err := carvesmgr.GetByQuery(q.Name)
+		c, err := h.Carves.GetByQuery(q.Name)
 		if err != nil {
 			log.Printf("error getting carves %v", err)
-			incMetric(metricJSONErr)
+			h.Inc(metricJSONErr)
 			continue
 		}
 		status := queries.StatusActive
@@ -107,7 +108,7 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 		data["path"] = q.Path
 		data["name"] = q.Name
 		// Preparing query targets
-		ts, _ := queriesmgr.GetTargets(q.Name)
+		ts, _ := h.Queries.GetTargets(q.Name)
 		_ts := []CarveTarget{}
 		for _, t := range ts {
 			_t := CarveTarget{
@@ -136,5 +137,5 @@ func jsonCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	incMetric(metricJSONOK)
+	h.Inc(metricJSONOK)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/jmpsec/osctrl/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -38,13 +39,14 @@ type TokenClaims struct {
 
 // UserManager have all users of the system
 type UserManager struct {
-	DB *gorm.DB
+	DB        *gorm.DB
+	JWTConfig *types.JSONConfigurationJWT
 }
 
 // CreateUserManager to initialize the users struct and tables
-func CreateUserManager(backend *gorm.DB) *UserManager {
+func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) *UserManager {
 	var u *UserManager
-	u = &UserManager{DB: backend}
+	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
 	if err := backend.AutoMigrate(AdminUser{}).Error; err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
@@ -86,8 +88,8 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 }
 
 // CreateToken to create a new JWT token for a given user
-func (m *UserManager) CreateToken(username string, expireHours int, jwtSecret string) (string, time.Time, error) {
-	expirationTime := time.Now().Add(time.Hour * time.Duration(expireHours))
+func (m *UserManager) CreateToken(username string) (string, time.Time, error) {
+	expirationTime := time.Now().Add(time.Hour * time.Duration(m.JWTConfig.HoursToExpire))
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
@@ -100,7 +102,7 @@ func (m *UserManager) CreateToken(username string, expireHours int, jwtSecret st
 	// Declare the token with the algorithm used for signing, and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Create the JWT string
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := token.SignedString([]byte(m.JWTConfig.JWTSecret))
 	if err != nil {
 		return "", time.Now(), err
 	}

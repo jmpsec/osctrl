@@ -58,13 +58,13 @@
                       <td>{{ $e.Hostname }}</td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm">
-                          <input id="{{ $e.Name }}_debug_check" class="switch-input" type="checkbox" onclick="changeDebugHTTP({{ $e.Name }});" {{ if $e.DebugHTTP }} checked {{ end }}>
+                          <input id="{{ $e.Name }}_debug_check" class="switch-input" type="checkbox" onclick="changeDebugHTTP('{{ $e.Name }}');" {{ if $e.DebugHTTP }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </td>
                       <td>{{ $e.Icon }} <i class="{{ $e.Icon }}"></i></td>
                       <td>
-                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteEnvironment({{ $e.Name }});">
+                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteEnvironment('{{ $e.Name }}');">
                           <i class="far fa-trash-alt"></i>
                         </button>
                         <!-- <button type="button" class="btn btn-sm btn-ghost-info" onclick="">

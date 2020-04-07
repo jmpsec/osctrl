@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
@@ -50,15 +51,15 @@ type QueryTarget struct {
 }
 
 // Handler for JSON queries by target
-func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricJSONReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin), false)
+func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricJSONReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Get context data
-	ctx := r.Context().Value(contextKey("session")).(contextValue)
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !adminUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[ctxUser])
-		incMetric(metricJSONErr)
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricJSONErr)
 		return
 	}
 	vars := mux.Vars(r)
@@ -66,20 +67,20 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	target, ok := vars["target"]
 	if !ok {
 		log.Println("error getting target")
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !QueryTargets[target] {
 		log.Printf("invalid target %s", target)
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Retrieve queries for that target
-	qs, err := queriesmgr.GetQueries(target)
+	qs, err := h.Queries.GetQueries(target)
 	if err != nil {
 		log.Printf("error getting queries %v", err)
-		incMetric(metricJSONErr)
+		h.Inc(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -97,9 +98,9 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 		data := make(QueryData)
 		data["query"] = q.Query
 		data["name"] = q.Name
-		data["deflink"], data["dblink"] = queryResultLink(q.Name)
+		data["deflink"], data["dblink"] = h.queryResultLink(q.Name)
 		// Preparing query targets
-		ts, _ := queriesmgr.GetTargets(q.Name)
+		ts, _ := h.Queries.GetTargets(q.Name)
 		_ts := []QueryTarget{}
 		for _, t := range ts {
 			_t := QueryTarget{
@@ -128,5 +129,5 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	incMetric(metricJSONOK)
+	h.Inc(metricJSONOK)
 }

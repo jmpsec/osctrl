@@ -8,6 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/crewjam/saml/samlsp"
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	ahandlers "github.com/jmpsec/osctrl/admin/handlers"
+	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
@@ -17,10 +22,6 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
-
-	"github.com/crewjam/saml/samlsp"
-	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
 )
 
@@ -36,6 +37,10 @@ const (
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
+)
+
+// Paths
+const (
 	// Default endpoint to handle HTTP health
 	healthPath string = "/health"
 	// Default endpoint to handle Login
@@ -44,6 +49,12 @@ const (
 	errorPath string = "/error"
 	// Default endpoint to handle Forbidden(403) errors
 	forbiddenPath string = "/forbidden"
+	// Default endpoint for favicon
+	faviconPath string = "/favicon.ico"
+)
+
+// Configuration
+const (
 	// Default service configuration file
 	configurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
@@ -54,10 +65,10 @@ const (
 	jwtConfigurationFile string = "config/jwt.json"
 	// Default Headers configuration file
 	headersConfigurationFile string = "config/headers.json"
-	// osquery version to display tables
-	osqueryTablesVersion string = "4.2.0"
-	// JSON file with osquery tables data
-	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
+)
+
+// Random
+const (
 	// Static files folder
 	staticFilesFolder string = "./static"
 	// Carved files folder
@@ -68,6 +79,14 @@ const (
 	defaultInactive int = -72
 )
 
+// osquery
+const (
+	// osquery version to display tables
+	osqueryTablesVersion string = "4.2.0"
+	// JSON file with osquery tables data
+	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
+)
+
 var (
 	// Wait for backend in seconds
 	backendWait = 7 * time.Second
@@ -75,19 +94,20 @@ var (
 
 // Global general variables
 var (
-	adminConfig    types.JSONConfigurationService
-	db             *gorm.DB
-	settingsmgr    *settings.Settings
-	nodesmgr       *nodes.NodeManager
-	queriesmgr     *queries.Queries
-	carvesmgr      *carves.Carves
-	sessionsmgr    *SessionManager
-	envs           *environments.Environment
-	adminUsers     *users.UserManager
-	sessionsTicker *time.Ticker
+	err         error
+	adminConfig types.JSONConfigurationService
+	db          *gorm.DB
+	settingsmgr *settings.Settings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	carvesmgr   *carves.Carves
+	sessionsmgr *sessions.SessionManager
+	envs        *environments.Environment
+	adminUsers  *users.UserManager
 	// FIXME this is nasty and should not be a global but here we are
-	osqueryTables []OsqueryTable
-	_metrics      *metrics.Metrics
+	osqueryTables []types.OsqueryTable
+	adminMetrics  *metrics.Metrics
+	handlersAdmin *ahandlers.HandlersAdmin
 )
 
 // Variables for flags
@@ -137,14 +157,12 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// Admin values
 	adminRaw := viper.Sub(service)
-	err = adminRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := adminRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// Check if values are valid
@@ -154,14 +172,12 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validLogging[cfg.Logging] {
 		return cfg, fmt.Errorf("Invalid logging method")
 	}
-
 	// No errors!
 	return cfg, nil
 }
 
 // Initialization code
 func init() {
-	var err error
 	// Command line flags
 	flag.Usage = adminUsage
 	// Define flags
@@ -236,11 +252,11 @@ func main() {
 		}
 	}()
 	// Automigrate tables
-	if err := automigrateDB(); err != nil {
-		log.Fatalf("Failed to AutoMigrate: %v", err)
-	}
+	//if err := automigrateDB(); err != nil {
+	//	log.Fatalf("Failed to AutoMigrate: %v", err)
+	//}
 	// Initialize users
-	adminUsers = users.CreateUserManager(db)
+	adminUsers = users.CreateUserManager(db, &jwtConfig)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -252,10 +268,18 @@ func main() {
 	// Initialize carves
 	carvesmgr = carves.CreateFileCarves(db)
 	// Initialize sessions
-	sessionsmgr = CreateSessionManager(db)
+	sessionsmgr = sessions.CreateSessionManager(db, projectName)
 	// Initialize service settings
 	log.Println("Loading service settings")
-	loadingSettings()
+	if err := loadingSettings(settingsmgr); err != nil {
+		log.Fatalf("Error loading settings - %v", err)
+	}
+	// Initialize metrics
+	log.Println("Loading service metrics")
+	adminMetrics, err = loadingMetrics(settingsmgr)
+	if err != nil {
+		log.Fatalf("Error loading metrics - %v", err)
+	}
 
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
@@ -280,10 +304,42 @@ func main() {
 		}
 	}
 
+	// FIXME Redis cache - Ticker to cleanup sessions
+	// FIXME splay this?
+	go func() {
+		_t := settingsmgr.CleanupSessions()
+		if _t == 0 {
+			_t = int64(defaultRefresh)
+		}
+		for {
+			if settingsmgr.DebugService(settings.ServiceAdmin) {
+				log.Println("DebugService: Cleaning up sessions")
+			}
+			sessionsmgr.Cleanup()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+
+	// Initialize Admin handlers before router
+	handlersAdmin = ahandlers.CreateHandlersAdmin(
+		ahandlers.WithDB(db),
+		ahandlers.WithEnvs(envs),
+		ahandlers.WithUsers(adminUsers),
+		ahandlers.WithNodes(nodesmgr),
+		ahandlers.WithQueries(queriesmgr),
+		ahandlers.WithCarves(carvesmgr),
+		ahandlers.WithSettings(settingsmgr),
+		ahandlers.WithMetrics(adminMetrics),
+		ahandlers.WithSessions(sessionsmgr),
+		ahandlers.WithVersion(serviceVersion),
+		ahandlers.WithOsqueryTables(osqueryTables),
+		ahandlers.WithAdminConfig(&adminConfig),
+	)
+
+	//////////////////////////// ADMIN
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Creating router")
 	}
-
 	// Create router for admin
 	routerAdmin := mux.NewRouter()
 
@@ -291,21 +347,20 @@ func main() {
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Unauthenticated content")
 	}
-
 	// Admin: login only if local auth is enabled
 	if adminConfig.Auth != settings.AuthNone {
 		// login
-		routerAdmin.HandleFunc(loginPath, loginGETHandler).Methods("GET")
-		routerAdmin.HandleFunc(loginPath, loginPOSTHandler).Methods("POST")
+		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginHandler).Methods("GET")
+		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginPOSTHandler).Methods("POST")
 	}
 	// Admin: health of service
-	routerAdmin.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
+	routerAdmin.HandleFunc(healthPath, handlersAdmin.HealthHandler).Methods("GET")
 	// Admin: error
-	routerAdmin.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
+	routerAdmin.HandleFunc(errorPath, handlersAdmin.ErrorHandler).Methods("GET")
 	// Admin: forbidden
-	routerAdmin.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
+	routerAdmin.HandleFunc(forbiddenPath, handlersAdmin.ForbiddenHandler).Methods("GET")
 	// Admin: favicon
-	routerAdmin.HandleFunc("/favicon.ico", faviconHandler)
+	routerAdmin.HandleFunc(faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
 	routerAdmin.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
@@ -314,105 +369,81 @@ func main() {
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Authenticated content")
 	}
-
 	// Admin: JSON data for environments
-	routerAdmin.Handle("/json/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(jsonEnvironmentHandler))).Methods("GET")
+	routerAdmin.Handle("/json/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler))).Methods("GET")
 	// Admin: JSON data for platforms
-	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(jsonPlatformHandler))).Methods("GET")
+	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler))).Methods("GET")
 	// Admin: JSON data for logs
-	routerAdmin.Handle("/json/logs/{type}/{environment}/{uuid}", handlerAuthCheck(http.HandlerFunc(jsonLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/logs/{type}/{environment}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler))).Methods("GET")
 	// Admin: JSON data for query logs
-	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(jsonQueryLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
-	routerAdmin.Handle("/json/stats/{target}/{name}", handlerAuthCheck(http.HandlerFunc(jsonStatsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/stats/{target}/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler))).Methods("GET")
 	// Admin: table for environments
-	routerAdmin.Handle("/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(environmentHandler))).Methods("GET")
+	routerAdmin.Handle("/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler))).Methods("GET")
 	// Admin: table for platforms
-	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(platformHandler))).Methods("GET")
+	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler))).Methods("GET")
 	// Admin: dashboard
 	//routerAdmin.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
-	routerAdmin.Handle("/dashboard", handlerAuthCheck(http.HandlerFunc(rootHandler))).Methods("GET")
+	routerAdmin.Handle("/dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler))).Methods("GET")
 	// Admin: root
-	routerAdmin.Handle("/", handlerAuthCheck(http.HandlerFunc(rootHandler))).Methods("GET")
+	routerAdmin.Handle("/", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler))).Methods("GET")
 	// Admin: node view
-	routerAdmin.Handle("/node/{uuid}", handlerAuthCheck(http.HandlerFunc(nodeHandler))).Methods("GET")
+	routerAdmin.Handle("/node/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler))).Methods("GET")
 	// Admin: multi node action
-	routerAdmin.Handle("/node/actions", handlerAuthCheck(http.HandlerFunc(nodeActionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/node/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler))).Methods("POST")
 	// Admin: run queries
-	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(queryRunPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler))).Methods("GET")
+	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler))).Methods("POST")
 	// Admin: list queries
-	routerAdmin.Handle("/query/list", handlerAuthCheck(http.HandlerFunc(queryListGETHandler))).Methods("GET")
+	routerAdmin.Handle("/query/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler))).Methods("GET")
 	// Admin: query actions
-	routerAdmin.Handle("/query/actions", handlerAuthCheck(http.HandlerFunc(queryActionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/query/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler))).Methods("POST")
 	// Admin: query JSON
-	routerAdmin.Handle("/query/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonQueryHandler))).Methods("GET")
+	routerAdmin.Handle("/query/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler))).Methods("GET")
 	// Admin: query logs
-	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(queryLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler))).Methods("GET")
 	// Admin: carve files
-	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(carvesRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(carvesRunPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler))).Methods("POST")
 	// Admin: list carves
-	routerAdmin.Handle("/carves/list", handlerAuthCheck(http.HandlerFunc(carvesListGETHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler))).Methods("GET")
 	// Admin: carves actions
-	routerAdmin.Handle("/carves/actions", handlerAuthCheck(http.HandlerFunc(carvesActionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/carves/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler))).Methods("POST")
 	// Admin: carves JSON
-	routerAdmin.Handle("/carves/json/{target}", handlerAuthCheck(http.HandlerFunc(jsonCarvesHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler))).Methods("GET")
 	// Admin: carves details
-	routerAdmin.Handle("/carves/details/{name}", handlerAuthCheck(http.HandlerFunc(carvesDetailsHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler))).Methods("GET")
 	// Admin: carves download
-	routerAdmin.Handle("/carves/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(carvesDownloadHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler))).Methods("GET")
 	// Admin: nodes configuration
-	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confGETHandler))).Methods("GET")
-	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(confPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/intervals/{environment}", handlerAuthCheck(http.HandlerFunc(intervalsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler))).Methods("GET")
+	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/intervals/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler))).Methods("POST")
 	// Admin: nodes enroll
-	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(enrollGETHandler))).Methods("GET")
-	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(enrollPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(expirationPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler))).Methods("GET")
+	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
-	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(settingsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler))).Methods("POST")
 	// Admin: manage environments
-	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(envsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler))).Methods("POST")
 	// Admin: manage users
-	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersGETHandler))).Methods("GET")
-	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(usersPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(permissionsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(permissionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler))).Methods("GET")
+	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler))).Methods("POST")
 	// Admin: manage tokens
-	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(tokensGETHandler))).Methods("GET")
-	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(tokensPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler))).Methods("GET")
+	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler))).Methods("POST")
 	// logout
-	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(logoutPOSTHandler))).Methods("POST")
-
+	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
-
-	// FIXME Redis cache - Ticker to cleanup sessions
-	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Sessions ticker")
-	}
-	go func() {
-		_t := settingsmgr.CleanupSessions()
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		sessionsTicker = time.NewTicker(time.Duration(_t) * time.Second)
-		for {
-			select {
-			case <-sessionsTicker.C:
-				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Println("DebugService: Cleaning up sessions")
-				}
-				go sessionsmgr.Cleanup()
-			}
-		}
-	}()
 
 	// multiple listeners channel
 	finish := make(chan bool)

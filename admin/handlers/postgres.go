@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
 	"time"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 // OsqueryResultData to log result data to database
@@ -42,29 +43,29 @@ type OsqueryQueryData struct {
 }
 
 // Function to retrieve the last status logs for a given node
-func postgresStatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
+func (h *HandlersAdmin) postgresStatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
 	var logs []OsqueryStatusData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := h.DB.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
 }
 
 // Function to retrieve the last result logs for a given node
-func postgresResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
+func (h *HandlersAdmin) postgresResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
 	var logs []OsqueryResultData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := db.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := h.DB.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
 }
 
 // Function to retrieve the query log by name
-func postgresQueryLogs(name string) ([]OsqueryQueryData, error) {
+func (h *HandlersAdmin) postgresQueryLogs(name string) ([]OsqueryQueryData, error) {
 	var logs []OsqueryQueryData
-	if err := db.Where("name = ?", name).Find(&logs).Error; err != nil {
+	if err := h.DB.Where("name = ?", name).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil

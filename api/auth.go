@@ -23,7 +23,7 @@ const (
 )
 
 const (
-	ctxUser  = "user"
+	ctxUser = "user"
 )
 
 const (
@@ -70,8 +70,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 			// Update metadata for the user
-			err := apiUsers.UpdateTokenIPAddress(r.Header.Get("X-Real-IP"), claims.Username)
-			if err != nil {
+			if err := apiUsers.UpdateTokenIPAddress(r.Header.Get("X-Real-IP"), claims.Username); err != nil {
 				log.Printf("error updating token for user %s: %v", claims.Username, err)
 			}
 			// Set middleware values

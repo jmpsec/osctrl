@@ -15,7 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/tls/handlers"
+	thandlers "github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 
 	"github.com/gorilla/mux"
@@ -46,8 +46,6 @@ const (
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
 	defaultAccelerate int = 300
-	// Default value for keeping maps updated in handlers
-	defaultMapRefresh int = 60
 )
 
 var (
@@ -57,6 +55,7 @@ var (
 
 // Global variables
 var (
+	err         error
 	tlsConfig   types.JSONConfigurationService
 	db          *gorm.DB
 	settingsmgr *settings.Settings
@@ -66,9 +65,9 @@ var (
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
 	filecarves  *carves.Carves
-	_metrics    *metrics.Metrics
+	tlsMetrics  *metrics.Metrics
 	loggerTLS   *logging.LoggerTLS
-	handlersTLS *handlers.HandlersTLS
+	handlersTLS *thandlers.HandlersTLS
 )
 
 // Variables for flags
@@ -94,14 +93,12 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// TLS endpoint values
 	tlsRaw := viper.Sub(settings.ServiceTLS)
-	err = tlsRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := tlsRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// Check if values are valid
@@ -117,7 +114,6 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 
 // Initialization code
 func init() {
-	var err error
 	// Command line flags
 	flag.Usage = tlsUsage
 	// Define flags
@@ -177,27 +173,34 @@ func main() {
 	filecarves = carves.CreateFileCarves(db)
 	// Initialize service settings
 	log.Println("Loading service settings")
-	loadingSettings()
+	if err := loadingSettings(settingsmgr); err != nil {
+		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logging, err)
+	}
+	// Initialize metrics
+	log.Println("Loading service metrics")
+	tlsMetrics, err = loadingMetrics(settingsmgr)
+	if err != nil {
+		log.Fatalf("Error loading metrics - %v", err)
+	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Printf("Error loading logger - %s: %v", tlsConfig.Logging, err)
+		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logging, err)
 	}
 
 	// Sleep to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Environments refresher")
-	}
-	// Refresh environments as soon as service starts
 	go func() {
 		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
+			if settingsmgr.DebugService(settings.ServiceTLS) {
+				log.Println("DebugService: Refreshing environments")
+			}
 			envsmap = refreshEnvironments()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -205,32 +208,31 @@ func main() {
 	// Sleep to reload settings
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Settings refresher")
-	}
-	// Refresh settings as soon as the service starts
 	go func() {
 		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
+			if settingsmgr.DebugService(settings.ServiceTLS) {
+				log.Println("DebugService: Refreshing settings")
+			}
 			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
 
 	// Initialize TLS handlers before router
-	handlersTLS = handlers.CreateHandlersTLS(
-		handlers.WithEnvs(envs),
-		handlers.WithEnvsMap(&envsmap),
-		handlers.WithNodes(nodesmgr),
-		handlers.WithQueries(queriesmgr),
-		handlers.WithCarves(filecarves),
-		handlers.WithSettings(settingsmgr),
-		handlers.WithSettingsMap(&settingsmap),
-		handlers.WithMetrics(_metrics),
-		handlers.WithLogs(loggerTLS),
+	handlersTLS = thandlers.CreateHandlersTLS(
+		thandlers.WithEnvs(envs),
+		thandlers.WithEnvsMap(&envsmap),
+		thandlers.WithNodes(nodesmgr),
+		thandlers.WithQueries(queriesmgr),
+		thandlers.WithCarves(filecarves),
+		thandlers.WithSettings(settingsmgr),
+		thandlers.WithSettingsMap(&settingsmap),
+		thandlers.WithMetrics(tlsMetrics),
+		thandlers.WithLogs(loggerTLS),
 	)
 
 	/////////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
@@ -258,16 +260,7 @@ func main() {
 	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
 
 	//////////////////////////////// Everything is ready at this point!
-
-	// multiple listeners channel
-	finish := make(chan bool)
-
-	// Launch HTTP server for TLS endpoint
-	go func() {
-		serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
-	}()
-
-	<-finish
+	serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
+	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+	log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
 }

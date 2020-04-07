@@ -2,11 +2,11 @@ package types
 
 // JSONConfigurationService to hold all service configuration values
 type JSONConfigurationService struct {
-	Listener    string `json:"listener"`
-	Port        string `json:"port"`
-	Host        string `json:"host"`
-	Auth        string `json:"auth"`
-	Logging     string `json:"logging"`
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
+	Logging  string `json:"logging"`
 }
 
 // JSONConfigurationHeaders to keep all headers details for auth
@@ -27,4 +27,12 @@ type JSONConfigurationHeaders struct {
 type JSONConfigurationJWT struct {
 	JWTSecret     string `json:"jwtSecret"`
 	HoursToExpire int    `json:"hoursToExpire"`
+}
+
+// OsqueryTable to show tables to query
+type OsqueryTable struct {
+	Name      string   `json:"name"`
+	URL       string   `json:"url"`
+	Platforms []string `json:"platforms"`
+	Filter    string
 }

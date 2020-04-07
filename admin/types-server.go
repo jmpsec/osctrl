@@ -8,14 +8,6 @@ type JSONAdminUsers struct {
 	Admin    bool   `json:"admin"`
 }
 
-// OsqueryTable to show tables to query
-type OsqueryTable struct {
-	Name      string   `json:"name"`
-	URL       string   `json:"url"`
-	Platforms []string `json:"platforms"`
-	Filter    string
-}
-
 // JWTData to return all the fields from a JWT token
 type JWTData struct {
 	Subject  string

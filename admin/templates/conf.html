@@ -42,7 +42,7 @@
                         <label for="conf_range">Configuration Interval: <b><output id="conf_output">{{ .Environment.ConfigInterval }}</output></b> seconds</label>
                         <input type="range" class="form-control-range" id="conf_range"
                           value="{{ .Environment.ConfigInterval }}" min="10" max="600" step="10"
-                          oninput="changeIntervalValue(conf_range, conf_output);">
+                          oninput="changeIntervalValue('conf_range', 'conf_output');">
                         <input id="conf_range_save" type="hidden" value="{{ .Environment.ConfigInterval }}">
                       </div>
                     </div>
@@ -52,7 +52,7 @@
                       <label for="logging_range">Logging Interval: <b><output id="logging_output">{{ .Environment.LogInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="logging_range"
                         value="{{ .Environment.LogInterval }}" min="10" max="600" step="10"
-                        oninput="changeIntervalValue(logging_range, logging_output);">
+                        oninput="changeIntervalValue('logging_range', 'logging_output');">
                       <input id="logging_range_save" type="hidden" value="{{ .Environment.LogInterval }}">
                     </div>
                   </div>
@@ -61,7 +61,7 @@
                       <label for="query_range">Query Interval: <b><output id="query_output">{{ .Environment.QueryInterval }}</output></b> seconds</label>
                       <input type="range" class="form-control-range" id="query_range"
                         value="{{ .Environment.QueryInterval }}" min="10" max="300" step="1"
-                        oninput="changeIntervalValue(query_range, query_output);">
+                        oninput="changeIntervalValue('query_range', 'query_output');">
                       <input id="query_range_save" type="hidden" value="{{ .Environment.QueryInterval }}">
                     </div>
                   </div>

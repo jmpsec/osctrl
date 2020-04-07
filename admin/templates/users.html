@@ -78,12 +78,12 @@
                       </td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                          <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser({{ $e.Username }});" {{ if $e.Admin }} checked {{ end }}>
+                          <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       {{ if not $e.Admin }}
                         <button id="permissions-button-{{ $e.Username }}" type="button" class="btn btn-sm btn-ghost-primary" data-tooltip="true" data-placement="top" title="Permissions"
-                          onclick="showPermissions({{ $e.Username }});">
+                          onclick="showPermissions('{{ $e.Username }}');">
                           <i class="fas fa-cogs"></i>
                         </button>
                       {{ end }}
@@ -91,11 +91,11 @@
                       <td>{{ pastFutureTimes $e.LastAccess }}</td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="Show API Token"
-                        onclick="showAPIToken({{ $e.APIToken }}, {{ pastFutureTimes $e.TokenExpire }}, {{ $e.Username }});">
+                        onclick="showAPIToken('{{ $e.APIToken }}', '{{ pastFutureTimes $e.TokenExpire }}', '{{ $e.Username }}');">
                           <i class="fas fa-key"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
-                        onclick="confirmDeleteUser({{ $e.Username }});">
+                        onclick="confirmDeleteUser('{{ $e.Username }}');">
                           <i class="far fa-trash-alt"></i>
                         </button>
                       </td>

@@ -14,17 +14,14 @@ func loadJWTConfiguration(file string) (types.JSONConfigurationJWT, error) {
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// JWT values
 	headersRaw := viper.Sub(settings.AuthJWT)
-	err = headersRaw.Unmarshal(&cfg)
-	if err != nil {
+	if err := headersRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
-
 	// No errors!
 	return cfg, nil
 }

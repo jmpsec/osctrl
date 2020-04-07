@@ -12,8 +12,7 @@ import (
 func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, debug bool) {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
-	err := json.Unmarshal(data, &logs)
-	if err != nil {
+	if err := json.Unmarshal(data, &logs); err != nil {
 		// FIXME metrics for this
 		log.Printf("error parsing log %s %v", string(data), err)
 	}
