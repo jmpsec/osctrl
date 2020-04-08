@@ -11,7 +11,7 @@ CERTS="certs"
 DATA="data"
 DB_JSON="$CONFIG/db.json"
 CRT_FILE="$CERTS/osctrl.crt"
-OSQUERY_JSON="$DATA/osquery-dev.json"
+OSQUERY_JSON="$DATA/osquery-cfg.json"
 
 # Check if database is ready, otherwise commands will fail
 until $(./bin/osctrl-cli -D "$DB_JSON" check); do
