@@ -13,7 +13,6 @@
 # Arguments for MODE:
 #   dev     Provision will run in development mode. Certificate will be self-signed.
 #   prod    Provision will run in production mode.
-#   update  Provision will update the service running in the machine.
 #
 # Arguments for TYPE:
 #   self    Provision will use a self-signed TLS certificate that will be generated.
@@ -37,7 +36,6 @@
 #   --admin-hostname HOSTNAME   Hostname for the admin service. Default is 127.0.0.1
 #   --api-hostname HOSTNAME     Hostname for the API service. Default is 127.0.0.1
 #   -X PASS     --password      Force the admin password for the admin interface. Default is random
-#   -U          --update        Pull from master and sync files to the current folder
 #   -k PATH     --keyfile PATH  Path to supplied TLS key file
 #   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle
 #   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt
@@ -48,14 +46,13 @@
 #   -P          --postgres      Install and configure PostgreSQL as backend
 #   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana)
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
+#   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
 #
 # Examples:
 #   Provision service in development mode, code is in /vagrant and all components (admin, tls, api):
 #     provision.sh -m dev -s /vagrant -p all
 #   Provision service in production mode using my own certificate and only with TLS endpoint:
 #     provision.sh -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls
-#   Update service in development mode and running admin only from /home/foobar/osctrl:
-#     provision.sh -m dev -U -s /home/foobar/osctrl -p admin
 #
 
 # Before we begin...
@@ -87,7 +84,6 @@ function usage() {
   printf "\nArguments for MODE:\n"
   printf "  dev \t\tProvision will run in development mode. Certificate will be self-signed.\n"
   printf "  prod \t\tProvision will run in production mode.\n"
-  printf "  update \tProvision will update the service running in the machine.\n"
   printf "\nArguments for TYPE:\n"
   printf "  self \t\tProvision will use a self-signed TLS certificate that will be generated.\n"
   printf "  own \t\tProvision will use the TLS certificate provided by the user.\n"
@@ -108,7 +104,6 @@ function usage() {
   printf "  --admin-hostname HOSTNAME \tHostname for the admin service. Default is 127.0.0.1\n"
   printf "  --api-hostname HOSTNAME \tHostname for the API service. Default is 127.0.0.1\n"
   printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random\n"
-  printf "  -U          --update \t\tPull from master and sync files to the current folder\n"
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
   printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt\n"
   printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt\n"
@@ -118,13 +113,12 @@ function usage() {
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
   printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
+  printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /vagrant and all components (admin, tls, api):\n"
   printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
   printf "  Provision service in production mode using my own certificate and only with TLS endpoint:\n"
   printf "\t%s -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls\n" "${0}"
-  printf "  Update service in development mode and running admin only from /home/foobar/osctrl:\n"
-  printf "\t%s -U -s /home/foobar/osctrl -p admin\n" "${0}"
   printf "\n"
 }
 
@@ -150,6 +144,7 @@ DEV_HOST="osctrl.dev"
 # Default values for arguments
 SHOW_USAGE=false
 MODE="dev"
+ENVIRONMENT="dev"
 TYPE="self"
 PART="all"
 KEYFILE=""
@@ -202,12 +197,12 @@ _ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | m
 _JWT_SECRET="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | sha256sum | cut -d " " -f1)"
 
 # Arrays with valid arguments
-VALID_MODE=("dev" "prod" "update")
+VALID_MODE=("dev" "prod")
 VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:UPk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,update,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:Pk:nMEc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,metrics,enroll,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -224,6 +219,7 @@ while true; do
       if [[ "${VALID_MODE[@]}" =~ "${GIVEN_ARG}" ]]; then
         SHOW_USAGE=false
         MODE=$2
+        ENVIRONMENT=$MODE
         shift 2
       else
         _log "Invalid mode"
@@ -307,11 +303,6 @@ while true; do
       _A_HOST=$ALL_HOST
       _P_HOST=$ALL_HOST
       shift 2
-      ;;
-    -U|--update)
-      SHOW_USAGE=false
-      UPDATE=true
-      shift
       ;;
     -n|--nginx)
       SHOW_USAGE=false
@@ -462,29 +453,53 @@ if [[ "$NGINX" == true ]]; then
   _dh_file="$_certificates_dir/dhparam.pem"
   _dh_bits="1024"
 
-  # Self-signed certificates for dev
+  # Mode prod has 2048 dhparam file
+  if [[ "$MODE" == "prod" ]]; then
+    _dh_bits="2048"
+  fi
+
+  # Mode dev checks for existance of certificates
   if [[ "$MODE" == "dev" ]]; then
     # Do we have certificates already for admin/API?
+    # This is done just in case we have certificates from a local CA
     if [[ -f "$SOURCE_PATH/certs/$_NAME-admin.crt" ]] && [[ -f "$SOURCE_PATH/certs/$_NAME-admin.key" ]]; then
       log "Using existing certificate"
       sudo cp "$SOURCE_PATH/certs/$_NAME-admin.crt" "$_cert_file_a"
       log "Using existing key"
       sudo cp "$SOURCE_PATH/certs/$_NAME-admin.key" "$_key_file_a"
-    else
-      log "Deploying self-signed certificates for admin/API"
-      self_signed_cert "$_certificates_dir" "$_NAME-admin" "$_dh_bits" "$DEV_HOST" "$_A_HOST"
     fi
-    log "Deploying self-signed certificates"
+  fi
+
+  # Self-generated certificates generation
+  if [[ "$TYPE" == "self" ]]; then
+    log "Deploying self-signed certificates for admin/API"
+    self_signed_cert "$_certificates_dir" "$_NAME-admin" "$_dh_bits" "$DEV_HOST" "$_A_HOST"
+
+    log "Deploying self-signed certificates for TLS"
     self_signed_cert "$_certificates_dir" "$_NAME" "$_dh_bits" "$DEV_HOST" "$_A_HOST"
   fi
-  # Certbot certificates for prod and 4096 dhparam file
-  if [[ "$MODE" == "prod" ]]; then
-    _dh_bits="4096"
+
+  # Own certificates should copy them
+  if [[ "$TYPE" == "own" ]]; then
+    # Check if certificates exist
+    if [[ -f "$CERTFILE" ]] && [[ -f "$KEYFILE" ]]; then
+      log "Using existing certificate"
+      sudo cp "$CERTFILE" "$_cert_file"
+      sudo cp "$CERTFILE" "$_cert_file_a"
+      log "Using existing key"
+      sudo cp "$KEYFILE" "$_key_file"
+      sudo cp "$KEYFILE" "$_key_file_a"
+    fi
+  fi
+
+  # Certbot certificates
+  if [[ "$TYPE" == "certbot" ]]; then
     #certbot_certificates_nginx "$_certificates_dir" "$_certificate_name" "$EMAIL" "$DOMAIN"
-    # FIXME: REMEMBER GENERATE THE CERTIFICATES MANUALLY!
-    log "************** REMEMBER GENERATE THE CERTIFICATES MANUALLY **************"
-    #sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
-    #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file"
+-   # FIXME: REMEMBER GENERATE THE CERTIFICATES MANUALLY!
+-   _log "************** GENERATE THE CERTIFICATES MANUALLY AND USE THEM WITH -t own **************"
+    exit $OHNOES
+-   #sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
+-   #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file"
   fi
 
   # Diffie-Hellman parameter for DHE ciphersuites
@@ -629,37 +644,39 @@ make cli
 # Install CLI
 DEST="$DEST_PATH" make install_cli
 
-# If we are in dev, create environment and enroll host
-if [[ "$MODE" == "dev" ]]; then
-  __db_conf="$DEST_PATH/config/$DB_CONF"
+# Some needed files
+__db_conf="$DEST_PATH/config/$DB_CONF"
+__osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
+__osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # Create admin user
-  log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n Admin
+# Create admin user
+log "Creating admin user"
+eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n "Admin" )
 
-  # Create environment for dev
-  log "Creating environment for dev"
-  __osquery_dev="$SOURCE_PATH/deploy/osquery/osquery-dev.json"
-  __osctrl_crt="/etc/nginx/certs/osctrl.crt"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "dev" -host "$_T_HOST" -conf "$__osquery_dev" -crt "$__osctrl_crt"
+# Create initial environment to enroll machines
+log "Creating environment $ENVIRONMENT"
+eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -conf "$__osquery_cfg" -crt "$__osctrl_crt" )
 
-  log "Checking if service is ready"
-  while true; do
-    _readiness=$(curl -k --write-out %{http_code} --head --silent --output /dev/null "https://$_T_HOST")
-    if [[ "$_readiness" == "200" ]]; then
-      log "Status $_readiness, service ready"
-      break
-    else
-      log "Status $_readiness, not yet"
-    fi
-    sleep 1
-  done
+# Make newly created environment as default
+log "Making environment $ENVIRONMENT as default"
+eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings update -n default_env -s admin --type string --string "$ENVIRONMENT" )
 
-  # Enroll host in environment
-  if [[ "$ENROLL" == true ]]; then
-    log "Adding host in dev environment"
-    eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment quick-add -n "dev" )
+log "Checking if service is ready"
+while true; do
+  _readiness=$(curl -k --write-out %{http_code} --head --silent --output /dev/null "https://$_T_HOST")
+  if [[ "$_readiness" == "200" ]]; then
+    log "Status $_readiness, service ready"
+    break
+  else
+    log "Status $_readiness, not yet"
   fi
+  sleep 1
+done
+
+# Enroll host in environment
+if [[ "$ENROLL" == true ]]; then
+  log "Adding host in environment $ENVIRONMENT"
+  eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment quick-add -n "$ENVIRONMENT" )
 fi
 
 # Ascii art is always appreciated
@@ -673,12 +690,13 @@ echo
 log "Your osctrl is ready 👌🏽"
 echo
 if [[ "$MODE" == "dev" ]]; then
-  log " -> https://$_A_HOST:$_A_PUB_PORT"
   log " -> https://$DEV_HOST:$_A_PUB_PORT"
   echo
-  log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
-  echo
 fi
+log " -> https://$_A_HOST:$_A_PUB_PORT"
+echo
+log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
+echo
 
 # Done
 _END_TIME=$(date +%s)
