@@ -453,9 +453,9 @@ if [[ "$NGINX" == true ]]; then
   _dh_file="$_certificates_dir/dhparam.pem"
   _dh_bits="1024"
 
-  # Mode prod has 4096 dhparam file
+  # Mode prod has 2048 dhparam file
   if [[ "$MODE" == "prod" ]]; then
-    _dh_bits="1024"
+    _dh_bits="2048"
   fi
 
   # Mode dev checks for existance of certificates
