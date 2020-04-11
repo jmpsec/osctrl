@@ -6,6 +6,13 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 )
 
+const (
+	// DBName as JSON key for configuration
+	DBName string = "db"
+	// DBFile as default file for configuration
+	DBFile string = "config/" + DBName + ".json"
+)
+
 // LoggerTLS will be used to handle logging for the TLS endpoint
 type LoggerTLS struct {
 	DB      *LoggerDB
@@ -43,7 +50,7 @@ func CreateLoggerTLS(logging string, mgr *settings.Settings, nodes *nodes.NodeMa
 		l.Graylog = g
 	}
 	// Initialize the DB logger anyway
-	d, err := CreateLoggerDB()
+	d, err := CreateLoggerDB(DBFile, DBName)
 	if err != nil {
 		return nil, err
 	}
@@ -63,12 +70,12 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		if logTLS.Graylog.Enabled {
 			logTLS.Graylog.Send(logType, data, environment, uuid, debug)
 		}
+	}
 	// TODO: Log to db to keep 24 hours of logs locally
 	// https://github.com/jmpsec/osctrl/issues/19
-	case settings.LoggingDB:
-		if logTLS.DB.Enabled {
-			logTLS.DB.Log(logType, data, environment, uuid, debug)
-		}
+	// Logging to DB happens anyway
+	if logTLS.DB.Enabled {
+		logTLS.DB.Log(logType, data, environment, uuid, debug)
 	}
 }
 

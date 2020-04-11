@@ -3,19 +3,13 @@ package logging
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/jinzhu/gorm"
 
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
-)
-
-const (
-	// DBName as JSON key for configuration
-	DBName string = "db"
-	// DBFile as default file for configuration
-	DBFile string = "config/" + DBName + ".json"
 )
 
 // OsqueryResultData to log result data to database
@@ -59,9 +53,9 @@ type LoggerDB struct {
 	Enabled       bool
 }
 
-func CreateLoggerDB() (*LoggerDB, error) {
+func CreateLoggerDB(dbfile, dbname string) (*LoggerDB, error) {
 	// Load DB configuration
-	config, err := backend.LoadConfiguration(DBFile, DBName)
+	config, err := backend.LoadConfiguration(dbfile, dbname)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +68,18 @@ func CreateLoggerDB() (*LoggerDB, error) {
 		Database:      database,
 		Configuration: config,
 		Enabled:       true,
+	}
+	// table osquery_status_data
+	if err := database.AutoMigrate(OsqueryStatusData{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (osquery_status_data): %v", err)
+	}
+	// table osquery_result_data
+	if err := database.AutoMigrate(OsqueryResultData{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (osquery_result_data): %v", err)
+	}
+	// table osquery_query_data
+	if err := database.AutoMigrate(OsqueryQueryData{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
 	return l, nil
 }
@@ -194,4 +200,33 @@ func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status
 	} else {
 		log.Printf("NewRecord did not return true")
 	}
+}
+
+// QueryLogs will retrieve all query logs
+func (logDB *LoggerDB) QueryLogs(name string) ([]OsqueryQueryData, error) {
+	var logs []OsqueryQueryData
+	if err := logDB.Database.Where("name = ?", name).Find(&logs).Error; err != nil {
+		return logs, err
+	}
+	return logs, nil
+}
+
+// StatusLogs will retrieve all status logs
+func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
+	var logs []OsqueryStatusData
+	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
+	if err := logDB.Database.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+		return logs, err
+	}
+	return logs, nil
+}
+
+// ResultLogs will retrieve all result logs
+func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
+	var logs []OsqueryResultData
+	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
+	if err := logDB.Database.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+		return logs, err
+	}
+	return logs, nil
 }

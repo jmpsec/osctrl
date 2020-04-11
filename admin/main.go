@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -108,6 +109,7 @@ var (
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
 	handlersAdmin *ahandlers.HandlersAdmin
+	loggerDB      *logging.LoggerDB
 )
 
 // Variables for flags
@@ -280,7 +282,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
-
+	// Initialize DB logger
+	loggerDB, err = logging.CreateLoggerDB(*dbFlag, backend.DBKey)
+	if err != nil {
+		log.Fatalf("Error loading logger - %v", err)
+	}
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -330,6 +336,7 @@ func main() {
 		ahandlers.WithCarves(carvesmgr),
 		ahandlers.WithSettings(settingsmgr),
 		ahandlers.WithMetrics(adminMetrics),
+		ahandlers.WithLoggerDB(loggerDB),
 		ahandlers.WithSessions(sessionsmgr),
 		ahandlers.WithVersion(serviceVersion),
 		ahandlers.WithOsqueryTables(osqueryTables),

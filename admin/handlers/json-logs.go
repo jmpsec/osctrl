@@ -109,7 +109,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == "status" {
-		statusLogs, err := h.postgresStatusLogs(UUID, env, secondsBack)
+		statusLogs, err := h.LoggerDB.StatusLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -129,7 +129,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			logJSON = append(logJSON, _l)
 		}
 	} else if logType == "result" {
-		resultLogs, err := h.postgresResultLogs(UUID, env, secondsBack)
+		resultLogs, err := h.LoggerDB.ResultLogs(UUID, env, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -178,7 +178,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Get logs
-	queryLogs, err := h.postgresQueryLogs(name)
+	queryLogs, err := h.LoggerDB.QueryLogs(name)
 	if err != nil {
 		log.Printf("error getting logs %v", err)
 		h.Inc(metricJSONErr)
