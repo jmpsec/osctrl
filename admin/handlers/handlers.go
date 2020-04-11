@@ -5,6 +5,7 @@ import (
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -43,6 +44,7 @@ type HandlersAdmin struct {
 	Carves         *carves.Carves
 	Settings       *settings.Settings
 	Metrics        *metrics.Metrics
+	LoggerDB       *logging.LoggerDB
 	Sessions       *sessions.SessionManager
 	ServiceVersion string
 	OsqueryTables  []types.OsqueryTable
@@ -96,6 +98,12 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 func WithMetrics(metrics *metrics.Metrics) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Metrics = metrics
+	}
+}
+
+func WithLoggerDB(logger *logging.LoggerDB) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.LoggerDB = logger
 	}
 }
 

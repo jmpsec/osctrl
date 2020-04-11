@@ -85,3 +85,10 @@ function showCarveFiles(_uuids) {
   });
   $("#carveModal").modal();
 }
+
+function changeBackValue(table_id, range_input, range_output) {
+  range_output.value = range_input.value;
+  var table = $('#' + table_id).DataTable();
+  var _url = table.ajax.url();
+  table.ajax.url(_url.split('seconds=')[0] + 'seconds=' + (range_output.value*3600));
+}
