@@ -87,6 +87,15 @@ func updateEnvironment(c *cli.Context) error {
 	if err := envs.Update(env); err != nil {
 		return err
 	}
+	// Make sure flags are up to date
+	flags, err := environments.GenerateFlags(env, "", "")
+	if err != nil {
+		return err
+	}
+	// Update flags in the newly created environment
+	if err := envs.UpdateFlags(envName, flags); err != nil {
+		return err
+	}
 	return nil
 }
 
