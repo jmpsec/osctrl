@@ -31,6 +31,7 @@ func addUser(c *cli.Context) error {
 	if err := adminUsers.Create(user); err != nil {
 		return err
 	}
+	fmt.Printf("Created user %s successfully", username)
 	return nil
 }
 
@@ -71,6 +72,7 @@ func editUser(c *cli.Context) error {
 			return err
 		}
 	}
+	fmt.Printf("Edited user %s successfully", username)
 	return nil
 }
 
