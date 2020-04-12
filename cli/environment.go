@@ -64,6 +64,7 @@ func addEnvironment(c *cli.Context) error {
 		fmt.Printf("Environment %s already exists!\n", envName)
 		os.Exit(1)
 	}
+	fmt.Printf("Environment %s was created successfully", envName)
 	return nil
 }
 
@@ -96,6 +97,7 @@ func updateEnvironment(c *cli.Context) error {
 	if err := envs.UpdateFlags(envName, flags); err != nil {
 		return err
 	}
+	fmt.Printf("Environment %s was updated successfully", envName)
 	return nil
 }
 
