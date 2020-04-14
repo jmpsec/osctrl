@@ -187,3 +187,8 @@ test:
 	go clean -testcache ./...
 	go test ./utils -v
 	go test ./tls/handlers -v
+
+# Check test coverage
+test_cover:
+	cd utils && go test -cover .
+	cd tls/handlers && go test -cover .
