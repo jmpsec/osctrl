@@ -154,7 +154,7 @@ type UsersTemplateData struct {
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title        string
-	Logs         string
+	Logs         []string
 	Node         nodes.OsqueryNode
 	Environments []environments.TLSEnvironment
 	Platforms    []string

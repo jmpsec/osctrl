@@ -177,7 +177,7 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 			cfg.Auth = v.String
 		}
 		if v.Name == settings.JSONLogging {
-			cfg.Logging = v.String
+			cfg.Logging = strings.Split(v.String, ",")
 		}
 	}
 	return cfg
