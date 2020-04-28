@@ -106,10 +106,7 @@ function confirmDeleteQueries(_names) {
   $("#confirmModal").modal();
 }
 
-function queryResultLink(defLink, dbLink, query) {
-  var query_link = '<span class="query-link"><a href="' + defLink + '">' + query + '</a></span>';
-  if (defLink !== dbLink) {
-    query_link = '<span class="query-link"><a href="' + defLink + '">' + query + '</a></span> <a href="' + dbLink + '" _target="_blank"><i class="fas fa-external-link-alt"></i></a>';
-  }
-  return query_link
+function queryResultLink(link, query) {
+  var external_link = '<a href="' + link + '" _target="_blank"><i class="fas fa-external-link-alt"></i></a>';
+  return '<span class="query-link"><a href="/query/logs/' + query + '">' + query + '</a> - ' + external_link + '</span> ';
 }

@@ -123,7 +123,7 @@
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return queryResultLink(data.deflink, data.dblink, data.query);
+                  return queryResultLink(data.link, data.name);
                 } else {
                   return data;
                 }

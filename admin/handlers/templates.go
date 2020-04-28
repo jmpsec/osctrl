@@ -513,9 +513,13 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Println("error getting name")
 		return
 	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"queryResultLink":  h.queryResultLink,
+	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries-logs.html").filepaths
-	t, err := template.ParseFiles(tempateFiles...)
+	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -549,11 +553,6 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Printf("error getting targets %v", err)
 		return
 	}
-	defLink, dbLink := h.queryResultLink(query.Name)
-	resLink := ""
-	if defLink != dbLink {
-		resLink = dbLink
-	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
@@ -561,7 +560,6 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		Environments: envAll,
 		Platforms:    platforms,
 		Query:        query,
-		ResultsLink:  resLink,
 		QueryTargets: targets,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -895,7 +893,6 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := NodeTemplateData{
 		Title:        "Node View " + node.Hostname,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Logs:         h.AdminConfig.Logging,
 		Node:         node,
 		Environments: envAll,
 		Platforms:    platforms,

@@ -287,12 +287,14 @@
 
                       </div>
 
-                    {{ if eq $template.Logs "db" }}
                       <div class="tab-pane fade" id="status-logs" role="tabpanel">
                         <div class="card mt-2">
                           <div id="status-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
                             <label for="back_hours_status">Last <b><output id="back_output_status">6</output></b> hours of status logs for node {{ .UUID }}</label>
+                            <a href="{{ statusLogsLink .UUID }}" target="_blank">
+                              <i class="fas fa-external-link-alt"></i>
+                            </a>
                             <input type="range" class="form-control-range" id="back_hours_status"
                             value="6" min="1" max="24" step="1" oninput="changeBackValue('tableStatusLogs', back_hours_status, back_output_status);">
                             <div class="card-header-actions">
@@ -321,27 +323,15 @@
                           </div>
                         </div>
                       </div>
-                    {{ else }}
-                      <div class="tab-pane fade" id="status-logs" role="tabpanel">
-                        <div class="card mt-2">
-                          <div id="result-card-header" class="card-header">
-                            <i class="fas fa-stream"></i> See status logs for node {{ .UUID }}
-                          </div>
-                          <div id="status-table" class="card-body">
-                            <a href="{{ statusLogsLink .UUID }}" target="_blank">
-                              See status logs in {{ $template.Logs }}
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    {{ end }}
 
-                    {{ if eq $template.Logs "db" }}
                       <div class="tab-pane fade" id="result-logs" role="tabpanel">
                         <div class="card mt-2">
                           <div id="result-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
                             <label for="back_hours_result">Last <b><output id="back_output_result">6</output></b> hours of status logs for node {{ .UUID }}</label>
+                            <a href="{{ resultLogsLink .UUID }}" target="_blank">
+                              <i class="fas fa-external-link-alt"></i>
+                            </a>
                             <input type="range" class="form-control-range" id="back_hours_result"
                             value="6" min="1" max="24" step="1" oninput="changeBackValue('tableResultLogs', back_hours_result, back_output_result);">
                             <div class="card-header-actions">
@@ -370,20 +360,6 @@
                           </div>
                         </div>
                       </div>
-                    {{ else }}
-                      <div class="tab-pane fade" id="result-logs" role="tabpanel">
-                        <div class="card mt-2">
-                          <div id="result-card-header" class="card-header">
-                            <i class="fas fa-stream"></i> See result logs for node {{ .UUID }}
-                          </div>
-                          <div id="results-table" class="card-body">
-                            <a href="{{ resultLogsLink .UUID }}" target="_blank">
-                              See result logs in {{ $template.Logs }}
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    {{ end }}
 
                     </div>
 
@@ -428,7 +404,6 @@
           hljs.highlightBlock(block);
         });
 
-      {{ if eq $template.Logs "db" }}
         // Handle datatable ajax error
         $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
           console.log(message);
@@ -466,7 +441,17 @@
           order: [[ 0, "desc" ]],
           columnDefs: [
             { width: '10%', targets: 0 },
-            { width: '88%', targets: 1 },
+            {
+              width: '88%',
+              targets: 1,
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<pre>' + data + '</pre>';
+                } else {
+                  return data;
+                }
+              }
+            },
             { width: '2%', targets: 2 }
           ]
         });
@@ -511,7 +496,17 @@
           columnDefs: [
             { width: '10%', targets: 0 },
             { width: '10%', targets: 1 },
-            { width: '80%', targets: 2 }
+            {
+              width: '80%',
+              targets: 2,
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<pre>' + JSON.stringify(JSON.parse(data),null,2); + '</pre>';
+                } else {
+                  return data;
+                }
+              }
+            }
           ]
         });
 
@@ -528,7 +523,6 @@
             tableResultLogs.ajax.reload();
           }
         },1000);
-      {{ end }}
 
         // Refresh sidebar stats
         beginStats();
@@ -547,6 +541,12 @@
 
         // Maintain open the node's environment toggle
         $("input[value='{{ .Environment }}']").parent().parent().addClass("open");
+
+        // Display log tab if passed in the URL
+        $(function(){
+          var hash = window.location.hash;
+          hash && $('ul.nav a[href="' + hash + '"]').tab('show');
+        });
 
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});

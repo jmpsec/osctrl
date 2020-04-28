@@ -118,7 +118,6 @@ type QueryLogsTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
-	ResultsLink  string
 	QueryTargets []queries.DistributedQueryTarget
 	Metadata     TemplateMetadata
 }
@@ -154,7 +153,6 @@ type UsersTemplateData struct {
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title        string
-	Logs         string
 	Node         nodes.OsqueryNode
 	Environments []environments.TLSEnvironment
 	Platforms    []string

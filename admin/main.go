@@ -171,8 +171,10 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	if !validLogging[cfg.Logging] {
-		return cfg, fmt.Errorf("Invalid logging method")
+	for _, _l := range cfg.Logging {
+		if !validLogging[_l] {
+			return cfg, fmt.Errorf("Invalid logging method")
+		}
 	}
 	// No errors!
 	return cfg, nil

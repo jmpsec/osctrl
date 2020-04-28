@@ -177,17 +177,15 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 			cfg.Auth = v.String
 		}
 		if v.Name == settings.JSONLogging {
-			cfg.Logging = v.String
+			cfg.Logging = strings.Split(v.String, ",")
 		}
 	}
 	return cfg
 }
 
 // Helper to generate a link to results for on-demand queries
-func (h *HandlersAdmin) queryResultLink(name string) (string, string) {
-	defaultLink := strings.Replace(settings.QueryLink, "{{NAME}}", removeBackslash(name), 1)
-	dbLink := strings.Replace(h.Settings.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
-	return defaultLink, dbLink
+func (h *HandlersAdmin) queryResultLink(name string) string {
+	return strings.Replace(h.Settings.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
 }
 
 // Helper to generate a link to results for status logs

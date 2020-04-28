@@ -6,8 +6,7 @@ require (
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/crewjam/saml v0.0.0-20190508002657-ca21de9dd5b9
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/gorilla/mux v1.7.2
-	github.com/gorilla/sessions v1.1.3 // indirect
+	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/gorm v1.9.12
 	github.com/jmpsec/osctrl/admin/handlers v0.2.1
 	github.com/jmpsec/osctrl/admin/sessions v0.2.1
