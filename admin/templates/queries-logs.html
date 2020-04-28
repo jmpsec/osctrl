@@ -28,9 +28,7 @@
                 {{ else }}
                   <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
                 {{ end }}
-                {{ if $template.ResultsLink }}
-                  - <a href="{{ $template.ResultsLink }}" target="_blank"><i class="fas fa-external-link-alt"></i></a>
-                {{ end }}
+                 - <a href="{{ queryResultLink .Name }}" target="_blank"><i class="fas fa-external-link-alt"></i></a>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
@@ -136,7 +134,17 @@
           order: [[ 0, "desc" ]],
           columnDefs: [
             { width: '10%', targets: 0 },
-            { width: '90%', targets: 1 }
+            {
+              width: '90%',
+              targets: 1,
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<pre>' + JSON.stringify(JSON.parse(data),null,2) + '</pre>';
+                } else {
+                  return data;
+                }
+              }
+            }
           ]
         });
 
