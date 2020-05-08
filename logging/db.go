@@ -2,14 +2,21 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
 
 	"github.com/jmpsec/osctrl/backend"
+	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+)
+
+const (
+	// Default interval in seconds for cleanup old logs
+	defaultCleanupInterval = 86400
 )
 
 // OsqueryResultData to log result data to database
@@ -92,24 +99,51 @@ func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
 		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.QueryResultLink, settings.QueryLink); err != nil {
 			log.Fatalf("Failed to add %s to settings: %v", settings.QueryResultLink, err)
 		}
-	} else if err := mgr.SetString(settings.QueryLink, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", settings.QueryResultLink, settings.QueryLink, err)
 	}
 	// Setting link for status logs
 	if !mgr.IsValue(settings.ServiceAdmin, settings.StatusLogsLink) {
 		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.StatusLogsLink, settings.StatusLink); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+			log.Fatalf("Failed to add %s to settings: %v", settings.StatusLogsLink, err)
 		}
-	} else if err := mgr.SetString(settings.StatusLink, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", settings.StatusLogsLink, settings.StatusLink, err)
 	}
 	// Setting link for result logs
 	if !mgr.IsValue(settings.ServiceAdmin, settings.ResultLogsLink) {
 		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.ResultLogsLink, settings.ResultsLink); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
+			log.Fatalf("Failed to add %s to settings: %v", settings.ResultLogsLink, err)
 		}
-	} else if err := mgr.SetString(settings.ResultsLink, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", settings.ResultLogsLink, settings.ResultsLink, err)
+	}
+	// Setting values to enable log cleanup for status logs
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanStatusLogs) {
+		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanStatusLogs, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanStatusLogs, err)
+		}
+	}
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanStatusInterval) {
+		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanStatusInterval, defaultCleanupInterval); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanStatusInterval, err)
+		}
+	}
+	// Setting values to enable log cleanup for result logs
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanResultLogs) {
+		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanResultLogs, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanResultLogs, err)
+		}
+	}
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanResultInterval) {
+		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanResultInterval, defaultCleanupInterval); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanResultInterval, err)
+		}
+	}
+	// Setting values to enable log cleanup for query logs
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanQueryLogs) {
+		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanQueryLogs, false); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanQueryLogs, err)
+		}
+	}
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanQueryEntries) {
+		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanQueryEntries, 100); err != nil {
+			log.Fatalf("Failed to add %s to settings: %v", settings.CleanQueryEntries, err)
+		}
 	}
 }
 
@@ -229,4 +263,63 @@ func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]Os
 		return logs, err
 	}
 	return logs, nil
+}
+
+// CleanStatusLogs will delete old status logs
+func (logDB *LoggerDB) CleanStatusLogs(environment string, seconds int64) error {
+	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
+	if err := logDB.Database.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryStatusData{}).Error; err != nil {
+		return fmt.Errorf("CleanStatusLogs %v", err)
+	}
+	return nil
+}
+
+// CleanResultLogs will delete old status logs
+func (logDB *LoggerDB) CleanResultLogs(environment string, seconds int64) error {
+	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
+	if err := logDB.Database.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryResultData{}).Error; err != nil {
+		return fmt.Errorf("CleanResultLogs %v", err)
+	}
+	return nil
+}
+
+// CleanQueryLogs will delete old query logs
+func (logDB *LoggerDB) CleanQueryLogs(entries int64) error {
+	// TODO this would be better and simpler with foreign keys and delete cascade
+	// Find queries to delete with OFFSET
+	var oldQueries []queries.DistributedQuery
+	logDB.Database.Offset(entries).Find(&oldQueries)
+	for _, q := range oldQueries {
+		if q.Completed {
+			// Get query results
+			var queriesData []OsqueryQueryData
+			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesData).Error; err != nil {
+				return err
+			}
+			if err := logDB.Database.Unscoped().Delete(&queriesData).Error; err != nil {
+				return err
+			}
+			// Get query targets
+			var queriesTargets []queries.DistributedQueryTarget
+			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesTargets).Error; err != nil {
+				return err
+			}
+			if err := logDB.Database.Unscoped().Delete(&queriesTargets).Error; err != nil {
+				return err
+			}
+			// Get query executions
+			var queriesExecutions []queries.DistributedQueryExecution
+			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesExecutions).Error; err != nil {
+				return err
+			}
+			if err := logDB.Database.Unscoped().Delete(&queriesExecutions).Error; err != nil {
+				return err
+			}
+			// Delete query
+			if err := logDB.Database.Unscoped().Delete(&q).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -116,6 +116,7 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 
 // Initialization code
 func init() {
+	log.Printf("==================== Initializing %s v%s", serviceName, serviceVersion)
 	// Command line flags
 	flag.Usage = tlsUsage
 	// Define flags
@@ -138,6 +139,7 @@ func init() {
 
 // Go go!
 func main() {
+	log.Printf("==================== Starting %s v%s", serviceName, serviceVersion)
 	// Backend configuration
 	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
 	if err != nil {

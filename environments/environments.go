@@ -322,7 +322,7 @@ func (environment *Environment) ExpireEnroll(name string) error {
 	return nil
 }
 
-// RotateRemove to replace Secret and SecrtPath for enrolling in an environment
+// RotateRemove to replace Secret and SecretPath for enrolling in an environment
 func (environment *Environment) RotateRemove(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {

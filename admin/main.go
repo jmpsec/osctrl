@@ -72,12 +72,12 @@ const (
 const (
 	// Static files folder
 	staticFilesFolder string = "./static"
-	// Carved files folder
-	carvedFilesFolder string = "carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
 	defaultInactive int = -72
+	// Hourly interval to cleanup logs
+	hourlyInterval int = 60
 )
 
 // osquery
@@ -182,6 +182,7 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 
 // Initialization code
 func init() {
+	log.Printf("==================== Initializing %s v%s", serviceName, serviceVersion)
 	// Command line flags
 	flag.Usage = adminUsage
 	// Define flags
@@ -231,6 +232,7 @@ func init() {
 
 // Go go!
 func main() {
+	log.Printf("==================== Starting %s v%s", serviceName, serviceVersion)
 	// Database handler
 	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
 	if err != nil {
@@ -325,6 +327,43 @@ func main() {
 			}
 			sessionsmgr.Cleanup()
 			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+
+	// Cleaning up status/result/query logs
+	go func() {
+		for {
+			_e, err := envs.All()
+			if err != nil {
+				log.Printf("error getting environments when cleaning up logs - %v", err)
+			}
+			for _, e := range _e {
+				if settingsmgr.CleanStatusLogs() {
+					if settingsmgr.DebugService(settings.ServiceAdmin) {
+						log.Println("DebugService: Cleaning up status logs")
+					}
+					if err := loggerDB.CleanStatusLogs(e.Name, settingsmgr.CleanStatusInterval()); err != nil {
+						log.Printf("error cleaning up status logs - %v", err)
+					}
+				}
+				if settingsmgr.CleanResultLogs() {
+					if settingsmgr.DebugService(settings.ServiceAdmin) {
+						log.Println("DebugService: Cleaning up result logs")
+					}
+					if err := loggerDB.CleanResultLogs(e.Name, settingsmgr.CleanResultInterval()); err != nil {
+						log.Printf("error cleaning up result logs - %v", err)
+					}
+				}
+			}
+			if settingsmgr.CleanQueryLogs() {
+				if settingsmgr.DebugService(settings.ServiceAdmin) {
+					log.Println("DebugService: Cleaning up query logs")
+				}
+				if err := loggerDB.CleanQueryLogs(settingsmgr.CleanQueryEntries()); err != nil {
+					log.Printf("error cleaning up query logs - %v", err)
+				}
+			}
+			time.Sleep(time.Duration(hourlyInterval) * time.Second)
 		}
 	}()
 
@@ -454,15 +493,8 @@ func main() {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
 
-	// multiple listeners channel
-	finish := make(chan bool)
-
 	// Launch HTTP server for admin
-	go func() {
-		serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
-		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
-	}()
-
-	<-finish
+	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
+	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
+	log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
 }
