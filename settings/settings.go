@@ -60,9 +60,15 @@ const (
 
 // Names for setting values for logging
 const (
-	QueryResultLink string = "query_result_link"
-	StatusLogsLink  string = "status_logs_link"
-	ResultLogsLink  string = "result_logs_link"
+	QueryResultLink     string = "query_result_link"
+	StatusLogsLink      string = "status_logs_link"
+	ResultLogsLink      string = "result_logs_link"
+	CleanStatusLogs     string = "clean_status_logs"
+	CleanStatusInterval string = "clean_status_interval"
+	CleanResultLogs     string = "clean_result_logs"
+	CleanResultInterval string = "clean_result_interval"
+	CleanQueryLogs      string = "clean_query_logs"
+	CleanQueryEntries   string = "clean_query_entries"
 )
 
 // Default values for the setting values for logging
@@ -104,9 +110,9 @@ type Settings struct {
 
 // ValidTypes to check validity of settings type
 var ValidTypes = map[string]struct{}{
-  TypeString: struct{}{},
-  TypeBoolean: struct{}{},
-  TypeInteger: struct{}{},
+	TypeString:  struct{}{},
+	TypeBoolean: struct{}{},
+	TypeInteger: struct{}{},
 }
 
 // NewSettings to initialize the access to settings and table
@@ -192,7 +198,7 @@ func (conf *Settings) NewIntegerValue(service, name string, value int64) error {
 // VerifyType to make sure type is valid
 func (conf *Settings) VerifyType(sType string) bool {
 	_, ok := ValidTypes[sType]
-  return ok
+	return ok
 }
 
 // DeleteValue deletes an existing settings value
@@ -515,6 +521,60 @@ func (conf *Settings) ResultLogsLink() string {
 		return ""
 	}
 	return value.String
+}
+
+// CleanStatusLogs checks if status logs cleanup is enabled
+func (conf *Settings) CleanStatusLogs() bool {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanStatusLogs)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
+}
+
+// CleanStatusInterval gets the interval in seconds to cleanup status logs
+func (conf *Settings) CleanStatusInterval() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanStatusInterval)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// CleanResultLogs checks if result logs cleanup is enabled
+func (conf *Settings) CleanResultLogs() bool {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanResultLogs)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
+}
+
+// CleanResultInterval gets the interval in seconds to cleanup result logs
+func (conf *Settings) CleanResultInterval() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanResultInterval)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// CleanQueryLogs checks if query logs cleanup is enabled
+func (conf *Settings) CleanQueryLogs() bool {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanQueryLogs)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
+}
+
+// CleanQueryEntries gets the number of entries to cleanup in query logs
+func (conf *Settings) CleanQueryEntries() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanQueryEntries)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
 }
 
 // DefaultEnv gets the default environment

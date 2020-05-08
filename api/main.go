@@ -135,6 +135,7 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 
 // Initialization code
 func init() {
+	log.Printf("==================== Initializing %s v%s", serviceName, serviceVersion)
 	var err error
 	// Command line flags
 	flag.Usage = apiUsage
@@ -168,6 +169,7 @@ func init() {
 
 // Go go!
 func main() {
+	log.Printf("==================== Starting %s v%s", serviceName, serviceVersion)
 	// Database handler
 	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
 	if err != nil {
@@ -285,15 +287,8 @@ func main() {
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 
-	// multiple listeners channel
-	finish := make(chan bool)
-
 	// Launch HTTP server for TLS endpoint
-	go func() {
-		serviceListener := apiConfig.Listener + ":" + apiConfig.Port
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, routerAPI))
-	}()
-
-	<-finish
+	serviceListener := apiConfig.Listener + ":" + apiConfig.Port
+	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+	log.Fatal(http.ListenAndServe(serviceListener, routerAPI))
 }
