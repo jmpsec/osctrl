@@ -10,7 +10,7 @@
       <img alt="Software License" src="https://img.shields.io/badge/license-GPL3-brightgreen.svg?style=flat-square">
     </a>
     <a href="https://travis-ci.org/jmpsec/osctrl">
-      <img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square">
+      <img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square&fuckgithubcache=1">
     </a>
     <a href="https://goreportcard.com/report/github.com/jmpsec/osctrl">
       <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/jmpsec/osctrl?style=flat-square&fuckgithubcache=1">
