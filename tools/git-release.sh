@@ -8,10 +8,6 @@ if [ $# -ne 1 ] ; then
 fi
 
 TAG=$1
-if [[ ${TAG:0:1} != 'v' ]]; then
-  TAG="v$1"
-fi
-
 BODY="Release $TAG"
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 REPO=$(git config --get remote.origin.url | sed 's/.git//g' | awk -F":" '{print $2}' | cut -d'/' -f2)
