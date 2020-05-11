@@ -164,9 +164,9 @@ docker_down:
 docker_clean:
 	make docker_down
 	./deploy/docker/dockerize.sh -x
+	rm -Rf deploy/docker/certs/*
+	rm -Rf deploy/docker/config/*
 	docker volume rm osctrl_db-data
-	rm -Rf docker/certs/*
-	rm -Rf docker/config/*
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
