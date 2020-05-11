@@ -233,7 +233,7 @@ JWT_JSON="$CONFIGDIR/jwt.json"
 if [[ -f "$JWT_JSON" && "$_FORCE" == false ]]; then
   log "Using existing $JWT_JSON"
 else
-  cat "$CONFIGDIR/jwt.json" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | tee "$JWT_JSON"
+  cat "$DEPLOYDIR/config/jwt.json" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | tee "$JWT_JSON"
 fi
 
 log "Preparing configuration for backend"
