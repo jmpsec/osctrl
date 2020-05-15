@@ -4,45 +4,9 @@
 
       {{ with .Metadata }}
 
-        <div class="tab-pane p-3">
-          <h6>TLS Server Settings</h6>
-          <div class="aside-options">
-            <div class="clearfix mt-3">
-              <small>
-                <b>TLS service debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_service_tls" class="switch-input" type="checkbox" onclick="changeDebug('debug_service', 'tls');" {{ if .TLSDebug }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose service logging for TLS</small>
-            </div>
-            <div class="clearfix mt-4">
-              <small>
-                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/environments';">
-                  <b>Manage Environments</b>
-                </button>
-              </small>
-            </div>
-            <div>
-              <small class="text-muted">TLS endpoint environments</small>
-            </div>
-            <div class="clearfix mt-4">
-              <small>
-                <button class="btn btn-block btn-sm btn-info" type="button" onclick="window.location = '/settings/tls';">
-                  <b>TLS Settings</b>
-                </button>
-              </small>
-            </div>
-            <div>
-              <small class="text-muted">Settings for the TLS service</small>
-            </div>
-          </div>
-          <hr>
+        <div class="tab-pane p-3 accordion" id="accordion" role="tablist">
           <h6>Admin Server Settings</h6>
-          <div class="aside-options">
+          <div class="aside-options" role="tab">
             <div class="clearfix mt-3">
               <small>
                 <b>Admin service debug</b>
@@ -85,10 +49,58 @@
               </small>
             </div>
             <div>
-              <small class="text-muted">Admin service users</small>
+              <small class="text-muted">Administer admin service users</small>
+            </div>
+            <div class="clearfix mt-4">
+              <small>
+                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/tags';">
+                  <b>Manage Tags</b>
+                </button>
+              </small>
+            </div>
+            <div>
+              <small class="text-muted">Administer node tags</small>
             </div>
           </div>
           <hr>
+
+          <h6>TLS Server Settings</h6>
+          <div class="aside-options">
+            <div class="clearfix mt-3">
+              <small>
+                <b>TLS service debug</b>
+              </small>
+              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
+                <input id="debug_service_tls" class="switch-input" type="checkbox" onclick="changeDebug('debug_service', 'tls');" {{ if .TLSDebug }} checked {{ end }}>
+                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+              </label>
+            </div>
+            <div>
+              <small class="text-muted">Verbose service logging for TLS</small>
+            </div>
+            <div class="clearfix mt-4">
+              <small>
+                <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/environments';">
+                  <b>Manage Environments</b>
+                </button>
+              </small>
+            </div>
+            <div>
+              <small class="text-muted">TLS endpoint environments</small>
+            </div>
+            <div class="clearfix mt-4">
+              <small>
+                <button class="btn btn-block btn-sm btn-info" type="button" onclick="window.location = '/settings/tls';">
+                  <b>TLS Settings</b>
+                </button>
+              </small>
+            </div>
+            <div>
+              <small class="text-muted">Settings for the TLS service</small>
+            </div>
+          </div>
+          <hr>
+
           <h6>API Server Settings</h6>
           <div class="aside-options">
             <div class="clearfix mt-3">

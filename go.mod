@@ -8,7 +8,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/gorm v1.9.12
-	github.com/jmpsec/osctrl/admin/handlers v0.2.2
 	github.com/jmpsec/osctrl/admin/sessions v0.2.2
 	github.com/jmpsec/osctrl/backend v0.2.2
 	github.com/jmpsec/osctrl/carves v0.2.2
@@ -23,23 +22,6 @@ require (
 	github.com/jmpsec/osctrl/users v0.2.2
 	github.com/jmpsec/osctrl/utils v0.2.2
 	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/olekukonko/tablewriter v0.0.1
-	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
-	github.com/spf13/viper v1.6.2
-	github.com/urfave/cli v1.20.0
-)
-
-replace github.com/jmpsec/osctrl => ./
-
-replace github.com/jmpsec/osctrl/backend => ./backend
-
-replace github.com/jmpsec/osctrl/carves => ./carves
-
-replace github.com/jmpsec/osctrl/settings => ./settings
-
-replace github.com/jmpsec/osctrl/environments => ./environments
-
-replace github.com/jmpsec/osctrl/metrics => ./metrics
 
 replace github.com/jmpsec/osctrl/nodes => ./nodes
 
@@ -48,6 +30,8 @@ replace github.com/jmpsec/osctrl/queries => ./queries
 replace github.com/jmpsec/osctrl/types => ./types
 
 replace github.com/jmpsec/osctrl/users => ./users
+
+replace github.com/jmpsec/osctrl/tags => ./tags
 
 replace github.com/jmpsec/osctrl/utils => ./utils
 

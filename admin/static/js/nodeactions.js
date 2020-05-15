@@ -92,3 +92,23 @@ function changeBackValue(table_id, range_input, range_output) {
   var _url = table.ajax.url();
   table.ajax.url(_url.split('seconds=')[0] + 'seconds=' + (range_output.value*3600));
 }
+
+function tagNodes(_uuids) {
+  var _csrftoken = $("#csrftoken").val();
+
+  var _url = '/node/actions';
+  var data = {
+    csrftoken: _csrftoken,
+    uuids: _uuids,
+    action: 'tag'
+  };
+  sendPostRequest(data, _url, '/', true);
+}
+
+function showTagNodes(_uuids) {
+  $('#tag_action').click(function () {
+    $('#tagModal').modal('hide');
+    tagNodes(_uuids);
+  });
+  $("#tagModal").modal();
+}

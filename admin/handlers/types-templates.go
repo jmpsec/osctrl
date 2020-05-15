@@ -6,6 +6,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 )
@@ -141,12 +142,21 @@ type SettingsTemplateData struct {
 	Metadata        TemplateMetadata
 }
 
-// UsersTemplateData for passing data to the settings template
+// UsersTemplateData for passing data to the users template
 type UsersTemplateData struct {
 	Title        string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	CurrentUsers []users.AdminUser
+	Metadata     TemplateMetadata
+}
+
+// TagsTemplateData for passing data to the tags template
+type TagsTemplateData struct {
+	Title        string
+	Environments []environments.TLSEnvironment
+	Platforms    []string
+	Tags         []tags.AdminTag
 	Metadata     TemplateMetadata
 }
 

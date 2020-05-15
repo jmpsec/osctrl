@@ -39,7 +39,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	}
 	permissions, err := h.Users.ConvertPermissions(user.Permissions.RawMessage)
 	if err != nil {
-		
+
 	}
 	_, err = h.Sessions.Save(r, w, user, permissions)
 	if err != nil {
@@ -738,6 +738,26 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 			log.Printf("DebugService: archiving node")
 		}
 		adminOKResponse(w, "node archived successfully")
+	case "tag":
+		okCount := 0
+		errCount := 0
+		for _, u := range m.UUIDs {
+			if err := h.Nodes.ArchiveDeleteByUUID(u); err != nil {
+				errCount++
+				if h.Settings.DebugService(settings.ServiceAdmin) {
+					log.Printf("DebugService: error tagging node %s %v", u, err)
+				}
+			} else {
+				okCount++
+			}
+		}
+		if errCount == 0 {
+			adminOKResponse(w, fmt.Sprintf("%d Node(s) have been deleted successfully", okCount))
+		} else {
+			adminErrorResponse(w, fmt.Sprintf("Error deleting %d node(s)", errCount), http.StatusInternalServerError, nil)
+			h.Inc(metricAdminErr)
+			return
+		}
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
@@ -796,6 +816,12 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			if err := h.Envs.Create(env); err != nil {
 				adminErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+			// Create a tag for this new environment
+			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon); err != nil {
+				adminErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
@@ -1083,6 +1109,162 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users response sent")
+	}
+	h.Inc(metricAdminOK)
+}
+
+// TagsPOSTHandler for POST request for /tags
+func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
+	var t TagsRequest
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Parse request JSON body
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Check CSRF Token
+	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], t.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	switch t.Action {
+	case "add":
+		// FIXME password complexity?
+		if h.Tags.Exists(t.Name) {
+			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Prepare user to create
+		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon); err != nil {
+			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		adminOKResponse(w, "tag added successfully")
+	case "edit":
+		if t.Description != "" {
+			if err := h.Tags.ChangeDescription(t.Name, t.Description); err != nil {
+				adminErrorResponse(w, "error changing description", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if t.Icon != "" {
+			if err := h.Tags.ChangeIcon(t.Name, t.Icon); err != nil {
+				adminErrorResponse(w, "error changing icon", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if t.Color != "" {
+			if err := h.Tags.ChangeColor(t.Name, t.Color); err != nil {
+				adminErrorResponse(w, "error changing color", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "tag updated successfully")
+	case "remove":
+		if t.Name == ctx[sessions.CtxUser] {
+			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove tag %s", t.Name))
+			h.Inc(metricAdminErr)
+			return
+		}
+		if h.Tags.Exists(t.Name) {
+			if err := h.Tags.Delete(t.Name); err != nil {
+				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "tag removed successfully")
+	}
+	// Serialize and send response
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Tags response sent")
+	}
+	h.Inc(metricAdminOK)
+}
+
+// TagNodesPOSTHandler for POST request for /tags/nodes
+func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
+	var t TagNodesRequest
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Parse request JSON body
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Check CSRF Token
+	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], t.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	okCount := 0
+	errCount := 0
+	for _, u := range m.UUIDs {
+	}
+	switch t.Action {
+	case "tag":
+		if h.Tags.Exists(t.Name) {
+			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Prepare user to create
+		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon); err != nil {
+			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		adminOKResponse(w, "tag added successfully")
+	case "remove":
+		if t.Name == ctx[sessions.CtxUser] {
+			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove tag %s", t.Name))
+			h.Inc(metricAdminErr)
+			return
+		}
+		if h.Tags.Exists(t.Name) {
+			if err := h.Tags.Delete(t.Name); err != nil {
+				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "tag removed successfully")
+	}
+	// Serialize and send response
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Tags response sent")
 	}
 	h.Inc(metricAdminOK)
 }

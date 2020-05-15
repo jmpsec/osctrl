@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 
@@ -66,6 +67,8 @@ const (
 	apiPlatformsPath string = "/platforms"
 	// API environments path
 	apiEnvironmentsPath string = "/environments"
+	// API tags path
+	apiTagsPath string = "/tags"
 )
 
 var (
@@ -79,6 +82,7 @@ var (
 	jwtConfig   types.JSONConfigurationJWT
 	db          *gorm.DB
 	apiUsers    *users.UserManager
+	tagsmgr     *tags.TagManager
 	settingsmgr *settings.Settings
 	envs        *environments.Environment
 	envsmap     environments.MapEnvironments
@@ -196,6 +200,8 @@ func main() {
 	}()
 	// Initialize users
 	apiUsers = users.CreateUserManager(db, &jwtConfig)
+	// Initialize tags
+	tagsmgr = tags.CreateTagManager(db)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -286,6 +292,9 @@ func main() {
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{environment}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
+	// API: tags
+	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 
 	// Launch HTTP server for TLS endpoint
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port

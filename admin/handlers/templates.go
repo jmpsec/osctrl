@@ -515,7 +515,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"queryResultLink":  h.queryResultLink,
+		"queryResultLink": h.queryResultLink,
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries-logs.html").filepaths
@@ -991,7 +991,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments template: %v", err)
+		log.Printf("error getting settings template: %v", err)
 		return
 	}
 	// Get stats for all environments
@@ -1063,7 +1063,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments template: %v", err)
+		log.Printf("error getting users template: %v", err)
 		return
 	}
 	// Get stats for all environments
@@ -1102,6 +1102,71 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users template served")
+	}
+	h.Inc(metricAdminOK)
+}
+
+// TagsGETHandler for GET requests for /tags
+func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"pastFutureTimes": utils.PastFutureTimes,
+		"inFutureTime":    utils.InFutureTime,
+	}
+	// Prepare template
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "tags.html").filepaths
+	t, err := template.New("tags.html").Funcs(funcMap).ParseFiles(tempateFiles...)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting tags template: %v", err)
+		return
+	}
+	// Get stats for all environments
+	envAll, err := h.Envs.All()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := h.Nodes.GetAllPlatforms()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get current tags
+	tags, err := h.Tags.All()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting tags: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := TagsTemplateData{
+		Title:        "Manage tags",
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Environments: envAll,
+		Platforms:    platforms,
+		Tags:  tags,
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Tags template served")
 	}
 	h.Inc(metricAdminOK)
 }

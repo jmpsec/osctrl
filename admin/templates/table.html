@@ -221,6 +221,31 @@
               }
             },
             {
+              className: 'btn custom-size-btn btn-outline-warning',
+              text: '<i class="fas fa-tag"></i>',
+              titleAttr: 'Tag Nodes',
+              attr:  {
+                'data-tooltip':  'true',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var uuids = [];
+                $.each(tableNodes.rows({search:'applied', selected: true}).data(), function() {
+                  uuids.push(this.uuid);
+                });
+                if (uuids.length > 0) {
+                  showTagNodes(uuids);
+                } else {
+                  console.log('Tag: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more nodes");
+                  $("#warningModal").modal();
+                }
+              }
+            },
+            {
               className: 'btn custom-size-btn btn-outline-dark',
               text: '<i class="fab fa-searchengin"></i>',
               titleAttr: 'Run Query',

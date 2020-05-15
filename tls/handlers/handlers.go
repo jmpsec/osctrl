@@ -427,7 +427,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricReadOK)
 }
 
-// Function to handle distributed query results from osquery nodes
+// QueryWriteHandler - Function to handle distributed query results from osquery nodes
 func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricWriteReq)
 	// Retrieve environment variable

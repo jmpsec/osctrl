@@ -112,6 +112,24 @@ type UsersRequest struct {
 	Admin     bool   `json:"admin"`
 }
 
+// TagsRequest to receive tag action requests
+type TagsRequest struct {
+	CSRFToken   string `json:"csrftoken"`
+	Action      string `json:"action"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	Icon        string `json:"icon"`
+}
+
+// TagNodesRequest to receive a tag for nodes
+type TagNodesRequest struct {
+	CSRFToken string   `json:"csrftoken"`
+	UUIDs     []string `json:"uuids"`
+	Tags      []string `json:"tags"`
+	Action    string   `json:"action"`
+}
+
 // PermissionsRequest to receive user permissions changes requests
 type PermissionsRequest struct {
 	CSRFToken    string          `json:"csrftoken"`

@@ -48,6 +48,10 @@
                         data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles(['{{ .UUID }}']);">
                           <i class="fas fa-file-upload"></i>
                         </button>
+                        <button type="button" class="btn custom-size-btn btn-outline-warning"
+                        data-tooltip="true" data-placement="top" title="Tag Node" onclick="showTagNodes(['{{ .UUID }}']);">
+                          <i class="fas fa-tag"></i>
+                        </button>
                       {{ end }}
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
                         data-tooltip="true" data-placement="top" title="Refresh" onclick="refreshCurrentNode();">
