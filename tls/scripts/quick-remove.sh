@@ -5,11 +5,11 @@
 # IMPORTANT! osquery will not be removed.
 
 _PROJECT="{{ .Project }}"
-_SECRET_LINUX=/etc/osquery/osquery.secret
+_SECRET_LINUX=/etc/osquery/${_PROJECT}.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
 _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
 
-_SECRET_OSX=/private/var/osquery/osquery.secret
+_SECRET_OSX=/private/var/osquery/${_PROJECT}.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
 _PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist

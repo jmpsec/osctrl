@@ -189,7 +189,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
 		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
-		if h.Nodes.CheckByUUID(t.HostIdentifier) {
+		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error archiving node %v", err)
@@ -531,7 +531,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	// Prepare response with the script
-	quickScript, err := environments.QuickAddScript("", script, e)
+	quickScript, err := environments.QuickAddScript("osctrl-"+e.Name, script, e)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
 		log.Printf("error getting script %v", err)
