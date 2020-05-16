@@ -7,17 +7,17 @@
 _PROJECT="{{ .Project }}"
 _SECRET="{{ .Environment.Secret }}"
 
-_SECRET_LINUX=/etc/osquery/osquery.secret
+_SECRET_LINUX=/etc/osquery/${_PROJECT}.secret
 _FLAGS_LINUX=/etc/osquery/osquery.flags
 _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
 
-_SECRET_OSX=/private/var/osquery/osquery.secret
+_SECRET_OSX=/private/var/osquery/${_PROJECT}.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
 _PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist
 _OSQUERY_PLIST=/private/var/osquery/com.facebook.osqueryd.plist
 
-_SECRET_FREEBSD=/usr/local/etc/osquery.secret
+_SECRET_FREEBSD=/usr/local/etc/${_PROJECT}.secret
 _FLAGS_FREEBSD=/usr/local/etc/osquery.flags
 _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 

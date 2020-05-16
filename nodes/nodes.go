@@ -153,6 +153,13 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 	return (results > 0)
 }
 
+// CheckByUUIDEnv to check if node exists by UUID in a specific environment
+func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
+	var results int
+	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", uuid, environment).Count(&results)
+	return (results > 0)
+}
+
 // CheckByHost to check if node exists by Hostname
 func (n *NodeManager) CheckByHost(host string) bool {
 	var results int
