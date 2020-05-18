@@ -428,7 +428,7 @@ func (n *NodeManager) UpdateIPAddressByKey(ipaddress, nodekey string) error {
 }
 
 // Create to insert new osquery node generating new node_key
-func (n *NodeManager) Create(node OsqueryNode) error {
+func (n *NodeManager) Create(node *OsqueryNode) error {
 	if n.DB.NewRecord(node) {
 		if err := n.DB.Create(&node).Error; err != nil {
 			return fmt.Errorf("Create %v", err)

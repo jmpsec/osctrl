@@ -25,7 +25,9 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-info-circle"></i>
                 <strong> Details of node {{ .UUID }} </strong>
-                <small>{{ .Environment }}</small>
+                {{ range  $i, $t := $template.Tags }}
+                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
+                {{ end }}
               </div>
               <div class="card-body">
 

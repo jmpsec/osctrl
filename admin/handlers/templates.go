@@ -867,6 +867,13 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting node %v", err)
 		return
 	}
+	// Get tags for the node
+	tags, err := h.Tags.GetTags(node)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting tags %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
@@ -894,6 +901,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		Title:        "Node View " + node.Hostname,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Node:         node,
+		Tags:         tags,
 		Environments: envAll,
 		Platforms:    platforms,
 	}
@@ -1158,7 +1166,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: envAll,
 		Platforms:    platforms,
-		Tags:  tags,
+		Tags:         tags,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)

@@ -26,10 +26,8 @@ type AdminTag struct {
 // TaggedNode to hold tagged nodes
 type TaggedNode struct {
 	gorm.Model
-	AdminTagID    uint `gorm:"index"`
-	Tag           AdminTag
-	OsqueryNodeID uint `gorm:"index"`
-	Node          nodes.OsqueryNode
+	Tag    string
+	NodeID uint
 }
 
 // TagManager have all tags
@@ -44,6 +42,10 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 	// table admin_users
 	if err := backend.AutoMigrate(AdminTag{}).Error; err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_tags): %v", err)
+	}
+	// table tagged_nodes
+	if err := backend.AutoMigrate(TaggedNode{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (tagged_nodes): %v", err)
 	}
 	return t
 }
@@ -180,15 +182,15 @@ func (m *TagManager) ChangeIcon(name, icon string) error {
 
 // TagNode to tag a node
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode) error {
-	tag, err := m.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+	if !m.Exists(name) {
+		return fmt.Errorf("tag does not exist")
+	}
+	if m.IsTagged(name, node) {
+		return fmt.Errorf("node already tagged")
 	}
 	tagged := TaggedNode{
-		AdminTagID:    tag.ID,
-		Tag:           tag,
-		OsqueryNodeID: node.ID,
-		Node:          node,
+		Tag:    name,
+		NodeID: node.ID,
 	}
 	if m.DB.NewRecord(tagged) {
 		if err := m.DB.Create(&tagged).Error; err != nil {
@@ -200,20 +202,41 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode) error {
 	return nil
 }
 
+// IsTagged to check if a node is already tagged
+func (m *TagManager) IsTagged(name string, node nodes.OsqueryNode) bool {
+	var results int
+	m.DB.Model(&TaggedNode{}).Where("tag = ? AND node_id = ?", name, node.ID).Count(&results)
+	return (results > 0)
+}
+
 // UntagNode to untag a node
 func (m *TagManager) UntagNode(name string, node nodes.OsqueryNode) error {
-	tag, err := m.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+	if !m.Exists(name) {
+		return fmt.Errorf("tag does not exist")
 	}
 	tagged := TaggedNode{
-		AdminTagID:    tag.ID,
-		Tag:           tag,
-		OsqueryNodeID: node.ID,
-		Node:          node,
+		Tag:    name,
+		NodeID: node.ID,
 	}
 	if err := m.DB.Unscoped().Delete(&tagged).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
 	}
 	return nil
+}
+
+// GetTags to retrieve the tags of a given node
+func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
+	var tags []AdminTag
+	var tagged []TaggedNode
+	if err := m.DB.Where("node_id = ?", node.ID).Find(&tagged).Error; err != nil {
+		return tags, err
+	}
+	for _, t := range tagged {
+		tag, err := m.Get(t.Tag)
+		if err != nil {
+			return tags, err
+		}
+		tags = append(tags, tag)
+	}
+	return tags, nil
 }

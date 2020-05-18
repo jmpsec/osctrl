@@ -87,6 +87,7 @@ github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkr
 github.com/jinzhu/now v1.0.0/go.mod h1:oHTiXerJ20+SfYcrdlBO7rzZRJWGwSTQ0iUY2jI6Gfc=
 github.com/jinzhu/now v1.0.1 h1:HjfetcXq097iXP0uoPCdnM4Efp5/9MsM0/M+XOTeR3M=
 github.com/jinzhu/now v1.0.1/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
+github.com/jmpsec/osctrl v0.2.1 h1:NsR2alFig9wzS/giEBkI3U3CIEGTHsjpqqcRzke/6+E=
 github.com/jmpsec/osctrl/backend v0.0.0-20200326023543-cb8ff04ecc7c h1:UMg4mOEKRM1XZN0dj903TUYBArRVFnWF7jQg20kNXek=
 github.com/jmpsec/osctrl/backend v0.0.0-20200326023543-cb8ff04ecc7c/go.mod h1:888k0May18kvEwFmTVDbEYV/wyPib8ntxULgXkJ38E8=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=

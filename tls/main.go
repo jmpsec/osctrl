@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	thandlers "github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 
@@ -68,6 +69,7 @@ var (
 	tlsMetrics  *metrics.Metrics
 	loggerTLS   *logging.LoggerTLS
 	handlersTLS *thandlers.HandlersTLS
+	tagsmgr     *tags.TagManager
 )
 
 // Variables for flags
@@ -171,6 +173,8 @@ func main() {
 	settingsmgr = settings.NewSettings(db)
 	// Initialize nodes
 	nodesmgr = nodes.CreateNodes(db)
+	// Initialize tags
+	tagsmgr = tags.CreateTagManager(db)
 	// Initialize queries
 	queriesmgr = queries.CreateQueries(db)
 	// Initialize carves
@@ -231,6 +235,7 @@ func main() {
 		thandlers.WithEnvs(envs),
 		thandlers.WithEnvsMap(&envsmap),
 		thandlers.WithNodes(nodesmgr),
+		thandlers.WithTags(tagsmgr),
 		thandlers.WithQueries(queriesmgr),
 		thandlers.WithCarves(filecarves),
 		thandlers.WithSettings(settingsmgr),

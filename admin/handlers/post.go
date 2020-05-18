@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
@@ -1229,43 +1230,53 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricAdminErr)
 		return
 	}
-	okCount := 0
-	errCount := 0
-	for _, u := range m.UUIDs {
+	var toBeProcessed []nodes.OsqueryNode
+	for _, u := range t.UUIDs {
+		n, err := h.Nodes.GetByUUID(u)
+		if err != nil {
+			adminErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		toBeProcessed = append(toBeProcessed, n)
 	}
-	switch t.Action {
-	case "tag":
-		if h.Tags.Exists(t.Name) {
-			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
-			h.Inc(metricAdminErr)
-			return
-		}
-		// Prepare user to create
-		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon); err != nil {
-			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
-			h.Inc(metricAdminErr)
-			return
-		}
-		adminOKResponse(w, "tag added successfully")
-	case "remove":
-		if t.Name == ctx[sessions.CtxUser] {
-			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove tag %s", t.Name))
-			h.Inc(metricAdminErr)
-			return
-		}
-		if h.Tags.Exists(t.Name) {
-			if err := h.Tags.Delete(t.Name); err != nil {
-				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+	for _, _t := range t.Tags {
+		switch t.Action {
+		case "tag":
+			if !h.Tags.Exists(_t) {
+				adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
 				h.Inc(metricAdminErr)
 				return
 			}
+			// Tag all nodes
+			for _, n := range toBeProcessed {
+				if err := h.Tags.TagNode(_t, n); err != nil {
+					adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
+					h.Inc(metricAdminErr)
+					return
+				}
+			}
+		case "remove":
+			if !h.Tags.Exists(_t) {
+				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+				h.Inc(metricAdminErr)
+				return
+			}
+			// Untag all nodes
+			for _, n := range toBeProcessed {
+				if err := h.Tags.UntagNode(_t, n); err != nil {
+					adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+					h.Inc(metricAdminErr)
+					return
+				}
+			}
 		}
-		adminOKResponse(w, "tag removed successfully")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Tags response sent")
 	}
+	adminOKResponse(w, "tags processed successfully")
 	h.Inc(metricAdminOK)
 }
 
