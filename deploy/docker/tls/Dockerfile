@@ -10,6 +10,8 @@ WORKDIR /osctrl-tls
 
 COPY . .
 
+COPY tls/scripts/ scripts
+
 RUN go build -o bin/osctrl-tls tls/*.go
 RUN go build -o bin/osctrl-cli cli/*.go
 

@@ -78,7 +78,7 @@ mkdir -p "$CERTSDIR"
 mkdir -p "$CONFIGDIR"
 
 # Secret for API JWT
-_JWT_SECRET="$(head -c64 < /dev/random | base64 | head -n 1 | openssl dgst -sha256 | cut -d " " -f1)"
+_JWT_SECRET="$(head -c64 < /dev/random | base64 | head -n 1 | openssl dgst -sha256 | cut -d " " -f2)"
 
 # Default values for arguments
 SHOW_USAGE=true
