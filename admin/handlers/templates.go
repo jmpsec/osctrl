@@ -206,6 +206,13 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		log.Printf("error getting table template: %v", err)
 		return
 	}
+	// Get all tags
+	tags, err := h.Tags.All()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting tags %v", err)
+		return
+	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
@@ -227,6 +234,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		Selector:     "platform",
 		SelectorName: platform,
 		Target:       target,
+		Tags:         tags,
 		Environments: envAll,
 		Platforms:    platforms,
 	}
@@ -868,7 +876,14 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get tags for the node
-	tags, err := h.Tags.GetTags(node)
+	nodeTags, err := h.Tags.GetTags(node)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting tags %v", err)
+		return
+	}
+	// Get all tags
+	tags, err := h.Tags.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting tags %v", err)
@@ -901,6 +916,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		Title:        "Node View " + node.Hostname,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Node:         node,
+		NodeTags:     nodeTags,
 		Tags:         tags,
 		Environments: envAll,
 		Platforms:    platforms,

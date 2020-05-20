@@ -4,7 +4,7 @@
 
       {{ with .Metadata }}
 
-        <div class="tab-pane p-3 accordion" id="accordion" role="tablist">
+        <div class="tab-pane p-3" role="tablist" style="height: 100%;">
           <h6>Admin Server Settings</h6>
           <div class="aside-options" role="tab">
             <div class="clearfix mt-3">
@@ -137,9 +137,10 @@
             <div>
               <small class="text-muted">Settings for the API service</small>
             </div>
-          </div>
-          <div class="server-version">
-            <small class="text-muted">{{ .Service }} {{ .Version }}</small>
+            <hr>
+            <div class="server-version">
+              <small class="text-muted">{{ .Service }} {{ .Version }}</small>
+            </div>
           </div>
           <!--
           <h6>System Utilization</h6>

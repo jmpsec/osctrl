@@ -93,7 +93,7 @@ function changeBackValue(table_id, range_input, range_output) {
 
 function tagNodes(_uuids) {
   var _csrftoken = $("#csrftoken").val();
-  var _tags = $("#tags").val().split(',');
+  var _tags = $("#modal_tags").val();
   var _url = '/tags/nodes';
   var data = {
     csrftoken: _csrftoken,
@@ -109,5 +109,6 @@ function showTagNodes(_uuids, _tags) {
     $('#tagModal').modal('hide');
     tagNodes(_uuids);
   });
+  $('#modal_tags').val(null).trigger('change');
   $("#tagModal").modal();
 }

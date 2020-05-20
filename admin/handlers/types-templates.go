@@ -37,6 +37,7 @@ type TableTemplateData struct {
 	Selector     string
 	SelectorName string
 	Target       string
+	Tags         []tags.AdminTag
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
@@ -164,6 +165,7 @@ type TagsTemplateData struct {
 type NodeTemplateData struct {
 	Title        string
 	Node         nodes.OsqueryNode
+	NodeTags     []tags.AdminTag
 	Tags         []tags.AdminTag
 	Environments []environments.TLSEnvironment
 	Platforms    []string
