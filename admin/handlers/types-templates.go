@@ -166,7 +166,7 @@ type NodeTemplateData struct {
 	Title        string
 	Node         nodes.OsqueryNode
 	NodeTags     []tags.AdminTag
-	Tags         []tags.AdminTag
+	TagsForNode  []tags.AdminTagForNode
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata

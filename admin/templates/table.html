@@ -72,11 +72,13 @@
                   </button>
                 </div>
                 <div class="modal-body">
-                  <select style="width: 100%;" name="modal_tags[]" id="modal_tags" multiple="multiple">
-                  {{ range  $i, $e := $.Environments }}
-                    <option value="{{ $e.Name }}">{{ $e.Name }}</option>
-                  {{ end }}
-                  </select>
+                    <select style="display: none;" name="add_tags[]" id="add_tags">
+                    </select>
+                    <select style="width: 100%;" name="modal_tags[]" id="modal_tags" multiple="multiple">
+                    {{ range  $i, $e := $.Tags }}
+                        <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                    {{ end }}
+                    </select>
                 </div>
                 <div class="modal-footer">
                   <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Tag</button>
@@ -379,6 +381,14 @@
         // Focus on input when modal opens
         $("#carveModal").on('shown.bs.modal', function(){
           $(this).find('#carve').focus();
+        });
+
+        // Select2 initialization
+        var tagsSelect = $('#modal_tags').select2({
+          theme: "classic"
+        });
+        tagsSelect.on("select2:select", function(e){
+          $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
         });
       });
     </script>

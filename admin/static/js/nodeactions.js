@@ -93,22 +93,28 @@ function changeBackValue(table_id, range_input, range_output) {
 
 function tagNodes(_uuids) {
   var _csrftoken = $("#csrftoken").val();
-  var _tags = $("#modal_tags").val();
+  var _addtags = [];
+  $('#add_tags option').each(function () {
+    _addtags.push($(this).val());
+  });
+  var _removetags = [];
+  $('#remove_tags option').each(function () {
+    _removetags.push($(this).val());
+  });
   var _url = '/tags/nodes';
   var data = {
     csrftoken: _csrftoken,
     uuids: _uuids,
-    tags: _tags,
-    action: 'tag'
+    tagsadd: _addtags,
+    tagsremove: _removetags,
   };
   sendPostRequest(data, _url, window.location, true);
 }
 
-function showTagNodes(_uuids, _tags) {
+function showTagNodes(_uuids) {
   $('#tag_action').click(function () {
     $('#tagModal').modal('hide');
     tagNodes(_uuids);
   });
-  $('#modal_tags').val(null).trigger('change');
   $("#tagModal").modal();
 }

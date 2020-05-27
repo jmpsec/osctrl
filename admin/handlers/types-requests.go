@@ -124,10 +124,10 @@ type TagsRequest struct {
 
 // TagNodesRequest to receive a tag for nodes
 type TagNodesRequest struct {
-	CSRFToken string   `json:"csrftoken"`
-	UUIDs     []string `json:"uuids"`
-	Tags      []string `json:"tags"`
-	Action    string   `json:"action"`
+	CSRFToken  string   `json:"csrftoken"`
+	UUIDs      []string `json:"uuids"`
+	TagsAdd    []string `json:"tagsadd"`
+	TagsRemove []string `json:"tagsremove"`
 }
 
 // PermissionsRequest to receive user permissions changes requests

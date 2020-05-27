@@ -382,20 +382,28 @@
               <div class="modal-dialog modal-dark" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h4 class="modal-title">Tag nodes</h4>
+                    <h4 class="modal-title">Add / remove tags</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
                   </div>
                   <div class="modal-body">
+                    <select style="display: none;" name="remove_tags[]" id="remove_tags">
+                    </select>
+                    <select style="display: none;" name="add_tags[]" id="add_tags">
+                    </select>
                     <select style="width: 100%;" name="modal_tags[]" id="modal_tags" multiple="multiple">
-                    {{ range  $i, $e := $template.Tags }}
-                      <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                    {{ range  $i, $e := $template.TagsForNode }}
+                      {{ if $e.Tagged }}
+                        <option selected="true" value="{{ $e.Tag.Name }}">{{ $e.Tag.Name }}</option>
+                      {{ else }}
+                        <option value="{{ $e.Tag.Name }}">{{ $e.Tag.Name }}</option>
+                      {{ end }}
                     {{ end }}
                     </select>
                   </div>
                   <div class="modal-footer">
-                    <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Tag</button>
+                    <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Save</button>
                     <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                   </div>
                 </div>
@@ -573,8 +581,14 @@
         });
 
         // Select2 initialization
-        $('#modal_tags').select2({
+        var tagsSelect = $('#modal_tags').select2({
           theme: "classic"
+        });
+        tagsSelect.on("select2:select", function(e){
+          $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
+        });
+        tagsSelect.on("select2:unselect", function(e){
+          $('#remove_tags').append(new Option(e.params.data.text, e.params.data.text));
         });
 
         // Maintain open the node's environment toggle

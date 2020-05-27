@@ -1240,35 +1240,35 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 		toBeProcessed = append(toBeProcessed, n)
 	}
-	for _, _t := range t.Tags {
-		switch t.Action {
-		case "tag":
-			if !h.Tags.Exists(_t) {
-				adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+	// Processing the list of tags to remove
+	for _, _t := range t.TagsRemove {
+		if !h.Tags.Exists(_t) {
+			adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Untag all nodes
+		for _, n := range toBeProcessed {
+			if err := h.Tags.UntagNode(_t, n); err != nil {
+				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
-			// Tag all nodes
-			for _, n := range toBeProcessed {
-				if err := h.Tags.TagNode(_t, n); err != nil {
-					adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
-			}
-		case "remove":
-			if !h.Tags.Exists(_t) {
-				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+		}
+	}
+	// Processing the list of tags to add
+	for _, _t := range t.TagsAdd {
+		if !h.Tags.Exists(_t) {
+			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Tag all nodes
+		for _, n := range toBeProcessed {
+			if err := h.Tags.TagNode(_t, n); err != nil {
+				adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
-			}
-			// Untag all nodes
-			for _, n := range toBeProcessed {
-				if err := h.Tags.UntagNode(_t, n); err != nil {
-					adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
 			}
 		}
 	}

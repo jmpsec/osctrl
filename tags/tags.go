@@ -23,6 +23,12 @@ type AdminTag struct {
 	Icon        string
 }
 
+// AdminTagForNode to check if this tag is used for an specific node
+type AdminTagForNode struct {
+	Tag    AdminTag
+	Tagged bool
+}
+
 // TaggedNode to hold tagged nodes
 type TaggedNode struct {
 	gorm.Model
@@ -214,9 +220,9 @@ func (m *TagManager) UntagNode(name string, node nodes.OsqueryNode) error {
 	if !m.Exists(name) {
 		return fmt.Errorf("tag does not exist")
 	}
-	tagged := TaggedNode{
-		Tag:    name,
-		NodeID: node.ID,
+	var tagged TaggedNode
+	if err := m.DB.Where("tag = ? AND node_id = ?", name, node.ID).First(&tagged).Error; err != nil {
+		return fmt.Errorf("TaggedNode %v", err)
 	}
 	if err := m.DB.Unscoped().Delete(&tagged).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)
@@ -239,4 +245,25 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+// GetNodeTags to decorate tags for a given node
+func (m *TagManager) GetNodeTags(tagged  []AdminTag) ([]AdminTagForNode, error) {
+	var tags []AdminTag
+	var forNode []AdminTagForNode
+	tags, err := m.All()
+	if err != nil {
+		return forNode, err
+	}
+	for _, t := range tags {
+		ttt := false
+		for _, _t := range tagged {
+			if _t.Name == t.Name {
+				ttt = true
+				break
+			}
+		}
+		forNode = append(forNode, AdminTagForNode{Tag: t, Tagged: ttt})
+	}
+	return forNode, nil
 }
