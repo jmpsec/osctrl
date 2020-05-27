@@ -151,7 +151,7 @@ button {
 }
 
 .server-version {
-  position: absolute;
+  margin-top: 10px;
   bottom: 0;
   display: flex;
   align-items: center;

@@ -5,7 +5,7 @@
 
   {{ template "page-head" . }}
 
-  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
 
     {{ template "page-header" . }}
 
@@ -25,7 +25,9 @@
               <div class="card-header">
                 <i class="nav-icon fas fa-info-circle"></i>
                 <strong> Details of node {{ .UUID }} </strong>
-                <small>{{ .Environment }}</small>
+                {{ range  $i, $t := $template.NodeTags }}
+                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
+                {{ end }}
               </div>
               <div class="card-body">
 
@@ -47,6 +49,10 @@
                         <button type="button" class="btn custom-size-btn btn-outline-info"
                         data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles(['{{ .UUID }}']);">
                           <i class="fas fa-file-upload"></i>
+                        </button>
+                        <button type="button" class="btn custom-size-btn btn-outline-warning"
+                        data-tooltip="true" data-placement="top" title="Tag Node" onclick="showTagNodes(['{{ .UUID }}']);">
+                          <i class="fas fa-tag"></i>
                         </button>
                       {{ end }}
                         <button type="button" class="btn custom-size-btn btn-outline-primary"
@@ -372,6 +378,41 @@
 
             {{ template "page-modals" . }}
 
+            <div class="modal fade" id="tagModal" tabindex="-1" role="dialog" aria-labelledby="tagModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 class="modal-title">Add / remove tags</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <select style="display: none;" name="remove_tags[]" id="remove_tags">
+                    </select>
+                    <select style="display: none;" name="add_tags[]" id="add_tags">
+                    </select>
+                    <select style="width: 100%;" name="modal_tags[]" id="modal_tags" multiple="multiple">
+                    {{ range  $i, $e := $template.TagsForNode }}
+                      {{ if $e.Tagged }}
+                        <option selected="true" value="{{ $e.Tag.Name }}">{{ $e.Tag.Name }}</option>
+                      {{ else }}
+                        <option value="{{ $e.Tag.Name }}">{{ $e.Tag.Name }}</option>
+                      {{ end }}
+                    {{ end }}
+                    </select>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Save</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
             {{ end }}
 
           </div>
@@ -537,6 +578,17 @@
         // Focus on input when modal opens
         $("#carveModal").on('shown.bs.modal', function(){
           $(this).find('#carve').focus();
+        });
+
+        // Select2 initialization
+        var tagsSelect = $('#modal_tags').select2({
+          theme: "classic"
+        });
+        tagsSelect.on("select2:select", function(e){
+          $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
+        });
+        tagsSelect.on("select2:unselect", function(e){
+          $('#remove_tags').append(new Option(e.params.data.text, e.params.data.text));
         });
 
         // Maintain open the node's environment toggle

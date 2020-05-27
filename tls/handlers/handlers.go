@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
 )
@@ -54,6 +55,7 @@ type HandlersTLS struct {
 	Envs        *environments.Environment
 	EnvsMap     *environments.MapEnvironments
 	Nodes       *nodes.NodeManager
+	Tags        *tags.TagManager
 	Queries     *queries.Queries
 	Carves      *carves.Carves
 	Settings    *settings.Settings
@@ -91,6 +93,12 @@ func WithSettingsMap(settingsmap *settings.MapSettings) HandlersOption {
 func WithNodes(nodes *nodes.NodeManager) HandlersOption {
 	return func(h *HandlersTLS) {
 		h.Nodes = nodes
+	}
+}
+
+func WithTags(tags *tags.TagManager) HandlersOption {
+	return func(h *HandlersTLS) {
+		h.Tags = tags
 	}
 }
 
@@ -202,11 +210,15 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 				nodeInvalid = false
 			}
 		} else { // New node, persist it
-			if err := h.Nodes.Create(newNode); err != nil {
+			if err := h.Nodes.Create(&newNode); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
+				if err := h.Tags.TagNode(env, newNode); err != nil {
+					h.Inc(metricEnrollErr)
+					log.Printf("error tagging node %v", err)
+				}
 			}
 		}
 	} else {
@@ -427,7 +439,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricReadOK)
 }
 
-// Function to handle distributed query results from osquery nodes
+// QueryWriteHandler - Function to handle distributed query results from osquery nodes
 func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricWriteReq)
 	// Retrieve environment variable

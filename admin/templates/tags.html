@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ $metadata := .Metadata }}
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-aside-left" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-tag"></i> All Tags</b>
+
+                  <div class="card-header-actions">
+                    <div class="row">
+                      <div class="card-header-action mr-3">
+                        <button id="tag_add" class="btn btn-sm btn-block btn-dark"
+                          data-tooltip="true" data-placement="bottom" title="Add Tag" onclick="createTag();">
+                          <i class="fas fa-plus"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+              </div>
+
+              <div class="card-body">
+
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Description</th>
+                      <th>Color</th>
+                      <th>Icon</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{range  $i, $t := $.Tags}}
+                    <tr>
+                      <td><b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}"></td>
+                      <td>{{ $t.Description }}<input type="hidden" value="{{ $t.Description }}" id="tag_desc_{{ $t.Name }}"></td>
+                      <td>{{ $t.Color }}<input type="hidden" value="{{ $t.Color }}" id="tag_color_{{ $t.Name }}">
+                        <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
+                      </td>
+                      <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-info" onclick="editTag('{{ $t.Name }}');">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  {{ end }}
+                  </tbody>
+                </table>
+
+              </div>
+            </div>
+
+            <div class="modal fade" id="createEditTagModal" tabindex="-1" role="dialog" aria-labelledby="createEditTagModal" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 id="modal_title_tag" class="modal-title"></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="tag_name">Name: </label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="tag_name" id="tag_name" type="text" autocomplete="off"
+                          autofocus>
+                      </div>
+                      <label class="col-md-2 col-form-label" for="tag_description">Description: </label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="tag_description" id="tag_description" type="text" autocomplete="off">
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="tag_color">Color: </label>
+                      <div class="col-md-3">
+                        <input class="form-control" name="tag_color" id="tag_color" type="text" value="">
+                      </div>
+                      <div class="col-md-1">
+                        <button type="button" class="btn" name="show_color" id="show_color" onclick="generateColor();">
+                          <i class="fas fa-redo"></i>
+                        </button>
+                      </div>
+                      <label class="col-md-1 col-form-label" for="tag_icon">Icon: </label>
+                      <label class="col-md-1 col-form-label"><i id="tag_show_icon" class="fas fa-tag"></i></label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="tag_icon" id="tag_icon" type="text" value="fas fa-tag">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button id="modal_button_tag" type="button" class="btn btn-primary" data-dismiss="modal">Create</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+          {{ template "page-modals" . }}
+
+        </div>
+
+      </main>
+
+      {{ if eq $metadata.Level "admin" }}
+        {{ template "page-aside-right" . }}
+      {{ end }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/login.js"></script>
+    <script src="/static/js/tags.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Update icon on tag creation modal
+        $('#tag_icon').on('input', function() {
+          $("#tag_show_icon").removeClass();
+          $("#tag_show_icon").addClass($('#tag_icon').val());
+        });
+
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+
+        // Focus on input when modal opens
+        $("#createTagModal").on('shown.bs.modal', function(){
+          $(this).find('#tag_name').focus();
+        });
+
+        // Color picker
+        $('#tag_color').colorpicker();
+
+        // When color changes
+        $('#tag_color').on('colorpickerChange colorpickerCreate', function(event) {
+          $('#show_color').css('background-color', event.color.toString());
+        });
+      });
+    </script>
+  </body>
+</html>

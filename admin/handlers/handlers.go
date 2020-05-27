@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 )
@@ -38,6 +39,7 @@ const okContent = "✅"
 type HandlersAdmin struct {
 	DB             *gorm.DB
 	Users          *users.UserManager
+	Tags           *tags.TagManager
 	Envs           *environments.Environment
 	Nodes          *nodes.NodeManager
 	Queries        *queries.Queries
@@ -68,6 +70,12 @@ func WithEnvs(envs *environments.Environment) HandlersOption {
 func WithUsers(users *users.UserManager) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Users = users
+	}
+}
+
+func WithTags(tags *tags.TagManager) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.Tags = tags
 	}
 }
 

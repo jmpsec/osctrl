@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/spf13/viper"
@@ -105,6 +106,7 @@ var (
 	sessionsmgr *sessions.SessionManager
 	envs        *environments.Environment
 	adminUsers  *users.UserManager
+	tagsmgr     *tags.TagManager
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
@@ -263,6 +265,8 @@ func main() {
 	//}
 	// Initialize users
 	adminUsers = users.CreateUserManager(db, &jwtConfig)
+	// Initialize tags
+	tagsmgr = tags.CreateTagManager(db)
 	// Initialize environment
 	envs = environments.CreateEnvironment(db)
 	// Initialize settings
@@ -372,6 +376,7 @@ func main() {
 		ahandlers.WithDB(db),
 		ahandlers.WithEnvs(envs),
 		ahandlers.WithUsers(adminUsers),
+		ahandlers.WithTags(tagsmgr),
 		ahandlers.WithNodes(nodesmgr),
 		ahandlers.WithQueries(queriesmgr),
 		ahandlers.WithCarves(carvesmgr),
@@ -427,6 +432,8 @@ func main() {
 	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
 	routerAdmin.Handle("/json/stats/{target}/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler))).Methods("GET")
+	// Admin: JSON data for tags
+	routerAdmin.Handle("/json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler))).Methods("GET")
 	// Admin: table for environments
 	routerAdmin.Handle("/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler))).Methods("GET")
 	// Admin: table for platforms
@@ -483,6 +490,10 @@ func main() {
 	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler))).Methods("POST")
 	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler))).Methods("GET")
 	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler))).Methods("POST")
+	// Admin: manage tags
+	routerAdmin.Handle("/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler))).Methods("GET")
+	routerAdmin.Handle("/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/tags/nodes", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler))).Methods("POST")
 	// Admin: manage tokens
 	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler))).Methods("GET")
 	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler))).Methods("POST")

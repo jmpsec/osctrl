@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/users"
 
 	"github.com/jinzhu/gorm"
@@ -42,8 +43,8 @@ var (
 	nodesmgr     *nodes.NodeManager
 	queriesmgr   *queries.Queries
 	adminUsers   *users.UserManager
+	tagsmgr      *tags.TagManager
 	envs         *environments.Environment
-	err          error
 )
 
 // Initialization code
@@ -507,6 +508,92 @@ func init() {
 			},
 		},
 		{
+			Name:  "tag",
+			Usage: "Commands for tags",
+			Subcommands: []cli.Command{
+				{
+					Name:    "add",
+					Aliases: []string{"a"},
+					Usage:   "Add a new tag",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Tage name to be added",
+						},
+						cli.StringFlag{
+							Name:  "color, c",
+							Value: "",
+							Usage: "Tag color to be added",
+						},
+						cli.StringFlag{
+							Name:  "description, d",
+							Usage: "Tag description to be added",
+						},
+						cli.StringFlag{
+							Name:  "icon, i",
+							Value: "",
+							Usage: "Tag icon to be added",
+						},
+					},
+					Action: cliWrapper(addTag),
+				},
+				{
+					Name:    "edit",
+					Aliases: []string{"e"},
+					Usage:   "Edit values for an existing tag",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Tage name to be edited",
+						},
+						cli.StringFlag{
+							Name:  "color, c",
+							Usage: "Tag color to be edited",
+						},
+						cli.StringFlag{
+							Name:  "description, d",
+							Usage: "Tag description to be edited",
+						},
+						cli.StringFlag{
+							Name:  "icon, i",
+							Usage: "Tag icon to be edited",
+						},
+					},
+					Action: cliWrapper(editTag),
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Delete an existing tag",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Tag name to be deleted",
+						},
+					},
+					Action: cliWrapper(deleteTag),
+				},
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "List all tags",
+					Action: cliWrapper(listTags),
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show an existing tag",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Usage: "Tag name to be displayed",
+						},
+					},
+					Action: cliWrapper(showTag),
+				},
+			},
+		},
+		{
 			Name:   "check",
 			Usage:  "Checks DB connection",
 			Action: checkDB,
@@ -519,16 +606,6 @@ func checkDB(c *cli.Context) error {
 	if err := dbConnection(dbConfigFile); err != nil {
 		return fmt.Errorf("Error connecting to DB - %v", err)
 	}
-	// Initialize users
-	adminUsers = users.CreateUserManager(db, nil)
-	// Initialize environment
-	envs = environments.CreateEnvironment(db)
-	// Initialize settings
-	settingsmgr = settings.NewSettings(db)
-	// Initialize nodes
-	nodesmgr = nodes.CreateNodes(db)
-	// Initialize queries
-	queriesmgr = queries.CreateQueries(db)
 	// Should be good
 	return nil
 }
@@ -569,6 +646,8 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 		nodesmgr = nodes.CreateNodes(db)
 		// Initialize queries
 		queriesmgr = queries.CreateQueries(db)
+		// Initialize tags
+		tagsmgr = tags.CreateTagManager(db)
 		// Execute action
 		return action(c)
 	}

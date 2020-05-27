@@ -5,7 +5,7 @@
 
   {{ template "page-head" . }}
 
-  <body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
 
     {{ template "page-header" . }}
 
@@ -61,6 +61,35 @@
             </div>
 
           {{ template "page-modals" . }}
+
+          <div class="modal fade" id="tagModal" tabindex="-1" role="dialog" aria-labelledby="tagModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dark" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Tag nodes</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                    <select style="display: none;" name="add_tags[]" id="add_tags">
+                    </select>
+                    <select style="width: 100%;" name="modal_tags[]" id="modal_tags" multiple="multiple">
+                    {{ range  $i, $e := $.Tags }}
+                        <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                    {{ end }}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                  <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Tag</button>
+                  <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
 
           </div>
 
@@ -221,6 +250,31 @@
               }
             },
             {
+              className: 'btn custom-size-btn btn-outline-warning',
+              text: '<i class="fas fa-tag"></i>',
+              titleAttr: 'Tag Nodes',
+              attr:  {
+                'data-tooltip':  'true',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var uuids = [];
+                $.each(tableNodes.rows({search:'applied', selected: true}).data(), function() {
+                  uuids.push(this.uuid);
+                });
+                if (uuids.length > 0) {
+                  showTagNodes(uuids);
+                } else {
+                  console.log('Tag: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more nodes");
+                  $("#warningModal").modal();
+                }
+              }
+            },
+            {
               className: 'btn custom-size-btn btn-outline-dark',
               text: '<i class="fab fa-searchengin"></i>',
               titleAttr: 'Run Query',
@@ -327,6 +381,14 @@
         // Focus on input when modal opens
         $("#carveModal").on('shown.bs.modal', function(){
           $(this).find('#carve').focus();
+        });
+
+        // Select2 initialization
+        var tagsSelect = $('#modal_tags').select2({
+          theme: "classic"
+        });
+        tagsSelect.on("select2:select", function(e){
+          $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
         });
       });
     </script>

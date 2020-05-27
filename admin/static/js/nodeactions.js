@@ -34,12 +34,10 @@ function refreshCurrentNode() {
 function queryNodes(_uuids) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
-
   // Make sure semicolon always in the query
   if (_query.slice(-1) !== ';') {
     _query = _query + ';';
   }
-
   var _url = '/query/run';
   var data = {
     csrftoken: _csrftoken,
@@ -90,5 +88,33 @@ function changeBackValue(table_id, range_input, range_output) {
   range_output.value = range_input.value;
   var table = $('#' + table_id).DataTable();
   var _url = table.ajax.url();
-  table.ajax.url(_url.split('seconds=')[0] + 'seconds=' + (range_output.value*3600));
+  table.ajax.url(_url.split('seconds=')[0] + 'seconds=' + (range_output.value * 3600));
+}
+
+function tagNodes(_uuids) {
+  var _csrftoken = $("#csrftoken").val();
+  var _addtags = [];
+  $('#add_tags option').each(function () {
+    _addtags.push($(this).val());
+  });
+  var _removetags = [];
+  $('#remove_tags option').each(function () {
+    _removetags.push($(this).val());
+  });
+  var _url = '/tags/nodes';
+  var data = {
+    csrftoken: _csrftoken,
+    uuids: _uuids,
+    tagsadd: _addtags,
+    tagsremove: _removetags,
+  };
+  sendPostRequest(data, _url, window.location, true);
+}
+
+function showTagNodes(_uuids) {
+  $('#tag_action').click(function () {
+    $('#tagModal').modal('hide');
+    tagNodes(_uuids);
+  });
+  $("#tagModal").modal();
 }
