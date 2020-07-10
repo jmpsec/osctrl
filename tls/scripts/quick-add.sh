@@ -21,9 +21,9 @@ _SECRET_FREEBSD=/usr/local/etc/${_PROJECT}.secret
 _FLAGS_FREEBSD=/usr/local/etc/osquery.flags
 _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
-_OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-4.2.0.pkg"
-_OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_4.2.0_1.linux.amd64.deb"
-_OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-4.2.0-1.linux.x86_64.rpm"
+_OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-4.4.0.pkg"
+_OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_4.4.0_1.linux.amd64.deb"
+_OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-4.4.0-1.linux.x86_64.rpm"
 
 _OSQUERY_SERVICE_LINUX="osqueryd"
 _OSQUERY_SERVICE_OSX="com.facebook.osqueryd"

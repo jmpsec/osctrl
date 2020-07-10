@@ -103,6 +103,8 @@ github.com/jmpsec/osctrl/queries v0.0.0-20200413201649-147d3fd0ab35/go.mod h1:AW
 github.com/jmpsec/osctrl/settings v0.0.0-20200326023543-cb8ff04ecc7c/go.mod h1:WiRce5ho75/4JVmjW3CKXLodGJgY54XbcadtRTbvRPw=
 github.com/jmpsec/osctrl/settings v0.0.0-20200413201649-147d3fd0ab35 h1:OHY8V1cH88SDxh5iTCpiDOu+z6ydoh+eqJQuoGPWPR4=
 github.com/jmpsec/osctrl/settings v0.0.0-20200413201649-147d3fd0ab35/go.mod h1:WiRce5ho75/4JVmjW3CKXLodGJgY54XbcadtRTbvRPw=
+github.com/jmpsec/osctrl/tags v0.0.0-20200527045717-0e3b5d71cf19 h1:7hzR7ZQgpmNUjeet9Bt73tZJwU7KBKHBdUmmgFmldgE=
+github.com/jmpsec/osctrl/tags v0.0.0-20200527045717-0e3b5d71cf19/go.mod h1:L5RB/katY0A4y4KlpWesxYYYGYzm2yddTh19r4WNhHM=
 github.com/jmpsec/osctrl/types v0.0.0-20200326023543-cb8ff04ecc7c/go.mod h1:v7W82e2LcngpKB93mXyl0M/xyQ8qeCMOskOZJ1bB9ys=
 github.com/jmpsec/osctrl/types v0.0.0-20200413201649-147d3fd0ab35 h1:pe2DbLbD5vM+oUfW64mFkiFxTialBJ0ChGZ/bY8aBHs=
 github.com/jmpsec/osctrl/types v0.0.0-20200413201649-147d3fd0ab35/go.mod h1:v7W82e2LcngpKB93mXyl0M/xyQ8qeCMOskOZJ1bB9ys=
@@ -201,6 +203,7 @@ go.uber.org/zap v1.10.0/go.mod h1:vwi/ZaCAaUcBkycHslxD9B2zi4UTXhF60s6SWpuDF0Q=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190325154230-a5d413f7728c/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd h1:GGJVjV8waZKRHrgwvtH66z9ZGVurTD1MT0n1Bb+q4aM=
 golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=

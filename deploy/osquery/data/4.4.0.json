@@ -27,7 +27,7 @@
       },
       {
         "name":"failed_login_count",
-        "description":"The number of times the user failed to login with the correct password. Resets after a correct password is entered",
+        "description":"The number of failed login attempts using an incorrect password. Count resets after a correct password is entered.",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -2268,6 +2268,122 @@
     ]
   },
   {
+    "name":"chassis_info",
+    "description":"Display information pertaining to the chassis and its security status.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/chassis_info.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"audible_alarm",
+        "description":"If TRUE, the frame is equipped with an audible alarm.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"breach_description",
+        "description":"If provided, gives a more detailed description of a detected security breach.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"chassis_types",
+        "description":"The type of chassis, such as Desktop or Laptop.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"An extended description of the chassis if available.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"lock",
+        "description":"If TRUE, the frame is equipped with a lock.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufacturer",
+        "description":"The manufacturer of the chassis.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"model",
+        "description":"The model of the chassis.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"security_status",
+        "description":"The physical status of the chassis such as breached, not breached, etc.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"serial",
+        "description":"The serial number of the chassis.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"smbios_tag",
+        "description":"The assigned asset tag number of the chassis.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sku",
+        "description":"The Stock Keeping Unit number if available.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"status",
+        "description":"If available, gives various operational or nonoperational statuses such as OK, Degraded, and Pred Fail.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"visible_alarm",
+        "description":"If TRUE, the frame is equipped with a visual alarm.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"chocolatey_packages",
     "description":"Chocolatey packages installed in a system.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/chocolatey_packages.table",
@@ -2320,6 +2436,61 @@
       {
         "name":"path",
         "description":"Path at which this package resides",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"chrome_extension_content_scripts",
+    "description":"Chrome browser extension content scripts.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/chrome_extension_content_scripts.table",
+    "platforms":[
+      "darwin",
+      "linux",
+      "windows",
+      "freebsd"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"uid",
+        "description":"The local user that owns the extension",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"identifier",
+        "description":"Extension identifier",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"version",
+        "description":"Extension-supplied version",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"script",
+        "description":"The content script used by the extension",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"match",
+        "description":"The pattern that the script is matched against",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -3302,6 +3473,158 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"certificate_version",
+        "description":"Version Number",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"signature_algorithm",
+        "description":"Signature Algorithm",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"signature",
+        "description":"Signature",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"subject_key_identifier",
+        "description":"Subject Key Identifier",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"authority_key_identifier",
+        "description":"Authority Key Identifier",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key_usage",
+        "description":"Usage of key in certificate",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"extended_key_usage",
+        "description":"Extended usage of key in certificate",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"certificate_policies",
+        "description":"Certificate Policies",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"subject_alternative_names",
+        "description":"Subject Alternative Name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"issuer_alternative_names",
+        "description":"Issuer Alternative Name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"info_access",
+        "description":"Authority Information Access",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"subject_info_access",
+        "description":"Subject Information Access",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"policy_mappings",
+        "description":"Policy Mappings",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"certificate_has_expired",
+        "description":"1 if the certificate has expired, 0 otherwise",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"basic_constraint",
+        "description":"Basic Constraints",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"name_constraints",
+        "description":"Name Constraints",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"policy_constraints",
+        "description":"Policy Constraints",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"dump_certificate",
+        "description":"Set this value to '1' to dump certificate",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"certificate_pem",
+        "description":"Certificate PEM format",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -3360,6 +3683,54 @@
         "description":"Package revision",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"status",
+        "description":"Package status",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"maintainer",
+        "description":"Package maintainer",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"section",
+        "description":"Package section",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"priority",
+        "description":"Package priority",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
+        "type":"text",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -4072,6 +4443,43 @@
         "name":"options",
         "description":"Resolver options",
         "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"docker_container_fs_changes",
+    "description":"Changes to files or directories on container's filesystem.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/docker_container_fs_changes.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"id",
+        "description":"Container ID",
+        "type":"text",
+        "hidden":false,
+        "required":true,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"FIle or directory path relative to rootfs",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"change_type",
+        "description":"Type of change: C:Modified, A:Added, D:Deleted",
+        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -6862,6 +7270,22 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -7475,6 +7899,22 @@
         "description":"ssdeep hash of provided filesystem data",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
+        "type":"text",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -10199,6 +10639,723 @@
     ]
   },
   {
+    "name":"lxd_certificates",
+    "description":"LXD certificates information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_certificates.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Name of the certificate",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"type",
+        "description":"Type of the certificate",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"fingerprint",
+        "description":"SHA256 hash of the certificate",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"certificate",
+        "description":"Certificate content",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_cluster",
+    "description":"LXD cluster information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_cluster.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"server_name",
+        "description":"Name of the LXD server node",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"enabled",
+        "description":"Whether clustering enabled (1) or not (0) on this node",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"member_config_entity",
+        "description":"Type of configuration parameter for this node",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"member_config_name",
+        "description":"Name of configuration parameter",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"member_config_key",
+        "description":"Config key",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"member_config_value",
+        "description":"Config value",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"member_config_description",
+        "description":"Config description",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_cluster_members",
+    "description":"LXD cluster members information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_cluster_members.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"server_name",
+        "description":"Name of the LXD server node",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"url",
+        "description":"URL of the node",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"database",
+        "description":"Whether the server is a database node (1) or not (0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"status",
+        "description":"Status of the node (Online/Offline)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"message",
+        "description":"Message from the node (Online/Offline)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_images",
+    "description":"LXD images information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_images.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"id",
+        "description":"Image ID",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"architecture",
+        "description":"Target architecture for the image",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"os",
+        "description":"OS on which image is based",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"release",
+        "description":"OS release version on which the image is based",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"Image description",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"aliases",
+        "description":"Comma-separated list of image aliases",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"filename",
+        "description":"Filename of the image file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"size",
+        "description":"Size of image in bytes",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"auto_update",
+        "description":"Whether the image auto-updates (1) or not (0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cached",
+        "description":"Whether image is cached (1) or not (0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"public",
+        "description":"Whether image is public (1) or not (0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"created_at",
+        "description":"ISO time of image creation",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"expires_at",
+        "description":"ISO time of image expiration",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uploaded_at",
+        "description":"ISO time of image upload",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_used_at",
+        "description":"ISO time for the most recent use of this image in terms of container spawn",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_source_server",
+        "description":"Server for image update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_source_protocol",
+        "description":"Protocol used for image information update and image import from source server",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_source_certificate",
+        "description":"Certificate for update source server",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_source_alias",
+        "description":"Alias of image at update source server",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_instance_config",
+    "description":"LXD instance configuration information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instance_config.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Instance name",
+        "type":"text",
+        "hidden":false,
+        "required":true,
+        "index":false
+      },
+      {
+        "name":"key",
+        "description":"Configuration parameter name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"value",
+        "description":"Configuration parameter value",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_instance_devices",
+    "description":"LXD instance devices information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instance_devices.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Instance name",
+        "type":"text",
+        "hidden":false,
+        "required":true,
+        "index":false
+      },
+      {
+        "name":"device",
+        "description":"Name of the device",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"device_type",
+        "description":"Device type",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key",
+        "description":"Device info param name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"value",
+        "description":"Device info param value",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_instances",
+    "description":"LXD instances information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instances.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Instance name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"status",
+        "description":"Instance state (running, stopped, etc.)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"stateful",
+        "description":"Whether the instance is stateful(1) or not(0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ephemeral",
+        "description":"Whether the instance is ephemeral(1) or not(0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"created_at",
+        "description":"ISO time of creation",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"base_image",
+        "description":"ID of image used to launch this instance",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"architecture",
+        "description":"Instance architecture",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"os",
+        "description":"The OS of this instance",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"Instance description",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"Instance's process ID",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"processes",
+        "description":"Number of processes running inside this instance",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_networks",
+    "description":"LXD network information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_networks.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Name of the network",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"type",
+        "description":"Type of network",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"managed",
+        "description":"1 if network created by LXD, 0 otherwise",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ipv4_address",
+        "description":"IPv4 address",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ipv6_address",
+        "description":"IPv6 address",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"used_by",
+        "description":"URLs for containers using this network",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"bytes_received",
+        "description":"Number of bytes received on this network",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"bytes_sent",
+        "description":"Number of bytes sent on this network",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"packets_received",
+        "description":"Number of packets received on this network",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"packets_sent",
+        "description":"Number of packets sent on this network",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"hwaddr",
+        "description":"Hardware address for this network",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"state",
+        "description":"Network status",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mtu",
+        "description":"MTU size",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"lxd_storage_pools",
+    "description":"LXD storage pool information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_storage_pools.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Name of the storage pool",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"driver",
+        "description":"Storage driver",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"source",
+        "description":"Storage pool source",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"size",
+        "description":"Size of the storage pool",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"space_used",
+        "description":"Storgae space used in bytes",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"space_total",
+        "description":"Total available storage space in bytes for this storage pool",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"inodes_used",
+        "description":"Number of inodes used",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"inodes_total",
+        "description":"Total number of inodes available in this storage pool",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"magic",
     "description":"Magic number recognition library table.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/magic.table",
@@ -10395,7 +11552,7 @@
       },
       {
         "name":"failed_disks",
-        "description":"Number of active disks in array",
+        "description":"Number of failed disks in array",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -10403,7 +11560,7 @@
       },
       {
         "name":"spare_disks",
-        "description":"Number of active disks in array",
+        "description":"Number of idle disks in array",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -11570,6 +12727,22 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -12069,8 +13242,32 @@
         "index":false
       },
       {
+        "name":"arch",
+        "description":"OS Architecture",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"install_date",
         "description":"The install date of the OS.",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
         "type":"text",
         "hidden":true,
         "required":false,
@@ -12566,8 +13763,8 @@
         "index":false
       },
       {
-        "name":"blacklisted",
-        "description":"1 if the query is blacklisted else 0",
+        "name":"denylisted",
+        "description":"1 if the query is denylisted else 0",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -13948,6 +15145,38 @@
         "index":false
       },
       {
+        "name":"fsuid",
+        "description":"Filesystem user ID at process start",
+        "type":"bigint",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"suid",
+        "description":"Saved user ID at process start",
+        "type":"bigint",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"fsgid",
+        "description":"Filesystem group ID at process start",
+        "type":"bigint",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sgid",
+        "description":"Saved group ID at process start",
+        "type":"bigint",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"syscall",
         "description":"Syscall name: fork, vfork, clone, execve, execveat",
         "type":"text",
@@ -14056,6 +15285,14 @@
         "index":false
       },
       {
+        "name":"auid",
+        "description":"Audit user ID of the process using the file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"euid",
         "description":"Effective user ID of the process using the file",
         "type":"text",
@@ -14066,6 +15303,38 @@
       {
         "name":"egid",
         "description":"Effective group ID of the process using the file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"fsuid",
+        "description":"Filesystem user ID of the process using the file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"fsgid",
+        "description":"Filesystem group ID of the process using the file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"suid",
+        "description":"Saved user ID of the process using the file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sgid",
+        "description":"Saved group ID of the process using the file",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -15376,6 +16645,38 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"vendor",
+        "description":"Package vendor",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"package_group",
+        "description":"Package group",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mount_namespace_id",
+        "description":"Mount namespace id",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -15653,6 +16954,34 @@
         "name":"last_run_code",
         "description":"Exit status code of the last task run",
         "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"screenlock",
+    "description":"macOS screenlock status for the current logged in user context.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/screenlock.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"enabled",
+        "description":"1 If a password is required after sleep or the screensaver begins; else 0",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"grace_period",
+        "description":"The amount of time in seconds the screen must be asleep or the screensaver on before a password is required on-wake. 0 = immediately; -1 = no password is required on-wake",
+        "type":"integer",
         "hidden":false,
         "required":false,
         "index":false
@@ -16737,8 +18066,9 @@
   {
     "name":"socket_events",
     "description":"Track network socket opens and closes.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/socket_events.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/socket_events.table",
     "platforms":[
+      "darwin",
       "linux"
     ],
     "evented":true,
@@ -17304,7 +18634,7 @@
       },
       {
         "name":"hardware_vendor",
-        "description":"Hardware or board vendor",
+        "description":"Hardware vendor",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -17312,7 +18642,7 @@
       },
       {
         "name":"hardware_model",
-        "description":"Hardware or board model",
+        "description":"Hardware model",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -17320,7 +18650,7 @@
       },
       {
         "name":"hardware_version",
-        "description":"Hardware or board version",
+        "description":"Hardware version",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -17328,7 +18658,39 @@
       },
       {
         "name":"hardware_serial",
-        "description":"Device or board serial number",
+        "description":"Device serial number",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"board_vendor",
+        "description":"Board vendor",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"board_model",
+        "description":"Board model",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"board_version",
+        "description":"Board version",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"board_serial",
+        "description":"Board serial number",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -18020,6 +19382,50 @@
     ]
   },
   {
+    "name":"userassist",
+    "description":"UserAssist Registry Key tracks when a user executes an application from Windows Explorer.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/userassist.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"path",
+        "description":"Application file path.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_execution_time",
+        "description":"Most recent time application was executed.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"count",
+        "description":"Number of times the application has been executed.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sid",
+        "description":"User SID.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"users",
     "description":"Local user accounts (including domain accounts that have logged on locally (Windows)).",
     "url":"https://github.com/osquery/osquery/blob/master/specs/users.table",
@@ -18704,7 +20110,7 @@
   },
   {
     "name":"winbaseobj",
-    "description":"Lists named Windows objects in the default object directories, across all terminal services sessions.",
+    "description":"Lists named Windows objects in the default object directories, across all terminal services sessions.  Example Windows ojbect types include Mutexes, Events, Jobs and Semaphors.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/winbaseobj.table",
     "platforms":[
       "windows"
@@ -18995,7 +20401,7 @@
       {
         "name":"keywords",
         "description":"A bitmask of the keywords defined in the event",
-        "type":"bigint",
+        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -19055,6 +20461,74 @@
       {
         "name":"statename",
         "description":"Installation state name. 'Enabled','Disabled','Absent'",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"windows_security_center",
+    "description":"The health status of Window Security features. Health values can be \"Good\", \"Poor\". \"Snoozed\", \"Not Monitored\", and \"Error\".",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_security_center.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"firewall",
+        "description":"The health of the monitored Firewall (see windows_security_products)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"autoupdate",
+        "description":"The health of the Windows Autoupdate feature",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"antivirus",
+        "description":"The health of the monitored Antivirus solution (see windows_security_products)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"antispyware",
+        "description":"The health of the monitored Antispyware solution (see windows_security_products)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"internet_settings",
+        "description":"The health of the Internet Settings",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"windows_security_center_service",
+        "description":"The health of the Windows Security Center Service",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"user_account_control",
+        "description":"The health of the User Account Control (UAC) capability in Windows",
         "type":"text",
         "hidden":false,
         "required":false,

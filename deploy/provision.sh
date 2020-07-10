@@ -675,7 +675,7 @@ else
     sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
     # Copy osquery tables JSON file
-    sudo cp "$SOURCE_PATH/deploy/osquery/data/4.2.0.json" "$DEST_PATH/data"
+    sudo cp "$SOURCE_PATH/deploy/osquery/data/4.4.0.json" "$DEST_PATH/data"
 
     # Copy empty configuration
     sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.json" "$DEST_PATH/data"
