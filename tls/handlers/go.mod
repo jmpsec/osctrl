@@ -11,6 +11,7 @@ require (
 	github.com/jmpsec/osctrl/nodes v0.2.2
 	github.com/jmpsec/osctrl/queries v0.2.2
 	github.com/jmpsec/osctrl/settings v0.2.2
+	github.com/jmpsec/osctrl/tags v0.0.0-20200527045717-0e3b5d71cf19
 	github.com/jmpsec/osctrl/types v0.2.2
 	github.com/jmpsec/osctrl/utils v0.2.2
 	github.com/segmentio/ksuid v1.0.2

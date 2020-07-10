@@ -90,6 +90,8 @@ github.com/jinzhu/now v1.0.1/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/
 github.com/jmpsec/osctrl v0.2.1 h1:NsR2alFig9wzS/giEBkI3U3CIEGTHsjpqqcRzke/6+E=
 github.com/jmpsec/osctrl/backend v0.0.0-20200326023543-cb8ff04ecc7c h1:UMg4mOEKRM1XZN0dj903TUYBArRVFnWF7jQg20kNXek=
 github.com/jmpsec/osctrl/backend v0.0.0-20200326023543-cb8ff04ecc7c/go.mod h1:888k0May18kvEwFmTVDbEYV/wyPib8ntxULgXkJ38E8=
+github.com/jmpsec/osctrl/tags v0.0.0-20200527045717-0e3b5d71cf19 h1:7hzR7ZQgpmNUjeet9Bt73tZJwU7KBKHBdUmmgFmldgE=
+github.com/jmpsec/osctrl/tags v0.0.0-20200527045717-0e3b5d71cf19/go.mod h1:L5RB/katY0A4y4KlpWesxYYYGYzm2yddTh19r4WNhHM=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=

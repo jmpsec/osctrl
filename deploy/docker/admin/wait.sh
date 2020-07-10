@@ -34,7 +34,7 @@ FLAGS_FILE="$CONFIG/docker.flags"
 SECRET_FILE="$CONFIG/docker.secret"
 # Generating flags and rewriting UUID as identifier for ephemeral, otherwise all the containers
 # will have the same UUID and it will mess things up
-./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "$CRT_FILE" -secret "$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
+./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "/$CRT_FILE" -secret "/$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
 ./bin/osctrl-cli -D "$DB_JSON" environment secret -n dev > "$SECRET_FILE"
 
 # Create admin user
