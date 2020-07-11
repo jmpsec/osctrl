@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -140,23 +141,26 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 }
 
 // CheckByKey to check if node exists by node_key
+// node_key is expected lowercase
 func (n *NodeManager) CheckByKey(nodeKey string) bool {
 	var results int
-	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", nodeKey).Count(&results)
+	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", strings.ToLower(nodeKey)).Count(&results)
 	return (results > 0)
 }
 
 // CheckByUUID to check if node exists by UUID
+// UUID is expected uppercase
 func (n *NodeManager) CheckByUUID(uuid string) bool {
 	var results int
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ?", uuid).Count(&results)
+	n.DB.Model(&OsqueryNode{}).Where("uuid = ?", strings.ToUpper(uuid)).Count(&results)
 	return (results > 0)
 }
 
 // CheckByUUIDEnv to check if node exists by UUID in a specific environment
+// UUID is expected uppercase
 func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
 	var results int
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", uuid, environment).Count(&results)
+	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Count(&results)
 	return (results > 0)
 }
 
@@ -168,18 +172,20 @@ func (n *NodeManager) CheckByHost(host string) bool {
 }
 
 // GetByKey to retrieve full node object from DB, by node_key
+// node_key is expected lowercase
 func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
 	var node OsqueryNode
-	if err := n.DB.Where("node_key = ?", nodekey).First(&node).Error; err != nil {
+	if err := n.DB.Where("node_key = ?", strings.ToLower(nodekey)).First(&node).Error; err != nil {
 		return node, err
 	}
 	return node, nil
 }
 
 // GetByUUID to retrieve full node object from DB, by uuid
+// UUID is expected uppercase
 func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 	var node OsqueryNode
-	if err := n.DB.Where("uuid = ?", uuid).First(&node).Error; err != nil {
+	if err := n.DB.Where("uuid = ?", strings.ToUpper(uuid)).First(&node).Error; err != nil {
 		return node, err
 	}
 	return node, nil
