@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -170,7 +171,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	// Iterate and insert in DB
 	for _, l := range logs {
 		entry := OsqueryStatusData{
-			UUID:        l.HostIdentifier,
+			UUID:        strings.ToUpper(l.HostIdentifier),
 			Environment: environment,
 			Line:        l.Line,
 			Message:     l.Message,
@@ -198,7 +199,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 	// Iterate and insert in DB
 	for _, l := range logs {
 		entry := OsqueryResultData{
-			UUID:        l.HostIdentifier,
+			UUID:        strings.ToUpper(l.HostIdentifier),
 			Environment: environment,
 			Name:        l.Name,
 			Action:      l.Action,
@@ -220,7 +221,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status int, debug bool) {
 	// Prepare data
 	entry := OsqueryQueryData{
-		UUID:        uuid,
+		UUID:        strings.ToUpper(uuid),
 		Environment: environment,
 		Name:        name,
 		Data:        data,
@@ -249,7 +250,7 @@ func (logDB *LoggerDB) QueryLogs(name string) ([]OsqueryQueryData, error) {
 func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
 	var logs []OsqueryStatusData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
@@ -259,7 +260,7 @@ func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]Os
 func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
 	var logs []OsqueryResultData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Where("uuid = ? AND environment = ?", uuid, environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
