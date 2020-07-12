@@ -410,9 +410,9 @@ function install_go_14() {
   fi
 }
 
-# Install Grafana 6.0.0 in Ubuntu
+# Install Grafana 6.7.4 in Ubuntu
 function install_grafana() {
-  local __version="6.0.0"
+  local __version="6.7.4"
   local __file="grafana_${__version}_amd64.deb"
 
   log "Installing Grafana $__version dependencies"
