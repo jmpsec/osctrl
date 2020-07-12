@@ -6,8 +6,8 @@
     Fast and efficient osquery management.
   </p>
   <p align="center">
-    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE.md">
-      <img alt="Software License" src="https://img.shields.io/badge/license-GPL3-brightgreen.svg?style=flat-square">
+    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE">
+      <img alt="Software License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square&fuckgithubcache=1">
     </a>
     <a href="https://travis-ci.org/jmpsec/osctrl">
       <img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square&fuckgithubcache=1">
@@ -40,6 +40,12 @@ Vagrant machines can be used for **osctrl** local development. Execute `vagrant 
 
 You can find the documentation of the project in [https://osctrl.net](https://osctrl.net)
 
+## Slack
+
+[![Slack Status](https://osquery-slack.herokuapp.com/badge.svg)](https://osquery-slack.herokuapp.com)
+
+Find us in the #osctrl channel
+
 ## License
 
-This project is released under the GPL 3 license.
+**osctrl** is licensed under the [MIT License](https://github.com/jmpsec/osctrl/blob/master/LICENSE).
