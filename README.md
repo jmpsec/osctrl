@@ -42,9 +42,7 @@ You can find the documentation of the project in [https://osctrl.net](https://os
 
 ## Slack
 
-[![Slack Status](https://osquery-slack.herokuapp.com/badge.svg)](https://osquery-slack.herokuapp.com)
-
-Find us in the #osctrl channel
+Find us in the #osctrl channel in the official osquery Slack community ([Request an auto-invite!](https://join.slack.com/t/osquery/shared_invite/zt-h29zm0gk-s2DBtGUTW4CFel0f0IjTEw))
 
 ## License
 
