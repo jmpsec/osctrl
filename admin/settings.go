@@ -27,10 +27,10 @@ func loadingMetrics(mgr *settings.Settings) (*metrics.Metrics, error) {
 		}
 		_m, err := metrics.CreateMetrics(_mCfg.Protocol, _mCfg.Host, _mCfg.Port, serviceName)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to initialize metrics: %v", err)
 			if err := mgr.SetBoolean(false, settings.ServiceAdmin, settings.ServiceMetrics); err != nil {
 				return nil, fmt.Errorf("Failed to disable metrics: %v", err)
 			}
+			return nil, fmt.Errorf("Failed to initialize metrics: %v", err)
 		}
 		return _m, nil
 	}
