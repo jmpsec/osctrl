@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"strings"
+	"net/url"
 )
 
 // JSONApplication for Content-Type headers
@@ -34,17 +35,21 @@ const UserAgent string = "User-Agent"
 const osctrlUserAgent string = "osctrl-http-client/1.1"
 
 // SendRequest - Helper function to send HTTP requests
-func SendRequest(reqType, url string, params io.Reader, headers map[string]string) (int, []byte, error) {
-	var client *http.Client
-	if strings.HasPrefix(url, "https") {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client = &http.Client{Transport: tr}
-	} else {
-		client = &http.Client{}
+func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]string) (int, []byte, error) {
+	u, err := url.Parse(reqURL)
+	if err != nil {
+		return 0, nil, fmt.Errorf("invalid url: %v", err)
 	}
-	req, err := http.NewRequest(reqType, url, params)
+	client := &http.Client{}
+	if u.Scheme == "https" {
+		certPool, err := x509.SystemCertPool()
+		if err != nil {
+			return 0, nil, fmt.Errorf("error loading x509 certificate pool: %v", err)
+		}
+		tlsCfg := &tls.Config{RootCAs: certPool}
+		client.Transport = &http.Transport{TLSClientConfig: tlsCfg}
+	}
+	req, err := http.NewRequest(reqType, reqURL, params)
 	if err != nil {
 		return 0, []byte("Cound not prepare request"), err
 	}
