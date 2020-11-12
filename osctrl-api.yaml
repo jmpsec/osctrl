@@ -1,0 +1,680 @@
+openapi: 3.0.1
+servers:
+  - url: '{server}/api/v1'
+    variables:
+      server:
+        default: https://osctrl.net
+info:
+  title: osctrl-api
+  description: 'This the API for osctrl, a fast and efficient osquery management solution.'
+  version: 0.2.3
+externalDocs:
+  description: osctrl documentation (https://osctrl.net)
+  url: https://osctrl.net
+tags:
+- name: nodes
+  description: Enrolled nodes in osctrl
+  externalDocs:
+    description: osctrl nodes
+    url: https://github.com/jmpsec/osctrl/tree/master/nodes
+- name: queries
+  description: On-demand queries in osctrl
+  externalDocs:
+    description: on-demand queries
+    url: https://github.com/jmpsec/osctrl/tree/master/queries
+- name: platforms
+  description: Platforms of enrolled nodes in osctrl
+  externalDocs:
+    description: osctrl platforms
+    url: https://github.com/jmpsec/osctrl/tree/master/queries
+- name: environments
+  description: Environments within osctrl
+  externalDocs:
+    description: osctrl environments
+    url: https://github.com/jmpsec/osctrl/tree/master/environments
+- name: tags
+  description: Tags for enrolled nodes in osctrl
+  externalDocs:
+    description: osctrl tags
+    url: https://github.com/jmpsec/osctrl/tree/master/tags
+paths:
+  /nodes:
+    get:
+      tags:
+      - nodes
+      summary: Get a single node by UUID
+      description: Returns the osctrl node by the provided UUID
+      operationId: apiNodesHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OsqueryNode'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting nodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /nodes/{uuid}:
+    get:
+      tags:
+      - nodes
+      summary: Get node
+      description: Returns all enrolled osctrl nodes
+      operationId: apiNodeHandler
+      parameters:
+      - name: uuid
+        in: path
+        description: UUID of the requested enrolled node
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OsqueryNode'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /queries:
+    get:
+      tags:
+      - queries
+      summary: Get on-demand queries
+      description: Returns all hidden osctrl on-demand queries
+      operationId: apiHiddenQueriesShowHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DistributedQuery'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+    post:
+      tags:
+      - queries
+      summary: Run new query
+      description: Creates a new on-demand query to run
+      operationId: apiQueriesRunHandler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistributedQueryRequest'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiQueriesResponse'
+        403:
+          description: no access
+          content: {}
+        404:
+          description: no queries
+          content: {}
+        500:
+          description: error getting queries
+          content: {}
+      security:
+      - Authorization: []
+  /queries/{name}:
+    get:
+      tags:
+      - queries
+      summary: Get on-demand query
+      description: Returns the requested on-demand query by name
+      operationId: apiQueryShowHandler
+      parameters:
+      - name: name
+        in: path
+        description: Name of the requested on-demand query
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistributedQuery'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: query not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /queries/results/{name}:
+    get:
+      tags:
+      - queries
+      summary: Get on-demand query results
+      description: Returns the requested on-demand query results by name
+      operationId: apiQueryResultsHandler
+      parameters:
+      - name: name
+        in: path
+        description: Name of the requested on-demand query
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIQueryData'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: query not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /all-queries:
+    get:
+      tags:
+      - queries
+      summary: Get on-demand queries
+      description: Returns all osctrl on-demand queries
+      operationId: apiAllQueriesShowHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DistributedQuery'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /platforms:
+    get:
+      tags:
+      - platforms
+      summary: Get platforms
+      description: Returns all osctrl platforms of enrolled nodes
+      operationId: apiPlatformsHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /environments:
+    get:
+      tags:
+      - environments
+      summary: Get environments
+      description: Returns all osctrl environments to enroll nodes
+      operationId: apiEnvironmentsHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TLSEnvironment'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        404:
+          description: no environments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting environments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /environments/{environment}:
+    get:
+      tags:
+      - environments
+      summary: Get environment
+      description: Returns the requested osctrl environment to enroll nodes
+      operationId: apiEnvironmentHandler
+      parameters:
+      - name: environment
+        in: path
+        description: Name of the requested osctrl environment to enroll nodes
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TLSEnvironment'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting environment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+  /tags:
+    get:
+      tags:
+      - tags
+      summary: Get tags
+      description: Returns all osctrl environments to enroll nodes
+      operationId: apiTagsHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTag'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting tags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization: []
+components:
+  schemas:
+    OsqueryNode:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        NodeKey:
+          type: string
+        UUID:
+          type: string
+        Platform:
+          type: string
+        PlatformVersion:
+          type: string
+        OsqueryVersion:
+          type: string
+        Hostname:
+          type: string
+        Localname:
+          type: string
+        Username:
+          type: string
+        OsqueryUser:
+          type: string
+        Environment:
+          type: string
+        CPU:
+          type: string
+        Memory:
+          type: string
+        HardwareSerial:
+          type: string
+        DaemonHash:
+          type: string
+        ConfigHash:
+          type: string
+        RawEnrollment:
+          type: string
+        LastStatus:
+          type: string
+          format: date-time
+        LastResult:
+          type: string
+          format: date-time
+        LastConfig:
+          type: string
+          format: date-time
+        LastQueryRead:
+          type: string
+          format: date-time
+        LastQueryWrite:
+          type: string
+          format: date-time
+    DistributedQuery:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Name:
+          type: string
+        Creator:
+          type: string
+        Query:
+          type: string
+        Expected:
+          type: integer
+          format: int32
+        Executions:
+          type: integer
+          format: int32
+        Errors:
+          type: integer
+          format: int32
+        Active:
+          type: boolean
+        Hidden:
+          type: boolean
+        Protected:
+          type: boolean
+        Completed:
+          type: boolean
+        Deleted:
+          type: boolean
+        Type:
+          type: string
+        Path:
+          type: string
+    DistributedQueryRequest:
+      type: object
+      properties:
+        environment_list:
+          type: array
+          items:
+            type: string
+        platform_list:
+          type: array
+          items:
+            type: string
+        uuid_list:
+          type: array
+          items:
+            type: string
+        host_list:
+          type: array
+          items:
+            type: string
+        query:
+          type: string
+    ApiQueriesResponse:
+      type: object
+      properties:
+        query_name:
+          type: string
+    ApiErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+    APIQueryData:
+      type: object
+    TLSEnvironment:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Name:
+          type: string
+        Hostname:
+          type: string
+        Secret:
+          type: string
+        EnrollSecretPath:
+          type: string
+        EnrollExpire:
+          type: string
+          format: date-time
+        RemoveSecretPath:
+          type: string
+        RemoveExpire:
+          type: string
+          format: date-time
+        Type:
+          type: string
+        DebugHTTP:
+          type: boolean
+        Icon:
+          type: string
+        Configuration:
+          type: string
+        Flags:
+          type: string
+        Certificate:
+          type: string
+        ConfigTLS:
+          type: boolean
+        ConfigInterval:
+          type: integer
+          format: int32
+        LoggingTLS:
+          type: boolean
+        LogInterval:
+          type: integer
+          format: int32
+        QueryTLS:
+          type: boolean
+        QueryInterval:
+          type: integer
+          format: int32
+        CarvesTLS:
+          type: boolean
+        EnrollPath:
+          type: string
+        LogPath:
+          type: string
+        ConfigPath:
+          type: string
+        QueryReadPath:
+          type: string
+        QueryWritePath:
+          type: string
+        CarverInitPath:
+          type: string
+        CarverBlockPath:
+          type: string
+    AdminTag:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Name:
+          type: string
+        Description:
+          type: string
+        Color:
+          type: string
+        Icon:
+          type: string
+  securitySchemes:
+    Authorization:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
