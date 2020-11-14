@@ -47,3 +47,16 @@ Find us in the #osctrl channel in the official osquery Slack community ([Request
 ## License
 
 **osctrl** is licensed under the [MIT License](https://github.com/jmpsec/osctrl/blob/master/LICENSE).
+
+## Donate
+
+If you like **osctrl** you can send BTC or ETH donations to the following wallets:
+
+<p align="center">
+  <a href="bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5">
+    <img alt="Donate BTC to osctrl" src="https://osctrl.net/btc.png">
+  </a>
+  <a href="ethereum:0x99e211251fca06286596498823Fd0a48785B64eB">
+    <img alt="Donate ETH to osctrl" src="https://osctrl.net/eth.png">
+  </a>
+<p>
