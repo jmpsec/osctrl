@@ -52,11 +52,11 @@ Find us in the #osctrl channel in the official osquery Slack community ([Request
 
 If you like **osctrl** you can send [BTC](bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5) or [ETH](ethereum:0x99e211251fca06286596498823Fd0a48785B64eB) donations to the following wallets:
 
-<figure>
-    <img alt="bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5" src="https://osctrl.net/btc.png"/>
-    <figcaption>bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5</figcaption>
-</figure>
-<figure>
-    <img alt="ethereum:0x99e211251fca06286596498823Fd0a48785B64eB" src="https://osctrl.net/eth.png"/>
-    <figcaption>ethereum:0x99e211251fca06286596498823Fd0a48785B64eB</figcaption>
-</figure>
+<p align="center">
+  <img alt="bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5" src="https://osctrl.net/btc.png" width="150"/>
+  <br>
+    <em>bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5</em>
+  <img alt="ethereum:0x99e211251fca06286596498823Fd0a48785B64eB" src="https://osctrl.net/eth.png" width="150"/>
+  <br>
+    <em>ethereum:0x99e211251fca06286596498823Fd0a48785B64eB</em>
+</p>
