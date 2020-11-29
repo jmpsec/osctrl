@@ -427,7 +427,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	h.Inc(metricAdminOK)
 }
 
-// Handler for POST requests to carves
+// CarvesActionsPOSTHandler - Handler for POST requests to carves
 func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)

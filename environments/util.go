@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/segmentio/ksuid"
 )
 
@@ -27,8 +28,13 @@ func generateRandomString(n int) string {
 // Helper to generate a KSUID
 // See https://github.com/segmentio/ksuid for more info about KSUIDs
 func generateKSUID() string {
-	id := ksuid.New()
-	return id.String()
+	return ksuid.New().String()
+}
+
+// Helper to generate a UUID
+// See https://github.com/google/uuid for more info about UUIDs
+func generateUUID() string {
+	return uuid.New().String()
 }
 
 // ReadExternalFile to read an external file and return contents

@@ -42,7 +42,8 @@ const (
 // TLSEnvironment to hold each of the TLS environment
 type TLSEnvironment struct {
 	gorm.Model
-	Name             string `gorm:"index"`
+	UUID             string `gorm:"index"`
+	Name             string
 	Hostname         string
 	Secret           string
 	EnrollSecretPath string
@@ -71,7 +72,7 @@ type TLSEnvironment struct {
 	CarverBlockPath  string
 }
 
-// MapEnvironments to hold the TLS environments by name
+// MapEnvironments to hold the TLS environments by name and UUID
 type MapEnvironments map[string]TLSEnvironment
 
 // Environment keeps all TLS Environments
@@ -90,10 +91,10 @@ func CreateEnvironment(backend *gorm.DB) *Environment {
 	return e
 }
 
-// Get TLS Environment by name
-func (environment *Environment) Get(name string) (TLSEnvironment, error) {
+// Get TLS Environment by name or UUID
+func (environment *Environment) Get(identifier string) (TLSEnvironment, error) {
 	var env TLSEnvironment
-	if err := environment.DB.Where("name = ?", name).First(&env).Error; err != nil {
+	if err := environment.DB.Where("name = ? OR uuid = ?", identifier, identifier).First(&env).Error; err != nil {
 		return env, err
 	}
 	return env, nil
@@ -102,6 +103,7 @@ func (environment *Environment) Get(name string) (TLSEnvironment, error) {
 // Empty generates an empty TLSEnvironment with default values
 func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 	return TLSEnvironment{
+		UUID:             generateUUID(),
 		Name:             name,
 		Hostname:         hostname,
 		Secret:           generateRandomString(DefaultSecretLength),
@@ -145,9 +147,9 @@ func (environment *Environment) Create(env TLSEnvironment) error {
 }
 
 // Exists checks if TLS Environment exists already
-func (environment *Environment) Exists(name string) bool {
+func (environment *Environment) Exists(identifier string) bool {
 	var results int
-	environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Count(&results)
+	environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", identifier, identifier).Count(&results)
 	return (results > 0)
 }
 
@@ -173,7 +175,20 @@ func (environment *Environment) Names() ([]string, error) {
 	return names, err
 }
 
-// GetMap returns the map of environments by name
+// UUIDs gets just all TLS Environment UUIDs
+func (environment *Environment) UUIDs() ([]string, error) {
+	envs, err := environment.All()
+	if err != nil {
+		return []string{}, err
+	}
+	uuids := []string{}
+	for _, e := range envs {
+		uuids = append(uuids, e.UUID)
+	}
+	return uuids, err
+}
+
+// GetMap returns the map of environments by name and UUID
 func (environment *Environment) GetMap() (MapEnvironments, error) {
 	all, err := environment.All()
 	if err != nil {
@@ -182,13 +197,14 @@ func (environment *Environment) GetMap() (MapEnvironments, error) {
 	_map := make(MapEnvironments)
 	for _, e := range all {
 		_map[e.Name] = e
+		_map[e.UUID] = e
 	}
 	return _map, nil
 }
 
-// Delete TLS Environment by name
-func (environment *Environment) Delete(name string) error {
-	env, err := environment.Get(name)
+// Delete TLS Environment by name or UUID
+func (environment *Environment) Delete(identifier string) error {
+	env, err := environment.Get(identifier)
 	if err != nil {
 		return fmt.Errorf("error getting environment %v", err)
 	}

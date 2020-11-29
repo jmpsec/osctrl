@@ -148,7 +148,7 @@ func checkTargetService(service string) bool {
 
 // Helper to remove backslashes from text
 func removeBackslash(rawString string) string {
-	return strings.Replace(rawString, "\\", " ", -1)
+	return strings.ReplaceAll(rawString, "\\", " ")
 }
 
 // Helper to convert json.RawMessage into indented string

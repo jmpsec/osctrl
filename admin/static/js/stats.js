@@ -1,13 +1,13 @@
-function statsRefresh(_target, _name) {
+function statsRefresh(_target, _uuid) {
   $.ajax({
-    url: '/json/stats/'+_target+'/'+_name,
+    url: '/json/stats/' + _target + '/' + _uuid,
     dataType: 'json',
     type: 'GET',
     contentType: 'application/json',
     success: function(data, textStatus, jQxhr){
-      $('.stats-'+_target+'-'+_name+'-active').text(data.active);
-      $('.stats-'+_target+'-'+_name+'-inactive').text(data.inactive);
-      $('.stats-'+_target+'-'+_name+'-total').text(data.total);
+      $('.stats-' + _target + '-' + _uuid + '-active').text(data.active);
+      $('.stats-' + _target + '-' + _uuid + '-inactive').text(data.inactive);
+      $('.stats-' + _target + '-' + _uuid + '-total').text(data.total);
       //console.log('Active: ' + data.active);
       //console.log('Inactive: ' + data.inactive);
       //console.log('Total: ' + data.total);
