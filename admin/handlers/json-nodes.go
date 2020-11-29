@@ -38,7 +38,7 @@ type NodeJSON struct {
 	LastSeen  CreationTimes `json:"lastseen"`
 }
 
-// Handler for JSON endpoints by environment
+// JSONEnvironmentHandler - Handler for JSON endpoints by environment
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
@@ -109,7 +109,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	h.Inc(metricJSONOK)
 }
 
-// Handler for JSON endpoints by platform
+// JSONPlatformHandler - Handler for JSON endpoints by platform
 func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)

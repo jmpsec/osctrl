@@ -40,25 +40,31 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		log.Printf("invalid target %s", target)
 		return
 	}
-	// Extract stats name
-	// FIXME verify name
-	name, ok := vars["name"]
+	// Extract identifier
+	identifier, ok := vars["identifier"]
 	if !ok {
 		h.Inc(metricAdminErr)
-		log.Println("error getting target name")
+		log.Println("error getting target identifier")
 		return
 	}
 	// Get stats
 	var stats nodes.StatsData
 	var err error
 	if target == "environment" {
+		// Verify identifier
+		env, err := h.Envs.Get(identifier)
+		if err != nil {
+			log.Printf("error getting environment %s - %v", identifier, err)
+			h.Inc(metricJSONErr)
+			return
+		}
 		// Check permissions
-		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, name) {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env.Name) {
 			log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return
 		}
-		stats, err = h.Nodes.GetStatsByEnv(name, h.Settings.InactiveHours())
+		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours())
 		if err != nil {
 			h.Inc(metricAdminErr)
 			log.Printf("error getting stats %v", err)
@@ -71,9 +77,9 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricJSONErr)
 			return
 		}
-		stats, err = h.Nodes.GetStatsByPlatform(name, h.Settings.InactiveHours())
+		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours())
 		if err != nil {
-			log.Printf("error getting stats %v", err)
+			log.Printf("error getting platform stats for %s - %v", identifier, err)
 			return
 		}
 	}

@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
@@ -24,7 +24,7 @@ type TemplateFiles struct {
 	filepaths []string
 }
 
-// Helper to prepare template metadata
+// TemplateMetadata - Helper to prepare template metadata
 func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version string) TemplateMetadata {
 	return TemplateMetadata{
 		Username:       ctx[sessions.CtxUser],

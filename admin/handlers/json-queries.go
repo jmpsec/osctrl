@@ -50,7 +50,7 @@ type QueryTarget struct {
 	Value string `json:"value"`
 }
 
-// Handler for JSON queries by target
+// JSONQueryHandler - Handler for JSON queries by target
 func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)

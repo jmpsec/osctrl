@@ -431,7 +431,7 @@ func main() {
 	// Admin: JSON data for query logs
 	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
-	routerAdmin.Handle("/json/stats/{target}/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/stats/{target}/{identifier}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler))).Methods("GET")
 	// Admin: JSON data for tags
 	routerAdmin.Handle("/json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler))).Methods("GET")
 	// Admin: table for environments

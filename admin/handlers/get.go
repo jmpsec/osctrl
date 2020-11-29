@@ -18,8 +18,6 @@ import (
 const (
 	// osquery version to display tables
 	osqueryTablesVersion string = "4.5.1"
-	// JSON file with osquery tables data
-	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 	// Carved files folder
 	carvedFilesFolder string = "carved_files/"
 )
@@ -53,7 +51,7 @@ func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request)
 	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
 }
 
-// Handler for the root path
+// RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Redirect to table for active nodes in default environment

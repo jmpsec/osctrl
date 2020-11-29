@@ -126,6 +126,7 @@ func showEnvironment(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf(" UUID: %s\n", env.UUID)
 	fmt.Printf(" Name: %s\n", env.Name)
 	fmt.Printf(" Host: %s\n", env.Hostname)
 	fmt.Printf(" Secret: %s\n", env.Secret)
@@ -177,6 +178,7 @@ func listEnvironment(c *cli.Context) error {
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
+		"UUID",
 		"Name",
 		"Type",
 		"Hostname",
@@ -186,6 +188,7 @@ func listEnvironment(c *cli.Context) error {
 		data := [][]string{}
 		for _, env := range envAll {
 			e := []string{
+				env.UUID,
 				env.Name,
 				env.Type,
 				env.Hostname,
