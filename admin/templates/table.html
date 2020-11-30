@@ -53,6 +53,7 @@
                         <span class="icon-osquery">
                           <span class="path1"></span><span class="path2"></span><span class="path3"></span></span></th>
                       <th>Last Seen</th>
+                      <th>First Seen</th>
                     </tr>
                   </thead>
                 </table>
@@ -147,6 +148,11 @@
                 _:    "lastseen.display",
                 sort: "lastseen.timestamp"
               }
+            },
+            {"data" : {
+                _:    "firstseen.display",
+                sort: "firstseen.timestamp"
+              }
             }
           ],
           columnDefs: [
@@ -159,7 +165,7 @@
               orderable:   false
             },{
               targets: 1,
-              width: '26%',
+              width: '20%',
               data: 'uuid',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
@@ -171,7 +177,7 @@
             },{
               targets: 2,
               data: 'username',
-              width: '7%'
+              width: '3%'
             },{
               targets: 3,
               data: 'localname',
@@ -216,7 +222,8 @@
               }
             },{ targets: 6, width: '15%' },
               { targets: 7, width: '3%' },
-              { targets: 8, width: '10%'}
+              { targets: 8, width: '10%'},
+              { targets: 9, width: '10%'}
           ],
           select: {
             style:    'os',

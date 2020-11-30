@@ -36,6 +36,7 @@ type NodeJSON struct {
 	Version   string        `json:"version"`
 	Osquery   string        `json:"osquery"`
 	LastSeen  CreationTimes `json:"lastseen"`
+	FirstSeen CreationTimes `json:"firstseen"`
 }
 
 // JSONEnvironmentHandler - Handler for JSON endpoints by environment
@@ -97,6 +98,10 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 			LastSeen: CreationTimes{
 				Display:   utils.PastFutureTimes(n.UpdatedAt),
 				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
+			},
+			FirstSeen: CreationTimes{
+				Display:   utils.PastFutureTimes(n.CreatedAt),
+				Timestamp: utils.TimeTimestamp(n.CreatedAt),
 			},
 		}
 		nJSON = append(nJSON, nj)
@@ -162,6 +167,10 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 			LastSeen: CreationTimes{
 				Display:   utils.PastFutureTimes(n.UpdatedAt),
 				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
+			},
+			FirstSeen: CreationTimes{
+				Display:   utils.PastFutureTimes(n.CreatedAt),
+				Timestamp: utils.TimeTimestamp(n.CreatedAt),
 			},
 		}
 		nJSON = append(nJSON, nj)
