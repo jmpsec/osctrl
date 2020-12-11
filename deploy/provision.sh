@@ -418,7 +418,7 @@ package bc
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_14
+  install_go_15
 fi
 
 # Upgrade service
