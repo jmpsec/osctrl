@@ -514,12 +514,7 @@ else
     _cert_file_a="$_certificates_dir/$_NAME-admin.crt"
     _key_file_a="$_certificates_dir/$_NAME-admin.key"
     _dh_file="$_certificates_dir/dhparam.pem"
-    _dh_bits="1024"
-
-    # Mode prod has 2048 dhparam file
-    if [[ "$MODE" == "prod" ]]; then
-      _dh_bits="2048"
-    fi
+    _dh_bits="2048"
 
     # Mode dev checks for existance of certificates
     if [[ "$MODE" == "dev" ]]; then
@@ -600,8 +595,8 @@ else
       package postgresql
       package postgresql-contrib
       POSTGRES_SERVICE="postgresql"
-      POSTGRES_HBA="/etc/postgresql/10/main/pg_hba.conf"
-      POSTGRES_PSQL="/usr/lib/postgresql/10/bin/psql"
+      POSTGRES_HBA="/etc/postgresql/12/main/pg_hba.conf"
+      POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
     elif [[ "$DISTRO" == "centos" ]]; then
       sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
       package postgresql96-server
