@@ -6,7 +6,7 @@ VAGRANTFILE_API_VERSION = "2"
 IP_ADDRESS = "10.10.10.5"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "ubuntu/bionic64"
+  config.vm.box = "ubuntu/focal64"
   config.vm.network "private_network", ip: IP_ADDRESS
   # If we want to enroll nodes in the same network
   #config.vm.network "forwarded_port", guest: 443, host: 443
