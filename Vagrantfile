@@ -3,7 +3,7 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
-IP_ADDRESS = "10.10.10.5"
+IP_ADDRESS = ENV["OSCTRL_IP_ADDRESS"] || "10.10.10.5"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/focal64"
@@ -15,7 +15,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision "shell" do |s|
     s.path = "deploy/provision.sh"
     s.args = [
-      "--nginx", "--postgres", "-E", "--metrics", "--all-hostname",
+      "--nginx", "--postgres", "--enroll", "--all-hostname",
       IP_ADDRESS, "--password", "admin"
     ]
     privileged = false
