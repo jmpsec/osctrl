@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/beevik/etree v1.1.0 // indirect
-	github.com/crewjam/saml v0.0.0-20190508002657-ca21de9dd5b9
+	github.com/crewjam/saml v0.4.5
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/gorm v1.9.12
