@@ -540,13 +540,16 @@ else
     # Own certificates should copy them
     if [[ "$TYPE" == "own" ]]; then
       # Check if certificates exist
-      if [[ -f "$CERTFILE" ]] && [[ -f "$KEYFILE" ]]; then
+      if sudo test -f "$CERTFILE" && sudo test -f "$KEYFILE" ; then
         log "Using existing certificate"
         sudo cp "$CERTFILE" "$_cert_file"
         sudo cp "$CERTFILE" "$_cert_file_a"
         log "Using existing key"
         sudo cp "$KEYFILE" "$_key_file"
         sudo cp "$KEYFILE" "$_key_file_a"
+      else
+        _log "Certificate or key are missing"
+        exit $OHNOES
       fi
     fi
 
