@@ -1,9 +1,8 @@
-module github.com/jmpsec/osctrl
+module osctrl
 
-go 1.14
+go 1.15
 
 require (
-	github.com/beevik/etree v1.1.0 // indirect
 	github.com/crewjam/saml v0.4.5
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.4
@@ -24,7 +23,6 @@ require (
 	github.com/jmpsec/osctrl/users v0.2.3
 	github.com/jmpsec/osctrl/utils v0.2.3
 	github.com/olekukonko/tablewriter v0.0.4
-	github.com/russellhaering/goxmldsig v1.1.0 // indirect
 	github.com/spf13/viper v1.6.2
 	github.com/urfave/cli v1.22.4
 )
