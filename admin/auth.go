@@ -66,7 +66,8 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthSAML:
-			if samlMiddleware.IsAuthorized(r) {
+			_, err := samlMiddleware.Session.GetSession(r)
+			if (err!= nil) {
 				cookiev, err := r.Cookie(samlConfig.TokenName)
 				if err != nil {
 					log.Printf("error extracting JWT data: %v", err)

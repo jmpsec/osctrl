@@ -1,3 +1,3 @@
 module github.com/jmpsec/osctrl/admin/sessions
 
-go 1.14
+go 1.15
