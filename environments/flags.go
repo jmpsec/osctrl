@@ -7,6 +7,8 @@ import (
 )
 
 const (
+	// FlagTLSServerCerts for the --tls_server_certs flag
+	FlagTLSServerCerts string = `--tls_server_certs={{ .CertFile }}`
 	// FlagsTemplate to generate flags for enrolling nodes
 	FlagsTemplate string = `
 --host_identifier=uuid
@@ -33,39 +35,64 @@ const (
 --distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
 --distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
 --tls_hostname={{ .Environment.Hostname }}
---tls_server_certs={{ .CertFile }}
+{{ .FlagServerCerts }}
 `
 )
 
 const (
-	emptyFlagSecret string = "__SECRET_FILE__"
-	emptyFlagCert   string = "__CERT_FILE__"
+	EmptyFlagSecret string = "__SECRET_FILE__"
+	EmptyFlagCert   string = "__CERT_FILE__"
 )
 
 type flagData struct {
-	SecretFile  string
-	CertFile    string
-	Environment TLSEnvironment
+	SecretFile      string
+	Environment     TLSEnvironment
+	FlagServerCerts string
+}
+
+// GenerateServerCertsFlag to generate the --tls_server_certs flag
+func GenerateServerCertsFlag(certificatePath string) string {
+	t, err := template.New("servercerts").Parse(FlagTLSServerCerts)
+	if err != nil {
+		return ""
+	}
+	if certificatePath == "" {
+		return ""
+	}
+	data := struct {
+		CertFile string
+	}{
+		CertFile: certificatePath,
+	}
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, data); err != nil {
+		return ""
+	}
+	return tpl.String()
 }
 
 // GenerateFlags to generate flags
-func GenerateFlags(env TLSEnvironment, secretPath, certificatePath string) (string, error) {
+func GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
 	t, err := template.New("flags").Parse(FlagsTemplate)
 	if err != nil {
 		return "", err
 	}
 	flagSecret := secretPath
 	if secretPath == "" {
-		flagSecret = emptyFlagSecret
+		flagSecret = EmptyFlagSecret
 	}
-	flagCertificate := certificatePath
-	if certificatePath == "" {
-		flagCertificate = emptyFlagCert
+	certificatePath := certPath
+	if certPath == "" {
+		certificatePath = EmptyFlagCert
+	}
+	flagServerCerts := GenerateServerCertsFlag(certificatePath)
+	if env.Certificate == "" {
+		flagServerCerts = ""
 	}
 	data := flagData{
-		SecretFile:  flagSecret,
-		CertFile:    flagCertificate,
-		Environment: env,
+		SecretFile:      flagSecret,
+		Environment:     env,
+		FlagServerCerts: flagServerCerts,
 	}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, data); err != nil {
@@ -75,10 +102,10 @@ func GenerateFlags(env TLSEnvironment, secretPath, certificatePath string) (stri
 }
 
 // GenerateFlagsEnv to generate flags by environment name
-func (environment *Environment) GenerateFlagsEnv(name string, secretPath, certificatePath string) (string, error) {
+func (environment *Environment) GenerateFlagsEnv(name string, secretPath, certPath string) (string, error) {
 	env, err := environment.Get(name)
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %v", err)
 	}
-	return GenerateFlags(env, secretPath, certificatePath)
+	return GenerateFlags(env, secretPath, certPath)
 }

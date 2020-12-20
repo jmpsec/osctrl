@@ -32,10 +32,11 @@ fi
 # Generate flag and secret file for enrolling nodes
 FLAGS_FILE="$CONFIG/docker.flags"
 SECRET_FILE="$CONFIG/docker.secret"
+
 # Generating flags and rewriting UUID as identifier for ephemeral, otherwise all the containers
 # will have the same UUID and it will mess things up
-./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "/$CRT_FILE" -secret "/$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
 ./bin/osctrl-cli -D "$DB_JSON" environment secret -n dev > "$SECRET_FILE"
+./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "/$CRT_FILE" -secret "/$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
 
 # Create admin user
 OUTPUT_ADMIN="$(./bin/osctrl-cli -D "$DB_JSON" user add -u admin -p admin -a -n Admin)"
