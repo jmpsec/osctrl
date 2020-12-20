@@ -79,13 +79,14 @@ services:
     volumes:
       - ./deploy/docker/certs:/etc/certs
       - ./deploy/docker/config:/etc/nginx/conf.d
-  osquery-ubuntu18:
-    container_name: osquery-ubuntu18
+  osquery-ubuntu20:
+    container_name: osquery-ubuntu20
     depends_on:
+      - "osctrl-admin"
       - "osctrl-nginx"
     build:
       context: .
-      dockerfile: "deploy/docker/nodes/ubuntu18/Dockerfile"
+      dockerfile: "deploy/docker/nodes/ubuntu20/Dockerfile"
     links:
       - "osctrl-nginx"
     networks:
@@ -93,6 +94,21 @@ services:
     volumes:
       - ./deploy/docker/config:/config
       - ./deploy/docker/certs:/certs
+  # osquery-ubuntu18:
+  #  container_name: osquery-ubuntu18
+  #  depends_on:
+  #    - "osctrl-admin"
+  #    - "osctrl-nginx"
+  #  build:
+  #    context: .
+  #    dockerfile: "deploy/docker/nodes/ubuntu18/Dockerfile"
+  #  links:
+  #    - "osctrl-nginx"
+  #  networks:
+  #    - public-net
+  #  volumes:
+  #    - ./deploy/docker/config:/config
+  #    - ./deploy/docker/certs:/certs
   # osquery-ubuntu16:
   #   container_name: osquery-ubuntu16
   #   depends_on:

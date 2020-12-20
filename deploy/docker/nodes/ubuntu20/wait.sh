@@ -4,7 +4,7 @@
 #
 # Usage: wait.sh
 
-NAME="osctrl-ubuntu18"
+NAME="osctrl-ubuntu20"
 FLAGS_FILE="/config/docker.flags"
 SECRET_FILE="/config/docker.secret"
 WAIT=5

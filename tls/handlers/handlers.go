@@ -532,13 +532,13 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	if strings.HasPrefix(script, "enroll") {
 		if !h.checkValidEnrollSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid Path")
+			log.Println("Invalid secret path for enrolling")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
 		if !h.checkValidRemoveSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid Path")
+			log.Println("Invalid secret path for removing")
 			return
 		}
 	}

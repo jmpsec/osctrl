@@ -6,4 +6,5 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/jinzhu/gorm v1.9.8
 	github.com/segmentio/ksuid v1.0.2
+	github.com/stretchr/testify v1.2.2
 )
