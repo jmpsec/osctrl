@@ -29,7 +29,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceAPI
 	// Service version
-	serviceVersion string = "0.2.3"
+	serviceVersion string = "0.2.4"
 	// Service description
 	serviceDescription string = "API service for osctrl"
 	// Application description

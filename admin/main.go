@@ -34,7 +34,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceAdmin
 	// Service version
-	serviceVersion string = "0.2.3"
+	serviceVersion string = "0.2.4"
 	// Service description
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
