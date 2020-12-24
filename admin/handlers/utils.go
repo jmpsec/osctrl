@@ -12,9 +12,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -196,4 +198,15 @@ func (h *HandlersAdmin) statusLogsLink(uuid string) string {
 // Helper to generate a link to results for result logs
 func (h *HandlersAdmin) resultLogsLink(uuid string) string {
 	return strings.Replace(h.Settings.ResultLogsLink(), "{{UUID}}", removeBackslash(uuid), 1)
+}
+
+// Helper to convert the list of all TLS environments with the ones with permissions for a user
+func (h *HandlersAdmin) allowedEnvironments(username string, allEnvs []environments.TLSEnvironment) []environments.TLSEnvironment {
+	var envs []environments.TLSEnvironment
+	for _, e := range allEnvs {
+		if h.Users.CheckPermissions(username, users.EnvLevel, e.Name) {
+			envs = append(envs, e)
+		}
+	}
+	return envs
 }
