@@ -157,7 +157,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		SelectorName: env,
 		Target:       target,
 		Tags:         tags,
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -243,7 +243,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		SelectorName: platform,
 		Target:       target,
 		Tags:         tags,
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -315,7 +315,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes",
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments:  envAll,
+		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
@@ -371,7 +371,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	templateData := QueryTableTemplateData{
 		Title:        "All on-demand queries",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
 	}
@@ -438,7 +438,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	templateData := CarvesRunTemplateData{
 		Title:         "Query osquery Nodes",
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments:  envAll,
+		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
@@ -494,7 +494,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	templateData := CarvesTableTemplateData{
 		Title:        "All carved files",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
 	}
@@ -573,7 +573,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Query:        query,
 		QueryTargets: targets,
@@ -668,7 +668,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Query:        query,
 		QueryTargets: targets,
@@ -746,7 +746,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		Title:        envVar + " Configuration",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environment:  env,
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -835,7 +835,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		Secret:                env.Secret,
 		Flags:                 env.Flags,
 		Certificate:           env.Certificate,
-		Environments:          envAll,
+		Environments:          h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:             platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -926,7 +926,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		Node:         node,
 		NodeTags:     nodeTags,
 		TagsForNode:  tags,
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -978,7 +978,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := EnvironmentsTemplateData{
 		Title:        "Manage environments",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -1057,7 +1057,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		Title:           "Manage settings",
 		Metadata:        h.TemplateMetadata(ctx, h.ServiceVersion),
 		Service:         serviceVar,
-		Environments:    envAll,
+		Environments:    h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:       platforms,
 		CurrentSettings: _settings,
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
@@ -1123,7 +1123,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	templateData := UsersTemplateData{
 		Title:        "Manage users",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		CurrentUsers: users,
 	}
@@ -1188,7 +1188,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := TagsTemplateData{
 		Title:        "Manage tags",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		Environments: envAll,
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Tags:         tags,
 	}
