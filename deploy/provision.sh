@@ -428,7 +428,14 @@ if [[ "$UPGRADE" == true ]]; then
   log ""
 
   cd "$SOURCE_PATH"
-  git pull origin "$BRANCH"
+
+  # Check for changes to abort if necessary
+  if [[ `git status --porcelain` ]]; then
+    _log "Detected untracked changes, can not proceed with upgrade"
+    exit $OHNOES
+  else
+    git pull origin "$BRANCH"
+  fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
     # Build TLS service
