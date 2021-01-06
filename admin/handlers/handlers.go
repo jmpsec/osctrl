@@ -29,9 +29,7 @@ const (
 	metricTokenOK   = "admin-token-ok"
 )
 
-// Empty default osquery configuration
-const emptyConfiguration string = "data/osquery-empty.json"
-
+// Default content
 const errorContent = "❌"
 const okContent = "✅"
 

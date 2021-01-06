@@ -514,34 +514,194 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricAdminErr)
 		return
 	}
-	if c.ConfigurationB64 == "" {
-		responseMessage := "empty configuration"
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, AdminResponse{Message: responseMessage})
-		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: %s", responseMessage)
+	if c.ConfigurationB64 != "" {
+		// Base64 decode received configuration
+		// TODO verify configuration
+		configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
 		}
-		h.Inc(metricAdminErr)
+		// Parse configuration
+		cnf, err := h.Envs.GenStructConf(configuration)
+		if err != nil {
+			adminErrorResponse(w, "error parsing configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update configuration
+		if err := h.Envs.UpdateConfiguration(environmentVar, cnf); err != nil {
+			adminErrorResponse(w, "error saving configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update all configuration parts
+		if err := h.Envs.UpdateConfigurationParts(environmentVar, cnf); err != nil {
+			adminErrorResponse(w, "error saving configuration parts", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: Configuration response sent")
+		}
+		adminOKResponse(w, "configuration saved successfully")
+		h.Inc(metricAdminOK)
 		return
 	}
-	// Decode received configuration
-	configuration, err := base64.StdEncoding.DecodeString(c.ConfigurationB64)
-	if err != nil {
-		adminErrorResponse(w, "error decoding configuration", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
+	if c.OptionsB64 != "" {
+		// Base64 decode received options
+		// TODO verify options
+		options, err := base64.StdEncoding.DecodeString(c.OptionsB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding options", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update options
+		if err := h.Envs.UpdateOptions(environmentVar, string(options)); err != nil {
+			adminErrorResponse(w, "error saving options", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update full configuration
+		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: Options response sent")
+		}
+		adminOKResponse(w, "options saved successfully")
+		h.Inc(metricAdminOK)
 		return
 	}
-	// Update configuration
-	if err := h.Envs.UpdateConfiguration(environmentVar, string(configuration)); err != nil {
-		adminErrorResponse(w, "error saving configuration", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
+	if c.ScheduleB64 != "" {
+		// TODO verify schedule
+		// Decode received configuration
+		schedule, err := base64.StdEncoding.DecodeString(c.ScheduleB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding schedule", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update schedule
+		if err := h.Envs.UpdateSchedule(environmentVar, string(schedule)); err != nil {
+			adminErrorResponse(w, "error saving schedule", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update full configuration
+		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: Schedule response sent")
+		}
+		adminOKResponse(w, "schedule saved successfully")
+		h.Inc(metricAdminOK)
 		return
 	}
-	// Serialize and send response
+	if c.PacksB64 != "" {
+		// TODO verify packs
+		// Base64 decode received packs
+		packs, err := base64.StdEncoding.DecodeString(c.PacksB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding packs", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update packs
+		if err := h.Envs.UpdatePacks(environmentVar, string(packs)); err != nil {
+			adminErrorResponse(w, "error saving packs", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update full configuration
+		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: Packs response sent")
+		}
+		adminOKResponse(w, "packs saved successfully")
+		h.Inc(metricAdminOK)
+		return
+	}
+	if c.DecoratorsB64 != "" {
+		// Base64 decode received options
+		// TODO verify decorators
+		decorators, err := base64.StdEncoding.DecodeString(c.DecoratorsB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding decorators", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update decorators
+		if err := h.Envs.UpdateDecorators(environmentVar, string(decorators)); err != nil {
+			adminErrorResponse(w, "error saving decorators", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update full configuration
+		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: Decorators response sent")
+		}
+		adminOKResponse(w, "decorators saved successfully")
+		h.Inc(metricAdminOK)
+		return
+	}
+	if c.ATCB64 != "" {
+		// TODO verify ATC
+		// Base64 decode received ATC
+		schedule, err := base64.StdEncoding.DecodeString(c.ATCB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding ATC", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update ATC
+		if err := h.Envs.UpdateATC(environmentVar, string(schedule)); err != nil {
+			adminErrorResponse(w, "error saving ATC", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Update full configuration
+		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		// Send response
+		if h.Settings.DebugService(settings.ServiceAdmin) {
+			log.Println("DebugService: ATC response sent")
+		}
+		adminOKResponse(w, "ATC saved successfully")
+		h.Inc(metricAdminOK)
+		return
+	}
+	// If we are here, means that the request received was empty
+	responseMessage := "empty configuration"
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, AdminResponse{Message: responseMessage})
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Configuration response sent")
+		log.Printf("DebugService: %s", responseMessage)
 	}
-	adminOKResponse(w, "configuration saved successfully")
-	h.Inc(metricAdminOK)
+	h.Inc(metricAdminErr)
 }
 
 // IntervalsPOSTHandler for POST requests for saving intervals
@@ -802,19 +962,16 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			env := h.Envs.Empty(c.Name, c.Hostname)
 			env.Icon = c.Icon
 			env.Type = c.Type
-			if env.Configuration == "" {
-				env.Configuration = environments.ReadExternalFile(emptyConfiguration)
+			// Emtpy configuration
+			env.Configuration = h.Envs.GenEmptyConfiguration(true)
+			// Generate flags
+			flags, err := environments.GenerateFlags(env, "", "")
+			if err != nil {
+				adminErrorResponse(w, "error generating flags", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
 			}
-			if env.Flags == "" {
-				// Generate flags
-				flags, err := environments.GenerateFlags(env, "", "")
-				if err != nil {
-					adminErrorResponse(w, "error generating flags", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
-				env.Flags = flags
-			}
+			env.Flags = flags
 			if err := h.Envs.Create(env); err != nil {
 				adminErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
@@ -830,7 +987,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "environment created successfully")
 	case "delete":
 		if c.Name == h.Settings.DefaultEnv(settings.ServiceAdmin) {
-			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove enviornment %s", c.Name))
+			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove environment %s", c.Name))
 			h.Inc(metricAdminErr)
 			return
 		}

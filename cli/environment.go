@@ -11,8 +11,11 @@ import (
 )
 
 const (
-	targetShell      string = "sh"
-	targetPowershell string = "ps1"
+	targetShell      = "sh"
+	targetPowershell = "ps1"
+	optionTypeString = "string"
+	optionTypeInt    = "int"
+	optionTypeBool   = "bool"
 )
 
 func addEnvironment(c *cli.Context) error {
@@ -28,12 +31,6 @@ func addEnvironment(c *cli.Context) error {
 		fmt.Println("Environment hostname is required")
 		os.Exit(1)
 	}
-	// Get configuration
-	var configuration string
-	confFile := c.String("configuration")
-	if confFile != "" {
-		configuration = environments.ReadExternalFile(confFile)
-	}
 	// Get certificate
 	var certificate string
 	certFile := c.String("certificate")
@@ -44,11 +41,19 @@ func addEnvironment(c *cli.Context) error {
 	if !envs.Exists(envName) {
 		newEnv := envs.Empty(envName, envHost)
 		newEnv.DebugHTTP = c.Bool("debug")
-		newEnv.Configuration = configuration
+		newEnv.Configuration = envs.GenEmptyConfiguration(true)
 		newEnv.Certificate = certificate
 		newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
 		newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
 		if err := envs.Create(newEnv); err != nil {
+			return err
+		}
+		// Update configuration parts from serialized
+		cnf, err := envs.GenStructConf([]byte(newEnv.Configuration))
+		if err != nil {
+			return err
+		}
+		if err := envs.UpdateConfigurationParts(envName, cnf); err != nil {
 			return err
 		}
 		// Create a tag for this new environment
@@ -68,7 +73,7 @@ func addEnvironment(c *cli.Context) error {
 		fmt.Printf("Environment %s already exists!\n", envName)
 		os.Exit(1)
 	}
-	fmt.Printf("Environment %s was created successfully", envName)
+	fmt.Printf("Environment %s was created successfully\n", envName)
 	return nil
 }
 
@@ -89,6 +94,20 @@ func updateEnvironment(c *cli.Context) error {
 	if hostname != "" {
 		env.Hostname = hostname
 	}
+	// Intervals
+	loggingInterval := c.Int("logging")
+	if loggingInterval != 0 {
+		env.LogInterval = loggingInterval
+	}
+	configInterval := c.Int("config")
+	if loggingInterval != 0 {
+		env.ConfigInterval = configInterval
+	}
+	queryInterval := c.Int("query")
+	if loggingInterval != 0 {
+		env.QueryInterval = queryInterval
+	}
+	// Update environment
 	if err := envs.Update(env); err != nil {
 		return err
 	}
@@ -101,7 +120,7 @@ func updateEnvironment(c *cli.Context) error {
 	if err := envs.UpdateFlags(envName, flags); err != nil {
 		return err
 	}
-	fmt.Printf("Environment %s was updated successfully", envName)
+	fmt.Printf("Environment %s was updated successfully\n", envName)
 	return nil
 }
 
@@ -148,6 +167,16 @@ func showEnvironment(c *cli.Context) error {
 	fmt.Printf(" Carve Block Path: /%s/%s\n", env.Name, env.CarverBlockPath)
 	fmt.Println(" Flags: ")
 	fmt.Printf("%s\n", env.Flags)
+	fmt.Println(" Options: ")
+	fmt.Printf("%s\n", env.Options)
+	fmt.Println(" Schedule: ")
+	fmt.Printf("%s\n", env.Schedule)
+	fmt.Println(" Packs: ")
+	fmt.Printf("%s\n", env.Packs)
+	fmt.Println(" Decorators: ")
+	fmt.Printf("%s\n", env.Decorators)
+	fmt.Println(" ATC: ")
+	fmt.Printf("%s\n", env.ATC)
 	fmt.Println(" Configuration: ")
 	fmt.Printf("%s\n", env.Configuration)
 	fmt.Println(" Certificate: ")
@@ -262,5 +291,88 @@ func secretEnvironment(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("%s\n", env.Secret)
+	return nil
+}
+
+func addScheduledQuery(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get query name
+	queryName := c.String("query-name")
+	if queryName == "" {
+		fmt.Println("Query name is required")
+		os.Exit(1)
+	}
+	// Get query
+	query := c.String("query")
+	if query == "" {
+		fmt.Println("Query is required")
+		os.Exit(1)
+	}
+	// Get interval
+	interval := c.Int("interval")
+	if interval == 0 {
+		fmt.Println("Interval is required")
+		os.Exit(1)
+	}
+	// Get platform
+	platform := c.String("platform")
+	// Get version
+	version := c.String("version")
+	// Add new scheduled query
+	qData := environments.ScheduleQuery{
+		Query:    query,
+		Interval: interval,
+		Platform: platform,
+		Version:  version,
+	}
+	if err := envs.AddScheduleConfQuery(envName, queryName, qData); err != nil {
+		return err
+	}
+	fmt.Printf("Query %s was created successfully\n", queryName)
+	return nil
+}
+
+func addOsqueryOption(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get option
+	option := c.String("option")
+	if option == "" {
+		fmt.Println("Option is required")
+		os.Exit(1)
+	}
+	// Get option type
+	optionType := c.String("type")
+	if optionType == "" {
+		fmt.Println("Option type is required")
+		os.Exit(1)
+	}
+	// Get option value based on the type
+	var optionValue interface{}
+	switch c.String("type") {
+	case optionTypeBool:
+		optionValue = c.Bool("bool-value")
+	case optionTypeInt:
+		optionValue = c.Int("int-value")
+	case optionTypeString:
+		optionValue = c.String("string-value")
+	default:
+		fmt.Printf("Invalid type! It can be %s, %s or %s\n", optionTypeBool, optionTypeInt, optionTypeString)
+		os.Exit(1)
+	}
+	// Add osquery option
+	if err := envs.AddOptionsConf(envName, option, optionValue); err != nil {
+		return err
+	}
+	fmt.Printf("Option %s was added successfully\n", option)
 	return nil
 }

@@ -1,16 +1,40 @@
-function saveConfiguration() {
+function saveB64Blob(editor_id, blob_key, header_id) {
   var _csrftoken = $("#csrftoken").val();
-  var _editor = $('#conf').data('CodeMirrorInstance');
-  var _configuration = _editor.getValue();
+  var _editor = $('#' + editor_id).data('CodeMirrorInstance');
+  var _blob = _editor.getValue();
 
   var _url = window.location.pathname;
 
   var data = {
     csrftoken: _csrftoken,
-    configuration: btoa(_configuration),
+    [blob_key]: btoa(_blob),
   };
-  sendPostRequest(data, _url, '', true);
-  $('#configuration_header').removeClass("bg-changed");
+  sendPostRequest(data, _url, _url, true);
+  $('#' + header_id).removeClass("bg-changed");
+}
+
+function saveConfiguration() {
+  saveB64Blob('final_conf', 'configuration', 'configuration_header');
+}
+
+function saveOptions() {
+  saveB64Blob('options_conf', 'options', 'options_header');
+}
+
+function saveSchedule() {
+  saveB64Blob('schedule_conf', 'schedule', 'schedule_header');
+}
+
+function savePacks() {
+  saveB64Blob('packs_conf', 'packs', 'packs_header');
+}
+
+function saveDecorators() {
+  saveB64Blob('decorators_conf', 'decorators', 'decorators_header');
+}
+
+function saveATC() {
+  saveB64Blob('atc_conf', 'atc', 'atc_header');
 }
 
 function saveIntervals() {
