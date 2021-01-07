@@ -16,7 +16,6 @@ COPY admin/templates/components/page-js-online.html tmpl_admin/components/page-j
 COPY admin/static/ static
 
 COPY deploy/osquery/data/4.5.1.json data/
-COPY deploy/osquery/osquery-cfg.json data/
 
 RUN mkdir -p carved_files
 
@@ -24,7 +23,7 @@ RUN go build -o bin/osctrl-admin admin/*.go
 RUN go build -o bin/osctrl-cli cli/*.go
 
 # Create dev environment
-# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host osctrl-tls -crt certs/osctrl.crt -conf data/osquery-cfg.json
+# RUN bin/osctrl-cli -D config/db.json environment add -n dev -host osctrl-tls -crt certs/osctrl.crt
 
 # Create admin user
 # RUN bin/osctrl-cli -D config/db.json user add -u admin -p admin -a -n Admin

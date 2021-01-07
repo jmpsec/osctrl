@@ -66,6 +66,11 @@ type SettingsRequest struct {
 type ConfigurationRequest struct {
 	CSRFToken        string `json:"csrftoken"`
 	ConfigurationB64 string `json:"configuration"`
+	OptionsB64       string `json:"options"`
+	ScheduleB64      string `json:"schedule"`
+	PacksB64         string `json:"packs"`
+	DecoratorsB64    string `json:"decorators"`
+	ATCB64           string `json:"atc"`
 }
 
 // EnrollRequest to receive changes to enroll certificates

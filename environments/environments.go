@@ -53,6 +53,11 @@ type TLSEnvironment struct {
 	Type             string
 	DebugHTTP        bool
 	Icon             string
+	Options          string
+	Schedule         string
+	Packs            string
+	Decorators       string
+	ATC              string
 	Configuration    string
 	Flags            string
 	Certificate      string
@@ -115,6 +120,11 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 		DebugHTTP:        false,
 		Icon:             DefaultEnvironmentIcon,
 		Flags:            "",
+		Options:          "",
+		Schedule:         "",
+		Packs:            "",
+		Decorators:       "",
+		ATC:              "",
 		Configuration:    "",
 		Certificate:      "",
 		ConfigTLS:        true,
@@ -226,25 +236,49 @@ func (environment *Environment) Update(e TLSEnvironment) error {
 	return nil
 }
 
-// UpdateConfiguration to update configuration for an environment
-func (environment *Environment) UpdateConfiguration(name, configuration string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
-	}
-	if err := environment.DB.Model(&env).Update("configuration", configuration).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+// UpdateOptions to update options for an environment
+func (environment *Environment) UpdateOptions(name, options string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("options", options).Error; err != nil {
+		return fmt.Errorf("Update options %v", err)
 	}
 	return nil
 }
 
-// UpdateCertificate to update certificate for an environment
-func (environment *Environment) UpdateCertificate(name, certificate string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+// UpdateSchedule to update schedule for an environment
+func (environment *Environment) UpdateSchedule(name, schedule string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("schedule", schedule).Error; err != nil {
+		return fmt.Errorf("Update schedule %v", err)
 	}
-	if err := environment.DB.Model(&env).Update("certificate", certificate).Error; err != nil {
+	return nil
+}
+
+// UpdatePacks to update packs for an environment
+func (environment *Environment) UpdatePacks(name, packs string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("packs", packs).Error; err != nil {
+		return fmt.Errorf("Update packs %v", err)
+	}
+	return nil
+}
+
+// UpdateDecorators to update decorators for an environment
+func (environment *Environment) UpdateDecorators(name, decorators string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("decorators", decorators).Error; err != nil {
+		return fmt.Errorf("Update decorators %v", err)
+	}
+	return nil
+}
+
+// UpdateATC to update ATC for an environment
+func (environment *Environment) UpdateATC(name, atc string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("atc", atc).Error; err != nil {
+		return fmt.Errorf("Update ATC %v", err)
+	}
+	return nil
+}
+
+// UpdateCertificate to update decorators for an environment
+func (environment *Environment) UpdateCertificate(name, certificate string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("certificate", certificate).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil
@@ -252,11 +286,7 @@ func (environment *Environment) UpdateCertificate(name, certificate string) erro
 
 // UpdateFlags to update flags for an environment
 func (environment *Environment) UpdateFlags(name, flags string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
-	}
-	if err := environment.DB.Model(&env).Update("flags", flags).Error; err != nil {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("flags", flags).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil
@@ -355,11 +385,7 @@ func (environment *Environment) RotateRemove(name string) error {
 
 // ExpireRemove to expire the remove in an environment
 func (environment *Environment) ExpireRemove(name string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
-	}
-	if err := environment.DB.Model(&env).Update("remove_expire", time.Now()).Error; err != nil {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("remove_expire", time.Now()).Error; err != nil {
 		return fmt.Errorf("Update %v", err)
 	}
 	return nil
@@ -376,11 +402,7 @@ func (environment *Environment) DebugHTTP(name string) bool {
 
 // ChangeDebugHTTP to change the value of DebugHTTP for an environment
 func (environment *Environment) ChangeDebugHTTP(name string, value bool) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
-	}
-	if err := environment.DB.Model(&env).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
 	return nil

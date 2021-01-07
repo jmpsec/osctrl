@@ -9,6 +9,8 @@
       "interval": 60
     }
   },
+  "packs": {},
+  "auto_table_construction": {},
   "decorators": {
     "always": [
       "SELECT username AS osquery_user FROM users WHERE uid = (SELECT uid FROM processes WHERE pid = (SELECT pid FROM osquery_info) LIMIT 1);",

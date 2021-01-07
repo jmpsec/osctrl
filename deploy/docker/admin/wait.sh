@@ -11,7 +11,6 @@ CERTS="certs"
 DATA="data"
 DB_JSON="$CONFIG/db.json"
 CRT_FILE="$CERTS/osctrl.crt"
-OSQUERY_JSON="$DATA/osquery-cfg.json"
 
 # Check if database is ready, otherwise commands will fail
 until $(./bin/osctrl-cli -D "$DB_JSON" check); do
@@ -22,12 +21,22 @@ done
 sleep $WAIT
 
 # Create environment dev
-OUTPUT_ENV="$(./bin/osctrl-cli -D "$DB_JSON" environment add -n dev -host osctrl-nginx -crt "$CRT_FILE" -conf "$OSQUERY_JSON")"
+OUTPUT_ENV="$(./bin/osctrl-cli -D "$DB_JSON" environment add -n dev -host osctrl-nginx -crt "$CRT_FILE")"
 if [ $? -eq 0 ]; then
   echo "Created environment dev"
 else
   echo "Environment dev exists"
 fi
+
+# Decrease intervals in dev
+./bin/osctrl-cli -D "$DB_JSON" environment update -n dev -l 75 -c 45
+
+# Enable verbose mode
+./bin/osctrl-cli -D "$DB_JSON" environment add-osquery-option -n dev -o "verbose" -t bool -b true
+# Disable splay for schedule
+./bin/osctrl-cli -D "$DB_JSON" environment add-osquery-option -n dev -o "schedule_splay_percent" -t int -i 0
+# Add uptime query to schedule
+./bin/osctrl-cli -D "$DB_JSON" environment add-scheduled-query -n dev -q "SELECT * FROM uptime;" -Q "uptime" -i 60
 
 # Generate flag and secret file for enrolling nodes
 FLAGS_FILE="$CONFIG/docker.flags"

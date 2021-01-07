@@ -172,10 +172,6 @@ func init() {
 							Usage:  "Environment debug capability",
 						},
 						cli.StringFlag{
-							Name:  "configuration, conf",
-							Usage: "Configuration file to be read",
-						},
-						cli.StringFlag{
 							Name:  "certificate, crt",
 							Usage: "Certificate file to be read",
 						},
@@ -199,8 +195,94 @@ func init() {
 							Name:  "hostname, host",
 							Usage: "Environment host to be updated",
 						},
+						cli.IntFlag{
+							Name:  "logging, l",
+							Value: 0,
+							Usage: "Logging interval in seconds",
+						},
+						cli.IntFlag{
+							Name:  "config, c",
+							Value: 0,
+							Usage: "Config interval in seconds",
+						},
+						cli.IntFlag{
+							Name:  "query, q",
+							Value: 0,
+							Usage: "Query interval in seconds",
+						},
 					},
 					Action: cliWrapper(updateEnvironment),
+				},
+				{
+					Name:  "add-scheduled-query",
+					Usage: "Add a new query to the osquery schedule for an environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "query, q",
+							Value: "",
+							Usage: "Query to be added to the schedule",
+						},
+						cli.StringFlag{
+							Name:  "query-name, Q",
+							Value: "",
+							Usage: "Query name to be idenfified in the schedule",
+						},
+						cli.IntFlag{
+							Name:  "interval, i",
+							Value: 0,
+							Usage: "Query interval in seconds",
+						},
+						cli.StringFlag{
+							Name:  "platform, p",
+							Value: "",
+							Usage: "Query to be added to the schedule",
+						},
+						cli.StringFlag{
+							Name:  "version, v",
+							Value: "",
+							Usage: "Query to be added to the schedule",
+						},
+					},
+					Action: cliWrapper(addScheduledQuery),
+				},
+				{
+					Name:  "add-osquery-option",
+					Usage: "Add a new option for the osquery configuration",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "option, o",
+							Value: "",
+							Usage: "Option name to be added",
+						},
+						cli.StringFlag{
+							Name:  "type, t",
+							Value: "",
+							Usage: "Option type for the value (string, int, bool)",
+						},
+						cli.StringFlag{
+							Name:  "string-value, s",
+							Usage: "String value for the option",
+						},
+						cli.IntFlag{
+							Name:  "int-value, i",
+							Usage: "Integer value for the option",
+						},
+						cli.BoolFlag{
+							Name:  "bool-value, b",
+							Usage: "Boolean value for the option",
+						},
+					},
+					Action: cliWrapper(addOsqueryOption),
 				},
 				{
 					Name:    "delete",
@@ -577,7 +659,7 @@ func init() {
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all tags",
-					Action: cliWrapper(listTags),
+					Action:  cliWrapper(listTags),
 				},
 				{
 					Name:    "show",

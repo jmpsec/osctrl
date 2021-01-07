@@ -682,9 +682,6 @@ else
     # Copy osquery tables JSON file
     sudo cp "$SOURCE_PATH/deploy/osquery/data/4.5.1.json" "$DEST_PATH/data"
 
-    # Copy empty configuration
-    sudo cp "$SOURCE_PATH/deploy/osquery/osquery-empty.json" "$DEST_PATH/data"
-
     # Prepare static files for Admin service
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
@@ -724,7 +721,19 @@ else
 
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -conf "$__osquery_cfg" -crt "$__osctrl_crt"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+
+  # If we are in dev, lower intervals
+  if [[ "$MODE" == "dev" ]]; then
+    log "Decrease intervals for environment $ENVIRONMENT"
+    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment update -n "$ENVIRONMENT" -l "75" -c "45"
+    log "Enable verbose mode"
+    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
+    log "Disable splay for schedule"
+    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "schedule_splay_percent" -t int -i 0
+    log "Add uptime query to schedule"
+    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
+  fi
 
   # Make newly created environment as default
   log "Making environment $ENVIRONMENT as default"

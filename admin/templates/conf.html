@@ -21,7 +21,7 @@
 
             <div class="card mt-2">
               <div id="intervals_header" class="card-header">
-                <i class="far fa-clock"></i> osquery intervals for environment <b>{{ .Environment.Name }}</b>
+                <i class="far fa-clock"></i> Intervals for environment <b>{{ .Environment.Name }}</b>
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
@@ -35,6 +35,7 @@
               </div>
               <div class="card-body">
 
+                <!-- Intervals -->
                 <div class="row">
                   <div class="col-md-4">
                     <div class="form-group">
@@ -70,13 +71,164 @@
               </div>
             </div>
 
+            <!-- Options -->
             <div class="card mt-2">
-              <div id="configuration_header" class="card-header">
-                <i class="far fa-file-alt"></i> osquery configuration for environment <b>{{ .Environment.Name }}</b>
+              <div id="options_header" class="card-header">
+                <i class="far fa-file-alt"></i> osquery options for environment <b>{{ .Environment.Name }}</b>
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="json_save" class="btn btn-sm btn-block btn-dark"
+                    <button id="options_json_save" class="btn btn-sm btn-block btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveOptions();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                {{ end }}
+                </div>
+              </div>
+              <div class="card-body">
+
+                <textarea id="options_conf" name="options_conf">{{ .Environment.Options }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="options_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="options_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="options_json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Schedule -->
+            <div class="card mt-2">
+              <div id="schedule_header" class="card-header">
+                <i class="far fa-file-alt"></i> Scheduled queries for environment <b>{{ .Environment.Name }}</b>
+                <div class="card-header-actions">
+                {{ if eq $metadata.Level "admin" }}
+                  <div class="card-header-action">
+                    <button id="schedule_json_save" class="btn btn-sm btn-block btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveSchedule();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                {{ end }}
+                </div>
+              </div>
+              <div class="card-body">
+
+                <textarea id="schedule_conf" name="schedule_conf">{{ .Environment.Schedule }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="schedule_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="schedule_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="schedule_json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Packs -->
+            <div class="card mt-2">
+              <div id="packs_header" class="card-header">
+                <i class="far fa-file-alt"></i> Query packs for environment <b>{{ .Environment.Name }}</b>
+                <div class="card-header-actions">
+                {{ if eq $metadata.Level "admin" }}
+                  <div class="card-header-action">
+                    <button id="packs_json_save" class="btn btn-sm btn-block btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="savePacks();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                {{ end }}
+                </div>
+              </div>
+              <div class="card-body">
+
+                <textarea id="packs_conf" name="packs_conf">{{ .Environment.Packs }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="packs_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="packs_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="packs_json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ATC -->
+            <div class="card mt-2">
+              <div id="atc_header" class="card-header">
+                <i class="far fa-file-alt"></i> Automatic Table Construction for environment <b>{{ .Environment.Name }}</b>
+                <div class="card-header-actions">
+                {{ if eq $metadata.Level "admin" }}
+                  <div class="card-header-action">
+                    <button id="atc_json_save" class="btn btn-sm btn-block btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveATC();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                {{ end }}
+                </div>
+              </div>
+              <div class="card-body">
+
+                <textarea id="atc_conf" name="atc_conf">{{ .Environment.ATC }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="atc_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="atc_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="atc_json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Decorators -->
+            <div class="card mt-2">
+              <div id="decorators_header" class="card-header">
+                <i class="far fa-file-alt"></i> Decorators for environment <b>{{ .Environment.Name }}</b>
+                <div class="card-header-actions">
+                {{ if eq $metadata.Level "admin" }}
+                  <div class="card-header-action">
+                    <button id="decorators_json_save" class="btn btn-sm btn-block btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveDecorators();">
+                      <i class="far fa-save"></i>
+                    </button>
+                  </div>
+                {{ end }}
+                </div>
+              </div>
+              <div class="card-body">
+
+                <textarea id="decorators_conf" name="decorators_conf">{{ .Environment.Decorators }}</textarea>
+                <div class="row">
+                  <div class="col-md-12">
+                    <button id="decorators_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="decorators_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="decorators_json_status_text" class="ml-1">Valid JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Configuration -->
+            <div class="card mt-2">
+              <div id="configuration_header" class="card-header">
+                <i class="far fa-file-alt"></i> Fully rendered osquery configuration for environment <b>{{ .Environment.Name }}</b>
+                <div class="card-header-actions">
+                {{ if eq $metadata.Level "admin" }}
+                  <div class="card-header-action">
+                    <button id="conf_json_save" class="btn btn-sm btn-block btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
@@ -86,12 +238,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="conf" name="conf">{{ .Environment.Configuration }}</textarea>
+                <textarea id="final_conf" name="final_conf">{{ .Environment.Configuration }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
-                    <button id="json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
-                      <span id="json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
-                      <span id="json_status_text" class="ml-1">Valid JSON</span>
+                    <button id="conf_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
+                      <span id="conf_json_status_icon" class="mr-2"><i class="fas fa-check"></i></span>
+                      <span id="conf_json_status_text" class="ml-1">Valid JSON</span>
                     </button>
                   </div>
                 </div>
@@ -120,15 +272,15 @@
       $(document).ready(function() {
         // Codemirror editor for configuration
         // JSON validity check when content is changed
-        var editorConf = CodeMirror.fromTextArea(document.getElementById("conf"), {
+        var editorConfiguration = CodeMirror.fromTextArea(document.getElementById("final_conf"), {
           mode: 'application/json',
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
           readOnly: false
         });
-        $('#conf').data('CodeMirrorInstance', editorConf);
-        editorConf.on('change', function(_editor){
+        $('#final_conf').data('CodeMirrorInstance', editorConfiguration);
+        editorConfiguration.on('change', function(_editor){
           $('#configuration_header').addClass("bg-changed");
           var _valid = true;
           try {
@@ -138,28 +290,243 @@
             console.log(e);
             // Display error in status
             var _position = e.toString().split('position ')[1];
-            $("#json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
-            $("#json_status_icon").html('<i class="fas fa-times"></i>');
-            $("#json_status_color").each(function(){
+            $("#conf_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#conf_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#conf_json_status_color").each(function(){
               $(this).removeClass("btn-success");
               $(this).addClass("btn-danger");
             });
             _valid = false
             // Disable button
-            $('#json_save').prop("disabled", true);
+            $('#conf_json_save').prop("disabled", true);
             // Position cursor in where the problem is at
           }
           if (_valid) {
-            $("#json_status_text").text('Valid JSON');
-            $("#json_status_icon").html('<i class="fas fa-check"></i>');
-            $("#json_status_color").each(function(){
+            $("#conf_json_status_text").text('Valid JSON');
+            $("#conf_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#conf_json_status_color").each(function(){
               $(this).removeClass("btn-danger");
               $(this).addClass("btn-success");
             });
-            $('#json_save').prop("disabled", false);
+            $('#conf_json_save').prop("disabled", false);
           }
         });
-        editorConf.setSize("100%", "100%");
+        editorConfiguration.setSize("100%", "100%");
+
+        // Codemirror editor for options
+        // JSON validity check when content is changed
+        var editorOptions = CodeMirror.fromTextArea(document.getElementById("options_conf"), {
+          mode: 'application/json',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        $('#options_conf').data('CodeMirrorInstance', editorOptions);
+        editorOptions.on('change', function(_editor){
+          $('#options_header').addClass("bg-changed");
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            // Display error in console
+            console.log(e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#options_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#options_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#options_json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+            // Disable button
+            $('#options_json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
+          }
+          if (_valid) {
+            $("#options_json_status_text").text('Valid JSON');
+            $("#options_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#options_json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            $('#options_json_save').prop("disabled", false);
+          }
+        });
+        editorOptions.setSize("100%", "100%");
+
+        // Codemirror editor for schedule
+        // JSON validity check when content is changed
+        var editorSchedule = CodeMirror.fromTextArea(document.getElementById("schedule_conf"), {
+          mode: 'application/json',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        $('#schedule_conf').data('CodeMirrorInstance', editorSchedule);
+        editorSchedule.on('change', function(_editor){
+          $('#schedule_header').addClass("bg-changed");
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            // Display error in console
+            console.log(e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#schedule_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#schedule_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#schedule_json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+            // Disable button
+            $('#schedule_json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
+          }
+          if (_valid) {
+            $("#schedule_json_status_text").text('Valid JSON');
+            $("#schedule_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#schedule_json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            $('#schedule_json_save').prop("disabled", false);
+          }
+        });
+        editorSchedule.setSize("100%", "100%");
+
+        // Codemirror editor for query packs
+        // JSON validity check when content is changed
+        var editorPacks = CodeMirror.fromTextArea(document.getElementById("packs_conf"), {
+          mode: 'application/json',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        $('#packs_conf').data('CodeMirrorInstance', editorPacks);
+        editorPacks.on('change', function(_editor){
+          $('#packs_header').addClass("bg-changed");
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            // Display error in console
+            console.log(e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#packs_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#packs_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#packs_json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+            // Disable button
+            $('#packs_json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
+          }
+          if (_valid) {
+            $("#packs_json_status_text").text('Valid JSON');
+            $("#packs_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#packs_json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            $('#packs_json_save').prop("disabled", false);
+          }
+        });
+        editorPacks.setSize("100%", "100%");
+
+        // Codemirror editor for ATC
+        // JSON validity check when content is changed
+        var editorATC = CodeMirror.fromTextArea(document.getElementById("atc_conf"), {
+          mode: 'application/json',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        $('#atc_conf').data('CodeMirrorInstance', editorATC);
+        editorATC.on('change', function(_editor){
+          $('#atc_header').addClass("bg-changed");
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            // Display error in console
+            console.log(e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#atc_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#atc_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#atc_json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+            // Disable button
+            $('#atc_json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
+          }
+          if (_valid) {
+            $("#atc_json_status_text").text('Valid JSON');
+            $("#atc_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#atc_json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            $('#atc_json_save').prop("disabled", false);
+          }
+        });
+        editorATC.setSize("100%", "100%");
+
+        // Codemirror editor for decorators
+        // JSON validity check when content is changed
+        var editorDecorators = CodeMirror.fromTextArea(document.getElementById("decorators_conf"), {
+          mode: 'application/json',
+          lineNumbers: true,
+          styleActiveLine: true,
+          matchBrackets: true,
+          readOnly: false
+        });
+        $('#decorators_conf').data('CodeMirrorInstance', editorDecorators);
+        editorDecorators.on('change', function(_editor){
+          $('#decorators_header').addClass("bg-changed");
+          var _valid = true;
+          try {
+            JSON.parse(_editor.getValue());
+          } catch (e) {
+            // Display error in console
+            console.log(e);
+            // Display error in status
+            var _position = e.toString().split('position ')[1];
+            $("#decorators_json_status_text").text('Invalid JSON - ' +e+' ('+lineCharPosition(_position)+')');
+            $("#decorators_json_status_icon").html('<i class="fas fa-times"></i>');
+            $("#decorators_json_status_color").each(function(){
+              $(this).removeClass("btn-success");
+              $(this).addClass("btn-danger");
+            });
+            _valid = false
+            // Disable button
+            $('#decorators_json_save').prop("disabled", true);
+            // Position cursor in where the problem is at
+          }
+          if (_valid) {
+            $("#decorators_json_status_text").text('Valid JSON');
+            $("#decorators_json_status_icon").html('<i class="fas fa-check"></i>');
+            $("#decorators_json_status_color").each(function(){
+              $(this).removeClass("btn-danger");
+              $(this).addClass("btn-success");
+            });
+            $('#decorators_json_save').prop("disabled", false);
+          }
+        });
+        editorDecorators.setSize("100%", "100%");
 
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
