@@ -301,7 +301,7 @@ function _static_files() {
       sudo ln -s "$__path/$__from" "$__dest/$__target"
     fi
   else
-    sudo rsync -av "$__path/$__from" "$__dest/$__target"
+    sudo rsync -av "$__path/$__from/" "$__dest/$__target/"
   fi
 }
 
