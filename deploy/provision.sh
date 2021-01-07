@@ -414,6 +414,7 @@ package make
 package openssl
 package tmux
 package bc
+package rsync
 
 # Golang
 # package golang-go
@@ -461,8 +462,8 @@ if [[ "$UPGRADE" == true ]]; then
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     else
-      sudo cp "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo cp "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     fi
 
     # Restart service with new binary
@@ -476,6 +477,12 @@ if [[ "$UPGRADE" == true ]]; then
     # Restart service with new binary
     make install_api
   fi
+
+  # Compile CLI
+  make cli
+
+  # Install CLI
+  DEST="$DEST_PATH" make install_cli
 else
   # We are provisioning a new machine
   log ""
@@ -691,8 +698,8 @@ else
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     else
-      sudo cp "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo cp "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     fi
 
     # Systemd configuration for Admin service
