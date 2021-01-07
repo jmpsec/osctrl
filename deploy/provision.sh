@@ -462,8 +462,8 @@ if [[ "$UPGRADE" == true ]]; then
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     else
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+      sudo rsync -v "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+      sudo rsync -v "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     fi
 
     # Restart service with new binary
@@ -698,8 +698,8 @@ else
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
       sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     else
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
+      sudo rsync -v "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
+      sudo rsync -v "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
     fi
 
     # Systemd configuration for Admin service
