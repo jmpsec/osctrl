@@ -724,7 +724,7 @@ else
 
   # Create admin user
   log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -n "Admin"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
 
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"

@@ -987,7 +987,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "environment created successfully")
 	case "delete":
 		if c.Name == h.Settings.DefaultEnv(settings.ServiceAdmin) {
-			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove environment %s", c.Name))
+			adminErrorResponse(w, "nope, this is the default environment", http.StatusInternalServerError, fmt.Errorf("attempt to remove default environment %s", c.Name))
 			h.Inc(metricAdminErr)
 			return
 		}
@@ -1153,8 +1153,14 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
+		// Check that default environment exists
+		if (u.DefaultEnv == "") || !h.Envs.Exists(u.DefaultEnv) {
+			adminErrorResponse(w, "error adding user", http.StatusInternalServerError, fmt.Errorf("environment %s does not exist", u.DefaultEnv))
+			h.Inc(metricAdminErr)
+			return
+		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.DefaultEnv, u.Admin)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
@@ -1205,6 +1211,13 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		if u.Email != "" {
 			if err := h.Users.ChangeEmail(u.Username, u.Email); err != nil {
 				adminErrorResponse(w, "error changing email", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if u.DefaultEnv != "" {
+			if err := h.Users.ChangeDefaultEnv(u.Username, u.DefaultEnv); err != nil {
+				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
