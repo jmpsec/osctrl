@@ -4,14 +4,6 @@ import (
 	"unicode/utf8"
 )
 
-// Constants for seconds
-const (
-	oneMinute   = 60
-	oneHour     = 3600
-	oneDay      = 86400
-	fifteenDays = 1296000
-)
-
 // Helper to truncate a string
 func truncateString(s string, n int) string {
 	if len(s) <= n {

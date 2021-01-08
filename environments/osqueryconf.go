@@ -36,7 +36,7 @@ type ScheduleQuery struct {
 }
 
 // PacksConf to hold all the packs in the configuration
-// https://osquery.readthedocs.io/en/stable/deployment/configuration/#packs
+// https://osquery.readthedocs.io/en/stable/deployment`/configuration/#packs
 type PacksConf map[string]interface{}
 
 // PackEntry to hold the struct for a single pack
@@ -239,11 +239,11 @@ func (environment *Environment) GenEmptyConfiguration(indent bool) string {
 	return str
 }
 
-// AddOptionsConf to add a new query to the osquery schedule
+// AddOptionsConf to add an osquery option to the configuration
 func (environment *Environment) AddOptionsConf(name, option string, value interface{}) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error structuring environment %v", err)
+		return fmt.Errorf("error getting environment %v", err)
 	}
 	// Parse options into struct
 	_options, err := environment.GenStructOptions([]byte(env.Options))
@@ -268,13 +268,42 @@ func (environment *Environment) AddOptionsConf(name, option string, value interf
 	return nil
 }
 
+// RemoveOptionsConf to remove an osquery option from the configuration
+func (environment *Environment) RemoveOptionsConf(name, option string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse options into struct
+	_options, err := environment.GenStructOptions([]byte(env.Options))
+	if err != nil {
+		return fmt.Errorf("error structuring options %v", err)
+	}
+	// Remove option
+	delete(_options, option)
+	// Generate serialized indented options
+	indentedOptions, err := environment.GenSerializedConf(_options, true)
+	if err != nil {
+		return fmt.Errorf("error serializing options %v", err)
+	}
+	// Update options in environment
+	if err := environment.UpdateOptions(name, indentedOptions); err != nil {
+		return fmt.Errorf("error updating options %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
 // AddScheduleConfQuery to add a new query to the osquery schedule
 func (environment *Environment) AddScheduleConfQuery(name, qName string, query ScheduleQuery) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error structuring environment %v", err)
+		return fmt.Errorf("error getting environment %v", err)
 	}
-	// Parse options into struct
+	// Parse schedule into struct
 	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
 	if err != nil {
 		return fmt.Errorf("error structuring schedule %v", err)
@@ -289,6 +318,155 @@ func (environment *Environment) AddScheduleConfQuery(name, qName string, query S
 	// Update schedule in environment
 	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
 		return fmt.Errorf("error updating schedule %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
+// RemoveScheduleConfQuery to remove a query from the osquery schedule
+func (environment *Environment) RemoveScheduleConfQuery(name, qName string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse schedule into struct
+	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
+	if err != nil {
+		return fmt.Errorf("error structuring schedule %v", err)
+	}
+	// Remove query
+	delete(_schedule, qName)
+	// Generate serialized indented schedule
+	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
+	if err != nil {
+		return fmt.Errorf("error serializing schedule %v", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
+		return fmt.Errorf("error updating schedule %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
+// AddQueryPackConf to add a new query pack to the osquery configuration
+func (environment *Environment) AddQueryPackConf(name, pName string, pack interface{}) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse packs into struct
+	_packs, err := environment.GenStructPacks([]byte(env.Packs))
+	if err != nil {
+		return fmt.Errorf("error structuring packs %v", err)
+	}
+	// Add new local pack
+	_packs[pName] = pack
+	// Generate serialized indented packs
+	indentedPacks, err := environment.GenSerializedConf(_packs, true)
+	if err != nil {
+		return fmt.Errorf("error serializing packs %v", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
+		return fmt.Errorf("error updating packs %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
+// RemoveQueryPackConf to add a new query pack to the osquery configuration
+func (environment *Environment) RemoveQueryPackConf(name, pName string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse packs into struct
+	_packs, err := environment.GenStructPacks([]byte(env.Packs))
+	if err != nil {
+		return fmt.Errorf("error structuring packs %v", err)
+	}
+	// Remove pack
+	delete(_packs, pName)
+	// Generate serialized indented packs
+	indentedPacks, err := environment.GenSerializedConf(_packs, true)
+	if err != nil {
+		return fmt.Errorf("error serializing packs %v", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
+		return fmt.Errorf("error updating packs %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
+// AddQueryToPackConf to add a new query to an existing pack in the osquery configuration
+func (environment *Environment) AddQueryToPackConf(name, pName, qName string, query ScheduleQuery) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse packs into struct
+	_packs, err := environment.GenStructPacks([]byte(env.Packs))
+	if err != nil {
+		return fmt.Errorf("error structuring packs %v", err)
+	}
+	// Get pack to add the query
+	pack := _packs[pName].(PackEntry)
+	pack.Queries[qName] = query
+	_packs[pName] = pack
+	// Generate serialized indented packs
+	indentedPacks, err := environment.GenSerializedConf(_packs, true)
+	if err != nil {
+		return fmt.Errorf("error serializing packs %v", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
+		return fmt.Errorf("error updating packs %v", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %v", err)
+	}
+	return nil
+}
+
+// RemoveQueryFromPackConf to remove a query from an existing query pack in the osquery configuration
+func (environment *Environment) RemoveQueryFromPackConf(name, pName, qName string) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	// Parse packs into struct
+	_packs, err := environment.GenStructPacks([]byte(env.Packs))
+	if err != nil {
+		return fmt.Errorf("error structuring packs %v", err)
+	}
+	// Get pack to remove the query
+	pack := _packs[pName].(PackEntry)
+	delete(pack.Queries, qName)
+	_packs[pName] = pack
+	// Generate serialized indented packs
+	indentedPacks, err := environment.GenSerializedConf(_packs, true)
+	if err != nil {
+		return fmt.Errorf("error serializing packs %v", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
+		return fmt.Errorf("error updating packs %v", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
