@@ -240,19 +240,36 @@ func init() {
 						cli.StringFlag{
 							Name:  "platform, p",
 							Value: "",
-							Usage: "Query to be added to the schedule",
+							Usage: "Restrict this query to a given platform",
 						},
 						cli.StringFlag{
 							Name:  "version, v",
 							Value: "",
-							Usage: "Query to be added to the schedule",
+							Usage: "Only run on osquery versions greater than or equal-to this version",
 						},
 					},
 					Action: cliWrapper(addScheduledQuery),
 				},
 				{
+					Name:  "remove-scheduled-query",
+					Usage: "Remove query from the osquery schedule for an environment",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "query-name, q",
+							Value: "",
+							Usage: "Query to be removed from the schedule",
+						},
+					},
+					Action: cliWrapper(removeScheduledQuery),
+				},
+				{
 					Name:  "add-osquery-option",
-					Usage: "Add a new option for the osquery configuration",
+					Usage: "Add or change an osquery option to the configuration",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "name, n",
@@ -283,6 +300,154 @@ func init() {
 						},
 					},
 					Action: cliWrapper(addOsqueryOption),
+				},
+				{
+					Name:  "remove-osquery-option",
+					Usage: "Remove an option for the osquery configuration",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "option, o",
+							Value: "",
+							Usage: "Option name to be added",
+						},
+					},
+					Action: cliWrapper(removeOsqueryOption),
+				},
+				{
+					Name:  "add-new-pack",
+					Usage: "Add a new query pack to the osquery configuration",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "pack, p",
+							Value: "",
+							Usage: "Pack name to be added",
+						},
+						cli.StringFlag{
+							Name:  "platform, P",
+							Usage: "Restrict this pack to a given platform",
+						},
+						cli.StringFlag{
+							Name:  "version, v",
+							Usage: "Only run on osquery versions greater than or equal-to this version",
+						},
+						cli.IntFlag{
+							Name:  "shard, s",
+							Usage: "Restrict this query to a percentage (1-100) of target hosts",
+						},
+					},
+					Action: cliWrapper(addNewPack),
+				},
+				{
+					Name:  "add-local-pack",
+					Usage: "Add a new local query pack to the osquery configuration",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "pack, p",
+							Value: "",
+							Usage: "Pack name to be added",
+						},
+						cli.StringFlag{
+							Name:  "pack-path, P",
+							Usage: "Local full path to load the query pack within osquery",
+						},
+					},
+					Action: cliWrapper(addLocalPack),
+				},
+				{
+					Name:  "remove-pack",
+					Usage: "Remove query pack from the osquery configuration",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "pack, p",
+							Value: "",
+							Usage: "Pack name to be removed",
+						},
+					},
+					Action: cliWrapper(removePack),
+				},
+				{
+					Name:  "add-query-to-pack",
+					Usage: "Add a new query to the given query pack",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "pack, p",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "query, q",
+							Value: "",
+							Usage: "Query to be added to the pack",
+						},
+						cli.StringFlag{
+							Name:  "query-name, Q",
+							Value: "",
+							Usage: "Query name to be added to the pack",
+						},
+						cli.IntFlag{
+							Name:  "interval, i",
+							Value: 0,
+							Usage: "Query interval in seconds",
+						},
+						cli.StringFlag{
+							Name:  "platform, P",
+							Value: "",
+							Usage: "Restrict this query to a given platform",
+						},
+						cli.StringFlag{
+							Name:  "version, v",
+							Value: "",
+							Usage: "Only run on osquery versions greater than or equal-to this version",
+						},
+					},
+					Action: cliWrapper(addPackQuery),
+				},
+				{
+					Name:  "remove-query-from-pack",
+					Usage: "Remove query from the given query pack",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "name, n",
+							Value: "",
+							Usage: "Environment to be updated",
+						},
+						cli.StringFlag{
+							Name:  "pack, p",
+							Value: "",
+							Usage: "Pack name to be updated",
+						},
+						cli.StringFlag{
+							Name:  "query-name, q",
+							Value: "",
+							Usage: "Query name to be removed",
+						},
+					},
+					Action: cliWrapper(removePackQuery),
 				},
 				{
 					Name:    "delete",

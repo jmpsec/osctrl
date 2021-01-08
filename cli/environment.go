@@ -319,21 +319,38 @@ func addScheduledQuery(c *cli.Context) error {
 		fmt.Println("Interval is required")
 		os.Exit(1)
 	}
-	// Get platform
-	platform := c.String("platform")
-	// Get version
-	version := c.String("version")
 	// Add new scheduled query
 	qData := environments.ScheduleQuery{
 		Query:    query,
 		Interval: interval,
-		Platform: platform,
-		Version:  version,
+		Platform: c.String("platform"),
+		Version:  c.String("version"),
 	}
 	if err := envs.AddScheduleConfQuery(envName, queryName, qData); err != nil {
 		return err
 	}
 	fmt.Printf("Query %s was created successfully\n", queryName)
+	return nil
+}
+
+func removeScheduledQuery(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get query name
+	queryName := c.String("query-name")
+	if queryName == "" {
+		fmt.Println("Query name is required")
+		os.Exit(1)
+	}
+	// Remove query
+	if err := envs.RemoveScheduleConfQuery(envName, queryName); err != nil {
+		return err
+	}
+	fmt.Printf("Query %s was removed successfully\n", queryName)
 	return nil
 }
 
@@ -374,5 +391,173 @@ func addOsqueryOption(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("Option %s was added successfully\n", option)
+	return nil
+}
+
+func removeOsqueryOption(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get option
+	option := c.String("option")
+	if option == "" {
+		fmt.Println("Option is required")
+		os.Exit(1)
+	}
+	// Remove osquery option
+	if err := envs.RemoveOptionsConf(envName, option); err != nil {
+		return err
+	}
+	fmt.Printf("Option %s was added successfully\n", option)
+	return nil
+}
+
+func addNewPack(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get pack name
+	pName := c.String("pack")
+	if pName == "" {
+		fmt.Println("Pack name is required")
+		os.Exit(1)
+	}
+	// Compose query pack
+	pack := environments.PackEntry{
+		Platform: c.String("platform"),
+		Version:  c.String("version"),
+		Shard:    c.Int("shard"),
+	}
+	// Add pack to configuration
+	if err := envs.AddQueryPackConf(envName, pName, pack); err != nil {
+		return err
+	}
+	fmt.Printf("Pack %s was added successfully\n", pName)
+	return nil
+}
+
+func removePack(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get pack name
+	pName := c.String("pack")
+	if pName == "" {
+		fmt.Println("Pack name is required")
+		os.Exit(1)
+	}
+	// Remove pack from configuration
+	if err := envs.RemoveQueryPackConf(envName, pName); err != nil {
+		return err
+	}
+	fmt.Printf("Pack %s was added successfully\n", pName)
+	return nil
+}
+
+func addLocalPack(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get pack name
+	pName := c.String("pack")
+	if pName == "" {
+		fmt.Println("Pack name is required")
+		os.Exit(1)
+	}
+	// Get pack local path
+	pPath := c.String("pack-path")
+	if pPath == "" {
+		fmt.Println("Pack path is required")
+		os.Exit(1)
+	}
+	// Add pack to configuration option
+	if err := envs.AddQueryPackConf(envName, pName, pPath); err != nil {
+		return err
+	}
+	fmt.Printf("Pack %s was added successfully\n", pName)
+	return nil
+}
+
+func addPackQuery(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get query name
+	packName := c.String("pack")
+	if packName == "" {
+		fmt.Println("Pack name is required")
+		os.Exit(1)
+	}
+	// Get query
+	query := c.String("query")
+	if query == "" {
+		fmt.Println("Query is required")
+		os.Exit(1)
+	}
+	// Get query name
+	queryName := c.String("query-name")
+	if queryName == "" {
+		fmt.Println("Query name is required")
+		os.Exit(1)
+	}
+	// Get interval
+	interval := c.Int("interval")
+	if interval == 0 {
+		fmt.Println("Interval is required")
+		os.Exit(1)
+	}
+	// Add new scheduled query
+	qData := environments.ScheduleQuery{
+		Query:    query,
+		Interval: interval,
+		Platform: c.String("platform"),
+		Version:  c.String("version"),
+	}
+	if err := envs.AddQueryToPackConf(envName, packName, queryName, qData); err != nil {
+		return err
+	}
+	fmt.Printf("Query %s was added to pack %s successfully\n", queryName, packName)
+	return nil
+}
+
+func removePackQuery(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	// Get query name
+	packName := c.String("pack")
+	if packName == "" {
+		fmt.Println("Pack name is required")
+		os.Exit(1)
+	}
+	// Get query name
+	queryName := c.String("query-name")
+	if queryName == "" {
+		fmt.Println("Query name is required")
+		os.Exit(1)
+	}
+	// Remove query
+	if err := envs.RemoveQueryFromPackConf(envName, packName, queryName); err != nil {
+		return err
+	}
+	fmt.Printf("Query %s was removed from pack %s successfully\n", queryName, packName)
 	return nil
 }

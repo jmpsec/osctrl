@@ -40,7 +40,9 @@ const (
 )
 
 const (
+	// EmptyFlagSecret to use as placeholder for the secret file
 	EmptyFlagSecret string = "__SECRET_FILE__"
+	// EmptyFlagCert to use as placeholder for the certificate file
 	EmptyFlagCert   string = "__CERT_FILE__"
 )
 
