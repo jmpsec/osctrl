@@ -7,21 +7,21 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/admin/handlers v0.2.4
-	github.com/jmpsec/osctrl/admin/sessions v0.2.4
-	github.com/jmpsec/osctrl/backend v0.2.4
-	github.com/jmpsec/osctrl/carves v0.2.4
-	github.com/jmpsec/osctrl/environments v0.2.4
-	github.com/jmpsec/osctrl/logging v0.2.4
-	github.com/jmpsec/osctrl/metrics v0.2.4
-	github.com/jmpsec/osctrl/nodes v0.2.4
-	github.com/jmpsec/osctrl/queries v0.2.4
-	github.com/jmpsec/osctrl/settings v0.2.4
-	github.com/jmpsec/osctrl/tags v0.2.4
-	github.com/jmpsec/osctrl/tls/handlers v0.2.4
-	github.com/jmpsec/osctrl/types v0.2.4
-	github.com/jmpsec/osctrl/users v0.2.4
-	github.com/jmpsec/osctrl/utils v0.2.4
+	github.com/jmpsec/osctrl/admin/handlers v0.2.5
+	github.com/jmpsec/osctrl/admin/sessions v0.2.5
+	github.com/jmpsec/osctrl/backend v0.2.5
+	github.com/jmpsec/osctrl/carves v0.2.5
+	github.com/jmpsec/osctrl/environments v0.2.5
+	github.com/jmpsec/osctrl/logging v0.2.5
+	github.com/jmpsec/osctrl/metrics v0.2.5
+	github.com/jmpsec/osctrl/nodes v0.2.5
+	github.com/jmpsec/osctrl/queries v0.2.5
+	github.com/jmpsec/osctrl/settings v0.2.5
+	github.com/jmpsec/osctrl/tags v0.2.5
+	github.com/jmpsec/osctrl/tls/handlers v0.2.5
+	github.com/jmpsec/osctrl/types v0.2.5
+	github.com/jmpsec/osctrl/users v0.2.5
+	github.com/jmpsec/osctrl/utils v0.2.5
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/spf13/viper v1.7.1
 	github.com/urfave/cli v1.22.5
