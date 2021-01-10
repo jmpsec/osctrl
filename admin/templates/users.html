@@ -125,7 +125,6 @@
                       <div class="col-md-4">
                         <input class="form-control" name="user_password" id="user_password" type="password" autocomplete="off">
                       </div>
-
                     </div>
                     <div class="form-group row">
                       <label class="col-md-2 col-form-label" for="user_email">Email: </label>
@@ -138,20 +137,32 @@
                       </div>
                     </div>
                     <div class="form-group row">
-                      <label class="col-md-3 col-form-label" for="user_admin">Enable Admin Level: </label>
-                      <div class="col-md-3">
+                      <label class="col-md-1 col-form-label" for="user_admin">Admin: </label>
+                      <div class="col-md-2">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_admin" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
-                      <label class="col-md-3 col-form-label" for="user_token">Create API Token: </label>
-                      <div class="col-md-3">
+                      <label class="col-md-1 col-form-label" for="user_token">API: </label>
+                      <div class="col-md-2">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_token" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
+
+                      <label class="col-md-3 col-form-label" for="default_env">Default Environment: </label>
+                      <div class="col-md-3">
+                        <select class="form-control" style="width: 100%;" name="default_env" id="default_env">
+                          <option value=""></option>
+                        {{ range  $i, $e := $.Environments }}
+                          <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                        {{ end }}
+                        </select>
+                        <small class="text-muted">read access will be granted</small>
+                      </div>
+
                     </div>
                   </div>
                   <div class="modal-footer">
@@ -334,6 +345,11 @@
         });
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Select2 initialization
+        $('#default_env').select2({
+          theme: "classic"
+        });
 
         // Clipboard.js initialization
         var clipboard_sh = new ClipboardJS('#button-clipboard-sh');

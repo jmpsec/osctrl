@@ -154,7 +154,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-			newUser, err := adminUsers.New(username, "", email, fullname, (s[ctxLevel] == adminLevel))
+			newUser, err := adminUsers.New(username, "", email, fullname, headersConfig.DefaultEnv, (s[ctxLevel] == adminLevel))
 			if err != nil {
 				log.Printf("Error with new user %s: %v", username, err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)

@@ -48,7 +48,7 @@ SECRET_FILE="$CONFIG/docker.secret"
 ./bin/osctrl-cli -D "$DB_JSON" environment flags -n dev -crt "/$CRT_FILE" -secret "/$SECRET_FILE" | sed 's/=uuid/=ephemeral/g' > "$FLAGS_FILE"
 
 # Create admin user
-OUTPUT_ADMIN="$(./bin/osctrl-cli -D "$DB_JSON" user add -u admin -p admin -a -n Admin)"
+OUTPUT_ADMIN="$(./bin/osctrl-cli -D "$DB_JSON" user add -u admin -p admin -a -E dev -n Admin)"
 if [ $? -eq 0 ]; then
   echo "Created admin user"
 else

@@ -23,6 +23,7 @@ type AdminUser struct {
 	APIToken      string
 	TokenExpire   time.Time
 	Admin         bool
+	DefaultEnv    string
 	CSRFToken     string
 	Permissions   postgres.Jsonb
 	LastIPAddress string
@@ -148,13 +149,14 @@ func (m *UserManager) Create(user AdminUser) error {
 }
 
 // New empty user
-func (m *UserManager) New(username, password, email, fullname string, admin bool) (AdminUser, error) {
+func (m *UserManager) New(username, password, email, fullname, defaultEnv string, admin bool) (AdminUser, error) {
 	if !m.Exists(username) {
 		passhash, err := m.HashPasswordWithSalt(password)
 		if err != nil {
 			return AdminUser{}, err
 		}
-		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, admin))
+		// Permissions are empty for an empty user
+		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, EnvLevel))
 		if err != nil {
 			permsRaw = []byte("{}")
 		}
@@ -162,6 +164,7 @@ func (m *UserManager) New(username, password, email, fullname string, admin bool
 			Username:    username,
 			PassHash:    passhash,
 			Admin:       admin,
+			DefaultEnv:  defaultEnv,
 			Permissions: postgres.Jsonb{RawMessage: permsRaw},
 			Email:       email,
 			Fullname:    fullname,
@@ -290,6 +293,14 @@ func (m *UserManager) ChangeEmail(username, email string) error {
 		if err := m.DB.Model(&user).Update("email", email).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}
+	}
+	return nil
+}
+
+// ChangeDefaultEnv for user by username
+func (m *UserManager) ChangeDefaultEnv(username, env string) error {
+	if err := m.DB.Model(&AdminUser{}).Where("username = ?", username).Update("default_env", env).Error; err != nil {
+		return fmt.Errorf("Update default_env %v", err)
 	}
 	return nil
 }

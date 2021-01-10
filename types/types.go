@@ -21,6 +21,7 @@ type JSONConfigurationHeaders struct {
 	DisplayName       string `json:"displayName"`
 	DistinguishedName string `json:"distinguishedName"`
 	Groups            string `json:"groups"`
+	DefaultEnv        string `json:"defaultEnv"`
 }
 
 // JSONConfigurationJWT to hold all JWT configuration values

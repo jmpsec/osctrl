@@ -84,6 +84,11 @@ func init() {
 							Usage:  "Make this user an admin",
 						},
 						cli.StringFlag{
+							Name:  "environment, E",
+							Value: "",
+							Usage: "Default environment for the new user",
+						},
+						cli.StringFlag{
 							Name:  "email, e",
 							Usage: "Email for the new user",
 						},
@@ -124,6 +129,10 @@ func init() {
 							Name:   "non-admin, d",
 							Hidden: false,
 							Usage:  "Make this user an non-admin",
+						},
+						cli.StringFlag{
+							Name:  "environment, E",
+							Usage: "Default environment for this user",
 						},
 					},
 					Action: cliWrapper(editUser),
