@@ -40,7 +40,9 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	}
 	permissions, err := h.Users.ConvertPermissions(user.Permissions.RawMessage)
 	if err != nil {
-
+		adminErrorResponse(w, "error processing login", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
 	}
 	_, err = h.Sessions.Save(r, w, user, permissions)
 	if err != nil {
@@ -52,7 +54,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login response sent")
 	}
-	adminOKResponse(w, "OK")
+	adminOKResponse(w, "/environment/"+user.DefaultEnv+"/active")
 	h.Inc(metricAdminOK)
 }
 
@@ -1172,19 +1174,22 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
+		namesEnvs := []string{u.DefaultEnv}
+		access := users.EnvLevel
 		if u.Admin {
-			namesEnvs, err := h.Envs.Names()
+			access = users.AdminLevel
+			namesEnvs, err = h.Envs.Names()
 			if err != nil {
 				adminErrorResponse(w, "error getting environments user", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
-			perms := h.Users.GenPermissions(namesEnvs, u.Admin)
-			if err := h.Users.ChangePermissions(u.Username, perms); err != nil {
-				adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
-				h.Inc(metricAdminErr)
-				return
-			}
+		}
+		perms := h.Users.GenPermissions(namesEnvs, access)
+		if err := h.Users.ChangePermissions(u.Username, perms); err != nil {
+			adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
 		}
 		if u.Token {
 			token, exp, err := h.Users.CreateToken(newUser.Username)
@@ -1256,7 +1261,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 					h.Inc(metricAdminErr)
 					return
 				}
-				perms := h.Users.GenPermissions(namesEnvs, u.Admin)
+				perms := h.Users.GenPermissions(namesEnvs, users.AdminLevel)
 				if err := h.Users.ChangePermissions(u.Username, perms); err != nil {
 					adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)

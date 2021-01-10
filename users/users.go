@@ -155,7 +155,8 @@ func (m *UserManager) New(username, password, email, fullname, defaultEnv string
 		if err != nil {
 			return AdminUser{}, err
 		}
-		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, admin))
+		// Permissions are empty for an empty user
+		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, EnvLevel))
 		if err != nil {
 			permsRaw = []byte("{}")
 		}

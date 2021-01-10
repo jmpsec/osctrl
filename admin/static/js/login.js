@@ -7,7 +7,9 @@ function sendLogin() {
       username: _user,
       password: _password
   };
-  sendPostRequest(data, _url, '/dashboard', false);
+  sendPostRequest(data, _url, '', false, function(_data){
+    window.location.replace(_data.message);
+  });
 }
 
 function sendLogout() {

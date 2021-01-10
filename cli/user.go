@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/users"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )
@@ -33,7 +34,22 @@ func addUser(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	// Create user
 	if err := adminUsers.Create(user); err != nil {
+		return err
+	}
+	// Assign permissions to user
+	permEnv := []string{defaultEnv}
+	access := users.EnvLevel
+	if admin {
+		access = users.AdminLevel
+		permEnv, err = envs.Names()
+		if err != nil {
+			return err
+		}
+	}
+	perms := adminUsers.GenPermissions(permEnv, access)
+	if err := adminUsers.ChangePermissions(username, perms); err != nil {
 		return err
 	}
 	fmt.Printf("Created user %s successfully", username)

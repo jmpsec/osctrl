@@ -151,10 +151,18 @@
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
-                      <label class="col-md-2 col-form-label" for="default_env">Default Environment: </label>
-                      <div class="col-md-4">
-                        <input class="form-control" name="default_env" id="default_env" type="text" autocomplete="off">
+
+                      <label class="col-md-3 col-form-label" for="default_env">Default Environment: </label>
+                      <div class="col-md-3">
+                        <select class="form-control" style="width: 100%;" name="default_env" id="default_env">
+                          <option value=""></option>
+                        {{ range  $i, $e := $.Environments }}
+                          <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                        {{ end }}
+                        </select>
+                        <small class="text-muted">read access will be granted</small>
                       </div>
+
                     </div>
                   </div>
                   <div class="modal-footer">
@@ -337,6 +345,11 @@
         });
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Select2 initialization
+        $('#default_env').select2({
+          theme: "classic"
+        });
 
         // Clipboard.js initialization
         var clipboard_sh = new ClipboardJS('#button-clipboard-sh');

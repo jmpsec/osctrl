@@ -33,15 +33,15 @@ const (
 )
 
 // GenPermissions to generate the struct with empty permissions
-func (m *UserManager) GenPermissions(environments []string, level bool) UserPermissions {
+func (m *UserManager) GenPermissions(environments []string, level AccessLevel) UserPermissions {
 	envs := make(EnvPermissions)
 	for _, e := range environments {
-		envs[e] = level
+		envs[e] = true
 	}
 	perms := UserPermissions{
 		Environments: envs,
-		Query:        level,
-		Carve:        level,
+		Query:        (level == QueryLevel || level == AdminLevel),
+		Carve:        (level == CarveLevel || level == AdminLevel),
 	}
 	return perms
 }
