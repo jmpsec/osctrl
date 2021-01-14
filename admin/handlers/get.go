@@ -17,7 +17,7 @@ import (
 // osquery
 const (
 	// osquery version to display tables
-	osqueryTablesVersion string = "4.5.1"
+	osqueryTablesVersion string = "4.6.0"
 	// Carved files folder
 	carvedFilesFolder string = "carved_files/"
 )
