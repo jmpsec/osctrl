@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ $metadata := .Metadata }}
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-aside-left" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-user-edit"></i> Edit Profile for user {{ $metadata.Username }}
+
+                  <div class="card-header-actions">
+                    <button id="profile_save" class="btn btn-sm btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="profileEditSave();">
+                      <i class="far fa-save"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning" data-tooltip="true" data-placement="top" title="Change Password" onclick="profileChangePassword('{{ $metadata.Username }}');">
+                      <i class="fas fa-user-lock"></i>
+                    </button>
+                  </div>
+
+              </div>
+
+              <div class="card-body">
+
+              {{ with .CurrentUser }}
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_username"><b>Username:</b></label>
+                  <input type="hidden" id="profile_username" value="{{ .Username }}">
+                  <div class="col-md-4">
+                    {{ .Username }}
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_email"><b>Email:</b></label>
+                  <div class="col-md-4">
+                    <input class="form-control" name="profile_email" id="profile_email" type="text" autocomplete="off" value="{{ .Email }}">
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_fullname"><b>Full Name:</b></label>
+                  <div class="col-md-4">
+                    <input class="form-control" name="profile_fullname" id="profile_fullname" type="text" autocomplete="off" value="{{ .Fullname }}">
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_env"><b>Default Environment:</b></label>
+                  <div class="col-md-4">
+                    {{ .DefaultEnv }}
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_useragent"><b>Last UserAgent:</b></label>
+                  <div class="col-md-4 col-form-label">
+                    <code>{{ .LastUserAgent }}</code>
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_access"><b>Last Access:</b></label>
+                  <div class="col-md-4 col-form-label">
+                    {{ pastFutureTimes .LastAccess }}
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_ip"><b>Last IP Address:</b></label>
+                  <div class="col-md-4 col-form-label">
+                    <code>{{ .LastIPAddress }}</code>
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_token"><b>Last Token Access:</b></label>
+                  <div class="col-md-4 col-form-label">
+                    {{ pastFutureTimes .LastTokenUse }}
+                  </div>
+                </div>
+              {{ end }}
+
+              </div>
+            </div>
+
+          <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModal" aria-hidden="true">
+            <div class="modal-dialog modal-dark" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Change Password for {{ $metadata.Username }}</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group row">
+                    <label class="col-md-4 col-form-label" for="old_password">Old Password: </label>
+                    <div class="col-md-8">
+                      <input class="form-control" name="old_password" id="old_password" type="password" autocomplete="off">
+                    </div>
+                  </div>
+                  <div class="form-group row">
+                    <label class="col-md-4 col-form-label" for="new_password">New Password: </label>
+                    <div class="col-md-8">
+                      <input class="form-control" name="new_password" id="new_password" type="password" autocomplete="off">
+                    </div>
+                  </div>
+                  <div class="form-group row">
+                    <label id="confirm_password_label" class="col-md-4 col-form-label" for="confirm_password">Confirm Password: </label>
+                    <div class="col-md-8">
+                      <input class="form-control" name="confirm_password" id="confirm_password" type="password" autocomplete="off">
+                      <small id="confirm_password_help" class="text-danger"></small>
+                    </div>
+                  </div>
+                  <input type="hidden" id="change_password_username" value="">
+                </div>
+                <div class="modal-footer">
+                  <button id="changePasswordButton" type="button" class="btn btn-primary" onclick="profileConfirmChangePassword();">Change Password</button>
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
+          {{ template "page-modals" . }}
+
+        </div>
+
+      </main>
+
+      {{ if eq $metadata.Level "admin" }}
+        {{ template "page-aside-right" . }}
+      {{ end }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/login.js"></script>
+    <script src="/static/js/profile.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+        // Focus on the change password input
+        $("#changePasswordModal").on('shown.bs.modal', function(){
+          $(this).find('#old_password').focus();
+        });
+        // Check passwords match
+        $("#confirm_password").keyup(function (event) {
+          var oldPassword = $("#old_password").val();
+          var newPassword = $("#new_password").val();
+          var confirmPassword = $("#confirm_password").val();
+          if (newPassword !== confirmPassword) {
+            $("#confirm_password_help").text("Passwords don't match.");
+            $("#confirm_password").addClass('is-invalid');
+            $("#confirm_password_label").addClass('text-danger');
+            $("#changePasswordButton").prop("disabled", true);
+          } else {
+            $("#confirm_password_help").text("");
+            $("#confirm_password").removeClass('is-invalid');
+            $("#confirm_password_label").removeClass('text-danger');
+            $("#changePasswordButton").prop("disabled", false);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

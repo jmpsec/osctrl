@@ -25,7 +25,7 @@ function confirmAddUser() {
     username: _username,
     email: _email,
     fullname: _fullname,
-    password: _password,
+    new_password: _password,
     admin: _admin,
     token: _token,
     environment: _env
@@ -152,4 +152,29 @@ function savePermissions() {
   sendPostRequest(data, '/users/permissions/' + _username, '', false, function (data) {
     console.log(data);
   });
+}
+
+function changePassword(_username) {
+  $("#new_password").val('');
+  $("#confirm_password").val('');
+  $("#change_password_username").val(_username);
+  $("#change_password_header").text('Change Password for '+_username);
+  $("#changePasswordModal").modal();
+}
+
+function confirmChangePassword() {
+  var _csrftoken = $("#csrftoken").val();
+
+  var _url = window.location.pathname;
+
+  var _username = $("#change_password_username").val();
+  var _newpassword = $("#new_password").val();
+
+  var data = {
+    csrftoken: _csrftoken,
+    action: 'edit',
+    username: _username,
+    new_password: _newpassword,
+  };
+  sendPostRequest(data, _url, _url, false);
 }
