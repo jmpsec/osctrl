@@ -152,6 +152,15 @@ type UsersTemplateData struct {
 	Metadata     TemplateMetadata
 }
 
+// ProfileTemplateData for passing data to the users profile template
+type ProfileTemplateData struct {
+	Title        string
+	Environments []environments.TLSEnvironment
+	Platforms    []string
+	CurrentUser  users.AdminUser
+	Metadata     TemplateMetadata
+}
+
 // TagsTemplateData for passing data to the tags template
 type TagsTemplateData struct {
 	Title        string

@@ -28,6 +28,8 @@ const (
 	CarveLevel
 	// EnvLevel for environment privileges
 	EnvLevel
+	// UserLevel for regula user privileges
+	UserLevel
 	// NoEnvironment to be explicit when used
 	NoEnvironment = ""
 )
@@ -69,6 +71,8 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 		return perms.Carve
 	case EnvLevel:
 		return perms.Environments[environment]
+	case UserLevel:
+		return true
 	}
 	return false
 }

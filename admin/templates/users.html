@@ -45,8 +45,9 @@
                       <th width="10%">Username</th>
                       <th width="15%">Email</th>
                       <th width="10%">Fullname</th>
+                      <th width="10%">Environment</th>
                       <th width="10%">Last IP</th>
-                      <th width="30%">Last UserAgent</th>
+                      <th width="20%">Last UserAgent</th>
                       <th width="5%">Admin</th>
                       <th width="10%">Last Session</th>
                       <th width="10%"></th>
@@ -63,19 +64,22 @@
                         <p id="fullname" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Fullname }}</p>
                       </td>
                       <td>
+                        <p id="environment" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.DefaultEnv }}</p>
+                      </td>
+                      <td>
                       {{ if eq $e.LastIPAddress "" }}
                         None
                       {{ else }}
                         {{ $e.LastIPAddress }}
                       {{ end }}
                       </td>
-                      <td>
+                      <td><code>
                       {{ if eq $e.LastUserAgent "" }}
                         None
                       {{ else }}
                         {{ $e.LastUserAgent }}
                       {{ end }}
-                      </td>
+                      </code></td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
@@ -97,6 +101,10 @@
                         <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
                         onclick="confirmDeleteUser('{{ $e.Username }}');">
                           <i class="far fa-trash-alt"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-warning" data-tooltip="true" data-placement="top" title="Change Password"
+                        onclick="changePassword('{{ $e.Username }}');">
+                          <i class="fas fa-user-lock"></i>
                         </button>
                       </td>
                     </tr>
@@ -203,6 +211,42 @@
                   </div>
                   <div class="modal-footer">
                     <button id="refreshTokenButton" type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+                <!-- /.modal-content -->
+              </div>
+              <!-- /.modal-dialog -->
+            </div>
+            <!-- /.modal -->
+
+            <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModal" aria-hidden="true">
+              <div class="modal-dialog modal-dark" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h4 id="change_password_header" class="modal-title">Change Password</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group row">
+                      <label class="col-md-4 col-form-label" for="new_password">New Password: </label>
+                      <div class="col-md-8">
+                        <input class="form-control" name="new_password" id="new_password" type="password" autocomplete="off">
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label id="confirm_password_label" class="col-md-4 col-form-label" for="confirm_password">Confirm Password: </label>
+                      <div class="col-md-8">
+                        <input class="form-control" name="confirm_password" id="confirm_password" type="password" autocomplete="off">
+                        <small id="confirm_password_help" class="text-danger"></small>
+                      </div>
+                    </div>
+                    <input type="hidden" id="change_password_username" value="">
+                  </div>
+                  <div class="modal-footer">
+                    <button id="changePasswordButton" type="button" class="btn btn-primary" onclick="confirmChangePassword();">Change Password</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                   </div>
                 </div>
@@ -323,6 +367,9 @@
           if (type_edit === 'fullname') {
             data.fullname = value;
           }
+          if (type_edit === 'environment') {
+            data.environment = value;
+          }
           console.log(settings);
           sendPostRequest(data, window.location.pathname, '', false);
           return value;
@@ -410,6 +457,25 @@
         // Focus on input when modal opens
         $("#addUserModal").on('shown.bs.modal', function(){
           $(this).find('#user_username').focus();
+        });
+        $("#changePasswordModal").on('shown.bs.modal', function(){
+          $(this).find('#new_password').focus();
+        });
+        // Check passwords match
+        $("#confirm_password").keyup(function (event) {
+          var newPassword = $("#new_password").val();
+          var confirmPassword = $("#confirm_password").val();
+          if (newPassword !== confirmPassword) {
+            $("#confirm_password_help").text("Passwords don't match.");
+            $("#confirm_password").addClass('is-invalid');
+            $("#confirm_password_label").addClass('text-danger');
+            $("#changePasswordButton").prop("disabled", true);
+          } else {
+            $("#confirm_password_help").text("");
+            $("#confirm_password").removeClass('is-invalid');
+            $("#confirm_password_label").removeClass('text-danger');
+            $("#changePasswordButton").prop("disabled", false);
+          }
         });
       });
     </script>

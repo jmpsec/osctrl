@@ -1162,7 +1162,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.DefaultEnv, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.DefaultEnv, u.Admin)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
@@ -1220,9 +1220,16 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				return
 			}
 		}
-		if u.DefaultEnv != "" {
+		if u.DefaultEnv != "" && h.Envs.Exists(u.DefaultEnv) {
 			if err := h.Users.ChangeDefaultEnv(u.Username, u.DefaultEnv); err != nil {
 				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if u.NewPassword != "" {
+			if err := h.Users.ChangePassword(u.Username, u.NewPassword); err != nil {
+				adminErrorResponse(w, "error changing password", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
@@ -1567,5 +1574,91 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 		log.Println("DebugService: Configuration response sent")
 	}
 	adminOKResponse(w, "enroll data saved")
+	h.Inc(metricAdminOK)
+}
+
+// EditProfilePOSTHandler for POST requests to edit profile
+func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	var u UsersRequest
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Parse request JSON body
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Check CSRF Token
+	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], u.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// User must be the same as logged in
+	if u.Username != ctx[sessions.CtxUser] {
+		adminErrorResponse(w, "invalid user profile", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	switch u.Action {
+	case "change_password":
+		// Verify previous password
+		if u.OldPassword != "" {
+			access, user := h.Users.CheckLoginCredentials(u.Username, u.OldPassword)
+			if !access {
+				adminErrorResponse(w, "error changing password", http.StatusInternalServerError, fmt.Errorf("bad old password"))
+				h.Inc(metricAdminErr)
+				return
+			}
+			// Update password with the new one
+			if access && u.NewPassword != "" {
+				if err := h.Users.ChangePassword(user.Username, u.NewPassword); err != nil {
+					adminErrorResponse(w, "error changing password", http.StatusInternalServerError, err)
+					h.Inc(metricAdminErr)
+					return
+				}
+			}
+			adminOKResponse(w, "password changed successfully")
+		}
+	case "edit":
+		// Retrieve user
+		user, err := h.Users.Get(u.Username)
+		if err != nil {
+			adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		if u.Fullname != user.Fullname {
+			if err := h.Users.ChangeFullname(user.Username, u.Fullname); err != nil {
+				adminErrorResponse(w, "error changing fullname", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if u.Email != user.Email {
+			if err := h.Users.ChangeEmail(user.Username, u.Email); err != nil {
+				adminErrorResponse(w, "error changing email", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		if u.DefaultEnv != user.DefaultEnv && h.Envs.Exists(u.DefaultEnv) {
+			if err := h.Users.ChangeDefaultEnv(user.Username, u.DefaultEnv); err != nil {
+				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "profiled updated successfully")
+	}
+	// Serialize and send response
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Edit profile response sent")
+	}
 	h.Inc(metricAdminOK)
 }

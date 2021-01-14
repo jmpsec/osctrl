@@ -497,6 +497,9 @@ func main() {
 	// Admin: manage tokens
 	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler))).Methods("GET")
 	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler))).Methods("POST")
+	// edit profile
+	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler))).Methods("GET")
+	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler))).Methods("POST")
 	// logout
 	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
 	// SAML ACS
