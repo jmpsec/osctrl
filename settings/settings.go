@@ -56,6 +56,7 @@ const (
 	DefaultEnv         string = "default_env"
 	InactiveHours      string = "inactive_hours"
 	AcceleratedSeconds string = "accelerated_seconds"
+	NodeDashboard      string = "node_dashboard"
 )
 
 // Names for setting values for logging
@@ -585,4 +586,13 @@ func (conf *Settings) DefaultEnv(service string) string {
 		return "dev"
 	}
 	return value.String
+}
+
+// NodeDashboard checks if display dashboard per node is enabled
+func (conf *Settings) NodeDashboard() bool {
+	value, err := conf.RetrieveValue(ServiceAdmin, NodeDashboard)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
 }

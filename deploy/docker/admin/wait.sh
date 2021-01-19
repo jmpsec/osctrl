@@ -29,7 +29,7 @@ else
 fi
 
 # Decrease intervals in dev
-./bin/osctrl-cli -D "$DB_JSON" environment update -n dev -l 75 -c 45
+./bin/osctrl-cli -D "$DB_JSON" environment update -n dev -l 75 -c 45 -q 60
 
 # Enable verbose mode
 ./bin/osctrl-cli -D "$DB_JSON" environment add-osquery-option -n dev -o "verbose" -t bool -b true

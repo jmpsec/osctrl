@@ -733,7 +733,7 @@ else
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
     log "Decrease intervals for environment $ENVIRONMENT"
-    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment update -n "$ENVIRONMENT" -l "75" -c "45"
+    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
     log "Enable verbose mode"
     "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
     log "Disable splay for schedule"

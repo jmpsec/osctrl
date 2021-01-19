@@ -21,10 +21,74 @@
 
             {{ $template := . }}
             {{ with .Node }}
+
+          {{ if $template.Dashboard }}
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="nav-icon fas fa-tachometer-alt"></i>
+                <strong> Dashboard for node {{ .Hostname }} </strong>
+                {{ range  $i, $t := $template.NodeTags }}
+                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
+                {{ end }}
+              </div>
+              <div class="card-body">
+                <div class="row justify-content-md-center">
+                {{ if not $template.Schedule }}
+                  <div class="col-md-2">
+                    <div class="c-callout c-callout-info">
+                      <small class="text-muted">No queries in schedule</small>
+                      <div class="row justify-content-md-center">
+                        <div class="text-value-lg"><i class="fas fa-exclamation-triangle"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                {{ else }}
+                  <div class="col-md-2">
+                    <div class="c-callout c-callout-info">
+                      <small class="text-muted">osquery schedule</small>
+                      <div class="row justify-content-md-center">
+                        {{ $length_schedule := len $template.Schedule }}
+                        <div class="text-value-lg">{{ $length_schedule }}</div>
+                        {{ $query_str := "query" }}
+                        {{ if gt $length_schedule 1 }}
+                          {{ $query_str = "queries" }}
+                        {{ end }}
+                        <small class="text-muted align-self-end"> {{ $query_str }}</small>
+                      </div>
+                    </div>
+                  </div>
+                {{ end }}
+                {{ if not $template.Packs }}
+                  <div class="col-md-2">
+                    <div class="c-callout c-callout-info">
+                      <small class="text-muted">No queries in packs</small>
+                      <div class="row justify-content-md-center">
+                        <div class="text-value-lg"><i class="fas fa-exclamation-triangle"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                {{ else }}
+                  {{ range  $i, $t := $template.Packs }}
+                  <div class="col-md-2">
+                    <div class="c-callout c-callout-info">
+                      <small class="text-muted">Pack {{ $i }}</small>
+                      <div class="row justify-content-md-center">
+                        <div class="text-value-lg">{{ len $t.Queries }}</div>
+                        <small class="text-muted align-self-end"> queries</small>
+                      </div>
+                    </div>
+                  </div>
+                  {{ end }}
+                {{ end }}
+                </div>
+              </div>
+            </div>
+          {{ end }}
+
             <div class="card mt-2">
               <div class="card-header">
                 <i class="nav-icon fas fa-info-circle"></i>
-                <strong> Details of node {{ .UUID }} </strong>
+                <strong> Details of node {{ .Hostname }} </strong>
                 {{ range  $i, $t := $template.NodeTags }}
                   <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
                 {{ end }}
@@ -602,6 +666,9 @@
 
         // Enable all tooltips
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Open this environment dropdown
+        $('#dropdown-env-{{ .Environment }}').addClass("open");
       });
     </script>
     {{ end }}

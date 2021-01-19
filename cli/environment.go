@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jmpsec/osctrl/environments"
@@ -100,11 +102,11 @@ func updateEnvironment(c *cli.Context) error {
 		env.LogInterval = loggingInterval
 	}
 	configInterval := c.Int("config")
-	if loggingInterval != 0 {
+	if configInterval != 0 {
 		env.ConfigInterval = configInterval
 	}
 	queryInterval := c.Int("query")
-	if loggingInterval != 0 {
+	if queryInterval != 0 {
 		env.QueryInterval = queryInterval
 	}
 	// Update environment
@@ -322,7 +324,7 @@ func addScheduledQuery(c *cli.Context) error {
 	// Add new scheduled query
 	qData := environments.ScheduleQuery{
 		Query:    query,
-		Interval: interval,
+		Interval: json.Number(strconv.Itoa(interval)),
 		Platform: c.String("platform"),
 		Version:  c.String("version"),
 	}
@@ -432,7 +434,7 @@ func addNewPack(c *cli.Context) error {
 	pack := environments.PackEntry{
 		Platform: c.String("platform"),
 		Version:  c.String("version"),
-		Shard:    c.Int("shard"),
+		Shard:    json.Number(strconv.Itoa(c.Int("shard"))),
 	}
 	// Add pack to configuration
 	if err := envs.AddQueryPackConf(envName, pName, pack); err != nil {
@@ -524,7 +526,7 @@ func addPackQuery(c *cli.Context) error {
 	// Add new scheduled query
 	qData := environments.ScheduleQuery{
 		Query:    query,
-		Interval: interval,
+		Interval: json.Number(strconv.Itoa(interval)),
 		Platform: c.String("platform"),
 		Version:  c.String("version"),
 	}

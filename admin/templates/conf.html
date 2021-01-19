@@ -78,7 +78,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="options_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#options', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="options_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveOptions();">
                       <i class="far fa-save"></i>
                     </button>
@@ -108,7 +112,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="schedule_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#schedule', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="schedule_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveSchedule();">
                       <i class="far fa-save"></i>
                     </button>
@@ -138,7 +146,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="packs_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#packs', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="packs_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="savePacks();">
                       <i class="far fa-save"></i>
                     </button>
@@ -168,7 +180,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="atc_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#automatic-table-construction', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="atc_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveATC();">
                       <i class="far fa-save"></i>
                     </button>
@@ -198,7 +214,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="decorators_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#decorator-queries', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="decorators_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveDecorators();">
                       <i class="far fa-save"></i>
                     </button>
@@ -228,7 +248,11 @@
                 <div class="card-header-actions">
                 {{ if eq $metadata.Level "admin" }}
                   <div class="card-header-action">
-                    <button id="conf_json_save" class="btn btn-sm btn-block btn-dark"
+                    <button class="btn btn-sm btn-info"
+                      data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/', '_blank');">
+                      <i class="far fa-question-circle"></i>
+                    </button>
+                    <button id="conf_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveConfiguration();">
                       <i class="far fa-save"></i>
                     </button>
