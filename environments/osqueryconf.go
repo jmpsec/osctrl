@@ -3,6 +3,7 @@ package environments
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // OsqueryConf to hold the structure for the configuration
@@ -25,25 +26,28 @@ type ScheduleConf map[string]ScheduleQuery
 // ScheduleQuery to hold the scheduled queries in the configuration
 // https://osquery.readthedocs.io/en/stable/deployment/configuration/#schedule
 type ScheduleQuery struct {
-	Query    string `json:"query,omitempty"`
-	Interval int    `json:"interval,omitempty"`
-	Removed  bool   `json:"removed,omitempty"`
-	Snapshot bool   `json:"snapshot,omitempty"`
-	Platform string `json:"platform,omitempty"`
-	Version  string `json:"version,omitempty"`
-	Shard    int    `json:"shard,omitempty"`
-	Denylist bool   `json:"denylist,omitempty"`
+	Query    string      `json:"query,omitempty"`
+	Interval json.Number `json:"interval,omitempty"`
+	Removed  bool        `json:"removed,omitempty"`
+	Snapshot bool        `json:"snapshot,omitempty"`
+	Platform string      `json:"platform,omitempty"`
+	Version  string      `json:"version,omitempty"`
+	Shard    json.Number `json:"shard,omitempty"`
+	Denylist bool        `json:"denylist,omitempty"`
 }
 
 // PacksConf to hold all the packs in the configuration
-// https://osquery.readthedocs.io/en/stable/deployment`/configuration/#packs
+// https://osquery.readthedocs.io/en/stable/deployment/configuration/#packs
 type PacksConf map[string]interface{}
+
+// PacksEntries to hold all the parsed non-local packs
+type PacksEntries map[string]PackEntry
 
 // PackEntry to hold the struct for a single pack
 type PackEntry struct {
 	Queries   map[string]ScheduleQuery `json:"queries,omitempty"`
 	Platform  string                   `json:"platform,omitempty"`
-	Shard     int                      `json:"shard,omitempty"`
+	Shard     json.Number              `json:"shard,omitempty"`
 	Version   string                   `json:"version,omitempty"`
 	Discovery []string                 `json:"discovery,omitempty"`
 }
@@ -188,6 +192,20 @@ func (environment *Environment) GenStructSchedule(configuration []byte) (Schedul
 	return data, nil
 }
 
+// NodeStructSchedule to generate schedule that applies to a platform from the serialized string
+func (environment *Environment) NodeStructSchedule(configuration []byte, platform string) (ScheduleConf, error) {
+	schedule, err := environment.GenStructSchedule(configuration)
+	if err != nil {
+		return ScheduleConf{}, fmt.Errorf("GenStructSchedule %v", err)
+	}
+	for k, s := range schedule {
+		if !IsPlatformQuery(strings.ToLower(s.Platform), strings.ToLower(platform)) {
+			delete(schedule, k)
+		}
+	}
+	return schedule, nil
+}
+
 // GenStructPacks to generate packs from the serialized string
 func (environment *Environment) GenStructPacks(configuration []byte) (PacksConf, error) {
 	var data PacksConf
@@ -195,6 +213,46 @@ func (environment *Environment) GenStructPacks(configuration []byte) (PacksConf,
 		return data, err
 	}
 	return data, nil
+}
+
+// NodePacksEntries to generate packs parsed struct that applies to a platform from the serialized string
+func (environment *Environment) NodePacksEntries(configuration []byte, platform string) (PacksEntries, error) {
+	packs, err := environment.GenPacksEntries(configuration)
+	if err != nil {
+		return PacksEntries{}, fmt.Errorf("GenPacksEntries %v", err)
+	}
+	for k, p := range packs {
+		if !IsPlatformQuery(strings.ToLower(p.Platform), platform) {
+			delete(packs, k)
+		}
+	}
+	return packs, nil
+}
+
+// GenPacksEntries to generate packs parsed struct from the serialized string
+func (environment *Environment) GenPacksEntries(configuration []byte) (PacksEntries, error) {
+	packsConf, err := environment.GenStructPacks(configuration)
+	if err != nil {
+		return PacksEntries{}, fmt.Errorf("GenStructPacks %v", err)
+	}
+	packsEntries := make(PacksEntries)
+	for k, p := range packsConf {
+		switch v := p.(type) {
+		case string:
+			// This is a local pack, do nothing
+		default:
+			rawdata, err := json.Marshal(v)
+			if err != nil {
+				return PacksEntries{}, fmt.Errorf("Marshal %v", err)
+			}
+			var parsed PackEntry
+			if err := json.Unmarshal(rawdata, &parsed); err != nil {
+				return PacksEntries{}, fmt.Errorf("Unmarshal %v", err)
+			}
+			packsEntries[k] = parsed
+		}
+	}
+	return packsEntries, nil
 }
 
 // GenStructDecorators to generate decorators from the serialized string

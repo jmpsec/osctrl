@@ -96,6 +96,12 @@ func loadingSettings(mgr *settings.Settings) error {
 			return fmt.Errorf("Failed to add %s to configuration: %v", settings.InactiveHours, err)
 		}
 	}
+	// Check if service settings for display dashboard is ready
+	if !mgr.IsValue(settings.ServiceAdmin, settings.NodeDashboard) {
+		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.NodeDashboard, false); err != nil {
+			return fmt.Errorf("Failed to add %s to settings: %v", settings.NodeDashboard, err)
+		}
+	}
 	if err := loadingLoggingSettings(mgr); err != nil {
 		return fmt.Errorf("Failed to load logging settings: %v", err)
 	}

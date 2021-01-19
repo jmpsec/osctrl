@@ -919,6 +919,27 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
+	// Get the environment for this node
+	var nodeEnv environments.TLSEnvironment
+	for _, e := range envAll {
+		if e.Name == node.Environment {
+			nodeEnv = e
+		}
+	}
+	// Get query packs for this environment
+	packs, err := h.Envs.NodePacksEntries([]byte(nodeEnv.Packs), node.Platform)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting packs: %v", err)
+		return
+	}
+	// Get the schedule for this environment
+	schedule, err := h.Envs.NodeStructSchedule([]byte(nodeEnv.Schedule), node.Platform)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting schedule: %v", err)
+		return
+	}
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:        "Node View " + node.Hostname,
@@ -928,6 +949,9 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		TagsForNode:  tags,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
+		Dashboard:    h.Settings.NodeDashboard(),
+		Packs:        packs,
+		Schedule:     schedule,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)

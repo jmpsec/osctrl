@@ -179,4 +179,7 @@ type NodeTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
+	Dashboard    bool
+	Schedule     environments.ScheduleConf
+	Packs        environments.PacksEntries
 }

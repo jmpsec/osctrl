@@ -28,7 +28,7 @@ type OsqueryResultData struct {
 	Name        string
 	Action      string
 	Epoch       int64
-	Columns     json.RawMessage
+	Columns     []byte
 	Counter     int
 }
 
@@ -50,7 +50,7 @@ type OsqueryQueryData struct {
 	UUID        string `gorm:"index"`
 	Environment string
 	Name        string
-	Data        json.RawMessage
+	Data        []byte
 	Status      int
 }
 

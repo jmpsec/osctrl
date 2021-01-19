@@ -14,38 +14,38 @@
 
       <li class="nav-title">Nodes by environment</li>
       {{range  $i, $e := $.Environments}}
-      <li class="nav-item nav-dropdown">
+      <li id="dropdown-env-{{ $e.Name }}" class="nav-item nav-dropdown">
         <a class="nav-link nav-dropdown-toggle">
           <i class="nav-icon {{ $e.Icon }}"></i>
-          <input type="hidden" class="stats-environment-value" value="{{ $e.UUID }}">
+          <input type="hidden" class="stats-environment-value" value="{{ $e.Name }}">
           {{ $e.Name }}
-          <span class="mr-4 badge badge-light stats-environment-{{ $e.UUID }}-total">X</span>
+          <span class="mr-4 badge badge-light stats-environment-{{ $e.Name }}-total">X</span>
         </a>
         <ul class="nav-dropdown-items">
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/active">
               <i class="nav-icon {{ $e.Icon }}"></i>
               active
-              <span class="badge badge-success stats-environment-{{ $e.UUID }}-active">X</span>
+              <span class="badge badge-success stats-environment-{{ $e.Name }}-active">X</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/inactive">
               <i class="nav-icon {{ $e.Icon }}"></i>
               inactive
-              <span class="badge badge-danger stats-environment-{{ $e.UUID }}-inactive">X</span>
+              <span class="badge badge-danger stats-environment-{{ $e.Name }}-inactive">X</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.Name }}/all">
               <i class="nav-icon {{ $e.Icon }}"></i>
               all
-              <span class="badge badge-light stats-environment-{{ $e.UUID }}-total">X</span>
+              <span class="badge badge-light stats-environment-{{ $e.Name }}-total">X</span>
             </a>
           </li>
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/conf/{{ $e.Name }}">
-              <i class="nav-icon fas fa-cog"></i> {{ $e.Name }}.conf
+              <i class="nav-icon fas fa-cog"></i>  osquery conf
             </a>
           </li>
           <li class="nav-item nav-dropdown">
