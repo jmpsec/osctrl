@@ -76,6 +76,7 @@
                   <thead>
                     <tr>
                       <th>Created</th>
+                      <th>Target</th>
                       <th>Data</th>
                     </tr>
                   </thead>
@@ -129,14 +130,26 @@
                 sort: "created.timestamp"
               }
             },
+            {"data" : "target"},
             {"data" : "data"}
           ],
           order: [[ 0, "desc" ]],
           columnDefs: [
             { width: '10%', targets: 0 },
             {
-              width: '90%',
+              width: '15%',
               targets: 1,
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<a href="/node/'+data.uuid+'">' + data.name + '</a>';
+                } else {
+                  return data;
+                }
+              }
+            },
+            {
+              width: '75%',
+              targets: 2,
               render: function (data, type, row, meta) {
                 if (type === 'display') {
                   return '<pre>' + JSON.stringify(JSON.parse(data),null,2) + '</pre>';

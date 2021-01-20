@@ -43,10 +43,17 @@ type ReturnedQueryLogs struct {
 	Data []QueryLogJSON `json:"data"`
 }
 
+// QueryTargetNode to return the target of a on-demand query
+type QueryTargetNode struct {
+	UUID string `json:"uuid"`
+	Name string `json:"name"`
+}
+
 // QueryLogJSON to be used to populate JSON data for a query log
 type QueryLogJSON struct {
-	Created CreationTimes `json:"created"`
-	Data    string        `json:"data"`
+	Created CreationTimes   `json:"created"`
+	Target  QueryTargetNode `json:"target"`
+	Data    string          `json:"data"`
 }
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
@@ -187,13 +194,23 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	// Prepare data to be returned
 	queryLogJSON := []QueryLogJSON{}
 	for _, q := range queryLogs {
+		// Get target node
+		node, err := h.Nodes.GetByUUID(q.UUID)
+		if err != nil {
+			node.UUID = q.UUID
+			node.Localname = ""
+		}
 		_c := CreationTimes{
 			Display:   utils.PastFutureTimes(q.CreatedAt),
 			Timestamp: utils.TimeTimestamp(q.CreatedAt),
 		}
 		_l := QueryLogJSON{
 			Created: _c,
-			Data:    string(q.Data),
+			Target: QueryTargetNode{
+				UUID: node.UUID,
+				Name: node.Localname,
+			},
+			Data: string(q.Data),
 		}
 		queryLogJSON = append(queryLogJSON, _l)
 	}
