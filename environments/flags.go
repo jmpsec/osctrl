@@ -15,25 +15,25 @@ const (
 --force=true
 --utc=true
 --enroll_secret_path={{ .SecretFile }}
---enroll_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.EnrollPath }}
+--enroll_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.EnrollPath }}
 --config_plugin=tls
---config_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.ConfigPath }}
+--config_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.ConfigPath }}
 --config_tls_refresh={{ .Environment.ConfigInterval }}
 --config_tls_max_attempts=5
 --logger_plugin=tls
 --logger_tls_compress=true
---logger_tls_endpoint=/{{ .Environment.Name }}/{{ .Environment.LogPath }}
+--logger_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.LogPath }}
 --logger_tls_period={{ .Environment.LogInterval }}
 --disable_carver=false
 --carver_disable_function=false
---carver_start_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverInitPath }}
---carver_continue_endpoint=/{{ .Environment.Name }}/{{ .Environment.CarverBlockPath }}
+--carver_start_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverInitPath }}
+--carver_continue_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverBlockPath }}
 --disable_distributed=false
 --distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
 --distributed_tls_max_attempts=5
---distributed_tls_read_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryReadPath }}
---distributed_tls_write_endpoint=/{{ .Environment.Name }}/{{ .Environment.QueryWritePath }}
+--distributed_tls_read_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryWritePath }}
 --tls_hostname={{ .Environment.Hostname }}
 {{ .FlagServerCerts }}
 `
