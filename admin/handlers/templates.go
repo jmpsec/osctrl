@@ -749,7 +749,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:        envVar + " Configuration",
+		Title:        env.Name + " Configuration",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environment:  env,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),

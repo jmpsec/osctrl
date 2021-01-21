@@ -45,22 +45,29 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		log.Println("error getting environment")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
-		log.Printf("error unknown environment (%s)", env)
+	if !h.Envs.Exists(envVar) {
+		log.Printf("error unknown environment (%s)", envVar)
+		h.Inc(metricJSONErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env.Name) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
@@ -78,7 +85,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 		h.Inc(metricJSONErr)
 		return
 	}
-	nodes, err := h.Nodes.GetByEnv(env, target, h.Settings.InactiveHours())
+	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours())
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		h.Inc(metricJSONErr)

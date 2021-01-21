@@ -1,5 +1,4 @@
 function statsRefresh(_target, _identifier) {
-  console.log('statsRefresh ' + _target + ' ' + _name);
   $.ajax({
     url: '/json/stats/' + _target + '/' + _identifier,
     dataType: 'json',

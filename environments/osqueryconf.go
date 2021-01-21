@@ -65,8 +65,8 @@ type DecoratorConf struct {
 type ATCConf map[string]interface{}
 
 // RefreshConfiguration to take all parts and put them together in the configuration
-func (environment *Environment) RefreshConfiguration(name string) error {
-	env, err := environment.Get(name)
+func (environment *Environment) RefreshConfiguration(idEnv string) error {
+	env, err := environment.Get(idEnv)
 	if err != nil {
 		return fmt.Errorf("error structuring environment %v", err)
 	}
@@ -108,12 +108,12 @@ func (environment *Environment) RefreshConfiguration(name string) error {
 }
 
 // UpdateConfiguration to update configuration for an environment
-func (environment *Environment) UpdateConfiguration(name string, cnf OsqueryConf) error {
+func (environment *Environment) UpdateConfiguration(idEnv string, cnf OsqueryConf) error {
 	indentedConf, err := environment.GenSerializedConf(cnf, true)
 	if err != nil {
 		return fmt.Errorf("error serializing configuration %v", err)
 	}
-	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Update("configuration", indentedConf).Error; err != nil {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("configuration", indentedConf).Error; err != nil {
 		return fmt.Errorf("Update configuration %v", err)
 	}
 	return nil

@@ -712,8 +712,16 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
 	// Extract environment and verify
-	environmentVar, ok := vars["environment"]
-	if !ok || !h.Envs.Exists(environmentVar) {
+	envVar, ok := vars["environment"]
+	if !ok || !h.Envs.Exists(envVar) {
+		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
 		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -722,7 +730,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, environmentVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env.Name) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -742,20 +750,20 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 		h.Inc(metricAdminErr)
 		return
 	}
-	if err := h.Envs.UpdateIntervals(environmentVar, c.ConfigInterval, c.LogInterval, c.QueryInterval); err != nil {
+	if err := h.Envs.UpdateIntervals(env.Name, c.ConfigInterval, c.LogInterval, c.QueryInterval); err != nil {
 		adminErrorResponse(w, "error updating intervals", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return
 	}
 	// After updating interval, you need to re-generate flags
-	flags, err := h.Envs.GenerateFlagsEnv(environmentVar, "", "")
+	flags, err := h.Envs.GenerateFlagsEnv(envVar, "", "")
 	if err != nil {
 		adminErrorResponse(w, "error re-generating flags", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Update flags in the newly created environment
-	if err := h.Envs.UpdateFlags(environmentVar, flags); err != nil {
+	if err := h.Envs.UpdateFlags(envVar, flags); err != nil {
 		adminErrorResponse(w, "error updating flags", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return

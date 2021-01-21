@@ -167,20 +167,28 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricEnrollReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricEnrollErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricEnrollErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -192,12 +200,12 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeKey string
 	var newNode nodes.OsqueryNode
 	nodeInvalid := true
-	if h.checkValidSecret(t.EnrollSecret, env) {
+	if h.checkValidSecret(t.EnrollSecret, env.Name) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
-		newNode = nodeFromEnroll(t, env, r.Header.Get("X-Real-IP"), nodeKey)
+		newNode = nodeFromEnroll(t, env.Name, r.Header.Get("X-Real-IP"), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
-		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env) {
+		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
 				h.Inc(metricEnrollErr)
 				log.Printf("error archiving node %v", err)
@@ -215,7 +223,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
-				if err := h.Tags.TagNode(env, newNode); err != nil {
+				if err := h.Tags.TagNode(env.Name, newNode); err != nil {
 					h.Inc(metricEnrollErr)
 					log.Printf("error tagging node %v", err)
 				}
@@ -227,7 +235,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -241,27 +249,28 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	var response interface{}
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricConfigErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricConfigErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
-	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	// TODO do the exist and get in one step
 	// Get environment
-	e, err := h.Envs.Get(env)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricConfigErr)
+		h.Inc(metricEnrollErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Debug HTTP for environment
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.ConfigRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -283,12 +292,12 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
-		response = []byte(e.Configuration)
+		response = []byte(env.Configuration)
 	} else {
 		response = types.ConfigResponse{NodeInvalid: true}
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		if x, ok := response.([]byte); ok {
 			log.Printf("Configuration: %s", string(x))
 		} else {
@@ -305,20 +314,27 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricLogReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricLogErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricLogErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Check if body is compressed, if so, uncompress
-	var err error
 	if r.Header.Get("Content-Encoding") == "gzip" {
 		r.Body, err = gzip.NewReader(r.Body)
 		if err != nil {
@@ -334,7 +350,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t types.LogRequest
 	err = json.NewDecoder(r.Body).Decode(&t)
@@ -355,14 +371,14 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		h.Logs.ProcessLogs(t.Data, t.LogType, env, r.Header.Get("X-Real-IP"), (*h.EnvsMap)[env].DebugHTTP)
+		h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, r.Header.Get("X-Real-IP"), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
 	response := types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -375,20 +391,28 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricReadReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricReadErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricReadErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -431,7 +455,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		response = types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid}
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -444,20 +468,28 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	h.Inc(metricWriteReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricWriteErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricWriteErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -474,14 +506,14 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		nodeInvalid = false
 		// Process submitted results
-		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env, (*h.EnvsMap)[env].DebugHTTP)
+		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env.Name, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
 	// Prepare response
 	response := types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
@@ -494,26 +526,28 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	h.Inc(metricOnelinerReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricOnelinerErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
 		return
 	}
-	// Debug HTTP
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
-	e, err := h.Envs.Get(env)
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricOnelinerErr)
+		h.Inc(metricEnrollErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Debug HTTP
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Retrieve type of script
 	script, ok := vars["script"]
 	if !ok {
@@ -530,20 +564,20 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
-		if !h.checkValidEnrollSecretPath(env, secretPath) {
+		if !h.checkValidEnrollSecretPath(env.Name, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for enrolling")
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
-		if !h.checkValidRemoveSecretPath(env, secretPath) {
+		if !h.checkValidRemoveSecretPath(env.Name, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for removing")
 			return
 		}
 	}
 	// Prepare response with the script
-	quickScript, err := environments.QuickAddScript("osctrl-"+e.Name, script, e)
+	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
 		log.Printf("error getting script %v", err)
@@ -561,20 +595,28 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricInitReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricInitErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricInitErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -593,7 +635,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		if err := h.ProcessCarveInit(t, carveSessionID, env); err != nil {
+		if err := h.ProcessCarveInit(t, carveSessionID, env.Name); err != nil {
 			h.Inc(metricInitErr)
 			log.Printf("error procesing carve init %v", err)
 			initCarve = false
@@ -602,7 +644,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
@@ -615,20 +657,28 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	h.Inc(metricBlockReq)
 	// Retrieve environment variable
 	vars := mux.Vars(r)
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricBlockErr)
 		log.Println("Environment is missing")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricBlockErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// TODO do the exist and get in one step
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Debug HTTP
-	utils.DebugHTTPDump(r, (*h.EnvsMap)[env].DebugHTTP, true)
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -641,11 +691,11 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	if h.Carves.CheckCarve(t.SessionID, t.RequestID) {
 		blockCarve = true
 		// Process received block
-		go h.ProcessCarveBlock(t, env)
+		go h.ProcessCarveBlock(t, env.Name)
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
-	if (*h.EnvsMap)[env].DebugHTTP {
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		log.Printf("Response: %+v", response)
 	}
 	// Send response
