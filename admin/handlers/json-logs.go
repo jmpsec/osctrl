@@ -75,22 +75,29 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Extract environment
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		log.Println("environment is missing")
 		h.Inc(metricJSONErr)
 		return
 	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricJSONErr)
+		return
+	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
-		log.Printf("error unknown environment (%s)", env)
+	if !h.Envs.Exists(envVar) {
+		log.Printf("error unknown environment (%s)", envVar)
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env.Name) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
@@ -116,7 +123,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == "status" {
-		statusLogs, err := h.LoggerDB.StatusLogs(UUID, env, secondsBack)
+		statusLogs, err := h.LoggerDB.StatusLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -136,7 +143,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			logJSON = append(logJSON, _l)
 		}
 	} else if logType == "result" {
-		resultLogs, err := h.LoggerDB.ResultLogs(UUID, env, secondsBack)
+		resultLogs, err := h.LoggerDB.ResultLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)

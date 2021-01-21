@@ -1,18 +1,15 @@
-function statsRefresh(_target, _name) {
+function statsRefresh(_target, _identifier) {
   $.ajax({
-    url: '/json/stats/' + _target + '/' + _name,
+    url: '/json/stats/' + _target + '/' + _identifier,
     dataType: 'json',
     type: 'GET',
     contentType: 'application/json',
-    success: function(data, textStatus, jQxhr){
-      $('.stats-' + _target + '-' + _name + '-active').text(data.active);
-      $('.stats-' + _target + '-' + _name + '-inactive').text(data.inactive);
-      $('.stats-' + _target + '-' + _name + '-total').text(data.total);
-      //console.log('Active: ' + data.active);
-      //console.log('Inactive: ' + data.inactive);
-      //console.log('Total: ' + data.total);
+    success: function (data, textStatus, jQxhr) {
+      $('.stats-' + _target + '-' + _identifier + '-active').text(data.active);
+      $('.stats-' + _target + '-' + _identifier + '-inactive').text(data.inactive);
+      $('.stats-' + _target + '-' + _identifier + '-total').text(data.total);
     },
-    error: function(jqXhr, textStatus, errorThrown){
+    error: function (jqXhr, textStatus, errorThrown) {
       var _clientmsg = 'Client: ' + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
       var _servermsg = 'Server: ' + _serverJSON.message;
@@ -25,9 +22,8 @@ function statsRefresh(_target, _name) {
 
 function beginStats() {
   var _stats = ['environment', 'platform'];
-  for (var i = 0; i<_stats.length; i++) {
-    //console.log('Doing ' + _stats[i]);
-    $('input[type="hidden"].stats-' + _stats[i] + '-value').each(function() {
+  for (var i = 0; i < _stats.length; i++) {
+    $('input[type="hidden"].stats-' + _stats[i] + '-value').each(function () {
       statsRefresh(_stats[i], $(this).val());
     });
   }

@@ -91,22 +91,29 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	env, ok := vars["environment"]
+	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
 	}
 	// Check if environment is valid
-	if !h.Envs.Exists(env) {
+	if !h.Envs.Exists(envVar) {
 		h.Inc(metricAdminErr)
-		log.Printf("error unknown environment (%s)", env)
+		log.Printf("error unknown environment (%s)", envVar)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.EnvLevel, env.Name) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
@@ -122,7 +129,6 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	// Prepare template
 	tempateFiles := NewTemplateFiles(templatesFilesFolder, "table.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
-
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -151,10 +157,10 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Prepare template data
 	templateData := TableTemplateData{
-		Title:        "Nodes in " + env,
+		Title:        "Nodes in " + env.Name,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Selector:     "environment",
-		SelectorName: env,
+		SelectorName: env.Name,
 		Target:       target,
 		Tags:         tags,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -743,7 +749,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := ConfTemplateData{
-		Title:        envVar + " Configuration",
+		Title:        env.Name + " Configuration",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environment:  env,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -821,9 +827,9 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	shellQuickRemove, _ := environments.QuickRemoveOneLinerShell(env)
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
 	templateData := EnrollTemplateData{
-		Title:                 envVar + " Enroll",
+		Title:                 env.Name + " Enroll",
 		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
-		EnvName:               envVar,
+		EnvName:               env.Name,
 		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
 		RemoveExpiry:          strings.ToUpper(utils.InFutureTime(env.RemoveExpire)),

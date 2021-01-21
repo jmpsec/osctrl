@@ -60,7 +60,7 @@ func PrepareOneLiner(oneliner string, environment TLSEnvironment, target string)
 		InsecureTLS string
 	}{
 		TLSHost:     environment.Hostname,
-		Environment: environment.Name,
+		Environment: environment.UUID,
 		SecretPath:  secretPath,
 		InsecureTLS: insecureTLS,
 	}
