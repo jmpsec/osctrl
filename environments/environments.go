@@ -287,7 +287,15 @@ func (environment *Environment) UpdateCertificate(idEnv, certificate string) err
 // UpdateFlags to update flags for an environment
 func (environment *Environment) UpdateFlags(idEnv, flags string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("flags", flags).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("Update flags %v", err)
+	}
+	return nil
+}
+
+// UpdateHostname to update hostname for an environment
+func (environment *Environment) UpdateHostname(idEnv, hostname string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("hostname", hostname).Error; err != nil {
+		return fmt.Errorf("Update hostname %v", err)
 	}
 	return nil
 }

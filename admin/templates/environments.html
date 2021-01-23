@@ -55,7 +55,9 @@
                     <tr>
                       <td><b>{{ $e.Name }}</b></td>
                       <td>{{ $e.Type }}</td>
-                      <td>{{ $e.Hostname }}</td>
+                      <td>
+                        <p id="hostname" data-tooltip="true" data-uuid="{{ $e.UUID }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Hostname }}</p>
+                      </td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm">
                           <input id="{{ $e.Name }}_debug_check" class="switch-input" type="checkbox" onclick="changeDebugHTTP('{{ $e.Name }}');" {{ if $e.DebugHTTP }} checked {{ end }}>
@@ -144,6 +146,37 @@
     <script src="/static/js/environments.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
+        // Editable fields
+        $(".editable-field").editable(function(value, settings) {
+			    var data = {
+            csrftoken: $("#csrftoken").val(),
+            action: 'edit',
+            uuid: $(this).attr('data-uuid'),
+          };
+          var type_edit = $(this).attr('id');
+          if (type_edit === 'hostname') {
+            data.hostname = value;
+          }
+          console.log(settings);
+          sendPostRequest(data, window.location.pathname, '', false);
+          return value;
+		    }, {
+          indicator : "<img src='/static/img/spinner.svg' />",
+          type : "text",
+          onedit : function() { return true;},
+          cancel : 'Cancel',
+          cssclass : 'editable-class',
+          cancelcssclass : 'btn btn-danger',
+          submitcssclass : 'btn btn-success',
+          maxlength : 200,
+          // select all text
+          select : true,
+          label : '',
+          showfn : function(elem) { elem.fadeIn('slow') },
+          submit : 'Save',
+          tooltip : "Click to edit...",
+          width : 160
+        });
         // Update icon on environment creation modal
         $('#environment_icon').on('input', function() {
           $("#environment_show_icon").removeClass();

@@ -98,6 +98,7 @@ type ExpirationRequest struct {
 type EnvironmentsRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Action    string `json:"action"`
+	UUID      string `json:"uuid"`
 	Name      string `json:"name"`
 	Hostname  string `json:"hostname"`
 	Type      string `json:"type"`
