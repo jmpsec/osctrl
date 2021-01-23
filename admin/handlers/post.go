@@ -1019,6 +1019,15 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		adminOKResponse(w, "debug changed successfully")
+	case "edit":
+		if h.Envs.Exists(c.UUID) {
+			if err := h.Envs.UpdateHostname(c.UUID, c.Hostname); err != nil {
+				adminErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "debug changed successfully")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
