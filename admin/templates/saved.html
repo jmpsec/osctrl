@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ $metadata := .Metadata }}
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-aside-left" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="nav-icon fab fa-searchengin"></i> {{ .Title }}
+                <div class="card-header-actions">
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
+                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body table-responsive">
+
+                  <table id="tableQueries" class="table table-bordered table-striped" style="width:100%">
+                    <input type="hidden" id="refresh_value" value="yes">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input type="checkbox" name="select-all" value="1" id="select-all">
+                        </th>
+                        <th>Query</th>
+                        <th>Creator</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Targets</th>
+                      </tr>
+                    </thead>
+                  </table>
+
+              </div>
+            </div>
+
+          {{ template "page-modals" . }}
+
+          </div>
+
+        </div>
+
+      </main>
+
+      {{ if eq $metadata.Level "admin" }}
+        {{ template "page-aside-right" . }}
+      {{ end }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/login.js"></script>
+    <script src="/static/js/query.js"></script>
+    <script src="/static/js/tables.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax;
+        var tableQueries = $('#tableQueries').DataTable({
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          pageLength : 25,
+          searching : true,
+          dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'tr>>" +
+               "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4 text-center'i><'col-sm-12 col-md-4'p>>",
+          processing : true,
+          order : [[ 3, "desc" ]],
+          ajax : {
+            url: "/query/json/{{ .Target }}",
+            dataSrc: function(json) {
+              $('.card-header').removeClass("bg-danger");
+              return json.data;
+            }
+          },
+          columns : [
+            {"data" : "checkbox"},
+            {"data" : "query"},
+            {"data" : "creator"},
+            {"data" : {
+                _:    "created.display",
+                sort: "created.timestamp"
+              }
+            },
+            {"data" : "status"},
+            {"data" : "progress"},
+            {"data" : "targets"}
+          ],
+          columnDefs: [
+            {
+              targets:   0,
+              className: 'select-checkbox',
+              width: '1%',
+              data: 'checkbox',
+              searchable:  false,
+              orderable:   false,
+            },{
+              targets: 1,
+              width: '40%',
+              data: 'query',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return queryResultLink(data.link, data.name);
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 2,
+              data: 'creator',
+              width: '6%'
+            },{
+              targets: 3,
+              width: '15%',
+              data: 'created'
+            },{
+              targets: 4,
+              width: '10%',
+              data: 'status',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<b>'+data+'</b>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 5,
+              width: '8%',
+              data: 'progress',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  return '<span style="color:black;">'+data.expected+'</span>/' +
+                         '<b><span style="color:green;">'+data.executions+'</span></b>/' +
+                         '<b><span style="color:red;">'+data.errors+'</span></b>';
+                } else {
+                  return data;
+                }
+              }
+            },{
+              targets: 6,
+              width: '10%',
+              data: 'targets',
+              render: function (data, type, row, meta) {
+                if (type === 'display') {
+                  var content = '';
+                  $.each(data, function() {
+                    content += this.type + ':<b>' + this.value + '</b></br>';
+                  });
+                  return content;
+                } else {
+                  return data;
+                }
+              }
+            }
+          ],
+          select: {
+            style:    'os',
+            selector: 'td:first-child'
+          },
+          buttons: [
+            {
+              className: 'btn custom-size-btn btn-outline-danger',
+              text: '<i class="far fa-trash-alt"></i>',
+              titleAttr: 'Delete Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
+                  a.push(this);
+                });
+                var names = []
+                for (var i=0; i<a.length; i++) {
+                  names.push(a[i].name)
+                }
+                if (names.length > 0) {
+                  console.log(names);
+                  confirmDeleteQueries(names);
+                } else {
+                  console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
+                }
+              }
+            },
+            {
+              className: 'btn custom-size-btn btn-outline-dark',
+              text: '<i class="fas fa-flag-checkered"></i>',
+              titleAttr: 'Complete Queries',
+              attr:  {
+                'data-toggle':  'tooltip',
+                'data-placement': 'bottom'
+              },
+              init: function(api, node, config) {
+                $(node).removeClass('dt-button');
+              },
+              action: function(e, dt, node, config) {
+                var a = [];
+                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
+                  a.push(this);
+                });
+                var names = []
+                for (var i=0; i<a.length; i++) {
+                  names.push(a[i].name)
+                }
+                if (names.length > 0) {
+                  console.log(names);
+                  completeQueries(names);
+                } else {
+                  console.log('Query: NO SELECTION');
+                  $("#warningModalMessage").text("You must select one or more queries");
+                  $("#warningModal").modal();
+                }
+              }
+            }
+          ]
+        });
+
+        // Select and deselect all
+        tableQueries.on("click", "th.select-checkbox", function() {
+          if ($("th.select-checkbox").hasClass("selected")) {
+            tableQueries.rows().deselect();
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            tableQueries.rows().select();
+            $("th.select-checkbox").addClass("selected");
+          }
+        }).on("select deselect", function() {
+          ("Some selection or deselection going on")
+          if (tableQueries.rows({
+            selected: true
+          }).count() !== tableQueries.rows().count()) {
+            $("th.select-checkbox").removeClass("selected");
+          } else {
+            $("th.select-checkbox").addClass("selected");
+          }
+        });
+
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Auto-refresh table
+        setInterval(function (){
+          tableQueries.ajax.reload();
+        }, 30000 );
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+      });
+    </script>
+
+  </body>
+</html>

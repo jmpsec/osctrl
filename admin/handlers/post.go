@@ -1679,3 +1679,38 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	h.Inc(metricAdminOK)
 }
+
+// SavedQueriesPOSTHandler for POST requests to save queries
+func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	var s SavedQueryRequest
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Parse request JSON body
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Check CSRF Token
+	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], s.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	switch s.Action {
+	case "create":
+		adminOKResponse(w, "query created successfully")
+	case "edit":
+		adminOKResponse(w, "query saved successfully")
+	}
+	// Serialize and send response
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Saved query response sent")
+	}
+	h.Inc(metricAdminOK)
+}

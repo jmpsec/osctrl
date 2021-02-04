@@ -109,6 +109,10 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	if err := backend.AutoMigrate(DistributedQueryTarget{}).Error; err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
 	}
+	// table saved_queries
+	if err := backend.AutoMigrate(SavedQuery{}).Error; err != nil {
+		log.Fatalf("Failed to AutoMigrate table (saved_queries): %v", err)
+	}
 	return q
 }
 

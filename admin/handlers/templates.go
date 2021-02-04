@@ -392,6 +392,59 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	h.Inc(metricAdminOK)
 }
 
+// SavedQueriesGETHandler for GET requests to queries
+func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Prepare template
+	tempateFiles := NewTemplateFiles(templatesFilesFolder, "saved.html").filepaths
+	t, err := template.ParseFiles(tempateFiles...)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting table template: %v", err)
+		return
+	}
+	// Get all environments
+	envAll, err := h.Envs.All()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+	// Get all platforms
+	platforms, err := h.Nodes.GetAllPlatforms()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := SavedQueriesTemplateData{
+		Title:        "Saved queries",
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
+		Platforms:    platforms,
+		Target:       "all",
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Query list template served")
+	}
+	h.Inc(metricAdminOK)
+}
+
 // CarvesRunGETHandler for GET requests to run file carves
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
