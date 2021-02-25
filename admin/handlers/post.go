@@ -216,6 +216,14 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Save query if requested and if the name is not empty
+	if q.Save && q.Name != "" {
+		if err := h.Queries.CreateSaved(q.Name, q.Query, ctx[sessions.CtxUser]); err != nil {
+			adminErrorResponse(w, "error saving query", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
@@ -421,6 +429,15 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 			}
 		}
 		adminOKResponse(w, "queries activated successfully")
+	case "saved_delete":
+		for _, n := range q.Names {
+			if err := h.Queries.DeleteSaved(n, ctx[sessions.CtxUser]); err != nil {
+				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "queries delete successfully")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {

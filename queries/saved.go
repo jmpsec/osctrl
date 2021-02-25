@@ -9,7 +9,7 @@ import (
 // SavedQuery as abstraction of a saved query to be used in distributed, schedule or packs
 type SavedQuery struct {
 	gorm.Model
-	Name    string `gorm:"index"`
+	Name    string
 	Creator string
 	Query   string
 }

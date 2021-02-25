@@ -50,6 +50,10 @@ input[type=text]#query {
   font-family: monospace;
 }
 
+input[type=text]#query-sql {
+  font-family: monospace;
+}
+
 input[type=text]#carve {
   font-family: monospace;
 }

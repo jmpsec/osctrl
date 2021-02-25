@@ -43,6 +43,8 @@ const (
 	TargetHiddenActive string = "hidden-active"
 	// TargetCompleted for completed queries
 	TargetCompleted string = "completed"
+	// TargetSaved for saved queries
+	TargetSaved string = "saved"
 	// TargetHiddenCompleted for hidden completed queries
 	TargetHiddenCompleted string = "hidden-completed"
 	// TargetDeleted for deleted queries

@@ -18,6 +18,8 @@ type DistributedQueryRequest struct {
 	Platforms    []string `json:"platform_list"`
 	UUIDs        []string `json:"uuid_list"`
 	Hosts        []string `json:"host_list"`
+	Save         bool     `json:"save"`
+	Name         string   `json:"name"`
 	Query        string   `json:"query"`
 }
 

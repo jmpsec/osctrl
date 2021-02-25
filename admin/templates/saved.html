@@ -24,26 +24,23 @@
                 <i class="nav-icon fab fa-searchengin"></i> {{ .Title }}
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
-                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
+                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableSaved');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
 
-                  <table id="tableQueries" class="table table-bordered table-striped" style="width:100%">
+                  <table id="tableSaved" class="table table-bordered table-striped" style="width:100%">
                     <input type="hidden" id="refresh_value" value="yes">
                     <thead>
                       <tr>
                         <th>
                           <input type="checkbox" name="select-all" value="1" id="select-all">
                         </th>
+                        <th>Name</th>
                         <th>Query</th>
-                        <th>Creator</th>
                         <th>Created</th>
-                        <th>Status</th>
-                        <th>Progress</th>
-                        <th>Targets</th>
                       </tr>
                     </thead>
                   </table>
@@ -78,7 +75,7 @@
           $('.card-header').addClass("bg-danger");
         };
         $.fn.dataTable.ext.ajax;
-        var tableQueries = $('#tableQueries').DataTable({
+        var tableSaved = $('#tableSaved').DataTable({
           initComplete : function(settings, json) {
             $('.card-header').removeClass("bg-danger");
           },
@@ -98,16 +95,13 @@
           },
           columns : [
             {"data" : "checkbox"},
+            {"data" : "name"},
             {"data" : "query"},
-            {"data" : "creator"},
             {"data" : {
                 _:    "created.display",
                 sort: "created.timestamp"
               }
-            },
-            {"data" : "status"},
-            {"data" : "progress"},
-            {"data" : "targets"}
+            }
           ],
           columnDefs: [
             {
@@ -119,62 +113,23 @@
               orderable:   false,
             },{
               targets: 1,
-              width: '40%',
+              data: 'name',
+              width: '24%'
+            },{
+              targets: 2,
+              width: '60%',
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return queryResultLink(data.link, data.name);
+                  return '<span class="query-link">' + data + '</span>';
                 } else {
                   return data;
                 }
               }
-            },{
-              targets: 2,
-              data: 'creator',
-              width: '6%'
             },{
               targets: 3,
               width: '15%',
               data: 'created'
-            },{
-              targets: 4,
-              width: '10%',
-              data: 'status',
-              render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  return '<b>'+data+'</b>';
-                } else {
-                  return data;
-                }
-              }
-            },{
-              targets: 5,
-              width: '8%',
-              data: 'progress',
-              render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  return '<span style="color:black;">'+data.expected+'</span>/' +
-                         '<b><span style="color:green;">'+data.executions+'</span></b>/' +
-                         '<b><span style="color:red;">'+data.errors+'</span></b>';
-                } else {
-                  return data;
-                }
-              }
-            },{
-              targets: 6,
-              width: '10%',
-              data: 'targets',
-              render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  var content = '';
-                  $.each(data, function() {
-                    content += this.type + ':<b>' + this.value + '</b></br>';
-                  });
-                  return content;
-                } else {
-                  return data;
-                }
-              }
             }
           ],
           select: {
@@ -188,14 +143,15 @@
               titleAttr: 'Delete Queries',
               attr:  {
                 'data-toggle':  'tooltip',
-                'data-placement': 'bottom'
+                'data-placement': 'bottom',
+                'data-tooltip': 'true'
               },
               init: function(api, node, config) {
                 $(node).removeClass('dt-button');
               },
               action: function(e, dt, node, config) {
                 var a = [];
-                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
+                $.each(tableSaved.rows({search:'applied', selected: true}).data(), function() {
                   a.push(this);
                 });
                 var names = []
@@ -204,37 +160,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteQueries(names);
-                } else {
-                  console.log('Query: NO SELECTION');
-                  $("#warningModalMessage").text("You must select one or more queries");
-                  $("#warningModal").modal();
-                }
-              }
-            },
-            {
-              className: 'btn custom-size-btn btn-outline-dark',
-              text: '<i class="fas fa-flag-checkered"></i>',
-              titleAttr: 'Complete Queries',
-              attr:  {
-                'data-toggle':  'tooltip',
-                'data-placement': 'bottom'
-              },
-              init: function(api, node, config) {
-                $(node).removeClass('dt-button');
-              },
-              action: function(e, dt, node, config) {
-                var a = [];
-                $.each(tableQueries.rows({search:'applied', selected: true}).data(), function() {
-                  a.push(this);
-                });
-                var names = []
-                for (var i=0; i<a.length; i++) {
-                  names.push(a[i].name)
-                }
-                if (names.length > 0) {
-                  console.log(names);
-                  completeQueries(names);
+                  confirmDeleteSavedQueries(names);
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");
@@ -246,19 +172,19 @@
         });
 
         // Select and deselect all
-        tableQueries.on("click", "th.select-checkbox", function() {
+        tableSaved.on("click", "th.select-checkbox", function() {
           if ($("th.select-checkbox").hasClass("selected")) {
-            tableQueries.rows().deselect();
+            tableSaved.rows().deselect();
             $("th.select-checkbox").removeClass("selected");
           } else {
-            tableQueries.rows().select();
+            tableSaved.rows().select();
             $("th.select-checkbox").addClass("selected");
           }
         }).on("select deselect", function() {
           ("Some selection or deselection going on")
-          if (tableQueries.rows({
+          if (tableSaved.rows({
             selected: true
-          }).count() !== tableQueries.rows().count()) {
+          }).count() !== tableSaved.rows().count()) {
             $("th.select-checkbox").removeClass("selected");
           } else {
             $("th.select-checkbox").addClass("selected");
@@ -270,7 +196,7 @@
 
         // Auto-refresh table
         setInterval(function (){
-          tableQueries.ajax.reload();
+          tableSaved.ajax.reload();
         }, 30000 );
 
         // Refresh sidebar stats

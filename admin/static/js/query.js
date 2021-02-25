@@ -4,7 +4,8 @@ function sendQuery() {
   var _platform_list = $("#target_platform").val();
   var _uuid_list = $("#target_uuids").val();
   var _host_list = $("#target_hosts").val();
-  var _repeat = $('#target_repeat').prop('checked') ? 1 : 0;
+  var _query_name = $("#save_query_name").val();
+  var _query_save = $('#save_query_check').is(':checked') ? true : false;
   var editor = $('.CodeMirror')[0].CodeMirror;
   var _query = editor.getValue();
 
@@ -32,6 +33,12 @@ function sendQuery() {
       }
     });
   }
+  // If we are saving the query, name can not be emtpy
+  if (_query_save && _query_name === "") {
+    $("#warningModalMessage").text("Query name can not be empty");
+    $("#warningModal").modal();
+    return;
+  }
   // Making sure query isn't empty
   console.log(_query);
   if (_query === "") {
@@ -50,8 +57,9 @@ function sendQuery() {
     platform_list: _platform_list,
     uuid_list: _uuid_list,
     host_list: _host_list,
-    query: _query,
-    repeat: _repeat
+    save: _query_save,
+    name: _query_name,
+    query: _query
   };
   sendPostRequest(data, _url, '/query/list', false);
 }
@@ -74,6 +82,10 @@ $("#query").keyup(function (event) {
 
 function deleteQueries(_names) {
   actionQueries('delete', _names, window.location.pathname);
+}
+
+function deleteSavedQueries(_names) {
+  actionQueries('saved_delete', _names, window.location.pathname);
 }
 
 function completeQueries(_names) {
@@ -106,7 +118,29 @@ function confirmDeleteQueries(_names) {
   $("#confirmModal").modal();
 }
 
+function confirmDeleteSavedQueries(_names) {
+  var modal_message = 'Are you sure you want to delete ' + _names.length + ' query(s)?';
+  $("#confirmModalMessage").text(modal_message);
+  $('#confirm_action').click(function () {
+    $('#confirmModal').modal('hide');
+    deleteSavedQueries(_names);
+  });
+  $("#confirmModal").modal();
+}
+
 function queryResultLink(link, query) {
   var external_link = '<a href="' + link + '" _target="_blank"><i class="fas fa-external-link-alt"></i></a>';
   return '<span class="query-link"><a href="/query/logs/' + query + '">' + query + '</a> - ' + external_link + '</span> ';
+}
+
+function toggleSaveQuery() {
+  $('#save_query_name').val('');
+  if ($('#save_query_check').is(':checked')) {
+    $('#save_query_name').removeAttr("readonly");
+    $('#collapseName').removeClass("collapse");
+    $('#save_query_name').focus();
+  } else {
+    $('#save_query_name').attr("readonly", true);
+    $('#collapseName').addClass("collapse");
+  }
 }
