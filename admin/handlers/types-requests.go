@@ -18,6 +18,8 @@ type DistributedQueryRequest struct {
 	Platforms    []string `json:"platform_list"`
 	UUIDs        []string `json:"uuid_list"`
 	Hosts        []string `json:"host_list"`
+	Save         bool     `json:"save"`
+	Name         string   `json:"name"`
 	Query        string   `json:"query"`
 }
 
@@ -168,4 +170,12 @@ type TokenResponse struct {
 type ProfileRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Username  string `json:"username"`
+}
+
+// SavedQueryRequest to receive saved query requests
+type SavedQueryRequest struct {
+	CSRFToken string `json:"csrftoken"`
+	Action    string `json:"action"`
+	Name      string `json:"name"`
+	Query     string `json:"query"`
 }

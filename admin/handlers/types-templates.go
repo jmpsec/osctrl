@@ -99,6 +99,9 @@ type GenericTableTemplateData struct {
 // QueryTableTemplateData for passing data to the query template
 type QueryTableTemplateData GenericTableTemplateData
 
+// SavedQueriesTemplateData for passing data to the saved queries
+type SavedQueriesTemplateData GenericTableTemplateData
+
 // CarvesTableTemplateData for passing data to the carves template
 type CarvesTableTemplateData GenericTableTemplateData
 

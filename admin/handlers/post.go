@@ -216,6 +216,14 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Save query if requested and if the name is not empty
+	if q.Save && q.Name != "" {
+		if err := h.Queries.CreateSaved(q.Name, q.Query, ctx[sessions.CtxUser]); err != nil {
+			adminErrorResponse(w, "error saving query", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Query run response sent")
@@ -421,6 +429,15 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 			}
 		}
 		adminOKResponse(w, "queries activated successfully")
+	case "saved_delete":
+		for _, n := range q.Names {
+			if err := h.Queries.DeleteSaved(n, ctx[sessions.CtxUser]); err != nil {
+				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "queries delete successfully")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
@@ -1676,6 +1693,41 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Edit profile response sent")
+	}
+	h.Inc(metricAdminOK)
+}
+
+// SavedQueriesPOSTHandler for POST requests to save queries
+func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	var s SavedQueryRequest
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Parse request JSON body
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Decoding POST body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Check CSRF Token
+	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], s.CSRFToken) {
+		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
+		h.Inc(metricAdminErr)
+		return
+	}
+	switch s.Action {
+	case "create":
+		adminOKResponse(w, "query created successfully")
+	case "edit":
+		adminOKResponse(w, "query saved successfully")
+	}
+	// Serialize and send response
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Saved query response sent")
 	}
 	h.Inc(metricAdminOK)
 }
