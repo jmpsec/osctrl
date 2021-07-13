@@ -15,7 +15,7 @@ COPY admin/templates/components/page-head-online.html tmpl_admin/components/page
 COPY admin/templates/components/page-js-online.html tmpl_admin/components/page-js.html
 COPY admin/static/ static
 
-COPY deploy/osquery/data/4.7.0.json data/
+COPY deploy/osquery/data/4.9.0.json data/
 
 RUN mkdir -p carved_files
 

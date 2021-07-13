@@ -84,7 +84,7 @@ const (
 // osquery
 const (
 	// osquery version to display tables
-	osqueryTablesVersion string = "4.7.0"
+	osqueryTablesVersion string = "4.9.0"
 	// JSON file with osquery tables data
 	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
 )
