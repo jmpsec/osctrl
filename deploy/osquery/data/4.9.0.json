@@ -3152,8 +3152,16 @@
         "index":false
       },
       {
+        "name":"referenced_identifier",
+        "description":"Extension identifier, as specified by the preferences file. Empty if the extension is not in the profile.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"identifier",
-        "description":"Extension identifier (folder name)",
+        "description":"Extension identifier, computed from its manifest. Empty in case of error.",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -3306,6 +3314,14 @@
       {
         "name":"manifest_json",
         "description":"The manifest file of the extension",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key",
+        "description":"The extension key, from the manifest file",
         "type":"text",
         "hidden":true,
         "required":false,
@@ -4846,7 +4862,7 @@
         "name":"uid",
         "description":"Currently authenticated user if available",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -4854,7 +4870,7 @@
         "name":"user_uuid",
         "description":"UUID of authenticated user if available",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -4862,7 +4878,7 @@
         "name":"filevault_status",
         "description":"FileVault status with one of following values: on | off | unknown",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -6063,7 +6079,7 @@
         "name":"cgroup_namespace",
         "description":"cgroup namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6071,7 +6087,7 @@
         "name":"ipc_namespace",
         "description":"IPC namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6079,7 +6095,7 @@
         "name":"mnt_namespace",
         "description":"Mount namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6087,7 +6103,7 @@
         "name":"net_namespace",
         "description":"Network namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6095,7 +6111,7 @@
         "name":"pid_namespace",
         "description":"PID namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6103,7 +6119,7 @@
         "name":"user_namespace",
         "description":"User namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -6111,7 +6127,7 @@
         "name":"uts_namespace",
         "description":"UTS namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -7494,6 +7510,226 @@
     ]
   },
   {
+    "name":"es_process_events",
+    "description":"Process execution events from EndpointSecurity.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/es_process_events.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":true,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"version",
+        "description":"Version of EndpointSecurity event",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"seq_num",
+        "description":"Per event sequence number",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"global_seq_num",
+        "description":"Global sequence number",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"Process (or thread) ID",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"Path of executed file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"parent",
+        "description":"Parent process ID",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"original_parent",
+        "description":"Original parent process ID in case of reparenting",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cmdline",
+        "description":"Command line arguments (argv)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cmdline_count",
+        "description":"Number of command line arguments",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"env",
+        "description":"Environment variables delimited by spaces",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"env_count",
+        "description":"Number of environment variables",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cwd",
+        "description":"The process current working directory",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uid",
+        "description":"User ID of the process",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"euid",
+        "description":"Effective User ID of the process",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"gid",
+        "description":"Group ID of the process",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"egid",
+        "description":"Effective Group ID of the process",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"username",
+        "description":"Username",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"signing_id",
+        "description":"Signature identifier of the process",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"team_id",
+        "description":"Team identifier of thd process",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cdhash",
+        "description":"Codesigning hash of the process",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"platform_binary",
+        "description":"Indicates if the binary is Apple signed binary (1) or not (0)",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"exit_code",
+        "description":"Exit code of a process in case of an exit event",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"child_pid",
+        "description":"Process ID of a child process in case of a fork event",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"time",
+        "description":"Time of execution in UNIX time",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"event_type",
+        "description":"Type of EndpointSecurity event",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"eid",
+        "description":"Event ID",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"etc_hosts",
     "description":"Line-parsed /etc/hosts.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/etc_hosts.table",
@@ -8091,7 +8327,7 @@
         "name":"bsd_flags",
         "description":"The BSD file flags (chflags). Possible values: NODUMP, UF_IMMUTABLE, UF_APPEND, OPAQUE, HIDDEN, ARCHIVED, SF_IMMUTABLE, SF_APPEND",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -8550,7 +8786,7 @@
         "name":"is_hidden",
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -8775,6 +9011,14 @@
         "description":"Current 'linked' version",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"prefix",
+        "description":"Homebrew install prefix",
+        "type":"text",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -9167,7 +9411,7 @@
         "name":"pci_slot",
         "description":"PCI slot number",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -10584,7 +10828,7 @@
         "name":"net_namespace",
         "description":"The inode number of the network namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -14958,7 +15202,7 @@
         "name":"pci_class_id",
         "description":"PCI Device class ID in hex format",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -14966,7 +15210,7 @@
         "name":"pci_subclass_id",
         "description":"PCI Device  subclass in hex format",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -14974,7 +15218,7 @@
         "name":"pci_subclass",
         "description":"PCI Device subclass",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -14982,7 +15226,7 @@
         "name":"subsystem_vendor_id",
         "description":"Vendor ID of PCI device subsystem",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -14990,7 +15234,7 @@
         "name":"subsystem_vendor",
         "description":"Vendor of PCI device subsystem",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -14998,7 +15242,7 @@
         "name":"subsystem_model_id",
         "description":"Model ID of PCI device subsystem",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -15006,7 +15250,7 @@
         "name":"subsystem_model",
         "description":"Device description of PCI device subsystem",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -15692,6 +15936,122 @@
     ]
   },
   {
+    "name":"prefetch",
+    "description":"Prefetch files show metadata related to file execution.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/prefetch.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"path",
+        "description":"Prefetch file path.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"filename",
+        "description":"Executable filename.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"hash",
+        "description":"Prefetch CRC hash.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_run_time",
+        "description":"Most recent time application was run.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"other_run_times",
+        "description":"Other execution times in prefetch file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"run_count",
+        "description":"Number of times the application has been run.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"size",
+        "description":"Application file size.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"volume_serial",
+        "description":"Volume serial number.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"volume_creation",
+        "description":"Volume creation time.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"accessed_files_count",
+        "description":"Number of files accessed.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"accessed_directories_count",
+        "description":"Number of directories accessed.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"accessed_files",
+        "description":"Files accessed by application within ten seconds of launch.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"accessed_directories",
+        "description":"Directories accessed by application within ten seconds of launch.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"process_envs",
     "description":"A key/value table of environment variables for each process.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/process_envs.table",
@@ -15943,7 +16303,7 @@
         "name":"status",
         "description":"OpenBSM Attribute: Status of the process",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15951,7 +16311,7 @@
         "name":"fsuid",
         "description":"Filesystem user ID at process start",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -15959,7 +16319,7 @@
         "name":"suid",
         "description":"Saved user ID at process start",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -15967,7 +16327,7 @@
         "name":"fsgid",
         "description":"Filesystem group ID at process start",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -15975,7 +16335,7 @@
         "name":"sgid",
         "description":"Saved group ID at process start",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -15983,7 +16343,7 @@
         "name":"syscall",
         "description":"Syscall name: fork, vfork, clone, execve, execveat",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -16543,7 +16903,7 @@
         "name":"net_namespace",
         "description":"The inode number of the network namespace",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -16771,8 +17131,32 @@
         "index":false
       },
       {
-        "name":"is_elevated_token",
+        "name":"elevated_token",
         "description":"Process uses elevated token yes=1, no=0",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"secure_process",
+        "description":"Process is secure (IUM) yes=1, no=0",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"protection_type",
+        "description":"The protection type of the process",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"virtual_process",
+        "description":"Process is virtual (e.g. System, Registry, vmmem) yes=1, no=0",
         "type":"integer",
         "hidden":true,
         "required":false,
@@ -16806,7 +17190,7 @@
         "name":"upid",
         "description":"A 64bit pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16814,7 +17198,7 @@
         "name":"uppid",
         "description":"The 64bit parent pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16822,7 +17206,7 @@
         "name":"cpu_type",
         "description":"Indicates the specific processor designed for installation.",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16830,7 +17214,7 @@
         "name":"cpu_subtype",
         "description":"Indicates the specific processor on which an entry may be used.",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -17792,6 +18176,138 @@
     ]
   },
   {
+    "name":"seccomp_events",
+    "description":"A virtual table that tracks seccomp events.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/seccomp_events.table",
+    "platforms":[
+      "linux"
+    ],
+    "evented":true,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"time",
+        "description":"Time of execution in UNIX time",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uptime",
+        "description":"Time of execution in system uptime",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"auid",
+        "description":"Audit user ID (loginuid) of the user who started the analyzed process",
+        "type":"unsigned_bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uid",
+        "description":"User ID of the user who started the analyzed process",
+        "type":"unsigned_bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"gid",
+        "description":"Group ID of the user who started the analyzed process",
+        "type":"unsigned_bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ses",
+        "description":"Session ID of the session from which the analyzed process was invoked",
+        "type":"unsigned_bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"Process ID",
+        "type":"unsigned_bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"comm",
+        "description":"Command-line name of the command that was used to invoke the analyzed process",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"exe",
+        "description":"The path to the executable that was used to invoke the analyzed process",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sig",
+        "description":"Signal value sent to process by seccomp",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"arch",
+        "description":"Information about the CPU architecture",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"syscall",
+        "description":"Type of the system call",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"compat",
+        "description":"Is system call in compatibility mode",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ip",
+        "description":"Instruction pointer value",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"code",
+        "description":"The seccomp action",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"selinux_events",
     "description":"Track SELinux events.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/linux/selinux_events.table",
@@ -18550,6 +19066,170 @@
         "name":"execution_flag",
         "description":"Boolean Execution flag, 1 for execution, 0 for no execution, -1 for missing (this flag does not exist on Windows 10 and higher).",
         "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"shortcut_files",
+    "description":"View data about Windows Shortcut files.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/shortcut_files.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"path",
+        "description":"Directory name.",
+        "type":"text",
+        "hidden":false,
+        "required":true,
+        "index":false
+      },
+      {
+        "name":"target_path",
+        "description":"Target file path",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"target_modified",
+        "description":"Target Modified time.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"target_created",
+        "description":"Target Created time.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"target_accessed",
+        "description":"Target Accessed time.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"target_size",
+        "description":"Size of target file.",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"relative_path",
+        "description":"Relative path to target file from lnk file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"local_path",
+        "description":"Local system path to target file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"working_path",
+        "description":"Target file directory.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"icon_path",
+        "description":"Lnk file icon location.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"common_path",
+        "description":"Common system path to target file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"command_args",
+        "description":"Command args passed to lnk file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"hostname",
+        "description":"Optional hostname of the target file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"share_name",
+        "description":"Share name of the target file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"device_type",
+        "description":"Device containing the target file.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"volume_serial",
+        "description":"Volume serial number.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mft_entry",
+        "description":"Target mft entry.",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mft_sequence",
+        "description":"Target mft sequence.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"Lnk file description.",
+        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -19466,7 +20146,7 @@
         "name":"field_name",
         "description":"Specific attribute of opaque type",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -19542,6 +20222,14 @@
         "name":"team",
         "description":"Signing team ID",
         "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mdm_managed",
+        "description":"1 if managed by MDM system extension payload configuration, 0 otherwise",
+        "type":"integer",
         "hidden":false,
         "required":false,
         "index":false
@@ -20639,7 +21327,7 @@
         "name":"is_hidden",
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -22243,7 +22931,8 @@
     "url":"https://github.com/osquery/osquery/blob/master/specs/yara/yara.table",
     "platforms":[
       "darwin",
-      "linux"
+      "linux",
+      "windows"
     ],
     "evented":false,
     "cacheable":false,
@@ -22328,7 +23017,8 @@
     "url":"https://github.com/osquery/osquery/blob/master/specs/yara/yara_events.table",
     "platforms":[
       "darwin",
-      "linux"
+      "linux",
+      "windows"
     ],
     "evented":true,
     "cacheable":false,
