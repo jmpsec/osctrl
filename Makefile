@@ -79,9 +79,14 @@ clean:
 	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
 
+# Dekete all dependencies go.sum files
+clean_go:
+	find . -name "go.sum" -type f -exec rm -rf {} \;
+
 # Remove all unused dependencies
 tidy:
 	make clean
+	make clean_go
 	go mod tidy
 
 # Install everything
