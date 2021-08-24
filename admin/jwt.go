@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"log"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/spf13/viper"
