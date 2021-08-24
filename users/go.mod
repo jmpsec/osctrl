@@ -3,7 +3,7 @@ module github.com/jmpsec/osctrl/users
 go 1.15
 
 require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/golang-jwt/jwt/v4 v4.0.0
 	github.com/jinzhu/gorm v1.9.8
 	github.com/jmpsec/osctrl/queries v0.0.0-20210108060250-175f09fbfa70 // indirect
 	github.com/jmpsec/osctrl/types v0.0.0-20210108060250-175f09fbfa70
