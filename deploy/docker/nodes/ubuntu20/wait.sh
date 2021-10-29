@@ -20,4 +20,4 @@ done
 sleep $WAIT
 
 # Run osquery
-/usr/bin/osqueryd --flagfile="$FLAGS_FILE" --verbose
+/opt/osquery/bin/osqueryd --flagfile="$FLAGS_FILE" --verbose

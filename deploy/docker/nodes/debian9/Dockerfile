@@ -3,7 +3,7 @@ LABEL maintainer="javuto"
 
 RUN apt update && apt install -y curl
 
-RUN curl -# "https://osquery-packages.s3.amazonaws.com/deb/osquery_4.9.0-1.linux_$(dpkg --print-architecture).deb" -o "/tmp/osquery.deb"
+RUN curl -# "https://osquery-packages.s3.amazonaws.com/deb/osquery_5.0.1-1.linux_$(dpkg --print-architecture).deb" -o "/tmp/osquery.deb"
 RUN dpkg -i "/tmp/osquery.deb"
 
 COPY deploy/docker/nodes/debian9/wait.sh .

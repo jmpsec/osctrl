@@ -838,6 +838,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -1380,6 +1388,14 @@
         "description":"Path to the authorized_keys file",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -3891,6 +3907,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -4862,7 +4886,7 @@
         "name":"uid",
         "description":"Currently authenticated user if available",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -4870,7 +4894,7 @@
         "name":"user_uuid",
         "description":"UUID of authenticated user if available",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -4878,7 +4902,7 @@
         "name":"filevault_status",
         "description":"FileVault status with one of following values: on | off | unknown",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -5208,6 +5232,14 @@
         "description":"Resolver options",
         "type":"bigint",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -6079,7 +6111,7 @@
         "name":"cgroup_namespace",
         "description":"cgroup namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6087,7 +6119,7 @@
         "name":"ipc_namespace",
         "description":"IPC namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6095,7 +6127,7 @@
         "name":"mnt_namespace",
         "description":"Mount namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6103,7 +6135,7 @@
         "name":"net_namespace",
         "description":"Network namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6111,7 +6143,7 @@
         "name":"pid_namespace",
         "description":"PID namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6119,7 +6151,7 @@
         "name":"user_namespace",
         "description":"User namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -6127,7 +6159,7 @@
         "name":"uts_namespace",
         "description":"UTS namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -7757,6 +7789,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -8327,7 +8367,7 @@
         "name":"bsd_flags",
         "description":"The BSD file flags (chflags). Possible values: NODUMP, UF_IMMUTABLE, UF_APPEND, OPAQUE, HIDDEN, ARCHIVED, SF_IMMUTABLE, SF_APPEND",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -8785,6 +8825,14 @@
       {
         "name":"is_hidden",
         "description":"IsHidden attribute set in OpenDirectory",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
         "type":"integer",
         "hidden":true,
         "required":false,
@@ -9411,7 +9459,7 @@
         "name":"pci_slot",
         "description":"PCI slot number",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -10498,6 +10546,14 @@
         "index":false
       },
       {
+        "name":"type_name",
+        "description":"Entry type name, according to ut_type types (utmp.h)",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"time",
         "description":"Entry timestamp",
         "type":"integer",
@@ -10828,7 +10884,7 @@
         "name":"net_namespace",
         "description":"The inode number of the network namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -15202,7 +15258,7 @@
         "name":"pci_class_id",
         "description":"PCI Device class ID in hex format",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15210,7 +15266,7 @@
         "name":"pci_subclass_id",
         "description":"PCI Device  subclass in hex format",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15218,7 +15274,7 @@
         "name":"pci_subclass",
         "description":"PCI Device subclass",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15226,7 +15282,7 @@
         "name":"subsystem_vendor_id",
         "description":"Vendor ID of PCI device subsystem",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15234,7 +15290,7 @@
         "name":"subsystem_vendor",
         "description":"Vendor of PCI device subsystem",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15242,7 +15298,7 @@
         "name":"subsystem_model_id",
         "description":"Model ID of PCI device subsystem",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -15250,7 +15306,7 @@
         "name":"subsystem_model",
         "description":"Device description of PCI device subsystem",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -16303,7 +16359,7 @@
         "name":"status",
         "description":"OpenBSM Attribute: Status of the process",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -16311,7 +16367,7 @@
         "name":"fsuid",
         "description":"Filesystem user ID at process start",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16319,7 +16375,7 @@
         "name":"suid",
         "description":"Saved user ID at process start",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16327,7 +16383,7 @@
         "name":"fsgid",
         "description":"Filesystem group ID at process start",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16335,7 +16391,7 @@
         "name":"sgid",
         "description":"Saved group ID at process start",
         "type":"bigint",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -16343,7 +16399,7 @@
         "name":"syscall",
         "description":"Syscall name: fork, vfork, clone, execve, execveat",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -16903,7 +16959,7 @@
         "name":"net_namespace",
         "description":"The inode number of the network namespace",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -17190,7 +17246,7 @@
         "name":"upid",
         "description":"A 64bit pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -17198,7 +17254,7 @@
         "name":"uppid",
         "description":"The 64bit parent pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -17206,7 +17262,7 @@
         "name":"cpu_type",
         "description":"Indicates the specific processor designed for installation.",
         "type":"integer",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       },
@@ -17214,7 +17270,7 @@
         "name":"cpu_subtype",
         "description":"Indicates the specific processor on which an entry may be used.",
         "type":"integer",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -17415,6 +17471,14 @@
         "description":"Directory where Python modules are located",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -18301,6 +18365,37 @@
         "name":"code",
         "description":"The seccomp action",
         "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"secureboot",
+    "description":"Secure Boot UEFI Settings.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/secureboot.table",
+    "platforms":[
+      "darwin",
+      "linux",
+      "freebsd",
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"secure_boot",
+        "description":"Whether secure boot is enabled",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"setup_mode",
+        "description":"Whether setup mode is enabled",
+        "type":"integer",
         "hidden":false,
         "required":false,
         "index":false
@@ -19718,9 +19813,9 @@
         "index":false
       },
       {
-        "name":"success",
-        "description":"The socket open attempt status",
-        "type":"integer",
+        "name":"status",
+        "description":"Either 'succeeded', 'failed', 'in_progress' (connect() on non-blocking socket) or 'no_client' (null accept() on non-blocking socket)",
+        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -19801,6 +19896,14 @@
         "name":"eid",
         "description":"Event ID",
         "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"success",
+        "description":"Deprecated. Use the 'status' column instead",
+        "type":"integer",
         "hidden":true,
         "required":false,
         "index":false
@@ -20004,6 +20107,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -20146,7 +20257,7 @@
         "name":"field_name",
         "description":"Specific attribute of opaque type",
         "type":"text",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -20795,6 +20906,90 @@
     ]
   },
   {
+    "name":"tpm_info",
+    "description":"A table that lists the TPM related information.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/tpm_info.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"activated",
+        "description":"TPM is activated",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"enabled",
+        "description":"TPM is enabled",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"owned",
+        "description":"TPM is ownned",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufacturer_version",
+        "description":"TPM version",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufacturer_id",
+        "description":"TPM manufacturers ID",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufacturer_name",
+        "description":"TPM manufacturers name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"product_name",
+        "description":"Product name of the TPM",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"physical_presence_version",
+        "description":"Version of the Physical Presence Interface",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"spec_version",
+        "description":"Trusted Computing Group specification that the TPM supports",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"ulimit_info",
     "description":"System resource usage limits.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/ulimit_info.table",
@@ -20833,7 +21028,7 @@
   },
   {
     "name":"uptime",
-    "description":"Track time passed since last boot.",
+    "description":"Track time passed since last boot. Some systems track this as calendar time, some as runtime.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/uptime.table",
     "platforms":[
       "darwin",
@@ -21183,6 +21378,22 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"key_type",
+        "description":"The type of the private key. One of [rsa, dsa, dh, ec, hmac, cmac], or the empty string.",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -21326,6 +21537,14 @@
       {
         "name":"is_hidden",
         "description":"IsHidden attribute set in OpenDirectory",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
         "type":"integer",
         "hidden":true,
         "required":false,
@@ -23240,6 +23459,14 @@
         "description":"URL to GPG key",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "hidden":true,
         "required":false,
         "index":false
       }
