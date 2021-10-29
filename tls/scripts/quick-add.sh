@@ -23,7 +23,7 @@ _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
 _DEB_ARCH=`dpkg-architecture -q DEB_BUILD_ARCH`
 
-_OSQUERY_VER="4.9.0"
+_OSQUERY_VER="5.0.1"
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_OSQUERY_VER.pkg"
 _OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_$_OSQUERY_VER-1.linux_$_DEB_ARCH.deb"
 _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_OSQUERY_VER-1.linux.x86_64.rpm"
