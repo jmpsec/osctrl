@@ -109,20 +109,6 @@ services:
   #  volumes:
   #    - ./deploy/docker/config:/config
   #    - ./deploy/docker/certs:/certs
-  # osquery-ubuntu16:
-  #   container_name: osquery-ubuntu16
-  #   depends_on:
-  #     - "osctrl-nginx"
-  #   build:
-  #     context: .
-  #     dockerfile: "deploy/docker/nodes/ubuntu16/Dockerfile"
-  #   links:
-  #     - "osctrl-nginx"
-  #   networks:
-  #     - public-net
-  #   volumes:
-  #     - ./deploy/docker/config:/config
-  #     - ./deploy/docker/certs:/certs
   # osquery-debian9:
   #   container_name: osquery-debian9
   #   depends_on:
@@ -137,20 +123,6 @@ services:
   #   volumes:
   #     - ./deploy/docker/config:/config
   #     - ./deploy/docker/certs:/certs
-  # osquery-debian8:
-  #   container_name: osquery-debian8
-  #   depends_on:
-  #     - "osctrl-nginx"
-  #   build:
-  #     context: .
-  #     dockerfile: "deploy/docker/nodes/debian8/Dockerfile"
-  #   links:
-  #     - "osctrl-nginx"
-  #   networks:
-  #     - public-net
-  #   volumes:
-  #     - ./deploy/docker/config:/config
-  #     - ./deploy/docker/certs:/certs
   # osquery-centos7:
   #   container_name: osquery-centos7
   #   depends_on:
@@ -158,20 +130,6 @@ services:
   #   build:
   #     context: .
   #     dockerfile: "deploy/docker/nodes/centos7/Dockerfile"
-  #   links:
-  #     - "osctrl-nginx"
-  #   networks:
-  #     - public-net
-  #   volumes:
-  #     - ./deploy/docker/config:/config
-  #     - ./deploy/docker/certs:/certs
-  # osquery-centos6:
-  #   container_name: osquery-centos6
-  #   depends_on:
-  #     - "osctrl-nginx"
-  #   build:
-  #     context: .
-  #     dockerfile: "deploy/docker/nodes/centos6/Dockerfile"
   #   links:
   #     - "osctrl-nginx"
   #   networks:
