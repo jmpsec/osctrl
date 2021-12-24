@@ -6,11 +6,7 @@ x509_extensions = v3_req
 distinguished_name = dn
 
 [dn]
-C = US
-ST = NY
-L = Buffalo
-O = Example
-emailAddress = lolz@gmail.com
+emailAddress = dev@osctrl.example.com
 CN = osctrl.example.com
 
 [v3_req]

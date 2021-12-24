@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 #
-# Script to build osctrl in docker
+# Helper script to prepare osctrl configuration to run in docker
 #
 # Usage: dockerize.sh [-h|--help] [PARAMETER] [PARAMETER] ...
 #
 # Parameters:
 #  -h	  Shows this help message and exit.
 #  -b	  Builds new docker containers.
-#  -u	  Runs existing containers.
-#  -c	  Generates configuration files.
-#  -f	  Forces the generation of new certificates and configuration.
-#  -m   Uses mkcert (https://github.com/FiloSottile/mkcert) to generate certificate.
-#  -d	  Takes down running containers.
+#  -u	  Runs existing osctrl containers.
+#  -f	  Forces the generation of new certificates.
+#  -J   Generates new JWT secret.
+#  -m   Uses mkcert (https://github.com/FiloSottile/mkcert) to generate a certificate and trust it locally.
+#  -d	  Takes down running osctrl containers.
 #  -x	  Removes container images.
+#  -C   Existing certificate to be used with osctrl.
+#  -K   Existing private key to be used with osctrl.
 
 # Show an informational log message
 #   string  message_to_display
@@ -35,17 +37,19 @@ function usage() {
   printf "\nParameters:\n"
   printf "  -h\tShows this help message and exit.\n"
   printf "  -b\tBuilds new docker containers.\n"
-  printf "  -u\tRun osctrl containers.\n"
-  printf "  -c\tGenerates configuration files.\n"
-  printf "  -f\tForces the generation of new certificates and configuration.\n"
-  printf "  -m\tUses mkcert (https://github.com/FiloSottile/mkcert) to generate certificate.\n"
-  printf "  -d\tTakes down running containers.\n"
+  printf "  -u\tRun existing osctrl containers.\n"
+  printf "  -f\tForces the generation of new certificates.\n"
+  printf "  -J\tGenerates new JWT secret.\n"
+  printf "  -m\tUses mkcert (https://github.com/FiloSottile/mkcert) to generate a certificate and trust it locally.\n"
+  printf "  -d\tTakes down running osctrl containers.\n"
   printf "  -x\tRemoves container images.\n"
+  printf "  -C\tExisting certificate to be used with osctrl.\n"
+  printf "  -K\tExisting private key to be used with osctrl.\n"
   printf "\nExamples:\n"
-  printf "  Run dockerized osctrl building new containers and forcing to generate new configuration/certs:\n"
+  printf "  Run dockerized osctrl building new containers and forcing to generate new certificates:\n"
   printf "\t%s -u -b -f\n" "${0}"
-  printf "  Generate only configuration files:\n"
-  printf "\t%s -c\n" "${0}"
+  printf "  Run existing containers with existing certificates:\n"
+  printf "\t%s -u -C cert.crt -K private.key\n" "${0}"
   printf "\n"
 }
 
@@ -68,29 +72,33 @@ fi
 
 # Values not intended to change
 NAME="osctrl"
+_HOSTNAME="localhost"
 DEPLOYDIR="$ROOTDIR/deploy"
-CERTSDIR="$DOCKERDIR/certs"
-CONFIGDIR="$DOCKERDIR/config"
+CERTSDIR="$DOCKERDIR/conf/tls"
 COMPOSERFILE="$DOCKERDIR/docker-compose.yml"
+ENVFILE="$ROOTDIR/.env"
+ENVTEMPLATE="$DOCKERDIR/env.example"
 
-# Directories to generate certificates and configuration
+# Directories to generate certificates
 mkdir -p "$CERTSDIR"
-mkdir -p "$CONFIGDIR"
 
-# Secret for API JWT
-_JWT_SECRET="$(head -c64 < /dev/random | base64 | head -n 1 | openssl dgst -sha256 | cut -d " " -f2)"
+# Default value for certificate and key
+KEY_FILE="$CERTSDIR/$NAME.key"
+CRT_FILE="$CERTSDIR/$NAME.crt"
+CNF_FILE="$CERTSDIR/openssl.cnf"
 
 # Default values for arguments
 SHOW_USAGE=true
 _BUILD=false
 _UP=false
 _FORCE=false
+_JWT=false
 _MKCERT=false
 _DOWN=false
 _REMOVE=false
 
 # Extract arguments
-while getopts 'hbufmdx' c; do
+while getopts 'hbufJmdxCK' c; do
   case $c in
     h)
       usage
@@ -108,6 +116,10 @@ while getopts 'hbufmdx' c; do
       SHOW_USAGE=false
       _FORCE=true
       ;;
+    J)
+      SHOW_USAGE=false
+      _JWT=true
+      ;;
     m)
       SHOW_USAGE=false
       _MKCERT=true
@@ -119,6 +131,14 @@ while getopts 'hbufmdx' c; do
     x)
       SHOW_USAGE=false
       _REMOVE=true
+      ;;
+    C)
+      SHOW_USAGE=false
+      CRT_FILE=$2
+      ;;
+    K)
+      SHOW_USAGE=false
+      KEY_FILE=$2
       ;;
   esac
 done
@@ -144,112 +164,43 @@ if [[ "$_REMOVE" == true ]]; then
   exit 0
 fi
 
-# Include functions
-source "$DEPLOYDIR/lib.sh"
-
-log "Preparing certificates for $NAME-nginx"
-
-# This is for development purposes, in production environments use 2048 or 4096 bits
-_BITS="1024"
-
-KEY_FILE="$CERTSDIR/$NAME.key"
-CRT_FILE="$CERTSDIR/$NAME.crt"
-DH_FILE="$CERTSDIR/dhparam.pem"
-
-if [[ "$_MKCERT" == false ]]; then
-  if [[ -f "$KEY_FILE" ]] && [[ -f "$CRT_FILE" ]] && [[ "$_FORCE" == false ]]; then
-    log "Using existing $KEY_FILE and $CRT_FILE"
+if [[ "$_FORCE" == true ]]; then
+  log "Preparing certificates for osctrl"
+  if [[ "$_MKCERT" == true ]]; then
+    log "Generating $KEY_FILE and $CRT_FILE with mkcert"
+    mkcert -key-file "$KEY_FILE" -cert-file "$CRT_FILE" "$_HOSTNAME"
   else
-    log "Generating $KEY_FILE and $CRT_FILE"
-    openssl req -x509 -newkey rsa:$_BITS -sha256 -days 365 -nodes \
-    -keyout "$KEY_FILE" -out "$CRT_FILE" -subj "/CN=osctrl-nginx" \
-    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+    log "Generating $KEY_FILE and $CRT_FILE with OpenSSL"
+    if [[ ! -f "$CNF_FILE" ]]; then
+      _log "OpenSSL configuration $CNF_FILE does not exist"
+      exit $OHNOES
+    fi
+    openssl req -x509 -new -nodes -keyout "$KEY_FILE" -out "$CRT_FILE" -config "$CNF_FILE"
   fi
 else
-  log "Generating $KEY_FILE and $CRT_FILE with mkcert"
-  mkcert -key-file "$KEY_FILE" -cert-file "$CRT_FILE" "localhost"
-fi
-
-if [[ -f "$DH_FILE" && "$_FORCE" == false ]]; then
-    log "Using existing $DH_FILE"
-  else
-    log "Generating $DH_FILE, it may take a bit"
-    openssl dhparam -out "$DH_FILE" $_BITS &>/dev/null
+  if [[ ! -f "$KEY_FILE" ]]; then
+    _log "Private key file $KEY_FILE does not exist"
+    exit $OHNOES
   fi
-
-CRT_DST="/etc/certs/$NAME.crt"
-KEY_DST="/etc/certs/$NAME.key"
-DH_DST="/etc/certs/dhparam.pem"
-
-log "Preparing configuration for nginx"
-
-TLS_CONF="$CONFIGDIR/tls.conf"
-if [[ -f "$TLS_CONF" && "$_FORCE" == false ]]; then
-  log "Using existing $TLS_CONF"
-else
-  nginx_generate "$DEPLOYDIR/nginx/ssl.conf" "$CRT_DST" "$KEY_DST" "$DH_DST" "443" "9000" "osctrl-tls" "$TLS_CONF"
+  if [[ ! -f "$CRT_FILE" ]]; then
+    _log "Certificate file $KEY_FILE does not exist"
+    exit $OHNOES
+  fi
+  log "Using existing $KEY_FILE and $CRT_FILE"
 fi
 
-ADMIN_CONF="$CONFIGDIR/admin.conf"
-if [[ -f "$ADMIN_CONF" && "$_FORCE" == false ]]; then
-  log "Using existing $ADMIN_CONF"
-else
-  nginx_generate "$DEPLOYDIR/nginx/ssl.conf" "$CRT_DST" "$KEY_DST" "$DH_DST" "8443" "9001" "osctrl-admin" "$ADMIN_CONF"
-fi
-
-API_CONF="$CONFIGDIR/api.conf"
-if [[ -f "$API_CONF" && "$_FORCE" == false ]]; then
-  log "Using existing $API_CONF"
-else
-  nginx_generate "$DEPLOYDIR/nginx/ssl.conf" "$CRT_DST" "$KEY_DST" "$DH_DST" "8444" "9002" "osctrl-api" "$API_CONF"
-fi
-
-log "Preparing configuration for TLS"
-TLS_JSON="$CONFIGDIR/tls.json"
-if [[ -f "$TLS_JSON" && "$_FORCE" == false ]]; then
-  log "Using existing $TLS_JSON"
-else
-  configuration_service "$DEPLOYDIR/config/service.json" "$TLS_JSON" "localhost|9000" "tls" "0.0.0.0" "none" "db"
-fi
-
-log "Preparing configuration for Admin"
-ADMIN_JSON="$CONFIGDIR/admin.json"
-if [[ -f "$ADMIN_JSON" && "$_FORCE" == false ]]; then
-  log "Using existing $ADMIN_JSON"
-else
-  configuration_service "$DEPLOYDIR/config/service.json" "$ADMIN_JSON" "localhost|9001" "admin" "0.0.0.0" "db" "db"
-fi
-
-log "Preparing configuration for API"
-API_JSON="$CONFIGDIR/api.json"
-if [[ -f "$API_JSON" && "$_FORCE" == false ]]; then
-  log "Using existing $API_JSON"
-else
-  configuration_service "$DEPLOYDIR/config/service.json" "$API_JSON" "localhost|9002" "api" "0.0.0.0" "jwt" "none"
-fi
-
-log "Preparing configuration for JWT"
-JWT_JSON="$CONFIGDIR/jwt.json"
-if [[ -f "$JWT_JSON" && "$_FORCE" == false ]]; then
-  log "Using existing $JWT_JSON"
-else
-  cat "$DEPLOYDIR/config/jwt.json" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | tee "$JWT_JSON"
-fi
-
-log "Preparing configuration for backend"
-DB_JSON="$CONFIGDIR/db.json"
-if [[ -f "$DB_JSON" && "$_FORCE" == false ]]; then
-  log "Using existing $DB_JSON"
-else
-  configuration_db "$DEPLOYDIR/config/db.json" "$DB_JSON" "osctrl-db" "5432" "osctrl" "osctrl" "osctrl"
+if [[ "$_JWT" == true ]]; then
+  _JWT_SECRET="$(head -c64 < /dev/random | base64 | head -n 1 | openssl dgst -sha256 | cut -d " " -f2)"
+  log "Generated a $(echo $_JWT_SECRET | wc -c | awk '{print $1}') bytes JWT secret"
+  cat "$ENVTEMPLATE" | sed "s/JWT_SECRET.*/JWT_SECRET=$_JWT_SECRET/" | tee "$ENVFILE"
 fi
 
 if [[ "$_BUILD" == true ]]; then
-  log "Building containers from $COMPOSERFILE"
+  log "Building containers from $COMPOSERFILE and using $ENVFILE"
   docker-compose -f "$COMPOSERFILE" --project-directory "$ROOTDIR" build
 fi
 
-log "Access $NAME-admin using https://localhost:8443"
+log "Access $NAME-admin using https://$_HOSTNAME:8443"
 
 if [[ "$_UP" == true ]]; then
   log "Running containers"

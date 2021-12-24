@@ -151,7 +151,7 @@ vagrant_up:
 
 # Build docker containers and run them (also generates new certificates)
 docker_all:
-	./deploy/docker/dockerize.sh -u -b -f
+	./deploy/docker/dockerize.sh -u -b -f -J
 
 # Run docker containers
 docker_up:
@@ -169,9 +169,10 @@ docker_down:
 docker_clean:
 	make docker_down
 	./deploy/docker/dockerize.sh -x
-	rm -Rf deploy/docker/certs/*
-	rm -Rf deploy/docker/config/*
-	docker volume rm osctrl_db-data
+	rm -Rf deploy/docker/conf/tls/*.crt
+	rm -Rf deploy/docker/conf/tls/*.key
+	rm -Rf .env
+	docker volume rm osctrl-postgres-db
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
