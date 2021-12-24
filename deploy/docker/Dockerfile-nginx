@@ -1,0 +1,10 @@
+ARG NGINX_VERSION
+FROM nginx:${NGINX_VERSION}
+
+### Copy NGINX configs ###
+COPY deploy/docker/conf/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY deploy/docker/conf/nginx/osctrl.conf /etc/nginx/conf.d/osctrl.conf
+
+### Copy TLS public cert and private key ###
+COPY deploy/docker/conf/tls/*.crt /etc/ssl/certs/osctrl.crt
+COPY deploy/docker/conf/tls/*.key /etc/ssl/private/osctrl.key

@@ -47,6 +47,9 @@ osctrl.crt
 osctrl.secret
 dhparam.pem
 
+# Environment file for docker
+.env
+
 # Customization
 #brand.png
 
