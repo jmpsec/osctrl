@@ -129,13 +129,25 @@ install_cli:
 logs_tls:
 	sudo journalctl -f -t $(TLS_NAME)
 
+# Display docker logs for TLS server
+docker_logs_tls:
+	docker logs -f $(TLS_NAME)
+
 # Display systemd logs for Admin server
 logs_admin:
 	sudo journalctl -f -t $(ADMIN_NAME)
 
+# Display docker logs for Admin server
+docker_logs_admin:
+	docker logs -f $(ADMIN_NAME)
+
 # Display systemd logs for API server
 logs_api:
 	sudo journalctl -f -t $(API_NAME)
+
+# Display docker logs for API server
+docker_logs_api:
+	docker logs -f $(API_NAME)
 
 # Destroy existing vagrant development VM
 vagrant_destroy:
