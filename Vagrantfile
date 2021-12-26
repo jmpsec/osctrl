@@ -20,9 +20,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     ]
     privileged = false
   end
-  config.vm.provider "virtualbox" do |v|
-    v.memory = 1024
-    v.cpus = 1
-    v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+  ["vmware_desktop", "virtualbox", "hyperv"].each do |provider|
+    config.vm.provider provider do |v, override|
+      v.memory = "1024"
+      v.cpus = 1
+    end
+    config.vm.provider "virtualbox" do |v|
+      v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    end
+    config.vm.provider :vmware_desktop do |vmware|
+      vmware.vmx["ethernet0.pcislotnumber"] = "32"
+    end
   end
 end
