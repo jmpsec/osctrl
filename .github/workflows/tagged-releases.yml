@@ -1,18 +1,13 @@
+name: Create Release
+
 on:
   create:
     tags:
       - 'v*'
 
-name: Create Release
 jobs:
   build:
-    name: Create Release
     runs-on: ubuntu-20.04
-    strategy:
-      matrix: 
-        components: ['tls', 'admin', 'api', 'cli']
-        #goos: ['linux']
-        #goarch: ['amd64']
     steps:
       ######################################## Checkout code ########################################
       - name: Checkout code
@@ -31,6 +26,15 @@ jobs:
           tag_name: ${{ github.ref }}
           body_path: CHANGELOG.md
 
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix: 
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
       ######################################## Add build artifacts to release ########################################
       - name: Add build artifacts to release
         uses: actions/upload-release-asset@v1
@@ -38,6 +42,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bin/osctrl-${{ matrix.components }}-linux-amd64.bin
-          asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-linux-amd64.bin
+          asset_path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           asset_content_type: application/x-binary
