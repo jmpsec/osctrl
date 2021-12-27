@@ -1,0 +1,41 @@
+name: Build OSctrl binaries
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+    steps:
+      ######################################## Checkout code ########################################
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      ######################################## Install go to env ########################################
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - run: go version
+
+      ######################################## Get GO deps ########################################
+      - name: Get GO deps
+        run: go mod download
+
+      ######################################## Build osctrl component ########################################
+      - name: Build osctrl-tls
+        run: mkdir ./bin
+        run: GOOS=linux GOARCH=amd64 go build -o ./bin/osctrl-${{ matrix.components }}-${GOOS}-${amd64}.bin ./${{ matrix.components }}/main.go
+
+      ######################################## Create ZIP of build artifacts ########################################
+      - name: Create ZIP of build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: osctrl-binaries.zip
+          path: bin
