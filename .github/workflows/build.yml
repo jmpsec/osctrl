@@ -39,5 +39,5 @@ jobs:
       - name: Create ZIP of build artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: osctrl-binaries-${GITHUB_SHA::8}.zip
+          name: osctrl-binaries-${GITHUB_SHA:8}.zip
           path: bin
