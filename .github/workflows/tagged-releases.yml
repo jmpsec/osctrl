@@ -9,7 +9,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-20.04
     strategy:
-      matrx: 
+      matrix: 
         components: ['tls', 'admin', 'api', 'cli']
         goos: ['linux']
         goarch: ['amd64']
