@@ -38,5 +38,5 @@ jobs:
       - name: Create ZIP of build artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: osctrl-binaries.zip
+          name: osctrl-binaries-${{ git_branch }}-${{ git_hash }}.zip
           path: bin
