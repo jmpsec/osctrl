@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  create_release:
     runs-on: ubuntu-20.04
     steps:
       ######################################## Checkout code ########################################
@@ -25,9 +25,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
           body_path: CHANGELOG.md
-
-jobs:
-  build:
+  release_binaries:
     runs-on: ubuntu-20.04
     strategy:
       matrix: 
