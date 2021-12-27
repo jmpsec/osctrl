@@ -31,8 +31,10 @@ jobs:
         run: go mod download
 
       ######################################## Build osctrl component ########################################
-      - name: Build osctrl-tls
+      - name: Create binary directory
         run: mkdir ./bin
+        
+      - name: Build osctrl-tls
         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}/main.go
 
       ######################################## Create ZIP of build artifacts ########################################
