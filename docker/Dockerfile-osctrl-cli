@@ -6,8 +6,7 @@ ARG GOARCH
 
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin
-COPY osctrl-cli.bin /opt/osctrl/bin/osctrl-cli
-COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+COPY ./osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 CMD [ "/opt/osctrl/bin/wait-cli.sh" ]
