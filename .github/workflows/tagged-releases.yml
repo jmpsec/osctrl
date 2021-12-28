@@ -64,11 +64,12 @@ jobs:
       - name: Download osctrl binaries
         uses: actions/download-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          #name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Rename binaries
         run: |
-          mv osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }} \
+          mv osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }} \
           osctrl-${{ matrix.components }}-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       ######################################## Add binaries to release ########################################
