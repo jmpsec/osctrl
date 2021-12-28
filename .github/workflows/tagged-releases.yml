@@ -30,6 +30,7 @@ jobs:
       - name: Build osctrl-tls
         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
   create_release:
+    needs: ['build']
     runs-on: ubuntu-20.04
     steps:
       ######################################## Create release ########################################
@@ -44,8 +45,8 @@ jobs:
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
           ####body_path: ./CHANGELOG.md####
-  needs: [build]
   upload_relaese_binaries:
+    needs: ['build', 'create_release']
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -64,4 +65,4 @@ jobs:
           asset_path: ./bin/osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           asset_content_type: application/x-binary
-  needs: [build, create_release]
+  
