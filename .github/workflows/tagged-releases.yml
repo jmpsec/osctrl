@@ -1,4 +1,4 @@
-name: Create new Osctrl release with binaries
+name: Create new osctrl release with binaries
 
 on:
   create:
