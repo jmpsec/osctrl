@@ -52,24 +52,23 @@ jobs:
       - name: Declare GIT hash and branch
         id: vars
         shell: bash
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=VERSION::${GITHUB_REF#refs/tags/}"
-    
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
+          echo "$GITHUB_CONTEXT"
+          echo "::set-output name=pr_commit::${GITHUB_CONTEXT}"
 
       - name: Download osctrl binaries
         uses: actions/download-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-master-${{ GITHUB_CONTEXT }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Rename binaries
         run: |
-          mv osctrl-${{ matrix.components }}-master-${{ GITHUB_CONTEXT }}-${{ matrix.goos }}-${{ matrix.goarch }} \
+          mv osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }} \
           osctrl-${{ matrix.components }}-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       ######################################## Add binaries to release ########################################
