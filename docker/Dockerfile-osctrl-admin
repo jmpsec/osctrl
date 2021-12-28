@@ -1,0 +1,9 @@
+FROM ubuntu:20.04
+RUN useradd -ms /usr/sbin/nologin osctrl
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/configs
+COPY osctrl-admin.bin /opt/osctrl/bin/osctrl-admin
+USER osctrl
+WORKDIR /opt/osctrl
+EXPOSE 9001/tcp
+CMD ["/opt/osctrl/bin/osctrl-admin"]
