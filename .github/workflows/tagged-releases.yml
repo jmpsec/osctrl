@@ -44,6 +44,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
           ####body_path: ./CHANGELOG.md####
+  needs: [build]
   upload_relaese_binaries:
     runs-on: ubuntu-20.04
     strategy:
@@ -63,3 +64,4 @@ jobs:
           asset_path: ./bin/osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           asset_content_type: application/x-binary
+  needs: [build, create_release]
