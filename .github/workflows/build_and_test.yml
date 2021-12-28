@@ -48,8 +48,7 @@ jobs:
       - name: Upload osctrl bianries
         uses: actions/upload-artifact@v2
         with:
-          #name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}
-          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
       - name: Create ZIP of build artifacts

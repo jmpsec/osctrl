@@ -6,35 +6,36 @@ on:
       - 'v*'
 
 jobs:
-  # build_and_test:
-  #   runs-on: ubuntu-20.04
-  #   strategy:
-  #     matrix:
-  #       components: ['tls', 'admin', 'api', 'cli']
-  #       goos: ['linux']
-  #       goarch: ['amd64']
-  #   steps:
-  #     ######################################## Checkout code ########################################
-  #     - name: Checkout code
-  #       uses: actions/checkout@v2
-  #     ######################################## Install go ########################################
-  #     - name: Set up Go
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         go-version: 1.17
-  #     - run: go version
-  #     ######################################## Get GO deps ########################################
-  #     - name: Get GO deps
-  #       run: go mod download
-  #     ######################################## Build osctrl binaries ########################################
-  #     - name: Build osctrl-tls
-  #       run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
-  #     ######################################## Upload artifacts ########################################
-  #     - name: Upload osctrl bianries
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-  #         path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+  build_and_test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ######################################## Checkout code ########################################
+      - name: Checkout code
+        uses: actions/checkout@v2
+      ######################################## Install go ########################################
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - run: go version
+      ######################################## Get GO deps ########################################
+      - name: Get GO deps
+        run: go mod download
+      ######################################## Build osctrl binaries ########################################
+      - name: Build osctrl-tls
+        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
+      ######################################## Upload artifacts ########################################
+      - name: Upload osctrl bianries
+        uses: actions/upload-artifact@v2
+        with:
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          
   release:
     runs-on: ubuntu-20.04
     strategy:
@@ -64,8 +65,7 @@ jobs:
       - name: Download osctrl binaries
         uses: actions/download-artifact@v2
         with:
-          #name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
-          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Rename binaries
         run: |
