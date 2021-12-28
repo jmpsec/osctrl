@@ -33,10 +33,11 @@ jobs:
       - name: Upload osctrl bianries
         uses: actions/upload-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          
+
   release:
+    needs: [build_and_test]
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -53,24 +54,14 @@ jobs:
       - name: Declare GIT hash and branch
         id: vars
         shell: bash
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-          echo "::set-output name=VERSION::${GITHUB_REF#refs/tags/}"
-          echo "$GITHUB_CONTEXT"
-          echo "::set-output name=pr_commit::${GITHUB_CONTEXT}"
 
       - name: Download osctrl binaries
         uses: actions/download-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-master-${{ steps.vars.outputs.pr_commit }}-${{ matrix.goos }}-${{ matrix.goarch }}
-
-      - name: Rename binaries
-        run: |
-          mv osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }} \
-          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       ######################################## Add binaries to release ########################################
       - name: Release
@@ -78,4 +69,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           #body_path: ${{ github.workspace }}-CHANGELOG.txt
-          files: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          files: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
