@@ -38,18 +38,25 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}
+        needs: [create_zip_of_build_artifacts]
       - name: List contents
         run: ls -l
+        needs: [create_zip_of_build_artifacts]
       - name: Unzip
         run: unzip osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}.zip
+        needs: [create_zip_of_build_artifacts]
       - name: List contents
         run: ls -l
+        needs: [create_zip_of_build_artifacts]
       - name: Rename binary
+        id: rename_binary
         run: mv osctrl-${{ matrix.components }}-linux-amd64.bin osctrl-${{ matrix.components }}-${{ github.ref }}-linux-amd64.bin 
-
+        needs: [create_zip_of_build_artifacts]
+        
       ######################################## Add build artifacts to release ########################################
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: 'osctrl-*.bin'
+        needs: [create_zip_of_build_artifacts, rename_binary]
