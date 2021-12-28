@@ -45,6 +45,7 @@ jobs:
 
       - name: Create ZIP of build artifacts
         uses: actions/upload-artifact@v2
+        id: create_zip_of_build_artifacts
         with:
           name: osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}
           path: bin
