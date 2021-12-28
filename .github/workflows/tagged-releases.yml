@@ -97,18 +97,6 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       ######################################## Buld and Push Docker images ########################################
-      - name: LS - 1
-        run: ls -l
-
-      - name: LS - 2
-        run: ls -l /home/runner/work/osctrl/osctrl
-
-      - name: LS - 3
-        run: ls -l /home/runner/work/osctrl
-
-      - name: LS - 4
-        run: ls -l ${{ github.workspace }}
-
       - name: Build and push
         uses: docker/build-push-action@v2
         id: docker_build
