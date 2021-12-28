@@ -1,9 +1,14 @@
 FROM ubuntu:20.04
-RUN useradd -ms /usr/sbin/nologin osctrl
+
+ARG COMPONENT
+ARG GOOS
+ARG GOARCH
+
+RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
-COPY osctrl-api.bin /opt/osctrl/bin/osctrl-api
-USER osctrl
+COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9002/tcp
 CMD ["/opt/osctrl/bin/osctrl-api"]

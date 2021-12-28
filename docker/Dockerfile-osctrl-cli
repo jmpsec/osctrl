@@ -1,8 +1,13 @@
 FROM ubuntu:20.04
-RUN useradd -ms /usr/sbin/nologin osctrl
+
+ARG COMPONENT
+ARG GOOS
+ARG GOARCH
+
+RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin
 COPY osctrl-cli.bin /opt/osctrl/bin/osctrl-cli
-COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
-USER osctrl
+COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 CMD [ "/opt/osctrl/bin/wait-cli.sh" ]
