@@ -3,12 +3,13 @@ FROM ubuntu:20.04
 ARG COMPONENT
 ARG GOOS
 ARG GOARCH
+ARG WORKSPACE="."
 
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/scripts
 RUN mkdir -p /opt/osctrl/config
-COPY ./osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+COPY ${WORKSPACE}/osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9000/tcp
