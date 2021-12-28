@@ -28,6 +28,8 @@ jobs:
   create_release:
     runs-on: ubuntu-20.04
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Create Release
         uses: actions/create-release@v1
         id: create_release
@@ -50,4 +52,4 @@ jobs:
       - name: Add build artifacts to release
         uses: softprops/action-gh-release@v1
         with:
-          files: '/bin/osctrl-*.bin'
+          files: './bin/osctrl-*.bin'
