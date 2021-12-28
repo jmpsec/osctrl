@@ -106,9 +106,9 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/osctrl-${{ matrix.components }}:${{ steps.vars.outputs.RELEASE_VERSION }}
           build-args:
-            - COMPONENT=${{ matrix.components }}
-            - GOOS=${{ matrix.goos }}
-            - GOARCH=${{ matrix.goarch }}
+            COMPONENT=${{ matrix.components }}
+            GOOS=${{ matrix.goos }}
+            GOARCH=${{ matrix.goarch }}
 
 
 
