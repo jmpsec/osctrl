@@ -6,13 +6,13 @@ on:
       - 'v*'
 
 jobs:
-  strategy:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
     matrix:
       components: ['tls', 'admin', 'api', 'cli']
       goos: ['linux']
       goarch: ['amd64']
-  build:
-    runs-on: ubuntu-20.04
     steps:
       ######################################## Checkout code ########################################
       - name: Checkout code
@@ -46,6 +46,11 @@ jobs:
           body_path: CHANGELOG.md
   upload_relaese_binaries:
     runs-on: ubuntu-20.04
+    strategy:
+    matrix:
+      components: ['tls', 'admin', 'api', 'cli']
+      goos: ['linux']
+      goarch: ['amd64']
     steps:
       ######################################## Add binaries to release ######################################## 
       - name: Upload Release Asset
