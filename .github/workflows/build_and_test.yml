@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.17.5
       - run: go version
 
       ######################################## Get GO deps ########################################
@@ -32,7 +32,10 @@ jobs:
 
       ######################################## Build osctrl component ########################################
       - name: Build osctrl-tls
-        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
+          ./${{ matrix.components }}
 
       ######################################## Create ZIP of build artifacts ########################################
       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
@@ -42,6 +45,13 @@ jobs:
         run: |
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      ######################################## Upload artifacts ########################################
+      - name: Upload osctrl bianries
+        uses: actions/upload-artifact@v2
+        with:
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          path: ./bin/osctrl-${{ matrix.components }}--${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
       - name: Create ZIP of build artifacts
         uses: actions/upload-artifact@v2
