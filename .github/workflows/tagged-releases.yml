@@ -29,6 +29,8 @@ jobs:
       ######################################## Build osctrl binaries ########################################
       - name: Build osctrl-tls
         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
+  create_release:
+    steps:
       ######################################## Create release ########################################
       - name: Create Release
         uses: actions/create-release@v1
@@ -41,6 +43,8 @@ jobs:
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
           body_path: CHANGELOG.md
+  upload_relaese_binaries:
+    steps:
       ######################################## Add binaries to release ######################################## 
       - name: Upload Release Asset
         id: upload-release-asset 
