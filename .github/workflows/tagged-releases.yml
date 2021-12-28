@@ -17,23 +17,27 @@ jobs:
       ######################################## Checkout code ########################################
       - name: Checkout code
         uses: actions/checkout@v2
+      
       ######################################## Install go ########################################
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
       - run: go version
+      
       ######################################## Get GO deps ########################################
       - name: Get GO deps
         run: go mod download
+      
       ######################################## Build osctrl binaries ########################################
       - name: Build osctrl-tls
         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
+      
       ######################################## Upload artifacts ########################################
       - name: Upload osctrl bianries
         uses: actions/upload-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
   release:
@@ -45,28 +49,15 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
-      ######################################## Checkout code ########################################
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       ######################################## Download artifacts ########################################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-      - name: Declare GIT hash and branch
-        id: vars
-        shell: bash
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
-      - name: Download osctrl binaries
+      - name: Download osctrl bianries
         uses: actions/download-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
       ######################################## Add binaries to release ########################################
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          #body_path: ${{ github.workspace }}-CHANGELOG.txt
-          files: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          files: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
