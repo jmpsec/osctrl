@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
+	"github.com/jmpsec/osctrl/types"
 )
 
 // Support for undocumented file carving API
@@ -18,8 +19,8 @@ import (
 const (
 	// StatusQueried for queried carves that did not hit nodes yet
 	StatusQueried string = "QUERIED"
-	// StatusInitialized for initialized carves
-	StatusInitialized string = "INITIALIZED"
+	// StatusScheduled for initialized carves
+	StatusScheduled string = "SCHEDULED"
 	// StatusInProgress for carves that are on-going
 	StatusInProgress string = "IN PROGRESS"
 	// StatusCompleted for carves that finalized
@@ -48,8 +49,10 @@ type CarvedFile struct {
 	CarveID         string `gorm:"unique;index"`
 	RequestID       string
 	SessionID       string
+	QueryName       string
 	UUID            string `gorm:"index"`
 	Environment     string
+	Path            string
 	CarveSize       int
 	BlockSize       int
 	TotalBlocks     int
@@ -101,6 +104,27 @@ func (c *Carves) CreateCarve(carve CarvedFile) error {
 		return c.DB.Create(&carve).Error // can be nil or err
 	}
 	return fmt.Errorf("db.NewRecord did not return true")
+}
+
+// InitCarve to initialize an scheduled carve
+func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string) error {
+	carves, err := c.GetByRequest(req.RequestID)
+	if err != nil {
+		return fmt.Errorf("getCarveByRequest %v", err)
+	}
+	for _, carve := range carves {
+		toUpdate := map[string]interface{}{
+			"carve_size":   req.CarveSize,
+			"total_blocks": req.BlockCount,
+			"block_size":   req.BlockSize,
+			"session_id":   sessionid,
+			"status":       StatusInProgress,
+		}
+		if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CheckCarve to verify a session belong to a carve
@@ -173,11 +197,6 @@ func (c *Carves) GetByRequest(requestid string) ([]CarvedFile, error) {
 	return carves, nil
 }
 
-// GetByQuery to get a carve by query name
-func (c *Carves) GetByQuery(name string) ([]CarvedFile, error) {
-	return c.GetByRequest(name)
-}
-
 // GetBlocks to get a carve by session id
 func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 	var blocks []CarvedBlock
@@ -185,6 +204,15 @@ func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 		return blocks, err
 	}
 	return blocks, nil
+}
+
+// GetByQuery to get a carve by query name
+func (c *Carves) GetByQuery(name string) ([]CarvedFile, error) {
+	var carves []CarvedFile
+	if err := c.DB.Where("query_name = ?", name).Find(&carves).Error; err != nil {
+		return carves, err
+	}
+	return carves, nil
 }
 
 // CheckCompression to verify if the blocks are compressed using zstd

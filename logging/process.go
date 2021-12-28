@@ -50,24 +50,25 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 }
 
 // ProcessLogQueryResult - Helper to process on-demand query result logs
-func (l *LoggerTLS) ProcessLogQueryResult(queries types.QueryWriteQueries, statuses types.QueryWriteStatuses, nodeKey string, environment string, debug bool) {
+func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, environment string, debug bool) {
 	// Retrieve node
-	node, err := l.Nodes.GetByKey(nodeKey)
+	node, err := l.Nodes.GetByKey(queriesWrite.NodeKey)
 	if err != nil {
 		log.Printf("error retrieving node %s", err)
 	}
 	// Tap into results so we can update internal metrics
-	for q, r := range queries {
+	for q, r := range queriesWrite.Queries {
 		// Dispatch query name, result and status
 		d := types.QueryWriteData{
-			Name:   q,
-			Result: r,
-			Status: statuses[q],
+			Name:    q,
+			Result:  r,
+			Status:  queriesWrite.Statuses[q],
+			Message: queriesWrite.Messages[q],
 		}
 		go l.DispatchQueries(d, node, debug)
 		// Update internal metrics per query
 		var err error
-		if statuses[q] != 0 {
+		if queriesWrite.Statuses[q] != 0 {
 			err = l.Queries.IncError(q)
 		} else {
 			err = l.Queries.IncExecution(q)
@@ -76,7 +77,7 @@ func (l *LoggerTLS) ProcessLogQueryResult(queries types.QueryWriteQueries, statu
 			log.Printf("error updating query %s", err)
 		}
 		// Add a record for this query
-		if err := l.Queries.TrackExecution(q, node.UUID, statuses[q]); err != nil {
+		if err := l.Queries.TrackExecution(q, node.UUID, queriesWrite.Statuses[q]); err != nil {
 			log.Printf("error adding query execution %s", err)
 		}
 		// Check if query is completed
