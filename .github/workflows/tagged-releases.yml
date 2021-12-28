@@ -79,7 +79,7 @@ jobs:
       - name: Download osctrl bianries
         uses: actions/download-artifact@v2
         with:
-          name: osctrl-${{ matrix.components }}.bin
+          name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
       
       ######################################## checkout ########################################
       - name: Checkout 
@@ -105,7 +105,10 @@ jobs:
           file: ./docker/Dockerfile-osctrl-${{ matrix.components }}
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/osctrl-${{ matrix.components }}:${{ steps.vars.outputs.RELEASE_VERSION }}
-
+          build-args:
+            - COMPONENT=${{ matrix.components }}
+            - GOOS=${{ matrix.goos }}
+            - GOARCH=${{ matrix.goarch }}
 
 
 
