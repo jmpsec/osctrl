@@ -6,14 +6,28 @@ on:
       - 'v*'
 
 jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - run: go version
+      - name: Get GO deps
+        run: go mod download
+      - name: Build osctrl-tls
+        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
   create_release:
     runs-on: ubuntu-20.04
     steps:
-      ######################################## Checkout code ########################################
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      ######################################## Create release ########################################
       - name: Create Release
         uses: actions/create-release@v1
         id: create_release
@@ -32,31 +46,8 @@ jobs:
         components: ['tls', 'admin', 'api', 'cli']
         goos: ['linux']
         goarch: ['amd64']
-    steps:
-      ######################################## Download artifacts and unzip ########################################
-      - name: Download a single artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}
-        needs: [create_zip_of_build_artifacts]
-      - name: List contents
-        run: ls -l
-        needs: [create_zip_of_build_artifacts]
-      - name: Unzip
-        run: unzip osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}.zip
-        needs: [create_zip_of_build_artifacts]
-      - name: List contents
-        run: ls -l
-        needs: [create_zip_of_build_artifacts]
-      - name: Rename binary
-        id: rename_binary
-        run: mv osctrl-${{ matrix.components }}-linux-amd64.bin osctrl-${{ matrix.components }}-${{ github.ref }}-linux-amd64.bin 
-        needs: [create_zip_of_build_artifacts]
-        
-      ######################################## Add build artifacts to release ########################################
-      - name: Release
+    steps:        
+      - name: Add build artifacts to release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: 'osctrl-*.bin'
-        needs: [create_zip_of_build_artifacts, rename_binary]
+          files: '/bin/osctrl-*.bin'
