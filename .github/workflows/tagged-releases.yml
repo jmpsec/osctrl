@@ -107,7 +107,7 @@ jobs:
         run: ls -l /home/runner/work/osctrl
 
       - name: LS - 4
-        run: ls -l ${{ GITHUB_WORKSPACE }}
+        run: ls -l ${{ github.workspace }}
 
       - name: Build and push
         uses: docker/build-push-action@v2
