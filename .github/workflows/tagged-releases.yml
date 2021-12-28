@@ -43,6 +43,10 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
+      ######################################## Checkout code ########################################
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
       ######################################## Download artifacts ########################################
       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
       - name: Declare GIT hash and branch
