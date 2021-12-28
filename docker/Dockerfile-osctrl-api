@@ -7,7 +7,7 @@ ARG GOARCH
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
-COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+COPY ./osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9002/tcp
