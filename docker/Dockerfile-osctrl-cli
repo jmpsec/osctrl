@@ -1,0 +1,8 @@
+FROM ubuntu:20.04
+RUN useradd -ms /usr/sbin/nologin osctrl
+RUN mkdir -p /opt/osctrl/bin
+COPY osctrl-cli.bin /opt/osctrl/bin/osctrl-cli
+COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
+USER osctrl
+WORKDIR /opt/osctrl
+CMD [ "/opt/osctrl/bin/wait-cli.sh" ]

@@ -1,0 +1,6 @@
+*
+!docker/
+!osctrl-tls.bin
+!osctrl-api.bin
+!osctrl-admin.bin
+!osctrl-cli.bin
