@@ -36,7 +36,7 @@ jobs:
           name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
   release:
-    needs: [build]
+    needs: [build_and_test]
     runs-on: ubuntu-20.04
     strategy:
       matrix:
