@@ -1,18 +1,13 @@
+name: Create Release
+
 on:
   create:
     tags:
       - 'v*'
 
-name: Create Release
 jobs:
-  build:
-    name: Create Release
+  create_release:
     runs-on: ubuntu-20.04
-    strategy:
-      matrix: 
-        components: ['tls', 'admin', 'api', 'cli']
-        #goos: ['linux']
-        #goarch: ['amd64']
     steps:
       ######################################## Checkout code ########################################
       - name: Checkout code
@@ -30,14 +25,42 @@ jobs:
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
           body_path: CHANGELOG.md
+  release_binaries:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix: 
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ######################################## Download artifacts and unzip ########################################
+      - name: Download a single artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}
+      - name: List contents
+        run: ls -l
+      - name: Unzip
+        run: unzip osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}.zip
+      - name: List contents
+        run: ls -l
+      - name: Rename binary
+        run: mv osctrl-${{ matrix.components }}-linux-amd64.bin osctrl-${{ matrix.components }}-${{ github.ref }}-linux-amd64.bin 
 
       ######################################## Add build artifacts to release ########################################
-      - name: Add build artifacts to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bin/osctrl-${{ matrix.components }}-linux-amd64.bin
-          asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-linux-amd64.bin
-          asset_content_type: application/x-binary
+          files: 
+            - 'osctrl-*-*-*-*.bin'
+
+      # - name: Add build artifacts to release
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+      #     asset_name: osctrl-${{ matrix.components }}-${{ github.ref }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+      #     asset_content_type: application/x-binary
