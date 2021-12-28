@@ -43,7 +43,7 @@ jobs:
           prerelease: false
           release_name: Release ${{ github.ref }}
           tag_name: ${{ github.ref }}
-          body_path: CHANGELOG.md
+          ####body_path: ./CHANGELOG.md####
   upload_relaese_binaries:
     runs-on: ubuntu-20.04
     strategy:
