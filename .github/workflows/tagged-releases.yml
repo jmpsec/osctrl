@@ -44,6 +44,10 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
+      ######################################## checkout ########################################
+      - name: Checkout 
+        uses: actions/checkout@v2
+        
       ######################################## Download artifacts ########################################
       - name: Download osctrl bianries
         uses: actions/download-artifact@v2
