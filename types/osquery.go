@@ -183,11 +183,27 @@ type QueryWriteQueries map[string]json.RawMessage
 // QueryWriteStatuses to hold the on-demand queries statuses
 type QueryWriteStatuses map[string]int
 
+// QueryWriteMessages to hold the on-demand queries messages
+type QueryWriteMessages map[string]string
+
 // QueryWriteRequest to receive on-demand queries results
 type QueryWriteRequest struct {
 	Queries  QueryWriteQueries  `json:"queries"`
 	Statuses QueryWriteStatuses `json:"statuses"`
+	Messages QueryWriteMessages `json:"messages"`
 	NodeKey  string             `json:"node_key"`
+}
+
+// QueryCarveScheduled to receive confirmation for scheduled carved file
+type QueryCarveScheduled struct {
+	Time      string `json:"time"`
+	SHA256    string `json:"sha256"`
+	Size      string `json:"size"`
+	Path      string `json:"path"`
+	Status    string `json:"status"`
+	CarveGUID string `json:"carve_guid"`
+	RequestID string `json:"request_id"`
+	Carve     string `json:"carve"`
 }
 
 // QueryWriteResponse for on-demand queries results from nodes
@@ -195,9 +211,10 @@ type QueryWriteResponse GenericResponse
 
 // QueryWriteData to store result of on-demand queries
 type QueryWriteData struct {
-	Name   string          `json:"name"`
-	Result json.RawMessage `json:"result"`
-	Status int             `json:"status"`
+	Name    string          `json:"name"`
+	Result  json.RawMessage `json:"result"`
+	Status  int             `json:"status"`
+	Message string          `json:"message"`
 }
 
 // CarveInitRequest received to begin a carve

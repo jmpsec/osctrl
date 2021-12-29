@@ -505,8 +505,21 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 			log.Printf("error updating IP Address %v", err)
 		}
 		nodeInvalid = false
-		// Process submitted results
-		go h.Logs.ProcessLogQueryResult(t.Queries, t.Statuses, t.NodeKey, env.Name, (*h.EnvsMap)[env.Name].DebugHTTP)
+		for name, c := range t.Queries {
+			var carves []types.QueryCarveScheduled
+			if err := json.Unmarshal(c, &carves); err == nil {
+				for _, cc := range carves {
+					if cc.Carve == "1" {
+						if err := h.ProcessCarveWrite(cc, name, t.NodeKey, env.Name); err != nil {
+							h.Inc(metricWriteErr)
+							log.Printf("error scheduling carve %v", err)
+						}
+					}
+				}
+			}
+		}
+		// Process submitted results and mark query as processed
+		go h.Logs.ProcessLogQueryResult(t, env.Name, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}

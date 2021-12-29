@@ -7,33 +7,45 @@ import (
 	"github.com/jmpsec/osctrl/types"
 )
 
-// ProcessCarveInit - Function to initialize a file carve from a node
-func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
+// ProcessCarveWrite - Function to process the scheduling of file carves from a node
+func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName, nodeKey, environment string) error {
 	// Retrieve node
-	node, err := h.Nodes.GetByKey(req.NodeKey)
+	node, err := h.Nodes.GetByKey(nodeKey)
 	if err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error retrieving node %s", err)
 		return err
 	}
-	// Prepare carve to initialize
+	// Prepare carve to be scheduled
 	carve := carves.CarvedFile{
-		CarveID:         req.CarveID,
+		CarveID:         req.CarveGUID,
 		RequestID:       req.RequestID,
-		SessionID:       sessionid,
 		UUID:            node.UUID,
 		Environment:     environment,
-		CarveSize:       req.CarveSize,
-		BlockSize:       req.BlockSize,
-		TotalBlocks:     req.BlockCount,
+		Path:            req.Path,
+		QueryName:       queryName,
+		CarveSize:       0,
+		BlockSize:       0,
+		TotalBlocks:     0,
 		CompletedBlocks: 0,
-		Status:          carves.StatusInitialized,
+		Status:          carves.StatusScheduled,
 	}
 	// Create File Carve
 	err = h.Carves.CreateCarve(carve)
 	if err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error creating  CarvedFile %v", err)
+		return err
+	}
+	return nil
+}
+
+// ProcessCarveInit - Function to initialize a file carve from a node
+func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
+	// Create File Carve
+	if err := h.Carves.InitCarve(req, sessionid); err != nil {
+		h.Inc(metricInitErr)
+		log.Printf("error creating CarvedFile %v", err)
 		return err
 	}
 	return nil
