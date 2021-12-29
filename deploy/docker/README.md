@@ -44,7 +44,7 @@ Some links as reference for the topics in this README:
 ### osctrl
 
 * [What is osctrl?](https://osctrl.net/)
-* [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.2.5#/)
+* [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.2.6#/)
 
 ### Docker
 
