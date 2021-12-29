@@ -109,7 +109,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile-osctrl-${{ matrix.components }}
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/osctrl-${{ matrix.components }}:${{ steps.vars.outputs.RELEASE_VERSION }}
+          tags: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.vars.outputs.RELEASE_VERSION }}
           build-args: |
             COMPONENT=${{ matrix.components }}
             GOOS=${{ matrix.goos }}
