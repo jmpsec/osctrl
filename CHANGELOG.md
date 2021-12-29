@@ -5,7 +5,6 @@
 
 [Git Commits](https://github.com/jmpsec/osctrl/compare/0.2.5...v0.2.6)
 
-
 ### New Features
 
 None
