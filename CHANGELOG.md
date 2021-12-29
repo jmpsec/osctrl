@@ -8,18 +8,14 @@
 
 ### New Features
 
-- <Title> ([#<PR>](<PR URL>))
-- <Title> ([#<PR>](<PR URL>))
-
+None
 ### UI Changes
 
-- <Title> ([#<PR>](<PR URL>))
-- <Title> ([#<PR>](<PR URL>))
+None
 
 ### Under the Hood improvements
 
-- <Title> ([#<PR>](<PR URL>))
-- <Title> ([#<PR>](<PR URL>))
+None
 
 ### Bug Fixes
 
@@ -28,9 +24,7 @@
 
 ### Documentation
 
-- <Title> ([#<PR>](<PR URL>))
-- <Title> ([#<PR>](<PR URL>))
-
+None
 
 ### Build
 
