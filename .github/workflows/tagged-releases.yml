@@ -55,6 +55,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          body_path: ./CHANGELOG.md
 
   dockerhub:
     needs: [build_and_test]
