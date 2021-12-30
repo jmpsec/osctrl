@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -30,7 +31,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "0.2.5"
+	serviceVersion string = "0.2.6"
 	// Service description
 	serviceDescription string = "TLS service for osctrl"
 	// Application description
@@ -43,6 +44,10 @@ const (
 	configurationFile string = "config/" + settings.ServiceTLS + ".json"
 	// Default DB configuration file
 	dbConfigurationFile string = "config/db.json"
+	// Default TLS certificate file
+	tlsCertificateFile string = "config/tls.crt"
+	// Default TLS private key file
+	tlsKeyFile string = "config/tls.key"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
@@ -77,6 +82,9 @@ var (
 	versionFlag *bool
 	configFlag  *string
 	dbFlag      *string
+	tlsServer   *bool
+	tlsCert     *string
+	tlsKey      *string
 )
 
 // Valid values for auth and logging in configuration
@@ -125,6 +133,9 @@ func init() {
 	versionFlag = flag.Bool("v", false, "Displays the binary version.")
 	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
 	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
+	tlsServer = flag.Bool("tls", false, "TLS termination is enabled. It requires certificate and key.")
+	tlsCert = flag.String("cert", tlsCertificateFile, "Certificate file to be used for TLS.")
+	tlsKey = flag.String("key", tlsKeyFile, "Private key file to be used for TLS.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -161,7 +172,6 @@ func main() {
 		log.Fatalf("Failed to connect to backend - %v", err)
 	}
 	// Close when exit
-	//defer db.Close()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Fatalf("Failed to close Database handler - %v", err)
@@ -244,7 +254,7 @@ func main() {
 		thandlers.WithLogs(loggerTLS),
 	)
 
-	/////////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
+	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	if settingsmgr.DebugService(settings.ServiceTLS) {
 		log.Println("DebugService: Creating router")
 	}
@@ -268,8 +278,30 @@ func main() {
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
 
-	//////////////////////////////// Everything is ready at this point!
+	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
-	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-	log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
+	if *tlsServer {
+		cfg := &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+		srv := &http.Server{
+			Addr:         serviceListener,
+			Handler:      routerTLS,
+			TLSConfig:    cfg,
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		}
+		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		log.Fatal(srv.ListenAndServeTLS(*tlsCert, *tlsKey))
+	} else {
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
+	}
 }
