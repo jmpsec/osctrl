@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rsa"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -67,6 +68,10 @@ const (
 	jwtConfigurationFile string = "config/jwt.json"
 	// Default Headers configuration file
 	headersConfigurationFile string = "config/headers.json"
+	// Default TLS certificate file
+	tlsCertificateFile string = "config/tls.crt"
+	// Default TLS private key file
+	tlsKeyFile string = "config/tls.key"
 )
 
 // Random
@@ -122,6 +127,9 @@ var (
 	samlFlag    *string
 	headersFlag *string
 	jwtFlag     *string
+	tlsServer   *bool
+	tlsCert     *string
+	tlsKey      *string
 )
 
 // SAML variables
@@ -194,6 +202,9 @@ func init() {
 	samlFlag = flag.String("S", samlConfigurationFile, "SAML configuration JSON file to use.")
 	headersFlag = flag.String("H", headersConfigurationFile, "Headers configuration JSON file to use.")
 	jwtFlag = flag.String("J", jwtConfigurationFile, "JWT configuration JSON file to use.")
+	tlsServer = flag.Bool("tls", false, "TLS termination is enabled. It requires certificate and key.")
+	tlsCert = flag.String("cert", tlsCertificateFile, "Certificate file to be used for TLS.")
+	tlsKey = flag.String("key", tlsKeyFile, "Private key file to be used for TLS.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -253,16 +264,11 @@ func main() {
 		log.Fatalf("Failed to connect to backend - %v", err)
 	}
 	// Close when exit
-	//defer db.Close()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
-	// Automigrate tables
-	//if err := automigrateDB(); err != nil {
-	//	log.Fatalf("Failed to AutoMigrate: %v", err)
-	//}
 	// Initialize users
 	adminUsers = users.CreateUserManager(db, &jwtConfig)
 	// Initialize tags
@@ -388,14 +394,14 @@ func main() {
 		ahandlers.WithAdminConfig(&adminConfig),
 	)
 
-	//////////////////////////// ADMIN
+	// ////////////////////////// ADMIN
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Creating router")
 	}
 	// Create router for admin
 	routerAdmin := mux.NewRouter()
 
-	/////////////////////////// UNAUTHENTICATED CONTENT
+	// ///////////////////////// UNAUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Unauthenticated content")
 	}
@@ -417,7 +423,7 @@ func main() {
 	routerAdmin.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 
-	/////////////////////////// AUTHENTICATED CONTENT
+	// ///////////////////////// AUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Authenticated content")
 	}
@@ -438,7 +444,6 @@ func main() {
 	// Admin: table for platforms
 	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler))).Methods("GET")
 	// Admin: dashboard
-	//routerAdmin.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
 	routerAdmin.Handle("/dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler))).Methods("GET")
 	// Admin: root
 	routerAdmin.Handle("/", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler))).Methods("GET")
@@ -510,6 +515,28 @@ func main() {
 
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
-	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
-	log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
+	if *tlsServer {
+		cfg := &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+		srv := &http.Server{
+			Addr:         serviceAdmin,
+			Handler:      routerAdmin,
+			TLSConfig:    cfg,
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		}
+		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceAdmin)
+		log.Fatal(srv.ListenAndServeTLS(*tlsCert, *tlsKey))
+	} else {
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
+		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
+	}
 }
