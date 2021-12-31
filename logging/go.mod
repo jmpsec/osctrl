@@ -11,5 +11,5 @@ require (
 	github.com/jmpsec/osctrl/settings v0.0.0-20200326023543-cb8ff04ecc7c
 	github.com/jmpsec/osctrl/types v0.0.0-20200326023543-cb8ff04ecc7c
 	github.com/jmpsec/osctrl/utils v0.0.0-20200326023543-cb8ff04ecc7c
-	github.com/spf13/viper v1.6.2
+	github.com/spf13/viper v1.10.1
 )
