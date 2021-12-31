@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -40,6 +41,10 @@ const (
 	dbConfigurationFile string = "config/db.json"
 	// Default JWT configuration file
 	jwtConfigurationFile string = "config/jwt.json"
+	// Default TLS certificate file
+	tlsCertificateFile string = "config/tls.crt"
+	// Default TLS private key file
+	tlsKeyFile string = "config/tls.key"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 )
@@ -99,6 +104,9 @@ var (
 	configFlag  *string
 	dbFlag      *string
 	jwtFlag     *string
+	tlsServer   *bool
+	tlsCert     *string
+	tlsKey      *string
 )
 
 // Valid values for auth and logging in configuration
@@ -148,6 +156,9 @@ func init() {
 	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
 	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
 	jwtFlag = flag.String("J", jwtConfigurationFile, "JWT configuration JSON file to use.")
+	tlsServer = flag.Bool("tls", false, "TLS termination is enabled. It requires certificate and key.")
+	tlsCert = flag.String("cert", tlsCertificateFile, "Certificate file to be used for TLS.")
+	tlsKey = flag.String("key", tlsKeyFile, "Private key file to be used for TLS.")
 	// Parse all flags
 	flag.Parse()
 	if *versionFlag {
@@ -192,7 +203,6 @@ func main() {
 		log.Fatalf("Failed to connect to backend - %v", err)
 	}
 	// Close when exit
-	//defer db.Close()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Fatalf("Failed to close Database handler - %v", err)
@@ -252,7 +262,7 @@ func main() {
 		}
 	}()
 
-	/////////////////////////// API
+	// ///////////////////////// API
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Creating router")
 	}
@@ -267,7 +277,7 @@ func main() {
 	// API: forbidden
 	routerAPI.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
 
-	/////////////////////////// AUTHENTICATED
+	// ///////////////////////// AUTHENTICATED
 	// API: nodes
 	routerAPI.Handle(_apiPath(apiNodesPath)+"/{uuid}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiNodesPath)+"/{uuid}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
@@ -296,8 +306,30 @@ func main() {
 	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 
-	// Launch HTTP server for TLS endpoint
+	// Launch listeners for API server
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port
-	log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-	log.Fatal(http.ListenAndServe(serviceListener, routerAPI))
+	if *tlsServer {
+		cfg := &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+		srv := &http.Server{
+			Addr:         serviceListener,
+			Handler:      routerAPI,
+			TLSConfig:    cfg,
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		}
+		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		log.Fatal(srv.ListenAndServeTLS(*tlsCert, *tlsKey))
+	} else {
+		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		log.Fatal(http.ListenAndServe(serviceListener, routerAPI))
+	}
 }
