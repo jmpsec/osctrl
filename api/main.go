@@ -18,6 +18,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/version"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -30,7 +31,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceAPI
 	// Service version
-	serviceVersion string = "0.2.6"
+	serviceVersion string = version.OsctrlVersion
 	// Service description
 	serviceDescription string = "API service for osctrl"
 	// Application description

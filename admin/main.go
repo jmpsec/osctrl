@@ -25,6 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/version"
 	"github.com/spf13/viper"
 )
 
@@ -35,7 +36,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceAdmin
 	// Service version
-	serviceVersion string = "0.2.6"
+	serviceVersion string = version.OsctrlVersion
 	// Service description
 	serviceDescription string = "Admin service for osctrl"
 	// Application description

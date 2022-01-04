@@ -25,6 +25,7 @@ require (
 	github.com/jmpsec/osctrl/types v0.2.6
 	github.com/jmpsec/osctrl/users v0.2.6
 	github.com/jmpsec/osctrl/utils v0.2.6
+	github.com/jmpsec/osctrl/version v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
@@ -67,3 +68,5 @@ replace github.com/jmpsec/osctrl/admin/handlers => ./admin/handlers
 replace github.com/jmpsec/osctrl/admin/sessions => ./admin/sessions
 
 replace github.com/jmpsec/osctrl/api/handlers => ./api/handlers
+
+replace github.com/jmpsec/osctrl/version => ./version

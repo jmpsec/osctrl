@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/version"
 
 	"github.com/jinzhu/gorm"
 	"github.com/urfave/cli"
@@ -25,7 +26,7 @@ const (
 	// Application name
 	appName string = projectName + "-cli"
 	// Application version
-	appVersion string = "0.2.6"
+	appVersion string = version.OsctrlVersion
 	// Application usage
 	appUsage string = "CLI for " + projectName
 	// Application description
