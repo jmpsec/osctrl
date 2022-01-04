@@ -1,0 +1,92 @@
+version: "2.2"
+
+x-docker-data: &build_osctrl
+  context: .
+  dockerfile: deploy/docker/Dockerfile-osctrl-dev
+  args:
+    OSCTRL_VERSION: ${OSCTRL_VERSION}
+    OSQUERY_VERSION: ${OSQUERY_VERSION}
+    POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
+    POSTGRES_DB_USERNAME: ${POSTGRES_DB_USERNAME}
+    POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    JWT_SECRET: ${JWT_SECRET}
+
+services:
+  ######################################### osctrl-tls #########################################
+  osctrl-tls:
+    container_name: 'osctrl-tls'
+    restart: unless-stopped
+    image: osctrl-tls:${OSCTRL_VERSION}
+    build:
+      <<: *build_osctrl
+      target: osctrl-tls
+    networks:
+      - osctrl-backend
+    ports:
+      - 443:443
+    depends_on:
+      - postgres
+
+  ######################################### osctrl-admin #########################################
+  osctrl-admin:
+    container_name: 'osctrl-admin'
+    restart: unless-stopped
+    image: osctrl-admin:${OSCTRL_VERSION}
+    build:
+      <<: *build_osctrl
+      target: osctrl-admin
+    networks:
+      - default
+      - osctrl-backend
+    ports:
+      - 9001:9001
+    depends_on:
+      - postgres
+
+  ######################################### osctrl-api #########################################
+  osctrl-api:
+    container_name: 'osctrl-api'
+    restart: unless-stopped
+    image: osctrl-api:${OSCTRL_VERSION}
+    build:
+      <<: *build_osctrl
+      target: osctrl-api
+    networks:
+      - osctrl-backend
+    depends_on:
+      - postgres
+
+  ######################################### PostgreSQL #########################################
+  postgres:
+    container_name: 'osctrl-postgres'
+    restart: unless-stopped
+    image: postgres:${POSTGRES_VERSION}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_DB_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-backend
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+  ######################################### osquery #########################################
+  ubuntu-osquery:
+    container_name: 'osctrl-ubuntu-osquery'
+    restart: unless-stopped
+    image: osctrl-ubuntu-osquery:${OSQUERY_VERSION}
+    build:
+      <<: *build_osctrl
+      target: osctrl-ubuntu-osquery
+    networks:
+      - osctrl-backend
+    depends_on:
+      - osctrl-tls
+
+networks:
+  osctrl-backend:
+  osquery-backend:
+
+volumes:
+  postgres-db:
+

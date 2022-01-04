@@ -2,7 +2,7 @@ version: "2.2"
 
 x-docker-data: &build_osctrl
   context: .
-  dockerfile: deploy/docker/Dockerfile-osctrl
+  dockerfile: deploy/docker/Dockerfile-osctrl-prod
   args:
     OSCTRL_VERSION: ${OSCTRL_VERSION}
     OSQUERY_VERSION: ${OSQUERY_VERSION}
@@ -86,7 +86,7 @@ services:
     networks:
       - osctrl-backend
     volumes:
-      - osctrl-postgres-db:/var/lib/postgresql/data
+      - postgres-db:/var/lib/postgresql/data
 
   ######################################### osctrl-cli #########################################
   osctrl-cli:
@@ -121,4 +121,4 @@ networks:
   osquery-backend:
 
 volumes:
-  osctrl-postgres-db:
+  postgres-db:

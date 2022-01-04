@@ -15,7 +15,6 @@ RUN apt-get update -y && apt-get install zip curl -y
 #    mv /go/src/osctrl-${OSCTRL_VERSION} /go/src/osctrl
 
 ADD . /go/src/osctrl
-RUN ls -la /go/src/osctrl
 WORKDIR /go/src/osctrl
 
 ########## Compile osctrl bins ##########
@@ -23,27 +22,6 @@ RUN go build -o bin/osctrl-tls tls/*.go
 RUN go build -o bin/osctrl-api api/*.go
 RUN go build -o bin/osctrl-admin admin/*.go
 RUN go build -o bin/osctrl-cli cli/*.go
-
-######################################## osctrl-cli ########################################
-FROM ubuntu:20.04 AS osctrl-cli
-ARG POSTGRES_DB_NAME
-ARG POSTGRES_DB_USERNAME
-ARG POSTGRES_DB_PASSWORD
-
-### Copy osctrl-admin bin and configs ###
-RUN mkdir -p /opt/osctrl/
-COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
-COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
-
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
-RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
-RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
-RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
-RUN ln -s /opt/osctrl/bin/osctrl-cli /usr/local/bin/osctrl-cli
-
-COPY deploy/docker/conf/tls/osctrl.crt /opt/osctrl/config/osctrl.crt
-
-ENTRYPOINT [ "/opt/osctrl/bin/wait-cli.sh" ]
 
 ######################################## osctrl-tls ########################################
 FROM ubuntu:20.04 AS osctrl-tls
@@ -148,6 +126,27 @@ USER osctrl-admin
 EXPOSE 9001
 WORKDIR /opt/osctrl
 ENTRYPOINT [ "/opt/osctrl/bin/osctrl-admin" ]
+
+######################################## osctrl-cli ########################################
+FROM ubuntu:20.04 AS osctrl-cli
+ARG POSTGRES_DB_NAME
+ARG POSTGRES_DB_USERNAME
+ARG POSTGRES_DB_PASSWORD
+
+### Copy osctrl-admin bin and configs ###
+RUN mkdir -p /opt/osctrl/
+COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
+COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
+
+COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN ln -s /opt/osctrl/bin/osctrl-cli /usr/local/bin/osctrl-cli
+
+COPY deploy/docker/conf/tls/osctrl.crt /opt/osctrl/config/osctrl.crt
+
+ENTRYPOINT [ "/opt/osctrl/bin/wait-cli.sh" ]
 
 ######################################## Ubuntu 20.04 node ########################################
 FROM ubuntu:20.04 as osctrl-ubuntu-osquery

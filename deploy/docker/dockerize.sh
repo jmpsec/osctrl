@@ -15,6 +15,7 @@
 #  -x	  Removes container images.
 #  -C   Existing certificate to be used with osctrl.
 #  -K   Existing private key to be used with osctrl.
+#  -D   Build development environment.
 
 # Show an informational log message
 #   string  message_to_display
@@ -45,6 +46,7 @@ function usage() {
   printf "  -x\tRemoves container images.\n"
   printf "  -C\tExisting certificate to be used with osctrl.\n"
   printf "  -K\tExisting private key to be used with osctrl.\n"
+  printf "  -D\tBuild development environment.\n"
   printf "\nExamples:\n"
   printf "  Run dockerized osctrl building new containers and forcing to generate new certificates:\n"
   printf "\t%s -u -b -f\n" "${0}"
@@ -57,13 +59,13 @@ function usage() {
 set -e
 
 # Detection of current directory
-if [[ -f "deploy/docker/docker-compose.yml" ]]; then
+if [[ -f "deploy/docker/docker-compose-prod.yml" ]] || [[ -f "deploy/docker/docker-compose-dev.yml" ]]; then
   ROOTDIR="."
   log "ROOTDIR=$ROOTDIR"
   DOCKERDIR="deploy/docker"
-  log "DOCKERDIR=$DOCKERDIR"
+  log "DOCKERDIR=$ROOTDIR/$DOCKERDIR"
 fi
-if [[ -f "docker-compose.yml" ]]; then
+if [[ -f "docker-compose-prod.yml" ]] || [[ -f "docker-compose-dev.yml" ]]; then
   ROOTDIR=".."
   log "ROOTDIR=$ROOTDIR"
   DOCKERDIR="."
@@ -75,7 +77,7 @@ NAME="osctrl"
 _HOSTNAME="localhost"
 DEPLOYDIR="$ROOTDIR/deploy"
 CERTSDIR="$DOCKERDIR/conf/tls"
-COMPOSERFILE="$DOCKERDIR/docker-compose.yml"
+COMPOSERFILE="$DOCKERDIR/docker-compose-prod.yml"
 ENVFILE="$ROOTDIR/.env"
 ENVTEMPLATE="$DOCKERDIR/env.example"
 
@@ -96,9 +98,10 @@ _JWT=false
 _MKCERT=false
 _DOWN=false
 _REMOVE=false
+_DEV=false
 
 # Extract arguments
-while getopts 'hbufJmdxCK' c; do
+while getopts 'hbufJmdxCKD' c; do
   case $c in
     h)
       usage
@@ -139,6 +142,10 @@ while getopts 'hbufJmdxCK' c; do
     K)
       SHOW_USAGE=false
       KEY_FILE=$2
+      ;;
+    D)
+      SHOW_USAGE=false
+      _DEV=true
       ;;
   esac
 done
@@ -195,6 +202,10 @@ if [[ "$_JWT" == true ]]; then
   cat "$ENVTEMPLATE" | sed "s/JWT_SECRET.*/JWT_SECRET=$_JWT_SECRET/" | tee "$ENVFILE"
 fi
 
+if [[ "$_DEV" == true ]]; then
+  COMPOSERFILE="$DOCKERDIR/docker-compose-dev.yml"
+fi
+
 if [[ "$_BUILD" == true ]]; then
   log "Building containers from $COMPOSERFILE and using $ENVFILE"
   docker-compose -f "$COMPOSERFILE" --project-directory "$ROOTDIR" build
@@ -203,7 +214,7 @@ fi
 log "Access $NAME-admin using https://$_HOSTNAME:8443"
 
 if [[ "$_UP" == true ]]; then
-  log "Running containers"
+  log "Running containers from $COMPOSERFILE and using $ENVFILE"
   docker-compose -f "$COMPOSERFILE" --project-directory "$ROOTDIR" up
 fi
 
