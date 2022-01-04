@@ -161,9 +161,13 @@ vagrant_up:
 	mkcert -key-file "certs/osctrl-admin.key" -cert-file "certs/osctrl-admin.crt" "osctrl.dev"
 	vagrant up
 
-# Build docker containers and run them (also generates new certificates)
-docker_all:
+# Build prod docker containers and run them (also generates new certificates)
+docker_prod:
 	./deploy/docker/dockerize.sh -u -b -f -J
+
+# Build dev docker containers and run them (also generates new certificates)
+docker_dev:
+	./deploy/docker/dockerize.sh -u -b -f -J -D
 
 # Run docker containers
 docker_up:

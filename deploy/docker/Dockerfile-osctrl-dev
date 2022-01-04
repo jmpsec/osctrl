@@ -1,0 +1,158 @@
+######################################## osctrl-tls ########################################
+FROM golang:latest AS osctrl-tls
+
+ENV GO111MODULE=on
+
+# Install software
+RUN apt-get update -y && apt-get install zip curl -y
+
+ARG POSTGRES_DB_NAME
+ARG POSTGRES_DB_USERNAME
+ARG POSTGRES_DB_PASSWORD
+ARG JWT_SECRET
+
+### Create user ###
+RUN useradd -ms /bin/bash osctrl-tls
+
+### Copy osctrl-tls bin and configs ###
+RUN mkdir -p /opt/osctrl/
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/scripts
+RUN mkdir -p /opt/osctrl/config
+
+### Compile osctrl-tls bin ###
+RUN go build -o /opt/osctrl/bin/osctrl-tls tls/*.go
+RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
+
+COPY tls/scripts/ /opt/osctrl/scripts
+COPY deploy/docker/conf/osctrl/tls/tls.json /opt/osctrl/config/tls.json
+COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+
+USER osctrl-tls
+EXPOSE 9000
+WORKDIR /opt/osctrl
+
+ENTRYPOINT [ "/opt/osctrl/bin/osctrl-tls" ]
+
+######################################## osctrl-api ########################################
+FROM golang:latest AS osctrl-api
+
+ENV GO111MODULE=on
+
+# Install software
+RUN apt-get update -y && apt-get install zip curl -y
+
+ARG POSTGRES_DB_NAME
+ARG POSTGRES_DB_USERNAME
+ARG POSTGRES_DB_PASSWORD
+ARG JWT_SECRET
+
+### Create user ###
+RUN useradd -ms /bin/bash osctrl-api
+
+### Copy osctrl-api bin and configs ###
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+
+### Copy code and compile
+RUN go build -o /opt/osctrl/bin/osctrl-api api/*.go
+RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
+
+COPY deploy/docker/conf/osctrl/api/api.json /opt/osctrl/config/api.json
+COPY deploy/docker/conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
+RUN sed -i "s#{{ JWT_SECRET }}#${JWT_SECRET}#g" /opt/osctrl/config/jwt.json
+
+COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+
+USER osctrl-api
+EXPOSE 9002
+WORKDIR /opt/osctrl
+
+ENTRYPOINT [ "/opt/osctrl/bin/osctrl-api" ]
+
+######################################## osctrl-admin ########################################
+FROM golang:latest AS osctrl-admin
+
+ENV GO111MODULE=on
+
+# Install software
+RUN apt-get update -y && apt-get install zip curl -y
+
+ARG OSQUERY_VERSION
+ARG POSTGRES_DB_NAME
+ARG POSTGRES_DB_USERNAME
+ARG POSTGRES_DB_PASSWORD
+ARG JWT_SECRET
+ARG ENV
+
+### Create user ###
+RUN useradd -ms /bin/bash osctrl-admin
+
+### Copy osctrl-admin bin and configs ###
+RUN mkdir -p /opt/osctrl/
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/carved_files
+
+### Copy code and compile
+RUN go build -o /opt/osctrl/bin/osctrl-admin admin/*.go
+RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
+
+COPY /go/src/osctrl/deploy/docker/conf/osctrl/admin/admin.json /opt/osctrl/config/admin.json
+COPY /go/src/osctrl/deploy/docker/conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
+RUN sed -i "s#{{ JWT_SECRET }}#${JWT_SECRET}#g" /opt/osctrl/config/jwt.json
+
+COPY /go/src/osctrl/deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN chown osctrl-admin:osctrl-admin -R /opt/osctrl/config
+
+### Copy osctrl-admin web templates ###
+COPY /go/src/osctrl/admin/templates/ /opt/osctrl/tmpl_admin
+COPY /go/src/osctrl/admin/templates/components/page-head-online.html /opt/osctrl/tmpl_admin/components/page-head.html
+COPY /go/src/osctrl/admin/templates/components/page-js-online.html /opt/osctrl/tmpl_admin/components/page-js.html
+COPY /go/src/osctrl/admin/static/ /opt/osctrl/static
+COPY /go/src/osctrl/deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
+
+RUN chown osctrl-admin:osctrl-admin -R /opt/osctrl/carved_files
+
+USER osctrl-admin
+EXPOSE 9001
+WORKDIR /opt/osctrl
+ENTRYPOINT [ "/opt/osctrl/bin/osctrl-admin" ]
+
+######################################## Ubuntu 20.04 node ########################################
+FROM ubuntu:20.04 as osctrl-ubuntu-osquery
+ARG OSCTRL_VERSION
+ARG OSQUERY_VERSION
+ARG POSTGRES_DB_NAME
+ARG POSTGRES_DB_USERNAME
+ARG POSTGRES_DB_PASSWORD
+
+### Copy osctrl-cli bin and config ###
+RUN mkdir -p /opt/osctrl/
+RUN mkdir -p /opt/osctrl/bin
+
+COPY --from=osctrl-tls /opt/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
+COPY --from=osctrl-tls /go/src/osctrl/deploy/docker/conf/osquery/wait.sh /opt/osctrl/bin/wait.sh
+RUN chmod +x /opt/osctrl/bin/wait.sh
+
+COPY --from=osctrl-tls /go/src/osctrl/deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
+RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+
+### Install osquery ###
+RUN apt update && apt install -y curl
+RUN curl "https://osquery-packages.s3.amazonaws.com/deb/osquery_${OSQUERY_VERSION}-1.linux_$(dpkg --print-architecture).deb" -o "/tmp/osquery.deb"
+RUN dpkg -i "/tmp/osquery.deb"
+COPY --from=osctrl-admin /go/src/osctrl/deploy/docker/conf/tls/osctrl.crt /etc/osquery/osctrl.crt
+
+ENTRYPOINT [ "/opt/osctrl/bin/wait.sh" ]
