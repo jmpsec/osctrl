@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	thandlers "github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/version"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -31,7 +32,7 @@ const (
 	// Service name
 	serviceName string = projectName + "-" + settings.ServiceTLS
 	// Service version
-	serviceVersion string = "0.2.6"
+	serviceVersion string = version.OsctrlVersion
 	// Service description
 	serviceDescription string = "TLS service for osctrl"
 	// Application description

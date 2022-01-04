@@ -43,3 +43,5 @@ replace github.com/jmpsec/osctrl/logging => ../../logging
 replace github.com/jmpsec/osctrl/tls/handlers => ./tls/handlers
 
 replace github.com/jmpsec/osctrl/admin/sessions => ../sessions
+
+replace github.com/jmpsec/osctrl/version => ../../version

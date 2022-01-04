@@ -35,3 +35,5 @@ replace github.com/jmpsec/osctrl/settings => ../../settings
 replace github.com/jmpsec/osctrl/types => ../../types
 
 replace github.com/jmpsec/osctrl/utils => ../../utils
+
+replace github.com/jmpsec/osctrl/version => ../../version
