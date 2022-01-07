@@ -1,10 +1,7 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
@@ -60,21 +57,4 @@ func refreshSettings() settings.MapSettings {
 		return settings.MapSettings{}
 	}
 	return _settingsmap
-}
-
-// Usage for service binary
-func tlsUsage() {
-	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
-	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
-	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
-	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
-	fmt.Printf("GLOBAL OPTIONS:\n")
-	flag.PrintDefaults()
-	fmt.Printf("\n")
-}
-
-// Display binary version
-func tlsVersion() {
-	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
-	os.Exit(0)
 }
