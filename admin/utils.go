@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -96,23 +95,6 @@ func jsonRawIndent(raw json.RawMessage) string {
 		return string(raw)
 	}
 	return string(out.Bytes())
-}
-
-// Usage for service binary
-func adminUsage() {
-	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
-	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
-	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
-	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
-	fmt.Printf("GLOBAL OPTIONS:\n")
-	flag.PrintDefaults()
-	fmt.Printf("\n")
-}
-
-// Display binary version
-func adminVersion() {
-	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
-	os.Exit(0)
 }
 
 // Helper to verify the service is valid
