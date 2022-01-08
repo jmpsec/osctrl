@@ -3,10 +3,10 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/crewjam/saml/samlsp"
@@ -27,6 +27,7 @@ import (
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/spf13/viper"
+	"github.com/urfave/cli/v2"
 )
 
 // Constants for the service
@@ -59,20 +60,20 @@ const (
 
 // Configuration
 const (
-	// Default service configuration file
-	configurationFile string = "config/" + settings.ServiceAdmin + ".json"
-	// Default DB configuration file
-	dbConfigurationFile string = "config/db.json"
 	// Default SAML configuration file
-	samlConfigurationFile string = "config/saml.json"
+	defSAMLConfigurationFile string = "config/saml.json"
 	// Default JWT configuration file
-	jwtConfigurationFile string = "config/jwt.json"
+	defJWTConfigurationFile string = "config/jwt.json"
 	// Default Headers configuration file
-	headersConfigurationFile string = "config/headers.json"
+	defHeadersConfigurationFile string = "config/headers.json"
+	// Default service configuration file
+	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
+	// Default DB configuration file
+	defDBConfigurationFile string = "config/db.json"
 	// Default TLS certificate file
-	tlsCertificateFile string = "config/tls.crt"
+	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
-	tlsKeyFile string = "config/tls.key"
+	defTLSKeyFile string = "config/tls.key"
 )
 
 // Random
@@ -90,9 +91,9 @@ const (
 // osquery
 const (
 	// osquery version to display tables
-	osqueryTablesVersion string = "5.0.1"
+	defOsqueryTablesVersion string = "5.0.1"
 	// JSON file with osquery tables data
-	osqueryTablesFile string = "data/" + osqueryTablesVersion + ".json"
+	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
 )
 
 var (
@@ -104,6 +105,7 @@ var (
 var (
 	err         error
 	adminConfig types.JSONConfigurationService
+	dbConfig    backend.JSONConfigurationDB
 	db          *gorm.DB
 	settingsmgr *settings.Settings
 	nodesmgr    *nodes.NodeManager
@@ -113,6 +115,8 @@ var (
 	envs        *environments.Environment
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
+	app         *cli.App
+	flags       []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
@@ -122,15 +126,20 @@ var (
 
 // Variables for flags
 var (
-	versionFlag *bool
-	configFlag  *string
-	dbFlag      *string
-	samlFlag    *string
-	headersFlag *string
-	jwtFlag     *string
-	tlsServer   *bool
-	tlsCert     *string
-	tlsKey      *string
+	configFlag           bool
+	configFile           string
+	loggingValue         cli.StringSlice
+	dbFlag               bool
+	dbConfigFile         string
+	tlsServer            bool
+	tlsCertFile          string
+	tlsKeyFile           string
+	samlConfigFile       string
+	headersConfigFile    string
+	jwtFlag              bool
+	jwtConfigFile        string
+	osqueryTablesFile    string
+	osqueryTablesVersion string
 )
 
 // SAML variables
@@ -193,65 +202,224 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 
 // Initialization code
 func init() {
-	log.Printf("==================== Initializing %s v%s", serviceName, serviceVersion)
-	// Command line flags
-	flag.Usage = adminUsage
-	// Define flags
-	versionFlag = flag.Bool("v", false, "Displays the binary version.")
-	configFlag = flag.String("c", configurationFile, "Service configuration JSON file to use.")
-	dbFlag = flag.String("D", dbConfigurationFile, "DB configuration JSON file to use.")
-	samlFlag = flag.String("S", samlConfigurationFile, "SAML configuration JSON file to use.")
-	headersFlag = flag.String("H", headersConfigurationFile, "Headers configuration JSON file to use.")
-	jwtFlag = flag.String("J", jwtConfigurationFile, "JWT configuration JSON file to use.")
-	tlsServer = flag.Bool("tls", false, "TLS termination is enabled. It requires certificate and key.")
-	tlsCert = flag.String("cert", tlsCertificateFile, "Certificate file to be used for TLS.")
-	tlsKey = flag.String("key", tlsKeyFile, "Private key file to be used for TLS.")
-	// Parse all flags
-	flag.Parse()
-	if *versionFlag {
-		adminVersion()
+	// Initialize CLI flags
+	flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "db",
+			Aliases:     []string{"d"},
+			Value:       false,
+			Usage:       "Provide DB configuration via JSON file",
+			EnvVars:     []string{"DB_CONFIG"},
+			Destination: &dbFlag,
+		},
+		&cli.StringFlag{
+			Name:        "db-file",
+			Aliases:     []string{"D"},
+			Value:       defConfigurationFile,
+			Usage:       "Load DB configuration from `FILE`",
+			EnvVars:     []string{"DB_CONFIG_FILE"},
+			Destination: &dbConfigFile,
+		},
+		&cli.BoolFlag{
+			Name:        "config",
+			Aliases:     []string{"c"},
+			Value:       false,
+			Usage:       "Provide service configuration via JSON file",
+			EnvVars:     []string{"SERVICE_CONFIG"},
+			Destination: &configFlag,
+		},
+		&cli.StringFlag{
+			Name:        "config-file",
+			Aliases:     []string{"C"},
+			Value:       defDBConfigurationFile,
+			Usage:       "Load service configuration from `FILE`",
+			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
+			Destination: &configFile,
+		},
+		&cli.BoolFlag{
+			Name:        "tls",
+			Aliases:     []string{"t"},
+			Value:       false,
+			Usage:       "Enable TLS termination. It requires certificate and key",
+			EnvVars:     []string{"TLS_SERVER"},
+			Destination: &tlsServer,
+		},
+		&cli.StringFlag{
+			Name:        "cert",
+			Aliases:     []string{"T"},
+			Value:       defTLSCertificateFile,
+			Usage:       "TLS termination certificate from `FILE`",
+			EnvVars:     []string{"TLS_CERTIFICATE"},
+			Destination: &tlsCertFile,
+		},
+		&cli.StringFlag{
+			Name:        "key",
+			Aliases:     []string{"K"},
+			Value:       defTLSKeyFile,
+			Usage:       "TLS termination private key from `FILE`",
+			EnvVars:     []string{"TLS_KEY"},
+			Destination: &tlsKeyFile,
+		},
+		&cli.StringFlag{
+			Name:        "listener",
+			Aliases:     []string{"l"},
+			Value:       "0.0.0.0",
+			Usage:       "Listener for the service",
+			EnvVars:     []string{"SERVICE_LISTENER"},
+			Destination: &adminConfig.Listener,
+		},
+		&cli.StringFlag{
+			Name:        "port",
+			Aliases:     []string{"p"},
+			Value:       "9000",
+			Usage:       "TCP port for the service",
+			EnvVars:     []string{"SERVICE_PORT"},
+			Destination: &adminConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "auth",
+			Aliases:     []string{"A"},
+			Value:       settings.AuthNone,
+			Usage:       "Authentication mechanism for the service",
+			EnvVars:     []string{"SERVICE_AUTH"},
+			Destination: &adminConfig.Auth,
+		},
+		&cli.StringFlag{
+			Name:        "host",
+			Aliases:     []string{"H"},
+			Value:       "0.0.0.0",
+			Usage:       "Exposed hostname the service uses",
+			EnvVars:     []string{"SERVICE_HOST"},
+			Destination: &adminConfig.Host,
+		},
+		&cli.StringSliceFlag{
+			Name:        "logging",
+			Aliases:     []string{"L"},
+			Value:       &cli.StringSlice{},
+			Usage:       "Logging mechanism to handle logs from nodes",
+			EnvVars:     []string{"SERVICE_LOGGING"},
+			Destination: &loggingValue,
+		},
+		&cli.StringFlag{
+			Name:        "db-host",
+			Value:       "127.0.0.1",
+			Usage:       "Backend host to be connected to",
+			EnvVars:     []string{"DB_HOST"},
+			Destination: &dbConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "db-port",
+			Value:       "5432",
+			Usage:       "Backend port to be connected to",
+			EnvVars:     []string{"DB_PORT"},
+			Destination: &dbConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "db-name",
+			Value:       "postgres",
+			Usage:       "Backend port to be connected to",
+			EnvVars:     []string{"DB_NAME"},
+			Destination: &dbConfig.Name,
+		},
+		&cli.StringFlag{
+			Name:        "db-user",
+			Value:       "postgres",
+			Usage:       "Username to be used for the backend",
+			EnvVars:     []string{"DB_USER"},
+			Destination: &dbConfig.Username,
+		},
+		&cli.StringFlag{
+			Name:        "db-pass",
+			Value:       "postgres",
+			Usage:       "Password to be used for the backend",
+			EnvVars:     []string{"DB_PASS"},
+			Destination: &dbConfig.Password,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-idle-conns",
+			Value:       20,
+			Usage:       "Maximum number of connections in the idle connection pool",
+			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
+			Destination: &dbConfig.MaxIdleConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-open-conns",
+			Value:       100,
+			Usage:       "Maximum number of open connections to the database",
+			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
+			Destination: &dbConfig.MaxOpenConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-conn-max-lifetime",
+			Value:       30,
+			Usage:       "Maximum amount of time a connection may be reused",
+			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
+			Destination: &dbConfig.ConnMaxLifetime,
+		},
+		&cli.StringFlag{
+			Name:        "saml-file",
+			Value:       defSAMLConfigurationFile,
+			Usage:       "Load SAML configuration from `FILE`",
+			EnvVars:     []string{"SAML_CONFIG_FILE"},
+			Destination: &samlConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "headers-file",
+			Value:       defHeadersConfigurationFile,
+			Usage:       "Load authentication headers configuration from `FILE`",
+			EnvVars:     []string{"HEADERS_CONFIG_FILE"},
+			Destination: &headersConfigFile,
+		},
+		&cli.BoolFlag{
+			Name:        "jwt",
+			Aliases:     []string{"j"},
+			Value:       false,
+			Usage:       "Provide JWT configuration via JSON file",
+			EnvVars:     []string{"JWT_CONFIG"},
+			Destination: &jwtFlag,
+		},
+		&cli.StringFlag{
+			Name:        "jwt-file",
+			Value:       defJWTConfigurationFile,
+			Usage:       "Load JWT configuration from `FILE`",
+			EnvVars:     []string{"JWT_CONFIG_FILE"},
+			Destination: &jwtConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "jwt-secret",
+			Usage:       "Password to be used for the backend",
+			EnvVars:     []string{"JWT_SECRET"},
+			Destination: &jwtConfig.JWTSecret,
+		},
+		&cli.IntFlag{
+			Name:        "jwt-expire",
+			Value:       3,
+			Usage:       "Maximum amount of hours for the tokens to expire",
+			EnvVars:     []string{"JWT_EXPIRE"},
+			Destination: &jwtConfig.HoursToExpire,
+		},
+		&cli.StringFlag{
+			Name:        "osquery-version",
+			Value:       defOsqueryTablesVersion,
+			Usage:       "Set osquery version as default to be used",
+			EnvVars:     []string{"OSQUERY_VERSION"},
+			Destination: &osqueryTablesVersion,
+		},
+		&cli.StringFlag{
+			Name:        "osquery-tables",
+			Value:       defOsqueryTablesFile,
+			Usage:       "Load osquery tables schema from `FILE`",
+			EnvVars:     []string{"OSQUERY_TABLES"},
+			Destination: &osqueryTablesFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
-	// Load admin configuration
-	adminConfig, err = loadConfiguration(*configFlag, settings.ServiceAdmin)
-	if err != nil {
-		log.Fatalf("Error loading %s - %s", *configFlag, err)
-	}
-	// Load osquery tables JSON
-	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
-	if err != nil {
-		log.Fatalf("Error loading osquery tables %s", err)
-	}
-	// Load configuration for SAML if enabled
-	if adminConfig.Auth == settings.AuthSAML {
-		samlConfig, err = loadSAML(*samlFlag)
-		if err != nil {
-			log.Fatalf("Error loading %s - %s", *samlFlag, err)
-		}
-	}
-	// Load configuration for Headers if enabled
-	if adminConfig.Auth == settings.AuthHeaders {
-		headersConfig, err = loadHeaders(*headersFlag)
-		if err != nil {
-			log.Fatalf("Error loading %s - %s", *headersFlag, err)
-		}
-	}
-	// Load JWT configuration
-	jwtConfig, err = loadJWTConfiguration(*jwtFlag)
-	if err != nil {
-		log.Fatalf("Error loading %s - %s", *jwtFlag, err)
-	}
 }
 
 // Go go!
-func main() {
-	log.Printf("==================== Starting %s v%s", serviceName, serviceVersion)
-	// Database handler
-	dbConfig, err := backend.LoadConfiguration(*dbFlag, backend.DBKey)
-	if err != nil {
-		log.Fatalf("Failed to load DB configuration - %v", err)
-	}
+func osctrlAdminService() {
+	log.Println("Initializing backend...")
 	for {
 		db, err = backend.GetDB(dbConfig)
 		if db != nil {
@@ -270,35 +438,33 @@ func main() {
 			log.Fatalf("Failed to close Database handler - %v", err)
 		}
 	}()
-	// Initialize users
+	log.Println("Initialize users")
 	adminUsers = users.CreateUserManager(db, &jwtConfig)
-	// Initialize tags
+	log.Println("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db)
-	// Initialize environment
+	log.Println("Initialize environments")
 	envs = environments.CreateEnvironment(db)
-	// Initialize settings
+	log.Println("Initialize settings")
 	settingsmgr = settings.NewSettings(db)
-	// Initialize nodes
+	log.Println("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db)
-	// Initialize queries
+	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db)
-	// Initialize carves
+	log.Println("Initialize carves")
 	carvesmgr = carves.CreateFileCarves(db)
-	// Initialize sessions
+	log.Println("Initialize sessions")
 	sessionsmgr = sessions.CreateSessionManager(db, projectName)
-	// Initialize service settings
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %v", err)
 	}
-	// Initialize metrics
 	log.Println("Loading service metrics")
 	adminMetrics, err = loadingMetrics(settingsmgr)
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
 	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(*dbFlag, backend.DBKey)
+	loggerDB, err = logging.CreateLoggerDB(dbConfigFile, backend.DBKey)
 	if err != nil {
 		log.Fatalf("Error loading logger - %v", err)
 	}
@@ -516,7 +682,7 @@ func main() {
 
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
-	if *tlsServer {
+	if tlsServer {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -535,9 +701,86 @@ func main() {
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
 		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceAdmin)
-		log.Fatal(srv.ListenAndServeTLS(*tlsCert, *tlsKey))
+		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
 	} else {
 		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
 		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
 	}
+}
+
+// Action to run when no flags are provided to run checks and prepare data
+func cliAction(c *cli.Context) error {
+	// Load configuration if external service JSON config file is used
+	if configFlag {
+		adminConfig, err = loadConfiguration(configFile, settings.ServiceAdmin)
+		if err != nil {
+			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
+		}
+	} else {
+		adminConfig.Logging = loggingValue.Value()
+	}
+	// Load DB configuration if external db JSON config file is used
+	if dbFlag {
+		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
+		if err != nil {
+			return fmt.Errorf("Failed to load DB configuration - %v", err)
+		}
+	}
+	// Load SAML configuration if this authentication is used in the service config
+	if adminConfig.Auth == settings.AuthSAML {
+		samlConfig, err = loadSAML(samlConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to load SAML configuration - %v", err)
+		}
+	}
+	// Load headers configuration if this authentication is used in the service config
+	if adminConfig.Auth == settings.AuthHeaders {
+		headersConfig, err = loadHeaders(headersConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to load headers configuration - %v", err)
+		}
+	}
+	// Load JWT configuration if external JWT JSON config file is used
+	if jwtFlag {
+		jwtConfig, err = loadJWTConfiguration(jwtConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to load JWT configuration - %v", err)
+		}
+	}
+	// Load osquery tables JSON file
+	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
+	if err != nil {
+		return fmt.Errorf("Failed to load osquery tables - %v", err)
+	}
+	return nil
+}
+
+func main() {
+	// Initiate CLI and parse arguments
+	app = cli.NewApp()
+	app.Name = serviceName
+	app.Usage = appDescription
+	app.Version = serviceVersion
+	app.Description = appDescription
+	app.Flags = flags
+	// Define this command for help to exit when help flag is passed
+	app.Commands = []*cli.Command{
+		{
+			Name: "help",
+			Action: func(c *cli.Context) error {
+				cli.ShowAppHelpAndExit(c, 0)
+				return nil
+			},
+		},
+	}
+	app.Action = cliAction
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(adminConfig)
+	log.Println(dbConfig)
+	log.Println(jwtConfig)
+	// Service starts!
+	osctrlAdminService()
 }
