@@ -778,9 +778,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(adminConfig)
-	log.Println(dbConfig)
-	log.Println(jwtConfig)
 	// Service starts!
 	osctrlAdminService()
 }
