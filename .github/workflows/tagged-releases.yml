@@ -1,13 +1,9 @@
 name: Create new osctrl release with binaries
 
 on:
-  create:
+  push:
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
-    types: [closed]
 
 permissions:
   contents: write
