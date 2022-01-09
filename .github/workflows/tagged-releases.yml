@@ -9,6 +9,9 @@ on:
       - main
     types: [closed]
 
+permissions:
+  contents: write
+
 jobs:    
   build_and_test:
     if: github.event.pull_request.merged == true
