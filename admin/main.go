@@ -271,7 +271,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "port",
 			Aliases:     []string{"p"},
-			Value:       "9000",
+			Value:       "9001",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &adminConfig.Port,
