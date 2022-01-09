@@ -4,6 +4,9 @@ on:
   create:
     tags:
       - 'v*'
+  push:
+    branches:
+      - main
 
 jobs:
   build_and_test:
