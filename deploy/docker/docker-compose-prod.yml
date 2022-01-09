@@ -34,7 +34,7 @@ services:
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
-    image: jmpsec/osctrl-tls:osctrl-admin-urfave-cli
+    image: jmpsec/osctrl-tls:osctrl-tls-env-fix
     command: sh -c "chmod 755 /opt/osctrl/bin/osctrl-tls && /opt/osctrl/bin/osctrl-tls"
     container_name: 'osctrl-tls'
     restart: unless-stopped
@@ -48,6 +48,8 @@ services:
       - SERVICE_AUTH=none
       - SERVICE_LOGGING=db
       #### Database settings ####
+      - DB_CONFIG=false
+      - SERVICE_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
