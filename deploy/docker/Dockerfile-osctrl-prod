@@ -8,13 +8,12 @@ ENV GO111MODULE=on
 RUN apt-get update -y && apt-get install zip curl -y
 
 # Build based on a stable version
-#RUN cd /tmp && \
-#    curl -L https://github.com/jmpsec/osctrl/archive/refs/tags/${OSCTRL_VERSION}.zip --output osctrl_${OSCTRL_VERSION}.zip && \
-#    mkdir -p /tmp/osctrl && \
-#    unzip osctrl_${OSCTRL_VERSION}.zip -d /go/src && \
-#    mv /go/src/osctrl-${OSCTRL_VERSION} /go/src/osctrl
+RUN cd /tmp && \
+   curl -L https://github.com/jmpsec/osctrl/archive/refs/tags/v${OSCTRL_VERSION}.zip --output osctrl_${OSCTRL_VERSION}.zip && \
+   mkdir -p /tmp/osctrl && \
+   unzip osctrl_${OSCTRL_VERSION}.zip -d /go/src && \
+   mv /go/src/osctrl-${OSCTRL_VERSION} /go/src/osctrl
 
-ADD . /go/src/osctrl
 WORKDIR /go/src/osctrl
 
 ########## Compile osctrl bins ##########
@@ -40,8 +39,8 @@ RUN mkdir -p /opt/osctrl/scripts
 RUN mkdir -p /opt/osctrl/config
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-tls /opt/osctrl/bin/osctrl-tls
 COPY --from=osctrl-base /go/src/osctrl/tls/scripts/ /opt/osctrl/scripts
-COPY deploy/docker/conf/osctrl/tls/tls.json /opt/osctrl/config/tls.json
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY conf/osctrl/tls/tls.json /opt/osctrl/config/tls.json
+COPY conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
@@ -68,11 +67,11 @@ RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-api /opt/osctrl/bin/osctrl-api
 
-COPY deploy/docker/conf/osctrl/api/api.json /opt/osctrl/config/api.json
-COPY deploy/docker/conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
+COPY conf/osctrl/api/api.json /opt/osctrl/config/api.json
+COPY conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
 RUN sed -i "s#{{ JWT_SECRET }}#${JWT_SECRET}#g" /opt/osctrl/config/jwt.json
 
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
@@ -102,11 +101,11 @@ RUN mkdir -p /opt/osctrl/configs
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-admin /opt/osctrl/bin/osctrl-admin
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
 
-COPY deploy/docker/conf/osctrl/admin/admin.json /opt/osctrl/config/admin.json
-COPY deploy/docker/conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
+COPY conf/osctrl/admin/admin.json /opt/osctrl/config/admin.json
+COPY conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
 RUN sed -i "s#{{ JWT_SECRET }}#${JWT_SECRET}#g" /opt/osctrl/config/jwt.json
 
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
@@ -136,15 +135,15 @@ ARG POSTGRES_DB_PASSWORD
 ### Copy osctrl-admin bin and configs ###
 RUN mkdir -p /opt/osctrl/
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
-COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
+COPY conf/osquery/wait-cli.sh /opt/osctrl/bin/wait-cli.sh
 
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
 RUN ln -s /opt/osctrl/bin/osctrl-cli /usr/local/bin/osctrl-cli
 
-COPY deploy/docker/conf/tls/osctrl.crt /opt/osctrl/config/osctrl.crt
+COPY conf/tls/osctrl.crt /opt/osctrl/config/osctrl.crt
 
 ENTRYPOINT [ "/opt/osctrl/bin/wait-cli.sh" ]
 
@@ -159,19 +158,19 @@ ARG POSTGRES_DB_PASSWORD
 ### Copy osctrl-cli bin and config ###
 RUN mkdir -p /opt/osctrl/
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-cli /opt/osctrl/bin/osctrl-cli
-COPY deploy/docker/conf/osquery/wait.sh /opt/osctrl/bin/wait.sh
+COPY conf/osquery/wait.sh /opt/osctrl/bin/wait.sh
 RUN chmod +x /opt/osctrl/bin/wait.sh
 
-COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
 
 ### Install osquery ###
-RUN apt update && apt install -y curl
+RUN apt-get update && apt-get install -y curl
 RUN curl "https://osquery-packages.s3.amazonaws.com/deb/osquery_${OSQUERY_VERSION}-1.linux_$(dpkg --print-architecture).deb" -o "/tmp/osquery.deb"
 RUN dpkg -i "/tmp/osquery.deb"
-COPY deploy/docker/conf/tls/osctrl.crt /etc/osquery/osctrl.crt
+COPY conf/tls/osctrl.crt /etc/osquery/osctrl.crt
 
 ENTRYPOINT [ "/opt/osctrl/bin/wait.sh" ]
 

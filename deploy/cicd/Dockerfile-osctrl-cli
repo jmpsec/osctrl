@@ -1,12 +1,16 @@
 FROM ubuntu:20.04
 
-ARG COMPONENT
-ARG GOOS
-ARG GOARCH
+ARG COMPONENT=cli
+ARG GOOS=linux
+ARG GOARCH=amd64
+
 
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
-RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/bin && \
+    mkdir -p /opt/osctrl/scripts && \
+    mkdir -p /opt/osctrl/config
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 CMD [ "/opt/osctrl/bin/wait-cli.sh" ]

@@ -1,4 +1,7 @@
 *
+!admin/static
+!admin/templates
+!deploy/osquery/data
 !docker/
 !osctrl-tls-*.bin
 !osctrl-api-*.bin

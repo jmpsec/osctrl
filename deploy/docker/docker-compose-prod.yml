@@ -2,7 +2,7 @@ version: "2.2"
 
 x-docker-data: &build_osctrl
   context: .
-  dockerfile: deploy/docker/Dockerfile-osctrl-prod
+  dockerfile: Dockerfile-osctrl-prod
   args:
     OSCTRL_VERSION: ${OSCTRL_VERSION}
     OSQUERY_VERSION: ${OSQUERY_VERSION}
@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
     build:
       context: .
-      dockerfile: deploy/docker/Dockerfile-nginx
+      dockerfile: Dockerfile-nginx
       args:
         NGINX_VERSION: ${NGINX_VERSION}
     networks:
@@ -34,12 +34,25 @@ services:
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
+    image: jmpsec/osctrl-tls:osctrl-admin-urfave-cli
+    command: sh -c "chmod 755 /opt/osctrl/bin/osctrl-tls && /opt/osctrl/bin/osctrl-tls"
     container_name: 'osctrl-tls'
     restart: unless-stopped
-    image: osctrl-tls:${OSCTRL_VERSION}
-    build:
-      <<: *build_osctrl
-      target: osctrl-tls
+    user: "0:0"
+    environment:
+      #### TLS settings ####
+      - TLS_SERVER=false
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9000
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=none
+      - SERVICE_LOGGING=db
+      #### Database settings ####
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
     networks:
       - osctrl-backend
     depends_on:
@@ -80,9 +93,9 @@ services:
     restart: unless-stopped
     image: postgres:${POSTGRES_VERSION}
     environment:
-      POSTGRES_DB: ${POSTGRES_DB_NAME}
-      POSTGRES_USER: ${POSTGRES_DB_USERNAME}
-      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB_NAME}
+      - POSTGRES_USER=${POSTGRES_DB_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_DB_PASSWORD}
     networks:
       - osctrl-backend
     volumes:
