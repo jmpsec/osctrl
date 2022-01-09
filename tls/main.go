@@ -63,23 +63,24 @@ var (
 
 // Global variables
 var (
-	err         error
-	tlsConfig   types.JSONConfigurationService
-	dbConfig    backend.JSONConfigurationDB
-	db          *gorm.DB
-	settingsmgr *settings.Settings
-	envs        *environments.Environment
-	envsmap     environments.MapEnvironments
-	settingsmap settings.MapSettings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	filecarves  *carves.Carves
-	tlsMetrics  *metrics.Metrics
-	loggerTLS   *logging.LoggerTLS
-	handlersTLS *thandlers.HandlersTLS
-	tagsmgr     *tags.TagManager
-	app         *cli.App
-	flags       []cli.Flag
+	err          error
+	tlsConfig    types.JSONConfigurationService
+	dbConfig     backend.JSONConfigurationDB
+	db           *gorm.DB
+	settingsmgr  *settings.Settings
+	envs         *environments.Environment
+	envsmap      environments.MapEnvironments
+	settingsmap  settings.MapSettings
+	nodesmgr     *nodes.NodeManager
+	queriesmgr   *queries.Queries
+	filecarves   *carves.Carves
+	tlsMetrics   *metrics.Metrics
+	loggerTLS    *logging.LoggerTLS
+	handlersTLS  *thandlers.HandlersTLS
+	tagsmgr      *tags.TagManager
+	app          *cli.App
+	flags        []cli.Flag
+	loggingValue cli.StringSlice
 )
 
 // Variables for flags
@@ -91,19 +92,6 @@ var (
 	tlsServer         bool
 	tlsCertFile       string
 	tlsKeyFile        string
-	cfgListener       string
-	cfgPort           string
-	cfgHost           string
-	cfgAuth           string
-	cfgLogging        string
-	dbHost            string
-	dbPort            string
-	dbName            string
-	dbUsername        string
-	dbPassword        string
-	dbMaxIdleConns    int
-	dbMaxOpenConns    int
-	dbConnMaxLifetime int
 )
 
 // Valid values for auth and logging in configuration
@@ -209,7 +197,7 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Listener for the service",
 			EnvVars:     []string{"SERVICE_LISTENER"},
-			Destination: &cfgListener,
+			Destination: &tlsConfig.Listener,
 		},
 		&cli.StringFlag{
 			Name:        "port",
@@ -217,7 +205,7 @@ func init() {
 			Value:       "9000",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
-			Destination: &cfgPort,
+			Destination: &tlsConfig.Port,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -225,7 +213,7 @@ func init() {
 			Value:       settings.AuthNone,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
-			Destination: &cfgAuth,
+			Destination: &tlsConfig.Auth,
 		},
 		&cli.StringFlag{
 			Name:        "host",
@@ -233,71 +221,71 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Exposed hostname the service uses",
 			EnvVars:     []string{"SERVICE_HOST"},
-			Destination: &cfgHost,
+			Destination: &tlsConfig.Host,
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       settings.LoggingDB,
+			Value:       &cli.StringSlice{},
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &cfgLogging,
+			Destination: &loggingValue,
 		},
 		&cli.StringFlag{
 			Name:        "db-host",
 			Value:       "127.0.0.1",
 			Usage:       "Backend host to be connected to",
 			EnvVars:     []string{"DB_HOST"},
-			Destination: &dbHost,
+			Destination: &dbConfig.Host,
 		},
 		&cli.StringFlag{
 			Name:        "db-port",
 			Value:       "5432",
 			Usage:       "Backend port to be connected to",
 			EnvVars:     []string{"DB_PORT"},
-			Destination: &dbPort,
+			Destination: &dbConfig.Port,
 		},
 		&cli.StringFlag{
 			Name:        "db-name",
 			Value:       "postgres",
 			Usage:       "Backend port to be connected to",
 			EnvVars:     []string{"DB_NAME"},
-			Destination: &dbName,
+			Destination: &dbConfig.Name,
 		},
 		&cli.StringFlag{
 			Name:        "db-user",
 			Value:       "postgres",
 			Usage:       "Username to be used for the backend",
 			EnvVars:     []string{"DB_USER"},
-			Destination: &dbUsername,
+			Destination: &dbConfig.Username,
 		},
 		&cli.StringFlag{
 			Name:        "db-pass",
 			Value:       "postgres",
 			Usage:       "Password to be used for the backend",
 			EnvVars:     []string{"DB_PASS"},
-			Destination: &dbPassword,
+			Destination: &dbConfig.Password,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
 			Usage:       "Maximum number of connections in the idle connection pool",
 			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
-			Destination: &dbMaxIdleConns,
+			Destination: &dbConfig.MaxIdleConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-open-conns",
 			Value:       100,
 			Usage:       "Maximum number of open connections to the database",
 			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
-			Destination: &dbMaxOpenConns,
+			Destination: &dbConfig.MaxOpenConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-max-lifetime",
 			Value:       30,
 			Usage:       "Maximum amount of time a connection may be reused",
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
-			Destination: &dbConnMaxLifetime,
+			Destination: &dbConfig.ConnMaxLifetime,
 		},
 	}
 	// Logging format flags
@@ -464,6 +452,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %s", configFile, err)
 		}
+	} else {
+		tlsConfig.Logging = loggingValue.Value()
 	}
 	// Load db configuration if external db JSON config file is used
 	if dbFlag {
@@ -486,7 +476,7 @@ func main() {
 	// Define this command for help to exit when help flag is passed
 	app.Commands = []*cli.Command{
 		{
-			Name:            "help",
+			Name: "help",
 			Action: func(c *cli.Context) error {
 				cli.ShowAppHelpAndExit(c, 0)
 				return nil
