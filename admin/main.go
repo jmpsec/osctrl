@@ -131,6 +131,7 @@ var (
 	loggingValue         cli.StringSlice
 	dbFlag               bool
 	dbConfigFile         string
+	dbConfigFileLogger   string
 	tlsServer            bool
 	tlsCertFile          string
 	tlsKeyFile           string
