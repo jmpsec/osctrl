@@ -131,6 +131,7 @@ var (
 	loggingValue         cli.StringSlice
 	dbFlag               bool
 	dbConfigFile         string
+	dbConfigFileLogger   string
 	tlsServer            bool
 	tlsCertFile          string
 	tlsKeyFile           string
@@ -215,7 +216,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "db-file",
 			Aliases:     []string{"D"},
-			Value:       defConfigurationFile,
+			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
 			Destination: &dbConfigFile,
@@ -231,7 +232,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       defDBConfigurationFile,
+			Value:       defConfigurationFile,
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
 			Destination: &configFile,
