@@ -15,7 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/version"
 
 	"github.com/jinzhu/gorm"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -35,67 +35,89 @@ const (
 
 // Global variables
 var (
-	db           *gorm.DB
-	app          *cli.App
-	flags        []cli.Flag
-	commands     []cli.Command
+	db          *gorm.DB
+	app         *cli.App
+	flags       []cli.Flag
+	commands    []*cli.Command
+	settingsmgr *settings.Settings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	adminUsers  *users.UserManager
+	tagsmgr     *tags.TagManager
+	envs        *environments.Environment
+)
+
+// Variables for flags
+var (
+	configFlag   bool
+	configFile   string
+	dbFlag       bool
 	dbConfigFile string
-	settingsmgr  *settings.Settings
-	nodesmgr     *nodes.NodeManager
-	queriesmgr   *queries.Queries
-	adminUsers   *users.UserManager
-	tagsmgr      *tags.TagManager
-	envs         *environments.Environment
 )
 
 // Initialization code
 func init() {
 	// Initialize CLI flags
 	flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "D, db",
+		&cli.BoolFlag{
+			Name:        "db",
+			Aliases:     []string{"d"},
+			Value:       false,
+			Usage:       "Provide DB configuration via JSON file",
+			EnvVars:     []string{"DB_CONFIG"},
+			Destination: &dbFlag,
+		},
+		&cli.StringFlag{
+			Name:        "db-file",
+			Aliases:     []string{"D"},
 			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
-			EnvVar:      "DB_CONFIG",
-			Destination: &dbConfigFile,
+			EnvVars:     []string{"DB_CONFIG_FILE"},
+			Destination: &configFile,
 		},
 	}
 	// Initialize CLI flags commands
-	commands = []cli.Command{
+	commands = []*cli.Command{
 		{
 			Name:  "user",
 			Usage: "Commands for users",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
 					Usage:   "Add a new user",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "username, u",
-							Usage: "Username for the new user",
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "Username for the new user",
 						},
-						cli.StringFlag{
-							Name:  "password, p",
-							Usage: "Password for the new user",
+						&cli.StringFlag{
+							Name:    "password",
+							Aliases: []string{"p"},
+							Usage:   "Password for the new user",
 						},
-						cli.BoolFlag{
-							Name:   "admin, a",
-							Hidden: false,
-							Usage:  "Make this user an admin",
+						&cli.BoolFlag{
+							Name:    "admin",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Make this user an admin",
 						},
-						cli.StringFlag{
-							Name:  "environment, E",
-							Value: "",
-							Usage: "Default environment for the new user",
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"E"},
+							Value:   "",
+							Usage:   "Default environment for the new user",
 						},
-						cli.StringFlag{
-							Name:  "email, e",
-							Usage: "Email for the new user",
+						&cli.StringFlag{
+							Name:    "email",
+							Aliases: []string{"e"},
+							Usage:   "Email for the new user",
 						},
-						cli.StringFlag{
-							Name:  "fullname, n",
-							Usage: "Full name for the new user",
+						&cli.StringFlag{
+							Name:    "fullname",
+							Aliases: []string{"n"},
+							Usage:   "Full name for the new user",
 						},
 					},
 					Action: cliWrapper(addUser),
@@ -105,34 +127,41 @@ func init() {
 					Aliases: []string{"e"},
 					Usage:   "Edit an existing user",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "username, u",
+						&cli.StringFlag{
+							Name:  "username",
+							Aliases: []string{"u"},
 							Usage: "User to be edited",
 						},
-						cli.StringFlag{
-							Name:  "password, p",
+						&cli.StringFlag{
+							Name:  "password",
+							Aliases: []string{"p"},
 							Usage: "New password to be used",
 						},
-						cli.StringFlag{
-							Name:  "email, e",
+						&cli.StringFlag{
+							Name:  "email",
+							Aliases: []string{"e"},
 							Usage: "Email to be used",
 						},
-						cli.StringFlag{
-							Name:  "fullname, n",
+						&cli.StringFlag{
+							Name:  "fullname",
+							Aliases: []string{"n"},
 							Usage: "Full name to be used",
 						},
-						cli.BoolFlag{
-							Name:   "admin, a",
+						&cli.BoolFlag{
+							Name:   "admin",
+							Aliases: []string{"a"},
 							Hidden: false,
 							Usage:  "Make this user an admin",
 						},
-						cli.BoolFlag{
-							Name:   "non-admin, d",
+						&cli.BoolFlag{
+							Name:   "non-admin",
+							Aliases: []string{"d"},
 							Hidden: false,
 							Usage:  "Make this user an non-admin",
 						},
-						cli.StringFlag{
-							Name:  "environment, E",
+						&cli.StringFlag{
+							Name:  "environment",
+							Aliases: []string{"E"},
 							Usage: "Default environment for this user",
 						},
 					},
@@ -143,8 +172,9 @@ func init() {
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing user",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "username, u",
+						&cli.StringFlag{
+							Name:  "username",
+							Aliases: []string{"u"},
 							Usage: "User to be deleted",
 						},
 					},
@@ -162,27 +192,31 @@ func init() {
 			Name:    "environment",
 			Aliases: []string{"env"},
 			Usage:   "Commands for TLS environment",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
 					Usage:   "Add a new TLS environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be added",
 						},
-						cli.StringFlag{
-							Name:  "hostname, host",
+						&cli.StringFlag{
+							Name:  "hostname",
+							Aliases: []string{"host"},
 							Usage: "Environment host to be added",
 						},
-						cli.BoolFlag{
-							Name:   "debug, d",
+						&cli.BoolFlag{
+							Name:   "debug",
+							Aliases: []string{"d"},
 							Hidden: false,
 							Usage:  "Environment debug capability",
 						},
-						cli.StringFlag{
-							Name:  "certificate, crt",
+						&cli.StringFlag{
+							Name:  "certificate",
+							Aliases: []string{"crt"},
 							Usage: "Certificate file to be read",
 						},
 					},
@@ -193,30 +227,36 @@ func init() {
 					Aliases: []string{"u"},
 					Usage:   "Update an existing TLS environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be updated",
 						},
-						cli.BoolFlag{
-							Name:  "debug, d",
+						&cli.BoolFlag{
+							Name:  "debug",
+							Aliases: []string{"d"},
 							Usage: "Environment debug capability",
 						},
-						cli.StringFlag{
-							Name:  "hostname, host",
+						&cli.StringFlag{
+							Name:  "hostname",
+							Aliases: []string{"host"},
 							Usage: "Environment host to be updated",
 						},
-						cli.IntFlag{
-							Name:  "logging, l",
+						&cli.IntFlag{
+							Name:  "logging",
+							Aliases: []string{"l"},
 							Value: 0,
 							Usage: "Logging interval in seconds",
 						},
-						cli.IntFlag{
-							Name:  "config, c",
+						&cli.IntFlag{
+							Name:  "config",
+							Aliases: []string{"c"},
 							Value: 0,
 							Usage: "Config interval in seconds",
 						},
-						cli.IntFlag{
-							Name:  "query, q",
+						&cli.IntFlag{
+							Name:  "query",
+							Aliases: []string{"q"},
 							Value: 0,
 							Usage: "Query interval in seconds",
 						},
@@ -227,33 +267,39 @@ func init() {
 					Name:  "add-scheduled-query",
 					Usage: "Add a new query to the osquery schedule for an environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "query, q",
+						&cli.StringFlag{
+							Name:  "query",
+							Aliases: []string{"q"},
 							Value: "",
 							Usage: "Query to be added to the schedule",
 						},
-						cli.StringFlag{
-							Name:  "query-name, Q",
+						&cli.StringFlag{
+							Name:  "query-name",
+							Aliases: []string{"Q"},
 							Value: "",
 							Usage: "Query name to be idenfified in the schedule",
 						},
-						cli.IntFlag{
-							Name:  "interval, i",
+						&cli.IntFlag{
+							Name:  "interval",
+							Aliases: []string{"i"},
 							Value: 0,
 							Usage: "Query interval in seconds",
 						},
-						cli.StringFlag{
-							Name:  "platform, p",
+						&cli.StringFlag{
+							Name:  "platform",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Restrict this query to a given platform",
 						},
-						cli.StringFlag{
-							Name:  "version, v",
+						&cli.StringFlag{
+							Name:  "version",
+							Aliases: []string{"v"},
 							Value: "",
 							Usage: "Only run on osquery versions greater than or equal-to this version",
 						},
@@ -264,13 +310,15 @@ func init() {
 					Name:  "remove-scheduled-query",
 					Usage: "Remove query from the osquery schedule for an environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "query-name, q",
+						&cli.StringFlag{
+							Name:  "query-name",
+							Aliases: []string{"q"},
 							Value: "",
 							Usage: "Query to be removed from the schedule",
 						},
@@ -281,31 +329,37 @@ func init() {
 					Name:  "add-osquery-option",
 					Usage: "Add or change an osquery option to the configuration",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "option, o",
+						&cli.StringFlag{
+							Name:  "option",
+							Aliases: []string{"o"},
 							Value: "",
 							Usage: "Option name to be added",
 						},
-						cli.StringFlag{
-							Name:  "type, t",
+						&cli.StringFlag{
+							Name:  "type",
+							Aliases: []string{"t"},
 							Value: "",
 							Usage: "Option type for the value (string, int, bool)",
 						},
-						cli.StringFlag{
-							Name:  "string-value, s",
+						&cli.StringFlag{
+							Name:  "string-value",
+							Aliases: []string{"s"},
 							Usage: "String value for the option",
 						},
-						cli.IntFlag{
-							Name:  "int-value, i",
+						&cli.IntFlag{
+							Name:  "int-value",
+							Aliases: []string{"i"},
 							Usage: "Integer value for the option",
 						},
-						cli.BoolFlag{
-							Name:  "bool-value, b",
+						&cli.BoolFlag{
+							Name:  "bool-value",
+							Aliases: []string{"b"},
 							Usage: "Boolean value for the option",
 						},
 					},
@@ -315,13 +369,15 @@ func init() {
 					Name:  "remove-osquery-option",
 					Usage: "Remove an option for the osquery configuration",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "option, o",
+						&cli.StringFlag{
+							Name:  "option",
+							Aliases: []string{"o"},
 							Value: "",
 							Usage: "Option name to be added",
 						},
@@ -332,26 +388,31 @@ func init() {
 					Name:  "add-new-pack",
 					Usage: "Add a new query pack to the osquery configuration",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "pack, p",
+						&cli.StringFlag{
+							Name:  "pack",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Pack name to be added",
 						},
-						cli.StringFlag{
-							Name:  "platform, P",
+						&cli.StringFlag{
+							Name:  "platform",
+							Aliases: []string{"P"},
 							Usage: "Restrict this pack to a given platform",
 						},
-						cli.StringFlag{
-							Name:  "version, v",
+						&cli.StringFlag{
+							Name:  "version",
+							Aliases: []string{"v"},
 							Usage: "Only run on osquery versions greater than or equal-to this version",
 						},
-						cli.IntFlag{
-							Name:  "shard, s",
+						&cli.IntFlag{
+							Name:  "shard",
+							Aliases: []string{"s"},
 							Usage: "Restrict this query to a percentage (1-100) of target hosts",
 						},
 					},
@@ -361,18 +422,21 @@ func init() {
 					Name:  "add-local-pack",
 					Usage: "Add a new local query pack to the osquery configuration",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "pack, p",
+						&cli.StringFlag{
+							Name:  "pack",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Pack name to be added",
 						},
-						cli.StringFlag{
-							Name:  "pack-path, P",
+						&cli.StringFlag{
+							Name:  "pack-path",
+							Aliases: []string{"P"},
 							Usage: "Local full path to load the query pack within osquery",
 						},
 					},
@@ -382,13 +446,15 @@ func init() {
 					Name:  "remove-pack",
 					Usage: "Remove query pack from the osquery configuration",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "pack, p",
+						&cli.StringFlag{
+							Name:  "pack",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Pack name to be removed",
 						},
@@ -399,38 +465,45 @@ func init() {
 					Name:  "add-query-to-pack",
 					Usage: "Add a new query to the given query pack",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "pack, p",
+						&cli.StringFlag{
+							Name:  "pack",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "query, q",
+						&cli.StringFlag{
+							Name:  "query",
+							Aliases: []string{"q"},
 							Value: "",
 							Usage: "Query to be added to the pack",
 						},
-						cli.StringFlag{
-							Name:  "query-name, Q",
+						&cli.StringFlag{
+							Name:  "query-name",
+							Aliases: []string{"Q"},
 							Value: "",
 							Usage: "Query name to be added to the pack",
 						},
-						cli.IntFlag{
-							Name:  "interval, i",
+						&cli.IntFlag{
+							Name:  "interval",
+							Aliases: []string{"i"},
 							Value: 0,
 							Usage: "Query interval in seconds",
 						},
-						cli.StringFlag{
-							Name:  "platform, P",
+						&cli.StringFlag{
+							Name:  "platform",
+							Aliases: []string{"P"},
 							Value: "",
 							Usage: "Restrict this query to a given platform",
 						},
-						cli.StringFlag{
-							Name:  "version, v",
+						&cli.StringFlag{
+							Name:  "version",
+							Aliases: []string{"v"},
 							Value: "",
 							Usage: "Only run on osquery versions greater than or equal-to this version",
 						},
@@ -441,18 +514,21 @@ func init() {
 					Name:  "remove-query-from-pack",
 					Usage: "Remove query from the given query pack",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Value: "",
 							Usage: "Environment to be updated",
 						},
-						cli.StringFlag{
-							Name:  "pack, p",
+						&cli.StringFlag{
+							Name:  "pack",
+							Aliases: []string{"p"},
 							Value: "",
 							Usage: "Pack name to be updated",
 						},
-						cli.StringFlag{
-							Name:  "query-name, q",
+						&cli.StringFlag{
+							Name:  "query-name",
+							Aliases: []string{"q"},
 							Value: "",
 							Usage: "Query name to be removed",
 						},
@@ -464,8 +540,9 @@ func init() {
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing TLS environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be deleted",
 						},
 					},
@@ -476,8 +553,9 @@ func init() {
 					Aliases: []string{"s"},
 					Usage:   "Show a TLS environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be displayed",
 						},
 					},
@@ -488,8 +566,9 @@ func init() {
 					Aliases: []string{"w"},
 					Usage:   "Show the flags for a TLS environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be displayed",
 						},
 					},
@@ -506,12 +585,14 @@ func init() {
 					Aliases: []string{"q"},
 					Usage:   "Generates one-liner for quick adding nodes to environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be used",
 						},
-						cli.StringFlag{
-							Name:  "target, t",
+						&cli.StringFlag{
+							Name:  "target",
+							Aliases: []string{"t"},
 							Value: "sh",
 							Usage: "Type of one-liner",
 						},
@@ -523,16 +604,19 @@ func init() {
 					Aliases: []string{"f"},
 					Usage:   "Generates the flags to run nodes in an environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be used",
 						},
-						cli.StringFlag{
-							Name:  "certificate, crt",
+						&cli.StringFlag{
+							Name:  "certificate",
+							Aliases: []string{"crt"},
 							Usage: "Certificate path to be used",
 						},
-						cli.StringFlag{
-							Name:  "secret, s",
+						&cli.StringFlag{
+							Name:  "secret",
+							Aliases: []string{"s"},
 							Usage: "Secret file path to be used",
 						},
 					},
@@ -543,8 +627,9 @@ func init() {
 					Aliases: []string{"x"},
 					Usage:   "Output the secret to enroll nodes in an environment",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Environment to be used",
 						},
 					},
@@ -555,41 +640,45 @@ func init() {
 		{
 			Name:  "settings",
 			Usage: "Commands for settings",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
 					Usage:   "Add a new settings value",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Value name to be added",
 						},
-						cli.StringFlag{
-							Name:  "service, s",
+						&cli.StringFlag{
+							Name:  "service",
+							Aliases: []string{"s"},
 							Usage: "Value service to be added",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "type, t",
+							Aliases: []string{"t"},
 							Usage: "Value type to be added",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "string",
 							Value: "",
 							Usage: "Value string",
 						},
-						cli.Int64Flag{
+						&cli.Int64Flag{
 							Name:  "integer",
 							Value: 0,
 							Usage: "Value integer",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "boolean",
 							Hidden: false,
 							Usage:  "Value boolean",
 						},
-						cli.StringFlag{
-							Name:  "info, i",
+						&cli.StringFlag{
+							Name:  "info",
+							Aliases: []string{"i"},
 							Value: "",
 							Usage: "Setting info",
 						},
@@ -601,40 +690,44 @@ func init() {
 					Aliases: []string{"u"},
 					Usage:   "Update a configuration value",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Value name to be updated",
 						},
-						cli.StringFlag{
-							Name:  "service, s",
+						&cli.StringFlag{
+							Name:  "service",
+							Aliases: []string{"s"},
 							Usage: "Value service to be updated",
 						},
-						cli.StringFlag{
-							Name:  "type, t",
+						&cli.StringFlag{
+							Name:  "type",
+							Aliases: []string{"t"},
 							Usage: "Value type to be updated",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "string",
 							Value: "",
 							Usage: "Value string",
 						},
-						cli.Int64Flag{
+						&cli.Int64Flag{
 							Name:  "integer",
 							Value: 0,
 							Usage: "Value integer",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "true",
 							Hidden: false,
 							Usage:  "Value boolean true",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "false",
 							Hidden: false,
 							Usage:  "Value boolean false",
 						},
-						cli.StringFlag{
-							Name:  "info, i",
+						&cli.StringFlag{
+							Name:  "info",
+							Aliases: []string{"i"},
 							Value: "",
 							Usage: "Setting info",
 						},
@@ -646,12 +739,14 @@ func init() {
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing configuration value",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Value name to be deleted",
 						},
-						cli.StringFlag{
-							Name:  "service, s",
+						&cli.StringFlag{
+							Name:  "service",
+							Aliases: []string{"s"},
 							Usage: "Value service to be deleted",
 						},
 					},
@@ -668,14 +763,15 @@ func init() {
 		{
 			Name:  "node",
 			Usage: "Commands for nodes",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
 					Usage:   "Delete and archive an existing node",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "uuid, u",
+							Aliases: []string{"u"},
 							Usage: "Node UUID to be deleted",
 						},
 					},
@@ -686,18 +782,21 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List enrolled nodes",
 					Flags: []cli.Flag{
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "all, v",
+							Aliases: []string{"v"},
 							Hidden: false,
 							Usage:  "Show all nodes",
 						},
-						cli.BoolFlag{
-							Name:   "active, a",
+						&cli.BoolFlag{
+							Name:   "active",
+							Aliases: []string{"a"},
 							Hidden: true,
 							Usage:  "Show active nodes",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "inactive, i",
+							Aliases: []string{"i"},
 							Hidden: false,
 							Usage:  "Show inactive nodes",
 						},
@@ -709,14 +808,15 @@ func init() {
 		{
 			Name:  "query",
 			Usage: "Commands for queries",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "complete",
 					Aliases: []string{"c"},
 					Usage:   "Mark an on-demand query as completed",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Query name to be completed",
 						},
 					},
@@ -727,8 +827,9 @@ func init() {
 					Aliases: []string{"d"},
 					Usage:   "Mark an on-demand query as deleted",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Query name to be deleted",
 						},
 					},
@@ -739,23 +840,27 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List on-demand queries",
 					Flags: []cli.Flag{
-						cli.BoolFlag{
-							Name:   "all, v",
+						&cli.BoolFlag{
+							Name:   "all",
+							Aliases: []string{"v"},
 							Hidden: true,
 							Usage:  "Show all queries",
 						},
-						cli.BoolFlag{
-							Name:   "active, a",
+						&cli.BoolFlag{
+							Name:   "active",
+							Aliases: []string{"a"},
 							Hidden: false,
 							Usage:  "Show active queries",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:   "completed, c",
+							Aliases: []string{"c"},
 							Hidden: false,
 							Usage:  "Show completed queries",
 						},
-						cli.BoolFlag{
-							Name:   "deleted, d",
+						&cli.BoolFlag{
+							Name:   "deleted",
+							Aliases: []string{"d"},
 							Hidden: false,
 							Usage:  "Show deleted queries",
 						},
@@ -767,27 +872,31 @@ func init() {
 		{
 			Name:  "tag",
 			Usage: "Commands for tags",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
 					Usage:   "Add a new tag",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Tage name to be added",
 						},
-						cli.StringFlag{
-							Name:  "color, c",
+						&cli.StringFlag{
+							Name:  "color",
+							Aliases: []string{"c"},
 							Value: "",
 							Usage: "Tag color to be added",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "description, d",
+							Aliases: []string{"d"},
 							Usage: "Tag description to be added",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "icon, i",
+							Aliases: []string{"i"},
 							Value: "",
 							Usage: "Tag icon to be added",
 						},
@@ -799,20 +908,24 @@ func init() {
 					Aliases: []string{"e"},
 					Usage:   "Edit values for an existing tag",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Tage name to be edited",
 						},
-						cli.StringFlag{
-							Name:  "color, c",
+						&cli.StringFlag{
+							Name:  "color",
+							Aliases: []string{"c"},
 							Usage: "Tag color to be edited",
 						},
-						cli.StringFlag{
-							Name:  "description, d",
+						&cli.StringFlag{
+							Name:  "description",
+							Aliases: []string{"d"},
 							Usage: "Tag description to be edited",
 						},
-						cli.StringFlag{
-							Name:  "icon, i",
+						&cli.StringFlag{
+							Name:  "icon",
+							Aliases: []string{"i"},
 							Usage: "Tag icon to be edited",
 						},
 					},
@@ -823,8 +936,9 @@ func init() {
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing tag",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Tag name to be deleted",
 						},
 					},
@@ -841,8 +955,9 @@ func init() {
 					Aliases: []string{"s"},
 					Usage:   "Show an existing tag",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "name, n",
+						&cli.StringFlag{
+							Name:  "name",
+							Aliases: []string{"n"},
 							Usage: "Tag name to be displayed",
 						},
 					},
@@ -916,7 +1031,7 @@ func cliAction(c *cli.Context) error {
 		if err := cli.ShowAppHelp(c); err != nil {
 			log.Fatalf("Error with CLI help - %s", err)
 		}
-		return cli.NewExitError("\nNo flags provided", 2)
+		return cli.Exit("\nNo flags provided", 2)
 	}
 	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func listQueries(c *cli.Context) error {

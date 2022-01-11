@@ -9,7 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const (

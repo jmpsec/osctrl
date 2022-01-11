@@ -1,6 +1,6 @@
 package main
 
-import "github.com/urfave/cli"
+import "github.com/urfave/cli/v2"
 
 func addTag(c *cli.Context) error {
 	return nil
