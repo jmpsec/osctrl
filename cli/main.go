@@ -49,7 +49,6 @@ var (
 
 // Variables for flags
 var (
-	configFile   string
 	dbFlag       bool
 	dbConfigFile string
 )
@@ -72,7 +71,7 @@ func init() {
 			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &configFile,
+			Destination: &dbConfigFile,
 		},
 	}
 	// Initialize CLI flags commands

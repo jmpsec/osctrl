@@ -46,6 +46,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceTLS + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default Logger configuration file
+	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -84,14 +86,14 @@ var (
 
 // Variables for flags
 var (
-	configFlag        bool
-	configFile        string
-	loggingValue      cli.StringSlice
-	dbFlag            bool
-	dbConfigFile      string
-	tlsServer         bool
-	tlsCertFile       string
-	tlsKeyFile        string
+	configFlag   bool
+	configFile   string
+	dbFlag       bool
+	dbConfigFile string
+	tlsServer    bool
+	tlsCertFile  string
+	tlsKeyFile   string
+	loggerFile   string
 )
 
 // Valid values for auth and logging in configuration
@@ -122,10 +124,8 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -183,13 +183,13 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &tlsConfig.Host,
 		},
-		&cli.StringSliceFlag{
-			Name:        "logging",
+		&cli.StringFlag{
+			Name:        "logger",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
-			Usage:       "Logging mechanism to handle logs from nodes",
-			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Value:       settings.LoggingDB,
+			Usage:       "Logger mechanism to handle status/result logs from nodes",
+			EnvVars:     []string{"SERVICE_LOGGER"},
+			Destination: &tlsConfig.Logger,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -287,6 +287,14 @@ func init() {
 			EnvVars:     []string{"TLS_KEY"},
 			Destination: &tlsKeyFile,
 		},
+		&cli.StringFlag{
+			Name:        "logger-file",
+			Aliases:     []string{"F"},
+			Value:       defLoggerConfigurationFile,
+			Usage:       "Logger configuration to handle status/results logs from nodes",
+			EnvVars:     []string{"LOGGER_FILE"},
+			Destination: &loggerFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -328,7 +336,7 @@ func osctrlService() {
 	filecarves = carves.CreateFileCarves(db)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logging, err)
+		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)
 	}
 	// Initialize metrics
 	log.Println("Loading service metrics")
@@ -338,9 +346,9 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr, nodesmgr, queriesmgr)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logging, err)
+		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
 
 	// Sleep to reload environments
@@ -452,8 +460,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %s", configFile, err)
 		}
-	} else {
-		tlsConfig.Logging = loggingValue.Value()
 	}
 	// Load db configuration if external db JSON config file is used
 	if dbFlag {

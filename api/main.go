@@ -108,7 +108,7 @@ var (
 var (
 	configFlag    bool
 	configFile    string
-	loggingValue  cli.StringSlice
+	loggerValue   string
 	dbFlag        bool
 	dbConfigFile  string
 	jwtFlag       bool
@@ -145,10 +145,8 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method: '%s'", cfg.Auth)
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -185,7 +183,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "port",
 			Aliases:     []string{"p"},
-			Value:       "9000",
+			Value:       "9002",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &apiConfig.Port,
@@ -206,13 +204,13 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &apiConfig.Host,
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
+			Value:       settings.LoggingNone,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Destination: &loggerValue,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -498,8 +496,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
 		}
-	} else {
-		apiConfig.Logging = loggingValue.Value()
 	}
 	// Load DB configuration if external db JSON config file is used
 	if dbFlag {

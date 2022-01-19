@@ -70,6 +70,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default Logger configuration file
+	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -79,7 +81,9 @@ const (
 // Random
 const (
 	// Static files folder
-	staticFilesFolder string = "./static"
+	defStaticFilesFolder string = "./static"
+	// Default templates folder
+	defTemplatesFolder string = "./tmpl_admin"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -128,10 +132,8 @@ var (
 var (
 	configFlag           bool
 	configFile           string
-	loggingValue         cli.StringSlice
 	dbFlag               bool
 	dbConfigFile         string
-	dbConfigFileLogger   string
 	tlsServer            bool
 	tlsCertFile          string
 	tlsKeyFile           string
@@ -141,6 +143,9 @@ var (
 	jwtConfigFile        string
 	osqueryTablesFile    string
 	osqueryTablesVersion string
+	loggerFile           string
+	staticFilesFolder    string
+	templatesFolder      string
 )
 
 // SAML variables
@@ -192,10 +197,8 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -240,7 +243,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
+			Value:       settings.AuthDB,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &adminConfig.Auth,
@@ -253,13 +256,13 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &adminConfig.Host,
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
+			Value:       settings.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Destination: &adminConfig.Logger,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -413,6 +416,29 @@ func init() {
 			EnvVars:     []string{"OSQUERY_TABLES"},
 			Destination: &osqueryTablesFile,
 		},
+		&cli.StringFlag{
+			Name:        "logger-file",
+			Aliases:     []string{"F"},
+			Value:       defLoggerConfigurationFile,
+			Usage:       "Logger configuration to handle status/results logs from nodes",
+			EnvVars:     []string{"LOGGER_FILE"},
+			Destination: &loggerFile,
+		},
+		&cli.StringFlag{
+			Name:        "static",
+			Aliases:     []string{"s"},
+			Value:       defStaticFilesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &staticFilesFolder,
+		},
+		&cli.StringFlag{
+			Name:        "templates",
+			Value:       defTemplatesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &templatesFolder,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -465,7 +491,7 @@ func osctrlAdminService() {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
 	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(dbConfigFile, backend.DBKey)
+	loggerDB, err = logging.CreateLoggerDB(loggerFile)
 	if err != nil {
 		log.Fatalf("Error loading logger - %v", err)
 	}
@@ -558,6 +584,7 @@ func osctrlAdminService() {
 		ahandlers.WithLoggerDB(loggerDB),
 		ahandlers.WithSessions(sessionsmgr),
 		ahandlers.WithVersion(serviceVersion),
+		ahandlers.WithTemplates(templatesFolder),
 		ahandlers.WithOsqueryTables(osqueryTables),
 		ahandlers.WithAdminConfig(&adminConfig),
 	)
@@ -717,8 +744,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
 		}
-	} else {
-		adminConfig.Logging = loggingValue.Value()
 	}
 	// Load DB configuration if external db JSON config file is used
 	if dbFlag {

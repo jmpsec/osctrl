@@ -15,10 +15,6 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
-const (
-	templatesFilesFolder string = "tmpl_admin"
-)
-
 // TemplateFiles for building UI layout
 type TemplateFiles struct {
 	filepaths []string
@@ -61,9 +57,9 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	// Prepare template
 	t, err := template.ParseFiles(
-		templatesFilesFolder+"/login.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html")
+		h.TemplatesFolder+"/login.html",
+		h.TemplatesFolder+"/components/page-head.html",
+		h.TemplatesFolder+"/components/page-js.html")
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting login template: %v", err)
@@ -127,7 +123,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "table.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "table.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -208,13 +204,13 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		templatesFilesFolder+"/table.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-modals.html")
+		h.TemplatesFolder+"/table.html",
+		h.TemplatesFolder+"/components/page-head.html",
+		h.TemplatesFolder+"/components/page-js.html",
+		h.TemplatesFolder+"/components/page-aside-right.html",
+		h.TemplatesFolder+"/components/page-aside-left.html",
+		h.TemplatesFolder+"/components/page-header.html",
+		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -277,13 +273,13 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Prepare template
 	t, err := template.ParseFiles(
-		templatesFilesFolder+"/queries-run.html",
-		templatesFilesFolder+"/components/page-head.html",
-		templatesFilesFolder+"/components/page-js.html",
-		templatesFilesFolder+"/components/page-aside-right.html",
-		templatesFilesFolder+"/components/page-aside-left.html",
-		templatesFilesFolder+"/components/page-header.html",
-		templatesFilesFolder+"/components/page-modals.html")
+		h.TemplatesFolder+"/queries-run.html",
+		h.TemplatesFolder+"/components/page-head.html",
+		h.TemplatesFolder+"/components/page-js.html",
+		h.TemplatesFolder+"/components/page-aside-right.html",
+		h.TemplatesFolder+"/components/page-aside-left.html",
+		h.TemplatesFolder+"/components/page-header.html",
+		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting table template: %v", err)
@@ -352,7 +348,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "queries.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -405,7 +401,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "saved.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "saved.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -458,7 +454,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-run.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "carves-run.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -528,7 +524,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "carves.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -593,7 +589,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		"queryResultLink": h.queryResultLink,
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "queries-logs.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "queries-logs.html").filepaths
 	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -669,7 +665,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "carves-details.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "carves-details.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -772,7 +768,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "conf.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "conf.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -846,7 +842,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "enroll.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "enroll.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -928,7 +924,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		"resultLogsLink":  h.resultLogsLink,
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "node.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "node.html").filepaths
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -1041,7 +1037,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "environments.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "environments.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -1107,7 +1103,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "settings.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "settings.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -1179,7 +1175,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		"inFutureTime":    utils.InFutureTime,
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "users.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "users.html").filepaths
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -1244,7 +1240,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"inFutureTime":    utils.InFutureTime,
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "tags.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "tags.html").filepaths
 	t, err := template.New("tags.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
@@ -1308,7 +1304,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		"pastFutureTimes": utils.PastFutureTimes,
 	}
 	// Prepare template
-	tempateFiles := NewTemplateFiles(templatesFilesFolder, "profile.html").filepaths
+	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "profile.html").filepaths
 	t, err := template.New("profile.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)

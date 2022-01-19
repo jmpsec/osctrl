@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/settings"
@@ -85,8 +84,7 @@ func loadingSettings() {
 	// Metrics
 	loadingMetrics()
 	// Write JSON config to settings
-	logging := strings.Join(apiConfig.Logging, ",")
-	if err := settingsmgr.SetAllJSON(settings.ServiceAPI, apiConfig.Listener, apiConfig.Port, apiConfig.Host, apiConfig.Auth, logging); err != nil {
+	if err := settingsmgr.SetAllJSON(settings.ServiceAPI, apiConfig.Listener, apiConfig.Port, apiConfig.Host, apiConfig.Auth, apiConfig.Logger); err != nil {
 		log.Fatalf("Failed to add JSON values to configuration: %v", err)
 	}
 }
