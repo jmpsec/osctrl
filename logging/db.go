@@ -61,9 +61,9 @@ type LoggerDB struct {
 	Enabled       bool
 }
 
-func CreateLoggerDB(dbfile, dbname string) (*LoggerDB, error) {
+func CreateLoggerDB(dbfile string) (*LoggerDB, error) {
 	// Load DB configuration
-	config, err := backend.LoadConfiguration(dbfile, dbname)
+	config, err := backend.LoadConfiguration(dbfile, settings.LoggingDB)
 	if err != nil {
 		return nil, err
 	}

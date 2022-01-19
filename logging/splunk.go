@@ -12,13 +12,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	// SplunkName as JSON key for configuration
-	SplunkName string = "splunk"
-	// SplunkFile as default file for configuration
-	SplunkFile string = "config/" + SplunkName + ".json"
-)
-
 // SlunkConfiguration to hold all splunk configuration values
 type SlunkConfiguration struct {
 	URL     string `json:"url"`
@@ -37,15 +30,15 @@ type LoggerSplunk struct {
 	Enabled       bool
 }
 
-func CreateLoggerSplunk() (*LoggerSplunk, error) {
-	config, err := LoadSplunk(SplunkFile)
+func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
+	config, err := LoadSplunk(splunkFile)
 	if err != nil {
 		return nil, err
 	}
 	l := &LoggerSplunk{
 		Configuration: config,
 		Headers: map[string]string{
-			"Authorization":   "Splunk " + config.Token,
+			utils.Authorization:   "Splunk " + config.Token,
 			utils.ContentType: utils.JSONApplicationUTF8,
 		},
 		Enabled: true,
@@ -62,7 +55,7 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _splunkCfg, err
 	}
-	cfgRaw := viper.Sub(SplunkName)
+	cfgRaw := viper.Sub(settings.LoggingSplunk)
 	if err := cfgRaw.Unmarshal(&_splunkCfg); err != nil {
 		return _splunkCfg, err
 	}

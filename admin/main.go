@@ -70,6 +70,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default Logger configuration file
+	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -128,7 +130,6 @@ var (
 var (
 	configFlag           bool
 	configFile           string
-	loggingValue         cli.StringSlice
 	dbFlag               bool
 	dbConfigFile         string
 	dbConfigFileLogger   string
@@ -141,6 +142,7 @@ var (
 	jwtConfigFile        string
 	osqueryTablesFile    string
 	osqueryTablesVersion string
+	loggerFile           string
 )
 
 // SAML variables
@@ -192,10 +194,8 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -253,13 +253,13 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &adminConfig.Host,
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
+			Value:       settings.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Destination: &adminConfig.Logger,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -413,6 +413,14 @@ func init() {
 			EnvVars:     []string{"OSQUERY_TABLES"},
 			Destination: &osqueryTablesFile,
 		},
+		&cli.StringFlag{
+			Name:        "logger-file",
+			Aliases:     []string{"F"},
+			Value:       defLoggerConfigurationFile,
+			Usage:       "Logger configuration to handle status/results logs from nodes",
+			EnvVars:     []string{"LOGGER_FILE"},
+			Destination: &loggerFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -465,7 +473,7 @@ func osctrlAdminService() {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
 	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(dbConfigFile, backend.DBKey)
+	loggerDB, err = logging.CreateLoggerDB(dbConfigFile)
 	if err != nil {
 		log.Fatalf("Error loading logger - %v", err)
 	}
@@ -717,8 +725,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
 		}
-	} else {
-		adminConfig.Logging = loggingValue.Value()
 	}
 	// Load DB configuration if external db JSON config file is used
 	if dbFlag {

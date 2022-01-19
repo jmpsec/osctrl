@@ -4,6 +4,6 @@
     "port": "_SERVICE_PORT",
     "host": "_SERVICE_HOST",
     "auth": "_SERVICE_AUTH",
-    "logging": "_SERVICE_LOGGING"
+    "logger": "_SERVICE_LOGGING"
   }
 }

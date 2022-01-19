@@ -45,6 +45,7 @@ COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN cp /opt/osctrl/config/db.json /opt/osctrl/config/logger.json
 
 USER osctrl-tls
 EXPOSE 9000
@@ -110,6 +111,7 @@ COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN cp /opt/osctrl/config/db.json /opt/osctrl/config/logger.json
 RUN chown osctrl-admin:osctrl-admin -R /opt/osctrl/config
 
 ### Copy osctrl-admin web templates ###

@@ -31,6 +31,9 @@ const ContentType string = "Content-Type"
 // UserAgent for header key
 const UserAgent string = "User-Agent"
 
+// Authorization for header key
+const Authorization string = "Authorization"
+
 // osctrlUserAgent for customized User-Agent
 const osctrlUserAgent string = "osctrl-http-client/1.1"
 

@@ -145,10 +145,8 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method: '%s'", cfg.Auth)
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -498,8 +496,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
 		}
-	} else {
-		apiConfig.Logging = loggingValue.Value()
 	}
 	// Load DB configuration if external db JSON config file is used
 	if dbFlag {

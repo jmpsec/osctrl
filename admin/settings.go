@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/settings"
@@ -106,8 +105,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		return fmt.Errorf("Failed to load logging settings: %v", err)
 	}
 	// Write JSON config to settings
-	logging := strings.Join(adminConfig.Logging, ",")
-	if err := mgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, logging); err != nil {
+	if err := mgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logger); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %v", err)
 	}
 	return nil
