@@ -81,7 +81,9 @@ const (
 // Random
 const (
 	// Static files folder
-	staticFilesFolder string = "./static"
+	defStaticFilesFolder string = "./static"
+	// Default templates folder
+	defTemplatesFolder string = "./tmpl_admin"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -132,7 +134,6 @@ var (
 	configFile           string
 	dbFlag               bool
 	dbConfigFile         string
-	dbConfigFileLogger   string
 	tlsServer            bool
 	tlsCertFile          string
 	tlsKeyFile           string
@@ -143,6 +144,8 @@ var (
 	osqueryTablesFile    string
 	osqueryTablesVersion string
 	loggerFile           string
+	staticFilesFolder    string
+	templatesFolder      string
 )
 
 // SAML variables
@@ -240,7 +243,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
+			Value:       settings.AuthDB,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &adminConfig.Auth,
@@ -421,6 +424,21 @@ func init() {
 			EnvVars:     []string{"LOGGER_FILE"},
 			Destination: &loggerFile,
 		},
+		&cli.StringFlag{
+			Name:        "static",
+			Aliases:     []string{"s"},
+			Value:       defStaticFilesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &staticFilesFolder,
+		},
+		&cli.StringFlag{
+			Name:        "templates",
+			Value:       defTemplatesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &templatesFolder,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -473,7 +491,7 @@ func osctrlAdminService() {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
 	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(dbConfigFile)
+	loggerDB, err = logging.CreateLoggerDB(loggerFile)
 	if err != nil {
 		log.Fatalf("Error loading logger - %v", err)
 	}
@@ -566,6 +584,7 @@ func osctrlAdminService() {
 		ahandlers.WithLoggerDB(loggerDB),
 		ahandlers.WithSessions(sessionsmgr),
 		ahandlers.WithVersion(serviceVersion),
+		ahandlers.WithTemplates(templatesFolder),
 		ahandlers.WithOsqueryTables(osqueryTables),
 		ahandlers.WithAdminConfig(&adminConfig),
 	)

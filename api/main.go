@@ -108,7 +108,7 @@ var (
 var (
 	configFlag    bool
 	configFile    string
-	loggingValue  cli.StringSlice
+	loggerValue   string
 	dbFlag        bool
 	dbConfigFile  string
 	jwtFlag       bool
@@ -183,7 +183,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "port",
 			Aliases:     []string{"p"},
-			Value:       "9000",
+			Value:       "9002",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &apiConfig.Port,
@@ -204,13 +204,13 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &apiConfig.Host,
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
+			Value:       settings.LoggingNone,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Destination: &loggerValue,
 		},
 		&cli.BoolFlag{
 			Name:        "db",

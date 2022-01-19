@@ -35,20 +35,21 @@ const okContent = "✅"
 
 // HandlersAdmin to keep all handlers for TLS
 type HandlersAdmin struct {
-	DB             *gorm.DB
-	Users          *users.UserManager
-	Tags           *tags.TagManager
-	Envs           *environments.Environment
-	Nodes          *nodes.NodeManager
-	Queries        *queries.Queries
-	Carves         *carves.Carves
-	Settings       *settings.Settings
-	Metrics        *metrics.Metrics
-	LoggerDB       *logging.LoggerDB
-	Sessions       *sessions.SessionManager
-	ServiceVersion string
-	OsqueryTables  []types.OsqueryTable
-	AdminConfig    *types.JSONConfigurationService
+	DB              *gorm.DB
+	Users           *users.UserManager
+	Tags            *tags.TagManager
+	Envs            *environments.Environment
+	Nodes           *nodes.NodeManager
+	Queries         *queries.Queries
+	Carves          *carves.Carves
+	Settings        *settings.Settings
+	Metrics         *metrics.Metrics
+	LoggerDB        *logging.LoggerDB
+	Sessions        *sessions.SessionManager
+	ServiceVersion  string
+	TemplatesFolder string
+	OsqueryTables   []types.OsqueryTable
+	AdminConfig     *types.JSONConfigurationService
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -122,6 +123,12 @@ func WithSessions(sessions *sessions.SessionManager) HandlersOption {
 func WithVersion(version string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.ServiceVersion = version
+	}
+}
+
+func WithTemplates(templates string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.TemplatesFolder = templates
 	}
 }
 
