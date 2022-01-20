@@ -12,7 +12,7 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	ahandlers "github.com/jmpsec/osctrl/admin/handlers"
+	"github.com/jmpsec/osctrl/admin/handlers"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/carves"
@@ -124,7 +124,7 @@ var (
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
-	handlersAdmin *ahandlers.HandlersAdmin
+	handlersAdmin *handlers.HandlersAdmin
 	loggerDB      *logging.LoggerDB
 )
 
@@ -571,22 +571,22 @@ func osctrlAdminService() {
 	}()
 
 	// Initialize Admin handlers before router
-	handlersAdmin = ahandlers.CreateHandlersAdmin(
-		ahandlers.WithDB(db),
-		ahandlers.WithEnvs(envs),
-		ahandlers.WithUsers(adminUsers),
-		ahandlers.WithTags(tagsmgr),
-		ahandlers.WithNodes(nodesmgr),
-		ahandlers.WithQueries(queriesmgr),
-		ahandlers.WithCarves(carvesmgr),
-		ahandlers.WithSettings(settingsmgr),
-		ahandlers.WithMetrics(adminMetrics),
-		ahandlers.WithLoggerDB(loggerDB),
-		ahandlers.WithSessions(sessionsmgr),
-		ahandlers.WithVersion(serviceVersion),
-		ahandlers.WithTemplates(templatesFolder),
-		ahandlers.WithOsqueryTables(osqueryTables),
-		ahandlers.WithAdminConfig(&adminConfig),
+	handlersAdmin = handlers.CreateHandlersAdmin(
+		handlers.WithDB(db),
+		handlers.WithEnvs(envs),
+		handlers.WithUsers(adminUsers),
+		handlers.WithTags(tagsmgr),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(carvesmgr),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithMetrics(adminMetrics),
+		handlers.WithLoggerDB(loggerDB),
+		handlers.WithSessions(sessionsmgr),
+		handlers.WithVersion(serviceVersion),
+		handlers.WithTemplates(templatesFolder),
+		handlers.WithOsqueryTables(osqueryTables),
+		handlers.WithAdminConfig(&adminConfig),
 	)
 
 	// ////////////////////////// ADMIN
