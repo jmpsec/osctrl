@@ -17,7 +17,7 @@ import (
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
-	thandlers "github.com/jmpsec/osctrl/tls/handlers"
+	"github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/urfave/cli/v2"
@@ -78,7 +78,7 @@ var (
 	filecarves  *carves.Carves
 	tlsMetrics  *metrics.Metrics
 	loggerTLS   *logging.LoggerTLS
-	handlersTLS *thandlers.HandlersTLS
+	handlersTLS *handlers.HandlersTLS
 	tagsmgr     *tags.TagManager
 	app         *cli.App
 	flags       []cli.Flag
@@ -386,17 +386,17 @@ func osctrlService() {
 		}
 	}()
 	// Initialize TLS handlers before router
-	handlersTLS = thandlers.CreateHandlersTLS(
-		thandlers.WithEnvs(envs),
-		thandlers.WithEnvsMap(&envsmap),
-		thandlers.WithNodes(nodesmgr),
-		thandlers.WithTags(tagsmgr),
-		thandlers.WithQueries(queriesmgr),
-		thandlers.WithCarves(filecarves),
-		thandlers.WithSettings(settingsmgr),
-		thandlers.WithSettingsMap(&settingsmap),
-		thandlers.WithMetrics(tlsMetrics),
-		thandlers.WithLogs(loggerTLS),
+	handlersTLS = handlers.CreateHandlersTLS(
+		handlers.WithEnvs(envs),
+		handlers.WithEnvsMap(&envsmap),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithTags(tagsmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(filecarves),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithSettingsMap(&settingsmap),
+		handlers.WithMetrics(tlsMetrics),
+		handlers.WithLogs(loggerTLS),
 	)
 
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS

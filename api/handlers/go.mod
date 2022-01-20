@@ -1,3 +1,3 @@
-module github.com/javuto/osctrl/api/handlers
+module handlers
 
-go 1.15
+go 1.17
