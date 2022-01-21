@@ -1,3 +1,3 @@
-module handlers
+module api/handlers
 
 go 1.17
