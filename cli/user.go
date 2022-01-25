@@ -6,7 +6,7 @@ import (
 
 	"github.com/jmpsec/osctrl/users"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const (

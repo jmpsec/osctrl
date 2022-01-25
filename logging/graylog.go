@@ -12,13 +12,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	// GraylogName as JSON key for configuration
-	GraylogName string = "graylog"
-	// GraylogFile as default file for configuration
-	GraylogFile string = "config/" + GraylogName + ".json"
-)
-
 // GraylogConfiguration to hold all graylog configuration values
 type GraylogConfiguration struct {
 	URL     string `json:"url"`
@@ -38,7 +31,7 @@ func LoadGraylog(file string) (GraylogConfiguration, error) {
 	if err != nil {
 		return _graylogCfg, err
 	}
-	cfgRaw := viper.Sub(GraylogName)
+	cfgRaw := viper.Sub(settings.LoggingGraylog)
 	err = cfgRaw.Unmarshal(&_graylogCfg)
 	if err != nil {
 		return _graylogCfg, err
@@ -54,8 +47,8 @@ type LoggerGraylog struct {
 	Enabled       bool
 }
 
-func CreateLoggerGraylog() (*LoggerGraylog, error) {
-	config, err := LoadGraylog(GraylogFile)
+func CreateLoggerGraylog(graylogFile string) (*LoggerGraylog, error) {
+	config, err := LoadGraylog(graylogFile)
 	if err != nil {
 		return nil, err
 	}

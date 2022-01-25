@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func listConfiguration(c *cli.Context) error {

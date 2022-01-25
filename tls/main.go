@@ -17,7 +17,7 @@ import (
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
-	thandlers "github.com/jmpsec/osctrl/tls/handlers"
+	"github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/urfave/cli/v2"
@@ -46,6 +46,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceTLS + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default Logger configuration file
+	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -76,7 +78,7 @@ var (
 	filecarves  *carves.Carves
 	tlsMetrics  *metrics.Metrics
 	loggerTLS   *logging.LoggerTLS
-	handlersTLS *thandlers.HandlersTLS
+	handlersTLS *handlers.HandlersTLS
 	tagsmgr     *tags.TagManager
 	app         *cli.App
 	flags       []cli.Flag
@@ -84,26 +86,14 @@ var (
 
 // Variables for flags
 var (
-	configFlag        bool
-	configFile        string
-	dbFlag            bool
-	dbConfigFile      string
-	tlsServer         bool
-	tlsCertFile       string
-	tlsKeyFile        string
-	cfgListener       string
-	cfgPort           string
-	cfgHost           string
-	cfgAuth           string
-	cfgLogging        string
-	dbHost            string
-	dbPort            string
-	dbName            string
-	dbUsername        string
-	dbPassword        string
-	dbMaxIdleConns    int
-	dbMaxOpenConns    int
-	dbConnMaxLifetime int
+	configFlag   bool
+	configFile   string
+	dbFlag       bool
+	dbConfigFile string
+	tlsServer    bool
+	tlsCertFile  string
+	tlsKeyFile   string
+	loggerFile   string
 )
 
 // Valid values for auth and logging in configuration
@@ -134,10 +124,8 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -147,22 +135,6 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 func init() {
 	// Initialize CLI flags
 	flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "db",
-			Aliases:     []string{"d"},
-			Value:       false,
-			Usage:       "Provide DB configuration via JSON file",
-			EnvVars:     []string{"DB_CONFIG"},
-			Destination: &dbFlag,
-		},
-		&cli.StringFlag{
-			Name:        "db-file",
-			Aliases:     []string{"D"},
-			Value:       defConfigurationFile,
-			Usage:       "Load DB configuration from `FILE`",
-			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &configFile,
-		},
 		&cli.BoolFlag{
 			Name:        "config",
 			Aliases:     []string{"c"},
@@ -174,10 +146,122 @@ func init() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       defDBConfigurationFile,
+			Value:       defConfigurationFile,
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
 			Destination: &dbConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "listener",
+			Aliases:     []string{"l"},
+			Value:       "0.0.0.0",
+			Usage:       "Listener for the service",
+			EnvVars:     []string{"SERVICE_LISTENER"},
+			Destination: &tlsConfig.Listener,
+		},
+		&cli.StringFlag{
+			Name:        "port",
+			Aliases:     []string{"p"},
+			Value:       "9000",
+			Usage:       "TCP port for the service",
+			EnvVars:     []string{"SERVICE_PORT"},
+			Destination: &tlsConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "auth",
+			Aliases:     []string{"A"},
+			Value:       settings.AuthNone,
+			Usage:       "Authentication mechanism for the service",
+			EnvVars:     []string{"SERVICE_AUTH"},
+			Destination: &tlsConfig.Auth,
+		},
+		&cli.StringFlag{
+			Name:        "host",
+			Aliases:     []string{"H"},
+			Value:       "0.0.0.0",
+			Usage:       "Exposed hostname the service uses",
+			EnvVars:     []string{"SERVICE_HOST"},
+			Destination: &tlsConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "logger",
+			Aliases:     []string{"L"},
+			Value:       settings.LoggingDB,
+			Usage:       "Logger mechanism to handle status/result logs from nodes",
+			EnvVars:     []string{"SERVICE_LOGGER"},
+			Destination: &tlsConfig.Logger,
+		},
+		&cli.BoolFlag{
+			Name:        "db",
+			Aliases:     []string{"d"},
+			Value:       false,
+			Usage:       "Provide DB configuration via JSON file",
+			EnvVars:     []string{"DB_CONFIG"},
+			Destination: &dbFlag,
+		},
+		&cli.StringFlag{
+			Name:        "db-file",
+			Aliases:     []string{"D"},
+			Value:       defDBConfigurationFile,
+			Usage:       "Load DB configuration from `FILE`",
+			EnvVars:     []string{"DB_CONFIG_FILE"},
+			Destination: &configFile,
+		},
+		&cli.StringFlag{
+			Name:        "db-host",
+			Value:       "127.0.0.1",
+			Usage:       "Backend host to be connected to",
+			EnvVars:     []string{"DB_HOST"},
+			Destination: &dbConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "db-port",
+			Value:       "5432",
+			Usage:       "Backend port to be connected to",
+			EnvVars:     []string{"DB_PORT"},
+			Destination: &dbConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "db-name",
+			Value:       "postgres",
+			Usage:       "Database name to be used in the backend",
+			EnvVars:     []string{"DB_NAME"},
+			Destination: &dbConfig.Name,
+		},
+		&cli.StringFlag{
+			Name:        "db-user",
+			Value:       "postgres",
+			Usage:       "Username to be used for the backend",
+			EnvVars:     []string{"DB_USER"},
+			Destination: &dbConfig.Username,
+		},
+		&cli.StringFlag{
+			Name:        "db-pass",
+			Value:       "postgres",
+			Usage:       "Password to be used for the backend",
+			EnvVars:     []string{"DB_PASS"},
+			Destination: &dbConfig.Password,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-idle-conns",
+			Value:       20,
+			Usage:       "Maximum number of connections in the idle connection pool",
+			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
+			Destination: &dbConfig.MaxIdleConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-open-conns",
+			Value:       100,
+			Usage:       "Maximum number of open connections to the database",
+			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
+			Destination: &dbConfig.MaxOpenConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-conn-max-lifetime",
+			Value:       30,
+			Usage:       "Maximum amount of time a connection may be reused",
+			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
+			Destination: &dbConfig.ConnMaxLifetime,
 		},
 		&cli.BoolFlag{
 			Name:        "tls",
@@ -204,100 +288,12 @@ func init() {
 			Destination: &tlsKeyFile,
 		},
 		&cli.StringFlag{
-			Name:        "listener",
-			Aliases:     []string{"l"},
-			Value:       "0.0.0.0",
-			Usage:       "Listener for the service",
-			EnvVars:     []string{"SERVICE_LISTENER"},
-			Destination: &cfgListener,
-		},
-		&cli.StringFlag{
-			Name:        "port",
-			Aliases:     []string{"p"},
-			Value:       "9000",
-			Usage:       "TCP port for the service",
-			EnvVars:     []string{"SERVICE_PORT"},
-			Destination: &cfgPort,
-		},
-		&cli.StringFlag{
-			Name:        "auth",
-			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
-			Usage:       "Authentication mechanism for the service",
-			EnvVars:     []string{"SERVICE_AUTH"},
-			Destination: &cfgAuth,
-		},
-		&cli.StringFlag{
-			Name:        "host",
-			Aliases:     []string{"H"},
-			Value:       "0.0.0.0",
-			Usage:       "Exposed hostname the service uses",
-			EnvVars:     []string{"SERVICE_HOST"},
-			Destination: &cfgHost,
-		},
-		&cli.StringFlag{
-			Name:        "logging",
-			Aliases:     []string{"L"},
-			Value:       settings.LoggingDB,
-			Usage:       "Logging mechanism to handle logs from nodes",
-			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &cfgLogging,
-		},
-		&cli.StringFlag{
-			Name:        "db-host",
-			Value:       "127.0.0.1",
-			Usage:       "Backend host to be connected to",
-			EnvVars:     []string{"DB_HOST"},
-			Destination: &dbHost,
-		},
-		&cli.StringFlag{
-			Name:        "db-port",
-			Value:       "5432",
-			Usage:       "Backend port to be connected to",
-			EnvVars:     []string{"DB_PORT"},
-			Destination: &dbPort,
-		},
-		&cli.StringFlag{
-			Name:        "db-name",
-			Value:       "postgres",
-			Usage:       "Backend port to be connected to",
-			EnvVars:     []string{"DB_NAME"},
-			Destination: &dbName,
-		},
-		&cli.StringFlag{
-			Name:        "db-user",
-			Value:       "postgres",
-			Usage:       "Username to be used for the backend",
-			EnvVars:     []string{"DB_USER"},
-			Destination: &dbUsername,
-		},
-		&cli.StringFlag{
-			Name:        "db-pass",
-			Value:       "postgres",
-			Usage:       "Password to be used for the backend",
-			EnvVars:     []string{"DB_PASS"},
-			Destination: &dbPassword,
-		},
-		&cli.IntFlag{
-			Name:        "db-max-idle-conns",
-			Value:       20,
-			Usage:       "Maximum number of connections in the idle connection pool",
-			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
-			Destination: &dbMaxIdleConns,
-		},
-		&cli.IntFlag{
-			Name:        "db-max-open-conns",
-			Value:       100,
-			Usage:       "Maximum number of open connections to the database",
-			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
-			Destination: &dbMaxOpenConns,
-		},
-		&cli.IntFlag{
-			Name:        "db-conn-max-lifetime",
-			Value:       30,
-			Usage:       "Maximum amount of time a connection may be reused",
-			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
-			Destination: &dbConnMaxLifetime,
+			Name:        "logger-file",
+			Aliases:     []string{"F"},
+			Value:       defLoggerConfigurationFile,
+			Usage:       "Logger configuration to handle status/results logs from nodes",
+			EnvVars:     []string{"LOGGER_FILE"},
+			Destination: &loggerFile,
 		},
 	}
 	// Logging format flags
@@ -340,7 +336,7 @@ func osctrlService() {
 	filecarves = carves.CreateFileCarves(db)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logging, err)
+		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)
 	}
 	// Initialize metrics
 	log.Println("Loading service metrics")
@@ -350,9 +346,9 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logging, settingsmgr, nodesmgr, queriesmgr)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logging, err)
+		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
 
 	// Sleep to reload environments
@@ -390,17 +386,17 @@ func osctrlService() {
 		}
 	}()
 	// Initialize TLS handlers before router
-	handlersTLS = thandlers.CreateHandlersTLS(
-		thandlers.WithEnvs(envs),
-		thandlers.WithEnvsMap(&envsmap),
-		thandlers.WithNodes(nodesmgr),
-		thandlers.WithTags(tagsmgr),
-		thandlers.WithQueries(queriesmgr),
-		thandlers.WithCarves(filecarves),
-		thandlers.WithSettings(settingsmgr),
-		thandlers.WithSettingsMap(&settingsmap),
-		thandlers.WithMetrics(tlsMetrics),
-		thandlers.WithLogs(loggerTLS),
+	handlersTLS = handlers.CreateHandlersTLS(
+		handlers.WithEnvs(envs),
+		handlers.WithEnvsMap(&envsmap),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithTags(tagsmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(filecarves),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithSettingsMap(&settingsmap),
+		handlers.WithMetrics(tlsMetrics),
+		handlers.WithLogs(loggerTLS),
 	)
 
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
@@ -486,7 +482,7 @@ func main() {
 	// Define this command for help to exit when help flag is passed
 	app.Commands = []*cli.Command{
 		{
-			Name:            "help",
+			Name: "help",
 			Action: func(c *cli.Context) error {
 				cli.ShowAppHelpAndExit(c, 0)
 				return nil

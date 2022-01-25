@@ -4,6 +4,6 @@
     "port": "9002",
     "host": "localhost",
     "auth": "jwt",
-    "logging": "none"
+    "logger": "none"
   }
 }

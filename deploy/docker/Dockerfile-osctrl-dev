@@ -30,6 +30,7 @@ COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN cp /opt/osctrl/config/db.json /opt/osctrl/config/logger.json
 
 USER osctrl-tls
 EXPOSE 9000
@@ -107,11 +108,12 @@ RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
 COPY /go/src/osctrl/deploy/docker/conf/osctrl/admin/admin.json /opt/osctrl/config/admin.json
 COPY /go/src/osctrl/deploy/docker/conf/osctrl/jwt.json /opt/osctrl/config/jwt.json
 RUN sed -i "s#{{ JWT_SECRET }}#${JWT_SECRET}#g" /opt/osctrl/config/jwt.json
-
 COPY /go/src/osctrl/deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_USERNAME }}#${POSTGRES_DB_USERNAME}#g" /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_PASSWORD }}#${POSTGRES_DB_PASSWORD}#g" /opt/osctrl/config/db.json
+RUN cp /opt/osctrl/config/db.json /opt/osctrl/config/logger.json
+
 RUN chown osctrl-admin:osctrl-admin -R /opt/osctrl/config
 
 ### Copy osctrl-admin web templates ###

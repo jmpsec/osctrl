@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/settings"
@@ -62,8 +61,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		}
 	}
 	// Write JSON config to settings
-	logging := strings.Join(tlsConfig.Logging, ",")
-	if err := mgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, logging); err != nil {
+	if err := mgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, tlsConfig.Logger); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %v", err)
 	}
 

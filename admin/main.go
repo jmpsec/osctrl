@@ -12,7 +12,7 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	ahandlers "github.com/jmpsec/osctrl/admin/handlers"
+	"github.com/jmpsec/osctrl/admin/handlers"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/carves"
@@ -70,6 +70,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default Logger configuration file
+	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -79,7 +81,9 @@ const (
 // Random
 const (
 	// Static files folder
-	staticFilesFolder string = "./static"
+	defStaticFilesFolder string = "./static"
+	// Default templates folder
+	defTemplatesFolder string = "./tmpl_admin"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -120,7 +124,7 @@ var (
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
-	handlersAdmin *ahandlers.HandlersAdmin
+	handlersAdmin *handlers.HandlersAdmin
 	loggerDB      *logging.LoggerDB
 )
 
@@ -128,7 +132,6 @@ var (
 var (
 	configFlag           bool
 	configFile           string
-	loggingValue         cli.StringSlice
 	dbFlag               bool
 	dbConfigFile         string
 	tlsServer            bool
@@ -140,6 +143,9 @@ var (
 	jwtConfigFile        string
 	osqueryTablesFile    string
 	osqueryTablesVersion string
+	loggerFile           string
+	staticFilesFolder    string
+	templatesFolder      string
 )
 
 // SAML variables
@@ -191,10 +197,8 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
 	}
-	for _, _l := range cfg.Logging {
-		if !validLogging[_l] {
-			return cfg, fmt.Errorf("Invalid logging method")
-		}
+	if !validLogging[cfg.Logger] {
+		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -204,22 +208,6 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 func init() {
 	// Initialize CLI flags
 	flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "db",
-			Aliases:     []string{"d"},
-			Value:       false,
-			Usage:       "Provide DB configuration via JSON file",
-			EnvVars:     []string{"DB_CONFIG"},
-			Destination: &dbFlag,
-		},
-		&cli.StringFlag{
-			Name:        "db-file",
-			Aliases:     []string{"D"},
-			Value:       defConfigurationFile,
-			Usage:       "Load DB configuration from `FILE`",
-			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &dbConfigFile,
-		},
 		&cli.BoolFlag{
 			Name:        "config",
 			Aliases:     []string{"c"},
@@ -231,34 +219,10 @@ func init() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       defDBConfigurationFile,
+			Value:       defConfigurationFile,
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
 			Destination: &configFile,
-		},
-		&cli.BoolFlag{
-			Name:        "tls",
-			Aliases:     []string{"t"},
-			Value:       false,
-			Usage:       "Enable TLS termination. It requires certificate and key",
-			EnvVars:     []string{"TLS_SERVER"},
-			Destination: &tlsServer,
-		},
-		&cli.StringFlag{
-			Name:        "cert",
-			Aliases:     []string{"T"},
-			Value:       defTLSCertificateFile,
-			Usage:       "TLS termination certificate from `FILE`",
-			EnvVars:     []string{"TLS_CERTIFICATE"},
-			Destination: &tlsCertFile,
-		},
-		&cli.StringFlag{
-			Name:        "key",
-			Aliases:     []string{"K"},
-			Value:       defTLSKeyFile,
-			Usage:       "TLS termination private key from `FILE`",
-			EnvVars:     []string{"TLS_KEY"},
-			Destination: &tlsKeyFile,
 		},
 		&cli.StringFlag{
 			Name:        "listener",
@@ -271,7 +235,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "port",
 			Aliases:     []string{"p"},
-			Value:       "9000",
+			Value:       "9001",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &adminConfig.Port,
@@ -279,7 +243,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
+			Value:       settings.AuthDB,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &adminConfig.Auth,
@@ -292,13 +256,29 @@ func init() {
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &adminConfig.Host,
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       &cli.StringSlice{},
+			Value:       settings.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGING"},
-			Destination: &loggingValue,
+			Destination: &adminConfig.Logger,
+		},
+		&cli.BoolFlag{
+			Name:        "db",
+			Aliases:     []string{"d"},
+			Value:       false,
+			Usage:       "Provide DB configuration via JSON file",
+			EnvVars:     []string{"DB_CONFIG"},
+			Destination: &dbFlag,
+		},
+		&cli.StringFlag{
+			Name:        "db-file",
+			Aliases:     []string{"D"},
+			Value:       defDBConfigurationFile,
+			Usage:       "Load DB configuration from `FILE`",
+			EnvVars:     []string{"DB_CONFIG_FILE"},
+			Destination: &dbConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "db-host",
@@ -317,7 +297,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "db-name",
 			Value:       "postgres",
-			Usage:       "Backend port to be connected to",
+			Usage:       "Database name to be used in the backend",
 			EnvVars:     []string{"DB_NAME"},
 			Destination: &dbConfig.Name,
 		},
@@ -355,6 +335,30 @@ func init() {
 			Usage:       "Maximum amount of time a connection may be reused",
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
 			Destination: &dbConfig.ConnMaxLifetime,
+		},
+		&cli.BoolFlag{
+			Name:        "tls",
+			Aliases:     []string{"t"},
+			Value:       false,
+			Usage:       "Enable TLS termination. It requires certificate and key",
+			EnvVars:     []string{"TLS_SERVER"},
+			Destination: &tlsServer,
+		},
+		&cli.StringFlag{
+			Name:        "cert",
+			Aliases:     []string{"T"},
+			Value:       defTLSCertificateFile,
+			Usage:       "TLS termination certificate from `FILE`",
+			EnvVars:     []string{"TLS_CERTIFICATE"},
+			Destination: &tlsCertFile,
+		},
+		&cli.StringFlag{
+			Name:        "key",
+			Aliases:     []string{"K"},
+			Value:       defTLSKeyFile,
+			Usage:       "TLS termination private key from `FILE`",
+			EnvVars:     []string{"TLS_KEY"},
+			Destination: &tlsKeyFile,
 		},
 		&cli.StringFlag{
 			Name:        "saml-file",
@@ -412,6 +416,29 @@ func init() {
 			EnvVars:     []string{"OSQUERY_TABLES"},
 			Destination: &osqueryTablesFile,
 		},
+		&cli.StringFlag{
+			Name:        "logger-file",
+			Aliases:     []string{"F"},
+			Value:       defLoggerConfigurationFile,
+			Usage:       "Logger configuration to handle status/results logs from nodes",
+			EnvVars:     []string{"LOGGER_FILE"},
+			Destination: &loggerFile,
+		},
+		&cli.StringFlag{
+			Name:        "static",
+			Aliases:     []string{"s"},
+			Value:       defStaticFilesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &staticFilesFolder,
+		},
+		&cli.StringFlag{
+			Name:        "templates",
+			Value:       defTemplatesFolder,
+			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			EnvVars:     []string{"STATIC_FILES"},
+			Destination: &templatesFolder,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -464,7 +491,7 @@ func osctrlAdminService() {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
 	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(dbConfigFile, backend.DBKey)
+	loggerDB, err = logging.CreateLoggerDB(loggerFile)
 	if err != nil {
 		log.Fatalf("Error loading logger - %v", err)
 	}
@@ -544,21 +571,22 @@ func osctrlAdminService() {
 	}()
 
 	// Initialize Admin handlers before router
-	handlersAdmin = ahandlers.CreateHandlersAdmin(
-		ahandlers.WithDB(db),
-		ahandlers.WithEnvs(envs),
-		ahandlers.WithUsers(adminUsers),
-		ahandlers.WithTags(tagsmgr),
-		ahandlers.WithNodes(nodesmgr),
-		ahandlers.WithQueries(queriesmgr),
-		ahandlers.WithCarves(carvesmgr),
-		ahandlers.WithSettings(settingsmgr),
-		ahandlers.WithMetrics(adminMetrics),
-		ahandlers.WithLoggerDB(loggerDB),
-		ahandlers.WithSessions(sessionsmgr),
-		ahandlers.WithVersion(serviceVersion),
-		ahandlers.WithOsqueryTables(osqueryTables),
-		ahandlers.WithAdminConfig(&adminConfig),
+	handlersAdmin = handlers.CreateHandlersAdmin(
+		handlers.WithDB(db),
+		handlers.WithEnvs(envs),
+		handlers.WithUsers(adminUsers),
+		handlers.WithTags(tagsmgr),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(carvesmgr),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithMetrics(adminMetrics),
+		handlers.WithLoggerDB(loggerDB),
+		handlers.WithSessions(sessionsmgr),
+		handlers.WithVersion(serviceVersion),
+		handlers.WithTemplates(templatesFolder),
+		handlers.WithOsqueryTables(osqueryTables),
+		handlers.WithAdminConfig(&adminConfig),
 	)
 
 	// ////////////////////////// ADMIN
@@ -716,8 +744,6 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
 		}
-	} else {
-		adminConfig.Logging = loggingValue.Value()
 	}
 	// Load DB configuration if external db JSON config file is used
 	if dbFlag {

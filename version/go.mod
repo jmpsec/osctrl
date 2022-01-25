@@ -1,3 +1,3 @@
-module github.com/jmpsec/osctrl/version
+module version
 
-go 1.15
+go 1.17

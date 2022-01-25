@@ -2,8 +2,9 @@ name: Build osctrl binaries
 
 on:
   push:
-    branches: [ main ]
-    
+    branches: 
+      - main
+
 jobs:
   build_and_test:
     runs-on: ubuntu-20.04

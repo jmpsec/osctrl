@@ -1,11 +1,14 @@
 name: Create new osctrl release with binaries
 
 on:
-  create:
+  push:
     tags:
       - 'v*'
 
-jobs:
+permissions:
+  contents: write
+
+jobs:    
   build_and_test:
     runs-on: ubuntu-20.04
     strategy:

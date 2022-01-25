@@ -141,6 +141,7 @@ ADMIN_CONF="$ADMIN_COMPONENT.json"
 API_CONF="$API_COMPONENT.json"
 DB_CONF="db.json"
 JWT_CONF="jwt.json"
+LOGGER_CONF="logger.json"
 SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
 JWT_TEMPLATE="jwt.json"
@@ -644,6 +645,9 @@ else
 
   # Generate DB configuration file for services
   configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+
+  # Prepare DB logger configuration for services
+  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF"
 
   # JWT configuration
   cat "$SOURCE_PATH/deploy/config/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
