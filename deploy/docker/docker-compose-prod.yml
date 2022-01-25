@@ -1,16 +1,4 @@
 version: "2.2"
-
-# x-docker-data: &build_osctrl
-#   context: .
-#   dockerfile: Dockerfile-osctrl-prod
-#   args:
-#     OSCTRL_VERSION: ${OSCTRL_VERSION}
-#     OSQUERY_VERSION: ${OSQUERY_VERSION}
-#     POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
-#     POSTGRES_DB_USERNAME: ${POSTGRES_DB_USERNAME}
-#     POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
-#     JWT_SECRET: ${JWT_SECRET}
-
 services:
   ######################################### NGINX #########################################
   osctrl-nginx:
@@ -37,10 +25,10 @@ services:
     image: osctrl-tls:v${OSCTRL_VERSION}
     container_name: 'osctrl-tls'
     restart: unless-stopped
-    user: "0:0"
     environment:
       #### TLS settings ####
       - TLS_SERVER=false
+      - SERVICE_CONFIG=false
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
@@ -48,7 +36,6 @@ services:
       - SERVICE_LOGGING=db
       #### Database settings ####
       - DB_CONFIG=false
-      - SERVICE_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -71,6 +58,8 @@ services:
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
+      #### Logging ####
+      - LOGGER_FILE=none
       - SERVICE_LOGGING=db
       #### Database settings ####
       - DB_CONFIG=false
