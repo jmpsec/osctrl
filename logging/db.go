@@ -61,6 +61,7 @@ type LoggerDB struct {
 	Enabled       bool
 }
 
+// CreateLoggerDB to initialize the logger
 func CreateLoggerDB(dbfile string) (*LoggerDB, error) {
 	// Load DB configuration
 	config, err := backend.LoadConfiguration(dbfile, settings.LoggingDB)
@@ -189,7 +190,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	}
 }
 
-// dbResult - Function that sends JSON result logs to the configured DB
+// Result - Function that sends JSON result logs to the configured DB
 func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool) {
 	// Parse JSON
 	var logs []types.LogResultData

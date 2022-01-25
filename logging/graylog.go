@@ -21,7 +21,7 @@ type GraylogConfiguration struct {
 	Results string `json:"results"`
 }
 
-// Function to load the Graylog configuration from JSON file
+// LoadGraylog - Function to load the Graylog configuration from JSON file
 func LoadGraylog(file string) (GraylogConfiguration, error) {
 	var _graylogCfg GraylogConfiguration
 	log.Printf("Loading %s", file)
@@ -47,6 +47,7 @@ type LoggerGraylog struct {
 	Enabled       bool
 }
 
+// CreateLoggerGraylog to initialize the logger
 func CreateLoggerGraylog(graylogFile string) (*LoggerGraylog, error) {
 	config, err := LoadGraylog(graylogFile)
 	if err != nil {
@@ -88,7 +89,7 @@ func (logGL *LoggerGraylog) Settings(mgr *settings.Settings) {
 	log.Printf("No Graylog logging settings\n")
 }
 
-// GraylogSend - Function that sends JSON logs to Graylog
+// Send - Function that sends JSON logs to Graylog
 func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Printf("DebugService: Send %s via graylog", logType)

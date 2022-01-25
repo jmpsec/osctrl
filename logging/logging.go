@@ -45,6 +45,13 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 		}
 		d.Settings(mgr)
 		l.Logger = d
+	case settings.LoggingStdout:
+		d, err := CreateLoggerStdout()
+		if err != nil {
+			return nil, err
+		}
+		d.Settings(mgr)
+		l.Logger = d
 	}
 	// Initialize the DB logger anyway
 	return l, nil
@@ -77,10 +84,18 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
+	case settings.LoggingStdout:
+		l, ok := logTLS.Logger.(LoggerStdout)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingStdout)
+		}
+		if l.Enabled {
+			l.Log(logType, data, environment, uuid, debug)
+		}
 	}
 }
 
-// LogQuery will send query result logs via the configured method of logging
+// QueryLog will send query result logs via the configured method of logging
 func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid, name string, status int, debug bool) {
 	switch logTLS.Logging {
 	case settings.LoggingSplunk:
@@ -103,6 +118,14 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		l, ok := logTLS.Logger.(LoggerDB)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingDB)
+		}
+		if l.Enabled {
+			l.Query(data, environment, uuid, name, status, debug)
+		}
+	case settings.LoggingStdout:
+		l, ok := logTLS.Logger.(LoggerStdout)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingStdout)
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
