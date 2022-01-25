@@ -7,3 +7,4 @@
 !osctrl-api-*.bin
 !osctrl-admin-*.bin
 !osctrl-cli-*.bin
+!deploy/docker/conf/osquery/wait-cli.sh

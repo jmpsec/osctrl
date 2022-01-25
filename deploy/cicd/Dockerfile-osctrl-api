@@ -8,7 +8,8 @@ ARG GOARCH=amd64
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin && \
     mkdir -p /opt/osctrl/scripts && \
-    mkdir -p /opt/osctrl/config
+    mkdir -p /opt/osctrl/config && \
+    chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
 RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}

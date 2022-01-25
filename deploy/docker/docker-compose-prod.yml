@@ -1,15 +1,15 @@
 version: "2.2"
 
-x-docker-data: &build_osctrl
-  context: .
-  dockerfile: Dockerfile-osctrl-prod
-  args:
-    OSCTRL_VERSION: ${OSCTRL_VERSION}
-    OSQUERY_VERSION: ${OSQUERY_VERSION}
-    POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
-    POSTGRES_DB_USERNAME: ${POSTGRES_DB_USERNAME}
-    POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
-    JWT_SECRET: ${JWT_SECRET}
+# x-docker-data: &build_osctrl
+#   context: .
+#   dockerfile: Dockerfile-osctrl-prod
+#   args:
+#     OSCTRL_VERSION: ${OSCTRL_VERSION}
+#     OSQUERY_VERSION: ${OSQUERY_VERSION}
+#     POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
+#     POSTGRES_DB_USERNAME: ${POSTGRES_DB_USERNAME}
+#     POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
+#     JWT_SECRET: ${JWT_SECRET}
 
 services:
   ######################################### NGINX #########################################
@@ -34,8 +34,7 @@ services:
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
-    image: jmpsec/osctrl-tls:osctrl-tls-env-fix
-    command: sh -c "chmod 755 /opt/osctrl/bin/osctrl-tls && /opt/osctrl/bin/osctrl-tls"
+    image: osctrl-tls:v${OSCTRL_VERSION}
     container_name: 'osctrl-tls'
     restart: unless-stopped
     user: "0:0"
@@ -64,10 +63,23 @@ services:
   osctrl-admin:
     container_name: 'osctrl-admin'
     restart: unless-stopped
-    image: osctrl-admin:${OSCTRL_VERSION}
-    build:
-      <<: *build_osctrl
-      target: osctrl-admin
+    image: osctrl-admin:v${OSCTRL_VERSION}
+    environment:
+      #### TLS settings ####
+      - TLS_SERVER=false
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9001
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=none
+      - SERVICE_LOGGING=db
+      #### Database settings ####
+      - DB_CONFIG=false
+      - SERVICE_CONFIG=false
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
     networks:
       - default
       - osctrl-backend
@@ -80,10 +92,23 @@ services:
   osctrl-api:
     container_name: 'osctrl-api'
     restart: unless-stopped
-    image: osctrl-api:${OSCTRL_VERSION}
-    build:
-      <<: *build_osctrl
-      target: osctrl-api
+    image: osctrl-api:v${OSCTRL_VERSION}
+    environment:
+      #### TLS settings ####
+      - TLS_SERVER=false
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9002
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=none
+      - SERVICE_LOGGING=db
+      #### Database settings ####
+      - DB_CONFIG=false
+      - SERVICE_CONFIG=false
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
     networks:
       - osctrl-backend
     depends_on:
@@ -104,32 +129,29 @@ services:
       - postgres-db:/var/lib/postgresql/data
 
   ######################################### osctrl-cli #########################################
-  osctrl-cli:
-    container_name: 'osctrl-cli'
-    restart: unless-stopped
-    image: osctrl-cli:${OSCTRL_VERSION}
-    build:
-      <<: *build_osctrl
-      target: osctrl-cli
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
-    networks:
-      - osctrl-backend
-    depends_on:
-      - postgres
+  # osctrl-cli:
+  #   container_name: 'osctrl-cli'
+  #   restart: unless-stopped
+  #   image: osctrl-cli:v${OSCTRL_VERSION}
+  #   stdin_open: true # docker run -i
+  #   tty: true        # docker run -t
+  #   networks:
+  #     - osctrl-backend
+  #   depends_on:
+  #     - postgres
 
   ######################################### osquery #########################################
-  ubuntu-osquery:
-    container_name: 'osctrl-ubuntu-osquery'
-    restart: unless-stopped
-    image: osctrl-ubuntu-osquery:${OSQUERY_VERSION}
-    build:
-      <<: *build_osctrl
-      target: osctrl-ubuntu-osquery
-    networks:
-      - osctrl-backend
-    depends_on:
-      - osctrl-tls
+  # ubuntu-osquery:
+  #   container_name: 'osctrl-ubuntu-osquery'
+  #   restart: unless-stopped
+  #   image: osctrl-ubuntu-osquery:${OSQUERY_VERSION}
+  #   build:
+  #     <<: *build_osctrl
+  #     target: osctrl-ubuntu-osquery
+  #   networks:
+  #     - osctrl-backend
+  #   depends_on:
+  #     - osctrl-tls
 
 networks:
   osctrl-backend:

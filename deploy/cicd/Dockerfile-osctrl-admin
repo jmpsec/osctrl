@@ -10,19 +10,17 @@ RUN mkdir -p /opt/osctrl/bin && \
     mkdir -p /opt/osctrl/config && \
     mkdir -p /opt/osctrl/tmpl_admin/components && \
     mkdir -p /opt/osctrl/static && \
-    mkdir -p /opt/osctrl/data
+    mkdir -p /opt/osctrl/data && \
+    chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
 RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 ### Copy osctrl-admin web templates ###
+USER osctrl-${COMPONENT}
 COPY admin/templates/ /opt/osctrl/tmpl_admin
 COPY admin/static/ /opt/osctrl/static
-COPY deploy/osquery/data/5.0.1.json /opt/osctrl/data/5.0.1.json
-RUN chmod 644 -R /opt/osctrl/tmpl_admin/components && \
-    chmod 644 -R /opt/osctrl/static && \
-    chmod 644 /opt/osctrl/data
+COPY deploy/osquery/data/*.json /opt/osctrl/data/
 
-USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9001/tcp
 CMD ["/opt/osctrl/bin/osctrl-admin"]
