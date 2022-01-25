@@ -30,6 +30,7 @@ type LoggerSplunk struct {
 	Enabled       bool
 }
 
+// CreateLoggerSplunk to initialize the logger
 func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
 	config, err := LoadSplunk(splunkFile)
 	if err != nil {
@@ -46,7 +47,7 @@ func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
 	return l, nil
 }
 
-// Function to load the Splunk configuration from JSON file
+// LoadSplunk - Function to load the Splunk configuration from JSON file
 func LoadSplunk(file string) (SlunkConfiguration, error) {
 	var _splunkCfg SlunkConfiguration
 	log.Printf("Loading %s", file)
