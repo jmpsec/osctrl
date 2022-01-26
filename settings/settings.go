@@ -35,6 +35,7 @@ const (
 const (
 	LoggingNone    string = "none"
 	LoggingStdout  string = "stdout"
+	LoggingFile    string = "file"
 	LoggingDB      string = "db"
 	LoggingGraylog string = "graylog"
 	LoggingSplunk  string = "splunk"

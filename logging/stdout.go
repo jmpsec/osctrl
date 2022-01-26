@@ -47,24 +47,24 @@ func (logStdout *LoggerStdout) Log(logType string, data []byte, environment, uui
 func (logStdout *LoggerStdout) Status(data []byte, environment, uuid string, debug bool) {
 	logStdout.Logger.Info().Str(
 		"type", types.StatusLog).Str(
-			"environment", environment).Str(
-				"uuid", uuid).RawJSON("data", data)
+		"environment", environment).Str(
+		"uuid", uuid).RawJSON("data", data)
 }
 
 // Result - Function that sends JSON result logs to stdout
 func (logStdout *LoggerStdout) Result(data []byte, environment, uuid string, debug bool) {
 	logStdout.Logger.Info().Str(
 		"type", types.ResultLog).Str(
-			"environment", environment).Str(
-				"uuid", uuid).RawJSON("data", data)
+		"environment", environment).Str(
+		"uuid", uuid).RawJSON("data", data)
 }
 
 // Query - Function that sends JSON query logs to stdout
 func (logStdout *LoggerStdout) Query(data []byte, environment, uuid, name string, status int, debug bool) {
 	logStdout.Logger.Info().Str(
 		"type", types.QueryLog).Str(
-			"environment", environment).Str(
-				"name", name).Int(
-					"status", status).Str(
-						"uuid", uuid).RawJSON("data", data)
+		"environment", environment).Str(
+		"name", name).Int(
+		"status", status).Str(
+		"uuid", uuid).RawJSON("data", data)
 }
