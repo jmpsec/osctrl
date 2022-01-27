@@ -22,6 +22,7 @@ require (
 	github.com/jmpsec/osctrl/settings v0.2.7
 	github.com/jmpsec/osctrl/types v0.2.7
 	github.com/jmpsec/osctrl/utils v0.2.7
+	github.com/rs/zerolog v1.26.1
 	github.com/spf13/viper v1.10.1
 )
 
