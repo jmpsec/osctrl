@@ -443,9 +443,6 @@ if [[ "$UPGRADE" == true ]]; then
     # Build TLS service
     make tls
 
-    # Prepare static files for TLS service
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
-
     # Restart service with new binary
     make install_tls
   fi
@@ -668,9 +665,6 @@ else
 
     # Configuration file generation for TLS service
     configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
-
-    # Prepare static files for TLS service
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "tls/scripts" "scripts"
 
     # Systemd configuration for TLS service
     _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"

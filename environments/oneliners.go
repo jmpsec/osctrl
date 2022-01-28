@@ -101,24 +101,24 @@ iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{
 
 // QuickAddScript to get a quick add script for a environment
 func QuickAddScript(project, script string, environment TLSEnvironment) (string, error) {
-	var templateName, templatePath string
+	var templateName, templateScript string
 	// What script is it?
 	switch script {
 	case EnrollShell:
 		templateName = "quick-add.sh"
-		templatePath = "scripts/quick-add.sh"
+		templateScript = QuickAddScriptShell
 	case EnrollPowershell:
 		templateName = "quick-add.ps1"
-		templatePath = "scripts/quick-add.ps1"
+		templateScript = QuickAddScriptPowershell
 	case RemoveShell:
 		templateName = "quick-remove.sh"
-		templatePath = "scripts/quick-remove.sh"
+		templateScript = QuickRemoveScriptShell
 	case RemovePowershell:
 		templateName = "quick-remove.ps1"
-		templatePath = "scripts/quick-remove.ps1"
+		templateScript = QuickRemoveScriptPowershell
 	}
 	// Prepare template
-	t, err := template.New(templateName).ParseFiles(templatePath)
+	t, err := template.New(templateName).Parse(templateScript)
 	if err != nil {
 		return "", err
 	}

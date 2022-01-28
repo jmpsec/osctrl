@@ -17,14 +17,12 @@ RUN useradd -ms /bin/bash osctrl-tls
 ### Copy osctrl-tls bin and configs ###
 RUN mkdir -p /opt/osctrl/
 RUN mkdir -p /opt/osctrl/bin
-RUN mkdir -p /opt/osctrl/scripts
 RUN mkdir -p /opt/osctrl/config
 
 ### Compile osctrl-tls bin ###
 RUN go build -o /opt/osctrl/bin/osctrl-tls tls/*.go
 RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
 
-COPY tls/scripts/ /opt/osctrl/scripts
 COPY deploy/docker/conf/osctrl/tls/tls.json /opt/osctrl/config/tls.json
 COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
 RUN sed -i "s#{{ POSTGRES_DB_NAME }}#${POSTGRES_DB_NAME}#g" /opt/osctrl/config/db.json
