@@ -19,6 +19,12 @@ services:
       - osctrl-tls
       - osctrl-admin
       - osctrl-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
@@ -33,7 +39,9 @@ services:
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      - SERVICE_LOGGING=db
+      #### Logging ####
+      - SERVICE_LOGGING=stdout
+      #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
       - DB_HOST=postgres
@@ -45,6 +53,12 @@ services:
       - osctrl-backend
     depends_on:
       - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   ######################################### osctrl-admin #########################################
   osctrl-admin:
@@ -59,8 +73,8 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
       #### Logging ####
-      - LOGGER_FILE=none
-      - SERVICE_LOGGING=db
+      - SERVICE_LOGGING=stdout
+      #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
       - SERVICE_CONFIG=false
@@ -76,6 +90,12 @@ services:
       - 9001:9001
     depends_on:
       - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   ######################################### osctrl-api #########################################
   osctrl-api:
@@ -89,7 +109,9 @@ services:
       - SERVICE_PORT=9002
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      - SERVICE_LOGGING=db
+      #### Logging ####
+      - SERVICE_LOGGING=none
+      - LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
       - SERVICE_CONFIG=false
@@ -102,6 +124,12 @@ services:
       - osctrl-backend
     depends_on:
       - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   ######################################### PostgreSQL #########################################
   postgres:
@@ -116,6 +144,11 @@ services:
       - osctrl-backend
     volumes:
       - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   ######################################### osctrl-cli #########################################
   # osctrl-cli:
