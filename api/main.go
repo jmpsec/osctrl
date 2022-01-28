@@ -209,7 +209,7 @@ func init() {
 			Aliases:     []string{"L"},
 			Value:       settings.LoggingNone,
 			Usage:       "Logging mechanism to handle logs from nodes",
-			EnvVars:     []string{"SERVICE_LOGGING"},
+			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &loggerValue,
 		},
 		&cli.BoolFlag{
