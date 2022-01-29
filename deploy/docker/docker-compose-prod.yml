@@ -40,7 +40,7 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
       #### Logging ####
-      - SERVICE_LOGGING=stdout
+      - SERVICE_LOGGER=none
       #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
@@ -68,16 +68,16 @@ services:
     environment:
       #### TLS settings ####
       - TLS_SERVER=false
+      - SERVICE_CONFIG=false
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
       #### Logging ####
-      - SERVICE_LOGGING=stdout
+      - SERVICE_LOGGER=none
       #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
-      - SERVICE_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -110,8 +110,8 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
       #### Logging ####
-      - SERVICE_LOGGING=none
-      - LOGGER_FILE=none
+      - SERVICE_LOGGER=none
+      #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
       - SERVICE_CONFIG=false
