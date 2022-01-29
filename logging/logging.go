@@ -73,6 +73,13 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 		}
 		d.Settings(mgr)
 		l.Logger = d
+	case settings.LoggingKinesis:
+		d, err := CreateLoggerKinesis(loggingFile)
+		if err != nil {
+			return nil, err
+		}
+		d.Settings(mgr)
+		l.Logger = d
 	}
 	// Initialize the DB logger anyway
 	return l, nil
@@ -129,6 +136,14 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
+	case settings.LoggingKinesis:
+		l, ok := logTLS.Logger.(LoggerKinesis)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingKinesis)
+		}
+		if l.Enabled {
+			l.Send(logType, data, environment, uuid, debug)
+		}
 	}
 }
 
@@ -182,6 +197,14 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
+		}
+	case settings.LoggingKinesis:
+		l, ok := logTLS.Logger.(LoggerKinesis)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingKinesis)
+		}
+		if l.Enabled {
+			l.Send(logType, data, environment, uuid, debug)
 		}
 	}
 }
