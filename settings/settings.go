@@ -41,6 +41,7 @@ const (
 	LoggingSplunk  string = "splunk"
 	LoggingELK     string = "elk"
 	LoggingKafka   string = "kafka"
+	LoggingKinesis string = "kinesis"
 )
 
 // Names for all possible settings values for services
