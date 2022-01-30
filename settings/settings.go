@@ -42,6 +42,7 @@ const (
 	LoggingELK     string = "elk"
 	LoggingKafka   string = "kafka"
 	LoggingKinesis string = "kinesis"
+	LoggingS3 string = "s3"
 )
 
 // Names for all possible settings values for services
