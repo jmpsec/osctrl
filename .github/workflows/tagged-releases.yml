@@ -2,13 +2,14 @@ name: Create new osctrl release with binaries
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ $default-branch ]
+    # Publish semver tags as releases.
+    tags: [ 'v*.*.*' ]
 
 permissions:
   contents: write
 
-jobs:    
+jobs:
   build_and_test:
     runs-on: ubuntu-20.04
     strategy:
@@ -17,22 +18,22 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
-      ######################################## Checkout code ########################################
+      ########################### Checkout code ####################################################
       - name: Checkout code
         uses: actions/checkout@v2
-      ######################################## Install go ########################################
+      ########################### Install go #######################################################
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
       - run: go version
-      ######################################## Get GO deps ########################################
+      ########################### Get GO deps ######################################################
       - name: Get GO deps
         run: go mod download
-      ######################################## Build osctrl binaries ########################################
+      ########################### Build osctrl binaries ############################################
       - name: Build osctrl-tls
         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
-      ######################################## Upload artifacts ########################################
+      ########################### Upload artifacts #################################################
       - name: Upload osctrl bianries
         uses: actions/upload-artifact@v2
         with:
@@ -47,11 +48,11 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
-      ######################################## checkout ########################################
+      ########################### Checkout Code ####################################################
       - name: Checkout
         uses: actions/checkout@v2
 
-      ######################################## Download artifacts ########################################
+      ########################### Download artifacts ###############################################
       - name: Download osctrl bianries
         uses: actions/download-artifact@v2
         with:
@@ -73,7 +74,7 @@ jobs:
         goos: ['linux']
         goarch: ['amd64']
     steps:
-      ######################################## Create ZIP of build artifacts ########################################
+      ########################### Create ZIP of build artifacts ####################################
       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
       - name: Declare GIT hash and branch
         id: vars
@@ -83,28 +84,36 @@ jobs:
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      ######################################## checkout ########################################
+      ########################### Checkout #########################################################
       - name: Checkout
         uses: actions/checkout@v2
 
-      ######################################## Download artifacts ########################################
+      ########################### Install cosign ###################################################
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@1e95c1de343b5b0c23352d6417ee3e48d5bcd422
+        with:
+          cosign-release: 'v1.4.0'
+
+      ########################### Download artifacts ###############################################
       - name: Download osctrl binaries
         uses: actions/download-artifact@v2
         with:
           name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
-      ######################################## Log into Dockerhub ########################################
+      ########################### Log into Dockerhub ###############################################
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      ######################################## Setup Docker ########################################
+      ########################### Setup Docker #####################################################
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      ######################################## Buld and Push Docker images ########################################
+      ########################### Build and Push Docker images #####################################
       - name: Build and push
         uses: docker/build-push-action@v2
         id: docker_build
@@ -117,6 +126,18 @@ jobs:
             COMPONENT=${{ matrix.components }}
             GOOS=${{ matrix.goos }}
             GOARCH=${{ matrix.goarch }}
+
+      ########################### Sign built Docker image using cosign #############################
+      # https://github.blog/2021-12-06-safeguard-container-signing-capability-actions/
+      - name: Sign the published Docker image
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: |
+          IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+          cosign sign docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
 
 
 
