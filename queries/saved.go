@@ -3,7 +3,7 @@ package queries
 import (
 	"fmt"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // SavedQuery as abstraction of a saved query to be used in distributed, schedule or packs
@@ -39,12 +39,8 @@ func (q *Queries) CreateSaved(name, query, creator string) error {
 		Query:   query,
 		Creator: creator,
 	}
-	if q.DB.NewRecord(saved) {
-		if err := q.DB.Create(&saved).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := q.DB.Create(&saved).Error; err != nil {
+		return err
 	}
 	return nil
 }
@@ -56,8 +52,8 @@ func (q *Queries) UpdateSaved(name, query, creator string) error {
 		return fmt.Errorf("error getting saved query %v", err)
 	}
 	data := SavedQuery{
-		Name:    name,
-		Query:   query,
+		Name:  name,
+		Query: query,
 	}
 	if err := q.DB.Model(&saved).Updates(data).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)

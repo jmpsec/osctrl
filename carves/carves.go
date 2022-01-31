@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/types"
+	"gorm.io/gorm"
 )
 
 // Support for undocumented file carving API
@@ -88,11 +88,11 @@ func CreateFileCarves(backend *gorm.DB) *Carves {
 	var c *Carves
 	c = &Carves{DB: backend}
 	// table carved_files
-	if err := backend.AutoMigrate(CarvedFile{}).Error; err != nil {
+	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
 	}
 	// table carved_blocks
-	if err := backend.AutoMigrate(CarvedBlock{}).Error; err != nil {
+	if err := backend.AutoMigrate(&CarvedBlock{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (carved_blocks): %v", err)
 	}
 	return c
@@ -100,10 +100,7 @@ func CreateFileCarves(backend *gorm.DB) *Carves {
 
 // CreateCarve to create a new carved file for a node
 func (c *Carves) CreateCarve(carve CarvedFile) error {
-	if c.DB.NewRecord(carve) {
-		return c.DB.Create(&carve).Error // can be nil or err
-	}
-	return fmt.Errorf("db.NewRecord did not return true")
+	return c.DB.Create(&carve).Error // can be nil or err
 }
 
 // InitCarve to initialize an scheduled carve
@@ -138,10 +135,7 @@ func (c *Carves) CheckCarve(sessionid, requestid string) bool {
 
 // CreateBlock to create a new block for a carve
 func (c *Carves) CreateBlock(block CarvedBlock) error {
-	if c.DB.NewRecord(block) {
-		return c.DB.Create(&block).Error // can be nil or err
-	}
-	return fmt.Errorf("db.NewRecord did not return true")
+	return c.DB.Create(&block).Error // can be nil or err
 }
 
 // Delete to delete a carve by id

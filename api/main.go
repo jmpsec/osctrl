@@ -22,7 +22,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
 )
 
@@ -89,7 +88,7 @@ var (
 	apiConfig   types.JSONConfigurationService
 	dbConfig    backend.JSONConfigurationDB
 	jwtConfig   types.JSONConfigurationJWT
-	db          *gorm.DB
+	db          *backend.DBManager
 	apiUsers    *users.UserManager
 	tagsmgr     *tags.TagManager
 	settingsmgr *settings.Settings
@@ -343,40 +342,34 @@ func init() {
 
 // Go go!
 func osctrlAPIService() {
-	log.Println("Initializing backend...")
 	for {
-		db, err = backend.GetDB(dbConfig)
+		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
 			log.Println("Connection to backend successful!")
 			break
 		}
+		if err != nil {
+			log.Fatalf("Failed to connect to backend - %v", err)
+		}
 		log.Println("Backend NOT ready! waiting...")
 		time.Sleep(backendWait)
 	}
-	if err != nil {
-		log.Fatalf("Failed to connect to backend - %v", err)
-	}
-	// Close when exit
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("Failed to close Database handler - %v", err)
-		}
-	}()
+	// Close connection
 	log.Println("Initialize users")
-	apiUsers = users.CreateUserManager(db, &jwtConfig)
+	apiUsers = users.CreateUserManager(db.Conn, &jwtConfig)
 	log.Println("Initialize tags")
-	tagsmgr = tags.CreateTagManager(db)
+	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Println("Initialize environment")
-	envs = environments.CreateEnvironment(db)
+	envs = environments.CreateEnvironment(db.Conn)
 	// Initialize settings
 	log.Println("Initialize settings")
-	settingsmgr = settings.NewSettings(db)
+	settingsmgr = settings.NewSettings(db.Conn)
 	log.Println("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Println("Initialize queries")
-	queriesmgr = queries.CreateQueries(db)
+	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	filecarves = carves.CreateFileCarves(db)
+	filecarves = carves.CreateFileCarves(db.Conn)
 	log.Println("Loading service settings")
 	loadingSettings()
 

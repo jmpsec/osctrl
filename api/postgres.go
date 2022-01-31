@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // OsqueryQueryData to log query data to database
@@ -23,7 +23,7 @@ type APIQueryData map[string]json.RawMessage
 func postgresQueryLogs(name string) (APIQueryData, error) {
 	var logs []OsqueryQueryData
 	data := make(APIQueryData)
-	if err := db.Where("name = ?", name).Find(&logs).Error; err != nil {
+	if err := db.Conn.Where("name = ?", name).Find(&logs).Error; err != nil {
 		return data, err
 	}
 	for _, l := range logs {

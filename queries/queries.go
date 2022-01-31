@@ -1,11 +1,10 @@
 package queries
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/nodes"
+	"gorm.io/gorm"
 )
 
 const (
@@ -100,19 +99,19 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	var q *Queries
 	q = &Queries{DB: backend}
 	// table distributed_queries
-	if err := backend.AutoMigrate(DistributedQuery{}).Error; err != nil {
+	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
 	}
 	// table distributed_query_executions
-	if err := backend.AutoMigrate(DistributedQueryExecution{}).Error; err != nil {
+	if err := backend.AutoMigrate(&DistributedQueryExecution{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
 	}
 	// table distributed_query_targets
-	if err := backend.AutoMigrate(DistributedQueryTarget{}).Error; err != nil {
+	if err := backend.AutoMigrate(&DistributedQueryTarget{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
 	}
 	// table saved_queries
-	if err := backend.AutoMigrate(SavedQuery{}).Error; err != nil {
+	if err := backend.AutoMigrate(&SavedQuery{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (saved_queries): %v", err)
 	}
 	return q
@@ -261,12 +260,8 @@ func (q *Queries) Delete(name string) error {
 
 // Create to create new query to be served to nodes
 func (q *Queries) Create(query DistributedQuery) error {
-	if q.DB.NewRecord(query) {
-		if err := q.DB.Create(&query).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := q.DB.Create(&query).Error; err != nil {
+		return err
 	}
 	return nil
 }
@@ -278,12 +273,8 @@ func (q *Queries) CreateTarget(name, targetType, targetValue string) error {
 		Type:  targetType,
 		Value: targetValue,
 	}
-	if q.DB.NewRecord(queryTarget) {
-		if err := q.DB.Create(&queryTarget).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := q.DB.Create(&queryTarget).Error; err != nil {
+		return err
 	}
 	return nil
 }
@@ -299,7 +290,7 @@ func (q *Queries) GetTargets(name string) ([]DistributedQueryTarget, error) {
 
 // NotYetExecuted to check if query already executed or it is within the interval
 func (q *Queries) NotYetExecuted(name, uuid string) bool {
-	var results int
+	var results int64
 	q.DB.Model(&DistributedQueryExecution{}).Where("name = ? AND uuid = ?", name, uuid).Count(&results)
 	return (results == 0)
 }
@@ -347,12 +338,8 @@ func (q *Queries) TrackExecution(name, uuid string, result int) error {
 		UUID:   uuid,
 		Result: result,
 	}
-	if q.DB.NewRecord(queryExecution) {
-		if err := q.DB.Create(&queryExecution).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := q.DB.Create(&queryExecution).Error; err != nil {
+		return err
 	}
 	return nil
 }

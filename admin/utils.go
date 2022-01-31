@@ -118,7 +118,6 @@ func loadOsqueryTables(file string) ([]types.OsqueryTable, error) {
 	if err != nil {
 		return tables, err
 	}
-	//defer jsonFile.Close()
 	defer func() {
 		if err := jsonFile.Close(); err != nil {
 			log.Fatalf("Failed to close tables file %v", err)

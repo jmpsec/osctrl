@@ -88,7 +88,6 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 		d.Settings(mgr)
 		l.Logger = d
 	}
-	// Initialize the DB logger anyway
 	return l, nil
 }
 

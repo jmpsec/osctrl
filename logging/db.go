@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/queries"
@@ -56,38 +56,31 @@ type OsqueryQueryData struct {
 
 // LoggerDB will be used to log data using a database
 type LoggerDB struct {
-	Database      *gorm.DB
-	Configuration backend.JSONConfigurationDB
-	Enabled       bool
+	Database *backend.DBManager
+	Enabled  bool
 }
 
 // CreateLoggerDB to initialize the logger
 func CreateLoggerDB(dbfile string) (*LoggerDB, error) {
-	// Load DB configuration
-	config, err := backend.LoadConfiguration(dbfile, settings.LoggingDB)
+	// Initialize backend
+	backend, err := backend.CreateDBManagerFile(dbfile)
 	if err != nil {
-		return nil, err
-	}
-	// Connect to DB
-	database, err := backend.GetDB(config)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to create backend - %v", err)
 	}
 	l := &LoggerDB{
-		Database:      database,
-		Configuration: config,
-		Enabled:       true,
+		Database: backend,
+		Enabled:  true,
 	}
 	// table osquery_status_data
-	if err := database.AutoMigrate(OsqueryStatusData{}).Error; err != nil {
+	if err := backend.Conn.AutoMigrate(&OsqueryStatusData{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_status_data): %v", err)
 	}
 	// table osquery_result_data
-	if err := database.AutoMigrate(OsqueryResultData{}).Error; err != nil {
+	if err := backend.Conn.AutoMigrate(&OsqueryResultData{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_result_data): %v", err)
 	}
 	// table osquery_query_data
-	if err := database.AutoMigrate(OsqueryQueryData{}).Error; err != nil {
+	if err := backend.Conn.AutoMigrate(&OsqueryQueryData{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
 	return l, nil
@@ -180,12 +173,8 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 			Filename:    l.Filename,
 			Severity:    l.Severity,
 		}
-		if logDB.Database.NewRecord(entry) {
-			if err := logDB.Database.Create(&entry).Error; err != nil {
-				log.Printf("Error creating status log entry %s", err)
-			}
-		} else {
-			log.Printf("NewRecord did not return true")
+		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
+			log.Printf("Error creating status log entry %s", err)
 		}
 	}
 }
@@ -208,12 +197,8 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 			Columns:     l.Columns,
 			Counter:     l.Counter,
 		}
-		if logDB.Database.NewRecord(entry) {
-			if err := logDB.Database.Create(&entry).Error; err != nil {
-				log.Printf("Error creating result log entry %s", err)
-			}
-		} else {
-			log.Printf("NewRecord did not return true")
+		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
+			log.Printf("Error creating result log entry %s", err)
 		}
 	}
 }
@@ -229,19 +214,15 @@ func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status
 		Status:      status,
 	}
 	// Insert in DB
-	if logDB.Database.NewRecord(entry) {
-		if err := logDB.Database.Create(&entry).Error; err != nil {
-			log.Printf("Error creating query log %s", err)
-		}
-	} else {
-		log.Printf("NewRecord did not return true")
+	if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
+		log.Printf("Error creating query log %s", err)
 	}
 }
 
 // QueryLogs will retrieve all query logs
 func (logDB *LoggerDB) QueryLogs(name string) ([]OsqueryQueryData, error) {
 	var logs []OsqueryQueryData
-	if err := logDB.Database.Where("name = ?", name).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Conn.Where("name = ?", name).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
@@ -251,7 +232,7 @@ func (logDB *LoggerDB) QueryLogs(name string) ([]OsqueryQueryData, error) {
 func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
 	var logs []OsqueryStatusData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
@@ -261,7 +242,7 @@ func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]Os
 func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
 	var logs []OsqueryResultData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
@@ -270,7 +251,7 @@ func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]Os
 // CleanStatusLogs will delete old status logs
 func (logDB *LoggerDB) CleanStatusLogs(environment string, seconds int64) error {
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryStatusData{}).Error; err != nil {
+	if err := logDB.Database.Conn.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryStatusData{}).Error; err != nil {
 		return fmt.Errorf("CleanStatusLogs %v", err)
 	}
 	return nil
@@ -279,7 +260,7 @@ func (logDB *LoggerDB) CleanStatusLogs(environment string, seconds int64) error 
 // CleanResultLogs will delete old status logs
 func (logDB *LoggerDB) CleanResultLogs(environment string, seconds int64) error {
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryResultData{}).Error; err != nil {
+	if err := logDB.Database.Conn.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryResultData{}).Error; err != nil {
 		return fmt.Errorf("CleanResultLogs %v", err)
 	}
 	return nil
@@ -290,35 +271,35 @@ func (logDB *LoggerDB) CleanQueryLogs(entries int64) error {
 	// TODO this would be better and simpler with foreign keys and delete cascade
 	// Find queries to delete with OFFSET
 	var oldQueries []queries.DistributedQuery
-	logDB.Database.Offset(entries).Find(&oldQueries)
+	logDB.Database.Conn.Offset(int(entries)).Find(&oldQueries)
 	for _, q := range oldQueries {
 		if q.Completed {
 			// Get query results
 			var queriesData []OsqueryQueryData
-			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesData).Error; err != nil {
+			if err := logDB.Database.Conn.Where("name = ?", q.Name).Find(&queriesData).Error; err != nil {
 				return err
 			}
-			if err := logDB.Database.Unscoped().Delete(&queriesData).Error; err != nil {
+			if err := logDB.Database.Conn.Unscoped().Delete(&queriesData).Error; err != nil {
 				return err
 			}
 			// Get query targets
 			var queriesTargets []queries.DistributedQueryTarget
-			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesTargets).Error; err != nil {
+			if err := logDB.Database.Conn.Where("name = ?", q.Name).Find(&queriesTargets).Error; err != nil {
 				return err
 			}
-			if err := logDB.Database.Unscoped().Delete(&queriesTargets).Error; err != nil {
+			if err := logDB.Database.Conn.Unscoped().Delete(&queriesTargets).Error; err != nil {
 				return err
 			}
 			// Get query executions
 			var queriesExecutions []queries.DistributedQueryExecution
-			if err := logDB.Database.Where("name = ?", q.Name).Find(&queriesExecutions).Error; err != nil {
+			if err := logDB.Database.Conn.Where("name = ?", q.Name).Find(&queriesExecutions).Error; err != nil {
 				return err
 			}
-			if err := logDB.Database.Unscoped().Delete(&queriesExecutions).Error; err != nil {
+			if err := logDB.Database.Conn.Unscoped().Delete(&queriesExecutions).Error; err != nil {
 				return err
 			}
 			// Delete query
-			if err := logDB.Database.Unscoped().Delete(&q).Error; err != nil {
+			if err := logDB.Database.Conn.Unscoped().Delete(&q).Error; err != nil {
 				return err
 			}
 		}
