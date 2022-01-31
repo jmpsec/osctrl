@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const (
@@ -90,7 +90,7 @@ func CreateEnvironment(backend *gorm.DB) *Environment {
 	var e *Environment
 	e = &Environment{DB: backend}
 	// table tls_environments
-	if err := backend.AutoMigrate(TLSEnvironment{}).Error; err != nil {
+	if err := backend.AutoMigrate(&TLSEnvironment{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (tls_environments): %v", err)
 	}
 	return e
@@ -146,19 +146,15 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 
 // Create new TLS Environment
 func (environment *Environment) Create(env TLSEnvironment) error {
-	if environment.DB.NewRecord(env) {
-		if err := environment.DB.Create(&env).Error; err != nil {
-			return fmt.Errorf("Create TLS Environment %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := environment.DB.Create(&env).Error; err != nil {
+		return fmt.Errorf("Create TLS Environment %v", err)
 	}
 	return nil
 }
 
 // Exists checks if TLS Environment exists already
 func (environment *Environment) Exists(identifier string) bool {
-	var results int
+	var results int64
 	environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", identifier, identifier).Count(&results)
 	return (results > 0)
 }

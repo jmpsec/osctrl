@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
@@ -13,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
+	"gorm.io/gorm"
 )
 
 const (

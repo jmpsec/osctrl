@@ -10,8 +10,8 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/users"
+	"gorm.io/gorm"
 )
 
 const sessionIDLen int = 64
@@ -79,7 +79,7 @@ func CreateSessionManager(db *gorm.DB, name string) *SessionManager {
 		CookieName: name,
 	}
 	// table user_sessions
-	if err := db.AutoMigrate(&UserSession{}).Error; err != nil {
+	if err := db.AutoMigrate(&UserSession{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (user_sessions): %v", err)
 	}
 	return st
@@ -101,7 +101,7 @@ func (sm *SessionManager) CheckAuth(r *http.Request) (bool, UserSession) {
 // Get returns a non-expired existing session for the given cookie
 func (sm *SessionManager) Get(cookie string) (UserSession, error) {
 	var s UserSession
-	if err := sm.db.Where("cookie = ?", cookie).Where("expires_at > ?", gorm.NowFunc()).First(&s).Error; err != nil {
+	if err := sm.db.Where("cookie = ?", cookie).Where("expires_at > ?", time.Now().Local()).First(&s).Error; err != nil {
 		return s, err
 	}
 	if err := securecookie.DecodeMulti(sm.CookieName, cookie, &s.Values, sm.Codecs...); err != nil {
@@ -145,12 +145,8 @@ func (sm *SessionManager) New(r *http.Request, username, level string) (UserSess
 		return UserSession{}, err
 	}
 	session.Cookie = cookie
-	if sm.db.NewRecord(session) {
-		if err := sm.db.Create(&session).Error; err != nil {
-			return UserSession{}, fmt.Errorf("Create UserSession %v", err)
-		}
-	} else {
-		return UserSession{}, fmt.Errorf("db.NewRecord did not return true")
+	if err := sm.db.Create(&session).Error; err != nil {
+		return UserSession{}, fmt.Errorf("Create UserSession %v", err)
 	}
 	return session, nil
 }
@@ -196,7 +192,7 @@ func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user user
 
 // Cleanup deletes expired sessions
 func (sm *SessionManager) Cleanup() {
-	sm.db.Delete(&UserSession{}, "expires_at <= ?", gorm.NowFunc())
+	sm.db.Delete(&UserSession{}, "expires_at <= ?", time.Now().Local())
 }
 
 // Function to generate a secure CSRF token

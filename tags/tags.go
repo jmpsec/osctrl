@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/nodes"
+	"gorm.io/gorm"
 )
 
 const (
@@ -46,11 +46,11 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 	var t *TagManager
 	t = &TagManager{DB: backend}
 	// table admin_users
-	if err := backend.AutoMigrate(AdminTag{}).Error; err != nil {
+	if err := backend.AutoMigrate(&AdminTag{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_tags): %v", err)
 	}
 	// table tagged_nodes
-	if err := backend.AutoMigrate(TaggedNode{}).Error; err != nil {
+	if err := backend.AutoMigrate(&TaggedNode{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (tagged_nodes): %v", err)
 	}
 	return t
@@ -67,12 +67,8 @@ func (m *TagManager) Get(name string) (AdminTag, error) {
 
 // Create new tag
 func (m *TagManager) Create(tag AdminTag) error {
-	if m.DB.NewRecord(tag) {
-		if err := m.DB.Create(&tag).Error; err != nil {
-			return fmt.Errorf("Create AdminTag %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := m.DB.Create(&tag).Error; err != nil {
+		return fmt.Errorf("Create AdminTag %v", err)
 	}
 	return nil
 }
@@ -109,7 +105,7 @@ func (m *TagManager) NewTag(name, description, color, icon string) error {
 
 // Exists checks if tag exists
 func (m *TagManager) Exists(name string) bool {
-	var results int
+	var results int64
 	m.DB.Model(&AdminTag{}).Where("name = ?", name).Count(&results)
 	return (results > 0)
 }
@@ -198,19 +194,15 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode) error {
 		Tag:    name,
 		NodeID: node.ID,
 	}
-	if m.DB.NewRecord(tagged) {
-		if err := m.DB.Create(&tagged).Error; err != nil {
-			return fmt.Errorf("Create TaggedNode %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := m.DB.Create(&tagged).Error; err != nil {
+		return fmt.Errorf("Create TaggedNode %v", err)
 	}
 	return nil
 }
 
 // IsTagged to check if a node is already tagged
 func (m *TagManager) IsTagged(name string, node nodes.OsqueryNode) bool {
-	var results int
+	var results int64
 	m.DB.Model(&TaggedNode{}).Where("tag = ? AND node_id = ?", name, node.ID).Count(&results)
 	return (results > 0)
 }
@@ -248,7 +240,7 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 }
 
 // GetNodeTags to decorate tags for a given node
-func (m *TagManager) GetNodeTags(tagged  []AdminTag) ([]AdminTagForNode, error) {
+func (m *TagManager) GetNodeTags(tagged []AdminTag) ([]AdminTagForNode, error) {
 	var tags []AdminTag
 	var forNode []AdminTagForNode
 	tags, err := m.All()

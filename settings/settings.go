@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Types of services
@@ -42,7 +42,7 @@ const (
 	LoggingELK     string = "elk"
 	LoggingKafka   string = "kafka"
 	LoggingKinesis string = "kinesis"
-	LoggingS3 string = "s3"
+	LoggingS3      string = "s3"
 )
 
 // Names for all possible settings values for services
@@ -124,7 +124,7 @@ func NewSettings(backend *gorm.DB) *Settings {
 	var s *Settings
 	s = &Settings{DB: backend}
 	// table setting_values
-	if err := backend.AutoMigrate(SettingValue{}).Error; err != nil {
+	if err := backend.AutoMigrate(&SettingValue{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (setting_values): %v", err)
 	}
 	return s
@@ -157,12 +157,8 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 		entry.String = value.(string)
 	}
 	// Create record in database
-	if conf.DB.NewRecord(entry) {
-		if err := conf.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create NewValue %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := conf.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create NewValue %v", err)
 	}
 	return nil
 }
@@ -174,12 +170,8 @@ func (conf *Settings) NewJSON(service, name, value string) error {
 	entry.JSON = true
 	entry.String = value
 	// Create record in database
-	if conf.DB.NewRecord(entry) {
-		if err := conf.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create NewJSON %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := conf.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create NewJSON %v", err)
 	}
 	return nil
 }
