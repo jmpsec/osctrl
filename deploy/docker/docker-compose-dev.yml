@@ -1,16 +1,4 @@
 version: "2.2"
-
-x-docker-data: &build_osctrl
-  context: .
-  dockerfile: deploy/docker/Dockerfile-osctrl-dev
-  args:
-    OSCTRL_VERSION: ${OSCTRL_VERSION}
-    OSQUERY_VERSION: ${OSQUERY_VERSION}
-    POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
-    POSTGRES_DB_USERNAME: ${POSTGRES_DB_USERNAME}
-    POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
-    JWT_SECRET: ${JWT_SECRET}
-
 services:
   ######################################### osctrl-tls #########################################
   osctrl-tls:
