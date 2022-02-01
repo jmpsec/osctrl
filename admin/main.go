@@ -11,7 +11,6 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/jmpsec/osctrl/admin/handlers"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
@@ -110,7 +109,7 @@ var (
 	err         error
 	adminConfig types.JSONConfigurationService
 	dbConfig    backend.JSONConfigurationDB
-	db          *gorm.DB
+	db          *backend.DBManager
 	settingsmgr *settings.Settings
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
@@ -448,39 +447,33 @@ func init() {
 func osctrlAdminService() {
 	log.Println("Initializing backend...")
 	for {
-		db, err = backend.GetDB(dbConfig)
+		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
 			log.Println("Connection to backend successful!")
 			break
 		}
+		if err != nil {
+			log.Fatalf("Failed to connect to backend - %v", err)
+		}
 		log.Println("Backend NOT ready! waiting...")
 		time.Sleep(backendWait)
 	}
-	if err != nil {
-		log.Fatalf("Failed to connect to backend - %v", err)
-	}
-	// Close when exit
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("Failed to close Database handler - %v", err)
-		}
-	}()
 	log.Println("Initialize users")
-	adminUsers = users.CreateUserManager(db, &jwtConfig)
+	adminUsers = users.CreateUserManager(db.Conn, &jwtConfig)
 	log.Println("Initialize tags")
-	tagsmgr = tags.CreateTagManager(db)
+	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Println("Initialize environments")
-	envs = environments.CreateEnvironment(db)
+	envs = environments.CreateEnvironment(db.Conn)
 	log.Println("Initialize settings")
-	settingsmgr = settings.NewSettings(db)
+	settingsmgr = settings.NewSettings(db.Conn)
 	log.Println("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Println("Initialize queries")
-	queriesmgr = queries.CreateQueries(db)
+	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db)
+	carvesmgr = carves.CreateFileCarves(db.Conn)
 	log.Println("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db, projectName)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %v", err)
@@ -572,7 +565,7 @@ func osctrlAdminService() {
 
 	// Initialize Admin handlers before router
 	handlersAdmin = handlers.CreateHandlersAdmin(
-		handlers.WithDB(db),
+		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
 		handlers.WithUsers(adminUsers),
 		handlers.WithTags(tagsmgr),

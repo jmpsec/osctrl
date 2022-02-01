@@ -23,7 +23,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
 )
 
@@ -68,7 +67,7 @@ var (
 	err         error
 	tlsConfig   types.JSONConfigurationService
 	dbConfig    backend.JSONConfigurationDB
-	db          *gorm.DB
+	db          *backend.DBManager
 	settingsmgr *settings.Settings
 	envs        *environments.Environment
 	envsmap     environments.MapEnvironments
@@ -305,35 +304,29 @@ func osctrlService() {
 	log.Println("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
-		db, err = backend.GetDB(dbConfig)
+		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
 			log.Println("Connection to backend successful!")
 			break
 		}
+		if err != nil {
+			log.Fatalf("Failed to connect to backend - %v", err)
+		}
 		log.Println("Backend NOT ready! waiting...")
 		time.Sleep(backendWait)
 	}
-	if err != nil {
-		log.Fatalf("Failed to connect to backend - %v", err)
-	}
-	// Close when exit
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("Failed to close Database handler - %v", err)
-		}
-	}()
 	log.Println("Initialize environment")
-	envs = environments.CreateEnvironment(db)
+	envs = environments.CreateEnvironment(db.Conn)
 	log.Println("Initialize settings")
-	settingsmgr = settings.NewSettings(db)
+	settingsmgr = settings.NewSettings(db.Conn)
 	log.Println("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Println("Initialize tags")
-	tagsmgr = tags.CreateTagManager(db)
+	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Println("Initialize queries")
-	queriesmgr = queries.CreateQueries(db)
+	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	filecarves = carves.CreateFileCarves(db)
+	filecarves = carves.CreateFileCarves(db.Conn)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)

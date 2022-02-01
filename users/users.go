@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/jmpsec/osctrl/types"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // AdminUser to hold all users
@@ -49,7 +49,7 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) 
 	var u *UserManager
 	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
-	if err := backend.AutoMigrate(AdminUser{}).Error; err != nil {
+	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
 	return u
@@ -138,12 +138,8 @@ func (m *UserManager) Get(username string) (AdminUser, error) {
 
 // Create new user
 func (m *UserManager) Create(user AdminUser) error {
-	if m.DB.NewRecord(user) {
-		if err := m.DB.Create(&user).Error; err != nil {
-			return fmt.Errorf("Create AdminUser %v", err)
-		}
-	} else {
-		return fmt.Errorf("db.NewRecord did not return true")
+	if err := m.DB.Create(&user).Error; err != nil {
+		return fmt.Errorf("Create AdminUser %v", err)
 	}
 	return nil
 }
@@ -175,7 +171,7 @@ func (m *UserManager) New(username, password, email, fullname, defaultEnv string
 
 // Exists checks if user exists
 func (m *UserManager) Exists(username string) bool {
-	var results int
+	var results int64
 	m.DB.Model(&AdminUser{}).Where("username = ?", username).Count(&results)
 	return (results > 0)
 }
@@ -191,7 +187,7 @@ func (m *UserManager) ExistsGet(username string) (bool, AdminUser) {
 
 // IsAdmin checks if user is an admin
 func (m *UserManager) IsAdmin(username string) bool {
-	var results int
+	var results int64
 	m.DB.Model(&AdminUser{}).Where("username = ? AND admin = ?", username, true).Count(&results)
 	return (results > 0)
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // OsqueryNode as abstraction of a node
@@ -99,9 +99,9 @@ type NodeHistoryUsername struct {
 
 // StatsData to display node stats
 type StatsData struct {
-	Total    int `json:"total"`
-	Active   int `json:"active"`
-	Inactive int `json:"inactive"`
+	Total    int64 `json:"total"`
+	Active   int64 `json:"active"`
+	Inactive int64 `json:"inactive"`
 }
 
 // NodeManager to handle all nodes of the system
@@ -114,27 +114,27 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	var n *NodeManager
 	n = &NodeManager{DB: backend}
 	// table osquery_nodes
-	if err := backend.AutoMigrate(OsqueryNode{}).Error; err != nil {
+	if err := backend.AutoMigrate(&OsqueryNode{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (osquery_nodes): %v", err)
 	}
 	// table archive_osquery_nodes
-	if err := backend.AutoMigrate(ArchiveOsqueryNode{}).Error; err != nil {
+	if err := backend.AutoMigrate(&ArchiveOsqueryNode{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
 	// table node_history_ipaddress
-	if err := backend.AutoMigrate(NodeHistoryIPAddress{}).Error; err != nil {
+	if err := backend.AutoMigrate(&NodeHistoryIPAddress{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
 	}
 	// table node_history_hostname
-	if err := backend.AutoMigrate(NodeHistoryHostname{}).Error; err != nil {
+	if err := backend.AutoMigrate(&NodeHistoryHostname{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_hostname): %v", err)
 	}
 	// table node_history_localname
-	if err := backend.AutoMigrate(NodeHistoryLocalname{}).Error; err != nil {
+	if err := backend.AutoMigrate(&NodeHistoryLocalname{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_localname): %v", err)
 	}
 	// table node_history_username
-	if err := backend.AutoMigrate(NodeHistoryUsername{}).Error; err != nil {
+	if err := backend.AutoMigrate(&NodeHistoryUsername{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (node_history_username): %v", err)
 	}
 	return n
@@ -143,7 +143,7 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 // CheckByKey to check if node exists by node_key
 // node_key is expected lowercase
 func (n *NodeManager) CheckByKey(nodeKey string) bool {
-	var results int
+	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", strings.ToLower(nodeKey)).Count(&results)
 	return (results > 0)
 }
@@ -151,7 +151,7 @@ func (n *NodeManager) CheckByKey(nodeKey string) bool {
 // CheckByUUID to check if node exists by UUID
 // UUID is expected uppercase
 func (n *NodeManager) CheckByUUID(uuid string) bool {
-	var results int
+	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("uuid = ?", strings.ToUpper(uuid)).Count(&results)
 	return (results > 0)
 }
@@ -159,14 +159,14 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 // CheckByUUIDEnv to check if node exists by UUID in a specific environment
 // UUID is expected uppercase
 func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
-	var results int
+	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Count(&results)
 	return (results > 0)
 }
 
 // CheckByHost to check if node exists by Hostname
 func (n *NodeManager) CheckByHost(host string) bool {
-	var results int
+	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("hostname = ? OR localname = ?", host, host).Count(&results)
 	return (results > 0)
 }
@@ -435,105 +435,81 @@ func (n *NodeManager) UpdateIPAddressByKey(ipaddress, nodekey string) error {
 
 // Create to insert new osquery node generating new node_key
 func (n *NodeManager) Create(node *OsqueryNode) error {
-	if n.DB.NewRecord(node) {
-		if err := n.DB.Create(&node).Error; err != nil {
-			return fmt.Errorf("Create %v", err)
-		}
-		h := NodeHistoryHostname{
-			UUID:     node.UUID,
-			Hostname: node.Hostname,
-		}
-		if err := n.NewHistoryHostname(h); err != nil {
-			return fmt.Errorf("newNodeHistoryHostname %v", err)
-		}
-		l := NodeHistoryLocalname{
-			UUID:      node.UUID,
-			Localname: node.Localname,
-		}
-		if err := n.NewHistoryLocalname(l); err != nil {
-			return fmt.Errorf("newNodeHistoryLocalname %v", err)
-		}
-		i := NodeHistoryIPAddress{
-			UUID:      node.UUID,
-			IPAddress: node.IPAddress,
-			Count:     1,
-		}
-		if err := n.NewHistoryIPAddress(i); err != nil {
-			return fmt.Errorf("newNodeHistoryIPAddress %v", err)
-		}
-		// FIXME needs rewriting
-		//if err := geoLocationCheckByIPAddress(node.IPAddress); err != nil {
-		//	return fmt.Errorf("geoLocationCheckByIPAddress %v", err)
-		//}
-		u := NodeHistoryUsername{
-			UUID:     node.UUID,
-			Username: node.Username,
-		}
-		if err := n.NewHistoryUsername(u); err != nil {
-			return fmt.Errorf("newNodeHistoryUsername %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&node).Error; err != nil {
+		return fmt.Errorf("Create %v", err)
+	}
+	h := NodeHistoryHostname{
+		UUID:     node.UUID,
+		Hostname: node.Hostname,
+	}
+	if err := n.NewHistoryHostname(h); err != nil {
+		return fmt.Errorf("newNodeHistoryHostname %v", err)
+	}
+	l := NodeHistoryLocalname{
+		UUID:      node.UUID,
+		Localname: node.Localname,
+	}
+	if err := n.NewHistoryLocalname(l); err != nil {
+		return fmt.Errorf("newNodeHistoryLocalname %v", err)
+	}
+	i := NodeHistoryIPAddress{
+		UUID:      node.UUID,
+		IPAddress: node.IPAddress,
+		Count:     1,
+	}
+	if err := n.NewHistoryIPAddress(i); err != nil {
+		return fmt.Errorf("newNodeHistoryIPAddress %v", err)
+	}
+	// FIXME needs rewriting
+	//if err := geoLocationCheckByIPAddress(node.IPAddress); err != nil {
+	//	return fmt.Errorf("geoLocationCheckByIPAddress %v", err)
+	//}
+	u := NodeHistoryUsername{
+		UUID:     node.UUID,
+		Username: node.Username,
+	}
+	if err := n.NewHistoryUsername(u); err != nil {
+		return fmt.Errorf("newNodeHistoryUsername %v", err)
 	}
 	return nil
 }
 
 // NewHistoryEntry to insert new entry for the history of Hostnames
 func (n *NodeManager) NewHistoryEntry(entry interface{}) error {
-	if n.DB.NewRecord(entry) {
-		if err := n.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create newNodeHistoryEntry %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create newNodeHistoryEntry %v", err)
 	}
 	return nil
 }
 
 // NewHistoryHostname to insert new entry for the history of Hostnames
 func (n *NodeManager) NewHistoryHostname(entry NodeHistoryHostname) error {
-	if n.DB.NewRecord(entry) {
-		if err := n.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create newNodeHistoryHostname %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create newNodeHistoryHostname %v", err)
 	}
 	return nil
 }
 
 // NewHistoryLocalname to insert new entry for the history of Localnames
 func (n *NodeManager) NewHistoryLocalname(entry NodeHistoryLocalname) error {
-	if n.DB.NewRecord(entry) {
-		if err := n.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create newNodeHistoryLocalname %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create newNodeHistoryLocalname %v", err)
 	}
 	return nil
 }
 
 // NewHistoryUsername to insert new entry for the history of Usernames
 func (n *NodeManager) NewHistoryUsername(entry NodeHistoryUsername) error {
-	if n.DB.NewRecord(entry) {
-		if err := n.DB.Create(&entry).Error; err != nil {
-			return fmt.Errorf("Create newNodeHistoryUsername %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&entry).Error; err != nil {
+		return fmt.Errorf("Create newNodeHistoryUsername %v", err)
 	}
 	return nil
 }
 
 // NewHistoryIPAddress to insert new entry for the history of IP Addresses
 func (n *NodeManager) NewHistoryIPAddress(entry NodeHistoryIPAddress) error {
-	if n.DB.NewRecord(entry) {
-		if err := n.DB.Create(&entry).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&entry).Error; err != nil {
+		return err
 	}
 	return nil
 }
@@ -566,12 +542,8 @@ func (n *NodeManager) Archive(uuid, trigger string) error {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
 	archivedNode := nodeArchiveFromNode(node, trigger)
-	if n.DB.NewRecord(archivedNode) {
-		if err := n.DB.Create(&archivedNode).Error; err != nil {
-			return fmt.Errorf("Create %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&archivedNode).Error; err != nil {
+		return fmt.Errorf("Create %v", err)
 	}
 	return nil
 }
@@ -595,12 +567,8 @@ func (n *NodeManager) ArchiveDeleteByUUID(uuid string) error {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
 	archivedNode := nodeArchiveFromNode(node, "delete")
-	if n.DB.NewRecord(archivedNode) {
-		if err := n.DB.Create(&archivedNode).Error; err != nil {
-			return fmt.Errorf("Create %v", err)
-		}
-	} else {
-		return fmt.Errorf("n.DB.NewRecord did not return true")
+	if err := n.DB.Create(&archivedNode).Error; err != nil {
+		return fmt.Errorf("Create %v", err)
 	}
 	if err := n.DB.Unscoped().Delete(&node).Error; err != nil {
 		return fmt.Errorf("Delete %v", err)

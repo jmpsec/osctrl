@@ -11,10 +11,10 @@ import (
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
 
-	"github.com/jinzhu/gorm"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,7 +35,6 @@ const (
 
 // Global variables
 var (
-	db          *gorm.DB
 	app         *cli.App
 	flags       []cli.Flag
 	commands    []*cli.Command
@@ -631,7 +630,7 @@ func init() {
 							Usage:   "Environment to be used",
 						},
 					},
-					Action: cliWrapper(secretEnvironment),
+					Action: (secretEnvironment),
 				},
 			},
 		},
@@ -973,51 +972,37 @@ func init() {
 
 // Action for the DB check
 func checkDB(c *cli.Context) error {
-	if err := dbConnection(dbConfigFile); err != nil {
-		return fmt.Errorf("Error connecting to DB - %v", err)
+	backend, err := backend.CreateDBManagerFile(dbConfigFile)
+	if err != nil {
+		return fmt.Errorf("Failed to create backend - %v", err)
+	}
+	if err := backend.Check(); err != nil {
+		return err
 	}
 	// Should be good
-	return nil
-}
-
-// Function to load and connect to DB
-func dbConnection(config string) error {
-	// Database handler
-	dbConfig, err := backend.LoadConfiguration(dbConfigFile, backend.DBKey)
-	if err != nil {
-		log.Fatalf("Failed to load DB configuration - %v", err)
-	}
-	db, err = backend.GetDB(dbConfig)
-	if err != nil {
-		log.Fatalf("Failed to load DB - %v", err)
-	}
-	// Check if connection is ready
-	if err := db.DB().Ping(); err != nil {
-		return fmt.Errorf("Error pinging DB - %v", err)
-	}
-	// We are ready
 	return nil
 }
 
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		// Load and connecto to DB
-		if err := dbConnection(dbConfigFile); err != nil {
-			return err
+		// Initialize backend
+		backend, err := backend.CreateDBManagerFile(dbConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to create backend - %v", err)
 		}
 		// Initialize users
-		adminUsers = users.CreateUserManager(db, nil)
+		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{})
 		// Initialize environment
-		envs = environments.CreateEnvironment(db)
+		envs = environments.CreateEnvironment(backend.Conn)
 		// Initialize settings
-		settingsmgr = settings.NewSettings(db)
+		settingsmgr = settings.NewSettings(backend.Conn)
 		// Initialize nodes
-		nodesmgr = nodes.CreateNodes(db)
+		nodesmgr = nodes.CreateNodes(backend.Conn)
 		// Initialize queries
-		queriesmgr = queries.CreateQueries(db)
+		queriesmgr = queries.CreateQueries(backend.Conn)
 		// Initialize tags
-		tagsmgr = tags.CreateTagManager(db)
+		tagsmgr = tags.CreateTagManager(backend.Conn)
 		// Execute action
 		return action(c)
 	}
