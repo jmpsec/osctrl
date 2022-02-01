@@ -35,7 +35,6 @@ RUN useradd -ms /bin/bash osctrl-tls
 
 ### Copy osctrl-tls bin and configs ###
 RUN mkdir -p /opt/osctrl/bin
-RUN mkdir -p /opt/osctrl/scripts
 RUN mkdir -p /opt/osctrl/config
 COPY --from=osctrl-base /go/src/osctrl/bin/osctrl-tls /opt/osctrl/bin/osctrl-tls
 COPY --from=osctrl-base /go/src/osctrl/tls/scripts/ /opt/osctrl/scripts

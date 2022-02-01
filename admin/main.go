@@ -261,7 +261,7 @@ func init() {
 			Aliases:     []string{"L"},
 			Value:       settings.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
-			EnvVars:     []string{"SERVICE_LOGGING"},
+			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &adminConfig.Logger,
 		},
 		&cli.BoolFlag{
