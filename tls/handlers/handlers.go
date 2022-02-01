@@ -64,70 +64,81 @@ type HandlersTLS struct {
 	Logs        *logging.LoggerTLS
 }
 
-type HandlersOption func(*HandlersTLS)
+// Option to pass to creator
+type Option func(*HandlersTLS)
 
-func WithEnvs(envs *environments.Environment) HandlersOption {
+// WithEnvs to pass environment as option
+func WithEnvs(envs *environments.Environment) Option {
 	return func(h *HandlersTLS) {
 		h.Envs = envs
 	}
 }
 
-func WithEnvsMap(envsmap *environments.MapEnvironments) HandlersOption {
+// WithEnvsMap to pass environment as option
+func WithEnvsMap(envsmap *environments.MapEnvironments) Option {
 	return func(h *HandlersTLS) {
 		h.EnvsMap = envsmap
 	}
 }
 
-func WithSettings(settings *settings.Settings) HandlersOption {
+// WithSettings to pass environment as option
+func WithSettings(settings *settings.Settings) Option {
 	return func(h *HandlersTLS) {
 		h.Settings = settings
 	}
 }
 
-func WithSettingsMap(settingsmap *settings.MapSettings) HandlersOption {
+// WithSettingsMap to pass environment as option
+func WithSettingsMap(settingsmap *settings.MapSettings) Option {
 	return func(h *HandlersTLS) {
 		h.SettingsMap = settingsmap
 	}
 }
 
-func WithNodes(nodes *nodes.NodeManager) HandlersOption {
+// WithNodes to pass environment as option
+func WithNodes(nodes *nodes.NodeManager) Option {
 	return func(h *HandlersTLS) {
 		h.Nodes = nodes
 	}
 }
 
-func WithTags(tags *tags.TagManager) HandlersOption {
+// WithTags to pass environment as option
+func WithTags(tags *tags.TagManager) Option {
 	return func(h *HandlersTLS) {
 		h.Tags = tags
 	}
 }
 
-func WithQueries(queries *queries.Queries) HandlersOption {
+// WithQueries to pass environment as option
+func WithQueries(queries *queries.Queries) Option {
 	return func(h *HandlersTLS) {
 		h.Queries = queries
 	}
 }
 
-func WithCarves(carves *carves.Carves) HandlersOption {
+// WithCarves to pass environment as option
+func WithCarves(carves *carves.Carves) Option {
 	return func(h *HandlersTLS) {
 		h.Carves = carves
 	}
 }
 
-func WithMetrics(metrics *metrics.Metrics) HandlersOption {
+// WithMetrics to pass environment as option
+func WithMetrics(metrics *metrics.Metrics) Option {
 	return func(h *HandlersTLS) {
 		h.Metrics = metrics
 	}
 }
 
-func WithLogs(logs *logging.LoggerTLS) HandlersOption {
+// WithLogs to pass environment as option
+func WithLogs(logs *logging.LoggerTLS) Option {
 	return func(h *HandlersTLS) {
 		h.Logs = logs
 	}
 }
 
 // CreateHandlersTLS to initialize the TLS handlers struct
-func CreateHandlersTLS(opts ...HandlersOption) *HandlersTLS {
+func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	h := &HandlersTLS{}
 	for _, opt := range opts {
 		opt(h)
@@ -341,7 +352,6 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricLogErr)
 			log.Printf("error decoding gzip body %v", err)
 		}
-		//defer r.Body.Close()
 		defer func() {
 			if err := r.Body.Close(); err != nil {
 				h.Inc(metricLogErr)
@@ -359,7 +369,6 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
-	//defer r.Body.Close()
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			h.Inc(metricLogErr)
@@ -371,7 +380,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, r.Header.Get("X-Real-IP"), (*h.EnvsMap)[env.Name].DebugHTTP)
+		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, r.Header.Get("X-Real-IP"), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
