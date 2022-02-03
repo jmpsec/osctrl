@@ -55,10 +55,10 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 	case settings.LoggingFile:
 		// TODO: All this should be customizable
 		rotateCfg := LumberjackConfig{
-			MaxSize: 25,
+			MaxSize:    25,
 			MaxBackups: 5,
-			MaxAge: 10,
-			Compress: true,
+			MaxAge:     10,
+			Compress:   true,
 		}
 		d, err := CreateLoggerFile("osctrl.log", rotateCfg)
 		if err != nil {
@@ -95,7 +95,7 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	switch logTLS.Logging {
 	case settings.LoggingSplunk:
-		l, ok := logTLS.Logger.(LoggerSplunk)
+		l, ok := logTLS.Logger.(*LoggerSplunk)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingSplunk)
 		}
@@ -103,7 +103,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingGraylog:
-		l, ok := logTLS.Logger.(LoggerGraylog)
+		l, ok := logTLS.Logger.(*LoggerGraylog)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingGraylog)
 		}
@@ -111,7 +111,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingDB:
-		l, ok := logTLS.Logger.(LoggerDB)
+		l, ok := logTLS.Logger.(*LoggerDB)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingDB)
 		}
@@ -119,7 +119,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Log(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingStdout:
-		l, ok := logTLS.Logger.(LoggerStdout)
+		l, ok := logTLS.Logger.(*LoggerStdout)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingStdout)
 		}
@@ -127,7 +127,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Log(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingFile:
-		l, ok := logTLS.Logger.(LoggerFile)
+		l, ok := logTLS.Logger.(*LoggerFile)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingFile)
 		}
@@ -135,7 +135,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Log(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingNone:
-		l, ok := logTLS.Logger.(LoggerNone)
+		l, ok := logTLS.Logger.(*LoggerNone)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingNone)
 		}
@@ -143,7 +143,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Log(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingKinesis:
-		l, ok := logTLS.Logger.(LoggerKinesis)
+		l, ok := logTLS.Logger.(*LoggerKinesis)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingKinesis)
 		}
@@ -151,7 +151,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingS3:
-		l, ok := logTLS.Logger.(LoggerS3)
+		l, ok := logTLS.Logger.(*LoggerS3)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingS3)
 		}
@@ -165,7 +165,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid, name string, status int, debug bool) {
 	switch logTLS.Logging {
 	case settings.LoggingSplunk:
-		l, ok := logTLS.Logger.(LoggerSplunk)
+		l, ok := logTLS.Logger.(*LoggerSplunk)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingSplunk)
 		}
@@ -173,7 +173,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingGraylog:
-		l, ok := logTLS.Logger.(LoggerGraylog)
+		l, ok := logTLS.Logger.(*LoggerGraylog)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingGraylog)
 		}
@@ -181,7 +181,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingDB:
-		l, ok := logTLS.Logger.(LoggerDB)
+		l, ok := logTLS.Logger.(*LoggerDB)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingDB)
 		}
@@ -189,7 +189,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Query(data, environment, uuid, name, status, debug)
 		}
 	case settings.LoggingStdout:
-		l, ok := logTLS.Logger.(LoggerStdout)
+		l, ok := logTLS.Logger.(*LoggerStdout)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingStdout)
 		}
@@ -197,7 +197,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Query(data, environment, uuid, name, status, debug)
 		}
 	case settings.LoggingFile:
-		l, ok := logTLS.Logger.(LoggerFile)
+		l, ok := logTLS.Logger.(*LoggerFile)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingFile)
 		}
@@ -205,7 +205,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Query(data, environment, uuid, name, status, debug)
 		}
 	case settings.LoggingNone:
-		l, ok := logTLS.Logger.(LoggerNone)
+		l, ok := logTLS.Logger.(*LoggerNone)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingNone)
 		}
@@ -213,7 +213,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Query(data, environment, uuid, name, status, debug)
 		}
 	case settings.LoggingKinesis:
-		l, ok := logTLS.Logger.(LoggerKinesis)
+		l, ok := logTLS.Logger.(*LoggerKinesis)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingKinesis)
 		}
@@ -221,7 +221,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	case settings.LoggingS3:
-		l, ok := logTLS.Logger.(LoggerS3)
+		l, ok := logTLS.Logger.(*LoggerS3)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingS3)
 		}

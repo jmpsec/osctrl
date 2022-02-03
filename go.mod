@@ -42,7 +42,6 @@ require (
 	github.com/crewjam/saml v0.4.6
 	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/gorilla/mux v1.8.0
-	github.com/jinzhu/gorm v1.9.16
 	github.com/jmpsec/osctrl/admin/handlers v0.2.7
 	github.com/jmpsec/osctrl/admin/sessions v0.2.7
 	github.com/jmpsec/osctrl/backend v0.2.7
@@ -71,7 +70,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/crewjam/httperr v0.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/gorilla/sessions v1.2.1 // indirect
@@ -84,6 +82,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.9.0 // indirect
 	github.com/jackc/pgx/v4 v4.14.0 // indirect
+	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
