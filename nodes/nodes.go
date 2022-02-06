@@ -460,10 +460,6 @@ func (n *NodeManager) Create(node *OsqueryNode) error {
 	if err := n.NewHistoryIPAddress(i); err != nil {
 		return fmt.Errorf("newNodeHistoryIPAddress %v", err)
 	}
-	// FIXME needs rewriting
-	//if err := geoLocationCheckByIPAddress(node.IPAddress); err != nil {
-	//	return fmt.Errorf("geoLocationCheckByIPAddress %v", err)
-	//}
 	u := NodeHistoryUsername{
 		UUID:     node.UUID,
 		Username: node.Username,

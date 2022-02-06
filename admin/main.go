@@ -483,10 +483,16 @@ func osctrlAdminService() {
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
-	// Initialize DB logger
-	loggerDB, err = logging.CreateLoggerDB(loggerFile)
-	if err != nil {
-		log.Fatalf("Error loading logger - %v", err)
+	// TODO Initialize DB logger regardless of settings
+	// This is temporary until we have logs stored in Redis
+	if adminConfig.Logger == settings.LoggingDB {
+		loggerDB, err = logging.CreateLoggerDBFile(loggerFile)
+		if err != nil {
+			loggerDB, err = logging.CreateLoggerDBConfig(dbConfig)
+			if err != nil {
+				log.Fatalf("Error creating db logger - %v", err)
+			}
+		}
 	}
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {

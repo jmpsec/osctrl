@@ -61,12 +61,27 @@ type LoggerDB struct {
 }
 
 // CreateLoggerDB to initialize the logger
-func CreateLoggerDB(dbfile string) (*LoggerDB, error) {
+func CreateLoggerDBFile(dbfile string) (*LoggerDB, error) {
 	// Initialize backend
 	backend, err := backend.CreateDBManagerFile(dbfile)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create backend - %v", err)
 	}
+	return CreateLoggerDB(backend)
+}
+
+// CreateLoggerDB to initialize the logger without reading a config file
+func CreateLoggerDBConfig(dbConfig backend.JSONConfigurationDB) (*LoggerDB, error) {
+	// Initialize backend
+	backend, err := backend.CreateDBManager(dbConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create backend - %v", err)
+	}
+	return CreateLoggerDB(backend)
+}
+
+// CreateLoggerDB to initialize the logger without reading a config file
+func CreateLoggerDB(backend *backend.DBManager) (*LoggerDB, error) {
 	l := &LoggerDB{
 		Database: backend,
 		Enabled:  true,
