@@ -48,7 +48,7 @@ func CreateLoggerFile(filename string, cfg LumberjackConfig) (*LoggerFile, error
 
 // Settings - Function to prepare settings for the logger
 func (logFile *LoggerFile) Settings(mgr *settings.Settings) {
-	log.Printf("No stdout logging settings\n")
+	log.Printf("No file logging settings\n")
 }
 
 // Log - Function that sends JSON result/status/query logs to stdout

@@ -39,7 +39,7 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 		g.Settings(mgr)
 		l.Logger = g
 	case settings.LoggingDB:
-		d, err := CreateLoggerDB(loggingFile)
+		d, err := CreateLoggerDBFile(loggingFile)
 		if err != nil {
 			return nil, err
 		}

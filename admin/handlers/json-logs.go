@@ -122,7 +122,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == "status" {
+	if logType == "status" && h.LoggerDB != nil {
 		statusLogs, err := h.LoggerDB.StatusLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
@@ -142,7 +142,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == "result" {
+	} else if logType == "result" && h.LoggerDB != nil {
 		resultLogs, err := h.LoggerDB.ResultLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
@@ -192,34 +192,36 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Get logs
-	queryLogs, err := h.LoggerDB.QueryLogs(name)
-	if err != nil {
-		log.Printf("error getting logs %v", err)
-		h.Inc(metricJSONErr)
-		return
-	}
-	// Prepare data to be returned
 	queryLogJSON := []QueryLogJSON{}
-	for _, q := range queryLogs {
-		// Get target node
-		node, err := h.Nodes.GetByUUID(q.UUID)
+	if h.LoggerDB != nil {
+		queryLogs, err := h.LoggerDB.QueryLogs(name)
 		if err != nil {
-			node.UUID = q.UUID
-			node.Localname = ""
+			log.Printf("error getting logs %v", err)
+			h.Inc(metricJSONErr)
+			return
 		}
-		_c := CreationTimes{
-			Display:   utils.PastFutureTimes(q.CreatedAt),
-			Timestamp: utils.TimeTimestamp(q.CreatedAt),
+		// Prepare data to be returned
+		for _, q := range queryLogs {
+			// Get target node
+			node, err := h.Nodes.GetByUUID(q.UUID)
+			if err != nil {
+				node.UUID = q.UUID
+				node.Localname = ""
+			}
+			_c := CreationTimes{
+				Display:   utils.PastFutureTimes(q.CreatedAt),
+				Timestamp: utils.TimeTimestamp(q.CreatedAt),
+			}
+			_l := QueryLogJSON{
+				Created: _c,
+				Target: QueryTargetNode{
+					UUID: node.UUID,
+					Name: node.Localname,
+				},
+				Data: string(q.Data),
+			}
+			queryLogJSON = append(queryLogJSON, _l)
 		}
-		_l := QueryLogJSON{
-			Created: _c,
-			Target: QueryTargetNode{
-				UUID: node.UUID,
-				Name: node.Localname,
-			},
-			Data: string(q.Data),
-		}
-		queryLogJSON = append(queryLogJSON, _l)
 	}
 	returned := ReturnedQueryLogs{
 		Data: queryLogJSON,
