@@ -17,7 +17,7 @@ services:
       - 8443:443
     depends_on:
       - osctrl-tls
-      #- osctrl-admin
+      - osctrl-admin
       - osctrl-api
     # healthcheck:
     #   test: ["CMD", "curl", "-f", "-k", "https://localhost"]
@@ -40,7 +40,7 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
       #### Logging ####
-      - SERVICE_LOGGER=none
+      - SERVICE_LOGGER=stdout
       #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
@@ -72,9 +72,9 @@ services:
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
-      - SERVICE_AUTH=none
+      - SERVICE_AUTH=db
       #### Logging ####
-      - SERVICE_LOGGER=none
+      - SERVICE_LOGGER=stdout
       #- LOGGER_FILE=none
       #### Database settings ####
       - DB_CONFIG=false
@@ -108,13 +108,12 @@ services:
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9002
       - SERVICE_HOST=0.0.0.0
-      - SERVICE_AUTH=none
+      - SERVICE_AUTH=jwt
+      - SERVICE_CONFIG=false
       #### Logging ####
-      - SERVICE_LOGGER=none
-      #- LOGGER_FILE=none
+      - SERVICE_LOGGER=stdout
       #### Database settings ####
       - DB_CONFIG=false
-      - SERVICE_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -145,7 +144,11 @@ services:
     volumes:
       - postgres-db:/var/lib/postgresql/data
     # healthcheck:
-    #   test: ["CMD-SHELL", "pg_isready"]
+    #   # psql --username postgres
+    #   # psql --username postgres
+    #   # psql --username postgres
+    #   # psql --username postgres
+    #   test: ["CMD-SHELL", "pg_isready", "-U", "$$POSTGRES_USER"]
     #   interval: 10s
     #   timeout: 5s
     #   retries: 5
