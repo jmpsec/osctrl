@@ -211,10 +211,10 @@ type QueryWriteResponse GenericResponse
 
 // QueryWriteData to store result of on-demand queries
 type QueryWriteData struct {
-	Name    string          `json:"name"`
-	Result  json.RawMessage `json:"result"`
-	Status  int             `json:"status"`
-	Message string          `json:"message"`
+	Name           string          `json:"name"`
+	Result         json.RawMessage `json:"result"`
+	Status         int             `json:"status"`
+	Message        string          `json:"message"`
 }
 
 // CarveInitRequest received to begin a carve

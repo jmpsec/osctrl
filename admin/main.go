@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/admin/handlers"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
+	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/logging"
@@ -69,6 +70,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default redis configuration file
+	defRedisConfigurationFile string = "config/redis.json"
 	// Default Logger configuration file
 	defLoggerConfigurationFile string = "config/logger.json"
 	// Default TLS certificate file
@@ -109,7 +112,9 @@ var (
 	err         error
 	adminConfig types.JSONConfigurationService
 	dbConfig    backend.JSONConfigurationDB
+	redisConfig cache.JSONConfigurationRedis
 	db          *backend.DBManager
+	redis       *cache.RedisManager
 	settingsmgr *settings.Settings
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
@@ -130,9 +135,11 @@ var (
 // Variables for flags
 var (
 	configFlag           bool
-	configFile           string
 	dbFlag               bool
+	redisFlag            bool
+	serviceConfigFile    string
 	dbConfigFile         string
+	redisConfigFile      string
 	tlsServer            bool
 	tlsCertFile          string
 	tlsKeyFile           string
@@ -221,7 +228,7 @@ func init() {
 			Value:       defConfigurationFile,
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
-			Destination: &configFile,
+			Destination: &serviceConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "listener",
@@ -262,6 +269,50 @@ func init() {
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &adminConfig.Logger,
+		},
+		&cli.BoolFlag{
+			Name:        "redis",
+			Aliases:     []string{"r"},
+			Value:       false,
+			Usage:       "Provide redis configuration via JSON file",
+			EnvVars:     []string{"REDIS_CONFIG"},
+			Destination: &redisFlag,
+		},
+		&cli.StringFlag{
+			Name:        "redis-file",
+			Aliases:     []string{"R"},
+			Value:       defRedisConfigurationFile,
+			Usage:       "Load redis configuration from `FILE`",
+			EnvVars:     []string{"REDIS_CONFIG_FILE"},
+			Destination: &redisConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "redis-host",
+			Value:       "127.0.0.1",
+			Usage:       "Redis host to be connected to",
+			EnvVars:     []string{"REDIS_HOST"},
+			Destination: &redisConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "redis-port",
+			Value:       "6379",
+			Usage:       "Redis port to be connected to",
+			EnvVars:     []string{"REDIS_PORT"},
+			Destination: &redisConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "redis-pass",
+			Value:       "redis",
+			Usage:       "Password to be used for redis",
+			EnvVars:     []string{"REDIS_PASS"},
+			Destination: &redisConfig.Password,
+		},
+		&cli.IntFlag{
+			Name:        "redis-db",
+			Value:       0,
+			Usage:       "Redis database to be selected after connecting",
+			EnvVars:     []string{"REDIS_DB"},
+			Destination: &redisConfig.DB,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -458,6 +509,11 @@ func osctrlAdminService() {
 		log.Println("Backend NOT ready! waiting...")
 		time.Sleep(backendWait)
 	}
+	log.Println("Initializing cache...")
+	redis, err = cache.CreateRedisManager(redisConfig)
+	if err != nil {
+		log.Fatalf("Failed to connect to redis - %v", err)
+	}
 	log.Println("Initialize users")
 	adminUsers = users.CreateUserManager(db.Conn, &jwtConfig)
 	log.Println("Initialize tags")
@@ -580,7 +636,7 @@ func osctrlAdminService() {
 		handlers.WithCarves(carvesmgr),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithMetrics(adminMetrics),
-		handlers.WithLoggerDB(loggerDB),
+		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
 		handlers.WithVersion(serviceVersion),
 		handlers.WithTemplates(templatesFolder),
@@ -737,14 +793,21 @@ func osctrlAdminService() {
 
 // Action to run when no flags are provided to run checks and prepare data
 func cliAction(c *cli.Context) error {
-	// Load configuration if external service JSON config file is used
+	// Load configuration if external JSON config file is used
 	if configFlag {
-		adminConfig, err = loadConfiguration(configFile, settings.ServiceAdmin)
+		adminConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAdmin)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
+			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
 		}
 	}
-	// Load DB configuration if external db JSON config file is used
+	// Load redis configuration if external JSON config file is used
+	if redisFlag {
+		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
+		if err != nil {
+			return fmt.Errorf("Failed to load redis configuration - %v", err)
+		}
+	}
+	// Load DB configuration if external JSON config file is used
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {

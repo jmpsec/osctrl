@@ -59,6 +59,11 @@ func PastFutureTimes(t time.Time) string {
 	return InFutureTime(t)
 }
 
+// PastFutureTimesEpoch - Helper to format past or future times
+func PastFutureTimesEpoch(ts int64) string {
+	return PastFutureTimes(time.Unix(ts, 0))
+}
+
 // PastTimeAgo - Helper to format past times only returning one value (minute, hour, day)
 func PastTimeAgo(t time.Time) string {
 	if t.IsZero() {
