@@ -163,6 +163,7 @@ ENROLL=false
 UPDATE=false
 NGINX=false
 POSTGRES=false
+REDIS=false
 UPGRADE=false
 BRANCH="master"
 SOURCE_PATH=/vagrant
@@ -176,6 +177,11 @@ _DB_SYSTEM_USER="postgres"
 _DB_USER="osctrl"
 _DB_PASS="osctrl"
 _DB_PORT="5432"
+
+# Cache values
+_CACHE_HOST="localhost"
+_CACHE_PORT="6379"
+_CACHE_PASS="osctrl"
 
 # TLS Service
 _T_INT_PORT="9000"
@@ -211,7 +217,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:Pk:nMEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,metrics,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nMEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,metrics,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -321,6 +327,11 @@ while true; do
     -P|--postgres)
       SHOW_USAGE=false
       POSTGRES=true
+      shift
+      ;;
+    -R|--redis)
+      SHOW_USAGE=false
+      REDIS=true
       shift
       ;;
     -M|--metrics)
@@ -623,6 +634,11 @@ else
     fi
     configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
+  fi
+
+  # Redis - Cache
+  if [[ "$REDIS" == true ]]; then
+    REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
   fi
 
   # Metrics - InfluxDB + Telegraf + Grafana

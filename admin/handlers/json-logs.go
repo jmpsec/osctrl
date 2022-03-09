@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
@@ -16,8 +17,8 @@ import (
 // Define log types to be used
 var (
 	LogTypes = map[string]bool{
-		"result": true,
-		"status": true,
+		types.ResultLog: true,
+		types.StatusLog: true,
 	}
 )
 
@@ -123,7 +124,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == "status" && h.RedisCache != nil {
+	if logType == types.StatusLog && h.RedisCache != nil {
 		statusLogs, err := h.RedisCache.StatusLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
@@ -133,8 +134,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		// Prepare data to be returned
 		for _, s := range statusLogs {
 			_c := CreationTimes{
-				Display:   utils.PastFutureTimesEpoch(stringToInteger(s.UnixTime)),
-				Timestamp: s.UnixTime,
+				Display:   utils.PastFutureTimesEpoch(int64(s.UnixTime)),
+				Timestamp: strconv.Itoa(int(s.UnixTime)),
 			}
 			_l := LogJSON{
 				Created: _c,
@@ -143,7 +144,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == "result" && h.RedisCache != nil {
+	} else if logType == types.ResultLog && h.RedisCache != nil {
 		resultLogs, err := h.RedisCache.ResultLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
@@ -155,7 +156,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			_l := LogJSON{
 				Created: CreationTimes{
 					Display:   utils.PastFutureTimesEpoch(int64(r.UnixTime)),
-					Timestamp: strconv.Itoa(r.UnixTime),
+					Timestamp: strconv.Itoa(int(r.UnixTime)),
 				},
 				First:  r.Name,
 				Second: string(r.Columns),

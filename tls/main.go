@@ -371,6 +371,7 @@ func osctrlService() {
 	if err != nil {
 		log.Fatalf("Failed to connect to redis - %v", err)
 	}
+	log.Println("Connection to cache successful!")
 	log.Println("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 	log.Println("Initialize settings")

@@ -514,6 +514,7 @@ func osctrlAdminService() {
 	if err != nil {
 		log.Fatalf("Failed to connect to redis - %v", err)
 	}
+	log.Println("Connection to cache successful!")
 	log.Println("Initialize users")
 	adminUsers = users.CreateUserManager(db.Conn, &jwtConfig)
 	log.Println("Initialize tags")

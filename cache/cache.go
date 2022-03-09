@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
@@ -21,11 +22,11 @@ const (
 	// QueryExpiration in hours to expire entries for query logs
 	QueryExpiration = 24
 	// HashKeyResult to be used as hash-key to keep result logs
-	HashKeyResult = "result"
+	HashKeyResult = types.ResultLog
 	// HashKeyStatus to be used as hash-key to keep status logs
-	HashKeyStatus = "status"
+	HashKeyStatus = types.StatusLog
 	// HashKeyQuery to be used as hash-key to keep query logs
-	HashKeyQuery = "query"
+	HashKeyQuery = types.QueryLog
 )
 
 // RedisManager have access to cached data
@@ -48,6 +49,14 @@ type CachedQueryWriteData struct {
 	HostIdentifier string `json:"hostIdentifier"`
 	QueryData      types.QueryWriteData
 }
+
+// CachedStatusLogs to parse cached status logs
+type CachedStatusLogs map[string][]types.LogStatusData
+
+// CachedResultLogs to parse cached result logs
+type CachedResultLogs map[string][]types.LogResultData
+
+// CachedQueryLogs to parse cached query logs
 
 // LoadConfiguration to load the redis configuration file and assign to variables
 func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
@@ -106,8 +115,8 @@ func CreateRedisManager(config JSONConfigurationRedis) (*RedisManager, error) {
 }
 
 // GetStatusLogs to retrieve cached status logs
-func (r *RedisManager) GetStatusLogs(hostID, env string) ([]byte, error) {
-	return []byte{}, nil
+func (r *RedisManager) GetStatusLogs(hostID, env string) (map[string][]byte, error) {
+	return r.GetLogs(types.StatusLog, hostID, env)
 }
 
 // StatusLogs to retrieve cached status logs
@@ -116,16 +125,51 @@ func (r *RedisManager) StatusLogs(hostID, env string, secs int64) ([]types.LogSt
 	if err != nil {
 		return []types.LogStatusData{}, fmt.Errorf("error getting logs - %v", err)
 	}
-	var logs []types.LogStatusData
-	if err := json.Unmarshal(data, &logs); err != nil {
-		return []types.LogStatusData{}, fmt.Errorf("error parsing logs - %v", err)
+	var result []types.LogStatusData
+	for _, v := range data {
+		var logs []types.LogStatusData
+		if err := json.Unmarshal(v, &logs); err != nil {
+			return result, fmt.Errorf("error parsing logs - %v", err)
+		}
+		result = append(result, logs...)
 	}
-	return logs, nil
+	return result, nil
+}
+
+// GetLogs to retrieve logs generically
+func (r *RedisManager) GetLogs(logType, hostID, envOrName string) (map[string][]byte, error) {
+	var rPrefix, hKey string
+	switch logType {
+	case types.StatusLog:
+		rPrefix = GenStatusPrefix(hostID, envOrName)
+		hKey = HashKeyStatus
+	case types.ResultLog:
+		rPrefix = GenResultPrefix(hostID, envOrName)
+		hKey = HashKeyResult
+	case types.QueryLog:
+		rPrefix = GenQueryPrefix(hostID, envOrName)
+		hKey = HashKeyQuery
+	}
+	ctx := context.TODO()
+	iter := r.Client.HScan(ctx, hKey, 0, rPrefix, 0).Iterator()
+	mappedData := make(map[string][]byte)
+	for iter.Next(ctx) {
+		if strings.HasPrefix(iter.Val(), hostID) {
+			mapKey := iter.Val()
+			if iter.Next(ctx) {
+				mappedData[mapKey] = []byte(iter.Val())
+			}
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return mappedData, fmt.Errorf("error iterating %s - %v", logType, err)
+	}
+	return mappedData, nil
 }
 
 // GetResultLogs to retrieve cached result logs
-func (r *RedisManager) GetResultLogs(hostID, env string) ([]byte, error) {
-	return []byte{}, nil
+func (r *RedisManager) GetResultLogs(hostID, env string) (map[string][]byte, error) {
+	return r.GetLogs(types.ResultLog, hostID, env)
 }
 
 // HResultLogs to retrieve cached status logs
@@ -134,26 +178,20 @@ func (r *RedisManager) ResultLogs(hostID, env string, secs int64) ([]types.LogRe
 	if err != nil {
 		return []types.LogResultData{}, fmt.Errorf("error getting logs - %v", err)
 	}
-	var logs []types.LogResultData
-	if err := json.Unmarshal(data, &logs); err != nil {
-		return []types.LogResultData{}, fmt.Errorf("error parsing logs - %v", err)
+	var result []types.LogResultData
+	for _, v := range data {
+		var logs []types.LogResultData
+		if err := json.Unmarshal(v, &logs); err != nil {
+			return result, fmt.Errorf("error parsing logs - %v", err)
+		}
+		result = append(result, logs...)
 	}
-	return logs, nil
+	return result, nil
 }
 
 // GetQueryLogs to retrieve cached query logs
-func (r *RedisManager) GetQueryLogs(hostID, name string) ([]byte, error) {
-	ctx := context.TODO()
-	prefix := GenQueryPrefix(hostID, name)
-	iter := r.Client.HScan(ctx, HashKeyQuery, 0, prefix, 0).Iterator()
-	result := []byte{}
-	for iter.Next(ctx) {
-		result = append(result, []byte(iter.Val())...)
-	}
-	if err := iter.Err(); err != nil {
-		return []byte{}, fmt.Errorf("error iterating results - %v", err)
-	}
-	return result, nil
+func (r *RedisManager) GetQueryLogs(hostID, name string) (map[string][]byte, error) {
+	return r.GetLogs(types.QueryLog, hostID, name)
 }
 
 // HQueryLogs to retrieve cached query logs
@@ -162,51 +200,44 @@ func (r *RedisManager) QueryLogs(name string) ([]CachedQueryWriteData, error) {
 }
 
 // SetLogs to write logs to cache
-func (r *RedisManager) SetLogs(logType, hostID, env string, data []byte) error {
+func (r *RedisManager) SetLogs(logType, hostID, envOrName string, data []byte) error {
+	var hPrefix, hKey string
+	var tExpire time.Duration
 	switch logType {
 	case types.StatusLog:
-		return r.SetStatusLogs(hostID, env, data)
+		hPrefix = GenStatusKey(hostID, envOrName)
+		hKey = HashKeyStatus
+		tExpire = time.Hour * StatusExpiration
 	case types.ResultLog:
-		return r.SetResultLogs(hostID, env, data)
+		hPrefix = GenResultKey(hostID, envOrName)
+		hKey = HashKeyStatus
+		tExpire = time.Hour * ResultExpiration
+	case types.QueryLog:
+		hPrefix = GenQueryKey(hostID, envOrName)
+		hKey = HashKeyQuery
+		tExpire = time.Hour * QueryExpiration
+	}
+	ctx := context.Background()
+	if err := r.Client.HSet(ctx, hKey, hPrefix, data).Err(); err != nil {
+		return fmt.Errorf("%s HSet: %s", logType, err)
+	}
+	if err := r.Client.Expire(ctx, hPrefix, tExpire).Err(); err != nil {
+		return fmt.Errorf("%s Expire: %s", logType, err)
 	}
 	return nil
 }
 
 // SetStatusLogs to write status to cache
 func (r *RedisManager) SetStatusLogs(hostID, env string, data []byte) error {
-	ctx := context.Background()
-	key := GenStatusKey(hostID, env)
-	if err := r.Client.HSet(ctx, HashKeyStatus, key, data).Err(); err != nil {
-		return fmt.Errorf("SetStatusLogs HSet: %s", err)
-	}
-	if err := r.Client.Expire(ctx, key, time.Hour*StatusExpiration).Err(); err != nil {
-		return fmt.Errorf("SetStatusLogs Expire: %s", err)
-	}
-	return nil
+	return r.SetLogs(types.StatusLog, hostID, env, data)
 }
 
 // SetResultLogs to write result logs to cache
 func (r *RedisManager) SetResultLogs(hostID, env string, data []byte) error {
-	ctx := context.Background()
-	key := GenResultKey(hostID, env)
-	if err := r.Client.HSet(ctx, HashKeyResult, key, data).Err(); err != nil {
-		return fmt.Errorf("SetResultLogs HSet: %s", err)
-	}
-	if err := r.Client.Expire(ctx, key, time.Hour*ResultExpiration).Err(); err != nil {
-		return fmt.Errorf("SetResultLogs Expire: %s", err)
-	}
-	return nil
+	return r.SetLogs(types.ResultLog, hostID, env, data)
 }
 
 // SetQueryLogs to write query logs to cache
 func (r *RedisManager) SetQueryLogs(hostID, name string, data []byte) error {
-	ctx := context.Background()
-	key := GenQueryKey(hostID, name)
-	if err := r.Client.HSet(ctx, HashKeyQuery, key, data).Err(); err != nil {
-		return fmt.Errorf("SetQueryLogs HSet: %s", err)
-	}
-	if err := r.Client.Expire(ctx, key, time.Hour*QueryExpiration).Err(); err != nil {
-		return fmt.Errorf("SetQueryLogs Expire: %s", err)
-	}
-	return nil
+	return r.SetLogs(types.QueryLog, hostID, name, data)
 }
