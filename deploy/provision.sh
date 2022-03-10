@@ -140,10 +140,12 @@ TLS_CONF="$TLS_COMPONENT.json"
 ADMIN_CONF="$ADMIN_COMPONENT.json"
 API_CONF="$API_COMPONENT.json"
 DB_CONF="db.json"
+REDIS_CONF="redis.json"
 JWT_CONF="jwt.json"
 LOGGER_CONF="logger.json"
 SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
+CACHE_TEMPLATE="redis.json"
 JWT_TEMPLATE="jwt.json"
 SYSTEMD_TEMPLATE="systemd.service"
 DEV_HOST="osctrl.dev"
@@ -188,7 +190,7 @@ _T_INT_PORT="9000"
 _T_PUB_PORT="443"
 _T_HOST="$ALL_HOST"
 _T_AUTH="none"
-_T_LOGGING="db"
+_T_LOGGING="stdout"
 
 # Admin Service
 _A_INT_PORT="9001"
@@ -639,6 +641,16 @@ else
   # Redis - Cache
   if [[ "$REDIS" == true ]]; then
     REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
+    if [[ "$DISTRO" == "ubuntu" ]]; then
+      package redis-server
+      REDIS_SERVICE="redis"
+      REDIS_ETC="/etc/redis/redis.conf"
+    elif [[ "$DISTRO" == "centos" ]]; then
+      package redis
+      REDIS_SERVICE="redis"
+      REDIS_ETC="/etc/redis.conf"
+    fi
+    configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
   fi
 
   # Metrics - InfluxDB + Telegraf + Grafana
@@ -658,6 +670,9 @@ else
 
   # Generate DB configuration file for services
   configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+
+  # Generate Cache configuration file for services
+  configuration_cache "$SOURCE_PATH/deploy/config/$REDIS_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
 
   # Prepare DB logger configuration for services
   sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF"
