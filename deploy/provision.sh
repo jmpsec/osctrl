@@ -45,6 +45,7 @@
 #   -n          --nginx         Install and configure nginx as TLS termination
 #   -P          --postgres      Install and configure PostgreSQL as backend
 #   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana)
+#   -R          --redis         Install and configure Redis as cache
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
 #   -U          --upgrade       Keep osctrl upgraded with the latest code from Github
@@ -115,6 +116,7 @@ function usage() {
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
   printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
+  printf "  -R          --redis \t\tInstall and configure Redis as cache\n"
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "  -U          --upgrade \tKeep osctrl upgraded with the latest code from Github\n"
