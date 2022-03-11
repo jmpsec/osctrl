@@ -674,7 +674,7 @@ else
   configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
 
   # Generate Cache configuration file for services
-  configuration_cache "$SOURCE_PATH/deploy/config/$REDIS_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
+  configuration_cache "$SOURCE_PATH/deploy/config/$CACHE_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
 
   # Prepare DB logger configuration for services
   sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF"
@@ -833,4 +833,4 @@ exit 0
 # kthxbai
 
 # Standard deployment in a linux box would be like:
-# ./deploy/provision.sh --nginx --postgres -p all --all-hostname "dev.osctrl.net" -E
+# ./deploy/provision.sh -m dev -s /path/to/code --nginx --postgres --redis -p all --all-hostname "dev.osctrl.net" -E
