@@ -145,6 +145,9 @@ func (r *RedisManager) GetLogs(logType, hostID, envOrName string) (map[string][]
 		keyMatch = GenResultMatch(hostID, envOrName)
 	case types.QueryLog:
 		keyMatch = GenQueryMatch(hostID, envOrName)
+		if hostID == "" {
+			keyMatch = GenQueryNameMatch(envOrName)
+		}
 	}
 	ctx := context.TODO()
 	iter := r.Client.Scan(ctx, 0, keyMatch, 0).Iterator()
@@ -190,9 +193,38 @@ func (r *RedisManager) GetQueryLogs(hostID, name string) (map[string][]byte, err
 	return r.GetLogs(types.QueryLog, hostID, name)
 }
 
+// GetQueryNameLogs to retrieve cached query logs only by query name
+func (r *RedisManager) GetQueryNameLogs(name string) (map[string][]byte, error) {
+	return r.GetLogs(types.QueryLog, "", name)
+}
+
 // HQueryLogs to retrieve cached query logs
 func (r *RedisManager) QueryLogs(name string) ([]CachedQueryWriteData, error) {
-	return []CachedQueryWriteData{}, nil
+	var result []CachedQueryWriteData
+	queryMap, err := r.GetQueryNameLogs(name)
+	if err != nil {
+		return result, fmt.Errorf("GetQueryNameLogs: %s", err)
+	}
+	for k, q := range queryMap {
+		// Split key into fields
+		name, hostId, unixtime := ParseQueryKey(k)
+		// Parse raw logs
+		var queryData types.QueryWriteData
+		if err := json.Unmarshal(q, &queryData); err != nil {
+			return result, fmt.Errorf("error parsing logs - %v", err)
+		}
+		// Verify query name matches
+		if queryData.Name != name {
+			return result, fmt.Errorf("query name does not match: %s != %s", queryData.Name, name)
+		}
+		rr := CachedQueryWriteData{
+			UnixTime:       unixtime,
+			HostIdentifier: hostId,
+			QueryData:      queryData,
+		}
+		result = append(result, rr)
+	}
+	return result, nil
 }
 
 // SetLogs to write logs to cache

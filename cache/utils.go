@@ -2,6 +2,8 @@ package cache
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -38,4 +40,24 @@ func GenQueryKey(hostID, name string) string {
 // GenQueryMatch to format the match expression to scan query logs
 func GenQueryMatch(hostID, name string) string {
 	return fmt.Sprintf("%s:%s:%s:*", HashKeyQuery, name, hostID)
+}
+
+// GenQueryNameMatch to format the match expression to scan for completed queries
+func GenQueryNameMatch(name string) string {
+	return fmt.Sprintf("%s:%s:*", HashKeyQuery, name)
+}
+
+// ParseQueryKey to parse the key used to cache queries
+func ParseQueryKey(key string) (string, string, int) {
+	parsed := strings.Split(key, ":")
+	// parsed[1] is query name
+	queryName := parsed[1]
+	// parsed[2] is hostIdentifier
+	hostIdentifier := parsed[2]
+	// parsed[3] is unixtime
+	i, err := strconv.Atoi(parsed[3])
+	if err != nil {
+		i = int(time.Now().Unix())
+	}
+	return queryName, hostIdentifier, i
 }
