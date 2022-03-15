@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
@@ -138,28 +137,25 @@ func (r *RedisManager) StatusLogs(hostID, env string, secs int64) ([]types.LogSt
 
 // GetLogs to retrieve logs generically
 func (r *RedisManager) GetLogs(logType, hostID, envOrName string) (map[string][]byte, error) {
-	var rPrefix, hKey string
+	var keyMatch string
 	switch logType {
 	case types.StatusLog:
-		rPrefix = GenStatusPrefix(hostID, envOrName)
-		hKey = HashKeyStatus
+		keyMatch = GenStatusMatch(hostID, envOrName)
 	case types.ResultLog:
-		rPrefix = GenResultPrefix(hostID, envOrName)
-		hKey = HashKeyResult
+		keyMatch = GenResultMatch(hostID, envOrName)
 	case types.QueryLog:
-		rPrefix = GenQueryPrefix(hostID, envOrName)
-		hKey = HashKeyQuery
+		keyMatch = GenQueryMatch(hostID, envOrName)
 	}
 	ctx := context.TODO()
-	iter := r.Client.HScan(ctx, hKey, 0, rPrefix, 0).Iterator()
+	iter := r.Client.Scan(ctx, 0, keyMatch, 0).Iterator()
 	mappedData := make(map[string][]byte)
 	for iter.Next(ctx) {
-		if strings.HasPrefix(iter.Val(), hostID) {
-			mapKey := iter.Val()
-			if iter.Next(ctx) {
-				mappedData[mapKey] = []byte(iter.Val())
-			}
+		mapKey := iter.Val()
+		keyVal, err := r.Client.Get(ctx, mapKey).Result()
+		if err != nil {
+			return mappedData, fmt.Errorf("error retrieving key for %s - %v", logType, err)
 		}
+		mappedData[mapKey] = []byte(keyVal)
 	}
 	if err := iter.Err(); err != nil {
 		return mappedData, fmt.Errorf("error iterating %s - %v", logType, err)
@@ -201,28 +197,22 @@ func (r *RedisManager) QueryLogs(name string) ([]CachedQueryWriteData, error) {
 
 // SetLogs to write logs to cache
 func (r *RedisManager) SetLogs(logType, hostID, envOrName string, data []byte) error {
-	var hPrefix, hKey string
+	var hKey string
 	var tExpire time.Duration
 	switch logType {
 	case types.StatusLog:
-		hPrefix = GenStatusKey(hostID, envOrName)
-		hKey = HashKeyStatus
+		hKey = GenStatusKey(hostID, envOrName)
 		tExpire = time.Hour * StatusExpiration
 	case types.ResultLog:
-		hPrefix = GenResultKey(hostID, envOrName)
-		hKey = HashKeyStatus
+		hKey = GenResultKey(hostID, envOrName)
 		tExpire = time.Hour * ResultExpiration
 	case types.QueryLog:
-		hPrefix = GenQueryKey(hostID, envOrName)
-		hKey = HashKeyQuery
+		hKey = GenQueryKey(hostID, envOrName)
 		tExpire = time.Hour * QueryExpiration
 	}
 	ctx := context.Background()
-	if err := r.Client.HSet(ctx, hKey, hPrefix, data).Err(); err != nil {
-		return fmt.Errorf("%s HSet: %s", logType, err)
-	}
-	if err := r.Client.Expire(ctx, hPrefix, tExpire).Err(); err != nil {
-		return fmt.Errorf("%s Expire: %s", logType, err)
+	if err := r.Client.Set(ctx, hKey, data, tExpire).Err(); err != nil {
+		return fmt.Errorf("%s Set: %s", logType, err)
 	}
 	return nil
 }

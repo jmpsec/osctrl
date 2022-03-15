@@ -12,30 +12,30 @@ func PrepareAddr(config JSONConfigurationRedis) string {
 
 // GenStatusKey to format the key to store status logs
 func GenStatusKey(hostID, env string) string {
-	return fmt.Sprintf("%s:%s:%d", hostID, env, time.Now().UnixMilli())
+	return fmt.Sprintf("%s:%s:%s:%d", HashKeyStatus, hostID, env, time.Now().UnixMilli())
 }
 
-// GenStatusPrefix to format the prefix to scan status logs
-func GenStatusPrefix(hostID, env string) string {
-	return fmt.Sprintf("%s:%s:*", hostID, env)
+// GenStatusMatch to format the match expression to scan status logs
+func GenStatusMatch(hostID, env string) string {
+	return fmt.Sprintf("%s:%s:%s:*", HashKeyStatus, hostID, env)
 }
 
 // GenResultKey to format the key to store result logs
 func GenResultKey(hostID, env string) string {
-	return fmt.Sprintf("%s:%s:%d", hostID, env, time.Now().UnixMilli())
+	return fmt.Sprintf("%s:%s:%s:%d", HashKeyResult, hostID, env, time.Now().UnixMilli())
 }
 
-// GenResultPrefix to format the prefix to scan result logs
-func GenResultPrefix(hostID, env string) string {
-	return fmt.Sprintf("%s:%s:*", hostID, env)
+// GenResultMatch to format the match expression to scan result logs
+func GenResultMatch(hostID, env string) string {
+	return fmt.Sprintf("%s:%s:%s:*", HashKeyResult, hostID, env)
 }
 
 // GenQueryKey to format the key to store query logs
 func GenQueryKey(hostID, name string) string {
-	return fmt.Sprintf("%s:%s:%d", name, hostID, time.Now().UnixMilli())
+	return fmt.Sprintf("%s:%s:%s:%d", HashKeyQuery, name, hostID, time.Now().UnixMilli())
 }
 
-// GenQueryPrefix to format the prefix to scan query logs
-func GenQueryPrefix(hostID, name string) string {
-	return fmt.Sprintf("%s:%s:*", name, hostID)
+// GenQueryMatch to format the match expression to scan query logs
+func GenQueryMatch(hostID, name string) string {
+	return fmt.Sprintf("%s:%s:%s:*", HashKeyQuery, name, hostID)
 }

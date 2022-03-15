@@ -540,17 +540,7 @@ func osctrlAdminService() {
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
-	// TODO Initialize DB logger regardless of settings
-	// This is temporary until we have logs stored in Redis
-	if adminConfig.Logger == settings.LoggingDB {
-		loggerDB, err = logging.CreateLoggerDBFile(loggerFile)
-		if err != nil {
-			loggerDB, err = logging.CreateLoggerDBConfig(dbConfig)
-			if err != nil {
-				log.Fatalf("Error creating db logger - %v", err)
-			}
-		}
-	}
+
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -589,7 +579,8 @@ func osctrlAdminService() {
 		}
 	}()
 
-	// Cleaning up status/result/query logs
+	// Expire status/result/query logs in Redis because hash keys can not have expiration
+	// https://github.com/redis/redis/issues/167#issuecomment-2559040
 	go func() {
 		for {
 			_e, err := envs.All()
