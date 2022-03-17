@@ -17,7 +17,6 @@ import (
 	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
-	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -90,8 +89,6 @@ const (
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
 	defaultInactive int = -72
-	// Hourly interval to cleanup logs
-	hourlyInterval int = 60
 )
 
 // osquery
@@ -129,7 +126,6 @@ var (
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
 	handlersAdmin *handlers.HandlersAdmin
-	loggerDB      *logging.LoggerDB
 )
 
 // Variables for flags
@@ -313,6 +309,27 @@ func init() {
 			Usage:       "Redis database to be selected after connecting",
 			EnvVars:     []string{"REDIS_DB"},
 			Destination: &redisConfig.DB,
+		},
+		&cli.IntFlag{
+			Name:        "redis-status-exp",
+			Value:       cache.StatusExpiration,
+			Usage:       "Redis expiration in hours for status logs",
+			EnvVars:     []string{"REDIS_STATUS_EXP"},
+			Destination: &redisConfig.StatusExpirationHours,
+		},
+		&cli.IntFlag{
+			Name:        "redis-result-exp",
+			Value:       cache.ResultExpiration,
+			Usage:       "Redis expiration in hours for result logs",
+			EnvVars:     []string{"REDIS_RESULT_EXP"},
+			Destination: &redisConfig.ResultExpirationHours,
+		},
+		&cli.IntFlag{
+			Name:        "redis-query-exp",
+			Value:       cache.QueryExpiration,
+			Usage:       "Redis expiration in hours for query logs",
+			EnvVars:     []string{"REDIS_QUERY_EXP"},
+			Destination: &redisConfig.QueryExpirationHours,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -576,44 +593,6 @@ func osctrlAdminService() {
 			}
 			sessionsmgr.Cleanup()
 			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
-
-	// Expire status/result/query logs in Redis because hash keys can not have expiration
-	// https://github.com/redis/redis/issues/167#issuecomment-2559040
-	go func() {
-		for {
-			_e, err := envs.All()
-			if err != nil {
-				log.Printf("error getting environments when cleaning up logs - %v", err)
-			}
-			for _, e := range _e {
-				if settingsmgr.CleanStatusLogs() {
-					if settingsmgr.DebugService(settings.ServiceAdmin) {
-						log.Println("DebugService: Cleaning up status logs")
-					}
-					if err := loggerDB.CleanStatusLogs(e.Name, settingsmgr.CleanStatusInterval()); err != nil {
-						log.Printf("error cleaning up status logs - %v", err)
-					}
-				}
-				if settingsmgr.CleanResultLogs() {
-					if settingsmgr.DebugService(settings.ServiceAdmin) {
-						log.Println("DebugService: Cleaning up result logs")
-					}
-					if err := loggerDB.CleanResultLogs(e.Name, settingsmgr.CleanResultInterval()); err != nil {
-						log.Printf("error cleaning up result logs - %v", err)
-					}
-				}
-			}
-			if settingsmgr.CleanQueryLogs() {
-				if settingsmgr.DebugService(settings.ServiceAdmin) {
-					log.Println("DebugService: Cleaning up query logs")
-				}
-				if err := loggerDB.CleanQueryLogs(settingsmgr.CleanQueryEntries()); err != nil {
-					log.Printf("error cleaning up query logs - %v", err)
-				}
-			}
-			time.Sleep(time.Duration(hourlyInterval) * time.Second)
 		}
 	}()
 

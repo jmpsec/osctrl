@@ -36,10 +36,13 @@ type RedisManager struct {
 
 // JSONConfigurationRedis to hold all redis configuration values
 type JSONConfigurationRedis struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Password string `json:"password"`
-	DB       int    `json:"db"`
+	Host                  string `json:"host"`
+	Port                  string `json:"port"`
+	Password              string `json:"password"`
+	DB                    int    `json:"db"`
+	StatusExpirationHours int    `json:"status_exp_hours"`
+	ResultExpirationHours int    `json:"result_exp_hours"`
+	QueryExpirationHours  int    `json:"query_exp_hours"`
 }
 
 // CachedQueryWriteData to store in cache query logs
@@ -234,13 +237,13 @@ func (r *RedisManager) SetLogs(logType, hostID, envOrName string, data []byte) e
 	switch logType {
 	case types.StatusLog:
 		hKey = GenStatusKey(hostID, envOrName)
-		tExpire = time.Hour * StatusExpiration
+		tExpire = time.Hour * time.Duration(r.Config.StatusExpirationHours)
 	case types.ResultLog:
 		hKey = GenResultKey(hostID, envOrName)
-		tExpire = time.Hour * ResultExpiration
+		tExpire = time.Hour * time.Duration(r.Config.ResultExpirationHours)
 	case types.QueryLog:
 		hKey = GenQueryKey(hostID, envOrName)
-		tExpire = time.Hour * QueryExpiration
+		tExpire = time.Hour * time.Duration(r.Config.QueryExpirationHours)
 	}
 	ctx := context.Background()
 	if err := r.Client.Set(ctx, hKey, data, tExpire).Err(); err != nil {

@@ -36,29 +36,6 @@ func loadingMetrics(mgr *settings.Settings) (*metrics.Metrics, error) {
 	return nil, nil
 }
 
-// Function to load the logging settings
-func loadingLoggingSettings(mgr *settings.Settings) error {
-	// Check if logging settings for query results link is ready
-	if !mgr.IsValue(settings.ServiceAdmin, settings.QueryResultLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.QueryResultLink, settings.QueryLink); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %v", settings.QueryResultLink, err)
-		}
-	}
-	// Check if logging settings for status logs link is ready
-	if !mgr.IsValue(settings.ServiceAdmin, settings.StatusLogsLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.StatusLogsLink, settings.StatusLink); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
-		}
-	}
-	// Check if logging settings for result logs link is ready
-	if !mgr.IsValue(settings.ServiceAdmin, settings.ResultLogsLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.ResultLogsLink, settings.ResultsLink); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %v", settings.DebugHTTP, err)
-		}
-	}
-	return err
-}
-
 // Function to load all settings for the service
 func loadingSettings(mgr *settings.Settings) error {
 	// Check if service settings for debug service is ready
@@ -100,9 +77,6 @@ func loadingSettings(mgr *settings.Settings) error {
 		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.NodeDashboard, false); err != nil {
 			return fmt.Errorf("Failed to add %s to settings: %v", settings.NodeDashboard, err)
 		}
-	}
-	if err := loadingLoggingSettings(mgr); err != nil {
-		return fmt.Errorf("Failed to load logging settings: %v", err)
 	}
 	// Write JSON config to settings
 	if err := mgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logger); err != nil {

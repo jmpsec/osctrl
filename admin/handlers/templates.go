@@ -920,8 +920,6 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"pastFutureTimes": utils.PastFutureTimes,
 		"jsonRawIndent":   jsonRawIndent,
-		"statusLogsLink":  h.statusLogsLink,
-		"resultLogsLink":  h.resultLogsLink,
 	}
 	// Prepare template
 	tempateFiles := NewTemplateFiles(h.TemplatesFolder, "node.html").filepaths

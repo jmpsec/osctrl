@@ -362,7 +362,7 @@
                           <div id="status-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
                             <label for="back_hours_status">Last <b><output id="back_output_status">6</output></b> hours of status logs for node {{ .UUID }}</label>
-                            <a href="{{ statusLogsLink .UUID }}" target="_blank">
+                            <a href="#status-logs" target="_blank">
                               <i class="fas fa-external-link-alt"></i>
                             </a>
                             <input type="range" class="form-control-range" id="back_hours_status"
@@ -399,7 +399,7 @@
                           <div id="result-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
                             <label for="back_hours_result">Last <b><output id="back_output_result">6</output></b> hours of status logs for node {{ .UUID }}</label>
-                            <a href="{{ resultLogsLink .UUID }}" target="_blank">
+                            <a href="#result-logs" target="_blank">
                               <i class="fas fa-external-link-alt"></i>
                             </a>
                             <input type="range" class="form-control-range" id="back_hours_result"

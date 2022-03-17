@@ -241,6 +241,27 @@ func init() {
 			EnvVars:     []string{"REDIS_DB"},
 			Destination: &redisConfig.DB,
 		},
+		&cli.IntFlag{
+			Name:        "redis-status-exp",
+			Value:       cache.StatusExpiration,
+			Usage:       "Redis expiration in hours for status logs",
+			EnvVars:     []string{"REDIS_STATUS_EXP"},
+			Destination: &redisConfig.StatusExpirationHours,
+		},
+		&cli.IntFlag{
+			Name:        "redis-result-exp",
+			Value:       cache.ResultExpiration,
+			Usage:       "Redis expiration in hours for result logs",
+			EnvVars:     []string{"REDIS_RESULT_EXP"},
+			Destination: &redisConfig.ResultExpirationHours,
+		},
+		&cli.IntFlag{
+			Name:        "redis-query-exp",
+			Value:       cache.QueryExpiration,
+			Usage:       "Redis expiration in hours for query logs",
+			EnvVars:     []string{"REDIS_QUERY_EXP"},
+			Destination: &redisConfig.QueryExpirationHours,
+		},
 		&cli.BoolFlag{
 			Name:        "db",
 			Aliases:     []string{"d"},

@@ -104,57 +104,6 @@ func CreateLoggerDB(backend *backend.DBManager) (*LoggerDB, error) {
 // Settings - Function to prepare settings for the logger
 func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
 	log.Printf("Setting DB logging settings\n")
-	// Setting link for on-demand queries
-	if !mgr.IsValue(settings.ServiceAdmin, settings.QueryResultLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.QueryResultLink, settings.QueryLink); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.QueryResultLink, err)
-		}
-	}
-	// Setting link for status logs
-	if !mgr.IsValue(settings.ServiceAdmin, settings.StatusLogsLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.StatusLogsLink, settings.StatusLink); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.StatusLogsLink, err)
-		}
-	}
-	// Setting link for result logs
-	if !mgr.IsValue(settings.ServiceAdmin, settings.ResultLogsLink) {
-		if err := mgr.NewStringValue(settings.ServiceAdmin, settings.ResultLogsLink, settings.ResultsLink); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.ResultLogsLink, err)
-		}
-	}
-	// Setting values to enable log cleanup for status logs
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanStatusLogs) {
-		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanStatusLogs, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanStatusLogs, err)
-		}
-	}
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanStatusInterval) {
-		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanStatusInterval, defaultCleanupInterval); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanStatusInterval, err)
-		}
-	}
-	// Setting values to enable log cleanup for result logs
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanResultLogs) {
-		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanResultLogs, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanResultLogs, err)
-		}
-	}
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanResultInterval) {
-		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanResultInterval, defaultCleanupInterval); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanResultInterval, err)
-		}
-	}
-	// Setting values to enable log cleanup for query logs
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanQueryLogs) {
-		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.CleanQueryLogs, false); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanQueryLogs, err)
-		}
-	}
-	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanQueryEntries) {
-		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanQueryEntries, 100); err != nil {
-			log.Fatalf("Failed to add %s to settings: %v", settings.CleanQueryEntries, err)
-		}
-	}
 }
 
 // Log - Function that sends JSON result/status/query logs to the configured DB

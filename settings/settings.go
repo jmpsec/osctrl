@@ -62,26 +62,6 @@ const (
 	NodeDashboard      string = "node_dashboard"
 )
 
-// Names for setting values for logging
-const (
-	QueryResultLink     string = "query_result_link"
-	StatusLogsLink      string = "status_logs_link"
-	ResultLogsLink      string = "result_logs_link"
-	CleanStatusLogs     string = "clean_status_logs"
-	CleanStatusInterval string = "clean_status_interval"
-	CleanResultLogs     string = "clean_result_logs"
-	CleanResultInterval string = "clean_result_interval"
-	CleanQueryLogs      string = "clean_query_logs"
-	CleanQueryEntries   string = "clean_query_entries"
-)
-
-// Default values for the setting values for logging
-const (
-	QueryLink   string = "/query/logs/{{NAME}}"
-	StatusLink  string = "#status-logs"
-	ResultsLink string = "#result-logs"
-)
-
 // Names for the values that are read from the JSON config file
 const (
 	JSONListener string = "json_listener"
@@ -486,87 +466,6 @@ func (conf *Settings) CleanupSessions() int64 {
 // InactiveHours gets the value in hours for a node to be inactive by service
 func (conf *Settings) InactiveHours() int64 {
 	value, err := conf.RetrieveValue(ServiceAdmin, InactiveHours)
-	if err != nil {
-		return 0
-	}
-	return value.Integer
-}
-
-// QueryResultLink gets the value to be used to generate links for on-demand queries results
-func (conf *Settings) QueryResultLink() string {
-	value, err := conf.RetrieveValue(ServiceAdmin, QueryResultLink)
-	if err != nil {
-		return ""
-	}
-	return value.String
-}
-
-// StatusLogsLink gets the value to be used to generate links for status logs
-func (conf *Settings) StatusLogsLink() string {
-	value, err := conf.RetrieveValue(ServiceAdmin, StatusLogsLink)
-	if err != nil {
-		return ""
-	}
-	return value.String
-}
-
-// ResultLogsLink gets the value to be used to generate links for result logs
-func (conf *Settings) ResultLogsLink() string {
-	value, err := conf.RetrieveValue(ServiceAdmin, ResultLogsLink)
-	if err != nil {
-		return ""
-	}
-	return value.String
-}
-
-// CleanStatusLogs checks if status logs cleanup is enabled
-func (conf *Settings) CleanStatusLogs() bool {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanStatusLogs)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
-}
-
-// CleanStatusInterval gets the interval in seconds to cleanup status logs
-func (conf *Settings) CleanStatusInterval() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanStatusInterval)
-	if err != nil {
-		return 0
-	}
-	return value.Integer
-}
-
-// CleanResultLogs checks if result logs cleanup is enabled
-func (conf *Settings) CleanResultLogs() bool {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanResultLogs)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
-}
-
-// CleanResultInterval gets the interval in seconds to cleanup result logs
-func (conf *Settings) CleanResultInterval() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanResultInterval)
-	if err != nil {
-		return 0
-	}
-	return value.Integer
-}
-
-// CleanQueryLogs checks if query logs cleanup is enabled
-func (conf *Settings) CleanQueryLogs() bool {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanQueryLogs)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
-}
-
-// CleanQueryEntries gets the number of entries to cleanup in query logs
-func (conf *Settings) CleanQueryEntries() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanQueryEntries)
 	if err != nil {
 		return 0
 	}
