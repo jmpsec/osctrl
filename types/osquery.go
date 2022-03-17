@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/jmpsec/osctrl/queries"
 )
@@ -127,6 +128,27 @@ type LogDecorations struct {
 	DaemonHash     string `json:"osquery_md5"`
 }
 
+// StringInt to parse numbers that could be strings
+type StringInt int
+
+// UnmarshalJSON implements the json.Unmarshaler interface, which
+// allows us to ingest values of any json type as an int and run our custom conversion
+func (si *StringInt) UnmarshalJSON(b []byte) error {
+	if b[0] != '"' {
+		return json.Unmarshal(b, (*int)(si))
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	*si = StringInt(i)
+	return nil
+}
+
 // LogResultData to be used processing result logs from nodes
 type LogResultData struct {
 	Name           string          `json:"name"`
@@ -134,7 +156,7 @@ type LogResultData struct {
 	Action         string          `json:"action"`
 	Columns        json.RawMessage `json:"columns"`
 	Counter        int             `json:"counter"`
-	UnixTime       int             `json:"unixTime"`
+	UnixTime       StringInt       `json:"unixTime"`
 	Decorations    LogDecorations  `json:"decorations"`
 	CalendarTime   string          `json:"calendarTime"`
 	HostIdentifier string          `json:"hostIdentifier"`
@@ -147,7 +169,7 @@ type LogStatusData struct {
 	Version        string         `json:"version"`
 	Filename       string         `json:"filename"`
 	Severity       string         `json:"severity"`
-	UnixTime       string         `json:"unixTime"`
+	UnixTime       StringInt      `json:"unixTime"`
 	Decorations    LogDecorations `json:"decorations"`
 	CalendarTime   string         `json:"calendarTime"`
 	HostIdentifier string         `json:"hostIdentifier"`

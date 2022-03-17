@@ -250,6 +250,25 @@ function configuration_db() {
   cat "$__conf" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | $__sudo tee "$__dest"
 }
 
+# Cache configuration file generation
+#   string  conf_template
+#   string  conf_destination
+#   string  cache_host
+#   string  cache_port
+#   string  cache_password
+function configuration_cache() {
+  local __conf=$1
+  local __dest=$2
+  local __cachehost=$3
+  local __cacheport=$4
+  local __cachepass=$5
+  local __sudo=$6
+
+  log "Generating $__dest configuration"
+
+  cat "$__conf" | sed "s|_REDIS_HOST|$__cachehost|g" | sed "s|_REDIS_PORT|$__cacheport|g" | sed "s|_REDIS_PASSWORD|$__cachepass|g" | $__sudo tee "$__dest"
+}
+
 # Enable service as systemd
 #   string  service_user
 #   string  service_group
@@ -363,6 +382,25 @@ function configure_postgres() {
   log "PostgreSQL permissions"
 
   sudo cp "$__conf" "$__hba"
+
+  sudo systemctl restart "$__service"
+  sudo systemctl enable "$__service"
+}
+
+# Configure Redis
+#   string  redis_conf_file_location
+#   string  redis_service_name
+#   string  redis_conf_file
+#   string  redis_password
+function configure_redis() {
+  local __conf=$1
+  local __service=$2
+  local __redis=$3
+  local __password=$4
+
+  log "Redis require password"
+
+  cat "$__conf" | sed "s|REDIS_PASSWORD|$__password|g" | sudo tee "$__redis"
 
   sudo systemctl restart "$__service"
   sudo systemctl enable "$__service"

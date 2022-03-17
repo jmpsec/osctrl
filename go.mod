@@ -12,6 +12,8 @@ replace github.com/jmpsec/osctrl/api/handlers => ./api/handlers
 
 replace github.com/jmpsec/osctrl/backend => ./backend
 
+replace github.com/jmpsec/osctrl/cache => ./cache
+
 replace github.com/jmpsec/osctrl/carves => ./carves
 
 replace github.com/jmpsec/osctrl/environments => ./environments
@@ -45,6 +47,7 @@ require (
 	github.com/jmpsec/osctrl/admin/handlers v0.2.7
 	github.com/jmpsec/osctrl/admin/sessions v0.2.7
 	github.com/jmpsec/osctrl/backend v0.2.7
+	github.com/jmpsec/osctrl/cache v0.2.7
 	github.com/jmpsec/osctrl/carves v0.2.7
 	github.com/jmpsec/osctrl/environments v0.2.7
 	github.com/jmpsec/osctrl/logging v0.2.7
@@ -67,9 +70,12 @@ require (
 require (
 	github.com/aws/aws-sdk-go v1.42.44 // indirect
 	github.com/beevik/etree v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/crewjam/httperr v0.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/gorilla/sessions v1.2.1 // indirect

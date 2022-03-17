@@ -84,22 +84,6 @@ type SplunkMessage struct {
 // Settings - Function to prepare settings for the logger
 func (logSP *LoggerSplunk) Settings(mgr *settings.Settings) {
 	log.Printf("Setting Splunk logging settings\n")
-	// Setting link for on-demand queries
-	var _v string
-	_v = logSP.Configuration.Queries
-	if err := mgr.SetString(_v, settings.ServiceAdmin, settings.QueryResultLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", _v, settings.QueryResultLink, err)
-	}
-	_v = logSP.Configuration.Status
-	// Setting link for status logs
-	if err := mgr.SetString(_v, settings.ServiceAdmin, settings.StatusLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", _v, settings.StatusLogsLink, err)
-	}
-	_v = logSP.Configuration.Results
-	// Setting link for result logs
-	if err := mgr.SetString(_v, settings.ServiceAdmin, settings.ResultLogsLink, false); err != nil {
-		log.Printf("Error setting %s with %s - %v", _v, settings.ResultLogsLink, err)
-	}
 }
 
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
