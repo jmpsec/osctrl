@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/admin/sessions"
+	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
-	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -44,7 +44,7 @@ type HandlersAdmin struct {
 	Carves          *carves.Carves
 	Settings        *settings.Settings
 	Metrics         *metrics.Metrics
-	LoggerDB        *logging.LoggerDB
+	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceVersion  string
 	TemplatesFolder string
@@ -108,9 +108,9 @@ func WithMetrics(metrics *metrics.Metrics) HandlersOption {
 	}
 }
 
-func WithLoggerDB(logger *logging.LoggerDB) HandlersOption {
+func WithCache(rds *cache.RedisManager) HandlersOption {
 	return func(h *HandlersAdmin) {
-		h.LoggerDB = logger
+		h.RedisCache = rds
 	}
 }
 

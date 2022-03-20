@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
@@ -15,8 +17,8 @@ import (
 // Define log types to be used
 var (
 	LogTypes = map[string]bool{
-		"result": true,
-		"status": true,
+		types.ResultLog: true,
+		types.StatusLog: true,
 	}
 )
 
@@ -122,8 +124,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == "status" && h.LoggerDB != nil {
-		statusLogs, err := h.LoggerDB.StatusLogs(UUID, env.Name, secondsBack)
+	if logType == types.StatusLog && h.RedisCache != nil {
+		statusLogs, err := h.RedisCache.StatusLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -132,8 +134,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		// Prepare data to be returned
 		for _, s := range statusLogs {
 			_c := CreationTimes{
-				Display:   utils.PastFutureTimes(s.CreatedAt),
-				Timestamp: utils.TimeTimestamp(s.CreatedAt),
+				Display:   utils.PastFutureTimesEpoch(int64(s.UnixTime)),
+				Timestamp: strconv.Itoa(int(s.UnixTime)),
 			}
 			_l := LogJSON{
 				Created: _c,
@@ -142,8 +144,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == "result" && h.LoggerDB != nil {
-		resultLogs, err := h.LoggerDB.ResultLogs(UUID, env.Name, secondsBack)
+	} else if logType == types.ResultLog && h.RedisCache != nil {
+		resultLogs, err := h.RedisCache.ResultLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -153,8 +155,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		for _, r := range resultLogs {
 			_l := LogJSON{
 				Created: CreationTimes{
-					Display:   utils.PastFutureTimes(r.CreatedAt),
-					Timestamp: utils.TimeTimestamp(r.CreatedAt),
+					Display:   utils.PastFutureTimesEpoch(int64(r.UnixTime)),
+					Timestamp: strconv.Itoa(int(r.UnixTime)),
 				},
 				First:  r.Name,
 				Second: string(r.Columns),
@@ -191,10 +193,11 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		h.Inc(metricJSONErr)
 		return
 	}
-	// Get logs
+	// Iterate through targets to get logs
 	queryLogJSON := []QueryLogJSON{}
-	if h.LoggerDB != nil {
-		queryLogs, err := h.LoggerDB.QueryLogs(name)
+	// Get logs
+	if h.RedisCache != nil {
+		queryLogs, err := h.RedisCache.QueryLogs(name)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -203,14 +206,20 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		// Prepare data to be returned
 		for _, q := range queryLogs {
 			// Get target node
-			node, err := h.Nodes.GetByUUID(q.UUID)
+			node, err := h.Nodes.GetByUUID(q.HostIdentifier)
 			if err != nil {
-				node.UUID = q.UUID
+				node.UUID = q.HostIdentifier
 				node.Localname = ""
 			}
 			_c := CreationTimes{
-				Display:   utils.PastFutureTimes(q.CreatedAt),
-				Timestamp: utils.TimeTimestamp(q.CreatedAt),
+				Display:   utils.PastFutureTimesEpoch(int64(q.UnixTime)),
+				Timestamp: utils.PastFutureTimesEpoch(int64(q.UnixTime)),
+			}
+			qData, err := json.Marshal(q.QueryData)
+			if err != nil {
+				log.Printf("error serializing logs %v", err)
+				h.Inc(metricJSONErr)
+				continue
 			}
 			_l := QueryLogJSON{
 				Created: _c,
@@ -218,7 +227,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 					UUID: node.UUID,
 					Name: node.Localname,
 				},
-				Data: string(q.Data),
+				Data: string(qData),
 			}
 			queryLogJSON = append(queryLogJSON, _l)
 		}

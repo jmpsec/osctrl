@@ -26,23 +26,6 @@ func removeBackslash(rawString string) string {
 	return strings.Replace(rawString, "\\", " ", -1)
 }
 
-// Helper to generate a link to results for on-demand queries
-func queryResultLink(name string) (string, string) {
-	defaultLink := strings.Replace(settings.QueryLink, "{{NAME}}", removeBackslash(name), 1)
-	dbLink := strings.Replace(settingsmgr.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
-	return defaultLink, dbLink
-}
-
-// Helper to generate a link to results for status logs
-func statusLogsLink(uuid string) string {
-	return strings.Replace(settingsmgr.StatusLogsLink(), "{{UUID}}", removeBackslash(uuid), 1)
-}
-
-// Helper to generate a link to results for result logs
-func resultLogsLink(uuid string) string {
-	return strings.Replace(settingsmgr.ResultLogsLink(), "{{UUID}}", removeBackslash(uuid), 1)
-}
-
 // Helper to calculate the osquery config_hash and skip sending a blob that won't change anything
 // https://github.com/facebook/osquery/blob/master/osquery/config/config.cpp#L911
 // osquery calculates the SHA1 of the configuration blob, then the SHA1 hash of that

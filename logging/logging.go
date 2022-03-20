@@ -3,6 +3,7 @@ package logging
 import (
 	"log"
 
+	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -10,18 +11,20 @@ import (
 
 // LoggerTLS will be used to handle logging for the TLS endpoint
 type LoggerTLS struct {
-	Logging string
-	Logger  interface{}
-	Nodes   *nodes.NodeManager
-	Queries *queries.Queries
+	Logging    string
+	Logger     interface{}
+	RedisCache *cache.RedisManager
+	Nodes      *nodes.NodeManager
+	Queries    *queries.Queries
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging: logging,
-		Nodes:   nodes,
-		Queries: queries,
+		Logging:    logging,
+		Nodes:      nodes,
+		Queries:    queries,
+		RedisCache: redis,
 	}
 	switch logging {
 	case settings.LoggingSplunk:
@@ -159,6 +162,10 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	}
+	// Add logs to cache
+	if err := logTLS.RedisCache.SetLogs(logType, uuid, environment, data); err != nil {
+		log.Printf("error sending %s logs to cache %s", logType, err)
+	}
 }
 
 // QueryLog will send query result logs via the configured method of logging
@@ -228,5 +235,9 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
+	}
+	// Add logs to cache
+	if err := logTLS.RedisCache.SetQueryLogs(uuid, name, data); err != nil {
+		log.Printf("error sending %s logs to cache %s", logType, err)
 	}
 }

@@ -20,6 +20,12 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
+const (
+	QueryLink   string = "/query/logs/{{NAME}}"
+	StatusLink  string = "#status-logs"
+	ResultsLink string = "#result-logs"
+)
+
 // Helper to handle admin error responses
 func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
 	log.Printf("%s: %v", msg, err)
@@ -187,17 +193,7 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 
 // Helper to generate a link to results for on-demand queries
 func (h *HandlersAdmin) queryResultLink(name string) string {
-	return strings.Replace(h.Settings.QueryResultLink(), "{{NAME}}", removeBackslash(name), 1)
-}
-
-// Helper to generate a link to results for status logs
-func (h *HandlersAdmin) statusLogsLink(uuid string) string {
-	return strings.Replace(h.Settings.StatusLogsLink(), "{{UUID}}", removeBackslash(uuid), 1)
-}
-
-// Helper to generate a link to results for result logs
-func (h *HandlersAdmin) resultLogsLink(uuid string) string {
-	return strings.Replace(h.Settings.ResultLogsLink(), "{{UUID}}", removeBackslash(uuid), 1)
+	return strings.Replace(QueryLink, "{{NAME}}", removeBackslash(name), 1)
 }
 
 // Helper to convert the list of all TLS environments with the ones with permissions for a user

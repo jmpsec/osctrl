@@ -45,6 +45,7 @@
 #   -n          --nginx         Install and configure nginx as TLS termination
 #   -P          --postgres      Install and configure PostgreSQL as backend
 #   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana)
+#   -R          --redis         Install and configure Redis as cache
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
 #   -U          --upgrade       Keep osctrl upgraded with the latest code from Github
@@ -115,6 +116,7 @@ function usage() {
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
   printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
+  printf "  -R          --redis \t\tInstall and configure Redis as cache\n"
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "  -U          --upgrade \tKeep osctrl upgraded with the latest code from Github\n"
@@ -140,10 +142,12 @@ TLS_CONF="$TLS_COMPONENT.json"
 ADMIN_CONF="$ADMIN_COMPONENT.json"
 API_CONF="$API_COMPONENT.json"
 DB_CONF="db.json"
+CACHE_CONF="redis.json"
 JWT_CONF="jwt.json"
 LOGGER_CONF="logger.json"
 SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
+CACHE_TEMPLATE="redis.json"
 JWT_TEMPLATE="jwt.json"
 SYSTEMD_TEMPLATE="systemd.service"
 DEV_HOST="osctrl.dev"
@@ -163,6 +167,7 @@ ENROLL=false
 UPDATE=false
 NGINX=false
 POSTGRES=false
+REDIS=false
 UPGRADE=false
 BRANCH="master"
 SOURCE_PATH=/vagrant
@@ -177,12 +182,17 @@ _DB_USER="osctrl"
 _DB_PASS="osctrl"
 _DB_PORT="5432"
 
+# Cache values
+_CACHE_HOST="localhost"
+_CACHE_PORT="6379"
+_CACHE_PASS="osctrl"
+
 # TLS Service
 _T_INT_PORT="9000"
 _T_PUB_PORT="443"
 _T_HOST="$ALL_HOST"
 _T_AUTH="none"
-_T_LOGGING="db"
+_T_LOGGING="stdout"
 
 # Admin Service
 _A_INT_PORT="9001"
@@ -211,7 +221,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:Pk:nMEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,metrics,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nMEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,metrics,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -321,6 +331,11 @@ while true; do
     -P|--postgres)
       SHOW_USAGE=false
       POSTGRES=true
+      shift
+      ;;
+    -R|--redis)
+      SHOW_USAGE=false
+      REDIS=true
       shift
       ;;
     -M|--metrics)
@@ -625,6 +640,21 @@ else
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
   fi
 
+  # Redis - Cache
+  if [[ "$REDIS" == true ]]; then
+    REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
+    if [[ "$DISTRO" == "ubuntu" ]]; then
+      package redis-server
+      REDIS_SERVICE="redis"
+      REDIS_ETC="/etc/redis/redis.conf"
+    elif [[ "$DISTRO" == "centos" ]]; then
+      package redis
+      REDIS_SERVICE="redis"
+      REDIS_ETC="/etc/redis.conf"
+    fi
+    configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
+  fi
+
   # Metrics - InfluxDB + Telegraf + Grafana
   if [[ "$METRICS" == true ]]; then
     if [[ "$DISTRO" == "ubuntu" ]]; then
@@ -642,6 +672,9 @@ else
 
   # Generate DB configuration file for services
   configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+
+  # Generate Cache configuration file for services
+  configuration_cache "$SOURCE_PATH/deploy/config/$CACHE_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
 
   # Prepare DB logger configuration for services
   sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF"
@@ -800,4 +833,4 @@ exit 0
 # kthxbai
 
 # Standard deployment in a linux box would be like:
-# ./deploy/provision.sh --nginx --postgres -p all --all-hostname "dev.osctrl.net" -E
+# ./deploy/provision.sh -m dev -s /path/to/code --nginx --postgres --redis -p all --all-hostname "dev.osctrl.net" -E

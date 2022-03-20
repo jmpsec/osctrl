@@ -22,11 +22,13 @@ func (l *LoggerTLS) DispatchLogs(data []byte, uuid, logType, environment string,
 	l.Log(logType, data, environment, uuid, debug)
 	// Refresh last logging request
 	if logType == types.StatusLog {
+		// Update metadata for node
 		if err := l.Nodes.RefreshLastStatus(uuid); err != nil {
 			log.Printf("error refreshing last status %v", err)
 		}
 	}
 	if logType == types.ResultLog {
+		// Update metadata for node
 		if err := l.Nodes.RefreshLastResult(uuid); err != nil {
 			log.Printf("error refreshing last result %v", err)
 		}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/backend"
+	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/metrics"
@@ -40,6 +41,8 @@ const (
 	defConfigurationFile string = "config/" + settings.ServiceAPI + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
+	// Default redis configuration file
+	defRedisConfigurationFile string = "config/redis.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -87,8 +90,10 @@ var (
 	err         error
 	apiConfig   types.JSONConfigurationService
 	dbConfig    backend.JSONConfigurationDB
+	redisConfig cache.JSONConfigurationRedis
 	jwtConfig   types.JSONConfigurationJWT
 	db          *backend.DBManager
+	redis       *cache.RedisManager
 	apiUsers    *users.UserManager
 	tagsmgr     *tags.TagManager
 	settingsmgr *settings.Settings
@@ -105,16 +110,18 @@ var (
 
 // Variables for flags
 var (
-	configFlag    bool
-	configFile    string
-	loggerValue   string
-	dbFlag        bool
-	dbConfigFile  string
-	jwtFlag       bool
-	jwtConfigFile string
-	tlsServer     bool
-	tlsCertFile   string
-	tlsKeyFile    string
+	configFlag        bool
+	serviceConfigFile string
+	redisConfigFile   string
+	dbFlag            bool
+	redisFlag         bool
+	dbConfigFile      string
+	loggerValue       string
+	jwtFlag           bool
+	jwtConfigFile     string
+	tlsServer         bool
+	tlsCertFile       string
+	tlsKeyFile        string
 )
 
 // Valid values for auth and logging in configuration
@@ -169,7 +176,7 @@ func init() {
 			Value:       defConfigurationFile,
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
-			Destination: &dbConfigFile,
+			Destination: &serviceConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "listener",
@@ -212,6 +219,50 @@ func init() {
 			Destination: &loggerValue,
 		},
 		&cli.BoolFlag{
+			Name:        "redis",
+			Aliases:     []string{"r"},
+			Value:       false,
+			Usage:       "Provide redis configuration via JSON file",
+			EnvVars:     []string{"REDIS_CONFIG"},
+			Destination: &redisFlag,
+		},
+		&cli.StringFlag{
+			Name:        "redis-file",
+			Aliases:     []string{"R"},
+			Value:       defRedisConfigurationFile,
+			Usage:       "Load redis configuration from `FILE`",
+			EnvVars:     []string{"REDIS_CONFIG_FILE"},
+			Destination: &redisConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "redis-host",
+			Value:       "127.0.0.1",
+			Usage:       "Redis host to be connected to",
+			EnvVars:     []string{"REDIS_HOST"},
+			Destination: &redisConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "redis-port",
+			Value:       "6379",
+			Usage:       "Redis port to be connected to",
+			EnvVars:     []string{"REDIS_PORT"},
+			Destination: &redisConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "redis-pass",
+			Value:       "redis",
+			Usage:       "Password to be used for redis",
+			EnvVars:     []string{"REDIS_PASS"},
+			Destination: &redisConfig.Password,
+		},
+		&cli.IntFlag{
+			Name:        "redis-db",
+			Value:       0,
+			Usage:       "Redis database to be selected after connecting",
+			EnvVars:     []string{"REDIS_DB"},
+			Destination: &redisConfig.DB,
+		},
+		&cli.BoolFlag{
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
@@ -225,7 +276,7 @@ func init() {
 			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &configFile,
+			Destination: &dbConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "db-host",
@@ -342,6 +393,7 @@ func init() {
 
 // Go go!
 func osctrlAPIService() {
+	// Backend
 	for {
 		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
@@ -354,7 +406,11 @@ func osctrlAPIService() {
 		log.Println("Backend NOT ready! waiting...")
 		time.Sleep(backendWait)
 	}
-	// Close connection
+	// Redis - cache
+	redis, err = cache.CreateRedisManager(redisConfig)
+	if err != nil {
+		log.Fatalf("Failed to connect to redis - %v", err)
+	}
 	log.Println("Initialize users")
 	apiUsers = users.CreateUserManager(db.Conn, &jwtConfig)
 	log.Println("Initialize tags")
@@ -483,18 +539,25 @@ func osctrlAPIService() {
 
 // Action to run when no flags are provided to run checks and prepare data
 func cliAction(c *cli.Context) error {
-	// Load configuration if external service JSON config file is used
+	// Load configuration if external JSON config file is used
 	if configFlag {
-		apiConfig, err = loadConfiguration(configFile)
+		apiConfig, err = loadConfiguration(serviceConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %s", configFile, err)
+			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
 		}
 	}
-	// Load DB configuration if external db JSON config file is used
+	// Load DB configuration if external JSON config file is used
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load DB configuration - %v", err)
+		}
+	}
+	// Load redis configuration if external JSON config file is used
+	if redisFlag {
+		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
+		if err != nil {
+			return fmt.Errorf("Failed to load redis configuration - %v", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used
