@@ -166,17 +166,17 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 }
 
 // Save session and set cookie header
-func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, perms users.UserPermissions) (UserSession, error) {
+func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, access users.EnvAccess) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(sm.CookieName); err != nil {
-		s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
+		s, err = sm.New(r, user.Username, LevelPermissions(user, access))
 		if err != nil {
 			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
-			s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
+			s, err = sm.New(r, user.Username, LevelPermissions(user, access))
 			if err != nil {
 				return s, err
 			}
@@ -203,16 +203,16 @@ func GenerateCSRF() string {
 }
 
 // Helper to convert permissions for a user to a level for context
-func LevelPermissions(user users.AdminUser, perms users.UserPermissions) string {
+func LevelPermissions(user users.AdminUser, access users.EnvAccess) string {
 	if user.Admin {
 		return AdminLevel
 	}
 	// Check for query access
-	if perms.Query {
+	if access.Query {
 		return QueryLevel
 	}
 	// Check for carve access
-	if perms.Carve {
+	if access.Carve {
 		return CarveLevel
 	}
 	// At this point, no access granted

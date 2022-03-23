@@ -85,7 +85,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get permissions
-	permissions, err := h.Users.GetPermissions(usernameVar)
+	permissions, err := h.Users.GetAccess(usernameVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting permissions %v", err)

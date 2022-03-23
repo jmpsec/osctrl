@@ -1,19 +1,31 @@
 package users
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+
+	"gorm.io/gorm"
 )
 
-// EnvPermissions to hold permissions for environments
-type EnvPermissions map[string]bool
+// UserAccess to provide an abstraction for user access between environment and permissions
+type UserAccess map[string]EnvAccess
 
 // UserPermissions to abstract the permissions for a user
-type UserPermissions struct {
-	Environments EnvPermissions `json:"environments"`
-	Query        bool           `json:"query"`
-	Carve        bool           `json:"carve"`
+type EnvAccess struct {
+	User  bool `json:"user"`
+	Query bool `json:"query"`
+	Carve bool `json:"carve"`
+	Admin bool `json:"admin"`
+}
+
+// UserPermission to hold all permissions for users
+type UserPermission struct {
+	gorm.Model
+	Username    string `gorm:"index"`
+	AccessType  int
+	AccessValue bool
+	Environment string
+	GrantedBy   string
 }
 
 // AccessLevel as abstraction of level of access for a user
@@ -26,75 +38,244 @@ const (
 	QueryLevel
 	// CarveLevel for carve privileges
 	CarveLevel
-	// EnvLevel for environment privileges
-	EnvLevel
-	// UserLevel for regula user privileges
+	// UserLevel for regular user privileges
 	UserLevel
 	// NoEnvironment to be explicit when used
 	NoEnvironment = ""
 )
 
-// GenPermissions to generate the struct with empty permissions
-func (m *UserManager) GenPermissions(environments []string, level AccessLevel) UserPermissions {
-	envs := make(EnvPermissions)
-	for _, e := range environments {
-		envs[e] = true
+// CreatePermission new permission
+func (m *UserManager) CreatePermission(permission UserPermission) error {
+	if err := m.DB.Create(&permission).Error; err != nil {
+		return fmt.Errorf("Create UserPermission %v", err)
 	}
-	perms := UserPermissions{
-		Environments: envs,
-		Query:        (level == QueryLevel || level == AdminLevel),
-		Carve:        (level == CarveLevel || level == AdminLevel),
+	return nil
+}
+
+// CreatePermissions to iterate through a slice of permissions
+func (m *UserManager) CreatePermissions(permissions []UserPermission) error {
+	for _, p := range permissions {
+		if err := m.CreatePermission(p); err != nil {
+			return err
+		}
 	}
-	return perms
+	return nil
+}
+
+// GenEnvUserAccess to generate the struct with empty access
+func (m *UserManager) GenEnvUserAccess(envs []string, user, query, carve, admin bool) UserAccess {
+	access := make(UserAccess)
+	for _, e := range envs {
+		access[e] = EnvAccess{
+		User:  user,
+		Query: query,
+		Carve: carve,
+		Admin: admin,
+	}
+	}
+	return access
+}
+
+// GenUserPermission Helper to generate struct
+func (m *UserManager) GenUserPermission(username, granted, env string, aType int, aValue bool) UserPermission {
+	return UserPermission{
+		Username:    username,
+		AccessType:  aType,
+		AccessValue: aValue,
+		Environment: env,
+		GrantedBy:   granted,
+	}
+}
+
+// GenPermission to generate the struct with empty permissions
+// FIXME this probably can be implemented in a better way
+func (m *UserManager) GenPermissions(username, granted string, access UserAccess) []UserPermission {
+	var res []UserPermission
+	for env, a := range access {
+		var p UserPermission
+		// User
+		p = m.GenUserPermission(username, granted, env, int(UserLevel), a.User)
+		res = append(res, p)
+		// Admin
+		p = m.GenUserPermission(username, granted, env, int(AdminLevel), a.Admin)
+		res = append(res, p)
+		// Query
+		p = m.GenUserPermission(username, granted, env, int(QueryLevel), a.Query)
+		res = append(res, p)
+		// Carve
+		p = m.GenUserPermission(username, granted, env, int(CarveLevel), a.Carve)
+		res = append(res, p)
+	}
+	return res
 }
 
 // CheckPermissions to verify access for a username
 func (m *UserManager) CheckPermissions(username string, level AccessLevel, environment string) bool {
-	exist, user := m.ExistsGet(username)
-	if !exist {
+	if !m.Exists(username) {
 		log.Printf("user %s does not exist", username)
 		return false
 	}
-	// Admin has the highest level of access
-	if user.Admin {
-		return true
-	}
-	perms, err := m.ConvertPermissions(user.Permissions.RawMessage)
-	if err != nil {
-		log.Printf("error converting permissions %v", err)
+	var perms []UserPermission
+	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
 		return false
 	}
-	switch level {
-	case QueryLevel:
-		return perms.Query
-	case CarveLevel:
-		return perms.Carve
-	case EnvLevel:
-		return perms.Environments[environment]
-	case UserLevel:
-		return true
+	for _, p := range perms {
+		if p.AccessType == int(level) || p.AccessType == int(AdminLevel) {
+			return p.AccessValue
+		}
 	}
 	return false
 }
 
-// GetPermissions to extract permissions by username
-func (m *UserManager) GetPermissions(username string) (UserPermissions, error) {
-	var perms UserPermissions
-	user, err := m.Get(username)
-	if err != nil {
-		return perms, fmt.Errorf("error getting user %v", err)
+// ChangePermissions for setting user permissions by username
+func (m *UserManager) ChangePermissions(username, environment string, permissions []UserPermission) error {
+	for _, p := range permissions {
+		if err := m.ChangePermission(username, environment, p); err != nil {
+			return err
+		}
 	}
-	if err := json.Unmarshal(user.Permissions.RawMessage, &perms); err != nil {
-		return perms, fmt.Errorf("error parsing permissions %v", err)
-	}
-	return perms, nil
+	return nil
 }
 
-// ConvertPermissions to convert from stored Jsonb to struct
-func (m *UserManager) ConvertPermissions(raw json.RawMessage) (UserPermissions, error) {
-	var perms UserPermissions
-	if err := json.Unmarshal(raw, &perms); err != nil {
-		return perms, fmt.Errorf("error parsing permissions %v", err)
+// ChangePermissions for setting user permissions by username
+func (m *UserManager) ChangePermission(username, environment string, perm UserPermission) error {
+	if !m.Exists(username) {
+		return fmt.Errorf("user %s does not exist", username)
+	}
+	if perm.Username != username || perm.Environment != environment {
+		return fmt.Errorf("username/envioronment mismatch [%s/%s]", username, environment)
+	}
+	m.DB.Model(&perm).Updates(map[string]interface{}{
+		"access_type":  perm.AccessType,
+		"access_value": perm.AccessValue,
+		"granted_by":   perm.GrantedBy,
+	})
+	return nil
+}
+
+// ChangeAccess for setting user access by username and environment
+func (m *UserManager) ChangeAccess(username, environment string, access EnvAccess) error {
+	if !m.Exists(username) {
+		return fmt.Errorf("user %s does not exist", username)
+	}
+	if err := m.SetEnvUser(username, environment, access.User); err != nil {
+		return fmt.Errorf("error setting user access - %s", err)
+	}
+	if err := m.SetEnvQuery(username, environment, access.Query); err != nil {
+		return fmt.Errorf("error setting query access - %s", err)
+	}
+	if err := m.SetEnvCarve(username, environment, access.Carve); err != nil {
+		return fmt.Errorf("error setting carve access - %s", err)
+	}
+	if err := m.SetEnvAdmin(username, environment, access.Admin); err != nil {
+		return fmt.Errorf("error setting admin access - %s", err)
+	}
+	return nil
+}
+
+// SetEnvUser to change the user access for a user and environment
+func (m *UserManager) SetEnvUser(username, environment string, user bool) error {
+	return m.SetEnvLevel(username, environment, UserLevel, user)
+}
+
+// SetEnvQuery to change the query access for a user and environment
+func (m *UserManager) SetEnvQuery(username, environment string, query bool) error {
+	return m.SetEnvLevel(username, environment, QueryLevel, query)
+}
+
+// SetEnvCarve to change the carve access for a user and environment
+func (m *UserManager) SetEnvCarve(username, environment string, carve bool) error {
+	return m.SetEnvLevel(username, environment, CarveLevel, carve)
+}
+
+// SetEnvAdmin to change the admin access for a user and environment
+func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) error {
+	return m.SetEnvLevel(username, environment, AdminLevel, admin)
+}
+
+// SetEnvLevel to change the access for a user
+func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
+	perm , err := m.GetPermission(username, environment)
+	if err != nil {
+		return fmt.Errorf("error getting permissions for %s/%s - %s", username, environment, err)
+	}
+	m.DB.Model(&UserPermission{}).Updates(map[string]interface{}{
+		"access_type":  level,
+		"access_value": value,
+		"granted_by":   perm.GrantedBy,
+	})
+	return nil
+}
+
+// GetAccess to extract all access by username
+func (m *UserManager) GetAccess(username string) (UserAccess, error) {
+	access := make(UserAccess)
+	if !m.Exists(username) {
+		return access, fmt.Errorf("user %s does not exist", username)
+	}
+	var perms []UserPermission
+	if err := m.DB.Where("username = ?", username).Find(&perms).Error; err != nil {
+		return access, err
+	}
+	for _, p := range perms {
+		acs := access[p.Environment]
+		switch p.AccessType {
+		case int(UserLevel):
+			acs.User = p.AccessValue
+		case int(QueryLevel):
+			acs.Query = p.AccessValue
+		case int(CarveLevel):
+			acs.Carve = p.AccessValue
+		case int(AdminLevel):
+			acs.Admin = p.AccessValue
+		}
+		access[p.Environment] = acs
+	}
+	return access, nil
+}
+
+// GetEnvAccess to get the access for a user and a specific environment
+func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
+	var envAccess EnvAccess
+	perms, err := m.GetPermissions(username, env)
+	if err != nil {
+		return envAccess, fmt.Errorf("error getting permissions - %s", err)
+	}
+	for _, p := range perms {
+		switch p.AccessType {
+		case int(UserLevel):
+			envAccess.User = p.AccessValue
+		case int(QueryLevel):
+			envAccess.Query = p.AccessValue
+		case int(CarveLevel):
+			envAccess.Carve = p.AccessValue
+		case int(AdminLevel):
+			envAccess.Admin = p.AccessValue
+		}
+	}
+	return envAccess, nil
+}
+
+// GetPermission to extract permission by username and environment
+func (m *UserManager) GetPermission(username, environment string) (UserPermission, error) {
+	var perm UserPermission
+	if !m.Exists(username) {
+		return perm, fmt.Errorf("user %s does not exist", username)
+	}
+	if err := m.DB.Where("username = ? AND environment = ?", username, environment).First(&perm).Error; err != nil {
+		return perm, err
+	}
+	return perm, nil
+}
+
+// GetPermissions to extract permissions by username and environment
+func (m *UserManager) GetPermissions(username, environment string) ([]UserPermission, error) {
+	var perms []UserPermission
+	if !m.Exists(username) {
+		return perms, fmt.Errorf("user %s does not exist", username)
+	}
+	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
+		return perms, err
 	}
 	return perms, nil
 }
