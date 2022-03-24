@@ -204,7 +204,7 @@ func GenerateCSRF() string {
 
 // Helper to convert permissions for a user to a level for context
 func LevelPermissions(user users.AdminUser, access users.EnvAccess) string {
-	if user.Admin {
+	if access.Admin {
 		return AdminLevel
 	}
 	// Check for query access

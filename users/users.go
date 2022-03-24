@@ -53,6 +53,10 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) 
 	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
 	}
+	// table user_permissions
+	if err := backend.AutoMigrate(&UserPermission{}); err != nil {
+		log.Fatalf("Failed to AutoMigrate table (user_permissions): %v", err)
+	}
 	return u
 }
 

@@ -52,6 +52,8 @@ func (m *UserManager) CreatePermission(permission UserPermission) error {
 	return nil
 }
 
+// ResetAccess to
+
 // CreatePermissions to iterate through a slice of permissions
 func (m *UserManager) CreatePermissions(permissions []UserPermission) error {
 	for _, p := range permissions {
@@ -67,11 +69,11 @@ func (m *UserManager) GenEnvUserAccess(envs []string, user, query, carve, admin 
 	access := make(UserAccess)
 	for _, e := range envs {
 		access[e] = EnvAccess{
-		User:  user,
-		Query: query,
-		Carve: carve,
-		Admin: admin,
-	}
+			User:  user,
+			Query: query,
+			Carve: carve,
+			Admin: admin,
+		}
 	}
 	return access
 }
@@ -120,7 +122,11 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 		return false
 	}
 	for _, p := range perms {
-		if p.AccessType == int(level) || p.AccessType == int(AdminLevel) {
+		// Access is yes for admins
+		if p.AccessType == int(AdminLevel) && p.AccessValue {
+			return true
+		}
+		if p.AccessType == int(level) {
 			return p.AccessValue
 		}
 	}
@@ -195,11 +201,11 @@ func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) erro
 
 // SetEnvLevel to change the access for a user
 func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
-	perm , err := m.GetPermission(username, environment)
+	perm, err := m.GetPermission(username, environment, level)
 	if err != nil {
 		return fmt.Errorf("error getting permissions for %s/%s - %s", username, environment, err)
 	}
-	m.DB.Model(&UserPermission{}).Updates(map[string]interface{}{
+	m.DB.Model(&perm).Updates(map[string]interface{}{
 		"access_type":  level,
 		"access_value": value,
 		"granted_by":   perm.GrantedBy,
@@ -257,12 +263,12 @@ func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
 }
 
 // GetPermission to extract permission by username and environment
-func (m *UserManager) GetPermission(username, environment string) (UserPermission, error) {
+func (m *UserManager) GetPermission(username, environment string, aType AccessLevel) (UserPermission, error) {
 	var perm UserPermission
 	if !m.Exists(username) {
 		return perm, fmt.Errorf("user %s does not exist", username)
 	}
-	if err := m.DB.Where("username = ? AND environment = ?", username, environment).First(&perm).Error; err != nil {
+	if err := m.DB.Where("username = ? AND environment = ? AND access_type = ?", username, environment, aType).First(&perm).Error; err != nil {
 		return perm, err
 	}
 	return perm, nil
@@ -278,4 +284,21 @@ func (m *UserManager) GetPermissions(username, environment string) ([]UserPermis
 		return perms, err
 	}
 	return perms, nil
+}
+
+// Delete all permissions by username and environment
+func (m *UserManager) DeletePermissions(username, environment string) error {
+	if !m.Exists(username) {
+		return fmt.Errorf("user %s does not exist", username)
+	}
+	perms, err := m.GetPermissions(username, environment)
+	if err != nil {
+		return fmt.Errorf("error getting permissions for %s/%s", username, environment)
+	}
+	for _, p := range perms {
+		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {
+			return fmt.Errorf("error deleting permission %v", err)
+		}
+	}
+	return nil
 }

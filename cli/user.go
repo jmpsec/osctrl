@@ -140,3 +140,63 @@ func listUsers(c *cli.Context) error {
 	}
 	return nil
 }
+
+func permissionsUser(c *cli.Context) error {
+	// Get values from flags
+	username := c.String("username")
+	if username == "" {
+		fmt.Println("username is required")
+		os.Exit(1)
+	}
+	environment := c.String("environment")
+	if environment == "" {
+		fmt.Println("environment is required")
+		os.Exit(1)
+	}
+	admin := c.Bool("admin")
+	user := c.Bool("user")
+	carve := c.Bool("carve")
+	query := c.Bool("query")
+	// If admin, then all permissions follow
+	if admin {
+		user = true
+		query = true
+		carve = true
+	}
+	// Reset permissions to regular user access
+	reset := c.Bool("reset")
+	if reset {
+		if err := adminUsers.DeletePermissions(username, environment); err != nil {
+			return err
+		}
+		access := adminUsers.GenEnvUserAccess([]string{environment}, true, query, carve, admin)
+		perms := adminUsers.GenPermissions(username, appName, access)
+		if err := adminUsers.CreatePermissions(perms); err != nil {
+			return err
+		}
+		fmt.Printf("Permissions reset for user %s successfully", username)
+	} else {
+		if user {
+			if err := adminUsers.SetEnvUser(username, environment, user); err != nil {
+				return err
+			}
+		}
+		if admin {
+			if err := adminUsers.SetEnvAdmin(username, environment, admin); err != nil {
+				return err
+			}
+		}
+		if carve {
+			if err := adminUsers.SetEnvCarve(username, environment, carve); err != nil {
+				return err
+			}
+		}
+		if query {
+			if err := adminUsers.SetEnvQuery(username, environment, query); err != nil {
+				return err
+			}
+		}
+		fmt.Printf("Permissions changed for user %s successfully", username)
+	}
+	return nil
+}

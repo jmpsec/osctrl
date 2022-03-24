@@ -63,8 +63,6 @@ const (
 	defSAMLConfigurationFile string = "config/saml.json"
 	// Default JWT configuration file
 	defJWTConfigurationFile string = "config/jwt.json"
-	// Default Headers configuration file
-	defHeadersConfigurationFile string = "config/headers.json"
 	// Default service configuration file
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
@@ -140,7 +138,6 @@ var (
 	tlsCertFile          string
 	tlsKeyFile           string
 	samlConfigFile       string
-	headersConfigFile    string
 	jwtFlag              bool
 	jwtConfigFile        string
 	osqueryTablesFile    string
@@ -157,11 +154,6 @@ var (
 	samlData       samlThings
 )
 
-// Headers variables
-var (
-	headersConfig types.JSONConfigurationHeaders
-)
-
 // JWT variables
 var (
 	jwtConfig types.JSONConfigurationJWT
@@ -171,7 +163,6 @@ var (
 var validAuth = map[string]bool{
 	settings.AuthDB:      true,
 	settings.AuthSAML:    true,
-	settings.AuthHeaders: true,
 	settings.AuthJSON:    true,
 }
 
@@ -433,13 +424,6 @@ func init() {
 			Usage:       "Load SAML configuration from `FILE`",
 			EnvVars:     []string{"SAML_CONFIG_FILE"},
 			Destination: &samlConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "headers-file",
-			Value:       defHeadersConfigurationFile,
-			Usage:       "Load authentication headers configuration from `FILE`",
-			EnvVars:     []string{"HEADERS_CONFIG_FILE"},
-			Destination: &headersConfigFile,
 		},
 		&cli.BoolFlag{
 			Name:        "jwt",
@@ -790,13 +774,6 @@ func cliAction(c *cli.Context) error {
 		samlConfig, err = loadSAML(samlConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to load SAML configuration - %v", err)
-		}
-	}
-	// Load headers configuration if this authentication is used in the service config
-	if adminConfig.Auth == settings.AuthHeaders {
-		headersConfig, err = loadHeaders(headersConfigFile)
-		if err != nil {
-			return fmt.Errorf("Failed to load headers configuration - %v", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used
