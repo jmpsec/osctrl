@@ -59,7 +59,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Check permissions
-		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.Name) {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 			log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return

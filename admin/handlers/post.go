@@ -503,18 +503,25 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract environment and verify
-	environmentVar, ok := vars["environment"]
-	if !ok || !h.Envs.Exists(environmentVar) {
-		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+	// Extract environment
+	envVar, ok := vars["environment"]
+	if !ok {
 		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	var c ConfigurationRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, environmentVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -551,13 +558,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update configuration
-		if err := h.Envs.UpdateConfiguration(environmentVar, cnf); err != nil {
+		if err := h.Envs.UpdateConfiguration(env.UUID, cnf); err != nil {
 			adminErrorResponse(w, "error saving configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update all configuration parts
-		if err := h.Envs.UpdateConfigurationParts(environmentVar, cnf); err != nil {
+		if err := h.Envs.UpdateConfigurationParts(env.UUID, cnf); err != nil {
 			adminErrorResponse(w, "error saving configuration parts", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -580,13 +587,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update options
-		if err := h.Envs.UpdateOptions(environmentVar, string(options)); err != nil {
+		if err := h.Envs.UpdateOptions(env.UUID, string(options)); err != nil {
 			adminErrorResponse(w, "error saving options", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update full configuration
-		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+		if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -609,13 +616,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update schedule
-		if err := h.Envs.UpdateSchedule(environmentVar, string(schedule)); err != nil {
+		if err := h.Envs.UpdateSchedule(env.UUID, string(schedule)); err != nil {
 			adminErrorResponse(w, "error saving schedule", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update full configuration
-		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+		if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -638,13 +645,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update packs
-		if err := h.Envs.UpdatePacks(environmentVar, string(packs)); err != nil {
+		if err := h.Envs.UpdatePacks(env.UUID, string(packs)); err != nil {
 			adminErrorResponse(w, "error saving packs", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update full configuration
-		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+		if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -667,13 +674,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update decorators
-		if err := h.Envs.UpdateDecorators(environmentVar, string(decorators)); err != nil {
+		if err := h.Envs.UpdateDecorators(env.UUID, string(decorators)); err != nil {
 			adminErrorResponse(w, "error saving decorators", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update full configuration
-		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+		if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -696,13 +703,13 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Update ATC
-		if err := h.Envs.UpdateATC(environmentVar, string(schedule)); err != nil {
+		if err := h.Envs.UpdateATC(env.UUID, string(schedule)); err != nil {
 			adminErrorResponse(w, "error saving ATC", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Update full configuration
-		if err := h.Envs.RefreshConfiguration(environmentVar); err != nil {
+		if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -748,7 +755,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.Name) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -799,18 +806,25 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract environment and verify
-	environmentVar, ok := vars["environment"]
-	if !ok || !h.Envs.Exists(environmentVar) {
-		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+	// Extract environment
+	envVar, ok := vars["environment"]
+	if !ok {
 		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	var e ExpirationRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, environmentVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -834,14 +848,14 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	case "enroll":
 		switch e.Action {
 		case "expire":
-			if err := h.Envs.ExpireEnroll(environmentVar); err != nil {
+			if err := h.Envs.ExpireEnroll(env.UUID); err != nil {
 				adminErrorResponse(w, "error expiring enroll", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link expired successfully")
 		case "extend":
-			if err := h.Envs.RotateEnrollPath(environmentVar); err != nil {
+			if err := h.Envs.RotateEnrollPath(env.UUID); err != nil {
 				adminErrorResponse(w, "error extending enroll", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -851,14 +865,14 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	case "remove":
 		switch e.Action {
 		case "expire":
-			if err := h.Envs.ExpireRemove(environmentVar); err != nil {
+			if err := h.Envs.ExpireRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error expiring remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link expired successfully")
 		case "extend":
-			if err := h.Envs.RotateRemove(environmentVar); err != nil {
+			if err := h.Envs.RotateRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error extending remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1562,18 +1576,25 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
 	vars := mux.Vars(r)
-	// Extract environment and verify
-	environmentVar, ok := vars["environment"]
-	if !ok || !h.Envs.Exists(environmentVar) {
-		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+	// Extract environment
+	envVar, ok := vars["environment"]
+	if !ok {
 		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	var e EnrollRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, environmentVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1604,7 +1625,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 		h.Inc(metricAdminErr)
 		return
 	}
-	if err := h.Envs.UpdateCertificate(environmentVar, string(certificate)); err != nil {
+	if err := h.Envs.UpdateCertificate(env.UUID, string(certificate)); err != nil {
 		adminErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return

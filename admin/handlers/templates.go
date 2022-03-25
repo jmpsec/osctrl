@@ -94,12 +94,6 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Println("error getting environment")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricAdminErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -110,7 +104,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.Name) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
@@ -751,19 +745,20 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricAdminErr)
-		log.Println("environment is missing")
+		log.Println("error getting environment")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error unknown environment (%s)", envVar)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, envVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -788,13 +783,6 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	// Get configuration JSON
-	env, err := h.Envs.Get(envVar)
-	if err != nil {
-		h.Inc(metricAdminErr)
-		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Prepare template data
@@ -825,19 +813,20 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	envVar, ok := vars["environment"]
 	if !ok {
 		h.Inc(metricAdminErr)
-		log.Println("environment is missing")
+		log.Println("error getting environment")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error unknown environment (%s)", envVar)
+		log.Printf("error getting environment: %v", err)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, envVar) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -862,13 +851,6 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting platforms: %v", err)
-		return
-	}
-	// Get configuration JSON
-	env, err := h.Envs.Get(envVar)
-	if err != nil {
-		h.Inc(metricAdminErr)
-		log.Printf("error getting environment %v", err)
 		return
 	}
 	// Prepare template data
@@ -951,10 +933,17 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting tags %v", err)
 		return
 	}
+	// Get environment
+	env, err := h.Envs.Get(node.Environment)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, node.Environment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -973,26 +962,19 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting platforms: %v", err)
 		return
 	}
-	// Get the environment for this node
-	var nodeEnv environments.TLSEnvironment
-	for _, e := range envAll {
-		if e.Name == node.Environment {
-			nodeEnv = e
-		}
-	}
 	// If dashboard enabled, retrieve packs and schedule
 	dashboardEnabled := h.Settings.NodeDashboard()
 	var packs environments.PacksEntries
 	var schedule environments.ScheduleConf
 	if dashboardEnabled {
-		packs, err = h.Envs.NodePacksEntries([]byte(nodeEnv.Packs), node.Platform)
+		packs, err = h.Envs.NodePacksEntries([]byte(env.Packs), node.Platform)
 		if err != nil {
 			h.Inc(metricAdminErr)
 			log.Printf("error getting packs: %v", err)
 			return
 		}
 		// Get the schedule for this environment
-		schedule, err = h.Envs.NodeStructSchedule([]byte(nodeEnv.Schedule), node.Platform)
+		schedule, err = h.Envs.NodeStructSchedule([]byte(env.Schedule), node.Platform)
 		if err != nil {
 			h.Inc(metricAdminErr)
 			log.Printf("error getting schedule: %v", err)

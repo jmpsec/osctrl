@@ -120,7 +120,7 @@ func (environment *Environment) UpdateConfiguration(idEnv string, cnf OsqueryCon
 }
 
 // UpdateConfigurationParts to update all the configuration parts for an environment
-func (environment *Environment) UpdateConfigurationParts(name string, cnf OsqueryConf) error {
+func (environment *Environment) UpdateConfigurationParts(idEnv string, cnf OsqueryConf) error {
 	indentedOptions, err := environment.GenSerializedConf(cnf.Options, true)
 	if err != nil {
 		return fmt.Errorf("error serializing options %v", err)
@@ -141,7 +141,7 @@ func (environment *Environment) UpdateConfigurationParts(name string, cnf Osquer
 	if err != nil {
 		return fmt.Errorf("error serializing ATC %v", err)
 	}
-	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Updates(TLSEnvironment{
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(TLSEnvironment{
 		Options:    indentedOptions,
 		Schedule:   indentedSchedule,
 		Packs:      indentedPacks,
