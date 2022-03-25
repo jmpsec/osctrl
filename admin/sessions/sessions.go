@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/utils"
 	"gorm.io/gorm"
 )
 
@@ -65,8 +66,11 @@ type UserSession struct {
 }
 
 // CreateSessionManager creates a new session store in the DB and initialize the tables
-func CreateSessionManager(db *gorm.DB, name string) *SessionManager {
-	storeKey := securecookie.GenerateRandomKey(sessionIDLen)
+func CreateSessionManager(db *gorm.DB, name, sKey string) *SessionManager {
+	storeKey := []byte(sKey)
+	if sKey == "" {
+		storeKey = securecookie.GenerateRandomKey(sessionIDLen)
+	}
 	st := &SessionManager{
 		db:     db,
 		Codecs: securecookie.CodecsFromPairs(storeKey),
@@ -130,8 +134,8 @@ func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) 
 func (sm *SessionManager) New(r *http.Request, username, level string) (UserSession, error) {
 	session := UserSession{
 		Username:  username,
-		IPAddress: r.Header.Get("X-Real-IP"),
-		UserAgent: r.Header.Get("User-Agent"),
+		IPAddress: r.Header.Get(utils.XRealIP),
+		UserAgent: r.Header.Get(utils.UserAgent),
 		ExpiresAt: time.Now().Add(time.Duration(defaultMaxAge) * time.Second),
 	}
 	values := make(SessionValues)

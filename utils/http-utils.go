@@ -31,6 +31,9 @@ const ContentType string = "Content-Type"
 // UserAgent for header key
 const UserAgent string = "User-Agent"
 
+// XRealIP for header key
+const XRealIP string = "X-Real-IP"
+
 // Authorization for header key
 const Authorization string = "Authorization"
 

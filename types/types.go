@@ -2,11 +2,12 @@ package types
 
 // JSONConfigurationService to hold all service configuration values
 type JSONConfigurationService struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Logger   string `json:"logger"`
+	Listener   string `json:"listener"`
+	Port       string `json:"port"`
+	Host       string `json:"host"`
+	Auth       string `json:"auth"`
+	Logger     string `json:"logger"`
+	SessionKey string `json:"sessionKey"`
 }
 
 // JSONConfigurationHeaders to keep all headers details for auth
