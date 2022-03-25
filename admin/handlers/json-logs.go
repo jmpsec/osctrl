@@ -90,16 +90,10 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricJSONErr)
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		log.Printf("error unknown environment (%s)", envVar)
-		h.Inc(metricJSONErr)
-		return
-	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.Name) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
