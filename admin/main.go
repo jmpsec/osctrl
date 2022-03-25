@@ -161,9 +161,9 @@ var (
 
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
-	settings.AuthDB:      true,
-	settings.AuthSAML:    true,
-	settings.AuthJSON:    true,
+	settings.AuthDB:   true,
+	settings.AuthSAML: true,
+	settings.AuthJSON: true,
 }
 
 // Valid values for logging in configuration
@@ -248,6 +248,13 @@ func init() {
 			Usage:       "Exposed hostname the service uses",
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &adminConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "session-key",
+			Value:       "",
+			Usage:       "Session key to generate cookies from it",
+			EnvVars:     []string{"SESSION_KEY"},
+			Destination: &adminConfig.SessionKey,
 		},
 		&cli.StringFlag{
 			Name:        "logging",
@@ -531,7 +538,7 @@ func osctrlAdminService() {
 	log.Println("Initialize carves")
 	carvesmgr = carves.CreateFileCarves(db.Conn)
 	log.Println("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %v", err)

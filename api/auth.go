@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/utils"
 )
 
 // contextValue to hold session data in the context
@@ -70,7 +71,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 			// Update metadata for the user
-			if err := apiUsers.UpdateTokenIPAddress(r.Header.Get("X-Real-IP"), claims.Username); err != nil {
+			if err := apiUsers.UpdateTokenIPAddress(r.Header.Get(utils.XRealIP), claims.Username); err != nil {
 				log.Printf("error updating token for user %s: %v", claims.Username, err)
 			}
 			// Set middleware values
