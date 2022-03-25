@@ -200,7 +200,7 @@ func (h *HandlersAdmin) queryResultLink(name string) string {
 func (h *HandlersAdmin) allowedEnvironments(username string, allEnvs []environments.TLSEnvironment) []environments.TLSEnvironment {
 	var envs []environments.TLSEnvironment
 	for _, e := range allEnvs {
-		if h.Users.CheckPermissions(username, users.EnvLevel, e.Name) {
+		if h.Users.CheckPermissions(username, users.UserLevel, e.Name) {
 			envs = append(envs, e)
 		}
 	}

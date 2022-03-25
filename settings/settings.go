@@ -27,7 +27,6 @@ const (
 	AuthJSON    string = "json"
 	AuthDB      string = "db"
 	AuthSAML    string = "saml"
-	AuthHeaders string = "headers"
 	AuthJWT     string = "jwt"
 )
 

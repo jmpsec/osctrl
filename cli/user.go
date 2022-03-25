@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmpsec/osctrl/users"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -26,11 +25,15 @@ func addUser(c *cli.Context) error {
 		fmt.Println("environment is required")
 		os.Exit(1)
 	}
+	env, err := envs.Get(defaultEnv)
+	if err != nil {
+		return err
+	}
 	password := c.String("password")
 	email := c.String("email")
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
-	user, err := adminUsers.New(username, password, email, fullname, defaultEnv, admin)
+	user, err := adminUsers.New(username, password, email, fullname, env.UUID, admin)
 	if err != nil {
 		return err
 	}
@@ -39,17 +42,9 @@ func addUser(c *cli.Context) error {
 		return err
 	}
 	// Assign permissions to user
-	permEnv := []string{defaultEnv}
-	access := users.EnvLevel
-	if admin {
-		access = users.AdminLevel
-		permEnv, err = envs.Names()
-		if err != nil {
-			return err
-		}
-	}
-	perms := adminUsers.GenPermissions(permEnv, access)
-	if err := adminUsers.ChangePermissions(username, perms); err != nil {
+	access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, (admin == true), (admin == true), (admin == true))
+	perms := adminUsers.GenPermissions(username, appName, access)
+	if err := adminUsers.CreatePermissions(perms); err != nil {
 		return err
 	}
 	fmt.Printf("Created user %s successfully", username)
@@ -146,6 +141,70 @@ func listUsers(c *cli.Context) error {
 		table.Render()
 	} else {
 		fmt.Printf("No users\n")
+	}
+	return nil
+}
+
+func permissionsUser(c *cli.Context) error {
+	// Get values from flags
+	username := c.String("username")
+	if username == "" {
+		fmt.Println("username is required")
+		os.Exit(1)
+	}
+	envName := c.String("environment")
+	if envName == "" {
+		fmt.Println("environment is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
+	}
+	admin := c.Bool("admin")
+	user := c.Bool("user")
+	carve := c.Bool("carve")
+	query := c.Bool("query")
+	// If admin, then all permissions follow
+	if admin {
+		user = true
+		query = true
+		carve = true
+	}
+	// Reset permissions to regular user access
+	reset := c.Bool("reset")
+	if reset {
+		if err := adminUsers.DeletePermissions(username, env.UUID); err != nil {
+			return err
+		}
+		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, query, carve, admin)
+		perms := adminUsers.GenPermissions(username, appName, access)
+		if err := adminUsers.CreatePermissions(perms); err != nil {
+			return err
+		}
+		fmt.Printf("Permissions reset for user %s successfully", username)
+	} else {
+		if user {
+			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
+				return err
+			}
+		}
+		if admin {
+			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
+				return err
+			}
+		}
+		if carve {
+			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
+				return err
+			}
+		}
+		if query {
+			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
+				return err
+			}
+		}
+		fmt.Printf("Permissions changed for user %s successfully", username)
 	}
 	return nil
 }
