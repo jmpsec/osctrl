@@ -25,11 +25,15 @@ func addUser(c *cli.Context) error {
 		fmt.Println("environment is required")
 		os.Exit(1)
 	}
+	env, err := envs.Get(defaultEnv)
+	if err != nil {
+		return err
+	}
 	password := c.String("password")
 	email := c.String("email")
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
-	user, err := adminUsers.New(username, password, email, fullname, defaultEnv, admin)
+	user, err := adminUsers.New(username, password, email, fullname, env.UUID, admin)
 	if err != nil {
 		return err
 	}
@@ -38,7 +42,7 @@ func addUser(c *cli.Context) error {
 		return err
 	}
 	// Assign permissions to user
-	access := adminUsers.GenEnvUserAccess([]string{defaultEnv}, true, (admin == true), (admin == true), (admin == true))
+	access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, (admin == true), (admin == true), (admin == true))
 	perms := adminUsers.GenPermissions(username, appName, access)
 	if err := adminUsers.CreatePermissions(perms); err != nil {
 		return err
@@ -148,10 +152,14 @@ func permissionsUser(c *cli.Context) error {
 		fmt.Println("username is required")
 		os.Exit(1)
 	}
-	environment := c.String("environment")
-	if environment == "" {
+	envName := c.String("environment")
+	if envName == "" {
 		fmt.Println("environment is required")
 		os.Exit(1)
+	}
+	env, err := envs.Get(envName)
+	if err != nil {
+		return err
 	}
 	admin := c.Bool("admin")
 	user := c.Bool("user")
@@ -166,10 +174,10 @@ func permissionsUser(c *cli.Context) error {
 	// Reset permissions to regular user access
 	reset := c.Bool("reset")
 	if reset {
-		if err := adminUsers.DeletePermissions(username, environment); err != nil {
+		if err := adminUsers.DeletePermissions(username, env.UUID); err != nil {
 			return err
 		}
-		access := adminUsers.GenEnvUserAccess([]string{environment}, true, query, carve, admin)
+		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, query, carve, admin)
 		perms := adminUsers.GenPermissions(username, appName, access)
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return err
@@ -177,22 +185,22 @@ func permissionsUser(c *cli.Context) error {
 		fmt.Printf("Permissions reset for user %s successfully", username)
 	} else {
 		if user {
-			if err := adminUsers.SetEnvUser(username, environment, user); err != nil {
+			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
 				return err
 			}
 		}
 		if admin {
-			if err := adminUsers.SetEnvAdmin(username, environment, admin); err != nil {
+			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
 				return err
 			}
 		}
 		if carve {
-			if err := adminUsers.SetEnvCarve(username, environment, carve); err != nil {
+			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
 				return err
 			}
 		}
 		if query {
-			if err := adminUsers.SetEnvQuery(username, environment, query); err != nil {
+			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
 				return err
 			}
 		}

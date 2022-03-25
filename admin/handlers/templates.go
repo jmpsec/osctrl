@@ -21,10 +21,11 @@ type TemplateFiles struct {
 }
 
 // TemplateMetadata - Helper to prepare template metadata
+// TODO until a better implementation, all users are admin
 func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version string) TemplateMetadata {
 	return TemplateMetadata{
 		Username:       ctx[sessions.CtxUser],
-		Level:          ctx[sessions.CtxLevel],
+		Level:          "admin",
 		CSRFToken:      ctx[sessions.CtxCSRF],
 		Service:        "osctrl-admin",
 		Version:        version,
