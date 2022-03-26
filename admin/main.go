@@ -83,6 +83,8 @@ const (
 	defStaticFilesFolder string = "./static"
 	// Default templates folder
 	defTemplatesFolder string = "./tmpl_admin"
+	// Default carved files folder
+	defCarvedFolder string = "./carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -92,7 +94,7 @@ const (
 // osquery
 const (
 	// osquery version to display tables
-	defOsqueryTablesVersion string = "5.0.1"
+	defOsqueryTablesVersion string = "5.2.2"
 	// JSON file with osquery tables data
 	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
 )
@@ -144,6 +146,7 @@ var (
 	osqueryTablesVersion string
 	loggerFile           string
 	staticFilesFolder    string
+	carvedFilesFolder    string
 	templatesFolder      string
 )
 
@@ -493,9 +496,16 @@ func init() {
 		&cli.StringFlag{
 			Name:        "templates",
 			Value:       defTemplatesFolder,
-			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			Usage:       "Directory with all the templates needed for the osctrl-admin UI",
 			EnvVars:     []string{"STATIC_FILES"},
 			Destination: &templatesFolder,
+		},
+		&cli.StringFlag{
+			Name:        "carved",
+			Value:       defCarvedFolder,
+			Usage:       "Directory for all the received carved files from osquery",
+			EnvVars:     []string{"CARVED_FILES"},
+			Destination: &carvedFilesFolder,
 		},
 	}
 	// Logging format flags
@@ -601,6 +611,7 @@ func osctrlAdminService() {
 		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
 		handlers.WithVersion(serviceVersion),
+		handlers.WithOsqueryVersion(osqueryTablesVersion),
 		handlers.WithTemplates(templatesFolder),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithAdminConfig(&adminConfig),

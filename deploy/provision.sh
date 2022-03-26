@@ -718,7 +718,7 @@ else
     sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
     # Copy osquery tables JSON file
-    sudo cp "$SOURCE_PATH/deploy/osquery/data/5.0.1.json" "$DEST_PATH/data"
+    sudo cp "$SOURCE_PATH/deploy/osquery/data/5.2.2.json" "$DEST_PATH/data"
 
     # Prepare static files for Admin service
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"

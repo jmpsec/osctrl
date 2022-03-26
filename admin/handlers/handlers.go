@@ -47,7 +47,9 @@ type HandlersAdmin struct {
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceVersion  string
+	OsqueryVersion  string
 	TemplatesFolder string
+	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *types.JSONConfigurationService
 }
@@ -102,6 +104,12 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 	}
 }
 
+func WithCarvesFolder(carves string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.CarvesFolder = carves
+	}
+}
+
 func WithMetrics(metrics *metrics.Metrics) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Metrics = metrics
@@ -123,6 +131,12 @@ func WithSessions(sessions *sessions.SessionManager) HandlersOption {
 func WithVersion(version string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.ServiceVersion = version
+	}
+}
+
+func WithOsqueryVersion(version string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.OsqueryVersion = version
 	}
 }
 
