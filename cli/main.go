@@ -679,7 +679,7 @@ func init() {
 							Usage:   "Environment to be used",
 						},
 					},
-					Action: (secretEnvironment),
+					Action: cliWrapper(secretEnvironment),
 				},
 			},
 		},
@@ -1041,7 +1041,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			return fmt.Errorf("Failed to create backend - %v", err)
 		}
 		// Initialize users
-		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{})
+		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
 		// Initialize environment
 		envs = environments.CreateEnvironment(backend.Conn)
 		// Initialize settings
