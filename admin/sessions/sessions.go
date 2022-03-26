@@ -134,7 +134,7 @@ func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) 
 func (sm *SessionManager) New(r *http.Request, username, level string) (UserSession, error) {
 	session := UserSession{
 		Username:  username,
-		IPAddress: r.Header.Get(utils.XRealIP),
+		IPAddress: utils.GetIP(r),
 		UserAgent: r.Header.Get(utils.UserAgent),
 		ExpiresAt: time.Now().Add(time.Duration(defaultMaxAge) * time.Second),
 	}

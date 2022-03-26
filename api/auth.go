@@ -71,7 +71,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 			// Update metadata for the user
-			if err := apiUsers.UpdateTokenIPAddress(r.Header.Get(utils.XRealIP), claims.Username); err != nil {
+			if err := apiUsers.UpdateTokenIPAddress(utils.GetIP(r), claims.Username); err != nil {
 				log.Printf("error updating token for user %s: %v", claims.Username, err)
 			}
 			// Set middleware values

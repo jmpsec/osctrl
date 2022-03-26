@@ -214,7 +214,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	if h.checkValidSecret(t.EnrollSecret, env.Name) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
-		newNode = nodeFromEnroll(t, env.Name, r.Header.Get(utils.XRealIP), nodeKey)
+		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey)
 		// Check if UUID exists already, if so archive node and enroll new node
 		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
@@ -292,7 +292,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided node_key is valid and if so, update node
 	if h.Nodes.CheckByKey(t.NodeKey) {
-		err = h.Nodes.UpdateIPAddressByKey(r.Header.Get(utils.XRealIP), t.NodeKey)
+		err = h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey)
 		if err != nil {
 			h.Inc(metricConfigErr)
 			log.Printf("error updating IP address %v", err)
@@ -380,7 +380,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, r.Header.Get(utils.XRealIP), (*h.EnvsMap)[env.Name].DebugHTTP)
+		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
@@ -434,7 +434,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Lookup node by node_key
 	node, err := h.Nodes.GetByKey(t.NodeKey)
 	if err == nil {
-		err = h.Nodes.UpdateIPAddress(r.Header.Get(utils.XRealIP), node)
+		err = h.Nodes.UpdateIPAddress(utils.GetIP(r), node)
 		if err != nil {
 			h.Inc(metricReadErr)
 			log.Printf("error updating IP Address %v", err)
@@ -509,7 +509,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
 	if h.Nodes.CheckByKey(t.NodeKey) {
-		if err := h.Nodes.UpdateIPAddressByKey(r.Header.Get(utils.XRealIP), t.NodeKey); err != nil {
+		if err := h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey); err != nil {
 			h.Inc(metricWriteErr)
 			log.Printf("error updating IP Address %v", err)
 		}
@@ -650,7 +650,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
 	if h.Nodes.CheckByKey(t.NodeKey) {
-		if err := h.Nodes.UpdateIPAddressByKey(r.Header.Get(utils.XRealIP), t.NodeKey); err != nil {
+		if err := h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey); err != nil {
 			h.Inc(metricInitErr)
 			log.Printf("error updating IP Address %v", err)
 		}
