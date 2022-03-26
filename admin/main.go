@@ -146,6 +146,7 @@ var (
 	osqueryTablesVersion string
 	loggerFile           string
 	staticFilesFolder    string
+	staticOffline         bool
 	carvedFilesFolder    string
 	templatesFolder      string
 )
@@ -493,6 +494,14 @@ func init() {
 			EnvVars:     []string{"STATIC_FILES"},
 			Destination: &staticFilesFolder,
 		},
+		&cli.BoolFlag{
+			Name:        "static-offline",
+			Aliases:     []string{"S"},
+			Value:       false,
+			Usage:       "Use offline static files (js and css). Default is online files.",
+			EnvVars:     []string{"STATIC_ONLINE"},
+			Destination: &staticOffline,
+		},
 		&cli.StringFlag{
 			Name:        "templates",
 			Value:       defTemplatesFolder,
@@ -613,6 +622,7 @@ func osctrlAdminService() {
 		handlers.WithVersion(serviceVersion),
 		handlers.WithOsqueryVersion(osqueryTablesVersion),
 		handlers.WithTemplates(templatesFolder),
+		handlers.WithStaticLocation(staticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithAdminConfig(&adminConfig),
 	)

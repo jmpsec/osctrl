@@ -49,6 +49,7 @@ type HandlersAdmin struct {
 	ServiceVersion  string
 	OsqueryVersion  string
 	TemplatesFolder string
+	StaticLocation  string
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *types.JSONConfigurationService
@@ -143,6 +144,15 @@ func WithOsqueryVersion(version string) HandlersOption {
 func WithTemplates(templates string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.TemplatesFolder = templates
+	}
+}
+
+func WithStaticLocation(offline bool) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.StaticLocation = "online"
+		if offline {
+			h.StaticLocation = "offline"
+		}
 	}
 }
 
