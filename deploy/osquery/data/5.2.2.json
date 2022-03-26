@@ -5246,6 +5246,43 @@
     ]
   },
   {
+    "name":"docker_container_envs",
+    "description":"Docker container environment variables.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/docker_container_envs.table",
+    "platforms":[
+      "darwin",
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"id",
+        "description":"Container ID",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key",
+        "description":"Environment variable name",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"value",
+        "description":"Environment variable value",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"docker_container_fs_changes",
     "description":"Changes to files or directories on container's filesystem.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/docker_container_fs_changes.table",
@@ -20676,7 +20713,7 @@
   },
   {
     "name":"time",
-    "description":"Track current date and time in the system.",
+    "description":"Track current date and time in UTC.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/utility/time.table",
     "platforms":[
       "darwin",
@@ -20689,7 +20726,7 @@
     "columns":[
       {
         "name":"weekday",
-        "description":"Current weekday in the system",
+        "description":"Current weekday in UTC",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20697,7 +20734,7 @@
       },
       {
         "name":"year",
-        "description":"Current year in the system",
+        "description":"Current year in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20705,7 +20742,7 @@
       },
       {
         "name":"month",
-        "description":"Current month in the system",
+        "description":"Current month in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20713,7 +20750,7 @@
       },
       {
         "name":"day",
-        "description":"Current day in the system",
+        "description":"Current day in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20721,7 +20758,7 @@
       },
       {
         "name":"hour",
-        "description":"Current hour in the system",
+        "description":"Current hour in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20729,7 +20766,7 @@
       },
       {
         "name":"minutes",
-        "description":"Current minutes in the system",
+        "description":"Current minutes in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20737,7 +20774,7 @@
       },
       {
         "name":"seconds",
-        "description":"Current seconds in the system",
+        "description":"Current seconds in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20745,23 +20782,15 @@
       },
       {
         "name":"timezone",
-        "description":"Current timezone in the system",
+        "description":"Timezone for reported time (hardcoded to UTC)",
         "type":"text",
         "hidden":false,
         "required":false,
         "index":false
       },
       {
-        "name":"local_time",
-        "description":"Current local UNIX time in the system",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
         "name":"local_timezone",
-        "description":"Current local timezone in the system",
+        "description":"Current local timezone in of the system",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20769,7 +20798,7 @@
       },
       {
         "name":"unix_time",
-        "description":"Current UNIX time in the system, converted to UTC if --utc enabled",
+        "description":"Current UNIX time in UTC",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -20777,7 +20806,7 @@
       },
       {
         "name":"timestamp",
-        "description":"Current timestamp (log format) in the system",
+        "description":"Current timestamp (log format) in UTC",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20785,7 +20814,7 @@
       },
       {
         "name":"datetime",
-        "description":"Current date and time (ISO format) in the system",
+        "description":"Current date and time (ISO format) in UTC",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20793,7 +20822,7 @@
       },
       {
         "name":"iso_8601",
-        "description":"Current time (ISO format) in the system",
+        "description":"Current time (ISO format) in UTC",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20801,7 +20830,7 @@
       },
       {
         "name":"win_timestamp",
-        "description":"Timestamp value in 100 nanosecond units.",
+        "description":"Timestamp value in 100 nanosecond units",
         "type":"bigint",
         "hidden":true,
         "required":false,
@@ -22589,6 +22618,146 @@
     ]
   },
   {
+    "name":"windows_firewall_rules",
+    "description":"Provides the list of Windows firewall rules.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_firewall_rules.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"name",
+        "description":"Friendly name of the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"app_name",
+        "description":"Friendly name of the application to which the rule applies",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"action",
+        "description":"Action for the rule or default setting",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"enabled",
+        "description":"1 if the rule is enabled",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"grouping",
+        "description":"Group to which an individual rule belongs",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"direction",
+        "description":"Direction of traffic for which the rule applies",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"protocol",
+        "description":"IP protocol of the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"local_addresses",
+        "description":"Local addresses for the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"remote_addresses",
+        "description":"Remote addresses for the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"local_ports",
+        "description":"Local ports for the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"remote_ports",
+        "description":"Remote ports for the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"icmp_types_codes",
+        "description":"ICMP types and codes for the rule",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"profile_domain",
+        "description":"1 if the rule profile type is domain",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"profile_private",
+        "description":"1 if the rule profile type is private",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"profile_public",
+        "description":"1 if the rule profile type is public",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"service_name",
+        "description":"Service name property of the application",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"windows_optional_features",
     "description":"Lists names and installation states of windows features. Maps to Win32_OptionalFeature WMI class.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_optional_features.table",
@@ -22668,9 +22837,9 @@
       },
       {
         "name":"antispyware",
-        "description":"The health of the monitored Antispyware solution (see windows_security_products)",
+        "description":"Deprecated (always 'Good').",
         "type":"text",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },

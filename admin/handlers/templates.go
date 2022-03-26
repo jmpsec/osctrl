@@ -317,7 +317,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		UUIDs:         uuids,
 		Hosts:         hosts,
 		Tables:        h.OsqueryTables,
-		TablesVersion: osqueryTablesVersion,
+		TablesVersion: h.OsqueryVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
@@ -493,7 +493,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		UUIDs:         uuids,
 		Hosts:         hosts,
 		Tables:        h.OsqueryTables,
-		TablesVersion: osqueryTablesVersion,
+		TablesVersion: h.OsqueryVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
