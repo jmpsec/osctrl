@@ -34,6 +34,8 @@ const UserAgent string = "User-Agent"
 // XRealIP for header key
 const XRealIP string = "X-Real-IP"
 
+const XForwardedFor string = "X-Forwarded-For"
+
 // Authorization for header key
 const Authorization string = "Authorization"
 
@@ -108,6 +110,19 @@ func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 	if debugCheck {
 		log.Println(DebugHTTP(r, debugCheck, showBody))
 	}
+}
+
+// GetIP - Helper to get the IP address from a HTTP request
+func GetIP(r *http.Request) string {
+	realIP := r.Header.Get(XRealIP)
+	if realIP != "" {
+		return realIP
+	}
+	forwarded := r.Header.Get(XForwardedFor)
+	if forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
 }
 
 // HTTPResponse - Helper to send HTTP response
