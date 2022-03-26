@@ -47,6 +47,10 @@ type UserManager struct {
 
 // CreateUserManager to initialize the users struct and tables
 func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) *UserManager {
+	// Check if JWT is not empty
+	if jwtconfig.JWTSecret == "" {
+		log.Fatalf("JWT Secret can not be empty")
+	}
 	var u *UserManager
 	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
