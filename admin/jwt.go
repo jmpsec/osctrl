@@ -22,8 +22,8 @@ func loadJWTConfiguration(file string) (types.JSONConfigurationJWT, error) {
 		return cfg, err
 	}
 	// JWT values
-	headersRaw := viper.Sub(settings.AuthJWT)
-	if err := headersRaw.Unmarshal(&cfg); err != nil {
+	jwtRaw := viper.Sub(settings.AuthJWT)
+	if err := jwtRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// No errors!

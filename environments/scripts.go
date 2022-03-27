@@ -18,8 +18,8 @@ _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
 _SECRET_OSX=/private/var/osquery/${_PROJECT}.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
-_PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist
-_OSQUERY_PLIST=/private/var/osquery/com.facebook.osqueryd.plist
+_PLIST_OSX=/Library/LaunchDaemons/io.osquery.agent.plist
+_OSQUERY_PLIST=/private/var/osquery/io.osquery.agent.plist
 
 _SECRET_FREEBSD=/usr/local/etc/${_PROJECT}.secret
 _FLAGS_FREEBSD=/usr/local/etc/osquery.flags
@@ -27,13 +27,13 @@ _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
 _DEB_ARCH=$(dpkg-architecture -q DEB_BUILD_ARCH)
 
-_OSQUERY_VER="5.0.1"
+_OSQUERY_VER="5.2.2"
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_OSQUERY_VER.pkg"
 _OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_$_OSQUERY_VER-1.linux_$_DEB_ARCH.deb"
 _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_OSQUERY_VER-1.linux.x86_64.rpm"
 
 _OSQUERY_SERVICE_LINUX="osqueryd"
-_OSQUERY_SERVICE_OSX="com.facebook.osqueryd"
+_OSQUERY_SERVICE_OSX="io.osquery.agent"
 _OSQUERY_SERVICE_FREEBSD="osqueryd"
 
 _SECRET_FILE=""
@@ -242,8 +242,8 @@ $osqueryDaemon = (Join-Path $daemonFolder "osqueryd.exe")
 $secretFile = (Join-Path $osqueryPath "{{ .Project }}.secret")
 $flagsFile = (Join-Path $osqueryPath "osquery.flags")
 $certFile = (Join-Path $osqueryPath "{{ .Project }}.crt")
-$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-5.0.1.2.msi"
-$osqueryTempMSI = "C:\Windows\Temp\osquery-5.0.1.2.msi"
+$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-5.2.2.msi"
+$osqueryTempMSI = "C:\Windows\Temp\osquery-5.2.2.msi"
 #$osqueryMSISize = 9953280
 $serviceName = "osqueryd"
 $serviceDescription = "osquery daemon service"

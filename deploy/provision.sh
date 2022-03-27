@@ -470,15 +470,6 @@ if [[ "$UPGRADE" == true ]]; then
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
-    # Static files will require internet connection (CSS + JS)
-    if [[ "$MODE" == "dev" ]]; then
-      sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
-    else
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
-    fi
-
     # Restart service with new binary
     make install_admin
   fi
@@ -718,20 +709,11 @@ else
     sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
     # Copy osquery tables JSON file
-    sudo cp "$SOURCE_PATH/deploy/osquery/data/5.0.1.json" "$DEST_PATH/data"
+    sudo cp "$SOURCE_PATH/deploy/osquery/data/5.2.2.json" "$DEST_PATH/data"
 
     # Prepare static files for Admin service
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
-
-    # Static files will require internet connection (CSS + JS)
-    if [[ "$MODE" == "dev" ]]; then
-      sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo ln -fs "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
-    else
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-head-online.html" "$DEST_PATH/tmpl_admin/components/page-head.html"
-      sudo rsync -av "$SOURCE_PATH/admin/templates/components/page-js-online.html" "$DEST_PATH/tmpl_admin/components/page-js.html"
-    fi
 
     # Systemd configuration for Admin service
     _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"

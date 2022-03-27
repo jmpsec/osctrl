@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/utils"
 	"gorm.io/gorm"
 )
 
@@ -65,8 +66,11 @@ type UserSession struct {
 }
 
 // CreateSessionManager creates a new session store in the DB and initialize the tables
-func CreateSessionManager(db *gorm.DB, name string) *SessionManager {
-	storeKey := securecookie.GenerateRandomKey(sessionIDLen)
+func CreateSessionManager(db *gorm.DB, name, sKey string) *SessionManager {
+	storeKey := []byte(sKey)
+	if sKey == "" {
+		storeKey = securecookie.GenerateRandomKey(sessionIDLen)
+	}
 	st := &SessionManager{
 		db:     db,
 		Codecs: securecookie.CodecsFromPairs(storeKey),
@@ -130,8 +134,8 @@ func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) 
 func (sm *SessionManager) New(r *http.Request, username, level string) (UserSession, error) {
 	session := UserSession{
 		Username:  username,
-		IPAddress: r.Header.Get("X-Real-IP"),
-		UserAgent: r.Header.Get("User-Agent"),
+		IPAddress: utils.GetIP(r),
+		UserAgent: r.Header.Get(utils.UserAgent),
 		ExpiresAt: time.Now().Add(time.Duration(defaultMaxAge) * time.Second),
 	}
 	values := make(SessionValues)
@@ -166,17 +170,17 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 }
 
 // Save session and set cookie header
-func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, perms users.UserPermissions) (UserSession, error) {
+func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, access users.EnvAccess) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(sm.CookieName); err != nil {
-		s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
+		s, err = sm.New(r, user.Username, LevelPermissions(user, access))
 		if err != nil {
 			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
-			s, err = sm.New(r, user.Username, LevelPermissions(user, perms))
+			s, err = sm.New(r, user.Username, LevelPermissions(user, access))
 			if err != nil {
 				return s, err
 			}
@@ -203,16 +207,16 @@ func GenerateCSRF() string {
 }
 
 // Helper to convert permissions for a user to a level for context
-func LevelPermissions(user users.AdminUser, perms users.UserPermissions) string {
+func LevelPermissions(user users.AdminUser, access users.EnvAccess) string {
 	if user.Admin {
 		return AdminLevel
 	}
 	// Check for query access
-	if perms.Query {
+	if access.Query {
 		return QueryLevel
 	}
 	// Check for carve access
-	if perms.Carve {
+	if access.Carve {
 		return CarveLevel
 	}
 	// At this point, no access granted

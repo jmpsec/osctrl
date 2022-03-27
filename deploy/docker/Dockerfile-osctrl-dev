@@ -116,8 +116,6 @@ RUN chown osctrl-admin:osctrl-admin -R /opt/osctrl/config
 
 ### Copy osctrl-admin web templates ###
 COPY /go/src/osctrl/admin/templates/ /opt/osctrl/tmpl_admin
-COPY /go/src/osctrl/admin/templates/components/page-head-online.html /opt/osctrl/tmpl_admin/components/page-head.html
-COPY /go/src/osctrl/admin/templates/components/page-js-online.html /opt/osctrl/tmpl_admin/components/page-js.html
 COPY /go/src/osctrl/admin/static/ /opt/osctrl/static
 COPY /go/src/osctrl/deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
 

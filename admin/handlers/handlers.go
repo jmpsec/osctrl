@@ -47,7 +47,10 @@ type HandlersAdmin struct {
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceVersion  string
+	OsqueryVersion  string
 	TemplatesFolder string
+	StaticLocation  string
+	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *types.JSONConfigurationService
 }
@@ -102,6 +105,12 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 	}
 }
 
+func WithCarvesFolder(carves string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.CarvesFolder = carves
+	}
+}
+
 func WithMetrics(metrics *metrics.Metrics) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Metrics = metrics
@@ -126,9 +135,24 @@ func WithVersion(version string) HandlersOption {
 	}
 }
 
+func WithOsqueryVersion(version string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.OsqueryVersion = version
+	}
+}
+
 func WithTemplates(templates string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.TemplatesFolder = templates
+	}
+}
+
+func WithStaticLocation(offline bool) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.StaticLocation = "online"
+		if offline {
+			h.StaticLocation = "offline"
+		}
 	}
 }
 

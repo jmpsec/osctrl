@@ -165,6 +165,54 @@ func init() {
 					Action: cliWrapper(editUser),
 				},
 				{
+					Name:    "permissions",
+					Aliases: []string{"p"},
+					Usage:   "Change permissions for an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to be edited",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"E"},
+							Usage:   "Environment for this user",
+						},
+						&cli.BoolFlag{
+							Name:    "admin",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Grant admin permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "user",
+							Aliases: []string{"U"},
+							Hidden:  false,
+							Usage:   "Grant user permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "query",
+							Aliases: []string{"q"},
+							Hidden:  false,
+							Usage:   "Grant query permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "carve",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Grant carve permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "reset",
+							Aliases: []string{"R"},
+							Hidden:  false,
+							Usage:   "Reset permissions for this user",
+						},
+					},
+					Action: cliWrapper(permissionsUser),
+				},
+				{
 					Name:    "delete",
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing user",
@@ -184,6 +232,7 @@ func init() {
 					Action:  cliWrapper(listUsers),
 				},
 			},
+
 		},
 		{
 			Name:    "environment",
@@ -630,7 +679,7 @@ func init() {
 							Usage:   "Environment to be used",
 						},
 					},
-					Action: (secretEnvironment),
+					Action: cliWrapper(secretEnvironment),
 				},
 			},
 		},
@@ -992,7 +1041,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			return fmt.Errorf("Failed to create backend - %v", err)
 		}
 		// Initialize users
-		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{})
+		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
 		// Initialize environment
 		envs = environments.CreateEnvironment(backend.Conn)
 		// Initialize settings

@@ -14,19 +14,11 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
-// osquery
-const (
-	// osquery version to display tables
-	osqueryTablesVersion string = "5.0.1"
-	// Carved files folder
-	carvedFilesFolder string = "carved_files/"
-)
-
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	w.Header().Set(utils.ContentType, "image/png")
-	http.ServeFile(w, r, "./static/favicon.png")
+	http.ServeFile(w, r, "/static/favicon.png")
 }
 
 // HealthHandler for health requests
@@ -85,7 +77,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get permissions
-	permissions, err := h.Users.GetPermissions(usernameVar)
+	permissions, err := h.Users.GetAccess(usernameVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting permissions %v", err)
@@ -116,7 +108,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Prepare file to download
-	result, err := h.Carves.Archive(carveSession, carvedFilesFolder)
+	result, err := h.Carves.Archive(carveSession, h.CarvesFolder)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error downloading carve - %v", err)

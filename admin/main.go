@@ -63,8 +63,6 @@ const (
 	defSAMLConfigurationFile string = "config/saml.json"
 	// Default JWT configuration file
 	defJWTConfigurationFile string = "config/jwt.json"
-	// Default Headers configuration file
-	defHeadersConfigurationFile string = "config/headers.json"
 	// Default service configuration file
 	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
 	// Default DB configuration file
@@ -85,6 +83,8 @@ const (
 	defStaticFilesFolder string = "./static"
 	// Default templates folder
 	defTemplatesFolder string = "./tmpl_admin"
+	// Default carved files folder
+	defCarvedFolder string = "./carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default hours to classify nodes as inactive
@@ -94,7 +94,7 @@ const (
 // osquery
 const (
 	// osquery version to display tables
-	defOsqueryTablesVersion string = "5.0.1"
+	defOsqueryTablesVersion string = "5.2.2"
 	// JSON file with osquery tables data
 	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
 )
@@ -140,13 +140,14 @@ var (
 	tlsCertFile          string
 	tlsKeyFile           string
 	samlConfigFile       string
-	headersConfigFile    string
 	jwtFlag              bool
 	jwtConfigFile        string
 	osqueryTablesFile    string
 	osqueryTablesVersion string
 	loggerFile           string
 	staticFilesFolder    string
+	staticOffline         bool
+	carvedFilesFolder    string
 	templatesFolder      string
 )
 
@@ -157,11 +158,6 @@ var (
 	samlData       samlThings
 )
 
-// Headers variables
-var (
-	headersConfig types.JSONConfigurationHeaders
-)
-
 // JWT variables
 var (
 	jwtConfig types.JSONConfigurationJWT
@@ -169,10 +165,9 @@ var (
 
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
-	settings.AuthDB:      true,
-	settings.AuthSAML:    true,
-	settings.AuthHeaders: true,
-	settings.AuthJSON:    true,
+	settings.AuthDB:   true,
+	settings.AuthSAML: true,
+	settings.AuthJSON: true,
 }
 
 // Valid values for logging in configuration
@@ -257,6 +252,13 @@ func init() {
 			Usage:       "Exposed hostname the service uses",
 			EnvVars:     []string{"SERVICE_HOST"},
 			Destination: &adminConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "session-key",
+			Value:       "",
+			Usage:       "Session key to generate cookies from it",
+			EnvVars:     []string{"SESSION_KEY"},
+			Destination: &adminConfig.SessionKey,
 		},
 		&cli.StringFlag{
 			Name:        "logging",
@@ -434,13 +436,6 @@ func init() {
 			EnvVars:     []string{"SAML_CONFIG_FILE"},
 			Destination: &samlConfigFile,
 		},
-		&cli.StringFlag{
-			Name:        "headers-file",
-			Value:       defHeadersConfigurationFile,
-			Usage:       "Load authentication headers configuration from `FILE`",
-			EnvVars:     []string{"HEADERS_CONFIG_FILE"},
-			Destination: &headersConfigFile,
-		},
 		&cli.BoolFlag{
 			Name:        "jwt",
 			Aliases:     []string{"j"},
@@ -499,12 +494,27 @@ func init() {
 			EnvVars:     []string{"STATIC_FILES"},
 			Destination: &staticFilesFolder,
 		},
+		&cli.BoolFlag{
+			Name:        "static-offline",
+			Aliases:     []string{"S"},
+			Value:       false,
+			Usage:       "Use offline static files (js and css). Default is online files.",
+			EnvVars:     []string{"STATIC_ONLINE"},
+			Destination: &staticOffline,
+		},
 		&cli.StringFlag{
 			Name:        "templates",
 			Value:       defTemplatesFolder,
-			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
+			Usage:       "Directory with all the templates needed for the osctrl-admin UI",
 			EnvVars:     []string{"STATIC_FILES"},
 			Destination: &templatesFolder,
+		},
+		&cli.StringFlag{
+			Name:        "carved",
+			Value:       defCarvedFolder,
+			Usage:       "Directory for all the received carved files from osquery",
+			EnvVars:     []string{"CARVED_FILES"},
+			Destination: &carvedFilesFolder,
 		},
 	}
 	// Logging format flags
@@ -547,7 +557,7 @@ func osctrlAdminService() {
 	log.Println("Initialize carves")
 	carvesmgr = carves.CreateFileCarves(db.Conn)
 	log.Println("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %v", err)
@@ -610,7 +620,9 @@ func osctrlAdminService() {
 		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
 		handlers.WithVersion(serviceVersion),
+		handlers.WithOsqueryVersion(osqueryTablesVersion),
 		handlers.WithTemplates(templatesFolder),
+		handlers.WithStaticLocation(staticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithAdminConfig(&adminConfig),
 	)
@@ -790,13 +802,6 @@ func cliAction(c *cli.Context) error {
 		samlConfig, err = loadSAML(samlConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to load SAML configuration - %v", err)
-		}
-	}
-	// Load headers configuration if this authentication is used in the service config
-	if adminConfig.Auth == settings.AuthHeaders {
-		headersConfig, err = loadHeaders(headersConfigFile)
-		if err != nil {
-			return fmt.Errorf("Failed to load headers configuration - %v", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used

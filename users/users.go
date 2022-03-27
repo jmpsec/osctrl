@@ -1,16 +1,18 @@
 package users
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/jmpsec/osctrl/types"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+const (
+	DefaultTokeIssuer = "osctrl"
 )
 
 // AdminUser to hold all users
@@ -25,7 +27,6 @@ type AdminUser struct {
 	Admin         bool
 	DefaultEnv    string
 	CSRFToken     string
-	Permissions   postgres.Jsonb
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time
@@ -46,11 +47,19 @@ type UserManager struct {
 
 // CreateUserManager to initialize the users struct and tables
 func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) *UserManager {
+	// Check if JWT is not empty
+	if jwtconfig.JWTSecret == "" {
+		log.Fatalf("JWT Secret can not be empty")
+	}
 	var u *UserManager
 	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
 	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (admin_users): %v", err)
+	}
+	// table user_permissions
+	if err := backend.AutoMigrate(&UserPermission{}); err != nil {
+		log.Fatalf("Failed to AutoMigrate table (user_permissions): %v", err)
 	}
 	return u
 }
@@ -97,7 +106,7 @@ func (m *UserManager) CreateToken(username string) (string, time.Time, error) {
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
-			Issuer:    "admin",
+			Issuer:    DefaultTokeIssuer,
 		},
 	}
 	// Declare the token with the algorithm used for signing, and the claims
@@ -151,19 +160,13 @@ func (m *UserManager) New(username, password, email, fullname, defaultEnv string
 		if err != nil {
 			return AdminUser{}, err
 		}
-		// Permissions are empty for an empty user
-		permsRaw, err := json.Marshal(m.GenPermissions([]string{}, EnvLevel))
-		if err != nil {
-			permsRaw = []byte("{}")
-		}
 		return AdminUser{
-			Username:    username,
-			PassHash:    passhash,
-			Admin:       admin,
-			DefaultEnv:  defaultEnv,
-			Permissions: postgres.Jsonb{RawMessage: permsRaw},
-			Email:       email,
-			Fullname:    fullname,
+			Username:   username,
+			PassHash:   passhash,
+			Admin:      admin,
+			DefaultEnv: defaultEnv,
+			Email:      email,
+			Fullname:   fullname,
 		}, nil
 	}
 	return AdminUser{}, fmt.Errorf("%s already exists", username)
@@ -202,22 +205,6 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 		if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// ChangePermissions for setting user permissions by username
-func (m *UserManager) ChangePermissions(username string, permissions UserPermissions) error {
-	user, err := m.Get(username)
-	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
-	}
-	rawPerms, err := json.Marshal(permissions)
-	if err != nil {
-		return err
-	}
-	if err := m.DB.Model(&user).Update("permissions", postgres.Jsonb{RawMessage: rawPerms}).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
 	}
 	return nil
 }

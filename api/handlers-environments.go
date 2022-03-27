@@ -31,7 +31,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.EnvLevel, environment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, environment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
