@@ -78,6 +78,7 @@ services:
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=db
+      - JWT_SECRET=${JWT_SECRET}
       #### Logging ####
       - SERVICE_LOGGER=stdout
       #- LOGGER_FILE=none
@@ -120,6 +121,7 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=jwt
       - SERVICE_CONFIG=false
+      - JWT_SECRET=${JWT_SECRET}
       #### Logging ####
       - SERVICE_LOGGER=stdout
       #### Database settings ####

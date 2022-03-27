@@ -20,10 +20,6 @@ USER osctrl-${COMPONENT}
 COPY admin/templates/ /opt/osctrl/tmpl_admin
 COPY admin/static/ /opt/osctrl/static
 COPY deploy/osquery/data/*.json /opt/osctrl/data/
-COPY admin/templates/components/page-head-online.html /opt/osctrl/tmpl_admin/components/page-head.html
-COPY admin/templates/components/page-js-online.html /opt/osctrl/tmpl_admin/components/page-js.html
-#RUN ln -s /opt/osctrl/tmpl_admin/components/page-head-online.html /opt/osctrl/tmpl_admin/components/page-head.html
-#RUN ln -s /opt/osctrl/tmpl_admin/components/page-js-online.html /opt/osctrl/tmpl_admin/components/page-js.html
 
 WORKDIR /opt/osctrl
 EXPOSE 9001/tcp
