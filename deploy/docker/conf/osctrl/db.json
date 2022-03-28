@@ -1,12 +1,12 @@
 {
-    "db": {
-      "host": "postgres",
-      "port": "5432",
-      "name": "{{ POSTGRES_DB_NAME }}",
-      "username": "{{ POSTGRES_DB_USERNAME }}",
-      "password": "{{ POSTGRES_DB_PASSWORD }}",
-      "max_idle_conns": 20,
-      "max_open_conns": 100,
-      "conn_max_lifetime": 30
-    }
+  "db": {
+    "host": "{{ DB_HOST }}",
+    "port": "{{ DB_PORT }}",
+    "name": "{{ DB_NAME }}",
+    "username": "{{ DB_USER }}",
+    "password": "{{ DB_PASS }}",
+    "max_idle_conns": 20,
+    "max_open_conns": 100,
+    "conn_max_lifetime": 30
+  }
 }

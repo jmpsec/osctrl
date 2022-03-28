@@ -1,0 +1,24 @@
+FROM ubuntu:20.04
+
+ARG OSQUERY_VERSION=5.2.2
+ARG OSCTRL_VERSION=0.2.7
+
+# Install Osquery
+RUN apt-get update -y -qq && apt-get install -y curl host
+RUN curl -L https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb \
+    --output /tmp/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb
+RUN dpkg -i /tmp/osquery_5.2.2-1.linux_amd64.deb
+
+# Install Osctrl-cli
+RUN mkdir -p /opt/osctrl/bin && \
+    mkdir -p /opt/osctrl/scripts && \
+    mkdir -p /opt/osctrl/config
+RUN curl -L https://github.com/jmpsec/osctrl/releases/download/v${OSCTRL_VERSION}/osctrl-cli-linux-amd64.bin \
+    --output /opt/osctrl/bin/osctrl-cli
+RUN chmod 755 /opt/osctrl/bin/osctrl-cli
+COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+
+# Entrypoint
+COPY deploy/docker/conf/osquery/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]

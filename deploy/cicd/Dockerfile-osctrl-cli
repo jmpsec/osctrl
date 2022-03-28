@@ -4,16 +4,28 @@ ARG COMPONENT=cli
 ARG GOOS=linux
 ARG GOARCH=amd64
 
+# Install software
+RUN apt-get update -y -q && \
+    apt-get install curl -y && \
+    rm -rf /var/lib/apt/lists/*
 
+# Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin && \
     mkdir -p /opt/osctrl/scripts && \
     mkdir -p /opt/osctrl/config && \
     chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
+
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
-COPY deploy/docker/conf/osquery/wait-cli.sh /opt/osctrl/scripts/wait-cli.sh
 RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
-RUN chmod 755 /opt/osctrl/scripts/wait-cli.sh
+
+COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
+COPY deploy/docker/conf/tls/tls.crt /opt/osctrl/config/osctrl.crt
+RUN chmod 644 /opt/osctrl/config/osctrl.crt
+
+COPY deploy/docker/conf/osctrl/cli/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
-CMD [ "/opt/osctrl/scripts/wait-cli.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]

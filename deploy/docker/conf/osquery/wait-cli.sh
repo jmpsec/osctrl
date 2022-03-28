@@ -4,12 +4,12 @@
 #
 # Usage: wait.sh
 
-ENV_NAME="dev"
-CERT_FILE="/opt/osctrl/config/osctrl.crt"
-DB_JSON="/opt/osctrl/config/db.json"
-_HOST="osctrl-nginx"
-_USER="admin"
-WAIT=5
+ENV_NAME="${ENV_NAME:=dev}"
+CERT_FILE="${CERT_FILE:=/opt/osctrl/config/osctrl.crt}"
+DB_JSON="${DB_JSON:=/opt/osctrl/config/db.json}"
+_HOST="${_HOST:=osctrl-nginx}"
+_USER="${_USER:=admin}"
+WAIT=${WAIT:=5}
 
 # Wait until DB is up
 until /opt/osctrl/bin/osctrl-cli -D "$DB_JSON" check
