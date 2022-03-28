@@ -28,7 +28,7 @@ services:
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
-    image: osctrl-tls:v${OSCTRL_VERSION}
+    image: jmpsec/osctrl-tls:v${OSCTRL_VERSION}
     container_name: 'osctrl-tls'
     restart: unless-stopped
     environment:
@@ -68,7 +68,7 @@ services:
   osctrl-admin:
     container_name: 'osctrl-admin'
     restart: unless-stopped
-    image: osctrl-admin:v${OSCTRL_VERSION}
+    image: jmpsec/osctrl-admin:v${OSCTRL_VERSION}
     environment:
       #### TLS settings ####
       - TLS_SERVER=false
@@ -109,7 +109,7 @@ services:
   osctrl-api:
     container_name: 'osctrl-api'
     restart: unless-stopped
-    image: osctrl-api:v${OSCTRL_VERSION}
+    image: jmpsec/osctrl-api:v${OSCTRL_VERSION}
     environment:
       #### TLS settings ####
       - TLS_SERVER=false
@@ -181,7 +181,7 @@ services:
   osctrl-cli:
     container_name: 'osctrl-cli'
     restart: unless-stopped
-    image: osctrl-cli:v${OSCTRL_VERSION}
+    image: jmpsec/osctrl-cli:v${OSCTRL_VERSION}
     tty: true # entrypoint executes `/bin/sh`
     environment:
       #### osctrl env ####
