@@ -854,10 +854,10 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Prepare template data
-	shellQuickAdd, _ := environments.QuickAddOneLinerShell(env)
-	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell(env)
-	shellQuickRemove, _ := environments.QuickRemoveOneLinerShell(env)
-	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell(env)
+	shellQuickAdd, _ := environments.QuickAddOneLinerShell((env.Certificate != ""), env)
+	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell((env.Certificate != ""), env)
+	shellQuickRemove, _ := environments.QuickRemoveOneLinerShell((env.Certificate != ""), env)
+	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell((env.Certificate != ""), env)
 	templateData := EnrollTemplateData{
 		Title:                 env.Name + " Enroll",
 		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
