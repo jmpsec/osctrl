@@ -64,6 +64,11 @@ type HandlersTLS struct {
 	Logs        *logging.LoggerTLS
 }
 
+// TLSResponse to be returned to requests
+type TLSResponse struct {
+	Message string `json:"message"`
+}
+
 // Option to pass to creator
 type Option func(*HandlersTLS)
 
@@ -184,13 +189,6 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricEnrollErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -211,7 +209,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeKey string
 	var newNode nodes.OsqueryNode
 	nodeInvalid := true
-	if h.checkValidSecret(t.EnrollSecret, env.Name) {
+	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
 		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey)
@@ -266,13 +264,6 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricConfigErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -331,13 +322,6 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricLogErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -483,13 +467,6 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricWriteErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -554,18 +531,12 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricOnelinerErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
 	// Debug HTTP
@@ -575,6 +546,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		h.Inc(metricOnelinerErr)
 		log.Println("Script is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
 	// Retrieve SecretPath variable
@@ -582,19 +554,34 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		h.Inc(metricOnelinerErr)
 		log.Println("Path is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, "enroll") {
-		if !h.checkValidEnrollSecretPath(env.Name, secretPath) {
+		if !h.checkValidEnrollSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for enrolling")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+			return
+		}
+		if !h.checkExpiredEnrollSecretPath(env) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Expired enrolling path")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
 	} else if strings.HasPrefix(script, "remove") {
-		if !h.checkValidRemoveSecretPath(env.Name, secretPath) {
+		if !h.checkValidRemoveSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for removing")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+			return
+		}
+		if !h.checkExpiredRemoveSecretPath(env) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Expired removing path")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
 	}
@@ -603,6 +590,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
 		log.Printf("error getting script %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
 		return
 	}
 	// Send response
@@ -623,13 +611,6 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricInitErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -685,13 +666,6 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricBlockErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
