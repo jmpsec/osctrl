@@ -508,14 +508,14 @@ _CERT_LINUX=/etc/osquery/certs/${_PROJECT}.crt
 _SECRET_OSX=/private/var/osquery/${_PROJECT}.secret
 _FLAGS_OSX=/private/var/osquery/osquery.flags
 _CERT_OSX=/private/var/osquery/certs/${_PROJECT}.crt
-_PLIST_OSX=/Library/LaunchDaemons/com.facebook.osqueryd.plist
+_PLIST_OSX=/Library/LaunchDaemons/io.osquery.agent.plist
 
 _SECRET_FREEBSD=
 _FLAGS_FREEBSD=
 _CERT_FREEBSD=
 
 _OSQUERY_SERVICE_LINUX="osqueryd"
-_OSQUERY_SERVICE_OSX="com.facebook.osqueryd"
+_OSQUERY_SERVICE_OSX="io.osquery.agent"
 _OSQUERY_SERVICE_FREEBSD="osqueryd"
 
 _SECRET_FILE=""

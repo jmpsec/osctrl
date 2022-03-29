@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if launchctl list | grep -qcm1 com.facebook.osqueryd; then
-  sudo launchctl unload /Library/LaunchDaemons/com.facebook.osqueryd.plist
+if launchctl list | grep -qcm1 io.osquery.agent; then
+  sudo launchctl unload /Library/LaunchDaemons/io.osquery.agent.plist
 fi
 
 exit 0
