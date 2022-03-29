@@ -33,30 +33,38 @@ func generateCarveSessionID() string {
 }
 
 // Helper to check if the provided secret is valid for this environment
-func (h *HandlersTLS) checkValidSecret(enrollSecret string, environment string) bool {
-	env, err := h.Envs.Get(environment)
-	if err != nil {
-		return false
-	}
+func (h *HandlersTLS) checkValidSecret(enrollSecret string, env environments.TLSEnvironment) bool {
 	return (strings.TrimSpace(enrollSecret) == env.Secret)
 }
 
 // Helper to check if the provided SecretPath is valid for enrolling in a environment
-func (h *HandlersTLS) checkValidEnrollSecretPath(environment, secretpath string) bool {
-	env, err := h.Envs.Get(environment)
-	if err != nil {
-		return false
-	}
-	return ((strings.TrimSpace(secretpath) == env.EnrollSecretPath) && (!environments.IsItExpired(env.EnrollExpire)))
+func (h *HandlersTLS) checkValidEnrollSecretPath(env environments.TLSEnvironment, secretpath string) bool {
+	return h.checkValidRemovePath(secretpath, env.EnrollSecretPath)
+}
+
+// Helper to check if the provided SecretPath is expired for enrolling in a environment
+func (h *HandlersTLS) checkExpiredEnrollSecretPath(env environments.TLSEnvironment) bool {
+	return h.checkExpiredPath(env.EnrollExpire)
 }
 
 // Helper to check if the provided SecretPath is valid for removing in a environment
-func (h *HandlersTLS) checkValidRemoveSecretPath(environment, secretpath string) bool {
-	env, err := h.Envs.Get(environment)
-	if err != nil {
-		return false
-	}
-	return ((strings.TrimSpace(secretpath) == env.RemoveSecretPath) && (!environments.IsItExpired(env.RemoveExpire)))
+func (h *HandlersTLS) checkValidRemoveSecretPath(env environments.TLSEnvironment, secretpath string) bool {
+	return h.checkValidRemovePath(secretpath, env.RemoveSecretPath)
+}
+
+// Helper to check if the provided SecretPath is expired for removing in a environment
+func (h *HandlersTLS) checkExpiredRemoveSecretPath(env environments.TLSEnvironment) bool {
+	return h.checkExpiredPath(env.RemoveExpire)
+}
+
+// Helper to check if the provided generic SecretPath is valid
+func (h *HandlersTLS) checkValidRemovePath(secretpath, envSecret string) bool {
+	return (strings.TrimSpace(secretpath) == envSecret)
+}
+
+// Helper to check if a provided generic SecretPath is expired
+func (h *HandlersTLS) checkExpiredPath(maybeExpired time.Time) bool {
+	return (!environments.IsItExpired(maybeExpired))
 }
 
 // Helper to convert an enrollment request into a osquery node
