@@ -276,7 +276,7 @@ func init() {
 			Value:       defDBConfigurationFile,
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &serviceConfigFile,
+			Destination: &dbConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "db-host",
