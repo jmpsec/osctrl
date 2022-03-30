@@ -79,11 +79,18 @@ func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
 
 // GetRedis to get redis client ready
 func (rm *RedisManager) GetRedis() *redis.Client {
-	client := redis.NewClient(&redis.Options{
+	options := &redis.Options{
 		Addr:     PrepareAddr(*rm.Config),
 		Password: rm.Config.Password,
 		DB:       rm.Config.DB,
-	})
+	}
+	if rm.Config.Password == "" {
+		options = &redis.Options{
+			Addr: PrepareAddr(*rm.Config),
+			DB:   rm.Config.DB,
+		}
+	}
+	client := redis.NewClient(options)
 	return client
 }
 
