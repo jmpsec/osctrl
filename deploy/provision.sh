@@ -686,7 +686,7 @@ else
     configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
 
     # Systemd configuration for TLS service
-    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
@@ -711,7 +711,7 @@ else
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
     # Systemd configuration for Admin service
-    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
@@ -722,7 +722,7 @@ else
     configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
 
     # Systemd configuration for API service
-    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt"
   fi
 
   # Some needed files
@@ -730,13 +730,13 @@ else
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # Create admin user
-  log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
-
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"
   "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+
+  # Create admin user
+  log "Creating admin user"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
 
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
@@ -752,7 +752,7 @@ else
 
   # Make newly created environment as default
   log "Making environment $ENVIRONMENT as default"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings update -n default_env -s admin --type string --string "$ENVIRONMENT"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
 
   log "Checking if service is ready"
   while true; do

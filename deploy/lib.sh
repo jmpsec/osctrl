@@ -275,12 +275,14 @@ function configuration_cache() {
 #   string  service_name
 #   string  path_to_code
 #   string  path_destination
+#   string  service_arguments
 function _systemd() {
   local __user=$1
   local __group=$2
   local __service=$3
   local __path=$4
   local __dest=$5
+  local __args=$6
   local __template="$__path/deploy/config/systemd.service"
   local __systemd="/lib/systemd/system/$__service.service"
 
@@ -290,7 +292,7 @@ function _systemd() {
   fi
 
   # Adding service
-  cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sudo tee "$__systemd"
+  cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sed "s|_ARGS|$__args|g" | sudo tee "$__systemd"
   sudo chmod 755 "$__systemd"
 
   # Copying binaries
@@ -298,7 +300,7 @@ function _systemd() {
 
   # Enable and start service
   sudo systemctl enable "$__service.service"
-  sudo systemctl start "$__service"
+  sudo systemctl start "$__service.service"
 }
 
 # Prepare service directories and copy static files
@@ -422,7 +424,7 @@ function set_motd_centos() {
 function install_go_18() {
   local __version="1.18"
   local __file="go$__version.linux-amd64.tar.gz"
-  local __url="https://go.dev/dl/$__file"
+  local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
     log  "Installing Golang $__version"
     sudo curl -sO "$__url"
