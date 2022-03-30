@@ -298,7 +298,7 @@ function _systemd() {
 
   # Enable and start service
   sudo systemctl enable "$__service.service"
-  sudo systemctl start "$__service"
+  sudo systemctl start "$__service.service"
 }
 
 # Prepare service directories and copy static files
@@ -422,7 +422,7 @@ function set_motd_centos() {
 function install_go_18() {
   local __version="1.18"
   local __file="go$__version.linux-amd64.tar.gz"
-  local __url="https://go.dev/dl/$__file"
+  local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
     log  "Installing Golang $__version"
     sudo curl -sO "$__url"

@@ -64,11 +64,15 @@ func addSetting(c *cli.Context) error {
 		fmt.Println("type is required")
 		os.Exit(1)
 	}
-	values := make(map[string]interface{})
-	values[settings.TypeString] = c.String("string")
-	values[settings.TypeInteger] = c.Int64("integer")
-	values[settings.TypeBoolean] = c.Bool("boolean")
-	return settingsmgr.NewValue(service, name, typeValue, values)
+	switch typeValue {
+	case settings.TypeString:
+		return settingsmgr.NewStringValue(service, name, c.String("string"))
+	case settings.TypeInteger:
+		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"))
+	case settings.TypeBoolean:
+		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"))
+	}
+	return nil
 }
 
 func updateSetting(c *cli.Context) error {

@@ -730,13 +730,13 @@ else
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # Create admin user
-  log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
-
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"
   "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+
+  # Create admin user
+  log "Creating admin user"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
 
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
@@ -752,7 +752,7 @@ else
 
   # Make newly created environment as default
   log "Making environment $ENVIRONMENT as default"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings update -n default_env -s admin --type string --string "$ENVIRONMENT"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
 
   log "Checking if service is ready"
   while true; do
