@@ -631,12 +631,11 @@ else
     REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
     if [[ "$DISTRO" == "ubuntu" ]]; then
       package redis-server
-      REDIS_SERVICE="redis"
+      REDIS_SERVICE="redis-server.service"
       REDIS_ETC="/etc/redis/redis.conf"
     elif [[ "$DISTRO" == "centos" ]]; then
-      package redis
-      REDIS_SERVICE="redis"
-      REDIS_ETC="/etc/redis.conf"
+      log "For CentOS, please install Redis manually"
+      exit $OHNOES
     fi
     configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
   fi
