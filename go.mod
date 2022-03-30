@@ -114,6 +114,5 @@ require (
 	gopkg.in/ini.v1 v1.66.3 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gorm.io/driver/mysql v1.2.3
 	gorm.io/driver/postgres v1.3.1 // indirect
 )
