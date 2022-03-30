@@ -435,7 +435,7 @@ package rsync
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_15
+  install_go_18
 fi
 
 # Upgrade service
@@ -619,13 +619,8 @@ else
       POSTGRES_HBA="/etc/postgresql/12/main/pg_hba.conf"
       POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
     elif [[ "$DISTRO" == "centos" ]]; then
-      sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
-      package postgresql96-server
-      package postgresql96-contrib
-      sudo /usr/pgsql-9.6/bin/postgresql96-setup initdb
-      POSTGRES_SERVICE="postgresql-9.6"
-      POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
-      POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
+      log "For CentOS, please install Postgres > 12 manually"
+      exit $OHNOES
     fi
     configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
@@ -655,6 +650,7 @@ else
       configure_grafana
     elif [[ "$DISTRO" == "centos" ]]; then
       log "Not ready yet to install metrics for CentOS"
+      exit $OHNOES
     fi
   fi
 
