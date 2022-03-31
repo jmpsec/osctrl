@@ -275,12 +275,14 @@ function configuration_cache() {
 #   string  service_name
 #   string  path_to_code
 #   string  path_destination
+#   string  service_arguments
 function _systemd() {
   local __user=$1
   local __group=$2
   local __service=$3
   local __path=$4
   local __dest=$5
+  local __args=$6
   local __template="$__path/deploy/config/systemd.service"
   local __systemd="/lib/systemd/system/$__service.service"
 
@@ -290,7 +292,7 @@ function _systemd() {
   fi
 
   # Adding service
-  cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sudo tee "$__systemd"
+  cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sed "s|_ARGS|$__args|g" | sudo tee "$__systemd"
   sudo chmod 755 "$__systemd"
 
   # Copying binaries
@@ -298,7 +300,7 @@ function _systemd() {
 
   # Enable and start service
   sudo systemctl enable "$__service.service"
-  sudo systemctl start "$__service"
+  sudo systemctl start "$__service.service"
 }
 
 # Prepare service directories and copy static files
@@ -354,22 +356,6 @@ function db_user_postgresql() {
   sudo su - "$__pguser" -c "$__psql -d $__pgdb -c '$_dbstatementgrant'"
 }
 
-# Create empty DB and import schema
-#   string  PostgreSQL_db_name
-#   string  PostgreSQL_system_user
-#   string  PostgreSQL_db_schema_file
-#   string  PostgreSQL_db_user
-function schema_postgresql() {
-  local __psql="/usr/lib/postgresql/10/bin/psql"
-  local __pgdb=$1
-  local __pguser=$2
-  local __pgschema=$3
-  local __dbuser=$4
-
-  log "Importing schema $__pgschema"
-  sudo su - "$__pguser" -c "$__psql -U $__dbuser -d $__pgdb -f $__pgschema"
-}
-
 # Configure PostgreSQL
 #   string  postgres_conf_file_location
 #   string  postgres_service_name
@@ -402,6 +388,11 @@ function configure_redis() {
 
   cat "$__conf" | sed "s|REDIS_PASSWORD|$__password|g" | sudo tee "$__redis"
 
+  # For some reason in Ubuntu 20.04 redis does not communicate with systemd, this will fix it
+  local _systemd_redis="/lib/systemd/system/redis-server.service"
+  cat "$_systemd_redis" | sed "s|Type=forking|Type=notify|g" | sudo tee "$_systemd_redis"
+
+  sudo systemctl daemon-reload
   sudo systemctl restart "$__service"
   sudo systemctl enable "$__service"
 }
@@ -429,9 +420,9 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
-# Install go 1.15 from tgz
-function install_go_15() {
-  local __version="1.15.6"
+# Install go 1.18 from tgz
+function install_go_18() {
+  local __version="1.18"
   local __file="go$__version.linux-amd64.tar.gz"
   local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then

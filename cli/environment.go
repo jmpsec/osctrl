@@ -246,12 +246,13 @@ func quickAddEnvironment(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	insecure := c.Bool("insecure")
 	var oneLiner string
 	switch c.String("target") {
 	case targetShell:
-		oneLiner, _ = environments.QuickAddOneLinerShell(env)
+		oneLiner, _ = environments.QuickAddOneLinerShell(insecure, env)
 	case targetPowershell:
-		oneLiner, _ = environments.QuickAddOneLinerPowershell(env)
+		oneLiner, _ = environments.QuickAddOneLinerPowershell(insecure, env)
 	default:
 		fmt.Printf("Invalid target! It can be %s or %s\n", targetShell, targetPowershell)
 		os.Exit(1)

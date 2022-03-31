@@ -435,7 +435,7 @@ package rsync
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_15
+  install_go_18
 fi
 
 # Upgrade service
@@ -619,13 +619,8 @@ else
       POSTGRES_HBA="/etc/postgresql/12/main/pg_hba.conf"
       POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
     elif [[ "$DISTRO" == "centos" ]]; then
-      sudo rpm -Uvh "http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm"
-      package postgresql96-server
-      package postgresql96-contrib
-      sudo /usr/pgsql-9.6/bin/postgresql96-setup initdb
-      POSTGRES_SERVICE="postgresql-9.6"
-      POSTGRES_HBA="/var/lib/pgsql/9.6/data/pg_hba.conf"
-      POSTGRES_PSQL="/usr/pgsql-9.6/bin/psql"
+      log "For CentOS, please install Postgres > 12 manually"
+      exit $OHNOES
     fi
     configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
@@ -636,12 +631,11 @@ else
     REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
     if [[ "$DISTRO" == "ubuntu" ]]; then
       package redis-server
-      REDIS_SERVICE="redis"
+      REDIS_SERVICE="redis-server.service"
       REDIS_ETC="/etc/redis/redis.conf"
     elif [[ "$DISTRO" == "centos" ]]; then
-      package redis
-      REDIS_SERVICE="redis"
-      REDIS_ETC="/etc/redis.conf"
+      log "For CentOS, please install Redis manually"
+      exit $OHNOES
     fi
     configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
   fi
@@ -655,6 +649,7 @@ else
       configure_grafana
     elif [[ "$DISTRO" == "centos" ]]; then
       log "Not ready yet to install metrics for CentOS"
+      exit $OHNOES
     fi
   fi
 
@@ -691,7 +686,7 @@ else
     configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
 
     # Systemd configuration for TLS service
-    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
@@ -716,7 +711,7 @@ else
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
 
     # Systemd configuration for Admin service
-    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
@@ -727,7 +722,7 @@ else
     configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
 
     # Systemd configuration for API service
-    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH"
+    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt"
   fi
 
   # Some needed files
@@ -735,13 +730,13 @@ else
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # Create admin user
-  log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
-
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"
   "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+
+  # Create admin user
+  log "Creating admin user"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
 
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
@@ -757,7 +752,7 @@ else
 
   # Make newly created environment as default
   log "Making environment $ENVIRONMENT as default"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings update -n default_env -s admin --type string --string "$ENVIRONMENT"
+  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
 
   log "Checking if service is ready"
   while true; do

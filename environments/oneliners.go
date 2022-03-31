@@ -30,13 +30,21 @@ const (
 	EnrollPowershell = EnrollTarget + PowershellTarget
 	// RemovePowershell for remove powershell
 	RemovePowershell = RemoveTarget + PowershellTarget
+	// TemplateAddShell for template name
+	TemplateAddShell = "quick-add.sh"
+	// TemplateRemoveShell for template name
+	TemplateRemoveShell = "quick-remove.sh"
+	// TemplateAddPowershell for template name
+	TemplateAddPowershell = "quick-add.ps1"
+	// TemplateRemovePowershell for template name
+	TemplateRemovePowershell = "quick-remove.ps1"
 )
 
 // PrepareOneLiner generic to generate  one-liners
-func PrepareOneLiner(oneliner string, environment TLSEnvironment, target string) (string, error) {
+func PrepareOneLiner(oneliner string, insecure bool, environment TLSEnvironment, target string) (string, error) {
 	// Determine if insecure TLS is on
 	insecureTLS := ""
-	if environment.Certificate != "" {
+	if insecure {
 		if strings.HasSuffix(target, ShellTarget) {
 			insecureTLS = InsecureShellTLS
 		} else if strings.HasSuffix(target, PowershellTarget) {
@@ -72,31 +80,31 @@ func PrepareOneLiner(oneliner string, environment TLSEnvironment, target string)
 }
 
 // QuickAddOneLinerShell to get the quick add one-liner for Linux/OSX nodes
-func QuickAddOneLinerShell(environment TLSEnvironment) (string, error) {
+func QuickAddOneLinerShell(insecure bool, environment TLSEnvironment) (string, error) {
 	s := `curl -s{{ .InsecureTLS }} https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/enroll.sh | sh`
-	return PrepareOneLiner(s, environment, EnrollShell)
+	return PrepareOneLiner(s, insecure, environment, EnrollShell)
 }
 
 // QuickRemoveOneLinerShell to get the quick remove one-liner for Linux/OSX nodes
-func QuickRemoveOneLinerShell(environment TLSEnvironment) (string, error) {
+func QuickRemoveOneLinerShell(insecure bool, environment TLSEnvironment) (string, error) {
 	s := `curl -s{{ .InsecureTLS }} https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/remove.sh | sh`
-	return PrepareOneLiner(s, environment, RemoveShell)
+	return PrepareOneLiner(s, insecure, environment, RemoveShell)
 }
 
 // QuickAddOneLinerPowershell to get the quick add one-liner for Windows nodes
-func QuickAddOneLinerPowershell(environment TLSEnvironment) (string, error) {
+func QuickAddOneLinerPowershell(insecure bool, environment TLSEnvironment) (string, error) {
 	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
 {{ .InsecureTLS }}
 iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/enroll.ps1'))`
-	return PrepareOneLiner(s, environment, EnrollPowershell)
+	return PrepareOneLiner(s, insecure, environment, EnrollPowershell)
 }
 
 // QuickRemoveOneLinerPowershell to get the quick remove one-liner for Windows nodes
-func QuickRemoveOneLinerPowershell(environment TLSEnvironment) (string, error) {
+func QuickRemoveOneLinerPowershell(insecure bool, environment TLSEnvironment) (string, error) {
 	s := `Set-ExecutionPolicy Bypass -Scope Process -Force;
 {{ .InsecureTLS }}
 iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{ .Environment }}/{{ .SecretPath }}/remove.ps1'))`
-	return PrepareOneLiner(s, environment, RemovePowershell)
+	return PrepareOneLiner(s, insecure, environment, RemovePowershell)
 }
 
 // QuickAddScript to get a quick add script for a environment
@@ -105,16 +113,16 @@ func QuickAddScript(project, script string, environment TLSEnvironment) (string,
 	// What script is it?
 	switch script {
 	case EnrollShell:
-		templateName = "quick-add.sh"
+		templateName = TemplateAddShell
 		templateScript = QuickAddScriptShell
 	case EnrollPowershell:
-		templateName = "quick-add.ps1"
+		templateName = TemplateAddPowershell
 		templateScript = QuickAddScriptPowershell
 	case RemoveShell:
-		templateName = "quick-remove.sh"
+		templateName = TemplateRemoveShell
 		templateScript = QuickRemoveScriptShell
 	case RemovePowershell:
-		templateName = "quick-remove.ps1"
+		templateName = TemplateRemovePowershell
 		templateScript = QuickRemoveScriptPowershell
 	}
 	// Prepare template

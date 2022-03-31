@@ -11,7 +11,7 @@ Restart=on-failure
 RestartSec=10
 
 WorkingDirectory=_DEST
-ExecStart=_DEST/_NAME
+ExecStart=_DEST/_NAME _ARGS
 
 # make sure log directory exists and owned by syslog
 PermissionsStartOnly=true

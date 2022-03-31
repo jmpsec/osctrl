@@ -642,6 +642,12 @@ func init() {
 							Value:   "sh",
 							Usage:   "Type of one-liner",
 						},
+						&cli.BoolFlag{
+							Name:    "insecure",
+							Aliases: []string{"i"},
+							Value:   false,
+							Usage:   "Generate insecure one-liner",
+						},
 					},
 					Action: cliWrapper(quickAddEnvironment),
 				},

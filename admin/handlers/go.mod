@@ -30,7 +30,6 @@ replace github.com/jmpsec/osctrl/utils => ../../utils
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/jinzhu/gorm v1.9.16
 	github.com/jmpsec/osctrl/admin/sessions v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/backend v0.0.0-20220120232002-31ecf3b9f264 // indirect
 	github.com/jmpsec/osctrl/carves v0.0.0-20220120232002-31ecf3b9f264

@@ -3,7 +3,7 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
-IP_ADDRESS = ENV["OSCTRL_IP_ADDRESS"] || "10.10.10.5"
+IP_ADDRESS = ENV["OSCTRL_IP_ADDRESS"] || "192.168.56.78"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/focal64"
