@@ -235,7 +235,7 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "redis-pass",
-			Value:       "redis",
+			Value:       "",
 			Usage:       "Password to be used for redis",
 			EnvVars:     []string{"REDIS_PASS"},
 			Destination: &redisConfig.Password,
