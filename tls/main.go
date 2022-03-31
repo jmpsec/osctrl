@@ -107,9 +107,15 @@ var validAuth = map[string]bool{
 	settings.AuthNone: true,
 }
 var validLogging = map[string]bool{
+	settings.LoggingNone:    true,
+	settings.LoggingStdout:  true,
+	settings.LoggingFile:    true,
 	settings.LoggingDB:      true,
 	settings.LoggingGraylog: true,
 	settings.LoggingSplunk:  true,
+	settings.LoggingKafka:   true,
+	settings.LoggingKinesis: true,
+	settings.LoggingS3:      true,
 }
 
 // Function to load the configuration file and assign to variables
@@ -229,7 +235,7 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "redis-pass",
-			Value:       "redis",
+			Value:       "",
 			Usage:       "Password to be used for redis",
 			EnvVars:     []string{"REDIS_PASS"},
 			Destination: &redisConfig.Password,

@@ -18,9 +18,6 @@ type SlunkConfiguration struct {
 	Token   string `json:"token"`
 	Host    string `json:"host"`
 	Index   string `json:"index"`
-	Queries string `json:"queries"`
-	Status  string `json:"status"`
-	Results string `json:"results"`
 }
 
 // LoggerSplunk will be used to log data using Splunk
