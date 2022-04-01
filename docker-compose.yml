@@ -1,7 +1,7 @@
 version: "2.2"
 services:
   ######################################### NGINX #########################################
-  osctrl-nginx:
+  nginx:
     container_name: 'osctrl-nginx'
     restart: unless-stopped
     build:
@@ -39,20 +39,16 @@ services:
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      #### Logging ####
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=stdout      
       #### Database settings ####
-      - DB_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_CONFIG=false
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASS=
     networks:
       - osctrl-backend
     depends_on:
@@ -78,20 +74,16 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=db
       - JWT_SECRET=${JWT_SECRET}
-      #### Logging ####
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=stdout      
       #### Database settings ####
-      - DB_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_CONFIG=false
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASS=
     networks:
       - osctrl-backend
     ports:
@@ -119,20 +111,16 @@ services:
       - SERVICE_AUTH=jwt
       - SERVICE_CONFIG=false
       - JWT_SECRET=${JWT_SECRET}
-      #### Logging ####
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=stdout      
       #### Database settings ####
-      - DB_CONFIG=false
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_CONFIG=false
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASS=
     networks:
       - osctrl-backend
     depends_on:
