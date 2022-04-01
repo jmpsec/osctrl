@@ -164,8 +164,6 @@ services:
       - OSCTRL_USER=${OSCTRL_USER}
       - OSCTRL_PASS=${OSCTRL_PASS}
       #### Database settings ####
-      - DB_CONFIG=true
-      - DB_JSON=/opt/osctrl/config/db.json
       - DB_HOST=postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
@@ -175,7 +173,7 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: ["CMD", "/opt/osctrl/bin/osctrl-cli", "-D", "$${DB_JSON}", "check"]
+      test: ["CMD", "/opt/osctrl/bin/osctrl-cli", "check"]
       interval: 1m30s
       timeout: 10s
       retries: 3
@@ -196,8 +194,6 @@ services:
       - ENV_NAME=dev
       - HOST=osctrl-nginx
       #### Database settings ####
-      - DB_CONFIG=true
-      - DB_JSON=/opt/osctrl/config/db.json
       - DB_HOST=postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}

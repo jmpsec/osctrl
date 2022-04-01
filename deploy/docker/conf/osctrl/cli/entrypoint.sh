@@ -2,30 +2,20 @@
 
 ENV_NAME="${ENV_NAME:=dev}"
 CERT_FILE="${CERT_FILE:=/opt/osctrl/config/osctrl.crt}"
-DB_JSON="${DB_JSON:=/opt/osctrl/config/db.json}"
 HOST="${HOST:=osctrl-nginx}"
 OSCTRL_USER="${OSCTRL_USER:=admin}"
 OSCTRL_PASS="${OSCTRL_PASS:=admin}"
 WAIT="${WAIT:=5}"
 
-######################################### Set DB config #########################################
-echo "[*] - Setting DB config"
-sed -i "s/{{ DB_HOST }}/${DB_HOST:=postgres}/g" /opt/osctrl/config/db.json
-sed -i "s/{{ DB_PORT }}/${DB_PORT:=5432}/g" /opt/osctrl/config/db.json
-sed -i "s/{{ DB_USER }}/${DB_USER:=osctrl}/g" /opt/osctrl/config/db.json
-sed -i "s/{{ DB_PASS }}/${DB_PASS:=osctrl}/g" /opt/osctrl/config/db.json
-sed -i "s/{{ DB_NAME }}/${DB_NAME:=osctrl}/g" /opt/osctrl/config/db.json
-echo "[+] - Set DB config"
-
 ######################################### Wait until DB is up #########################################
-until /opt/osctrl/bin/osctrl-cli -D "${DB_JSON}" check
+until /opt/osctrl/bin/osctrl-cli check
 do
   echo "DB is not ready"
   sleep $WAIT
 done
 
 ######################################### Create environment #########################################
-/opt/osctrl/bin/osctrl-cli --db-file "${DB_JSON}" env add \
+/opt/osctrl/bin/osctrl-cli env add \
   --name "${ENV_NAME}" \
   --hostname "${HOST}" \
   --certificate "${CRT_FILE}"
@@ -36,7 +26,7 @@ else
 fi
 
 ######################################### Create admin user #########################################
-/opt/osctrl/bin/osctrl-cli -D "${DB_JSON}" user add \
+/opt/osctrl/bin/osctrl-cli user add \
   --admin \
   --username "${OSCTRL_USER}" \
   --password "${OSCTRL_PASS}" \
