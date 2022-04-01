@@ -8,11 +8,11 @@ HOST="${HOST:=osctrl-nginx}"
 if [ ! -f "/etc/osquery/osquery.secret" ]; then
     ######################################### Set DB config #########################################
     echo "[*] - Setting DB config"
-    sed -i "s/{{ DB_HOST }}/${DB_HOST}/g" /opt/osctrl/config/db.json
-    sed -i "s/{{ DB_PORT }}/${DB_PORT}/g" /opt/osctrl/config/db.json
-    sed -i "s/{{ DB_USER }}/${DB_USER}/g" /opt/osctrl/config/db.json
-    sed -i "s/{{ DB_PASS }}/${DB_PASS}/g" /opt/osctrl/config/db.json
-    sed -i "s/{{ DB_NAME }}/${DB_NAME}/g" /opt/osctrl/config/db.json
+    sed -i "s/{{ DB_HOST }}/${DB_HOST:=postgres}/g" /opt/osctrl/config/db.json
+    sed -i "s/{{ DB_PORT }}/${DB_PORT:=5432}/g" /opt/osctrl/config/db.json
+    sed -i "s/{{ DB_USER }}/${DB_USER:=osctrl}/g" /opt/osctrl/config/db.json
+    sed -i "s/{{ DB_PASS }}/${DB_PASS:=osctrl}/g" /opt/osctrl/config/db.json
+    sed -i "s/{{ DB_NAME }}/${DB_NAME:=osctrl}/g" /opt/osctrl/config/db.json
     echo "[+] - Set DB config"
 
     ######################################### Wait until DB is up #########################################

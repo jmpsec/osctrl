@@ -33,7 +33,6 @@ services:
     restart: unless-stopped
     environment:
       #### TLS settings ####
-      - SERVICE_CONFIG=false
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
@@ -41,13 +40,11 @@ services:
       - SERVICE_LOGGER=stdout      
       #### Database settings ####
       - DB_HOST=postgres
-      - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
     networks:
       - osctrl-backend
     depends_on:
@@ -66,7 +63,6 @@ services:
     image: jmpsec/osctrl-admin:v${OSCTRL_VERSION}
     environment:
       #### TLS settings ####
-      - SERVICE_CONFIG=false
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
@@ -75,13 +71,11 @@ services:
       - SERVICE_LOGGER=stdout      
       #### Database settings ####
       - DB_HOST=postgres
-      - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
     networks:
       - osctrl-backend
     depends_on:
@@ -104,18 +98,15 @@ services:
       - SERVICE_PORT=9002
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=jwt
-      - SERVICE_CONFIG=false
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=stdout      
       #### Database settings ####
       - DB_HOST=postgres
-      - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
     networks:
       - osctrl-backend
     depends_on:
@@ -176,7 +167,6 @@ services:
       - DB_CONFIG=true
       - DB_JSON=/opt/osctrl/config/db.json
       - DB_HOST=postgres
-      - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
@@ -209,7 +199,6 @@ services:
       - DB_CONFIG=true
       - DB_JSON=/opt/osctrl/config/db.json
       - DB_HOST=postgres
-      - DB_PORT=5432
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
