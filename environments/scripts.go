@@ -25,7 +25,7 @@ _SECRET_FREEBSD=/usr/local/etc/${_PROJECT}.secret
 _FLAGS_FREEBSD=/usr/local/etc/osquery.flags
 _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
-_DEB_ARCH=$(dpkg-architecture -q DEB_BUILD_ARCH)
+_DEB_ARCH=$(dpkg --print-architecture)
 
 _OSQUERY_VER="5.2.2"
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_OSQUERY_VER.pkg"
@@ -214,6 +214,7 @@ log "REMINDER! $_SERVICE has been started and enabled."
 
 # EOF
 `
+
 // QuickAddScriptPowershell to keep the raw template for the quick add powershell script
 const QuickAddScriptPowershell = `
 ##
@@ -492,6 +493,7 @@ function QuickAdd-Node {
 
 QuickAdd-Node
 `
+
 // QuickRemoveScriptShell to keep the raw template for the quick remove shell script
 const QuickRemoveScriptShell = `
 #!/bin/sh
@@ -620,6 +622,7 @@ log "WARNING! $_SERVICE has been stopped and disabled."
 
 # EOF
 `
+
 // QuickRemoveScriptPowershell to keep the raw template for the quick remove powershell script
 const QuickRemoveScriptPowershell = `
 ##
