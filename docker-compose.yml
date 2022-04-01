@@ -169,7 +169,7 @@ services:
   redis:
     container_name: 'osctrl-redis'
     restart: unless-stopped
-    image: redis:6.2.6-alpine3.15
+    image: redis:${REDIS_VERSION}
     networks:
       - osctrl-backend
     volumes:
