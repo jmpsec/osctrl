@@ -170,12 +170,6 @@ var validAuth = map[string]bool{
 	settings.AuthJSON: true,
 }
 
-// Valid values for logging in configuration
-var validLogging = map[string]bool{
-	settings.LoggingDB:     true,
-	settings.LoggingSplunk: true,
-}
-
 // Function to load the configuration file
 func loadConfiguration(file, service string) (types.JSONConfigurationService, error) {
 	var cfg types.JSONConfigurationService
@@ -193,9 +187,6 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
-	}
-	if !validLogging[cfg.Logger] {
-		return cfg, fmt.Errorf("Invalid logging method")
 	}
 	// No errors!
 	return cfg, nil
@@ -300,7 +291,7 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "redis-pass",
-			Value:       "redis",
+			Value:       "",
 			Usage:       "Password to be used for redis",
 			EnvVars:     []string{"REDIS_PASS"},
 			Destination: &redisConfig.Password,
