@@ -35,7 +35,9 @@ const (
 
 // Global variables
 var (
+	err         error
 	app         *cli.App
+	dbConfig    backend.JSONConfigurationDB
 	flags       []cli.Flag
 	commands    []*cli.Command
 	settingsmgr *settings.Settings
@@ -44,6 +46,7 @@ var (
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
 	envs        *environments.Environment
+	db          *backend.DBManager
 )
 
 // Variables for flags
@@ -71,6 +74,62 @@ func init() {
 			Usage:       "Load DB configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
 			Destination: &dbConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "db-host",
+			Value:       "127.0.0.1",
+			Usage:       "Backend host to be connected to",
+			EnvVars:     []string{"DB_HOST"},
+			Destination: &dbConfig.Host,
+		},
+		&cli.StringFlag{
+			Name:        "db-port",
+			Value:       "5432",
+			Usage:       "Backend port to be connected to",
+			EnvVars:     []string{"DB_PORT"},
+			Destination: &dbConfig.Port,
+		},
+		&cli.StringFlag{
+			Name:        "db-name",
+			Value:       "osctrl",
+			Usage:       "Database name to be used in the backend",
+			EnvVars:     []string{"DB_NAME"},
+			Destination: &dbConfig.Name,
+		},
+		&cli.StringFlag{
+			Name:        "db-user",
+			Value:       "postgres",
+			Usage:       "Username to be used for the backend",
+			EnvVars:     []string{"DB_USER"},
+			Destination: &dbConfig.Username,
+		},
+		&cli.StringFlag{
+			Name:        "db-pass",
+			Value:       "postgres",
+			Usage:       "Password to be used for the backend",
+			EnvVars:     []string{"DB_PASS"},
+			Destination: &dbConfig.Password,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-idle-conns",
+			Value:       20,
+			Usage:       "Maximum number of connections in the idle connection pool",
+			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
+			Destination: &dbConfig.MaxIdleConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-max-open-conns",
+			Value:       100,
+			Usage:       "Maximum number of open connections to the database",
+			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
+			Destination: &dbConfig.MaxOpenConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-conn-max-lifetime",
+			Value:       30,
+			Usage:       "Maximum amount of time a connection may be reused",
+			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
+			Destination: &dbConfig.ConnMaxLifetime,
 		},
 	}
 	// Initialize CLI flags commands
@@ -232,7 +291,6 @@ func init() {
 					Action:  cliWrapper(listUsers),
 				},
 			},
-
 		},
 		{
 			Name:    "environment",
@@ -1027,11 +1085,19 @@ func init() {
 
 // Action for the DB check
 func checkDB(c *cli.Context) error {
-	backend, err := backend.CreateDBManagerFile(dbConfigFile)
-	if err != nil {
-		return fmt.Errorf("Failed to create backend - %v", err)
+	if dbFlag {
+		// Initialize backend
+		db, err = backend.CreateDBManagerFile(dbConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to create backend - %v", err)
+		}
+	} else {
+		db, err = backend.CreateDBManager(dbConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to create backend - %v", err)
+		}
 	}
-	if err := backend.Check(); err != nil {
+	if err := db.Check(); err != nil {
 		return err
 	}
 	// Should be good
@@ -1041,23 +1107,31 @@ func checkDB(c *cli.Context) error {
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		// Initialize backend
-		backend, err := backend.CreateDBManagerFile(dbConfigFile)
-		if err != nil {
-			return fmt.Errorf("Failed to create backend - %v", err)
+		// Load DB configuration if external JSON config file is used
+		if dbFlag {
+			// Initialize backend
+			db, err = backend.CreateDBManagerFile(dbConfigFile)
+			if err != nil {
+				return fmt.Errorf("Failed to create backend - %v", err)
+			}
+		} else {
+			db, err = backend.CreateDBManager(dbConfig)
+			if err != nil {
+				return fmt.Errorf("Failed to create backend - %v", err)
+			}
 		}
 		// Initialize users
-		adminUsers = users.CreateUserManager(backend.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
+		adminUsers = users.CreateUserManager(db.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
 		// Initialize environment
-		envs = environments.CreateEnvironment(backend.Conn)
+		envs = environments.CreateEnvironment(db.Conn)
 		// Initialize settings
-		settingsmgr = settings.NewSettings(backend.Conn)
+		settingsmgr = settings.NewSettings(db.Conn)
 		// Initialize nodes
-		nodesmgr = nodes.CreateNodes(backend.Conn)
+		nodesmgr = nodes.CreateNodes(db.Conn)
 		// Initialize queries
-		queriesmgr = queries.CreateQueries(backend.Conn)
+		queriesmgr = queries.CreateQueries(db.Conn)
 		// Initialize tags
-		tagsmgr = tags.CreateTagManager(backend.Conn)
+		tagsmgr = tags.CreateTagManager(db.Conn)
 		// Execute action
 		return action(c)
 	}
