@@ -146,7 +146,7 @@ var (
 	osqueryTablesVersion string
 	loggerFile           string
 	staticFilesFolder    string
-	staticOffline         bool
+	staticOffline        bool
 	carvedFilesFolder    string
 	templatesFolder      string
 )
