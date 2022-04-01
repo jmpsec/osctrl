@@ -288,7 +288,7 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "db-name",
-			Value:       "postgres",
+			Value:       "osctrl",
 			Usage:       "Database name to be used in the backend",
 			EnvVars:     []string{"DB_NAME"},
 			Destination: &dbConfig.Name,
