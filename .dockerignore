@@ -1,6 +1,17 @@
 *
+!.env
+!admin/static
+!admin/templates
+!deploy/osquery/data
 !docker/
 !osctrl-tls-*.bin
 !osctrl-api-*.bin
 !osctrl-admin-*.bin
 !osctrl-cli-*.bin
+!deploy/docker/conf/osquery/wait-cli.sh
+!deploy/docker/conf/osctrl/cli/db.json
+!deploy/docker/conf/osctrl/cli/entrypoint.sh
+!deploy/docker/conf/tls/*
+!deploy/docker/conf/osquery/entrypoint.sh
+!deploy/docker/conf/osctrl/db.json
+!deploy/docker/conf/nginx/*.conf

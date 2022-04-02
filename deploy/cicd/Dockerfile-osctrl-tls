@@ -1,13 +1,22 @@
 FROM ubuntu:20.04
 
-ARG COMPONENT
-ARG GOOS
-ARG GOARCH
+ARG COMPONENT=tls
+ARG GOOS=linux
+ARG GOARCH=amd64
 
+# Install software
+RUN apt-get update -y -q && \
+    apt-get install curl -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
-RUN mkdir -p /opt/osctrl/bin
-RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/bin && \
+    mkdir -p /opt/osctrl/scripts && \
+    mkdir -p /opt/osctrl/config && \
+    chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONENT}
+RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9000/tcp
