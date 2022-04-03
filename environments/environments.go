@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/jmpsec/osctrl/utils"
 	"gorm.io/gorm"
 )
 
@@ -108,12 +109,12 @@ func (environment *Environment) Get(identifier string) (TLSEnvironment, error) {
 // Empty generates an empty TLSEnvironment with default values
 func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 	return TLSEnvironment{
-		UUID:             generateUUID(),
+		UUID:             utils.GenUUID(),
 		Name:             name,
 		Hostname:         hostname,
-		Secret:           generateRandomString(DefaultSecretLength),
-		EnrollSecretPath: generateKSUID(),
-		RemoveSecretPath: generateKSUID(),
+		Secret:           utils.GenRandomString(DefaultSecretLength),
+		EnrollSecretPath: utils.GenKSUID(),
+		RemoveSecretPath: utils.GenKSUID(),
 		EnrollExpire:     time.Now(),
 		RemoveExpire:     time.Now(),
 		Type:             DefaultEnvironmentType,
@@ -319,9 +320,9 @@ func (environment *Environment) RotateSecrets(name string) error {
 		return fmt.Errorf("error getting environment %v", err)
 	}
 	rotated := env
-	rotated.Secret = generateRandomString(DefaultSecretLength)
-	rotated.EnrollSecretPath = generateKSUID()
-	rotated.RemoveSecretPath = generateKSUID()
+	rotated.Secret = utils.GenRandomString(DefaultSecretLength)
+	rotated.EnrollSecretPath = utils.GenKSUID()
+	rotated.RemoveSecretPath = utils.GenKSUID()
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
@@ -337,7 +338,7 @@ func (environment *Environment) RotateEnrollPath(name string) error {
 		return fmt.Errorf("error getting environment %v", err)
 	}
 	rotated := env
-	rotated.EnrollSecretPath = generateKSUID()
+	rotated.EnrollSecretPath = utils.GenKSUID()
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
@@ -352,7 +353,7 @@ func (environment *Environment) RotateSecret(name string) error {
 		return fmt.Errorf("error getting environment %v", err)
 	}
 	rotated := env
-	rotated.Secret = generateRandomString(DefaultSecretLength)
+	rotated.Secret = utils.GenRandomString(DefaultSecretLength)
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
@@ -379,7 +380,7 @@ func (environment *Environment) RotateRemove(name string) error {
 		return fmt.Errorf("error getting environment %v", err)
 	}
 	rotated := env
-	rotated.RemoveSecretPath = generateKSUID()
+	rotated.RemoveSecretPath = utils.GenKSUID()
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
