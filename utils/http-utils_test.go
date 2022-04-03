@@ -86,7 +86,7 @@ func TestDebugHTTPDump(t *testing.T) {
 		expected += fmt.Sprintf("%s\r\n", "GET /server/path HTTP/1.1")
 		expected += fmt.Sprintf("%s\r\n\r\n\n", "Host: whatever")
 		expected += fmt.Sprintf("%s\n", "---------------- No Body")
-		expected += fmt.Sprintf("%s\n","---------------- end")
+		expected += fmt.Sprintf("%s\n", "---------------- end")
 		assert.Equal(t, expected, output)
 	})
 
@@ -97,7 +97,7 @@ func TestDebugHTTPDump(t *testing.T) {
 		expected += fmt.Sprintf("%s\r\n", "GET /server/path HTTP/1.1")
 		expected += fmt.Sprintf("%s\r\n\r\n\n", "Host: whatever")
 		expected += fmt.Sprintf("%s\n", "---------------- No Body")
-		expected += fmt.Sprintf("%s\n","---------------- end")
+		expected += fmt.Sprintf("%s\n", "---------------- end")
 		assert.Equal(t, expected, output)
 	})
 }

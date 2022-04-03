@@ -12,7 +12,6 @@ RUN apt-get update -y -q && \
 # Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin && \
-    mkdir -p /opt/osctrl/scripts && \
     mkdir -p /opt/osctrl/config && \
     chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
 
@@ -20,12 +19,8 @@ COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONEN
 RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
-COPY deploy/docker/conf/tls/tls.crt /opt/osctrl/config/osctrl.crt
-RUN chmod 644 /opt/osctrl/config/osctrl.crt
-
-COPY deploy/docker/conf/osctrl/cli/entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
 
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
-ENTRYPOINT [ "/entrypoint.sh" ]
+
+ENTRYPOINT [ "/bin/bash" ]

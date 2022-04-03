@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/utils"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -25,6 +26,7 @@ type AdminUser struct {
 	APIToken      string
 	TokenExpire   time.Time
 	Admin         bool
+	UUID          string
 	DefaultEnv    string
 	CSRFToken     string
 	LastIPAddress string
@@ -163,6 +165,7 @@ func (m *UserManager) New(username, password, email, fullname, defaultEnv string
 		return AdminUser{
 			Username:   username,
 			PassHash:   passhash,
+			UUID:       utils.GenUUID(),
 			Admin:      admin,
 			DefaultEnv: defaultEnv,
 			Email:      email,
