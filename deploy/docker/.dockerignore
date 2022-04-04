@@ -15,3 +15,4 @@
 !deploy/docker/conf/osquery/entrypoint.sh
 !deploy/docker/conf/osctrl/db.json
 !deploy/docker/conf/nginx/*.conf
+!deploy/docker/conf/air/*

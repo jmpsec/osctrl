@@ -50,6 +50,8 @@ dhparam.pem
 
 # Environment file for docker
 .env
+static
+tmpl_admin
 
 # Customization
 #brand.png
@@ -59,3 +61,7 @@ notes.txt
 
 # Generated bins
 *.bin
+
+deploy/docker/conf/tls/*.crt
+deploy/docker/conf/tls/*.key
+deploy/docker/conf/tls/openssl.cnf

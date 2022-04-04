@@ -1,5 +1,4 @@
 # Running osctrl with Docker
-
 You can use Docker to run **osctrl** using the `docker-compose.yml` that ties all the components together.
 There a couple of manual steps that are required before having a fully functional deployment:
 
@@ -7,7 +6,6 @@ There a couple of manual steps that are required before having a fully functiona
 2. Generate JWT secret for API tokens
 
 ## Generate TLS/SSL termination certificate and private key
-
 Follow these steps to generate a self-signed certificate that is going to be used for the osctrl deployment:
 
 1. `cp conf/tls/openssl.cnf.example conf/tls/openssl.cnf`
@@ -16,14 +14,12 @@ Follow these steps to generate a self-signed certificate that is going to be use
 4. `openssl req -x509 -new -nodes -keyout conf/tls/tls.key -out conf/tls/tls.crt -config conf/tls/openssl.cnf`
 
 ## Generate JWT secret
-
 You can generate a random enough JWT secret to be used with the `osctrl-api` and `osctrl-admin` components using one of the following commands:
 
 1. `uuidgen | shasum -a 256 | awk '{print $1}'`
 1. `vim .env` and set `JWT_SECRET`
 
 ## Set .env
-
 1. `cp .env.example .env`
 1. `vim .env` and set:
     1. osctrl
@@ -41,28 +37,24 @@ You can generate a random enough JWT secret to be used with the `osctrl-api` and
         1. `POSTGRES_DB_USERNAME` - define the username to conenct to osctrl database
         1. `POSTGRES_DB_PASSWORD` - define the password to conenct to osctrl database
         1.
-    1. Save and exit
+    1. Save and exit    
 1. `docker-compose build`
     1. Build Docker images
 1. `docker-compose up`
     1. Spin up Osctrl Docker stack
 
 ## Login into osctrl
-
 1. Open a browser to `https://127.0.0.1:8443/login`
 1. Login
     1. Enter `<OSCTRL_USER>` for username
     1. Enter `<OSCTRL_PASS>` for password
 
 ## References
-
 ### osctrl
-
 * [What is osctrl?](https://osctrl.net/)
 * [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.2.8#/)
 
 ### Docker
-
 * [How to create new users in a Docker container?](https://net2.com/how-to-create-new-users-in-docker-container/)
 * [Is mkdir -p totally safe when creating folder already exists](https://unix.stackexchange.com/questions/242995/is-mkdir-p-totally-safe-when-creating-folder-already-exists)
 * [Meaning of ampersand (&) in docker-compose.yml file](https://stackoverflow.com/questions/45805380/meaning-of-ampersand-in-docker-compose-yml-file)
@@ -73,5 +65,4 @@ You can generate a random enough JWT secret to be used with the `osctrl-api` and
 * [Osquery flags](https://osquery.readthedocs.io/en/stable/installation/cli-flags/)
 
 ### mkcert
-
 * [mkcert is a simple tool for making locally-trusted development certificates](https://github.com/FiloSottile/mkcert)
