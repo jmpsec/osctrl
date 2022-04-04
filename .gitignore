@@ -52,6 +52,7 @@ dhparam.pem
 .env
 static
 tmpl_admin
+data
 
 # Customization
 #brand.png
