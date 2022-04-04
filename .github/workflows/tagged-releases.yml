@@ -128,25 +128,25 @@ jobs:
             GOARCH=${{ matrix.goarch }}
 
       ########################### Sign built Docker image using cosign #############################
-      # https://github.blog/2021-12-06-safeguard-container-signing-capability-actions/
-      - name: Sign the published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
+      - if: ${{ github.event_name != 'pull_request' }}
+        name: Sign the published Docker image
+        shell: sh
         env:
-          COSIGN_EXPERIMENTAL: "true"
-        # This step uses the identity token to provision an ephemeral certificate
-        # against the sigstore community Fulcio instance.
+          COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
         run: |
           IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-          cosign sign docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+          echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
+          cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+          rm -f cosign.key
 
       ########################### Verify signed image using cosign #################################
-      # https://github.blog/2021-12-06-safeguard-container-signing-capability-actions/
-      - name: Verify the signed published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
-        env:
-          COSIGN_EXPERIMENTAL: "true"
+      - if: ${{ github.event_name != 'pull_request' }}
+        name: Verify the signed published Docker image
+        shell: sh
         run: |
           IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-          cosign verify docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+          echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
+          cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+          rm -f cosign.key
 
 
