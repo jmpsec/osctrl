@@ -12,7 +12,6 @@ RUN apt-get update -y -q && \
 # Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin && \
-    mkdir -p /opt/osctrl/scripts && \
     mkdir -p /opt/osctrl/config && \
     chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
 
