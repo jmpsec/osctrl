@@ -1,0 +1,93 @@
+name: "Build Osctrl Docker images"
+description: "Build Osctrl Docker images"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  commit_branch:
+    required: true
+    description: Define the git branch
+
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Checkout code ###########################
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    ########################### Download osctrl binary ###########################
+    - name: Download a osctrl binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_branch }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Install cosign ###########################
+    # https://github.com/sigstore/cosign-installer
+    - name: Install cosign
+      if: github.event_name != 'pull_request'
+      uses: sigstore/cosign-installer@1e95c1de343b5b0c23352d6417ee3e48d5bcd422
+      with:
+        cosign-release: 'v1.4.0'
+
+    ########################### Download artifacts ###########################
+    - name: Download osctrl binaries
+      uses: actions/download-artifact@v2
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Log into Dockerhub ###########################
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+    ########################### Setup Docker ###########################
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    ########################### Build and Push Docker images ###########################
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      id: docker_build
+      with:
+        context: .
+        file: ./deploy/cicd/docker/Dockerfile-osctrl-${{ inputs.osctrl_component }}
+        push: true
+        tags: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ inputs.osctrl_component }}:${{ steps.vars.outputs.RELEASE_VERSION }}
+        build-args: |
+          COMPONENT=${{ inputs.osctrl_component }}
+          GOOS=${{ inputs.go_os }}
+          GOARCH=${{ inputs.go_arch }}
+
+    ########################### Sign built Docker image using cosign ###########################
+    - if: ${{ github.event_name != 'pull_request' }}
+      name: Sign the published Docker image
+      shell: sh
+      env:
+        COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
+      run: |
+        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+        echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
+        cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+        rm -f cosign.key
+
+    ########################### Verify signed image using cosign ###########################
+    - if: ${{ github.event_name != 'pull_request' }}
+      name: Verify the signed published Docker image
+      shell: sh
+      run: |
+        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+        echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
+        cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+        rm -f cosign.key
