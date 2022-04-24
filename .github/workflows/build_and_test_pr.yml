@@ -3,7 +3,7 @@ name: Build and test PRs pushed to Ocstrl
 on: [push, pull_request]
 
 env:
-  GOLANG_VERSION: 1.18.x
+  GOLANG_VERSION: 1.18.1
 
 jobs:
   build_and_test:
@@ -37,7 +37,7 @@ jobs:
           osctrl_component: "${{ matrix.components }}"
           commit_sha: "${{ steps.vars.outputs.sha_short }}"
           commit_branch: "${{ steps.vars.outputs.branch }}"
-          golang_version: $GOLANG_VERSION
+          golang_version: "${{ env.GOLANG_VERSION }}"
 
       # ########################### Test binaries ###########################
       # - name: Run tests

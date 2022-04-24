@@ -19,7 +19,7 @@ inputs:
   golang_version:
     required: false
     description: Define the version of golang to compile with
-    default: 1.18.x
+    default: 1.18.1
 
 
 
