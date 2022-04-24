@@ -30,16 +30,21 @@ runs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+
     ########################### Install go to env ###########################
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: ${{ inputs.golang_version }}
     - run: go version
+      shell: bash
+
 
     ########################### Get GO deps #############################
     - name: Get GO deps
       run: go mod download
+      shell: bash
+
     
     ########################### Build osctrl inputs.osctrl_component ###########################
     - name: Build osctrl-tls
@@ -47,6 +52,9 @@ runs:
         GOOS=${{ inputs.go_os }} GOARCH=${{ inputs.go_arch }} \
         go build -o osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         ./${{ inputs.osctrl_component }}
+      shell: bash
+
+
 
     ########################### Upload artifacts ###########################
     - name: Upload osctrl binaries
