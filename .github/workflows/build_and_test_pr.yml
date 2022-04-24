@@ -18,39 +18,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      ########################### Generate SHA1 commit hash ###########################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-      - name: Declare GIT hash and branch
-        id: vars
-        shell: bash
-        run: |
-          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      # ########################### Generate SHA1 commit hash ###########################
+      # # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      # - name: Declare GIT hash and branch
+      #   id: vars
+      #   shell: bash
+      #   run: |
+      #     echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+      #     echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      #     echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      ########################### Build osctrl ###########################
-      - name: Build osctrl bianries
-        id: bin_builds
-        uses: .github/actions/build/binaries
-        with:
-          go_os: "${{ matrix.goos }}"
-          go_arch: "${{ matrix.goarch }}"
-          osctrl_component: "${{ matrix.components }}"
-          commit_sha: "${{ steps.vars.outputs.sha_short }}"
-          commit_branch: "${{ steps.vars.outputs.branch }}"
-          golang_version: "${GOLANG_VERSION}"
+      # ########################### Build osctrl ###########################
+      # - name: Build osctrl bianries
+      #   id: bin_builds
+      #   uses: .github/actions/build/binaries
+      #   with:
+      #     go_os: "${{ matrix.goos }}"
+      #     go_arch: "${{ matrix.goarch }}"
+      #     osctrl_component: "${{ matrix.components }}"
+      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
+      #     commit_branch: "${{ steps.vars.outputs.branch }}"
+      #     golang_version: "${GOLANG_VERSION}"
 
-      ########################### Test binaries ###########################
-      - name: Run tests
-        id: bin_tests
-        uses: .github/actions/test/binaries
-        with:
-          go_os: "${{ matrix.goos }}"
-          go_arch: "${{ matrix.goarch }}"
-          osctrl_component: "${{ matrix.components }}"
-          commit_sha: "${{ steps.vars.outputs.sha_short }}"
-          commit_branch: "${{ steps.vars.outputs.branch }}"
-          golang_version: "${GOLANG_VERSION}"
+      # ########################### Test binaries ###########################
+      # - name: Run tests
+      #   id: bin_tests
+      #   uses: .github/actions/test/binaries
+      #   with:
+      #     go_os: "${{ matrix.goos }}"
+      #     go_arch: "${{ matrix.goarch }}"
+      #     osctrl_component: "${{ matrix.components }}"
+      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
+      #     commit_branch: "${{ steps.vars.outputs.branch }}"
+      #     golang_version: "${GOLANG_VERSION}"
 
 
 
