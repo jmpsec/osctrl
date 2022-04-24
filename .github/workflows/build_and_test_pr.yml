@@ -28,22 +28,21 @@ jobs:
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      # ########################### Build osctrl ###########################
-      # - name: Build osctrl bianries
-      #   id: bin_builds
-      #   uses: .github/actions/build/binaries
-      #   with:
-      #     go_os: "${{ matrix.goos }}"
-      #     go_arch: "${{ matrix.goarch }}"
-      #     osctrl_component: "${{ matrix.components }}"
-      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
-      #     commit_branch: "${{ steps.vars.outputs.branch }}"
-      #     golang_version: "${GOLANG_VERSION}"
+      ########################### Build osctrl ###########################
+      - name: Build osctrl bianries
+        uses: ./.github/actions/build/binaries
+        with:
+          go_os: "${{ matrix.goos }}"
+          go_arch: "${{ matrix.goarch }}"
+          osctrl_component: "${{ matrix.components }}"
+          commit_sha: "${{ steps.vars.outputs.sha_short }}"
+          commit_branch: "${{ steps.vars.outputs.branch }}"
+          golang_version: "${GOLANG_VERSION}"
 
       # ########################### Test binaries ###########################
       # - name: Run tests
       #   id: bin_tests
-      #   uses: .github/actions/test/binaries
+      #   uses: ./.github/actions/test/binaries
       #   with:
       #     go_os: "${{ matrix.goos }}"
       #     go_arch: "${{ matrix.goarch }}"

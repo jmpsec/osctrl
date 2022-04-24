@@ -33,7 +33,6 @@ jobs:
 
       ########################### Build osctrl ###########################
       - name: Build osctrl bianries
-        id: bin_builds
         uses: .github/actions/build/binaries
         with:
           go_os: "${{ matrix.goos }}"
