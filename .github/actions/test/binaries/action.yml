@@ -31,6 +31,7 @@ runs:
       with:
         go-version: ${{ inputs.golang_version }}
     - run: go version
+      shell: bash
 
     ########################### Checkout code ###########################
     - name: Checkout code
@@ -45,6 +46,7 @@ runs:
     ########################### Get GO deps #############################
     - name: Get GO deps
       run: go mod download
+      shell: bash
 
     ########################### Download artifacts ###########################
     - name: Download a osctrl binaries
@@ -54,13 +56,17 @@ runs:
 
     ########################### Run tests ###########################
     - name: Run tests - go clean
-      shell: go clean -testcache ./...
+      run: go clean -testcache ./...
+      shell: bash
 
     - name: Run tests - go clean
-      shell: go test ./utils -v
+      run: go test ./utils -v
+      shell: bash
 
     - name: Run tests - go clean
-      shell: go test ./tls/handlers -v
+      run: go test ./tls/handlers -v
+      shell: bash
 
     - name: Run tests - go clean
-      shell: go clean -testcache ./...
+      run: go clean -testcache ./...
+      shell: bash
