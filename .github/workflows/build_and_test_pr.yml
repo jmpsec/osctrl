@@ -3,7 +3,7 @@ name: Build and test PRs pushed to Ocstrl
 on: [push, pull_request]
 
 env:
-  GOLANG_VERSION: 1.18.1
+  GOLANG_VERSION: 1.18.x
 
 jobs:
   build_and_test:
