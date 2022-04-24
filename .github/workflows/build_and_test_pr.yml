@@ -39,77 +39,14 @@ jobs:
           commit_branch: "${{ steps.vars.outputs.branch }}"
           golang_version: "${{ env.GOLANG_VERSION }}"
 
-      # ########################### Test binaries ###########################
-      # - name: Run tests
-      #   id: bin_tests
-      #   uses: ./.github/actions/test/binaries
-      #   with:
-      #     go_os: "${{ matrix.goos }}"
-      #     go_arch: "${{ matrix.goarch }}"
-      #     osctrl_component: "${{ matrix.components }}"
-      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
-      #     commit_branch: "${{ steps.vars.outputs.branch }}"
-      #     golang_version: "${GOLANG_VERSION}"
-
-
-
-# name: Build osctrl binaries
-
-# on:
-#   push:
-#     branches:
-#       - main
-
-# jobs:
-#   build_and_test:
-#     runs-on: ubuntu-20.04
-#     strategy:
-#       matrix:
-#         components: ['tls', 'admin', 'api', 'cli']
-#         goos: ['linux']
-#         goarch: ['amd64']
-#     steps:
-#       ########################### Checkout code ####################################################
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-
-#       ########################### Install go to env ################################################
-#       - name: Set up Go
-#         uses: actions/setup-go@v2
-#         with:
-#           go-version: 1.17.5
-#       - run: go version
-
-#       ########################### Get GO deps ######################################################
-#       - name: Get GO deps
-#         run: go mod download
-
-#       ########################### Build osctrl component ###########################################
-#       - name: Build osctrl-tls
-#         run: |
-#           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-#           go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
-#           ./${{ matrix.components }}
-
-#       ########################### Create ZIP of build artifacts ####################################
-#       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-#       - name: Declare GIT hash and branch
-#         id: vars
-#         shell: bash
-#         run: |
-#           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-#           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
-#       ########################### Upload artifacts #################################################
-#       - name: Upload osctrl binaries
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}
-#           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-
-#       - name: Create ZIP of build artifacts
-#         uses: actions/upload-artifact@v2
-#         id: create_zip_of_build_artifacts
-#         with:
-#           name: osctrl-binaries-${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.sha_short }}
-#           path: bin
+      ########################### Test binaries ###########################
+      - name: Run tests
+        id: bin_tests
+        uses: ./.github/actions/test/binaries
+        with:
+          go_os: "${{ matrix.goos }}"
+          go_arch: "${{ matrix.goarch }}"
+          osctrl_component: "${{ matrix.components }}"
+          commit_sha: "${{ steps.vars.outputs.sha_short }}"
+          commit_branch: "${{ steps.vars.outputs.branch }}"
+          golang_version: "${{ env.GOLANG_VERSION }}"
