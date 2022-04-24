@@ -1,0 +1,165 @@
+name: Create new osctrl release with binaries
+
+on:
+  push:
+    branches: [ $default-branch ]
+    # Publish semver tags as releases.
+    tags: [ 'v*.*.*' ]
+
+env:
+  GOLANG_VERSION: 1.18.1
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+# jobs:
+#   build_and_test:
+#     runs-on: ubuntu-20.04
+#     strategy:
+#       matrix:
+#         components: ['tls', 'admin', 'api', 'cli']
+#         goos: ['linux']
+#         goarch: ['amd64']
+#     steps:
+#       ########################### Checkout code ####################################################
+#       - name: Checkout code
+#         uses: actions/checkout@v2
+#       ########################### Install go #######################################################
+#       - name: Set up Go
+#         uses: actions/setup-go@v2
+#         with:
+#           go-version: 1.17
+#       - run: go version
+#       ########################### Get GO deps ######################################################
+#       - name: Get GO deps
+#         run: go mod download
+#       ########################### Build osctrl binaries ############################################
+#       - name: Build osctrl-tls
+#         run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin ./${{ matrix.components }}
+#       ########################### Upload artifacts #################################################
+#       - name: Upload osctrl binaries
+#         uses: actions/upload-artifact@v2
+#         with:
+#           name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+#           path: ./bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+#   release:
+#     needs: [build_and_test]
+#     runs-on: ubuntu-20.04
+#     strategy:
+#       matrix:
+#         components: ['tls', 'admin', 'api', 'cli']
+#         goos: ['linux']
+#         goarch: ['amd64']
+#     steps:
+#       ########################### Checkout Code ####################################################
+#       - name: Checkout
+#         uses: actions/checkout@v2
+
+#       ########################### Download artifacts ###############################################
+#       - name: Download osctrl binaries
+#         uses: actions/download-artifact@v2
+#         with:
+#           name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+
+#       - name: Release
+#         uses: softprops/action-gh-release@v1
+#         if: startsWith(github.ref, 'refs/tags/')
+#         with:
+#           files: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+#           body_path: ./CHANGELOG.md
+
+#   dockerhub:
+#     needs: [build_and_test]
+#     runs-on: ubuntu-20.04
+#     strategy:
+#       matrix:
+#         components: ['tls', 'admin', 'api', 'cli']
+#         goos: ['linux']
+#         goarch: ['amd64']
+#     steps:
+#       ########################### Create ZIP of build artifacts ####################################
+#       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+#       - name: Declare GIT hash and branch
+#         id: vars
+#         shell: bash
+#         run: |
+#           echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+#           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+#           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+#       ########################### Checkout #########################################################
+#       - name: Checkout
+#         uses: actions/checkout@v2
+
+#       ########################### Install cosign ###################################################
+#       # https://github.com/sigstore/cosign-installer
+#       - name: Install cosign
+#         if: github.event_name != 'pull_request'
+#         uses: sigstore/cosign-installer@1e95c1de343b5b0c23352d6417ee3e48d5bcd422
+#         with:
+#           cosign-release: 'v1.4.0'
+
+#       ########################### Download artifacts ###############################################
+#       - name: Download osctrl binaries
+#         uses: actions/download-artifact@v2
+#         with:
+#           name: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+
+#       ########################### Log into Dockerhub ###############################################
+#       - name: Login to Docker Hub
+#         uses: docker/login-action@v1
+#         with:
+#           username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+#       ########################### Setup Docker #####################################################
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v1
+
+#       ########################### Build and Push Docker images #####################################
+#       - name: Build and push
+#         uses: docker/build-push-action@v2
+#         id: docker_build
+#         with:
+#           context: .
+#           file: ./deploy/cicd/Dockerfile-osctrl-${{ matrix.components }}
+#           push: true
+#           tags: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.vars.outputs.RELEASE_VERSION }}
+#           build-args: |
+#             COMPONENT=${{ matrix.components }}
+#             GOOS=${{ matrix.goos }}
+#             GOARCH=${{ matrix.goarch }}
+
+#       ########################### Sign built Docker image using cosign #############################
+#       - if: ${{ github.event_name != 'pull_request' }}
+#         name: Sign the published Docker image
+#         shell: sh
+#         env:
+#           COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
+#         run: |
+#           IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+#           echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
+#           cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+#           rm -f cosign.key
+
+#       ########################### Verify signed image using cosign #################################
+#       - if: ${{ github.event_name != 'pull_request' }}
+#         name: Verify the signed published Docker image
+#         shell: sh
+#         run: |
+#           IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+#           echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
+#           cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+#           rm -f cosign.key
+
+

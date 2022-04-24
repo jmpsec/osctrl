@@ -1,0 +1,52 @@
+# name: "Build Osctrl DEB packages"
+# description: "Build Osctrl DEB packages"
+# inputs:
+#   go_os:
+#     required: true
+#     description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+#   go_arch:
+#     required: true
+#     description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+#   osctrl_component:
+#     required: true
+#     description: Define the osctrl component to compile
+#   commit_sha:
+#     required: true
+#     description: Define the SHA1 git commit hash
+#   commit_branch:
+#     required: true
+#     description: Define the git branch
+
+# runs:
+#   using: "composite"
+#   steps:
+#     ########################### Checkout code ###########################
+#     - name: Checkout code
+#       uses: actions/checkout@v3
+      
+#     ########################### Download artifacts ###########################
+#     - name: Download osctrl binaries
+#       uses: actions/download-artifact@v2
+#       with:
+#         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+#     ########################### Build DEB package ###########################
+#     - name: Create DEB package contents
+#       shell: "bash"
+#       run: deploy/cicd/deb/generate-deb-packag-contents.sh
+#       env:
+#         OSCTRL_COMPONTENT: ${{ inputs.osctrl_component }}
+#         GOOS: ${{ inputs.go_os }}
+#         GOARCH: ${{ inputs.go_arch }}
+
+#     - name: Build DEB package
+#       uses: jiro4989/build-deb-action@v2
+#       with:
+#         # <name>_<version>-<revision>_<architecture>.deb
+#         package: osctrl_${{ inputs.osctrl_component }}_v${{ github.ref }}-1_${{ inputs.go_arch }}.deb
+#         package_root: .debpkg
+#         maintainer: osctrl
+#         version: ${{ github.ref }} # refs/tags/v*.*.*
+#         arch: ${{ inputs.go_arch }}
+#         desc: "DEB package for osctrl-${{ inputs.osctrl_component }}-v${{ github.ref }} Git commit: ${{ input.commit_sha }}"
+    
