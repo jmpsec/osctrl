@@ -1,6 +1,6 @@
 name: Build and test PRs pushed to Ocstrl
 
-on: [push]
+on: [push, pull_request]
 
 env:
   GOLANG_VERSION: 1.18.1
