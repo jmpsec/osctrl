@@ -60,6 +60,6 @@ runs:
     - name: Upload osctrl binaries
       uses: actions/upload-artifact@v3
       with:
-        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_branch }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
         path: osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
         retention-days: 10
