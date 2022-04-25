@@ -29,6 +29,8 @@ runs:
     ########################### Checkout code ###########################
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
 
 
     ########################### Install go to env ###########################
