@@ -32,8 +32,8 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       ########################### Build osctrl ###########################
-      - name: Build osctrl bianries
-        uses: .github/actions/build/binaries
+      - name: Build osctrl binaries
+        uses: ./.github/actions/build/binaries
         with:
           go_os: "${{ matrix.goos }}"
           go_arch: "${{ matrix.goarch }}"
@@ -43,16 +43,27 @@ jobs:
           golang_version: "${GOLANG_VERSION}"
 
       ########################### Test binaries ###########################
-      - name: Run tests
-        id: bin_tests
-        uses: .github/actions/test/binaries
+      # - name: Run tests
+      #   id: bin_tests
+      #   uses: .github/actions/test/binaries
+      #   with:
+      #     go_os: "${{ matrix.goos }}"
+      #     go_arch: "${{ matrix.goarch }}"
+      #     osctrl_component: "${{ matrix.components }}"
+      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
+      #     commit_branch: "${{ steps.vars.outputs.branch }}"
+      #     golang_version: "${GOLANG_VERSION}"
+
+      ########################### Build Docker containers ###########################
+      - name: Build and deploy osctrl Docker containers
+        uses: ./.github/actions/build/binaries
         with:
           go_os: "${{ matrix.goos }}"
           go_arch: "${{ matrix.goarch }}"
           osctrl_component: "${{ matrix.components }}"
           commit_sha: "${{ steps.vars.outputs.sha_short }}"
-          commit_branch: "${{ steps.vars.outputs.branch }}"
-          golang_version: "${GOLANG_VERSION}"
+          docker_tag: "${{ steps.vars.outputs.sha_short }}"
+
 
 
 

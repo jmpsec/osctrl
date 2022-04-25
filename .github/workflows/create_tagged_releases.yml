@@ -22,6 +22,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      ########################### Generate SHA1 commit hash ###########################
+      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      ########################### Build Docker containers ###########################
+      - name: Build osctrl Docker containers
+        uses: .github/actions/build/binaries
+        with:
+          go_os: "${{ matrix.goos }}"
+          go_arch: "${{ matrix.goarch }}"
+          osctrl_component: "${{ matrix.components }}"
+          commit_sha: "${{ steps.vars.outputs.sha_short }}"
+          docker_tag: "${{ steps.vars.outputs.RELEASE_VERSION }}"
+
 # jobs:
 #   build_and_test:
 #     runs-on: ubuntu-20.04
