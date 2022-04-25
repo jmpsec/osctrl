@@ -56,7 +56,7 @@ jobs:
 
       ########################### Build Docker containers ###########################
       - name: Build and deploy osctrl Docker containers
-        uses: ./.github/actions/build/binaries
+        uses: ./.github/actions/build/docker
         with:
           go_os: "${{ matrix.goos }}"
           go_arch: "${{ matrix.goarch }}"
