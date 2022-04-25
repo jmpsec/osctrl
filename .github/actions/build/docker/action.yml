@@ -37,12 +37,12 @@ runs:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
     ########################### Install cosign ###########################
-    # https://github.com/sigstore/cosign-installer
-    - name: Install cosign
-      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
-      uses: sigstore/cosign-installer@1e95c1de343b5b0c23352d6417ee3e48d5bcd422
-      with:
-        cosign-release: 'v1.4.0'
+    # # https://github.com/sigstore/cosign-installer
+    # - name: Install cosign
+    #   if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
+    #   uses: sigstore/cosign-installer@1e95c1de343b5b0c23352d6417ee3e48d5bcd422
+    #   with:
+    #     cosign-release: 'v1.4.0'
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
@@ -63,30 +63,30 @@ runs:
         context: .
         file: ./deploy/cicd/docker/Dockerfile-osctrl-${{ inputs.osctrl_component }}
         push: true
-        tags: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}
+        tags: ${{ inputs.docker_hub_access_token }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}
         build-args: |
           COMPONENT=${{ inputs.osctrl_component }}
           GOOS=${{ inputs.go_os }}
           GOARCH=${{ inputs.go_arch }}
 
     ########################### Sign built Docker image using cosign ###########################
-    - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
-      name: Sign the published Docker image
-      shell: sh
-      env:
-        COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
-      run: |
-        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
-        cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
-        rm -f cosign.key
+    # - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
+    #   name: Sign the published Docker image
+    #   shell: sh
+    #   env:
+    #     COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
+    #   run: |
+    #     IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+    #     echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
+    #     cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+    #     rm -f cosign.key
 
     ########################### Verify signed image using cosign ###########################
-    - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
-      name: Verify the signed published Docker image
-      shell: sh
-      run: |
-        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
-        cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
-        rm -f cosign.key
+    # - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
+    #   name: Verify the signed published Docker image
+    #   shell: sh
+    #   run: |
+    #     IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+    #     echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
+    #     cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
+    #     rm -f cosign.key
