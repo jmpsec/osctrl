@@ -60,7 +60,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/login.html",
 		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
-		h.TemplatesFolder+"/components/page-js-" + h.StaticLocation + ".html")
+		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html")
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting login template: %v", err)
@@ -200,8 +200,8 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	// Prepare template
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/table.html",
-		h.TemplatesFolder+"/components/page-head-" + h.StaticLocation + ".html",
-		h.TemplatesFolder+"/components/page-js-" + h.StaticLocation + ".html",
+		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
+		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html",
 		h.TemplatesFolder+"/components/page-aside-right.html",
 		h.TemplatesFolder+"/components/page-aside-left.html",
 		h.TemplatesFolder+"/components/page-header.html",
@@ -269,8 +269,8 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	// Prepare template
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/queries-run.html",
-		h.TemplatesFolder+"/components/page-head-" + h.StaticLocation + ".html",
-		h.TemplatesFolder+"/components/page-js-" + h.StaticLocation + ".html",
+		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
+		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html",
 		h.TemplatesFolder+"/components/page-aside-right.html",
 		h.TemplatesFolder+"/components/page-aside-left.html",
 		h.TemplatesFolder+"/components/page-header.html",
@@ -901,8 +901,9 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastFutureTimes": utils.PastFutureTimes,
-		"jsonRawIndent":   jsonRawIndent,
+		"pastFutureTimes":         utils.PastFutureTimes,
+		"bytesReceivedConversion": utils.BytesReceivedConversion,
+		"jsonRawIndent":           jsonRawIndent,
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "node.html").filepaths

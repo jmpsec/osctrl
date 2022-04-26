@@ -133,6 +133,18 @@ func (c *Carves) CheckCarve(sessionid, requestid string) bool {
 	return (carve.RequestID == strings.TrimSpace(requestid))
 }
 
+// GetCarve to verify a session belong to a carve
+func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) {
+	carve, err := c.GetBySession(sessionid)
+	if err != nil {
+		return carve, fmt.Errorf("GetBySession %v", err)
+	}
+	if (carve.RequestID != strings.TrimSpace(requestid)) {
+		return CarvedFile{}, fmt.Errorf("RequestID does not match carve %s != %s", carve.RequestID, requestid)
+	}
+	return carve, nil
+}
+
 // CreateBlock to create a new block for a carve
 func (c *Carves) CreateBlock(block CarvedBlock) error {
 	return c.DB.Create(&block).Error // can be nil or err

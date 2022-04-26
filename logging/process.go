@@ -9,7 +9,7 @@ import (
 )
 
 // ProcessLogs - Helper to process logs
-func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, debug bool) {
+func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, dataLen int, debug bool) {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
 	if err := json.Unmarshal(data, &logs); err != nil {
@@ -44,6 +44,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 		ConfigHash:     uniq(hashes)[0],
 		DaemonHash:     uniq(dhashes)[0],
 		OsqueryVersion: uniq(osqueryversions)[0],
+		BytesReceived:  dataLen,
 	}
 	// Dispatch logs and update metadata
 	l.DispatchLogs(data, uniq(uuids)[0], logType, environment, metadata, debug)

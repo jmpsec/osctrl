@@ -92,6 +92,8 @@ func updateEnvironment(c *cli.Context) error {
 	}
 	debug := c.Bool("debug")
 	env.DebugHTTP = debug
+	enroll := c.Bool("enroll")
+	env.AcceptEnrolls = enroll
 	hostname := c.String("hostname")
 	if hostname != "" {
 		env.Hostname = hostname

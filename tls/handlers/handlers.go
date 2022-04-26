@@ -3,6 +3,7 @@ package handlers
 import (
 	"compress/gzip"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -196,11 +197,23 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Check if environment accept enrolls
+	if !env.AcceptEnrolls {
+		h.Inc(metricEnrollErr)
+		log.Printf("environment not enrolling %v", err)
+		return
+	}
 	// Debug HTTP for environment
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -212,7 +225,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
-		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey)
+		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey, len(body))
 		// Check if UUID exists already, if so archive node and enroll new node
 		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
@@ -232,6 +245,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
+				// TODO autotag node based on existing or newly created tags
 				if err := h.Tags.TagNode(env.Name, newNode); err != nil {
 					h.Inc(metricEnrollErr)
 					log.Printf("error tagging node %v", err)
@@ -275,22 +289,26 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.ConfigRequest
-	err = json.NewDecoder(r.Body).Decode(&t)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	// Check if provided node_key is valid and if so, update node
-	if h.Nodes.CheckByKey(t.NodeKey) {
-		err = h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey)
-		if err != nil {
+	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		ip := utils.GetIP(r)
+		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricConfigErr)
-			log.Printf("error updating IP address %v", err)
+			log.Printf("error recording IP address %v", err)
 		}
 		// Refresh last config for node
-		err = h.Nodes.RefreshLastConfig(t.NodeKey)
-		if err != nil {
+		if err := h.Nodes.ConfigRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
@@ -347,8 +365,13 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t types.LogRequest
-	err = json.NewDecoder(r.Body).Decode(&t)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricLogErr)
 		log.Printf("error parsing POST body %v", err)
 		return
@@ -364,7 +387,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.Nodes.CheckByKey(t.NodeKey) {
 		nodeInvalid = false
 		// Process logs and update metadata
-		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), (*h.EnvsMap)[env.Name].DebugHTTP)
+		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}
@@ -390,13 +413,6 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Environment is missing")
 		return
 	}
-	// Check if environment is valid
-	if !h.Envs.Exists(envVar) {
-		h.Inc(metricReadErr)
-		log.Printf("error unknown environment (%s)", envVar)
-		return
-	}
-	// TODO do the exist and get in one step
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
@@ -408,20 +424,25 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		h.Inc(metricReadErr)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	var nodeInvalid, accelerate bool
 	qs := make(queries.QueryReadQueries)
-	// Lookup node by node_key
-	node, err := h.Nodes.GetByKey(t.NodeKey)
-	if err == nil {
-		err = h.Nodes.UpdateIPAddress(utils.GetIP(r), node)
-		if err != nil {
-			h.Inc(metricReadErr)
-			log.Printf("error updating IP Address %v", err)
+	// Check if provided node_key is valid and if so, update node
+	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		ip := utils.GetIP(r)
+		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
+			h.Inc(metricConfigErr)
+			log.Printf("error recording IP address %v", err)
 		}
 		nodeInvalid = false
 		qs, accelerate, err = h.Queries.NodeQueries(node)
@@ -430,12 +451,12 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("error getting queries from db %v", err)
 		}
 		// Refresh last query read request
-		err = h.Nodes.RefreshLastQueryRead(t.NodeKey)
-		if err != nil {
+		if err := h.Nodes.QueryReadRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricReadErr)
 			log.Printf("error refreshing last query read %v", err)
 		}
 	} else {
+		log.Printf("GetByKey %v", err)
 		nodeInvalid = true
 		accelerate = false
 	}
@@ -478,17 +499,24 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		h.Inc(metricWriteErr)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if h.Nodes.CheckByKey(t.NodeKey) {
-		if err := h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey); err != nil {
-			h.Inc(metricWriteErr)
-			log.Printf("error updating IP Address %v", err)
+	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		ip := utils.GetIP(r)
+		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
+			h.Inc(metricConfigErr)
+			log.Printf("error recording IP address %v", err)
 		}
 		nodeInvalid = false
 		for name, c := range t.Queries {
@@ -503,6 +531,10 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 					}
 				}
 			}
+		}
+		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
+			h.Inc(metricReadErr)
+			log.Printf("error refreshing last query write %v", err)
 		}
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.Name, (*h.EnvsMap)[env.Name].DebugHTTP)
@@ -622,18 +654,25 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		h.Inc(metricInitErr)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	initCarve := false
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
-	if h.Nodes.CheckByKey(t.NodeKey) {
-		if err := h.Nodes.UpdateIPAddressByKey(utils.GetIP(r), t.NodeKey); err != nil {
-			h.Inc(metricInitErr)
-			log.Printf("error updating IP Address %v", err)
+	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		ip := utils.GetIP(r)
+		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
+			h.Inc(metricConfigErr)
+			log.Printf("error recording IP address %v", err)
 		}
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
@@ -642,6 +681,11 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricInitErr)
 			log.Printf("error procesing carve init %v", err)
 			initCarve = false
+		}
+		// Refresh last carve request
+		if err := h.Nodes.CarveRefresh(node, ip, len(body)); err != nil {
+			h.Inc(metricReadErr)
+			log.Printf("error refreshing last carve init %v", err)
 		}
 	}
 	// Prepare response
@@ -677,17 +721,28 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		h.Inc(metricBlockErr)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricEnrollErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
 	blockCarve := false
 	// Check if provided session_id matches with the request_id (carve query name)
-	if h.Carves.CheckCarve(t.SessionID, t.RequestID) {
+	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
 		blockCarve = true
 		// Process received block
 		go h.ProcessCarveBlock(t, env.Name)
+		// Refresh last carve request
+		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
+			h.Inc(metricReadErr)
+			log.Printf("error refreshing last carve init %v", err)
+		}
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}

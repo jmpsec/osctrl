@@ -27,6 +27,7 @@ func TestNodeFromEnroll(t *testing.T) {
 	_env := "testing"
 	_ip := "1.2.3.4"
 	_key := "node-key"
+	_rec := 12345
 	req := types.EnrollRequest{
 		EnrollSecret:   "secret",
 		HostIdentifier: "thisistheuuid",
@@ -91,9 +92,10 @@ func TestNodeFromEnroll(t *testing.T) {
 		Username:      "unknown",
 		OsqueryUser:   "unknown",
 		Memory:        "memory",
+		BytesReceived: _rec,
 		RawEnrollment: enrollRaw,
 	}
-	resultNode := nodeFromEnroll(req, _env, _ip, _key)
+	resultNode := nodeFromEnroll(req, _env, _ip, _key, _rec)
 	assert.Equal(t, node, resultNode)
 }
 

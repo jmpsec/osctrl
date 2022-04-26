@@ -12,6 +12,7 @@ type NodeMetadata struct {
 	OsqueryVersion  string
 	Platform        string
 	PlatformVersion string
+	BytesReceived   int
 }
 
 // GetMetadata to extract the metadata struct from a node
@@ -27,5 +28,6 @@ func (n *NodeManager) GetMetadata(node OsqueryNode) NodeMetadata {
 		OsqueryVersion:  node.OsqueryVersion,
 		Platform:        node.Platform,
 		PlatformVersion: node.PlatformVersion,
+		BytesReceived:   node.BytesReceived,
 	}
 }
