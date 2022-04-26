@@ -321,6 +321,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "certificate",
 							Aliases: []string{"crt"},
+							Value:   "",
 							Usage:   "Certificate file to be read",
 						},
 					},
@@ -340,6 +341,11 @@ func init() {
 							Name:    "debug",
 							Aliases: []string{"d"},
 							Usage:   "Environment debug capability",
+						},
+						&cli.BoolFlag{
+							Name:    "enroll",
+							Aliases: []string{"e"},
+							Usage:   "Environment enroll capability",
 						},
 						&cli.StringFlag{
 							Name:    "hostname",

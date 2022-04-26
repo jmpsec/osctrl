@@ -76,6 +76,7 @@ type TLSEnvironment struct {
 	QueryWritePath   string
 	CarverInitPath   string
 	CarverBlockPath  string
+	AcceptEnrolls    bool
 }
 
 // MapEnvironments to hold the TLS environments by name and UUID
@@ -136,6 +137,7 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 		CarvesTLS:        true,
 		QueryInterval:    DefaultQueryInterval,
 		EnrollPath:       DefaultEnrollPath,
+		AcceptEnrolls:    true,
 		LogPath:          DefaultLogPath,
 		ConfigPath:       DefaultConfigPath,
 		QueryReadPath:    DefaultQueryReadPath,
