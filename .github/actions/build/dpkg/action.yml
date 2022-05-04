@@ -76,7 +76,6 @@ runs:
 
     - name: Upload osctrl DEBs
       uses: actions/upload-artifact@v3
-      if: startsWith(github.ref, 'refs/tags/')
       with:
         name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}-1_${{ inputs.go_arch }}.deb
         path: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}-1_${{ inputs.go_arch }}.deb
