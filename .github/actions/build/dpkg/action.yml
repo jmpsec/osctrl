@@ -70,13 +70,13 @@ runs:
       uses: actions/upload-artifact@v3
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        name: osctrl-${{ inputs.osctrl_component }}_${{ github.ref }}-1_${{ inputs.go_arch }}.deb
-        path: osctrl-${{ inputs.osctrl_component }}_${{ github.ref }}-1_${{ inputs.go_arch }}.deb
+        name: osctrl-${{ inputs.osctrl_component }}_${{ github.ref }}_${{ inputs.go_arch }}.deb
+        path: osctrl-${{ inputs.osctrl_component }}_${{ github.ref }}_${{ inputs.go_arch }}.deb
         retention-days: 10
 
     - name: Upload osctrl DEBs
       uses: actions/upload-artifact@v3
       with:
-        name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}-1_${{ inputs.go_arch }}.deb
-        path: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}-1_${{ inputs.go_arch }}.deb
+        name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        path: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
         retention-days: 10
