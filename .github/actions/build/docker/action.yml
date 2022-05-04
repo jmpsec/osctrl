@@ -16,6 +16,9 @@ inputs:
   docker_tag:
     required: true
     description: Define the Docker tag
+  docker_hub_org:
+    required: true
+    description: Pass DockerHub org to aciton
   docker_hub_username:
     required: true
     description: Pass DockerHub username to aciton
@@ -29,6 +32,8 @@ runs:
     ########################### Checkout code ###########################
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
 
     ########################### Download osctrl binary ###########################
     - name: Download a osctrl binaries
@@ -63,7 +68,7 @@ runs:
         context: .
         file: ./deploy/cicd/docker/Dockerfile-osctrl-${{ inputs.osctrl_component }}
         push: true
-        tags: ${{ inputs.docker_hub_access_token }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}
+        tags: ${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}
         build-args: |
           COMPONENT=${{ inputs.osctrl_component }}
           GOOS=${{ inputs.go_os }}
