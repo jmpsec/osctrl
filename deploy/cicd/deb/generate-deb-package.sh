@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 OSCTRL_USER="${VARIABLE:-osctrl}"
 OSCTRL_GROUP="${VARIABLE:-osctrl}"
 WORKING_DIR="${VARIABLE:-/etc/osctrl}"
@@ -37,7 +39,7 @@ cp deploy/config/redis.json "${DEB_DIR}/usr/share/osctrl/redis.json.example" && 
 ###################################### General components content ######################################
 mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}"  && \
 
-cp osctrl-${OSCTRL_COMPONTENT}-${COMMIT_SHA}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}" && \
+cp osctrl-${OSCTRL_COMPONTENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}" && \
     chmod 755 "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}"
 
 cp deploy/config/service.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json" && \

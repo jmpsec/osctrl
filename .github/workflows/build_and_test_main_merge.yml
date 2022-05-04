@@ -83,7 +83,7 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       ########################### Build DEB packages ###########################
-      - name: Build and deploy osctrl Docker containers
+      - name: Build osctrl DEB packages
         uses: ./.github/actions/build/dpkg
         with:
           go_os: ${{ matrix.goos }}
