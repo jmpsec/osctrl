@@ -14,10 +14,10 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.2.8 // indirect
-	github.com/jmpsec/osctrl/queries v0.2.8 // indirect
-	github.com/jmpsec/osctrl/types v0.2.8 // indirect
-	github.com/jmpsec/osctrl/users v0.2.8
+	github.com/jmpsec/osctrl/nodes v0.2.9 // indirect
+	github.com/jmpsec/osctrl/queries v0.2.9 // indirect
+	github.com/jmpsec/osctrl/types v0.2.9 // indirect
+	github.com/jmpsec/osctrl/users v0.2.9
 )
 
 require (

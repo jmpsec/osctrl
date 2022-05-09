@@ -37,7 +37,7 @@ require (
 	github.com/jmpsec/osctrl/logging v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/metrics v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/nodes v0.0.0-20220120232002-31ecf3b9f264
-	github.com/jmpsec/osctrl/queries v0.2.8
+	github.com/jmpsec/osctrl/queries v0.2.9
 	github.com/jmpsec/osctrl/settings v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/tags v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/types v0.0.0-20220120232002-31ecf3b9f264

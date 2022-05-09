@@ -1,32 +1,23 @@
 # osctrl Changelog
 
-<a name="v0.2.6"></a>
-## [0.2.6](https://github.com/jmpsec/osctrl/releases/tag/v0.2.6)
+## 🔖 Release [0.2.9](https://github.com/jmpsec/osctrl/releases/tag/v0.2.9)
 
-[Git Commits](https://github.com/jmpsec/osctrl/compare/0.2.5...v0.2.6)
+[Git Commits](https://github.com/jmpsec/osctrl/compare/0.2.8...v0.2.9)
 
-### New Features
+### 🚨 Breaking Changes
 
-None
-### UI Changes
+### ✨ New Features
 
-None
+### 🛠 Improvements and ⚡️ Performance
 
-### Under the Hood improvements
+### 🐛 Bug Fixes
 
-None
+### 🔒 Security
 
-### Bug Fixes
+### ♻️ Refactoring and 🏗 Chores
 
-- Fix for file carving bug ([#164](https://github.com/jmpsec/osctrl/pull/164))
-- <Title> ([#<PR>](<PR URL>))
+### 📚 Documentation
 
-### Documentation
+### 📦 Build
 
-None
-
-### Build
-
-- Initial CI/CD pipeline ([#162](https://github.com/jmpsec/osctrl/pull/162))
-- CI/CD pipeline for Dockerhub ([#163](https://github.com/jmpsec/osctrl/pull/163))
-- Change repo branch name to `main` ([#165](https://github.com/jmpsec/osctrl/pull/165))
+### 🚦 Test
