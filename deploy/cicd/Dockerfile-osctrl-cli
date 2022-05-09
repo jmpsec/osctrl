@@ -19,7 +19,6 @@ COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH}.bin /opt/osctrl/bin/osctrl-${COMPONEN
 RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 COPY deploy/docker/conf/osctrl/db.json /opt/osctrl/config/db.json
-COPY deploy/docker/conf/tls/tls.crt /opt/osctrl/config/osctrl.crt
 RUN chmod 644 /opt/osctrl/config/osctrl.crt
 
 COPY deploy/docker/conf/osctrl/cli/entrypoint.sh /entrypoint.sh
