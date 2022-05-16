@@ -56,6 +56,7 @@ type ConfTemplateData struct {
 type EnrollTemplateData struct {
 	Title                 string
 	EnvName               string
+	OnelinerExpiration    bool
 	EnrollExpiry          string
 	EnrollExpired         bool
 	RemoveExpiry          string

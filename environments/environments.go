@@ -278,7 +278,7 @@ func (environment *Environment) UpdateATC(idEnv, atc string) error {
 // UpdateCertificate to update decorators for an environment
 func (environment *Environment) UpdateCertificate(idEnv, certificate string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("certificate", certificate).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("UpdateUpdateCertificate %v", err)
 	}
 	return nil
 }
@@ -310,7 +310,7 @@ func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs
 	updated.LogInterval = lsecs
 	updated.QueryInterval = qsecs
 	if err := environment.DB.Model(&env).Updates(updated).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesUpdateIntervals %v", err)
 	}
 	return nil
 }
@@ -328,13 +328,13 @@ func (environment *Environment) RotateSecrets(name string) error {
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesRotateSecrets %v", err)
 	}
 	return nil
 }
 
 // RotateEnrollPath to replace SecretPath for enrolling in an environment
-func (environment *Environment) RotateEnrollPath(name string) error {
+func (environment *Environment) RotateEnroll(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %v", err)
@@ -343,7 +343,7 @@ func (environment *Environment) RotateEnrollPath(name string) error {
 	rotated.EnrollSecretPath = utils.GenKSUID()
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesRotateEnrollPath %v", err)
 	}
 	return nil
 }
@@ -358,19 +358,32 @@ func (environment *Environment) RotateSecret(name string) error {
 	rotated.Secret = utils.GenRandomString(DefaultSecretLength)
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesRotateSecret %v", err)
 	}
 	return nil
 }
 
 // ExpireEnroll to expire the enroll in an environment
-func (environment *Environment) ExpireEnroll(name string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+func (environment *Environment) ExpireEnroll(idEnv string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", time.Now()).Error; err != nil {
+		return fmt.Errorf("UpdateExpireEnroll %v", err)
 	}
-	if err := environment.DB.Model(&env).Update("enroll_expire", time.Now()).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+	return nil
+}
+
+// ExtendEnroll to extend the enroll in an environment
+func (environment *Environment) ExtendEnroll(idEnv string) error {
+	extended := time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", extended).Error; err != nil {
+		return fmt.Errorf("UpdateExtendEnroll %v", err)
+	}
+	return nil
+}
+
+// NotExpireEnroll to mark the enroll in an environment as not expiring
+func (environment *Environment) NotExpireEnroll(idEnv string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", time.Time{}).Error; err != nil {
+		return fmt.Errorf("NotExpireEnroll %v", err)
 	}
 	return nil
 }
@@ -385,7 +398,7 @@ func (environment *Environment) RotateRemove(name string) error {
 	rotated.RemoveSecretPath = utils.GenKSUID()
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesRotateRemove %v", err)
 	}
 	return nil
 }
@@ -393,7 +406,28 @@ func (environment *Environment) RotateRemove(name string) error {
 // ExpireRemove to expire the remove in an environment
 func (environment *Environment) ExpireRemove(idEnv string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("remove_expire", time.Now()).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("UpdateExpireRemove %v", err)
+	}
+	return nil
+}
+
+// ExtendRemove to extend the remove in an environment
+func (environment *Environment) ExtendRemove(idEnv string) error {
+	env, err := environment.Get(idEnv)
+	if err != nil {
+		return fmt.Errorf("error getting environment %v", err)
+	}
+	extended := env.RemoveExpire.Add(time.Duration(DefaultLinkExpire) * time.Hour)
+	if err := environment.DB.Model(&env).Update("remove_expire", extended).Error; err != nil {
+		return fmt.Errorf("UpdateExtendRemove %v", err)
+	}
+	return nil
+}
+
+// NotExpireRemove to mark the remove in an environment as not expiring
+func (environment *Environment) NotExpireRemove(idEnv string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("remove_expire", time.Time{}).Error; err != nil {
+		return fmt.Errorf("NotExpireRemove %v", err)
 	}
 	return nil
 }
@@ -410,7 +444,7 @@ func (environment *Environment) DebugHTTP(name string) bool {
 // ChangeDebugHTTP to change the value of DebugHTTP for an environment
 func (environment *Environment) ChangeDebugHTTP(idEnv string, value bool) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("UpdatesChangeDebugHTTP %v", err)
 	}
 	return nil
 }

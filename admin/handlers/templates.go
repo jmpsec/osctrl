@@ -862,6 +862,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		Title:                 env.Name + " Enroll",
 		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
 		EnvName:               env.Name,
+		OnelinerExpiration:    h.Settings.OnelinerExpiration(),
 		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
 		RemoveExpiry:          strings.ToUpper(utils.InFutureTime(env.RemoveExpire)),

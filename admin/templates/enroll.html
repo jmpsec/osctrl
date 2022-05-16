@@ -28,20 +28,32 @@
                       <span class="align-self-center mr-1"><b>{{ .EnrollExpiry }}</b></span>
                     {{ if eq $metadata.Level "admin" }}
                       {{ if not .EnrollExpired }}
-                      <div class="card-header-action mr-3">
+                      <div class="card-header-action mr-1">
                         <button id="enroll_expire" class="btn btn-sm btn-block btn-danger"
                           data-tooltip="true" data-placement="bottom" title="Expire" onclick="expireEnrollLink();">
                           <i class="far fa-times-circle"></i>
                         </button>
                       </div>
                       {{ end }}
-                      {{ if .EnrollExpired }}
-                      <div class="card-header-action mr-3">
-                          <button id="enroll_extend" class="btn btn-sm btn-block btn-success"
-                            data-tooltip="true" data-placement="bottom" title="Extend 24 hours" onclick="extendEnrollLink();">
-                            <i class="far fa-clock"></i>
-                          </button>
+                      <div class="card-header-action mr-1">
+                        <button id="enroll_extend" class="btn btn-sm btn-block btn-success"
+                          data-tooltip="true" data-placement="bottom" title="Extend 24 hours" onclick="extendEnrollLink();">
+                          <i class="far fa-clock"></i>
+                        </button>
                       </div>
+                      <div class="card-header-action mr-1">
+                        <button id="remove_rotate" class="btn btn-sm btn-block btn-warning"
+                          data-tooltip="true" data-placement="bottom" title="Rotate link" onclick="rotateEnrollLink();">
+                          <i class="fas fa-sync-alt"></i>
+                        </button>
+                      </div>
+                      {{ if and (not .OnelinerExpiration) (ne .EnrollExpiry "NEVER EXPIRES") }}
+                        <div class="card-header-action mr-1">
+                          <button id="enroll_notexpire" class="btn btn-sm btn-block btn-info"
+                            data-tooltip="true" data-placement="bottom" title="Disable Expiration" onclick="notexpireEnrollLink();">
+                            <i class="fas fa-stopwatch"></i>
+                          </button>
+                        </div>
                       {{ end }}
                     {{end }}
 
@@ -103,20 +115,32 @@
                     <span class="align-self-center mr-1"><b>{{ .RemoveExpiry }}</b></span>
                   {{ if eq $metadata.Level "admin" }}
                     {{ if not .RemoveExpired }}
-                    <div class="card-header-action mr-3">
+                    <div class="card-header-action mr-1">
                       <button id="remove_expire" class="btn btn-sm btn-block btn-danger"
                         data-tooltip="true" data-placement="bottom" title="Expire" onclick="expireRemoveLink();">
                         <i class="far fa-times-circle"></i>
                       </button>
                     </div>
                     {{ end }}
-                    {{ if .RemoveExpired }}
-                    <div class="card-header-action mr-3">
+                    <div class="card-header-action mr-1">
                       <button id="remove_extend" class="btn btn-sm btn-block btn-success"
                         data-tooltip="true" data-placement="bottom" title="Extend 24 hours" onclick="extendRemoveLink();">
                         <i class="far fa-clock"></i>
                       </button>
                     </div>
+                    <div class="card-header-action mr-1">
+                      <button id="remove_rotate" class="btn btn-sm btn-block btn-warning"
+                        data-tooltip="true" data-placement="bottom" title="Rotate link" onclick="rotateRemoveLink();">
+                        <i class="fas fa-sync-alt"></i>
+                      </button>
+                    </div>
+                    {{ if and (not .OnelinerExpiration) (ne .RemoveExpiry "NEVER EXPIRES") }}
+                      <div class="card-header-action mr-1">
+                        <button id="remove_notexpire" class="btn btn-sm btn-block btn-info"
+                          data-tooltip="true" data-placement="bottom" title="Disable Expiration" onclick="notexpireRemoveLink();">
+                          <i class="fas fa-stopwatch"></i>
+                        </button>
+                      </div>
                     {{ end }}
                   {{ end }}
 

@@ -17,12 +17,28 @@ function expireEnrollLink() {
   genericLinkAction('enroll', 'expire');
 }
 
+function rotateEnrollLink() {
+  genericLinkAction('enroll', 'rotate');
+}
+
+function notexpireEnrollLink() {
+  genericLinkAction('enroll', 'notexpire');
+}
+
 function extendRemoveLink() {
   genericLinkAction('remove', 'extend');
 }
 
 function expireRemoveLink() {
   genericLinkAction('remove', 'expire');
+}
+
+function rotateRemoveLink() {
+  genericLinkAction('remove', 'rotate');
+}
+
+function notexpireRemoveLink() {
+  genericLinkAction('remove', 'notexpire');
 }
 
 function confirmUploadCertificate() {

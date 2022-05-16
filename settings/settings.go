@@ -23,11 +23,11 @@ const (
 
 // Types of authentication
 const (
-	AuthNone    string = "none"
-	AuthJSON    string = "json"
-	AuthDB      string = "db"
-	AuthSAML    string = "saml"
-	AuthJWT     string = "jwt"
+	AuthNone string = "none"
+	AuthJSON string = "json"
+	AuthDB   string = "db"
+	AuthSAML string = "saml"
+	AuthJWT  string = "jwt"
 )
 
 // Types of logging
@@ -59,6 +59,7 @@ const (
 	InactiveHours      string = "inactive_hours"
 	AcceleratedSeconds string = "accelerated_seconds"
 	NodeDashboard      string = "node_dashboard"
+	OnelinerExpiration string = "oneliner_expiration"
 )
 
 // Names for the values that are read from the JSON config file
@@ -484,6 +485,15 @@ func (conf *Settings) DefaultEnv(service string) string {
 // NodeDashboard checks if display dashboard per node is enabled
 func (conf *Settings) NodeDashboard() bool {
 	value, err := conf.RetrieveValue(ServiceAdmin, NodeDashboard)
+	if err != nil {
+		return false
+	}
+	return value.Boolean
+}
+
+// OnelinerExpiration checks if enrolling links will expire
+func (conf *Settings) OnelinerExpiration() bool {
+	value, err := conf.RetrieveValue(ServiceTLS, OnelinerExpiration)
 	if err != nil {
 		return false
 	}

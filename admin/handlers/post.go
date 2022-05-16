@@ -855,12 +855,26 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 			}
 			adminOKResponse(w, "link expired successfully")
 		case "extend":
-			if err := h.Envs.RotateEnrollPath(env.UUID); err != nil {
+			if err := h.Envs.ExtendEnroll(env.UUID); err != nil {
 				adminErrorResponse(w, "error extending enroll", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link extended successfully")
+		case "rotate":
+			if err := h.Envs.RotateEnroll(env.UUID); err != nil {
+				adminErrorResponse(w, "error rotating enroll", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+			adminOKResponse(w, "link rotated successfully")
+		case "notexpire":
+			if err := h.Envs.NotExpireEnroll(env.UUID); err != nil {
+				adminErrorResponse(w, "error not expiring enroll", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+			adminOKResponse(w, "link set to not expire successfully")
 		}
 	case "remove":
 		switch e.Action {
@@ -872,12 +886,26 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 			}
 			adminOKResponse(w, "link expired successfully")
 		case "extend":
-			if err := h.Envs.RotateRemove(env.UUID); err != nil {
+			if err := h.Envs.ExtendRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error extending remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link extended successfully")
+		case "rotate":
+			if err := h.Envs.RotateRemove(env.UUID); err != nil {
+				adminErrorResponse(w, "error rotating remove", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+			adminOKResponse(w, "link rotated successfully")
+		case "notexpire":
+			if err := h.Envs.NotExpireRemove(env.UUID); err != nil {
+				adminErrorResponse(w, "error not expiring remove", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+			adminOKResponse(w, "link set to not expire successfully")
 		}
 	}
 	// Serialize and send response
