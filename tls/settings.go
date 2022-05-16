@@ -54,16 +54,15 @@ func loadingSettings(mgr *settings.Settings) error {
 			return fmt.Errorf("Failed to add %s to configuration: %v", settings.RefreshEnvs, err)
 		}
 	}
-	// Check if service settings for settings refresh is ready
-	if !mgr.IsValue(settings.ServiceTLS, settings.RefreshSettings) {
-		if err := mgr.NewIntegerValue(settings.ServiceTLS, settings.RefreshSettings, int64(defaultRefresh)); err != nil {
-			return fmt.Errorf("Failed to add %s to configuration: %v", settings.RefreshSettings, err)
+	// Check if service settings for enroll/remove oneliner links is ready
+	if !mgr.IsValue(settings.ServiceTLS, settings.OnelinerExpiration) {
+		if err := mgr.NewBooleanValue(settings.ServiceTLS, settings.OnelinerExpiration, defaultOnelinerExpiration); err != nil {
+			return fmt.Errorf("Failed to add %s to configuration: %v", settings.OnelinerExpiration, err)
 		}
 	}
 	// Write JSON config to settings
 	if err := mgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, tlsConfig.Logger); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %v", err)
 	}
-
 	return nil
 }

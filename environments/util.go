@@ -21,6 +21,9 @@ func ReadExternalFile(path string) string {
 
 // IsItExpired to determine if a time has expired, which makes it in the past
 func IsItExpired(t time.Time) bool {
+	if t.IsZero() {
+		return false
+	}
 	now := time.Now()
 	return (int(t.Sub(now).Seconds()) <= 0)
 }

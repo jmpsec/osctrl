@@ -86,7 +86,7 @@ func PastTimeAgo(t time.Time) string {
 // InFutureTime - Helper to format future times only returning one value (minute, hour, day)
 func InFutureTime(t time.Time) string {
 	if t.IsZero() {
-		return "Never"
+		return "Never Expires"
 	}
 	now := time.Now()
 	seconds := int(t.Sub(now).Seconds())

@@ -58,6 +58,8 @@ const (
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
 	defaultAccelerate int = 300
+	// Default expiration of oneliners for enroll/expire
+	defaultOnelinerExpiration bool = true
 )
 
 var (
