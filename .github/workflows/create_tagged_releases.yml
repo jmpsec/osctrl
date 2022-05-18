@@ -137,7 +137,7 @@ jobs:
       
       - name: Print 
         shell: bash
-        run: echo "${{ steps.build_docker_containers.outputs }}"
+        run: echo "${{ steps.build_docker_containers.outputs.docker_image_digest }}"
 
       ########################### Sign Docker images ###########################
       - name: Sign osctrl Docker containers
