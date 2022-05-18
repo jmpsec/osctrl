@@ -88,7 +88,7 @@ runs:
       run: echo "$docker_image_name"
 
     - name: Set docker_image_name output
-      id: set_docker_image_name
+      id: set_docker_image_digest
       shell: bash
       run: echo "::set-output name=docker_image_digest::${{ steps.docker_build.outputs.digest }}"
 
