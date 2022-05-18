@@ -86,7 +86,7 @@ runs:
 
     ########################### Sign built Docker image using cosign ###########################
     - name: Sign the published Docker image
-      if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
+      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
         COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
@@ -98,7 +98,7 @@ runs:
 
     ########################### Verify signed image using cosign ###########################
     - name: Verify the signed published Docker image
-      if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
+      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
       shell: bash
       run: |
         IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
