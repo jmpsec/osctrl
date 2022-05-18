@@ -25,16 +25,11 @@ inputs:
   docker_hub_access_token:
     required: true
     description: Pass DockerHub access token to aciton
-  codesign_password:
-    required: false
-    description: Provide password for codesign private key
-  codesign_private_key:
-    required: false
-    description: Provide codesign private key
-  codesign_public_cert:
-    required: false
-    description: Provide codesign private cert
 
+outputs:
+  docker_image_name:
+    description: Dockerhub URI for container
+  
 
 runs:
   using: "composite"
@@ -50,14 +45,6 @@ runs:
       uses: actions/download-artifact@v3
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
-
-    ########################### Install cosign ###########################
-    # https://github.com/sigstore/cosign-installer
-    - name: Install cosign
-      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
-      uses: sigstore/cosign-installer@main
-      with:
-        cosign-release: 'v1.8.0'
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
@@ -83,25 +70,10 @@ runs:
           COMPONENT=${{ inputs.osctrl_component }}
           GOOS=${{ inputs.go_os }}
           GOARCH=${{ inputs.go_arch }}
-
-    ########################### Sign built Docker image using cosign ###########################
-    - name: Sign the published Docker image
-      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
+    
+    ########################### Set outputs ###########################
+    - name: Set docker_image_name output
+      id: set_docker_image_name
       shell: bash
-      env:
-        COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
-      run: |
-        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ inputs.codesign_private_key }}" > cosign.key
-        cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
-        rm -f cosign.key
-
-    ########################### Verify signed image using cosign ###########################
-    - name: Verify the signed published Docker image
-      if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
-      shell: bash
-      run: |
-        IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ inputs.codesign_public_cert }}" > cosign.key
-        cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
-        rm -f cosign.key
+      run: echo "::set-output name=docker_image_name::${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}"
+      
