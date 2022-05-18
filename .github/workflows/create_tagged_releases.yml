@@ -141,6 +141,7 @@ jobs:
         with:
           #### Docker vars ####
           docker_image_name: ${{ steps.build_docker_containers.outputs.docker_image_name }}
+          docker_image_digest: ${{ steps.build_docker_containers.outputs.docker_image_digest }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}

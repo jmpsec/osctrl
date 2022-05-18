@@ -29,6 +29,8 @@ inputs:
 outputs:
   docker_image_name:
     description: Dockerhub URI for container
+  docker_image_digest:
+    description: Dockerhub image digest
   
 
 runs:
@@ -85,6 +87,15 @@ runs:
       shell: bash
       run: echo "$docker_image_name"
 
-    # - name: Print docker_image_name env
-    #   shell: bash
-    #   run: echo "${{ outputs.docker_image_name }}"
+    - name: Set docker_image_name output
+      id: set_docker_image_name
+      shell: bash
+      run: echo "::set-output name=docker_image_digest::${{ steps.docker_build.outputs.digest }}"
+
+    - name: Print docker_image_name env
+      shell: bash
+      run: echo "${{ steps.docker_build.outputs.digest }}"
+
+    - name: Print docker_image_name env
+      shell: bash
+      run: echo "$docker_image_digest"

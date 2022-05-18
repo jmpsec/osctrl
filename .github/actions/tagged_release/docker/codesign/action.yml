@@ -4,6 +4,9 @@ inputs:
   docker_image_name:
     required: true
     description: Dockerhub URI for container
+  docker_image_digest:
+    required: true
+    description: Dockerhub image digest
   docker_hub_org:
     required: true
     description: Pass DockerHub org to aciton
@@ -53,7 +56,7 @@ runs:
         COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
       run: |
         echo "${{ inputs.codesign_private_key }}" > cosign.key
-        cosign sign --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ steps.docker_build.outputs.digest }}
+        cosign sign --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ inputs.docker_image_digest }}
         rm -f cosign.key
 
     ########################### Verify signed image using cosign ###########################
@@ -61,5 +64,5 @@ runs:
       shell: bash
       run: |
         echo "${{ inputs.codesign_public_cert }}" > cosign.key
-        cosign verify --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ steps.docker_build.outputs.digest }}
+        cosign verify --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ inputs.docker_image_digest }}
         rm -f cosign.key
