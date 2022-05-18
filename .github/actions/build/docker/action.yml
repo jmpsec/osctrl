@@ -85,8 +85,8 @@ runs:
           GOARCH=${{ inputs.go_arch }}
 
     ########################### Sign built Docker image using cosign ###########################
-    - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
-      name: Sign the published Docker image
+    - name: Sign the published Docker image
+      if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
       shell: sh
       env:
         COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
@@ -97,8 +97,8 @@ runs:
         rm -f cosign.key
 
     ########################### Verify signed image using cosign ###########################
-    - if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
-      name: Verify the signed published Docker image
+    - name: Verify the signed published Docker image
+      if: ${{ github.event_name != 'pull_request' }} && startsWith(github.ref, 'refs/tags/v')
       shell: sh
       run: |
         IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
