@@ -25,6 +25,16 @@ inputs:
   docker_hub_access_token:
     required: true
     description: Pass DockerHub access token to aciton
+  codesign_password:
+    required: false
+    description: Provide password for codesign private key
+  codesign_private_key:
+    required: false
+    description: Provide codesign private key
+  codesign_public_cert:
+    required: false
+    description: Provide codesign private cert
+
 
 runs:
   using: "composite"
@@ -79,10 +89,10 @@ runs:
       name: Sign the published Docker image
       shell: sh
       env:
-        COSIGN_PASSWORD: "${{ secrets.COSIGN_PASSWORD }}"
+        COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
       run: |
         IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ secrets.COSIGN_PRIVATE }}" > cosign.key
+        echo "${{ inputs.codesign_private_key }}" > cosign.key
         cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
         rm -f cosign.key
 
@@ -92,6 +102,6 @@ runs:
       shell: sh
       run: |
         IMAGE_NAME=${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
-        echo "${{ secrets.COSIGN_PUBLIC }}" > cosign.key
+        echo "${{ inputs.codesign_public_cert }}" > cosign.key
         cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ steps.docker_build.outputs.digest }}
         rm -f cosign.key

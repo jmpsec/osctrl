@@ -121,11 +121,14 @@ jobs:
       - name: Build and deploy osctrl Docker containers
         uses: ./.github/actions/build/docker
         with:
+          #### golang env vars ####
           go_os: ${{ matrix.goos }}
           go_arch: ${{ matrix.goarch }}
+          #### Build vars ####
           osctrl_component: ${{ matrix.components }}
           commit_sha: ${{ steps.vars.outputs.sha_short }}
           docker_tag: ${{ steps.vars.outputs.sha_short }}
+          #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
