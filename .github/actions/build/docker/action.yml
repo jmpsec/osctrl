@@ -76,4 +76,15 @@ runs:
       id: set_docker_image_name
       shell: bash
       run: echo "::set-output name=docker_image_name::${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}"
-      
+    
+    - name: Print docker_image_name env
+      shell: bash
+      run: echo "${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}"
+
+    - name: Print docker_image_name env
+      shell: bash
+      run: echo "$docker_image_name"
+
+    - name: Print docker_image_name env
+      shell: bash
+      run: echo "${{ outputs.docker_image_name }}"
