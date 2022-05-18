@@ -29,10 +29,10 @@ inputs:
 outputs:
   docker_image_name:
     description: Dockerhub URI for container
-    value: ${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
+    value: ${{ toJson(fromJSON(steps.docker_build.outputs.metadata)['image.name']) }}
   docker_image_digest:
     description: Dockerhub image digest
-    value: ${{ steps.docker_build.outputs.digest }}
+    value: ${{ toJson(steps.docker_build.outputs.digest) }}
   
 
 runs:
@@ -74,23 +74,3 @@ runs:
           COMPONENT=${{ inputs.osctrl_component }}
           GOOS=${{ inputs.go_os }}
           GOARCH=${{ inputs.go_arch }}
-    
-    ########################### Set outputs ###########################
-    # - name: Set docker_image_name output
-    #   shell: bash
-    #   run: echo "::set-output name=docker_image_name::${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}"
-    
-    # - name: Print docker_image_name env
-    #   shell: bash
-    #   run: echo "${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}"
-
-
-
-
-    # - name: Set docker_image_name output
-    #   shell: bash
-    #   run: echo "::set-output name=docker_image_digest::${{ steps.docker_build.outputs.digest }}"
-
-    # - name: Print docker_image_name env
-    #   shell: bash
-    #   run: echo "${{ steps.docker_build.outputs.digest }}"

@@ -134,10 +134,6 @@ jobs:
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      
-      - name: Print 
-        shell: bash
-        run: echo "${{ steps.build_docker_containers.outputs.docker_image_digest }}"
 
       ########################### Sign Docker images ###########################
       - name: Sign osctrl Docker containers
