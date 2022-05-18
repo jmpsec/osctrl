@@ -57,7 +57,7 @@ jobs:
         uses: ./.github/actions/tagged_release/docker/codesign
         with:
           #### Docker vars ####
-          docker_image_name: ${{ outputs.build_docker_containers.docker_image_name }}
+          docker_image_name: ${{ steps.build_docker_containers.outputs.docker_image_name }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
