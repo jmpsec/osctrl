@@ -85,6 +85,6 @@ runs:
       shell: bash
       run: echo "$docker_image_name"
 
-    - name: Print docker_image_name env
-      shell: bash
-      run: echo "${{ outputs.docker_image_name }}"
+    # - name: Print docker_image_name env
+    #   shell: bash
+    #   run: echo "${{ outputs.docker_image_name }}"
