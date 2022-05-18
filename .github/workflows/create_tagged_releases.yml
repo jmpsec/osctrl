@@ -129,7 +129,7 @@ jobs:
           #### Build vars ####
           osctrl_component: ${{ matrix.components }}
           commit_sha: ${{ steps.vars.outputs.sha_short }}
-          docker_tag: ${{ steps.vars.outputs.sha_short }}
+          docker_tag: ${{ steps.vars.outputs.RELEASE_VERSION }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
