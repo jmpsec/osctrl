@@ -78,6 +78,8 @@ const (
 	apiEnvironmentsPath string = "/environments"
 	// API tags path
 	apiTagsPath string = "/tags"
+	// API settings path
+	apiSettingsPath string = "/settings"
 )
 
 var (
@@ -502,6 +504,13 @@ func osctrlAPIService() {
 	// API: tags
 	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
+	// API: settings
+	routerAPI.Handle(_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
 
 	// Launch listeners for API server
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port
