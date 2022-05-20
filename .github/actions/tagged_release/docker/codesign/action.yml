@@ -1,9 +1,15 @@
 name: "Sign Osctrl Docker images"
 description: "Sign Osctrl Docker images"
 inputs:
-  docker_image_name:
+  osctrl_component:
     required: true
-    description: Dockerhub URI for container
+    description: Define the osctrl component to compile
+  docker_tag:
+    required: true
+    description: Define the Docker tag
+  # docker_image_name:
+  #   required: true
+  #   description: Dockerhub URI for container
   docker_image_digest:
     required: true
     description: Dockerhub image digest
@@ -55,14 +61,16 @@ runs:
       env:
         COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
       run: |
+        IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}"
         echo "${{ inputs.codesign_private_key }}" > cosign.key
-        cosign sign --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ inputs.docker_image_digest }}
+        cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ inputs.docker_image_digest }}
         rm -f cosign.key
 
     ########################### Verify signed image using cosign ###########################
     - name: Verify the signed published Docker image
       shell: bash
       run: |
+        IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}"
         echo "${{ inputs.codesign_public_cert }}" > cosign.key
-        cosign verify --key cosign.key docker.io/${{ inputs.docker_image_name }}@${{ inputs.docker_image_digest }}
+        cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ inputs.docker_image_digest }}
         rm -f cosign.key

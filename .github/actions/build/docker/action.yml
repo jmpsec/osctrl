@@ -27,9 +27,9 @@ inputs:
     description: Pass DockerHub access token to aciton
 
 outputs:
-  docker_image_name:
-    description: Dockerhub URI for container
-    value: ${{ toJson(steps.docker_build.outputs.metadata)['image.name'] }}
+  # docker_image_name:
+  #   description: Dockerhub URI for container
+  #   value: ${{ toJson(steps.docker_build.outputs.metadata)['image.name'] }}
   docker_image_digest:
     description: Dockerhub image digest
     value: ${{ toJson(steps.docker_build.outputs.digest) }}

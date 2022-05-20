@@ -140,7 +140,9 @@ jobs:
         uses: ./.github/actions/tagged_release/docker/codesign
         with:
           #### Docker vars ####
-          docker_image_name: ${{ steps.build_docker_containers.outputs.docker_image_name }}
+          osctrl_component: ${{ matrix.components }}
+          docker_tag: ${{ steps.vars.outputs.RELEASE_VERSION }}
+          #docker_image_name: ${{ steps.build_docker_containers.outputs.docker_image_name }}
           docker_image_digest: ${{ steps.build_docker_containers.outputs.docker_image_digest }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
