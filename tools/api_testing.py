@@ -18,6 +18,8 @@ NODES_PATH = "/nodes"
 QUERIES_PATH = "/queries"
 ENVS_PATH = "/environments"
 PLATFORMS_PATH = "/platforms"
+TAGS_PATH = "/tags"
+SETTINGS_PATH = "/settings"
 
 API_PATH = '/api/v1'
 
@@ -96,12 +98,20 @@ if __name__ == '__main__':
     resp = _get(_url + API_PATH + QUERIES_PATH, headers)
     _process_response(resp)
 
+    # Platforms -----------------------------------------------------------
+    resp = _get(_url + API_PATH + PLATFORMS_PATH, headers)
+    _process_response(resp)
+
     # Environments --------------------------------------------------------
     resp = _get(_url + API_PATH + ENVS_PATH, headers)
     _process_response(resp)
 
-    # Platforms -----------------------------------------------------------
-    resp = _get(_url + API_PATH + PLATFORMS_PATH, headers)
+    # Tags ----------------------------------------------------------------
+    resp = _get(_url + API_PATH + TAGS_PATH, headers)
+    _process_response(resp)
+
+    # Settings ------------------------------------------------------------
+    resp = _get(_url + API_PATH + SETTINGS_PATH, headers)
     _process_response(resp)
 
     print('Done')

@@ -1107,7 +1107,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get setting values
-	_settings, err := h.Settings.RetrieveValues(serviceVar)
+	_settings, err := h.Settings.RetrieveValues(serviceVar, false)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting settings: %v", err)

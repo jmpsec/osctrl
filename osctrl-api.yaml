@@ -9,7 +9,7 @@ info:
   description: 'This the API for osctrl, a fast and efficient osquery management solution.'
   version: 0.2.9
 externalDocs:
-  description: osctrl documentation (https://osctrl.net)
+  description: osctrl documentation
   url: https://osctrl.net
 tags:
 - name: nodes
@@ -37,6 +37,11 @@ tags:
   externalDocs:
     description: osctrl tags
     url: https://github.com/jmpsec/osctrl/tree/master/tags
+- name: settings
+  description: Settings for all osctrl components
+  externalDocs:
+    description: osctrl settings
+    url: https://github.com/jmpsec/osctrl/tree/master/settings
 paths:
   /nodes:
     get:
@@ -73,7 +78,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /nodes/{uuid}:
     get:
       tags:
@@ -114,7 +121,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /queries:
     get:
       tags:
@@ -150,7 +159,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
     post:
       tags:
       - queries
@@ -179,7 +190,9 @@ paths:
           description: error getting queries
           content: {}
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /queries/{name}:
     get:
       tags:
@@ -220,7 +233,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /queries/results/{name}:
     get:
       tags:
@@ -261,7 +276,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /all-queries:
     get:
       tags:
@@ -297,7 +314,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /platforms:
     get:
       tags:
@@ -333,7 +352,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /environments:
     get:
       tags:
@@ -369,7 +390,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /environments/{environment}:
     get:
       tags:
@@ -404,7 +427,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
   /tags:
     get:
       tags:
@@ -434,7 +459,119 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
       security:
-      - Authorization: []
+      - Authorization:
+        - read
+        - write
+  /settings:
+    get:
+      tags:
+      - settings
+      summary: Get settings
+      description: Returns all osctrl services settings
+      operationId: apiSettingsHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SettingValue'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization:
+        - read
+        - write
+  /settings/{service}:
+    get:
+      tags:
+      - settings
+      summary: Get settings
+      description: Returns all osctrl settings per service
+      operationId: apiSettingsServiceHandler
+      parameters:
+      - name: service
+        in: path
+        description: Name of the service to retrieve settings, including JSON
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SettingValue'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization:
+        - read
+        - write
+  /settings/{service}/json:
+    get:
+      tags:
+      - settings
+      summary: Get JSON settings
+      description: Returns JSON osctrl settings per service
+      operationId: apiSettingsServiceJSONHandler
+      parameters:
+      - name: service
+        in: path
+        description: Name of the service to retrieve JSON only settings
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SettingValue'
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        500:
+          description: error getting settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+      security:
+      - Authorization:
+        - read
+        - write
 components:
   schemas:
     OsqueryNode:
@@ -672,6 +809,36 @@ components:
         Color:
           type: string
         Icon:
+          type: string
+    SettingValue:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Service:
+          type: string
+        JSON:
+          type: boolean
+        Type:
+          type: string
+        String:
+          type: string
+        Boolean:
+          type: boolean
+        Integer:
+          type: integer
+          format: int64
+        Info:
           type: string
   securitySchemes:
     Authorization:

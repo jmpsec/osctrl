@@ -99,6 +99,13 @@ var ValidTypes = map[string]struct{}{
 	TypeInteger: struct{}{},
 }
 
+// ValidServices to check validity of settings service
+var ValidServices = map[string]struct{}{
+	ServiceTLS:   struct{}{},
+	ServiceAdmin: struct{}{},
+	ServiceAPI:   struct{}{},
+}
+
 // NewSettings to initialize the access to settings and table
 func NewSettings(backend *gorm.DB) *Settings {
 	var s *Settings
@@ -177,6 +184,12 @@ func (conf *Settings) VerifyType(sType string) bool {
 	return ok
 }
 
+// VerifyService to make sure service is valid
+func (conf *Settings) VerifyService(sType string) bool {
+	_, ok := ValidServices[sType]
+	return ok
+}
+
 // DeleteValue deletes an existing settings value
 func (conf *Settings) DeleteValue(service, name string) error {
 	value, err := conf.RetrieveValue(service, name)
@@ -189,10 +202,19 @@ func (conf *Settings) DeleteValue(service, name string) error {
 	return nil
 }
 
-// RetrieveAllValues retrieves and returns all values from backend
+// RetrieveAllValues retrieves and returns all values excepting JSON from backend
 func (conf *Settings) RetrieveAllValues() ([]SettingValue, error) {
 	var values []SettingValue
 	if err := conf.DB.Where("json = ?", false).Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
+// RetrieveAll retrieves and returns all values from backend
+func (conf *Settings) RetrieveAll() ([]SettingValue, error) {
+	var values []SettingValue
+	if err := conf.DB.Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
@@ -242,9 +264,9 @@ func (conf *Settings) SetAllJSON(service, listener, port, host, auth, logging st
 }
 
 // RetrieveValues retrieves and returns all values from backend
-func (conf *Settings) RetrieveValues(service string) ([]SettingValue, error) {
+func (conf *Settings) RetrieveValues(service string, jsonSetting bool) ([]SettingValue, error) {
 	var values []SettingValue
-	if err := conf.DB.Where("service = ? AND json = ?", service, false).Find(&values).Error; err != nil {
+	if err := conf.DB.Where("service = ? AND json = ?", service, jsonSetting).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
@@ -268,9 +290,9 @@ func (conf *Settings) RetrieveJSON(service, name string) (SettingValue, error) {
 	return value, nil
 }
 
-// GetMap returns the map of values by service
+// GetMap returns the map of values by service, excluding JSON
 func (conf *Settings) GetMap(service string) (MapSettings, error) {
-	all, err := conf.RetrieveValues(service)
+	all, err := conf.RetrieveValues(service, false)
 	if err != nil {
 		return MapSettings{}, fmt.Errorf("error getting values %v", err)
 	}
