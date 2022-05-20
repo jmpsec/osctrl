@@ -29,10 +29,10 @@ inputs:
 outputs:
   docker_image_name:
     description: Dockerhub URI for container
-    value: "${{ toJson(fromJSON(steps.docker_build.outputs.metadata)['image.name']) }}"
+    value: ${{ fromJSON(steps.docker_build.outputs.metadata)['image.name'] }}
   docker_image_digest:
     description: Dockerhub image digest
-    value: "${{ toJson(steps.docker_build.outputs.digest) }}"
+    value: ${{ toJson(steps.docker_build.outputs.digest) }}
   
 
 runs:
