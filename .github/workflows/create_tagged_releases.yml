@@ -186,7 +186,7 @@ jobs:
         with:
           name: osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goarch }}.deb
 
-       - name: Re-name osctrl DEB package
+      - name: Re-name osctrl DEB package
         shell: bash
         run: |
           mv \
