@@ -57,7 +57,6 @@ runs:
       shell: bash
 
 
-
     ########################### Upload artifacts ###########################
     - name: Upload osctrl binaries
       uses: actions/upload-artifact@v3

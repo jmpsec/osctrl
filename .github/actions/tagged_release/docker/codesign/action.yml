@@ -7,9 +7,6 @@ inputs:
   docker_tag:
     required: true
     description: Define the Docker tag
-  # docker_image_name:
-  #   required: true
-  #   description: Dockerhub URI for container
   docker_image_digest:
     required: true
     description: Dockerhub image digest
