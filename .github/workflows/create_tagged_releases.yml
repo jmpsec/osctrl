@@ -192,6 +192,10 @@ jobs:
           path: osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goos }}.deb
 
       ########################### Create tagged release with artifacts ###########################
+      - name: List files
+        shell: bash
+        run: "ls -la"
+        
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
