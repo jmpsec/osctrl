@@ -184,26 +184,12 @@ jobs:
           name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           path: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
-      # - name: Re-name osctrl binaries
-      #   shell: bash
-      #   run: |
-      #     mv \
-      #     ${{ github.workspace }}/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
-      #     ${{ github.workspace }}/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-
       ########################### Download osctrl DEB packages ###########################
       - name: Download osctrl DEB package
         uses: actions/download-artifact@v3
         with:
-          name: osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goarch }}.deb
-          path: sctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goos }}.deb
-
-      # - name: Re-name osctrl DEB package
-      #   shell: bash
-      #   run: |
-      #     mv \
-      #     osctrl-${{ matrix.components }}_0.0.${{ steps.vars.outputs.sha_short }}_${{ matrix.goos }}.deb \
-      #     osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goos }}.deb
+          name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+          path: osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goos }}.deb
 
       ########################### Create tagged release with artifacts ###########################
       - name: Release
