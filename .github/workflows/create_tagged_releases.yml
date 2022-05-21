@@ -188,7 +188,7 @@ jobs:
       - name: Download osctrl DEB package
         uses: actions/download-artifact@v3
         with:
-          name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ steps.vars.outputs.sha_short }}_${{ matrix.goarch }}.deb
+          name: osctrl-${{ matrix.components }}_0.0.${{ steps.vars.outputs.sha_short }}_${{ matrix.goarch }}.deb
           path: osctrl-${{ matrix.components }}_${{ steps.vars.outputs.RELEASE_VERSION }}_${{ matrix.goos }}.deb
 
       ########################### Create tagged release with artifacts ###########################
