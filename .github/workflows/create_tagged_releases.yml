@@ -182,13 +182,15 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          path: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: __dist/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
           
       - name: List files
         shell: bash
         run: |
           ls -la
           ls -la osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          ls -la __dist/*
+          file __dist/*
 
       - name: Release
         uses: softprops/action-gh-release@v1
