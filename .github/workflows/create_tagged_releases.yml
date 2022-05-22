@@ -182,23 +182,22 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          path: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          path: osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
           
       - name: List files
         shell: bash
-        run: "ls -la"
+        run: |
+          ls -la
+          ls -la osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          #body_path: ./CHANGELOG.md
+            osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          body_path: ./CHANGELOG.md
 
-      - name: List files
-        shell: bash
-        run: "ls -la"
 
       # ########################### Download osctrl binary ###########################
       # - name: Download osctrl binaries
