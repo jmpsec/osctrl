@@ -188,6 +188,14 @@ jobs:
         shell: bash
         run: "ls -la"
 
+      - name: Rename binary
+        shell: bash
+        run: |
+          mv \
+          osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
+          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+
+
       # - name: Download osctrl binary
       #   uses: actions/download-artifact@v3
       #   with:
