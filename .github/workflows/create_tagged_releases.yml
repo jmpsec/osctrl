@@ -180,6 +180,8 @@ jobs:
       ########################### Download osctrl binary ###########################
       - name: Download osctrl binaries
         uses: actions/download-artifact@v3
+        with:
+          path: __dist
         # with:
         #   name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
         #   path: __dist
@@ -187,7 +189,12 @@ jobs:
       - name: List files
         shell: bash
         run: |
-          ls -la
+          ls -la __dist/*
+
+      - name: Rename bins
+        shell: bash
+        run: |
+          mv osctrl-tls.bin/osctrl-osctrl-tls-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
       - name: Release
         uses: softprops/action-gh-release@v1
