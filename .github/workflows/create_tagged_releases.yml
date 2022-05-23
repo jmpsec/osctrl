@@ -181,6 +181,11 @@ jobs:
       - name: Download osctrl binary
         uses: actions/download-artifact@v3
 
+      - name: List files
+        shell: bash
+        run: |
+          ls -la
+
       # - name: Download osctrl binary
       #   uses: actions/download-artifact@v3
       #   with:
