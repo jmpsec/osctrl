@@ -188,7 +188,6 @@ jobs:
         shell: bash
         run: |
           ls -la
-          ls -la osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
           ls -la __dist/*
           file __dist/*
 
