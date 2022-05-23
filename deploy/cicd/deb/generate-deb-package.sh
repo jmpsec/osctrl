@@ -28,6 +28,15 @@ cp deploy/cicd/deb/post-init.sh "${DEB_DIR}/DEBIAN/postinst" && \
     chmod 755 "${DEB_DIR}/DEBIAN/postinst" && \
     sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/postinst"
 
+###################################### deb-conffiles ######################################
+# https://manpages.debian.org/testing/dpkg-dev/deb-conffiles.5.en.html
+# https://askubuntu.com/questions/473354/how-to-mark-some-file-in-debian-package-as-config
+cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
+    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/conffiles" && \
+    sed -i "s#{{ OSQUERY_VESION }}#${OSQUERY_VESION}#g" "${DEB_DIR}/DEBIAN/conffiles" && \
+
+
+
 ###################################### Example configs ######################################
 cp deploy/config/db.json "${DEB_DIR}/usr/share/osctrl/db.json.example" && \
     chmod 640 "${DEB_DIR}/usr/share/osctrl/db.json.example"
@@ -51,7 +60,7 @@ cp deploy/config/service.json "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPO
 ###################################### Generate SystemD config ######################################
 EXECSTART="/usr/local/bin/osctrl-${OSCTRL_COMPONTENT} \\
     --config \\
-    --config-file /etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json 
+    --config-file /etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json \\
     --redis \\
     --redis-file /etc/osctrl/redis.json \\
     --db \\
@@ -118,12 +127,8 @@ then
 
     #### Copy Osctrl-admin web assets ####
     mkdir -p "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
-
-    cp -r admin/templates/ "${DEB_DIR}/usr/share/osctrl/tmpl_admin" && \
-        chmod 750 -R "${DEB_DIR}/usr/share/osctrl/tmpl_admin/"
-
-    cp -r admin/templates/ "${DEB_DIR}/usr/share/osctrl/static" && \
-        chmod 750 -R "${DEB_DIR}/usr/share/osctrl/static/"
+    cp -r admin/templates "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
+    cp -r admin/static "${DEB_DIR}/usr/share/osctrl/static"
 
     # Copy osquery schema
     cp deploy/osquery/data/${OSQUERY_VESION}.json "${DEB_DIR}/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json"

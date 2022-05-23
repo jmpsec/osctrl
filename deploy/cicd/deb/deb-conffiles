@@ -1,0 +1,3 @@
+/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}/service.json
+/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}/jwt.json
+/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}/osquery-{{ OSQUERY_VESION }}.json
