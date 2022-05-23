@@ -155,11 +155,11 @@ jobs:
   create_release:
     needs: [build_and_test,create_deb_packages,create_docker_images]
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux']
-        goarch: ['amd64']
+    # strategy:
+    #   matrix:
+    #     components: ['tls', 'admin', 'api', 'cli']
+    #     goos: ['linux']
+    #     goarch: ['amd64']
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
@@ -194,8 +194,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            osctrl-*.bin
-          # osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+            osctrl-*.bin/osctrl-*.bin
+            osctrl-*.deb/osctrl-*.deb
           body_path: ./CHANGELOG.md
 
 
