@@ -180,7 +180,7 @@ jobs:
       
       ########################### Create release ###########################
       - name: Create a new release with binaries and packages
-        uses: ./.github/actions/tagged_release/github/action.yml
+        uses: ./.github/actions/tagged_release/github
         id: build_docker_containers
         with:
           go_os: "${{ matrix.goos }}"
