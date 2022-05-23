@@ -32,9 +32,7 @@ cp deploy/cicd/deb/post-init.sh "${DEB_DIR}/DEBIAN/postinst" && \
 # https://manpages.debian.org/testing/dpkg-dev/deb-conffiles.5.en.html
 # https://askubuntu.com/questions/473354/how-to-mark-some-file-in-debian-package-as-config
 cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
-    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/conffiles" && \
-    sed -i "s#{{ OSQUERY_VESION }}#${OSQUERY_VESION}#g" "${DEB_DIR}/DEBIAN/conffiles" && \
-
+    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/conffiles"
 
 
 ###################################### Example configs ######################################
@@ -126,12 +124,16 @@ then
     mkdir -p "${DEB_DIR}/var/osctrl/carves"
 
     #### Copy Osctrl-admin web assets ####
-    mkdir -p "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
     cp -r admin/templates "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
     cp -r admin/static "${DEB_DIR}/usr/share/osctrl/static"
 
     # Copy osquery schema
     cp deploy/osquery/data/${OSQUERY_VESION}.json "${DEB_DIR}/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json"
+
+    # Define conffiles
+    echo "/etc/osctrl/osctrl-admin/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
+    echo "/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json" >> "${DEB_DIR}/DEBIAN/conffiles"
+
 fi
 
 if [ "$OSCTRL_COMPONTENT" == "api" ]
@@ -139,4 +141,7 @@ then
     #### Copy configs ####
     cp deploy/config/jwt.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json" && \
         chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json"
+
+    # Define conffiles
+    echo "/etc/osctrl/osctrl-api/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
 fi
