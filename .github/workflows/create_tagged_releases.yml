@@ -179,24 +179,23 @@ jobs:
 
       ########################### Download osctrl binary ###########################
       - name: Download osctrl binaries
-        uses: actions/download-artifact@v2
-        with:
-          name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          path: __dist/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}
+        uses: actions/download-artifact@v3
+        # with:
+        #   name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+        #   path: __dist
           
       - name: List files
         shell: bash
         run: |
           ls -la
-          ls -la __dist/*
-          file __dist/*
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+            osctrl-*.bin
+          # osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
           body_path: ./CHANGELOG.md
 
 
