@@ -155,17 +155,17 @@ jobs:
   create_release:
     needs: [build_and_test,create_deb_packages,create_docker_images]
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux']
-        goarch: ['amd64']
+    # strategy:
+    #   matrix:
+    #     components: ['tls', 'admin', 'api', 'cli']
+    #     goos: ['linux']
+    #     goarch: ['amd64']
     steps:
       ########################### Checkout code ###########################
-      # - name: Checkout code
-      #   uses: actions/checkout@v3
-      #   with:
-      #     fetch-depth: 2
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
 
       ########################### Generate SHA1 commit hash ###########################
       # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
@@ -180,36 +180,39 @@ jobs:
       ########################### Download osctrl binary ###########################
       - name: Download osctrl binary
         uses: actions/download-artifact@v3
-        with:
-          name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
-          path: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
-      - name: Download osctrl DEB package
-        uses: actions/download-artifact@v3
-        with:
-          name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
-          path: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
+      # - name: Download osctrl binary
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+      #     path: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
 
-      - name: List files
-        shell: bash
-        run: |
-          ls -la
-          ls -la osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/*
-          ls -la osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb/*
+      # - name: Download osctrl DEB package
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
+      #     path: osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
 
-      - name: Rename binary
-        shell: bash
-        run: |
-          mv \
-          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
-          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+      # - name: List files
+      #   shell: bash
+      #   run: |
+      #     ls -la
+      #     ls -la osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/*
+      #     ls -la osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb/*
 
-      - name: Rename DEB package
-        shell: bash
-        run: |
-          mv \
-          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb \
-          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
+      # - name: Rename binary
+      #   shell: bash
+      #   run: |
+      #     mv \
+      #     osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin \
+      #     osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+
+      # - name: Rename DEB package
+      #   shell: bash
+      #   run: |
+      #     mv \
+      #     osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb \
+      #     osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.deb
 
       - name: Release
         uses: softprops/action-gh-release@v1
