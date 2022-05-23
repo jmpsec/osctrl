@@ -32,10 +32,6 @@ runs:
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
-    - name: LS
-      shell: bash
-      run: "ls -la"
-
     ########################### Build DEB package ###########################
     - name: Generate DEB package contents
       shell: "bash"
