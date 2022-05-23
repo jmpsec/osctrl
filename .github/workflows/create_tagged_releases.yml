@@ -189,6 +189,13 @@ jobs:
         run: |
           ls -la
 
+      - name: Rename binary
+        shell: bash
+        run: |
+          mv \
+          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+          osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin/osctrl-${{ matrix.components }}-${{ steps.vars.outputs.RELEASE_VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.bin
+
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
