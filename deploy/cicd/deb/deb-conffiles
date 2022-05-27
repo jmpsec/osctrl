@@ -1,0 +1,3 @@
+/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}/service.json
+/usr/share/osctrl/db.json.example
+/usr/share/osctrl/redis.json.example
