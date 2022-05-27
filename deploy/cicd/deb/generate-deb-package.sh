@@ -36,15 +36,17 @@ cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
 
 
 ###################################### Example configs ######################################
-cp deploy/config/db.json "${DEB_DIR}/usr/share/osctrl/db.json.example" && \
-    chmod 640 "${DEB_DIR}/usr/share/osctrl/db.json.example"
+mkdir -p "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}"
 
-cp deploy/config/redis.json "${DEB_DIR}/usr/share/osctrl/redis.json.example" && \
-    chmod 640 "${DEB_DIR}/usr/share/osctrl/redis.json.example"
+cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/db.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/db.json.example"
+
+cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example"
     
 
 ###################################### General components content ######################################
-mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}"  && \
+mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}"
 
 cp osctrl-${OSCTRL_COMPONTENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}" && \
     chmod 755 "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}"

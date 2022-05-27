@@ -8,6 +8,20 @@ then
     chown root:osctrl -R /etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}
 fi
 
+################### Copy common configs ###################
+if [ ! -f /usr/share/osctrl/db.json.example ]
+then
+    cp /tmp/osctrl-{{ OSCTRL_COMPONTENT }}/db.json.example /usr/share/osctrl/db.json.example
+    chown root:root /usr/share/osctrl/db.json.example
+fi
+
+if [ ! -f /usr/share/osctrl/redis.json.example ]
+then
+    cp /tmp/osctrl-{{ OSCTRL_COMPONTENT }}/redis.json.example /usr/share/osctrl/redis.json.example
+    chown root:root /usr/share/osctrl/redis.json.example
+fi
+rm -rd /tmp/osctrl-{{ OSCTRL_COMPONTENT }}
+
 ################### osctrl-admin web assets ###################
 if [ -d "/usr/share/osctrl/tmpl_admin" ] 
 then
