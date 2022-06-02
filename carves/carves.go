@@ -25,10 +25,15 @@ const (
 	StatusInProgress string = "IN PROGRESS"
 	// StatusCompleted for carves that finalized
 	StatusCompleted string = "COMPLETED"
+	// TarFileExtension to identify Tar files extension
+	TarFileExtension string = ".tar"
+	// ZstFileExtension to identify ZST compressed files
+	ZstFileExtension string = ".zst"
 )
 
 var (
 	// CompressionHeader to detect the usage of compressed carves (zstd header)
+	// https://github.com/facebook/zstd
 	CompressionHeader = []byte{0x28, 0xb5, 0x2f, 0xfd}
 )
 
@@ -139,7 +144,7 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 	if err != nil {
 		return carve, fmt.Errorf("GetBySession %v", err)
 	}
-	if (carve.RequestID != strings.TrimSpace(requestid)) {
+	if carve.RequestID != strings.TrimSpace(requestid) {
 		return CarvedFile{}, fmt.Errorf("RequestID does not match carve %s != %s", carve.RequestID, requestid)
 	}
 	return carve, nil
@@ -294,14 +299,14 @@ func (c *Carves) Archive(sessionid, path string) (*CarveResult, error) {
 	if path[len(path)-1:] != "/" {
 		res.File += "/"
 	}
-	res.File += sessionid + ".tar"
+	res.File += sessionid + TarFileExtension
 	// If file already exists, no need to re-generate it from blocks
 	_f, err := os.Stat(res.File)
 	if err == nil {
 		res.Size = _f.Size()
 		return res, nil
 	}
-	_f, err = os.Stat(res.File + ".zst")
+	_f, err = os.Stat(res.File + ZstFileExtension)
 	if err == nil {
 		res.Size = _f.Size()
 		return res, nil

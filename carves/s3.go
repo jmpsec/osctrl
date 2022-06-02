@@ -1,4 +1,4 @@
-package logging
+package carves
 
 import (
 	"log"
@@ -21,15 +21,15 @@ type S3Configuration struct {
 	SecretAccessKey string `json:"secret_key"`
 }
 
-// LoggerS3 will be used to log data using S3
-type LoggerS3 struct {
+// CarverS3 will be used to carve files using S3 as destination
+type CarverS3 struct {
 	Configuration S3Configuration
 	Uploader      *s3manager.Uploader
 	Enabled       bool
 }
 
-// CreateLoggerS3 to initialize the logger
-func CreateLoggerS3(s3File string) (*LoggerS3, error) {
+// CreateCarverS3 to initialize the carver
+func CreateCarverS3(s3File string) (*CarverS3, error) {
 	config, err := LoadS3(s3File)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func CreateLoggerS3(s3File string) (*LoggerS3, error) {
 		Region:      aws.String(config.Region),
 		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, ""),
 	})
-	l := &LoggerS3{
+	l := &CarverS3{
 		Configuration: config,
 		Uploader:      s3manager.NewUploader(s),
 		Enabled:       true,
@@ -64,18 +64,18 @@ func LoadS3(file string) (S3Configuration, error) {
 }
 
 // Settings - Function to prepare settings for the logger
-func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
+func (carveS3 *CarverS3) Settings(mgr *settings.Settings) {
 	log.Printf("No s3 logging settings\n")
 }
 
-// Send - Function that sends JSON logs to S3
-func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
+// Send - Function that sends JSON logs to Splunk HTTP Event Collector
+func (carveS3 *CarverS3) Upload(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
 	}
 	reader := strings.NewReader(string(data))
-	uploadOutput, err := logS3.Uploader.Upload(&s3manager.UploadInput{
-		Bucket: &logS3.Configuration.Bucket,
+	uploadOutput, err := carveS3.Uploader.Upload(&s3manager.UploadInput{
+		Bucket: &carveS3.Configuration.Bucket,
 		Key:    aws.String(logType + ":" + environment + ":" + uuid),
 		Body:   reader,
 	})
