@@ -1,0 +1,74 @@
+name: "Build Osctrl DEB packages"
+description: "Build Osctrl DEB packages"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  osquery_version:
+    required: false
+    description: Define the version of Osquery for schema
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Checkout code ###########################
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+      
+    ########################### Download osctrl binary ###########################
+    - name: Download a osctrl binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Build DEB package ###########################
+    - name: Generate DEB package contents
+      shell: "bash"
+      run: ./deploy/cicd/deb/generate-deb-package.sh
+      env:
+        OSCTRL_COMPONTENT: ${{ inputs.osctrl_component }}
+        GOOS: ${{ inputs.go_os }}
+        GOARCH: ${{ inputs.go_arch }}
+        COMMIT_SHA: ${{ inputs.commit_sha }}
+        OSQUERY_VESION: ${{ inputs.osquery_version }}
+        OSCTRL_VERSION: ${{ inputs.commit_sha }}
+
+    - name: Create DEB package contents
+      uses: jiro4989/build-deb-action@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        package: osctrl-${{ inputs.osctrl_component }}
+        package_root: ".debpkg-osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}"
+        maintainer: jmpsec/osctrl
+        version: ${{ github.ref }} # refs/tags/v*.*.*
+        arch: ${{ inputs.go_arch }}
+        desc: "DEB package for osctrl-${OSCTRL_COMPONTENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
+
+    - name: Create DEB package contents
+      uses: jiro4989/build-deb-action@v2
+      with:
+        package: osctrl-${{ inputs.osctrl_component }}
+        package_root: ".debpkg-osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}"
+        maintainer: jmpsec/osctrl
+        version: v0.0.${{ inputs.commit_sha }} # 0.0.<commit_sha>
+        arch: ${{ inputs.go_arch }}
+        desc: "DEB package for osctrl-${OSCTRL_COMPONTENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
+
+    ########################### Upload DEBs ###########################
+    - name: Upload osctrl DEBs
+      uses: actions/upload-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        path: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        retention-days: 10
