@@ -1,0 +1,72 @@
+name: "Test Osctrl binaries"
+description: "Run Osctrl tests"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  commit_branch:
+    required: true
+    description: Define the git branch
+  golang_version:
+    required: false
+    description: Define the version of golang to compile with
+    default: 1.18.1
+
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Install go to env ###########################
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ inputs.golang_version }}
+    - run: go version
+      shell: bash
+
+    ########################### Checkout code ###########################
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    ########################### Lint golang code ###########################
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.29
+
+    ########################### Get GO deps #############################
+    - name: Get GO deps
+      run: go mod download
+      shell: bash
+
+    ########################### Download artifacts ###########################
+    - name: Download a osctrl binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_branch }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Run tests ###########################
+    - name: Run tests - go clean
+      run: go clean -testcache ./...
+      shell: bash
+
+    - name: Run tests - go clean
+      run: go test ./utils -v
+      shell: bash
+
+    - name: Run tests - go clean
+      run: go test ./tls/handlers -v
+      shell: bash
+
+    - name: Run tests - go clean
+      run: go clean -testcache ./...
+      shell: bash

@@ -1,0 +1,66 @@
+name: "Build Osctrl binaries"
+description: "Build Osctrl components with Golang"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  commit_branch:
+    required: true
+    description: Define the git branch
+  golang_version:
+    required: false
+    description: Define the version of golang to compile with
+    default: 1.18.1
+
+
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Checkout code ###########################
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+
+
+    ########################### Install go to env ###########################
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ inputs.golang_version }}
+    - run: go version
+      shell: bash
+
+
+    ########################### Get GO deps #############################
+    - name: Get GO deps
+      run: go mod download
+      shell: bash
+
+    
+    ########################### Build osctrl inputs.osctrl_component ###########################
+    - name: Build osctrl-tls
+      run: |
+        GOOS=${{ inputs.go_os }} GOARCH=${{ inputs.go_arch }} \
+        go build -o osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        ./${{ inputs.osctrl_component }}
+      shell: bash
+
+
+    ########################### Upload artifacts ###########################
+    - name: Upload osctrl binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+        path: osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+        retention-days: 10

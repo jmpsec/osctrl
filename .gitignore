@@ -22,6 +22,7 @@ glide.lock
 # Directories to ignore
 bin
 build
+!.github/actions/build
 vendor
 dist
 

@@ -1,0 +1,66 @@
+name: "Release binaries and packages"
+description: "Release binaries and packages"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  release_version_tag:
+    required: true
+    description: Define the release version
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Download osctrl binary ###########################
+    - name: Download a osctrl binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    - name: LS
+      shell: bash
+      run: "ls -la"
+
+    - name: Rename binary
+      shell: bash
+      run: |
+        mv \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Download osctrl DEB package ###########################
+    - name: Download a osctrl binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+
+    - name: LS
+      shell: bash
+      run: "ls -la"
+
+    - name: Rename DEB package
+      shell: bash
+      run: |
+        mv \
+        osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb \
+        osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}_${{ inputs.go_arch }}.deb
+
+    ########################### Release ###########################
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          osctrl-*.bin
+          osctrl-*.deb
+        body_path: ./CHANGELOG.md
+

@@ -1,0 +1,189 @@
+name: Create new osctrl release
+
+on:
+  push:
+    branches: [ $default-branch ]
+    # Publish semver tags as releases.
+    tags: [ 'v*.*.*' ]
+
+env:
+  GOLANG_VERSION: 1.18.1
+  OSQUERY_VERSION: 5.2.2
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      ########################### Generate SHA1 commit hash ###########################
+      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      ########################### Build osctrl ###########################
+      - name: Build osctrl binaries
+        uses: ./.github/actions/build/binaries
+        with:
+          go_os: "${{ matrix.goos }}"
+          go_arch: "${{ matrix.goarch }}"
+          osctrl_component: "${{ matrix.components }}"
+          commit_sha: "${{ steps.vars.outputs.sha_short }}"
+          commit_branch: "${{ steps.vars.outputs.branch }}"
+          golang_version: "${{ env.GOLANG_VERSION }}"
+
+      ########################### Test binaries ###########################
+      # - name: Run tests
+      #   id: bin_tests
+      #   uses: .github/actions/test/binaries
+      #   with:
+      #     go_os: "${{ matrix.goos }}"
+      #     go_arch: "${{ matrix.goarch }}"
+      #     osctrl_component: "${{ matrix.components }}"
+      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
+      #     commit_branch: "${{ steps.vars.outputs.branch }}"
+      #     golang_version: "${{ env.GOLANG_VERSION }}"
+
+  create_deb_packages:
+    needs: [build_and_test]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      ########################### Generate SHA1 commit hash ###########################
+      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      ########################### Build DEB packages ###########################
+      - name: Build osctrl DEB packages
+        uses: ./.github/actions/build/dpkg
+        with:
+          go_os: ${{ matrix.goos }}
+          go_arch: ${{ matrix.goarch }}
+          osctrl_component: ${{ matrix.components }}
+          commit_sha: ${{ steps.vars.outputs.sha_short }}
+          osquery_version: ${{ env.OSQUERY_VERSION }}
+
+  create_docker_images:
+    needs: [build_and_test]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      ########################### Generate SHA1 commit hash ###########################
+      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      ########################### Build Docker containers ###########################
+      - name: Build and deploy osctrl Docker containers
+        uses: ./.github/actions/build/docker
+        id: build_docker_containers
+        with:
+          #### golang env vars ####
+          go_os: ${{ matrix.goos }}
+          go_arch: ${{ matrix.goarch }}
+          #### Build vars ####
+          osctrl_component: ${{ matrix.components }}
+          commit_sha: ${{ steps.vars.outputs.sha_short }}
+          docker_tag: ${{ steps.vars.outputs.RELEASE_VERSION }}
+          #### Dockerhub creds ####
+          docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
+          docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      ########################### Sign Docker images ###########################
+      - name: Sign osctrl Docker containers
+        uses: ./.github/actions/tagged_release/docker/codesign
+        with:
+          #### Docker vars ####
+          osctrl_component: ${{ matrix.components }}
+          docker_tag: ${{ steps.vars.outputs.RELEASE_VERSION }}
+          docker_image_digest: ${{ steps.build_docker_containers.outputs.docker_image_digest }}
+          #### Dockerhub creds ####
+          docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
+          docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          #### Codesign secrets ####
+          codesign_password: ${{ secrets.COSIGN_PASSWORD }}
+          codesign_private_key: ${{ secrets.COSIGN_PRIVATE }}
+          codesign_public_cert: ${{ secrets.COSIGN_PUBLIC }}
+
+  create_release:
+    needs: [build_and_test,create_deb_packages,create_docker_images]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        components: ['tls', 'admin', 'api', 'cli']
+        goos: ['linux']
+        goarch: ['amd64']
+    steps:  
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      ########################### Generate SHA1 commit hash ###########################
+      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      
+      ########################### Create release ###########################
+      - name: Create a new release with binaries and packages
+        uses: ./.github/actions/tagged_release/github
+        id: build_docker_containers
+        with:
+          go_os: "${{ matrix.goos }}"
+          go_arch: "${{ matrix.goarch }}"
+          osctrl_component: "${{ matrix.components }}"
+          commit_sha: "${{ steps.vars.outputs.sha_short }}"
+          release_version_tag: "${{ steps.vars.outputs.RELEASE_VERSION }}"
