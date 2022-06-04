@@ -3,7 +3,7 @@
 #
 # Script to test the osctrl-api
 #
-# Usage: python api_testing.py "api_url" "api_secret"
+# Usage: python api_testing.py "osctrl_url" "api_secret"
 #
 
 # Install the Python Requests library:
