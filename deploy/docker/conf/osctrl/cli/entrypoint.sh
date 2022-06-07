@@ -7,6 +7,11 @@ OSCTRL_USER="${OSCTRL_USER:=admin}"
 OSCTRL_PASS="${OSCTRL_PASS:=admin}"
 WAIT="${WAIT:=5}"
 
+######################################### OSCTRL_PASS #########################################
+if [[ -n "$OSCTRL_PASS_FILE" ]]; then
+  OSCTRL_PASS=$(cat ${OSCTRL_PASS_FILE})
+fi
+
 ######################################### Wait until DB is up #########################################
 until /opt/osctrl/bin/osctrl-cli check
 do
