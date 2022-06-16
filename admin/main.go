@@ -574,6 +574,7 @@ func osctrlAdminService() {
 			URL:               *samlData.RootURL,
 			Key:               samlData.KeyPair.PrivateKey.(*rsa.PrivateKey),
 			Certificate:       samlData.KeyPair.Leaf,
+			IDPMetadata:       samlData.IdpMetadata,
 			AllowIDPInitiated: true,
 		})
 		if err != nil {
