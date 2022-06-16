@@ -52,7 +52,7 @@ type HandlersAdmin struct {
 	StaticLocation  string
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
-	AdminConfig     *types.JSONConfigurationService
+	AdminConfig     *types.JSONConfigurationAdmin
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -162,7 +162,7 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 	}
 }
 
-func WithAdminConfig(config *types.JSONConfigurationService) HandlersOption {
+func WithAdminConfig(config *types.JSONConfigurationAdmin) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.AdminConfig = config
 	}

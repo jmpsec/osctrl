@@ -143,7 +143,7 @@ type SettingsTemplateData struct {
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
-	ServiceConfig   types.JSONConfigurationService
+	ServiceConfig   types.JSONConfigurationAdmin
 	Metadata        TemplateMetadata
 }
 

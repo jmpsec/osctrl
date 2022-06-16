@@ -107,7 +107,7 @@ var (
 // Global general variables
 var (
 	err         error
-	adminConfig types.JSONConfigurationService
+	adminConfig types.JSONConfigurationAdmin
 	dbConfig    backend.JSONConfigurationDB
 	redisConfig cache.JSONConfigurationRedis
 	db          *backend.DBManager
@@ -170,9 +170,16 @@ var validAuth = map[string]bool{
 	settings.AuthJSON: true,
 }
 
+// Valid values for carver in configuration
+var validCarver = map[string]bool{
+	settings.CarverDB:    true,
+	settings.CarverLocal: true,
+	settings.CarverS3:    true,
+}
+
 // Function to load the configuration file
-func loadConfiguration(file, service string) (types.JSONConfigurationService, error) {
-	var cfg types.JSONConfigurationService
+func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, error) {
+	var cfg types.JSONConfigurationAdmin
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -187,6 +194,9 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
+	}
+	if !validCarver[cfg.Carver] {
+		return cfg, fmt.Errorf("Invalid carver method")
 	}
 	// No errors!
 	return cfg, nil
@@ -546,7 +556,7 @@ func osctrlAdminService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db.Conn)
+	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver)
 	log.Println("Initialize sessions")
 	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
 	log.Println("Loading service settings")

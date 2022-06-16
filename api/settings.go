@@ -84,7 +84,7 @@ func loadingSettings() {
 	// Metrics
 	loadingMetrics()
 	// Write JSON config to settings
-	if err := settingsmgr.SetAllJSON(settings.ServiceAPI, apiConfig.Listener, apiConfig.Port, apiConfig.Host, apiConfig.Auth, apiConfig.Logger); err != nil {
+	if err := settingsmgr.SetAPIJSON(apiConfig); err != nil {
 		log.Fatalf("Failed to add JSON values to configuration: %v", err)
 	}
 }

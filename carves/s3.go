@@ -68,7 +68,7 @@ func (carveS3 *CarverS3) Settings(mgr *settings.Settings) {
 	log.Printf("No s3 logging settings\n")
 }
 
-// Send - Function that sends JSON logs to Splunk HTTP Event Collector
+// Send - Function that sends data from carves to S3
 func (carveS3 *CarverS3) Upload(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)

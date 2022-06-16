@@ -31,6 +31,9 @@ const (
 	ZstFileExtension string = ".zst"
 )
 
+// CarveType as abstraction of storage type for the carver
+type CarverType int
+
 var (
 	// CompressionHeader to detect the usage of compressed carves (zstd header)
 	// https://github.com/facebook/zstd
@@ -48,35 +51,6 @@ type QueriedCarve struct {
 	Creator string
 }
 
-// CarvedFile to keep track of carved files from nodes
-type CarvedFile struct {
-	gorm.Model
-	CarveID         string `gorm:"unique;index"`
-	RequestID       string
-	SessionID       string
-	QueryName       string
-	UUID            string `gorm:"index"`
-	Environment     string
-	Path            string
-	CarveSize       int
-	BlockSize       int
-	TotalBlocks     int
-	CompletedBlocks int
-	Status          string
-	CompletedAt     time.Time
-}
-
-// CarvedBlock to store each block from a carve
-type CarvedBlock struct {
-	gorm.Model
-	RequestID   string `gorm:"index"`
-	SessionID   string `gorm:"index"`
-	Environment string
-	BlockID     int
-	Data        string
-	Size        int
-}
-
 // CarveResult holds metadata related to a carve
 type CarveResult struct {
 	Size int64
@@ -85,13 +59,14 @@ type CarveResult struct {
 
 // Carves to handle file carves from nodes
 type Carves struct {
-	DB *gorm.DB
+	DB     *gorm.DB
+	Carver string
 }
 
 // CreateFileCarves to initialize the carves struct and tables
-func CreateFileCarves(backend *gorm.DB) *Carves {
+func CreateFileCarves(backend *gorm.DB, carverType string) *Carves {
 	var c *Carves
-	c = &Carves{DB: backend}
+	c = &Carves{DB: backend, Carver: carverType}
 	// table carved_files
 	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
@@ -321,7 +296,7 @@ func (c *Carves) Archive(sessionid, path string) (*CarveResult, error) {
 		return res, fmt.Errorf("Compression check - %v", err)
 	}
 	if zstd {
-		res.File += ".zst"
+		res.File += ZstFileExtension
 	}
 	f, err := os.OpenFile(res.File, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {

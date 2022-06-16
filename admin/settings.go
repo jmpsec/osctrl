@@ -79,7 +79,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		}
 	}
 	// Write JSON config to settings
-	if err := mgr.SetAllJSON(settings.ServiceAdmin, adminConfig.Listener, adminConfig.Port, adminConfig.Host, adminConfig.Auth, adminConfig.Logger); err != nil {
+	if err := mgr.SetAdminJSON(adminConfig); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %v", err)
 	}
 	return nil

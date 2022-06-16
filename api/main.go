@@ -90,7 +90,7 @@ var (
 // Global variables
 var (
 	err         error
-	apiConfig   types.JSONConfigurationService
+	apiConfig   types.JSONConfigurationAPI
 	dbConfig    backend.JSONConfigurationDB
 	redisConfig cache.JSONConfigurationRedis
 	jwtConfig   types.JSONConfigurationJWT
@@ -133,8 +133,8 @@ var validAuth = map[string]bool{
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file string) (types.JSONConfigurationService, error) {
-	var cfg types.JSONConfigurationService
+func loadConfiguration(file string) (types.JSONConfigurationAPI, error) {
+	var cfg types.JSONConfigurationAPI
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -421,7 +421,7 @@ func osctrlAPIService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn)
+	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver)
 	log.Println("Loading service settings")
 	loadingSettings()
 
