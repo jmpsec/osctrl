@@ -57,7 +57,7 @@ const (
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
-	defaultAccelerate int = 300
+	defaultAccelerate int = 60
 	// Default expiration of oneliners for enroll/expire
 	defaultOnelinerExpiration bool = true
 )

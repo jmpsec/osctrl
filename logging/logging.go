@@ -236,7 +236,17 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	}
-	// Add logs to cache
+	// If logging is not DB, let's write results to DB anyway
+	if logTLS.Logging != settings.LoggingDB {
+		l, ok := logTLS.Logger.(*LoggerDB)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingDB)
+		}
+		if l.Enabled {
+			l.Query(data, environment, uuid, name, status, debug)
+		}
+	}
+	// Add logs to cache always
 	if err := logTLS.RedisCache.SetQueryLogs(uuid, name, data); err != nil {
 		log.Printf("error sending %s logs to cache %s", logType, err)
 	}
