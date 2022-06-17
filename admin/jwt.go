@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/tls"
-	"crypto/x509"
 	"log"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -38,9 +37,9 @@ func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error)
 	}
 	tokenClaims := TokenClaims{}
 	token, err := jwt.ParseWithClaims(cookie, &tokenClaims, func(t *jwt.Token) (interface{}, error) {
-		secretBlock := x509.MarshalPKCS1PrivateKey(keypair.PrivateKey.(*rsa.PrivateKey))
-		return secretBlock, nil
+		return keypair.PrivateKey.(*rsa.PrivateKey).Public(), nil
 	})
+
 	if err != nil || !token.Valid {
 		return JWTData{}, err
 	}
