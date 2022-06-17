@@ -9,17 +9,23 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 )
 
+const (
+	// Default file to store logs
+	DefaultFileLog = "osctrl.log"
+)
+
 // LoggerTLS will be used to handle logging for the TLS endpoint
 type LoggerTLS struct {
-	Logging    string
-	Logger     interface{}
-	RedisCache *cache.RedisManager
-	Nodes      *nodes.NodeManager
-	Queries    *queries.Queries
+	Logging      string
+	Logger       interface{}
+	AlwaysLogger *LoggerDB
+	RedisCache   *cache.RedisManager
+	Nodes        *nodes.NodeManager
+	Queries      *queries.Queries
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
 	l := &LoggerTLS{
 		Logging:    logging,
 		Nodes:      nodes,
@@ -63,7 +69,7 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 			MaxAge:     10,
 			Compress:   true,
 		}
-		d, err := CreateLoggerFile("osctrl.log", rotateCfg)
+		d, err := CreateLoggerFile(DefaultFileLog, rotateCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -91,6 +97,13 @@ func CreateLoggerTLS(logging, loggingFile string, mgr *settings.Settings, nodes 
 		d.Settings(mgr)
 		l.Logger = d
 	}
+	// Initialize the logger that will always log to DB
+	always, err := CreateLoggerDBFile(alwaysLogger)
+	if err != nil {
+		return nil, err
+	}
+	always.Settings(mgr)
+	l.AlwaysLogger = always
 	return l, nil
 }
 
@@ -161,6 +174,10 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
+	}
+	// If logs are status, write via always logger
+	if logTLS.AlwaysLogger.Enabled {
+		logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
 	}
 	// Add logs to cache
 	if err := logTLS.RedisCache.SetLogs(logType, uuid, environment, data); err != nil {
@@ -236,16 +253,11 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			l.Send(logType, data, environment, uuid, debug)
 		}
 	}
-	// If logging is not DB, let's write results to DB anyway
-	if logTLS.Logging != settings.LoggingDB {
-		l, ok := logTLS.Logger.(*LoggerDB)
-		if !ok {
-			log.Printf("error casting logger to %s", settings.LoggingDB)
-		}
-		if l.Enabled {
-			l.Query(data, environment, uuid, name, status, debug)
-		}
+	// Always log results to DB if always logger is enabled
+	if logTLS.AlwaysLogger.Enabled {
+		logTLS.AlwaysLogger.Query(data, environment, uuid, name, status, debug)
 	}
+
 	// Add logs to cache always
 	if err := logTLS.RedisCache.SetQueryLogs(uuid, name, data); err != nil {
 		log.Printf("error sending %s logs to cache %s", logType, err)

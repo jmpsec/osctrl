@@ -50,6 +50,8 @@ const (
 	defRedisConfigurationFile string = "config/redis.json"
 	// Default Logger configuration file
 	defLoggerConfigurationFile string = "config/logger.json"
+	// Default Logger configuration file
+	defAlwaysLoggerConfigurationFile string = "config/always.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -102,6 +104,7 @@ var (
 	tlsCertFile       string
 	tlsKeyFile        string
 	loggerFile        string
+	alwaysLoggerFile  string
 )
 
 // Valid values for auth and logging in configuration
@@ -374,6 +377,14 @@ func init() {
 			EnvVars:     []string{"LOGGER_FILE"},
 			Destination: &loggerFile,
 		},
+		&cli.StringFlag{
+			Name:        "always-logger",
+			Aliases:     []string{"A"},
+			Value:       defAlwaysLoggerConfigurationFile,
+			Usage:       "Logger configuration to always store status and on-demand query logs from nodes",
+			EnvVars:     []string{"ALWAYS_LOGGER_FILE"},
+			Destination: &alwaysLoggerFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -425,7 +436,7 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, settingsmgr, nodesmgr, queriesmgr, redis)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLoggerFile, settingsmgr, nodesmgr, queriesmgr, redis)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
