@@ -1,4 +1,4 @@
-name: Build and test PRs pushed to Ocstrl
+name: Build and test PRs pushed to osctrl
 
 on: [push, pull_request]
 

@@ -1,4 +1,4 @@
-name: Build and test Ocstrl
+name: Build and test osctrl
 
 on:
   push:
