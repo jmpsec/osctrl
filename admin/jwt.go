@@ -46,8 +46,7 @@ func parseJWTFromCookie(keypair tls.Certificate, cookie string) (JWTData, error)
 	}
 	return JWTData{
 		Subject:  tokenClaims.Subject,
-		Email:    tokenClaims.Attributes["mail"][0],
-		Display:  tokenClaims.Attributes["displayName"][0],
-		Username: tokenClaims.Attributes["sAMAccountName"][0],
+		Email:    tokenClaims.Subject,
+		Username: tokenClaims.Subject,
 	}, nil
 }
