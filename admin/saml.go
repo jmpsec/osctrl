@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 
+	"github.com/crewjam/saml"
+	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/spf13/viper"
 )
@@ -28,6 +32,7 @@ type JSONConfigurationSAML struct {
 type samlThings struct {
 	RootURL        *url.URL
 	IdpMetadataURL *url.URL
+	IdpMetadata    *saml.EntityDescriptor
 	KeyPair        tls.Certificate
 }
 
@@ -64,6 +69,10 @@ func keypairSAML(config JSONConfigurationSAML) (samlThings, error) {
 	data.IdpMetadataURL, err = url.Parse(config.MetaDataURL)
 	if err != nil {
 		return data, fmt.Errorf("Parse MetadataURL %v", err)
+	}
+	data.IdpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *data.IdpMetadataURL)
+	if err != nil {
+		return data, fmt.Errorf("Fetch Metadata %v", err)
 	}
 	data.RootURL, err = url.Parse(config.RootURL)
 	if err != nil {
