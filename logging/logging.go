@@ -32,7 +32,6 @@ func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Se
 		Queries:    queries,
 		RedisCache: redis,
 	}
-	log.Printf("Always log to %s", alwaysLogger)
 	switch logging {
 	case settings.LoggingSplunk:
 		s, err := CreateLoggerSplunk(loggingFile)
