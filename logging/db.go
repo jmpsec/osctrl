@@ -28,7 +28,7 @@ type OsqueryResultData struct {
 	Name        string
 	Action      string
 	Epoch       int64
-	Columns     []byte
+	Columns     string
 	Counter     int
 }
 
@@ -50,7 +50,7 @@ type OsqueryQueryData struct {
 	UUID        string `gorm:"index"`
 	Environment string
 	Name        string
-	Data        []byte
+	Data        string
 	Status      int
 }
 
@@ -158,7 +158,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 			Name:        l.Name,
 			Action:      l.Action,
 			Epoch:       l.Epoch,
-			Columns:     l.Columns,
+			Columns:     string(l.Columns),
 			Counter:     l.Counter,
 		}
 		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
@@ -174,7 +174,7 @@ func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status
 		UUID:        strings.ToUpper(uuid),
 		Environment: environment,
 		Name:        name,
-		Data:        data,
+		Data:        string(data),
 		Status:      status,
 	}
 	// Insert in DB
