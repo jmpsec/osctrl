@@ -7,6 +7,7 @@ import (
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 )
 
 const (
@@ -178,7 +179,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		}
 	}
 	// If logs are status, write via always logger
-	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled {
+	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled && logType == types.StatusLog {
 		logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
 	}
 	// Add logs to cache
