@@ -32,6 +32,7 @@ func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Se
 		Queries:    queries,
 		RedisCache: redis,
 	}
+	log.Printf("Always log to %s", alwaysLogger)
 	switch logging {
 	case settings.LoggingSplunk:
 		s, err := CreateLoggerSplunk(loggingFile)
@@ -98,12 +99,14 @@ func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Se
 		l.Logger = d
 	}
 	// Initialize the logger that will always log to DB
-	always, err := CreateLoggerDBFile(alwaysLogger)
-	if err != nil {
-		return nil, err
+	if alwaysLogger != "" {
+		always, err := CreateLoggerDBFile(alwaysLogger)
+		if err != nil {
+			return nil, err
+		}
+		always.Settings(mgr)
+		l.AlwaysLogger = always
 	}
-	always.Settings(mgr)
-	l.AlwaysLogger = always
 	return l, nil
 }
 
@@ -176,7 +179,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		}
 	}
 	// If logs are status, write via always logger
-	if logTLS.AlwaysLogger.Enabled {
+	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled {
 		logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
 	}
 	// Add logs to cache
@@ -254,7 +257,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		}
 	}
 	// Always log results to DB if always logger is enabled
-	if logTLS.AlwaysLogger.Enabled {
+	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled {
 		logTLS.AlwaysLogger.Query(data, environment, uuid, name, status, debug)
 	}
 

@@ -50,8 +50,8 @@ const (
 	defRedisConfigurationFile string = "config/redis.json"
 	// Default Logger configuration file
 	defLoggerConfigurationFile string = "config/logger.json"
-	// Default Logger configuration file
-	defAlwaysLoggerConfigurationFile string = "config/always.json"
+	// Default always DB logger configuration file
+	defAlwaysLogConfigurationFile string = "config/always.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -104,7 +104,8 @@ var (
 	tlsCertFile       string
 	tlsKeyFile        string
 	loggerFile        string
-	alwaysLoggerFile  string
+	alwaysLog         bool
+	alwaysLogFile     string
 )
 
 // Valid values for auth and logging in configuration
@@ -377,13 +378,21 @@ func init() {
 			EnvVars:     []string{"LOGGER_FILE"},
 			Destination: &loggerFile,
 		},
+		&cli.BoolFlag{
+			Name:        "always-log",
+			Aliases:     []string{"a", "always"},
+			Value:       false,
+			Usage:       "Always log status and on-demand query logs from nodes in database",
+			EnvVars:     []string{"ALWAYS_LOG"},
+			Destination: &alwaysLog,
+		},
 		&cli.StringFlag{
-			Name:        "always-logger",
-			Aliases:     []string{"A"},
-			Value:       defAlwaysLoggerConfigurationFile,
-			Usage:       "Logger configuration to always store status and on-demand query logs from nodes",
-			EnvVars:     []string{"ALWAYS_LOGGER_FILE"},
-			Destination: &alwaysLoggerFile,
+			Name:        "always-log-file",
+			Aliases:     []string{"alog"},
+			Value:       defAlwaysLogConfigurationFile,
+			Usage:       "Database logger configuration to always store status and on-demand query logs from nodes",
+			EnvVars:     []string{"ALWAYS_LOG_FILE"},
+			Destination: &alwaysLogFile,
 		},
 	}
 	// Logging format flags
@@ -436,7 +445,10 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLoggerFile, settingsmgr, nodesmgr, queriesmgr, redis)
+	if !alwaysLog {
+		alwaysLogFile = ""
+	}
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLogFile, settingsmgr, nodesmgr, queriesmgr, redis)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
