@@ -226,12 +226,12 @@ func init() {
 				{
 					Name:    "permissions",
 					Aliases: []string{"p"},
-					Usage:   "Change permissions for an existing user",
+					Usage:   "Permission actions for an existing user",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "username",
 							Aliases: []string{"u"},
-							Usage:   "User to be edited",
+							Usage:   "User to perform the action",
 						},
 						&cli.StringFlag{
 							Name:    "environment",
@@ -267,6 +267,12 @@ func init() {
 							Aliases: []string{"R"},
 							Hidden:  false,
 							Usage:   "Reset permissions for this user",
+						},
+						&cli.BoolFlag{
+							Name:    "show",
+							Aliases: []string{"s"},
+							Hidden:  false,
+							Usage:   "Display all permissions for this user",
 						},
 					},
 					Action: cliWrapper(permissionsUser),
