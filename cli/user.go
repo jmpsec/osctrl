@@ -119,13 +119,18 @@ func listUsers(c *cli.Context) error {
 		"Fullname",
 		"PassHash",
 		"Admin?",
-		"Environment",
+		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
+		"Permissions",
 	})
 	if len(users) > 0 {
 		data := [][]string{}
 		for _, u := range users {
+			uAccess, err := adminUsers.GetAccess(u.Username)
+			if err != nil {
+				return err
+			}
 			u := []string{
 				u.Username,
 				u.Fullname,
@@ -134,6 +139,7 @@ func listUsers(c *cli.Context) error {
 				u.DefaultEnv,
 				u.LastIPAddress,
 				u.LastUserAgent,
+				stringifyUserAccess(uAccess),
 			}
 			data = append(data, u)
 		}
@@ -151,6 +157,42 @@ func permissionsUser(c *cli.Context) error {
 	if username == "" {
 		fmt.Println("username is required")
 		os.Exit(1)
+	}
+	show := c.Bool("show")
+	// Show is just display user existing permissions and return
+	if show {
+		existingAccess, err := adminUsers.GetAccess(username)
+		if err != nil {
+			return err
+		}
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{
+			"Username",
+			"Environment",
+			"User access",
+			"Admin access",
+			"Query access",
+			"Carve access",
+		})
+		data := [][]string{}
+		for e, p := range existingAccess {
+			env, err := envs.Get(e)
+			if err != nil {
+				return err
+			}
+			r := []string{
+				username,
+				fmt.Sprintf("%s (%s)", e, env.Name),
+				stringifyBool(p.User),
+				stringifyBool(p.Admin),
+				stringifyBool(p.Query),
+				stringifyBool(p.Carve),
+			}
+			data = append(data, r)
+		}
+		table.AppendBulk(data)
+		table.Render()
+		return nil
 	}
 	envName := c.String("environment")
 	if envName == "" {
