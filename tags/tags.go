@@ -12,6 +12,10 @@ import (
 const (
 	// DefaultTagIcon as default icon to use for tags
 	DefaultTagIcon string = "fas fa-tag"
+	// DefaultAutoTagUser as default user ID to be used for auto tagging
+	DefaultAutoTagUser uint = 0
+	// DefaultAutocreated as default username and description for tags
+	DefaultAutocreated = "Autocreated"
 )
 
 // AdminTag to hold all tags
@@ -21,6 +25,7 @@ type AdminTag struct {
 	Description string
 	Color       string
 	Icon        string
+	CreatedBy   string
 }
 
 // AdminTagForNode to check if this tag is used for an specific node
@@ -32,8 +37,12 @@ type AdminTagForNode struct {
 // TaggedNode to hold tagged nodes
 type TaggedNode struct {
 	gorm.Model
-	Tag    string
-	NodeID uint
+	Tag        string
+	AdminTagID uint
+	NodeID     uint
+	AutoTag    bool
+	TaggedBy   string
+	UserID     uint
 }
 
 // TagManager have all tags
@@ -74,11 +83,11 @@ func (m *TagManager) Create(tag AdminTag) error {
 }
 
 // New empty tag
-func (m *TagManager) New(name, description, color, icon string) (AdminTag, error) {
+func (m *TagManager) New(name, description, color, icon, user string) (AdminTag, error) {
 	tagColor := color
 	tagIcon := icon
 	if tagColor == "" {
-		tagColor = randomColor()
+		tagColor = RandomColor()
 	}
 	if tagIcon == "" {
 		tagIcon = DefaultTagIcon
@@ -95,8 +104,8 @@ func (m *TagManager) New(name, description, color, icon string) (AdminTag, error
 }
 
 // NewTag to create a tag and creates it without returning it
-func (m *TagManager) NewTag(name, description, color, icon string) error {
-	tag, err := m.New(name, description, color, icon)
+func (m *TagManager) NewTag(name, description, color, icon, user string) error {
+	tag, err := m.New(name, description, color, icon, user)
 	if err != nil {
 		return err
 	}
@@ -182,17 +191,64 @@ func (m *TagManager) ChangeIcon(name, icon string) error {
 	return nil
 }
 
+// AutoTagNode to automatically tag a node based on multiple fields
+func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string) error {
+	l := []string{env, node.UUID, node.Platform, node.Hostname}
+	return m.TagNodeMulti(l, node, user, true)
+}
+
+// TagNodeMulti to tag a node with multiple tags
+// TODO use the correct user_id
+func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user string, auto bool) error {
+	for _, t := range tags {
+		check, tag := m.ExistsGet(t)
+		if !check {
+			newTag := AdminTag{
+				Name:        t,
+				Description: DefaultAutocreated,
+				Color:       RandomColor(),
+				Icon:        DefaultTagIcon,
+				CreatedBy:   DefaultAutocreated,
+			}
+			if err := m.Create(newTag); err != nil {
+				return fmt.Errorf("Create AdminTag %v", err)
+			}
+		}
+		if m.IsTagged(tag.Name, node) {
+			continue
+		}
+		tagged := TaggedNode{
+			Tag:        tag.Name,
+			AdminTagID: tag.ID,
+			NodeID:     node.ID,
+			AutoTag:    auto,
+			UserID:     DefaultAutoTagUser,
+			TaggedBy:   user,
+		}
+		if err := m.DB.Create(&tagged).Error; err != nil {
+			return fmt.Errorf("Create TaggedNode %v", err)
+		}
+	}
+	return nil
+}
+
 // TagNode to tag a node
-func (m *TagManager) TagNode(name string, node nodes.OsqueryNode) error {
-	if !m.Exists(name) {
+// TODO use the correct user_id
+func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
+	check, tag := m.ExistsGet(name)
+	if !check {
 		return fmt.Errorf("tag does not exist")
 	}
-	if m.IsTagged(name, node) {
+	if m.IsTagged(tag.Name, node) {
 		return fmt.Errorf("node already tagged")
 	}
 	tagged := TaggedNode{
-		Tag:    name,
-		NodeID: node.ID,
+		Tag:        tag.Name,
+		AdminTagID: tag.ID,
+		NodeID:     node.ID,
+		AutoTag:    auto,
+		UserID:     DefaultAutoTagUser,
+		TaggedBy:   user,
 	}
 	if err := m.DB.Create(&tagged).Error; err != nil {
 		return fmt.Errorf("Create TaggedNode %v", err)
@@ -202,8 +258,13 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode) error {
 
 // IsTagged to check if a node is already tagged
 func (m *TagManager) IsTagged(name string, node nodes.OsqueryNode) bool {
+	return m.IsTaggedID(name, node.ID)
+}
+
+// IsTaggedID to check if a node is already tagged by node ID
+func (m *TagManager) IsTaggedID(name string, nodeID uint) bool {
 	var results int64
-	m.DB.Model(&TaggedNode{}).Where("tag = ? AND node_id = ?", name, node.ID).Count(&results)
+	m.DB.Model(&TaggedNode{}).Where("tag = ? AND node_id = ?", name, nodeID).Count(&results)
 	return (results > 0)
 }
 

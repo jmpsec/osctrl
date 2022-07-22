@@ -245,8 +245,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error creating node %v", err)
 			} else {
 				nodeInvalid = false
-				// TODO autotag node based on existing or newly created tags
-				if err := h.Tags.TagNode(env.Name, newNode); err != nil {
+				if err := h.Tags.AutoTagNode(env.Name, newNode, "osctrl-tls"); err != nil {
 					h.Inc(metricEnrollErr)
 					log.Printf("error tagging node %v", err)
 				}

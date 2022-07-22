@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -59,7 +60,7 @@ func addEnvironment(c *cli.Context) error {
 			return err
 		}
 		// Create a tag for this new environment
-		if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, "", newEnv.Icon); err != nil {
+		if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName); err != nil {
 			return err
 		}
 		// Generate flags
