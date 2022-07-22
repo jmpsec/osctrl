@@ -193,7 +193,7 @@ func (m *TagManager) ChangeIcon(name, icon string) error {
 
 // AutoTagNode to automatically tag a node based on multiple fields
 func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string) error {
-	l := []string{env, node.UUID, node.Platform, node.Hostname}
+	l := []string{env, node.UUID, node.Platform, node.Localname}
 	return m.TagNodeMulti(l, node, user, true)
 }
 
@@ -237,7 +237,16 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
 	check, tag := m.ExistsGet(name)
 	if !check {
-		return fmt.Errorf("tag does not exist")
+		newTag := AdminTag{
+			Name:        name,
+			Description: DefaultAutocreated,
+			Color:       RandomColor(),
+			Icon:        DefaultTagIcon,
+			CreatedBy:   DefaultAutocreated,
+		}
+		if err := m.Create(newTag); err != nil {
+			return fmt.Errorf("Create AdminTag %v", err)
+		}
 	}
 	if m.IsTagged(tag.Name, node) {
 		return fmt.Errorf("node already tagged")
