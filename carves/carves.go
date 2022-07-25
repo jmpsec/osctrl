@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"gorm.io/gorm"
 )
@@ -60,13 +61,14 @@ type CarveResult struct {
 // Carves to handle file carves from nodes
 type Carves struct {
 	DB     *gorm.DB
+	S3     *CarverS3
 	Carver string
 }
 
 // CreateFileCarves to initialize the carves struct and tables
-func CreateFileCarves(backend *gorm.DB, carverType string) *Carves {
+func CreateFileCarves(backend *gorm.DB, carverType string, s3 *CarverS3) *Carves {
 	var c *Carves
-	c = &Carves{DB: backend, Carver: carverType}
+	c = &Carves{DB: backend, Carver: carverType, S3: s3}
 	// table carved_files
 	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
 		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
@@ -125,9 +127,35 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 	return carve, nil
 }
 
+// InitateBlock to initiate a block based on the configured carver
+func (c *Carves) InitateBlock(env, requestid, sessionid, data string, blockid int) CarvedBlock {
+	res := CarvedBlock{
+		RequestID:   requestid,
+		SessionID:   sessionid,
+		Environment: env,
+		BlockID:     blockid,
+		Size:        len(data),
+		Carver:      c.Carver,
+	}
+	if c.Carver == settings.CarverS3 {
+		res.Data = data
+	}
+	return res
+}
+
 // CreateBlock to create a new block for a carve
-func (c *Carves) CreateBlock(block CarvedBlock) error {
-	return c.DB.Create(&block).Error // can be nil or err
+// TODO make debug to be passed as parameter
+func (c *Carves) CreateBlock(block CarvedBlock, uuid string) error {
+	switch c.Carver {
+	case settings.CarverDB:
+		return c.DB.Create(&block).Error // can be nil or err
+	case settings.CarverS3:
+		if c.S3 != nil {
+			return c.S3.Upload(block, uuid, true)
+		}
+		return fmt.Errorf("S3 carver not initialized")
+	}
+	return fmt.Errorf("Unknown carver") // can be nil or err
 }
 
 // Delete to delete a carve by id

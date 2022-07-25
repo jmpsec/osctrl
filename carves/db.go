@@ -22,6 +22,9 @@ type CarvedFile struct {
 	CompletedBlocks int
 	Status          string
 	CompletedAt     time.Time
+	Carver          string
+	Archived        bool
+	ArchivePath     string
 }
 
 // CarvedBlock to store each block from a carve
@@ -33,4 +36,5 @@ type CarvedBlock struct {
 	BlockID     int
 	Data        string
 	Size        int
+	Carver      string
 }

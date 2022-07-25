@@ -556,7 +556,7 @@ func osctrlAdminService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver)
+	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver, nil)
 	log.Println("Initialize sessions")
 	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
 	log.Println("Loading service settings")

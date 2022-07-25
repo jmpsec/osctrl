@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/ksuid"
@@ -33,4 +34,21 @@ func GenKSUID() string {
 // See https://github.com/google/uuid for more info about UUIDs
 func GenUUID() string {
 	return uuid.New().String()
+}
+
+// StringToInteger - Helper to convert a string into integer
+func StringToInteger(s string) int64 {
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+// StringToBoolean - Helper to convert a string into boolean
+func StringToBoolean(s string) bool {
+	if s == "yes" || s == "true" || s == "1" {
+		return true
+	}
+	return false
 }

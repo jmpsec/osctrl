@@ -421,7 +421,7 @@ func osctrlAPIService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver)
+	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver, nil)
 	log.Println("Loading service settings")
 	loadingSettings()
 

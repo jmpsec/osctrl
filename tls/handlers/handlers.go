@@ -736,7 +736,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
 		blockCarve = true
 		// Process received block
-		go h.ProcessCarveBlock(t, env.Name)
+		go h.ProcessCarveBlock(t, env.Name, carve.UUID)
 		// Refresh last carve request
 		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
 			h.Inc(metricReadErr)

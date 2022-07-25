@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/environments"
@@ -106,23 +105,6 @@ func newQueryReady(user, query string) queries.DistributedQuery {
 		Deleted:    false,
 		Type:       queries.StandardQueryType,
 	}
-}
-
-// Helper to convert a string into integer
-func stringToInteger(s string) int64 {
-	v, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0
-	}
-	return v
-}
-
-// Helper to convert a string into boolean
-func stringToBoolean(s string) bool {
-	if s == "yes" || s == "true" || s == "1" {
-		return true
-	}
-	return false
 }
 
 // Helper to remove duplicates from []string

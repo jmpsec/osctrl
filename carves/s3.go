@@ -1,7 +1,9 @@
 package carves
 
 import (
+	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
@@ -69,20 +71,21 @@ func (carveS3 *CarverS3) Settings(mgr *settings.Settings) {
 }
 
 // Send - Function that sends data from carves to S3
-func (carveS3 *CarverS3) Upload(logType string, data []byte, environment, uuid string, debug bool) {
+func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid string, debug bool) error {
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
+		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(block.Data), block.Environment, uuid)
 	}
-	reader := strings.NewReader(string(data))
+	reader := strings.NewReader(block.Data)
 	uploadOutput, err := carveS3.Uploader.Upload(&s3manager.UploadInput{
 		Bucket: &carveS3.Configuration.Bucket,
-		Key:    aws.String(logType + ":" + environment + ":" + uuid),
+		Key:    aws.String(block.Environment + ":" + uuid + ":" + block.SessionID + ":" + strconv.Itoa(block.BlockID)),
 		Body:   reader,
 	})
 	if err != nil {
-		log.Printf("Error sending data to s3 %s", err)
+		return fmt.Errorf("Error sending data to s3 - %s", err)
 	}
 	if debug {
 		log.Printf("DebugService: S3 Upload %+v", uploadOutput)
 	}
+	return nil
 }
