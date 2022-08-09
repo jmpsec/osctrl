@@ -32,7 +32,7 @@ const (
 --carver_disable_function=false
 --carver_start_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverInitPath }}
 --carver_continue_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverBlockPath }}
-{{ .FlagCarverBlockSize }}
+{{ .FlagCarverBlock }}
 --disable_distributed=false
 --distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
