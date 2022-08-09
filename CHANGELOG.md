@@ -2,8 +2,6 @@
 
 ## 🔖 Release [0.2.9](https://github.com/jmpsec/osctrl/releases/tag/v0.2.9)
 
-[Git Commits](https://github.com/jmpsec/osctrl/compare/0.2.8...v0.2.9)
-
 ### 🚨 Breaking Changes
 
 ### ✨ New Features
