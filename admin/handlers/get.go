@@ -114,6 +114,11 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		log.Printf("error downloading carve - %v", err)
 		return
 	}
+	// Mark carve as archived
+	if err := h.Carves.ArchiveCarve(carveSession, result.File); err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error archiving carve %v", err)
+	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve download")
 	}

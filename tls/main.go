@@ -109,7 +109,6 @@ var (
 	loggerFile        string
 	alwaysLog         bool
 	alwaysLogFile     string
-	carverFlag        bool
 	carverConfigFile  string
 )
 
@@ -411,13 +410,6 @@ func init() {
 			EnvVars:     []string{"ALWAYS_LOG_FILE"},
 			Destination: &alwaysLogFile,
 		},
-		&cli.BoolFlag{
-			Name:        "carver",
-			Value:       false,
-			Usage:       "Configure an external carver used to receive files extracted from nodes",
-			EnvVars:     []string{"CARVER"},
-			Destination: &carverFlag,
-		},
 		&cli.StringFlag{
 			Name:        "carver-type",
 			Value:       settings.CarverDB,
@@ -616,7 +608,7 @@ func cliAction(c *cli.Context) error {
 		}
 	}
 	// Load carver configuration if external JSON config file is used
-	if carverFlag {
+	if tlsConfig.Carver == settings.CarverS3 {
 		carvers3, err = carves.CreateCarverS3(carverConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to initiate s3 carver - %v", err)

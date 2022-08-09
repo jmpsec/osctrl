@@ -75,6 +75,8 @@ const (
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
 	defTLSKeyFile string = "config/tls.key"
+	// Default carver configuration file
+	defCarverConfigurationFile string = "config/carver.json"
 )
 
 // Random
@@ -120,6 +122,7 @@ var (
 	envs        *environments.Environment
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
 	app         *cli.App
 	flags       []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
@@ -149,6 +152,7 @@ var (
 	staticOffline        bool
 	carvedFilesFolder    string
 	templatesFolder      string
+	carverConfigFile     string
 )
 
 // SAML variables
@@ -517,6 +521,20 @@ func init() {
 			EnvVars:     []string{"CARVED_FILES"},
 			Destination: &carvedFilesFolder,
 		},
+		&cli.StringFlag{
+			Name:        "carver-type",
+			Value:       settings.CarverDB,
+			Usage:       "Carver to be used to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_TYPE"},
+			Destination: &adminConfig.Carver,
+		},
+		&cli.StringFlag{
+			Name:        "carver-file",
+			Value:       defCarverConfigurationFile,
+			Usage:       "Carver configuration file to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_FILE"},
+			Destination: &carverConfigFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -626,6 +644,7 @@ func osctrlAdminService() {
 		handlers.WithTemplates(templatesFolder),
 		handlers.WithStaticLocation(staticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
+		handlers.WithCarvesFolder(carvedFilesFolder),
 		handlers.WithAdminConfig(&adminConfig),
 	)
 
@@ -817,6 +836,13 @@ func cliAction(c *cli.Context) error {
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
 	if err != nil {
 		return fmt.Errorf("Failed to load osquery tables - %v", err)
+	}
+	// Load carver configuration if external JSON config file is used
+	if adminConfig.Carver == settings.CarverS3 {
+		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
+		}
 	}
 	return nil
 }

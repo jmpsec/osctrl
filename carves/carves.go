@@ -1,7 +1,6 @@
 package carves
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -98,6 +97,7 @@ func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string) error {
 			"block_size":   req.BlockSize,
 			"session_id":   sessionid,
 			"status":       StatusInProgress,
+			"carver":       c.Carver,
 		}
 		if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
 			return err
@@ -128,30 +128,30 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 }
 
 // InitateBlock to initiate a block based on the configured carver
-func (c *Carves) InitateBlock(env, requestid, sessionid, data string, blockid int) CarvedBlock {
+func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, blockid int) CarvedBlock {
 	res := CarvedBlock{
 		RequestID:   requestid,
 		SessionID:   sessionid,
 		Environment: env,
 		BlockID:     blockid,
 		Size:        len(data),
+		Data:        GenerateS3Data(c.S3.Configuration.Bucket, env, uuid, sessionid, blockid),
 		Carver:      c.Carver,
 	}
-	if c.Carver == settings.CarverS3 {
+	if c.Carver != settings.CarverS3 {
 		res.Data = data
 	}
 	return res
 }
 
 // CreateBlock to create a new block for a carve
-// TODO make debug to be passed as parameter
-func (c *Carves) CreateBlock(block CarvedBlock, uuid string) error {
+func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 	switch c.Carver {
 	case settings.CarverDB:
 		return c.DB.Create(&block).Error // can be nil or err
 	case settings.CarverS3:
 		if c.S3 != nil {
-			return c.S3.Upload(block, uuid, true)
+			return c.S3.Upload(block, uuid, data)
 		}
 		return fmt.Errorf("S3 carver not initialized")
 	}
@@ -193,7 +193,7 @@ func (c *Carves) GetByCarve(carveid string) (CarvedFile, error) {
 	return carve, nil
 }
 
-// GetBySession to get a carve by session id
+// GetBySession to get a carve by session_id
 func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 	var carve CarvedFile
 	if err := c.DB.Where("session_id = ?", sessionid).Find(&carve).Error; err != nil {
@@ -202,7 +202,7 @@ func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 	return carve, nil
 }
 
-// GetByRequest to get a carve by request id
+// GetByRequest to get a carve by request_id
 func (c *Carves) GetByRequest(requestid string) ([]CarvedFile, error) {
 	var carves []CarvedFile
 	if err := c.DB.Where("request_id = ?", requestid).Find(&carves).Error; err != nil {
@@ -211,7 +211,7 @@ func (c *Carves) GetByRequest(requestid string) ([]CarvedFile, error) {
 	return carves, nil
 }
 
-// GetBlocks to get a carve by session id
+// GetBlocks to get a carve by session_id and ordered by block_id
 func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 	var blocks []CarvedBlock
 	if err := c.DB.Where("session_id = ?", sessionid).Order("block_id").Find(&blocks).Error; err != nil {
@@ -227,22 +227,6 @@ func (c *Carves) GetByQuery(name string) ([]CarvedFile, error) {
 		return carves, err
 	}
 	return carves, nil
-}
-
-// CheckCompression to verify if the blocks are compressed using zstd
-func (c *Carves) CheckCompression(block CarvedBlock) (bool, error) {
-	// Make sure this is the block 0
-	if block.BlockID != 0 {
-		return false, fmt.Errorf("block_id is not 0 (%d)", block.BlockID)
-	}
-	compressionCheck, err := base64.StdEncoding.DecodeString(block.Data)
-	if err != nil {
-		return false, fmt.Errorf("Decoding first block %v", err)
-	}
-	if bytes.Compare(compressionCheck[:4], CompressionHeader) == 0 {
-		return true, nil
-	}
-	return false, nil
 }
 
 // GetNodeCarves to get all the carves for a given node
@@ -283,6 +267,22 @@ func (c *Carves) CompleteBlock(sessionid string) error {
 	return nil
 }
 
+// ArchiveCarve to mark one carve as archived and set the received file
+func (c *Carves) ArchiveCarve(sessionid, archive string) error {
+	carve, err := c.GetBySession(sessionid)
+	if err != nil {
+		return fmt.Errorf("getCarveBySessionID %v", err)
+	}
+	toUpdate := map[string]interface{}{
+		"archived":      true,
+		"archived_path": archive,
+	}
+	if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
+		return fmt.Errorf("Updates %v", err)
+	}
+	return nil
+}
+
 // Completed to check if a carve is completed
 // FIXME return error maybe?
 func (c *Carves) Completed(sessionid string) bool {
@@ -294,32 +294,58 @@ func (c *Carves) Completed(sessionid string) bool {
 }
 
 // Archive to convert finalize a completed carve and create a file ready to download
-func (c *Carves) Archive(sessionid, path string) (*CarveResult, error) {
+func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
+	// Get carve
+	carve, err := c.GetBySession(sessionid)
+	if err != nil {
+		return nil, fmt.Errorf("error getting carve - %v", err)
+	}
+	if carve.Archived {
+		return &CarveResult{
+			Size: int64(carve.CarveSize),
+			File: carve.ArchivePath,
+		}, nil
+	}
+	// Get all blocks
+	blocks, err := c.GetBlocks(carve.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting blocks - %v", err)
+	}
+	switch c.Carver {
+	case settings.CarverLocal:
+		return c.ArchiveLocal(destPath, carve, blocks)
+	case settings.CarverDB:
+		return c.ArchiveLocal(destPath, carve, blocks)
+	case settings.CarverS3:
+		return c.S3.Archive(carve, blocks)
+	}
+	return nil, fmt.Errorf("unknown carver - %s", c.Carver)
+}
+
+// Archive to convert finalize a completed carve and create a file ready to download
+func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []CarvedBlock) (*CarveResult, error) {
 	res := &CarveResult{
-		File: path,
+		File: destPath,
 	}
 	// Make sure last character is a slash
-	if path[len(path)-1:] != "/" {
+	if destPath[len(destPath)-1:] != "/" {
 		res.File += "/"
 	}
-	res.File += sessionid + TarFileExtension
+	res.File += GenerateArchiveName(carve)
 	// If file already exists, no need to re-generate it from blocks
 	_f, err := os.Stat(res.File)
 	if err == nil {
 		res.Size = _f.Size()
 		return res, nil
 	}
+	// Also check for compressed
 	_f, err = os.Stat(res.File + ZstFileExtension)
 	if err == nil {
 		res.Size = _f.Size()
 		return res, nil
 	}
-	// Get all blocks
-	blocks, err := c.GetBlocks(sessionid)
-	if err != nil {
-		return res, fmt.Errorf("Getting blocks - %v", err)
-	}
-	zstd, err := c.CheckCompression(blocks[0])
+	// Check if data is compressed
+	zstd, err := CheckCompressionBlock(blocks[0])
 	if err != nil {
 		return res, fmt.Errorf("Compression check - %v", err)
 	}
