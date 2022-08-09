@@ -7,8 +7,12 @@ import (
 )
 
 const (
+	// CarverBlockSizeValue to configure size in bytes for carver blocks
+	CarverBlockSizeValue string = "5120000"
 	// FlagTLSServerCerts for the --tls_server_certs flag
 	FlagTLSServerCerts string = `--tls_server_certs={{ .CertFile }}`
+	// FlagCarverBlockSize for the --carver_block_size flag
+	FlagCarverBlockSize string = `--carver_block_size={{ .BlockSize }}`
 	// FlagsTemplate to generate flags for enrolling nodes
 	FlagsTemplate string = `
 --host_identifier=uuid
@@ -28,6 +32,7 @@ const (
 --carver_disable_function=false
 --carver_start_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverInitPath }}
 --carver_continue_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverBlockPath }}
+{{ .FlagCarverBlockSize }}
 --disable_distributed=false
 --distributed_interval={{ .Environment.QueryInterval }}
 --distributed_plugin=tls
@@ -43,21 +48,18 @@ const (
 	// EmptyFlagSecret to use as placeholder for the secret file
 	EmptyFlagSecret string = "__SECRET_FILE__"
 	// EmptyFlagCert to use as placeholder for the certificate file
-	EmptyFlagCert   string = "__CERT_FILE__"
+	EmptyFlagCert string = "__CERT_FILE__"
 )
 
 type flagData struct {
 	SecretFile      string
 	Environment     TLSEnvironment
 	FlagServerCerts string
+	FlagCarverBlock string
 }
 
-// GenerateServerCertsFlag to generate the --tls_server_certs flag
-func GenerateServerCertsFlag(certificatePath string) string {
-	t, err := template.New("servercerts").Parse(FlagTLSServerCerts)
-	if err != nil {
-		return ""
-	}
+// GenServerCertsFlag to generate the --tls_server_certs flag
+func GenServerCertsFlag(certificatePath string) string {
 	if certificatePath == "" {
 		return ""
 	}
@@ -65,6 +67,25 @@ func GenerateServerCertsFlag(certificatePath string) string {
 		CertFile string
 	}{
 		CertFile: certificatePath,
+	}
+	return GenGenericFlag("servercerts", FlagTLSServerCerts, data)
+}
+
+// GenCarveBlockSizeFlag to generate the --carver_block_size flag
+func GenCarveBlockSizeFlag(blockSize string) string {
+	data := struct {
+		BlockSize string
+	}{
+		BlockSize: blockSize,
+	}
+	return GenGenericFlag("blocksize", FlagCarverBlockSize, data)
+}
+
+// GenGenericFlag to generate a generic flag to be used by osquery
+func GenGenericFlag(flagName, flagConst string, data interface{}) string {
+	t, err := template.New(flagName).Parse(flagConst)
+	if err != nil {
+		return ""
 	}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, data); err != nil {
@@ -75,10 +96,6 @@ func GenerateServerCertsFlag(certificatePath string) string {
 
 // GenerateFlags to generate flags
 func GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
-	t, err := template.New("flags").Parse(FlagsTemplate)
-	if err != nil {
-		return "", err
-	}
 	flagSecret := secretPath
 	if secretPath == "" {
 		flagSecret = EmptyFlagSecret
@@ -87,7 +104,7 @@ func GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, err
 	if certPath == "" {
 		certificatePath = EmptyFlagCert
 	}
-	flagServerCerts := GenerateServerCertsFlag(certificatePath)
+	flagServerCerts := GenServerCertsFlag(certificatePath)
 	if env.Certificate == "" {
 		flagServerCerts = ""
 	}
@@ -95,12 +112,9 @@ func GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, err
 		SecretFile:      flagSecret,
 		Environment:     env,
 		FlagServerCerts: flagServerCerts,
+		FlagCarverBlock: GenCarveBlockSizeFlag(CarverBlockSizeValue),
 	}
-	var tpl bytes.Buffer
-	if err := t.Execute(&tpl, data); err != nil {
-		return "", err
-	}
-	return tpl.String(), nil
+	return GenGenericFlag("flags", FlagsTemplate, data), nil
 }
 
 // GenerateFlagsEnv to generate flags by environment name

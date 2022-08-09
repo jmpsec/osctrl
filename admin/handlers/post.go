@@ -1148,9 +1148,9 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		var err error
 		switch s.Type {
 		case settings.TypeBoolean:
-			err = h.Settings.NewBooleanValue(serviceVar, s.Name, stringToBoolean(s.Value))
+			err = h.Settings.NewBooleanValue(serviceVar, s.Name, utils.StringToBoolean(s.Value))
 		case settings.TypeInteger:
-			err = h.Settings.NewIntegerValue(serviceVar, s.Name, stringToInteger(s.Value))
+			err = h.Settings.NewIntegerValue(serviceVar, s.Name, utils.StringToInteger(s.Value))
 		case settings.TypeString:
 			err = h.Settings.NewStringValue(serviceVar, s.Name, s.Value)
 		}
@@ -1171,7 +1171,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		case settings.TypeBoolean:
 			err = h.Settings.SetBoolean(s.Boolean, serviceVar, s.Name)
 		case settings.TypeInteger:
-			err = h.Settings.SetInteger(stringToInteger(s.Value), serviceVar, s.Name)
+			err = h.Settings.SetInteger(utils.StringToInteger(s.Value), serviceVar, s.Name)
 		case settings.TypeString:
 			err = h.Settings.SetString(s.Value, serviceVar, s.Name, false)
 		}

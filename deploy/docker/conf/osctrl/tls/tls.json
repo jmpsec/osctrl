@@ -4,6 +4,7 @@
       "port": "9000",
       "host": "0.0.0.0",
       "auth": "none",
-      "logger": "db"
+      "logger": "db",
+      "carver": "db"
     }
 }

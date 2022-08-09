@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 )
 
@@ -29,6 +30,9 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 		TotalBlocks:     0,
 		CompletedBlocks: 0,
 		Status:          carves.StatusScheduled,
+		Carver:          h.Carves.Carver,
+		Archived:        false,
+		ArchivePath:     "",
 	}
 	// Create File Carve
 	err = h.Carves.CreateCarve(carve)
@@ -53,18 +57,11 @@ func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, en
 
 // ProcessCarveBlock - Function to process one block from a file carve
 // FIXME it can be more efficient on db access
-func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment string) {
-	// Prepare carve block
-	block := carves.CarvedBlock{
-		RequestID:   req.RequestID,
-		SessionID:   req.SessionID,
-		Environment: environment,
-		BlockID:     req.BlockID,
-		Data:        req.Data,
-		Size:        len(req.Data),
-	}
+func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment, uuid string) {
+	// Initiate carve block
+	block := h.Carves.InitateBlock(environment, uuid, req.RequestID, req.SessionID, req.Data, req.BlockID)
 	// Create Block
-	if err := h.Carves.CreateBlock(block); err != nil {
+	if err := h.Carves.CreateBlock(block, uuid, req.Data); err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error creating CarvedBlock %v", err)
 	}
@@ -75,6 +72,18 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 	}
 	// If it is completed, set status
 	if h.Carves.Completed(req.SessionID) {
+		// Archive carve if the carver is s3
+		if h.Carves.Carver == settings.CarverS3 {
+			archived, err := h.Carves.Archive(req.SessionID, "")
+			if err != nil {
+				h.Inc(metricBlockErr)
+				log.Printf("error archiving results %v", err)
+			}
+			if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
+				h.Inc(metricBlockErr)
+				log.Printf("error archiving carve %v", err)
+			}
+		}
 		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
 			h.Inc(metricBlockErr)
 			log.Printf("error completing carve %v", err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jmpsec/osctrl/types"
 	"gorm.io/gorm"
 )
 
@@ -44,6 +45,13 @@ const (
 	LoggingS3      string = "s3"
 )
 
+// Types of carver
+const (
+	CarverLocal string = "local"
+	CarverDB    string = "db"
+	CarverS3    string = "s3"
+)
+
 // Names for all possible settings values for services
 const (
 	DebugHTTP          string = "debug_http"
@@ -64,11 +72,13 @@ const (
 
 // Names for the values that are read from the JSON config file
 const (
-	JSONListener string = "json_listener"
-	JSONPort     string = "json_port"
-	JSONHost     string = "json_host"
-	JSONAuth     string = "json_auth"
-	JSONLogging  string = "json_logging"
+	JSONListener   string = "json_listener"
+	JSONPort       string = "json_port"
+	JSONHost       string = "json_host"
+	JSONAuth       string = "json_auth"
+	JSONLogger     string = "json_logger"
+	JSONCarver     string = "json_carver"
+	JSONSessionKey string = "json_sessionkey"
 )
 
 // SettingValue to hold each value for settings
@@ -243,21 +253,64 @@ func (conf *Settings) SetJSON(service, name, value string) error {
 	return nil
 }
 
-// SetAllJSON sets all the JSON configuration values
-func (conf *Settings) SetAllJSON(service, listener, port, host, auth, logging string) error {
-	if err := conf.SetJSON(service, JSONListener, listener); err != nil {
+// SetTLSJSON sets all the JSON configuration values for TLS service
+func (conf *Settings) SetTLSJSON(cfg types.JSONConfigurationTLS) error {
+	if err := conf.SetJSON(ServiceTLS, JSONListener, cfg.Listener); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(service, JSONPort, port); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONPort, cfg.Port); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(service, JSONHost, host); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONHost, cfg.Host); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(service, JSONAuth, auth); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONAuth, cfg.Auth); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(service, JSONLogging, logging); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceTLS, JSONCarver, cfg.Carver); err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetAdminJSON sets all the JSON configuration values for admin service
+func (conf *Settings) SetAdminJSON(cfg types.JSONConfigurationAdmin) error {
+	if err := conf.SetJSON(ServiceAdmin, JSONListener, cfg.Listener); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAdmin, JSONPort, cfg.Port); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAdmin, JSONHost, cfg.Host); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAdmin, JSONAuth, cfg.Auth); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAdmin, JSONSessionKey, cfg.SessionKey); err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetAPIJSON sets all the JSON configuration values for API service
+func (conf *Settings) SetAPIJSON(cfg types.JSONConfigurationAPI) error {
+	if err := conf.SetJSON(ServiceAPI, JSONListener, cfg.Listener); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAPI, JSONPort, cfg.Port); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAPI, JSONHost, cfg.Host); err != nil {
+		return err
+	}
+	if err := conf.SetJSON(ServiceAPI, JSONAuth, cfg.Auth); err != nil {
 		return err
 	}
 	return nil

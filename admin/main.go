@@ -75,6 +75,8 @@ const (
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
 	defTLSKeyFile string = "config/tls.key"
+	// Default carver configuration file
+	defCarverConfigurationFile string = "config/carver.json"
 )
 
 // Random
@@ -107,7 +109,7 @@ var (
 // Global general variables
 var (
 	err         error
-	adminConfig types.JSONConfigurationService
+	adminConfig types.JSONConfigurationAdmin
 	dbConfig    backend.JSONConfigurationDB
 	redisConfig cache.JSONConfigurationRedis
 	db          *backend.DBManager
@@ -120,6 +122,7 @@ var (
 	envs        *environments.Environment
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
 	app         *cli.App
 	flags       []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
@@ -149,6 +152,7 @@ var (
 	staticOffline        bool
 	carvedFilesFolder    string
 	templatesFolder      string
+	carverConfigFile     string
 )
 
 // SAML variables
@@ -170,9 +174,16 @@ var validAuth = map[string]bool{
 	settings.AuthJSON: true,
 }
 
+// Valid values for carver in configuration
+var validCarver = map[string]bool{
+	settings.CarverDB:    true,
+	settings.CarverLocal: true,
+	settings.CarverS3:    true,
+}
+
 // Function to load the configuration file
-func loadConfiguration(file, service string) (types.JSONConfigurationService, error) {
-	var cfg types.JSONConfigurationService
+func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, error) {
+	var cfg types.JSONConfigurationAdmin
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -187,6 +198,9 @@ func loadConfiguration(file, service string) (types.JSONConfigurationService, er
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
 		return cfg, fmt.Errorf("Invalid auth method")
+	}
+	if !validCarver[cfg.Carver] {
+		return cfg, fmt.Errorf("Invalid carver method")
 	}
 	// No errors!
 	return cfg, nil
@@ -507,6 +521,20 @@ func init() {
 			EnvVars:     []string{"CARVED_FILES"},
 			Destination: &carvedFilesFolder,
 		},
+		&cli.StringFlag{
+			Name:        "carver-type",
+			Value:       settings.CarverDB,
+			Usage:       "Carver to be used to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_TYPE"},
+			Destination: &adminConfig.Carver,
+		},
+		&cli.StringFlag{
+			Name:        "carver-file",
+			Value:       defCarverConfigurationFile,
+			Usage:       "Carver configuration file to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_FILE"},
+			Destination: &carverConfigFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -546,7 +574,7 @@ func osctrlAdminService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db.Conn)
+	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver, nil)
 	log.Println("Initialize sessions")
 	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
 	log.Println("Loading service settings")
@@ -616,6 +644,7 @@ func osctrlAdminService() {
 		handlers.WithTemplates(templatesFolder),
 		handlers.WithStaticLocation(staticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
+		handlers.WithCarvesFolder(carvedFilesFolder),
 		handlers.WithAdminConfig(&adminConfig),
 	)
 
@@ -807,6 +836,13 @@ func cliAction(c *cli.Context) error {
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
 	if err != nil {
 		return fmt.Errorf("Failed to load osquery tables - %v", err)
+	}
+	// Load carver configuration if external JSON config file is used
+	if adminConfig.Carver == settings.CarverS3 {
+		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
+		}
 	}
 	return nil
 }

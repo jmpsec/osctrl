@@ -68,7 +68,7 @@ func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
 	log.Printf("No s3 logging settings\n")
 }
 
-// Send - Function that sends JSON logs to Splunk HTTP Event Collector
+// Send - Function that sends JSON logs to S3
 func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)

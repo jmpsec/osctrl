@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/environments"
@@ -108,23 +107,6 @@ func newQueryReady(user, query string) queries.DistributedQuery {
 	}
 }
 
-// Helper to convert a string into integer
-func stringToInteger(s string) int64 {
-	v, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0
-	}
-	return v
-}
-
-// Helper to convert a string into boolean
-func stringToBoolean(s string) bool {
-	if s == "yes" || s == "true" || s == "1" {
-		return true
-	}
-	return false
-}
-
 // Helper to remove duplicates from []string
 func removeStringDuplicates(s []string) []string {
 	seen := make(map[string]struct{}, len(s))
@@ -169,8 +151,8 @@ func jsonRawIndent(raw json.RawMessage) string {
 }
 
 // Helper to convert from settings values to JSON configuration
-func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfigurationService {
-	var cfg types.JSONConfigurationService
+func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfigurationAdmin {
+	var cfg types.JSONConfigurationAdmin
 	for _, v := range values {
 		if v.Name == settings.JSONListener {
 			cfg.Listener = v.String
@@ -184,8 +166,8 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 		if v.Name == settings.JSONAuth {
 			cfg.Auth = v.String
 		}
-		if v.Name == settings.JSONLogging {
-			cfg.Logger = v.String
+		if v.Name == settings.JSONSessionKey {
+			cfg.SessionKey = v.String
 		}
 	}
 	return cfg

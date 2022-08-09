@@ -52,6 +52,8 @@ const (
 	defLoggerConfigurationFile string = "config/logger.json"
 	// Default always DB logger configuration file
 	defAlwaysLogConfigurationFile string = "config/always.json"
+	// Default carver configuration file
+	defCarverConfigurationFile string = "config/carver.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -72,7 +74,7 @@ var (
 // Global variables
 var (
 	err         error
-	tlsConfig   types.JSONConfigurationService
+	tlsConfig   types.JSONConfigurationTLS
 	dbConfig    backend.JSONConfigurationDB
 	redisConfig cache.JSONConfigurationRedis
 	db          *backend.DBManager
@@ -88,6 +90,7 @@ var (
 	loggerTLS   *logging.LoggerTLS
 	handlersTLS *handlers.HandlersTLS
 	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
 	app         *cli.App
 	flags       []cli.Flag
 )
@@ -106,12 +109,15 @@ var (
 	loggerFile        string
 	alwaysLog         bool
 	alwaysLogFile     string
+	carverConfigFile  string
 )
 
-// Valid values for auth and logging in configuration
+// Valid values for authentication in configuration
 var validAuth = map[string]bool{
 	settings.AuthNone: true,
 }
+
+// Valid values for logging in configuration
 var validLogging = map[string]bool{
 	settings.LoggingNone:    true,
 	settings.LoggingStdout:  true,
@@ -124,9 +130,16 @@ var validLogging = map[string]bool{
 	settings.LoggingS3:      true,
 }
 
+// Valid values for carver in configuration
+var validCarver = map[string]bool{
+	settings.CarverDB:    true,
+	settings.CarverLocal: true,
+	settings.CarverS3:    true,
+}
+
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file string) (types.JSONConfigurationService, error) {
-	var cfg types.JSONConfigurationService
+func loadConfiguration(file string) (types.JSONConfigurationTLS, error) {
+	var cfg types.JSONConfigurationTLS
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -144,6 +157,9 @@ func loadConfiguration(file string) (types.JSONConfigurationService, error) {
 	}
 	if !validLogging[cfg.Logger] {
 		return cfg, fmt.Errorf("Invalid logging method")
+	}
+	if !validCarver[cfg.Carver] {
+		return cfg, fmt.Errorf("Invalid carver method")
 	}
 	// No errors!
 	return cfg, nil
@@ -394,6 +410,20 @@ func init() {
 			EnvVars:     []string{"ALWAYS_LOG_FILE"},
 			Destination: &alwaysLogFile,
 		},
+		&cli.StringFlag{
+			Name:        "carver-type",
+			Value:       settings.CarverDB,
+			Usage:       "Carver to be used to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_TYPE"},
+			Destination: &tlsConfig.Carver,
+		},
+		&cli.StringFlag{
+			Name:        "carver-file",
+			Value:       defCarverConfigurationFile,
+			Usage:       "Carver configuration file to receive files extracted from nodes",
+			EnvVars:     []string{"CARVER_FILE"},
+			Destination: &carverConfigFile,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -432,7 +462,7 @@ func osctrlService() {
 	log.Println("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Println("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn)
+	filecarves = carves.CreateFileCarves(db.Conn, tlsConfig.Carver, carvers3)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)
@@ -575,6 +605,13 @@ func cliAction(c *cli.Context) error {
 		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load redis configuration - %v", err)
+		}
+	}
+	// Load carver configuration if external JSON config file is used
+	if tlsConfig.Carver == settings.CarverS3 {
+		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if err != nil {
+			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
 		}
 	}
 	return nil

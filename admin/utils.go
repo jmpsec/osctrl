@@ -42,8 +42,8 @@ func generateOsqueryConfigHash(config string) string {
 */
 
 // Helper to convert from settings values to JSON configuration
-func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfigurationService {
-	var cfg types.JSONConfigurationService
+func toJSONConfigurationAdmin(values []settings.SettingValue) types.JSONConfigurationAdmin {
+	var cfg types.JSONConfigurationAdmin
 	for _, v := range values {
 		if v.Name == settings.JSONListener {
 			cfg.Listener = v.String
@@ -57,7 +57,7 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 		if v.Name == settings.JSONAuth {
 			cfg.Auth = v.String
 		}
-		if v.Name == settings.JSONLogging {
+		if v.Name == settings.JSONLogger {
 			cfg.Logger = v.String
 		}
 	}

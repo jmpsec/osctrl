@@ -1,13 +1,33 @@
 package types
 
-// JSONConfigurationService to hold all service configuration values
-type JSONConfigurationService struct {
+// JSONConfigurationTLS to hold TLS service configuration values
+type JSONConfigurationTLS struct {
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
+	Logger   string `json:"logger"`
+	Carver   string `json:"carver"`
+}
+
+// JSONConfigurationAdmin to hold admin service configuration values
+type JSONConfigurationAdmin struct {
 	Listener   string `json:"listener"`
 	Port       string `json:"port"`
 	Host       string `json:"host"`
 	Auth       string `json:"auth"`
 	Logger     string `json:"logger"`
+	Carver     string `json:"carver"`
 	SessionKey string `json:"sessionKey"`
+}
+
+// JSONConfigurationAPI to hold API service configuration values
+type JSONConfigurationAPI struct {
+	Listener string `json:"listener"`
+	Port     string `json:"port"`
+	Host     string `json:"host"`
+	Auth     string `json:"auth"`
+	Carver   string `json:"carver"`
 }
 
 // JSONConfigurationHeaders to keep all headers details for auth

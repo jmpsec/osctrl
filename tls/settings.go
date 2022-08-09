@@ -61,7 +61,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		}
 	}
 	// Write JSON config to settings
-	if err := mgr.SetAllJSON(settings.ServiceTLS, tlsConfig.Listener, tlsConfig.Port, tlsConfig.Host, tlsConfig.Auth, tlsConfig.Logger); err != nil {
+	if err := mgr.SetTLSJSON(tlsConfig); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %v", err)
 	}
 	return nil
