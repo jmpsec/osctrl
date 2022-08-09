@@ -68,6 +68,9 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 // Get tag by name
 func (m *TagManager) Get(name string) (AdminTag, error) {
 	var tag AdminTag
+	if name == "" {
+		return tag, fmt.Errorf("empty tag")
+	}
 	if err := m.DB.Where("name = ?", name).First(&tag).Error; err != nil {
 		return tag, err
 	}
@@ -201,6 +204,9 @@ func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string
 // TODO use the correct user_id
 func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user string, auto bool) error {
 	for _, t := range tags {
+		if t == "" {
+			continue
+		}
 		check, tag := m.ExistsGet(t)
 		if !check {
 			newTag := AdminTag{
@@ -235,6 +241,9 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 // TagNode to tag a node
 // TODO use the correct user_id
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
+	if name == "" {
+		return fmt.Errorf("empty tag")
+	}
 	check, tag := m.ExistsGet(name)
 	if !check {
 		newTag := AdminTag{
