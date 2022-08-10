@@ -101,6 +101,7 @@ func (m *TagManager) New(name, description, color, icon, user string) (AdminTag,
 			Description: description,
 			Color:       strings.ToLower(tagColor),
 			Icon:        strings.ToLower(tagIcon),
+			CreatedBy:   user,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
@@ -241,8 +242,8 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 // TagNode to tag a node
 // TODO use the correct user_id
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
-	if name == "" {
-		return fmt.Errorf("empty tag")
+	if len(name) == 0 {
+		return fmt.Errorf("Empty tag, skipping")
 	}
 	check, tag := m.ExistsGet(name)
 	if !check {
