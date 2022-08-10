@@ -68,6 +68,9 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 // Get tag by name
 func (m *TagManager) Get(name string) (AdminTag, error) {
 	var tag AdminTag
+	if name == "" {
+		return tag, fmt.Errorf("empty tag")
+	}
 	if err := m.DB.Where("name = ?", name).First(&tag).Error; err != nil {
 		return tag, err
 	}
@@ -75,7 +78,7 @@ func (m *TagManager) Get(name string) (AdminTag, error) {
 }
 
 // Create new tag
-func (m *TagManager) Create(tag AdminTag) error {
+func (m *TagManager) Create(tag *AdminTag) error {
 	if err := m.DB.Create(&tag).Error; err != nil {
 		return fmt.Errorf("Create AdminTag %v", err)
 	}
@@ -98,6 +101,7 @@ func (m *TagManager) New(name, description, color, icon, user string) (AdminTag,
 			Description: description,
 			Color:       strings.ToLower(tagColor),
 			Icon:        strings.ToLower(tagIcon),
+			CreatedBy:   user,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
@@ -109,7 +113,7 @@ func (m *TagManager) NewTag(name, description, color, icon, user string) error {
 	if err != nil {
 		return err
 	}
-	return m.Create(tag)
+	return m.Create(&tag)
 }
 
 // Exists checks if tag exists
@@ -201,32 +205,8 @@ func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string
 // TODO use the correct user_id
 func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user string, auto bool) error {
 	for _, t := range tags {
-		check, tag := m.ExistsGet(t)
-		if !check {
-			newTag := AdminTag{
-				Name:        t,
-				Description: DefaultAutocreated,
-				Color:       RandomColor(),
-				Icon:        DefaultTagIcon,
-				CreatedBy:   DefaultAutocreated,
-			}
-			if err := m.Create(newTag); err != nil {
-				return fmt.Errorf("Create AdminTag %v", err)
-			}
-		}
-		if m.IsTagged(tag.Name, node) {
-			continue
-		}
-		tagged := TaggedNode{
-			Tag:        tag.Name,
-			AdminTagID: tag.ID,
-			NodeID:     node.ID,
-			AutoTag:    auto,
-			UserID:     DefaultAutoTagUser,
-			TaggedBy:   user,
-		}
-		if err := m.DB.Create(&tagged).Error; err != nil {
-			return fmt.Errorf("Create TaggedNode %v", err)
+		if err := m.TagNode(t, node, user, auto); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -235,6 +215,9 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 // TagNode to tag a node
 // TODO use the correct user_id
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
+	if len(name) == 0 {
+		return fmt.Errorf("empty tag")
+	}
 	check, tag := m.ExistsGet(name)
 	if !check {
 		newTag := AdminTag{
@@ -242,11 +225,12 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 			Description: DefaultAutocreated,
 			Color:       RandomColor(),
 			Icon:        DefaultTagIcon,
-			CreatedBy:   DefaultAutocreated,
+			CreatedBy:   user,
 		}
-		if err := m.Create(newTag); err != nil {
-			return fmt.Errorf("Create AdminTag %v", err)
+		if err := m.Create(&newTag); err != nil {
+			return fmt.Errorf("error creating tag %v", err)
 		}
+		tag = newTag
 	}
 	if m.IsTagged(tag.Name, node) {
 		return fmt.Errorf("node already tagged")
@@ -260,7 +244,7 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 		TaggedBy:   user,
 	}
 	if err := m.DB.Create(&tagged).Error; err != nil {
-		return fmt.Errorf("Create TaggedNode %v", err)
+		return fmt.Errorf("error tagging node %v", err)
 	}
 	return nil
 }
@@ -273,6 +257,9 @@ func (m *TagManager) IsTagged(name string, node nodes.OsqueryNode) bool {
 // IsTaggedID to check if a node is already tagged by node ID
 func (m *TagManager) IsTaggedID(name string, nodeID uint) bool {
 	var results int64
+	if name == "" {
+		return true
+	}
 	m.DB.Model(&TaggedNode{}).Where("tag = ? AND node_id = ?", name, nodeID).Count(&results)
 	return (results > 0)
 }
@@ -300,6 +287,9 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		return tags, err
 	}
 	for _, t := range tagged {
+		if t.Tag == "" {
+			continue
+		}
 		tag, err := m.Get(t.Tag)
 		if err != nil {
 			return tags, err

@@ -1518,20 +1518,12 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	// Processing the list of tags to add
-	for _, _t := range t.TagsAdd {
-		if !h.Tags.Exists(_t) {
-			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s does not exists", _t))
+	// Processing the list of tags to add and all nodes to tag
+	for _, n := range toBeProcessed {
+		if err := h.Tags.TagNodeMulti(t.TagsAdd, n, ctx[sessions.CtxUser], false); err != nil {
+			adminErrorResponse(w, "error with tag", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
-		}
-		// Tag all nodes
-		for _, n := range toBeProcessed {
-			if err := h.Tags.TagNode(_t, n, ctx[sessions.CtxUser], false); err != nil {
-				adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
-				h.Inc(metricAdminErr)
-				return
-			}
 		}
 	}
 	// Serialize and send response
