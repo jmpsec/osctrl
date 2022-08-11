@@ -3,6 +3,7 @@ package logging
 import (
 	"log"
 
+	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -26,7 +27,7 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile string, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
 	l := &LoggerTLS{
 		Logging:    logging,
 		Nodes:      nodes,
@@ -99,8 +100,8 @@ func CreateLoggerTLS(logging, loggingFile, alwaysLogger string, mgr *settings.Se
 		l.Logger = d
 	}
 	// Initialize the logger that will always log to DB
-	if alwaysLogger != "" {
-		always, err := CreateLoggerDBFile(alwaysLogger)
+	if alwaysLog {
+		always, err := CreateLoggerDBConfig(dbConf)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +181,17 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 	}
 	// If logs are status, write via always logger
 	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled && logType == types.StatusLog {
-		logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
+		// Check if configured logger is DB so we skip logging the same data twice
+		logAlways := true
+		if logTLS.Logger == settings.LoggingDB {
+			l, ok := logTLS.Logger.(*LoggerDB)
+			if ok {
+				logAlways = !sameConfigDB(*l.Database.Config, *logTLS.AlwaysLogger.Database.Config)
+			}
+		}
+		if logAlways {
+			logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
+		}
 	}
 	// Add logs to cache
 	if err := logTLS.RedisCache.SetLogs(logType, uuid, environment, data); err != nil {
@@ -258,7 +269,17 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 	}
 	// Always log results to DB if always logger is enabled
 	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled {
-		logTLS.AlwaysLogger.Query(data, environment, uuid, name, status, debug)
+		// Check if configured logger is DB so we skip logging the same data twice
+		logAlways := true
+		if logTLS.Logger == settings.LoggingDB {
+			l, ok := logTLS.Logger.(*LoggerDB)
+			if ok {
+				logAlways = !sameConfigDB(*l.Database.Config, *logTLS.AlwaysLogger.Database.Config)
+			}
+		}
+		if logAlways {
+			logTLS.AlwaysLogger.Query(data, environment, uuid, name, status, debug)
+		}
 	}
 
 	// Add logs to cache always

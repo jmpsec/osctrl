@@ -108,7 +108,6 @@ var (
 	tlsKeyFile        string
 	loggerFile        string
 	alwaysLog         bool
-	alwaysLogFile     string
 	carverConfigFile  string
 )
 
@@ -403,14 +402,6 @@ func init() {
 			Destination: &alwaysLog,
 		},
 		&cli.StringFlag{
-			Name:        "always-log-file",
-			Aliases:     []string{"alog"},
-			Value:       defAlwaysLogConfigurationFile,
-			Usage:       "Database logger configuration to always store status and on-demand query logs from nodes",
-			EnvVars:     []string{"ALWAYS_LOG_FILE"},
-			Destination: &alwaysLogFile,
-		},
-		&cli.StringFlag{
 			Name:        "carver-type",
 			Value:       settings.CarverDB,
 			Usage:       "Carver to be used to receive files extracted from nodes",
@@ -475,10 +466,7 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	if !alwaysLog {
-		alwaysLogFile = ""
-	}
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLogFile, settingsmgr, nodesmgr, queriesmgr, redis)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
