@@ -36,6 +36,7 @@ type OsqueryNode struct {
 	LastConfig      time.Time
 	LastQueryRead   time.Time
 	LastQueryWrite  time.Time
+	UserID          int
 }
 
 // ArchiveOsqueryNode as abstraction of an archived node
@@ -65,6 +66,7 @@ type ArchiveOsqueryNode struct {
 	LastConfig      time.Time
 	LastQueryRead   time.Time
 	LastQueryWrite  time.Time
+	UserID          int
 }
 
 // StatsData to display node stats
@@ -465,6 +467,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 		LastConfig:      node.LastConfig,
 		LastQueryRead:   node.LastQueryRead,
 		LastQueryWrite:  node.LastQueryWrite,
+		UserID:          node.UserID,
 	}
 }
 
