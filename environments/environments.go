@@ -77,6 +77,7 @@ type TLSEnvironment struct {
 	CarverInitPath   string
 	CarverBlockPath  string
 	AcceptEnrolls    bool
+	UserID           int
 }
 
 // MapEnvironments to hold the TLS environments by name and UUID

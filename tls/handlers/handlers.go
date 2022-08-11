@@ -225,7 +225,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
-		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey, len(body))
+		newNode = nodeFromEnroll(t, env.Name, utils.GetIP(r), nodeKey, len(body), env.UserID)
 		// Check if UUID exists already, if so archive node and enroll new node
 		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
