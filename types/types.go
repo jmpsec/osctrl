@@ -58,3 +58,18 @@ type OsqueryTable struct {
 	Platforms []string `json:"platforms"`
 	Filter    string
 }
+
+// FlagsRequest to retrieve flags
+type FlagsRequest struct {
+	Secret      string `json:"secret"`
+	SecrefFile  string `json:"secretFile"`
+	Certificate string `json:"certificate"`
+}
+
+// ScriptRequest to retrieve script
+type ScriptRequest struct {
+	Secret      string `json:"secret"`
+	SecrefFile  string `json:"secretFile"`
+	FlagsFile   string `json:"flagsFile"`
+	Certificate string `json:"certificate"`
+}

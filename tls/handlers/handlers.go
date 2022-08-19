@@ -49,6 +49,15 @@ const (
 	metricOnelinerReq = "oneliner-req"
 	metricOnelinerErr = "oneliner-err"
 	metricOnelinerOk  = "oneliner-ok"
+	metricFlagsReq    = "flags-req"
+	metricFlagsErr    = "flags-err"
+	metricFlagsOk     = "flags-ok"
+	metricCertReq     = "cert-req"
+	metricCertErr     = "cert-err"
+	metricCertOk      = "cert-ok"
+	metricScriptReq   = "script-req"
+	metricScriptErr   = "script-err"
+	metricScriptOk    = "script-ok"
 )
 
 // HandlersTLS to keep all handlers for TLS
@@ -280,7 +289,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricConfigErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -290,7 +299,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.ConfigRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricConfigErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
@@ -342,7 +351,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricLogErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -366,7 +375,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.LogRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricLogErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
@@ -415,7 +424,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricReadErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -425,12 +434,12 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.QueryReadRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricReadErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
-		h.Inc(metricConfigErr)
+		h.Inc(metricReadErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -440,7 +449,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricConfigErr)
+			h.Inc(metricReadErr)
 			log.Printf("error recording IP address %v", err)
 		}
 		nodeInvalid = false
@@ -490,7 +499,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricWriteErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -500,12 +509,12 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	var t types.QueryWriteRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricWriteErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
-		h.Inc(metricConfigErr)
+		h.Inc(metricWriteErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -514,7 +523,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricConfigErr)
+			h.Inc(metricWriteErr)
 			log.Printf("error recording IP address %v", err)
 		}
 		nodeInvalid = false
@@ -532,7 +541,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricReadErr)
+			h.Inc(metricWriteErr)
 			log.Printf("error refreshing last query write %v", err)
 		}
 		// Process submitted results and mark query as processed
@@ -565,7 +574,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricOnelinerErr)
 		log.Printf("error getting environment %v", err)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
@@ -589,7 +598,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
-	if strings.HasPrefix(script, "enroll") {
+	if strings.HasPrefix(script, settings.ScriptEnroll) {
 		if !h.checkValidEnrollSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for enrolling")
@@ -602,7 +611,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
-	} else if strings.HasPrefix(script, "remove") {
+	} else if strings.HasPrefix(script, settings.ScriptRemove) {
 		if !h.checkValidRemoveSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
 			log.Println("Invalid secret path for removing")
@@ -645,7 +654,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricInitErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -655,12 +664,12 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.CarveInitRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricInitErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
-		h.Inc(metricConfigErr)
+		h.Inc(metricInitErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -670,7 +679,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricConfigErr)
+			h.Inc(metricInitErr)
 			log.Printf("error recording IP address %v", err)
 		}
 		initCarve = true
@@ -683,7 +692,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Refresh last carve request
 		if err := h.Nodes.CarveRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricReadErr)
+			h.Inc(metricInitErr)
 			log.Printf("error refreshing last carve init %v", err)
 		}
 	}
@@ -712,7 +721,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricBlockErr)
 		log.Printf("error getting environment %v", err)
 		return
 	}
@@ -722,12 +731,12 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	var t types.CarveBlockRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.Inc(metricEnrollErr)
+		h.Inc(metricBlockErr)
 		log.Printf("error reading POST body %v", err)
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
-		h.Inc(metricConfigErr)
+		h.Inc(metricBlockErr)
 		log.Printf("error parsing POST body %v", err)
 		return
 	}
@@ -739,7 +748,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID)
 		// Refresh last carve request
 		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
-			h.Inc(metricReadErr)
+			h.Inc(metricBlockErr)
 			log.Printf("error refreshing last carve init %v", err)
 		}
 	}
@@ -751,4 +760,157 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	h.Inc(metricBlockOK)
+}
+
+// FlagsHandler - Function to retrieve flags for osquery nodes, from osctrld
+func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricFlagsReq)
+	var response []byte
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricFlagsErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricFlagsErr)
+		log.Printf("error getting environment %v", err)
+		return
+	}
+	// Debug HTTP for environment
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Decode read POST body
+	var t types.FlagsRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricFlagsErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricFlagsErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	// Check if provided secret is valid and if so, prepare flags
+	if h.checkValidSecret(t.Secret, env) {
+		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.Certificate)
+		if err != nil {
+			h.Inc(metricFlagsErr)
+			log.Printf("error generating flags %v", err)
+			return
+		}
+		response = []byte(flagsStr)
+	} else {
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		return
+	}
+	// Debug HTTP
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
+		log.Printf("Flags: %s", string(response))
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	h.Inc(metricFlagsOk)
+}
+
+// CertHandler - Function to retrieve certificate for osquery nodes, from osctrld
+func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricCertReq)
+	var response []byte
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricCertErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricCertErr)
+		log.Printf("error getting environment %v", err)
+		return
+	}
+	// Debug HTTP for environment
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Decode read POST body
+	var t types.FlagsRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricCertErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricCertErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	// Check if provided secret is valid and if so, prepare flags
+	if h.checkValidSecret(t.Secret, env) {
+		response = []byte(env.Certificate)
+	} else {
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		return
+	}
+	// Debug HTTP
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
+		log.Printf("Certificate: %s", string(response))
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	h.Inc(metricCertOk)
+}
+
+// ScriptHandler - Function to retrieve enroll/remove script for osquery nodes, from osctrld
+func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricScriptReq)
+	var response []byte
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricScriptErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricScriptErr)
+		log.Printf("error getting environment %v", err)
+		return
+	}
+	// Debug HTTP for environment
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Decode read POST body
+	var t types.ScriptRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricScriptErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricScriptErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	// Check if provided secret is valid and if so, prepare flags
+	if h.checkValidSecret(t.Secret, env) {
+		response = []byte("this is the script")
+	}
+	// Debug HTTP
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
+		log.Printf("Script: %s", string(response))
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	h.Inc(metricScriptOk)
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"text/template"
+
+	"github.com/jmpsec/osctrl/settings"
 )
 
 const (
@@ -19,9 +21,9 @@ const (
 	// PowershellTarget for powershell extension
 	PowershellTarget = ".ps1"
 	// EnrollTarget for enroll target
-	EnrollTarget = "enroll"
+	EnrollTarget = settings.ScriptEnroll
 	// RemoveTarget for remove target
-	RemoveTarget = "remove"
+	RemoveTarget = settings.ScriptRemove
 	// EnrollShell for enroll shell
 	EnrollShell = EnrollTarget + ShellTarget
 	// RemoveShell for remove shell

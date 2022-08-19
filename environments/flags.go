@@ -95,7 +95,7 @@ func GenGenericFlag(flagName, flagConst string, data interface{}) string {
 }
 
 // GenerateFlags to generate flags
-func GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
+func (environment *Environment) GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
 	flagSecret := secretPath
 	if secretPath == "" {
 		flagSecret = EmptyFlagSecret
@@ -123,5 +123,5 @@ func (environment *Environment) GenerateFlagsEnv(idEnv string, secretPath, certP
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %v", err)
 	}
-	return GenerateFlags(env, secretPath, certPath)
+	return environment.GenerateFlags(env, secretPath, certPath)
 }
