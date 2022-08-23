@@ -5,13 +5,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/utils"
 	"gorm.io/gorm"
 )
 
 const (
 	// DefaultEnrollPath as default value for enrolling nodes
-	DefaultEnrollPath string = "enroll"
+	DefaultEnrollPath string = settings.ScriptEnroll
 	// DefaultLogPath as default value for logging data from nodes
 	DefaultLogPath string = "log"
 	// DefaultLogInterval as default interval for logging data from nodes
@@ -38,6 +39,14 @@ const (
 	DefaultSecretLength int = 64
 	// DefaultLinkExpire as default time in hours to expire enroll/remove links
 	DefaultLinkExpire int = 24
+	// DefaultFlagsPath
+	DefaultFlagsPath string = "osctrld-flags"
+	// DefaultCertPath
+	DefaultCertPath string = "osctrld-cert"
+	// DefaultVerifyPath
+	DefaultVerifyPath string = "osctrld-verify"
+	// DefaultScriptPath
+	DefaultScriptPath string = "osctrld-script"
 )
 
 // TLSEnvironment to hold each of the TLS environment

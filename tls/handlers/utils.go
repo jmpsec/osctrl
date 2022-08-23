@@ -33,8 +33,8 @@ func generateCarveSessionID() string {
 }
 
 // Helper to check if the provided secret is valid for this environment
-func (h *HandlersTLS) checkValidSecret(enrollSecret string, env environments.TLSEnvironment) bool {
-	return (strings.TrimSpace(enrollSecret) == env.Secret)
+func (h *HandlersTLS) checkValidSecret(secret string, env environments.TLSEnvironment) bool {
+	return (strings.TrimSpace(secret) == env.Secret)
 }
 
 // Helper to check if the provided SecretPath is valid for enrolling in a environment

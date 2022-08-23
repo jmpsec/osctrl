@@ -52,6 +52,19 @@ const (
 	CarverS3    string = "s3"
 )
 
+// Types of script
+const (
+	ScriptEnroll string = "enroll"
+	ScriptRemove string = "remove"
+)
+
+// Types of platform
+const (
+	PlatformDarwin  string = "darwin"
+	PlatformLinux   string = "linux"
+	PlatformWindows string = "windows"
+)
+
 // Names for all possible settings values for services
 const (
 	DebugHTTP          string = "debug_http"

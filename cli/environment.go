@@ -64,7 +64,7 @@ func addEnvironment(c *cli.Context) error {
 			return err
 		}
 		// Generate flags
-		flags, err := environments.GenerateFlags(newEnv, "", "")
+		flags, err := envs.GenerateFlags(newEnv, "", "")
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func updateEnvironment(c *cli.Context) error {
 		return err
 	}
 	// Make sure flags are up to date
-	flags, err := environments.GenerateFlags(env, "", "")
+	flags, err := envs.GenerateFlags(env, "", "")
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func flagsEnvironment(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	flags, err := environments.GenerateFlags(env, secret, cert)
+	flags, err := envs.GenerateFlags(env, secret, cert)
 	if err != nil {
 		return err
 	}

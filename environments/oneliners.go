@@ -2,8 +2,11 @@ package environments
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/jmpsec/osctrl/settings"
 )
 
 const (
@@ -19,9 +22,9 @@ const (
 	// PowershellTarget for powershell extension
 	PowershellTarget = ".ps1"
 	// EnrollTarget for enroll target
-	EnrollTarget = "enroll"
+	EnrollTarget = settings.ScriptEnroll
 	// RemoveTarget for remove target
-	RemoveTarget = "remove"
+	RemoveTarget = settings.ScriptRemove
 	// EnrollShell for enroll shell
 	EnrollShell = EnrollTarget + ShellTarget
 	// RemoveShell for remove shell
@@ -31,14 +34,22 @@ const (
 	// RemovePowershell for remove powershell
 	RemovePowershell = RemoveTarget + PowershellTarget
 	// TemplateAddShell for template name
-	TemplateAddShell = "quick-add.sh"
+	TemplateAddShell = "quick-add" + ShellTarget
 	// TemplateRemoveShell for template name
-	TemplateRemoveShell = "quick-remove.sh"
+	TemplateRemoveShell = "quick-remove" + ShellTarget
 	// TemplateAddPowershell for template name
-	TemplateAddPowershell = "quick-add.ps1"
+	TemplateAddPowershell = "quick-add" + PowershellTarget
 	// TemplateRemovePowershell for template name
-	TemplateRemovePowershell = "quick-remove.ps1"
+	TemplateRemovePowershell = "quick-remove" + PowershellTarget
 )
+
+// Valid values for scripts
+var validScript = map[string]bool{
+	EnrollShell:      true,
+	EnrollPowershell: true,
+	RemoveShell:      true,
+	RemovePowershell: true,
+}
 
 // PrepareOneLiner generic to generate  one-liners
 func PrepareOneLiner(oneliner string, insecure bool, environment TLSEnvironment, target string) (string, error) {
@@ -109,6 +120,9 @@ iex ((New-Object System.Net.WebClient).DownloadString('https://{{ .TLSHost }}/{{
 
 // QuickAddScript to get a quick add script for a environment
 func QuickAddScript(project, script string, environment TLSEnvironment) (string, error) {
+	if !validScript[script] {
+		return "", fmt.Errorf("invalid script - %s", script)
+	}
 	var templateName, templateScript string
 	// What script is it?
 	switch script {

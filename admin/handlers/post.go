@@ -10,7 +10,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
-	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -845,7 +844,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	switch e.Type {
-	case "enroll":
+	case settings.ScriptEnroll:
 		switch e.Action {
 		case "expire":
 			if err := h.Envs.ExpireEnroll(env.UUID); err != nil {
@@ -876,7 +875,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 			}
 			adminOKResponse(w, "link set to not expire successfully")
 		}
-	case "remove":
+	case settings.ScriptRemove:
 		switch e.Action {
 		case "expire":
 			if err := h.Envs.ExpireRemove(env.UUID); err != nil {
@@ -1035,7 +1034,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			// Emtpy configuration
 			env.Configuration = h.Envs.GenEmptyConfiguration(true)
 			// Generate flags
-			flags, err := environments.GenerateFlags(env, "", "")
+			flags, err := h.Envs.GenerateFlags(env, "", "")
 			if err != nil {
 				adminErrorResponse(w, "error generating flags", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
