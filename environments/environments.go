@@ -40,11 +40,13 @@ const (
 	// DefaultLinkExpire as default time in hours to expire enroll/remove links
 	DefaultLinkExpire int = 24
 	// DefaultFlagsPath
-	DefaultFlagsPath string = "flags"
+	DefaultFlagsPath string = "osctrld-flags"
 	// DefaultCertPath
-	DefaultCertPath string = "cert"
+	DefaultCertPath string = "osctrld-cert"
+	// DefaultVerifyPath
+	DefaultVerifyPath string = "osctrld-verify"
 	// DefaultScriptPath
-	DefaultScriptPath string = "script"
+	DefaultScriptPath string = "osctrld-script"
 )
 
 // TLSEnvironment to hold each of the TLS environment

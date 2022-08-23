@@ -541,11 +541,13 @@ func osctrlService() {
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverInitPath, handlersTLS.CarveInitHandler).Methods("POST")
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
-	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("POST")
+	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
 	// TLS: osctrld retrieve flags
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler).Methods("POST")
 	// TLS: osctrld retrieve certificate
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCertPath, handlersTLS.CertHandler).Methods("POST")
+	// TLS: osctrld verification
+	routerTLS.HandleFunc("/{environment}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler).Methods("POST")
 	// TLS: osctrld retrieve script to install/remove osquery
 	routerTLS.HandleFunc("/{environment}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler).Methods("POST")
 

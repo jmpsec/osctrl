@@ -58,7 +58,28 @@ const (
 	metricScriptReq   = "script-req"
 	metricScriptErr   = "script-err"
 	metricScriptOk    = "script-ok"
+	metricVerifyReq   = "verify-req"
+	metricVerifyErr   = "verify-err"
+	metricVerifyOk    = "verify-ok"
 )
+
+const (
+	// osquery version
+	defOsqueryVersion string = "5.2.2"
+)
+
+// Valid values for actions in handlers
+var validAction = map[string]bool{
+	settings.ScriptEnroll: true,
+	settings.ScriptRemove: true,
+}
+
+// Valid values for platforms in handlers
+var validPlatform = map[string]bool{
+	settings.PlatformDarwin:  true,
+	settings.PlatformLinux:   true,
+	settings.PlatformWindows: true,
+}
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
@@ -575,7 +596,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting environment %v", err)
+		log.Printf("error getting environment - %v", err)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -629,7 +650,85 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting script %v", err)
+		log.Printf("error getting script - %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
+		return
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.TextPlainUTF8, http.StatusOK, []byte(quickScript))
+	h.Inc(metricOnelinerOk)
+}
+
+// QuickRemoveHandler - Function to handle the endpoint for quick removal script
+func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricOnelinerReq)
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricOnelinerErr)
+		log.Printf("error getting environment - %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Debug HTTP
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Retrieve type of script
+	script, ok := vars["script"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Script is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Retrieve SecretPath variable
+	secretPath, ok := vars["secretpath"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Path is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Check if provided SecretPath is valid and is not expired
+	if strings.HasPrefix(script, settings.ScriptEnroll) {
+		if !h.checkValidEnrollSecretPath(env, secretPath) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Invalid secret path for enrolling")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+			return
+		}
+		if !h.checkExpiredEnrollSecretPath(env) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Expired enrolling path")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
+			return
+		}
+	} else if strings.HasPrefix(script, settings.ScriptRemove) {
+		if !h.checkValidRemoveSecretPath(env, secretPath) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Invalid secret path for removing")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+			return
+		}
+		if !h.checkExpiredRemoveSecretPath(env) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Expired removing path")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
+			return
+		}
+	}
+	// Prepare response with the script
+	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
+	if err != nil {
+		h.Inc(metricOnelinerErr)
+		log.Printf("error getting script - %v", err)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
 		return
 	}
@@ -798,7 +897,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided secret is valid and if so, prepare flags
 	if h.checkValidSecret(t.Secret, env) {
-		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.Certificate)
+		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile)
 		if err != nil {
 			h.Inc(metricFlagsErr)
 			log.Printf("error generating flags %v", err)
@@ -840,7 +939,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
-	var t types.FlagsRequest
+	var t types.CertRequest
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricCertErr)
@@ -868,6 +967,66 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricCertOk)
 }
 
+// VerifyHandler - Function to verify status of enrolled osquery nodes, from osctrld
+func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricVerifyReq)
+	var response types.VerifyResponse
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricVerifyErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricVerifyErr)
+		log.Printf("error getting environment %v", err)
+		return
+	}
+	// Debug HTTP for environment
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Decode read POST body
+	var t types.VerifyRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		h.Inc(metricVerifyErr)
+		log.Printf("error reading POST body %v", err)
+		return
+	}
+	if err := json.Unmarshal(body, &t); err != nil {
+		h.Inc(metricVerifyErr)
+		log.Printf("error parsing POST body %v", err)
+		return
+	}
+	// Check if provided secret is valid and if so, prepare flags
+	if h.checkValidSecret(t.Secret, env) {
+		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile)
+		if err != nil {
+			h.Inc(metricVerifyErr)
+			log.Printf("error generating flags %v", err)
+			return
+		}
+		response = types.VerifyResponse{
+			Certificate:    env.Certificate,
+			Flags:          flagsStr,
+			OsqueryVersion: defOsqueryVersion,
+		}
+	} else {
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		return
+	}
+	// Debug HTTP
+	if (*h.EnvsMap)[env.Name].DebugHTTP {
+		log.Printf("Certificate: %v", response)
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+	h.Inc(metricVerifyOk)
+}
+
 // ScriptHandler - Function to retrieve enroll/remove script for osquery nodes, from osctrld
 func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricScriptReq)
@@ -887,6 +1046,35 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error getting environment %v", err)
 		return
 	}
+	// Retrieve and check action
+	actionVar, ok := vars["action"]
+	if !ok {
+		h.Inc(metricScriptErr)
+		log.Println("Action is missing")
+		return
+	}
+	if !validAction[actionVar] {
+		h.Inc(metricScriptErr)
+		log.Printf("invalid action: %s", actionVar)
+		return
+	}
+	// Retrieve and check platform
+	platformVar, ok := vars["platform"]
+	if !ok {
+		h.Inc(metricScriptErr)
+		log.Println("Platform is missing")
+		return
+	}
+	if !validPlatform[platformVar] {
+		h.Inc(metricScriptErr)
+		log.Printf("invalid platform: %s", platformVar)
+		return
+	}
+	if platformVar == settings.PlatformDarwin || platformVar == settings.PlatformLinux {
+		actionVar += environments.ShellTarget
+	} else {
+		actionVar += environments.PowershellTarget
+	}
 	// Debug HTTP for environment
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
@@ -899,12 +1087,18 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricScriptErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Printf("error parsing POST body - %v", err)
 		return
 	}
 	// Check if provided secret is valid and if so, prepare flags
 	if h.checkValidSecret(t.Secret, env) {
-		response = []byte("this is the script")
+		script, err := environments.QuickAddScript("osctrl-"+env.Name, actionVar, env)
+		if err != nil {
+			h.Inc(metricScriptErr)
+			log.Printf("error preparing script - %v", err)
+			return
+		}
+		response = []byte(script)
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
