@@ -91,6 +91,7 @@ var (
 	handlersTLS *handlers.HandlersTLS
 	tagsmgr     *tags.TagManager
 	carvers3    *carves.CarverS3
+	s3Config    types.S3Configuration
 	app         *cli.App
 	flags       []cli.Flag
 )
@@ -415,6 +416,34 @@ func init() {
 			EnvVars:     []string{"CARVER_FILE"},
 			Destination: &carverConfigFile,
 		},
+		&cli.StringFlag{
+			Name:        "s3-bucket",
+			Value:       "",
+			Usage:       "S3 bucket to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_BUCKET"},
+			Destination: &s3Config.Bucket,
+		},
+		&cli.StringFlag{
+			Name:        "s3-region",
+			Value:       "",
+			Usage:       "S3 region to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_REGION"},
+			Destination: &s3Config.Region,
+		},
+		&cli.StringFlag{
+			Name:        "s3-key-id",
+			Value:       "",
+			Usage:       "S3 access key id to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_KEY_ID"},
+			Destination: &s3Config.AccessKeyID,
+		},
+		&cli.StringFlag{
+			Name:        "s3-secret",
+			Value:       "",
+			Usage:       "S3 access key secret to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_SECRET"},
+			Destination: &s3Config.SecretAccessKey,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -466,7 +495,7 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3Config, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
@@ -605,7 +634,11 @@ func cliAction(c *cli.Context) error {
 	}
 	// Load carver configuration if external JSON config file is used
 	if tlsConfig.Carver == settings.CarverS3 {
-		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if s3Config.Bucket != "" {
+			carvers3, err = carves.CreateCarverS3(s3Config)
+		} else {
+			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
+		}
 		if err != nil {
 			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
 		}

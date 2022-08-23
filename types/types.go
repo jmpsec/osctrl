@@ -51,6 +51,14 @@ type JSONConfigurationJWT struct {
 	HoursToExpire int    `json:"hoursToExpire"`
 }
 
+// S3Configuration to hold all S3 configuration values
+type S3Configuration struct {
+	Bucket          string `json:"bucket"`
+	Region          string `json:"region"`
+	AccessKeyID     string `json:"access_key"`
+	SecretAccessKey string `json:"secret_key"`
+}
+
 // OsqueryTable to show tables to query
 type OsqueryTable struct {
 	Name      string   `json:"name"`

@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -24,17 +25,9 @@ const (
 	MaxChunkSize = int64(5 * 1024 * 1024)
 )
 
-// S3Configuration to hold all S3 configuration values
-type S3Configuration struct {
-	Bucket          string `json:"bucket"`
-	Region          string `json:"region"`
-	AccessKeyID     string `json:"access_key"`
-	SecretAccessKey string `json:"secret_key"`
-}
-
 // CarverS3 will be used to carve files using S3 as destination
 type CarverS3 struct {
-	Configuration S3Configuration
+	Configuration types.S3Configuration
 	Session       *session.Session
 	Client        *s3.S3
 	Uploader      *s3manager.Uploader
@@ -43,12 +36,17 @@ type CarverS3 struct {
 	Debug         bool
 }
 
-// CreateCarverS3 to initialize the carver
-func CreateCarverS3(s3File string) (*CarverS3, error) {
+// CreateCarverS3File to initialize the carver
+func CreateCarverS3File(s3File string) (*CarverS3, error) {
 	config, err := LoadS3(s3File)
 	if err != nil {
 		return nil, err
 	}
+	return CreateCarverS3(config)
+}
+
+// CreateCarverS3 to initialize the carver
+func CreateCarverS3(config types.S3Configuration) (*CarverS3, error) {
 	cfg := &aws.Config{
 		Region:      aws.String(config.Region),
 		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, ""),
@@ -67,8 +65,8 @@ func CreateCarverS3(s3File string) (*CarverS3, error) {
 }
 
 // LoadS3 - Function to load the S3 configuration from JSON file
-func LoadS3(file string) (S3Configuration, error) {
-	var _s3Cfg S3Configuration
+func LoadS3(file string) (types.S3Configuration, error) {
+	var _s3Cfg types.S3Configuration
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)

@@ -110,6 +110,7 @@ var (
 var (
 	err         error
 	adminConfig types.JSONConfigurationAdmin
+	s3Config    types.S3Configuration
 	dbConfig    backend.JSONConfigurationDB
 	redisConfig cache.JSONConfigurationRedis
 	db          *backend.DBManager
@@ -535,6 +536,34 @@ func init() {
 			EnvVars:     []string{"CARVER_FILE"},
 			Destination: &carverConfigFile,
 		},
+		&cli.StringFlag{
+			Name:        "s3-bucket",
+			Value:       "",
+			Usage:       "S3 bucket to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_BUCKET"},
+			Destination: &s3Config.Bucket,
+		},
+		&cli.StringFlag{
+			Name:        "s3-region",
+			Value:       "",
+			Usage:       "S3 region to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_REGION"},
+			Destination: &s3Config.Region,
+		},
+		&cli.StringFlag{
+			Name:        "s3-key-id",
+			Value:       "",
+			Usage:       "S3 access key id to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_KEY_ID"},
+			Destination: &s3Config.AccessKeyID,
+		},
+		&cli.StringFlag{
+			Name:        "s3-secret",
+			Value:       "",
+			Usage:       "S3 access key secret to be used as configuration for logging or carves",
+			EnvVars:     []string{"S3_SECRET"},
+			Destination: &s3Config.SecretAccessKey,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -839,7 +868,11 @@ func cliAction(c *cli.Context) error {
 	}
 	// Load carver configuration if external JSON config file is used
 	if adminConfig.Carver == settings.CarverS3 {
-		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if s3Config.Bucket != "" {
+			carvers3, err = carves.CreateCarverS3(s3Config)
+		} else {
+			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
+		}
 		if err != nil {
 			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
 		}
