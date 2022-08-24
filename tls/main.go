@@ -73,27 +73,28 @@ var (
 
 // Global variables
 var (
-	err         error
-	tlsConfig   types.JSONConfigurationTLS
-	dbConfig    backend.JSONConfigurationDB
-	redisConfig cache.JSONConfigurationRedis
-	db          *backend.DBManager
-	redis       *cache.RedisManager
-	settingsmgr *settings.Settings
-	envs        *environments.Environment
-	envsmap     environments.MapEnvironments
-	settingsmap settings.MapSettings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	filecarves  *carves.Carves
-	tlsMetrics  *metrics.Metrics
-	loggerTLS   *logging.LoggerTLS
-	handlersTLS *handlers.HandlersTLS
-	tagsmgr     *tags.TagManager
-	carvers3    *carves.CarverS3
-	s3Config    types.S3Configuration
-	app         *cli.App
-	flags       []cli.Flag
+	err            error
+	tlsConfig      types.JSONConfigurationTLS
+	dbConfig       backend.JSONConfigurationDB
+	redisConfig    cache.JSONConfigurationRedis
+	db             *backend.DBManager
+	redis          *cache.RedisManager
+	settingsmgr    *settings.Settings
+	envs           *environments.Environment
+	envsmap        environments.MapEnvironments
+	settingsmap    settings.MapSettings
+	nodesmgr       *nodes.NodeManager
+	queriesmgr     *queries.Queries
+	filecarves     *carves.Carves
+	tlsMetrics     *metrics.Metrics
+	loggerTLS      *logging.LoggerTLS
+	handlersTLS    *handlers.HandlersTLS
+	tagsmgr        *tags.TagManager
+	carvers3       *carves.CarverS3
+	s3LogConfig    types.S3Configuration
+	s3CarverConfig types.S3Configuration
+	app            *cli.App
+	flags          []cli.Flag
 )
 
 // Variables for flags
@@ -417,32 +418,60 @@ func init() {
 			Destination: &carverConfigFile,
 		},
 		&cli.StringFlag{
-			Name:        "s3-bucket",
+			Name:        "log-s3-bucket",
 			Value:       "",
-			Usage:       "S3 bucket to be used as configuration for logging or carves",
-			EnvVars:     []string{"S3_BUCKET"},
-			Destination: &s3Config.Bucket,
+			Usage:       "S3 bucket to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_BUCKET"},
+			Destination: &s3LogConfig.Bucket,
 		},
 		&cli.StringFlag{
-			Name:        "s3-region",
+			Name:        "log-s3-region",
 			Value:       "",
-			Usage:       "S3 region to be used as configuration for logging or carves",
-			EnvVars:     []string{"S3_REGION"},
-			Destination: &s3Config.Region,
+			Usage:       "S3 region to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_REGION"},
+			Destination: &s3LogConfig.Region,
 		},
 		&cli.StringFlag{
-			Name:        "s3-key-id",
+			Name:        "log-s3-key-id",
 			Value:       "",
-			Usage:       "S3 access key id to be used as configuration for logging or carves",
-			EnvVars:     []string{"S3_KEY_ID"},
-			Destination: &s3Config.AccessKeyID,
+			Usage:       "S3 access key id to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_KEY_ID"},
+			Destination: &s3LogConfig.AccessKeyID,
 		},
 		&cli.StringFlag{
-			Name:        "s3-secret",
+			Name:        "log-s3-secret",
 			Value:       "",
-			Usage:       "S3 access key secret to be used as configuration for logging or carves",
-			EnvVars:     []string{"S3_SECRET"},
-			Destination: &s3Config.SecretAccessKey,
+			Usage:       "S3 access key secret to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_SECRET"},
+			Destination: &s3LogConfig.SecretAccessKey,
+		},
+		&cli.StringFlag{
+			Name:        "carver-s3-bucket",
+			Value:       "",
+			Usage:       "S3 bucket to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_BUCKET"},
+			Destination: &s3CarverConfig.Bucket,
+		},
+		&cli.StringFlag{
+			Name:        "carver-s3-region",
+			Value:       "",
+			Usage:       "S3 region to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_REGION"},
+			Destination: &s3CarverConfig.Region,
+		},
+		&cli.StringFlag{
+			Name:        "carve-s3-key-id",
+			Value:       "",
+			Usage:       "S3 access key id to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_KEY_ID"},
+			Destination: &s3CarverConfig.AccessKeyID,
+		},
+		&cli.StringFlag{
+			Name:        "carve-s3-secret",
+			Value:       "",
+			Usage:       "S3 access key secret to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_SECRET"},
+			Destination: &s3CarverConfig.SecretAccessKey,
 		},
 	}
 	// Logging format flags
@@ -495,7 +524,7 @@ func osctrlService() {
 	}
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3Config, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3LogConfig, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
@@ -634,8 +663,8 @@ func cliAction(c *cli.Context) error {
 	}
 	// Load carver configuration if external JSON config file is used
 	if tlsConfig.Carver == settings.CarverS3 {
-		if s3Config.Bucket != "" {
-			carvers3, err = carves.CreateCarverS3(s3Config)
+		if s3CarverConfig.Bucket != "" {
+			carvers3, err = carves.CreateCarverS3(s3CarverConfig)
 		} else {
 			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
 		}

@@ -53,7 +53,7 @@ func LoadS3(file string) (types.S3Configuration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _s3Cfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	cfgRaw := viper.Sub(settings.LoggingS3)
 	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
 		return _s3Cfg, err
 	}
