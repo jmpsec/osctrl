@@ -55,8 +55,8 @@ type JSONConfigurationJWT struct {
 type S3Configuration struct {
 	Bucket          string `json:"bucket"`
 	Region          string `json:"region"`
-	AccessKeyID     string `json:"access_key"`
-	SecretAccessKey string `json:"secret_key"`
+	AccessKey       string `json:"accessKey"`
+	SecretAccessKey string `json:"secretAccesKey"`
 }
 
 // OsqueryTable to show tables to query

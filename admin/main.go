@@ -556,7 +556,7 @@ func init() {
 			Value:       "",
 			Usage:       "S3 access key id to be used as configuration for logging",
 			EnvVars:     []string{"LOG_S3_KEY_ID"},
-			Destination: &s3LogConfig.AccessKeyID,
+			Destination: &s3LogConfig.AccessKey,
 		},
 		&cli.StringFlag{
 			Name:        "log-s3-secret",
@@ -584,7 +584,7 @@ func init() {
 			Value:       "",
 			Usage:       "S3 access key id to be used as configuration for carves",
 			EnvVars:     []string{"CARVER_S3_KEY_ID"},
-			Destination: &s3CarverConfig.AccessKeyID,
+			Destination: &s3CarverConfig.AccessKey,
 		},
 		&cli.StringFlag{
 			Name:        "carve-s3-secret",

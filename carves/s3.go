@@ -49,7 +49,7 @@ func CreateCarverS3File(s3File string) (*CarverS3, error) {
 func CreateCarverS3(config types.S3Configuration) (*CarverS3, error) {
 	cfg := &aws.Config{
 		Region:      aws.String(config.Region),
-		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, ""),
+		Credentials: credentials.NewStaticCredentials(config.AccessKey, config.SecretAccessKey, ""),
 	}
 	s := session.New(cfg)
 	l := &CarverS3{
