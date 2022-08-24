@@ -108,23 +108,25 @@ var (
 
 // Global general variables
 var (
-	err         error
-	adminConfig types.JSONConfigurationAdmin
-	dbConfig    backend.JSONConfigurationDB
-	redisConfig cache.JSONConfigurationRedis
-	db          *backend.DBManager
-	redis       *cache.RedisManager
-	settingsmgr *settings.Settings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	carvesmgr   *carves.Carves
-	sessionsmgr *sessions.SessionManager
-	envs        *environments.Environment
-	adminUsers  *users.UserManager
-	tagsmgr     *tags.TagManager
-	carvers3    *carves.CarverS3
-	app         *cli.App
-	flags       []cli.Flag
+	err            error
+	adminConfig    types.JSONConfigurationAdmin
+	s3LogConfig    types.S3Configuration
+	s3CarverConfig types.S3Configuration
+	dbConfig       backend.JSONConfigurationDB
+	redisConfig    cache.JSONConfigurationRedis
+	db             *backend.DBManager
+	redis          *cache.RedisManager
+	settingsmgr    *settings.Settings
+	nodesmgr       *nodes.NodeManager
+	queriesmgr     *queries.Queries
+	carvesmgr      *carves.Carves
+	sessionsmgr    *sessions.SessionManager
+	envs           *environments.Environment
+	adminUsers     *users.UserManager
+	tagsmgr        *tags.TagManager
+	carvers3       *carves.CarverS3
+	app            *cli.App
+	flags          []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
@@ -535,6 +537,62 @@ func init() {
 			EnvVars:     []string{"CARVER_FILE"},
 			Destination: &carverConfigFile,
 		},
+		&cli.StringFlag{
+			Name:        "log-s3-bucket",
+			Value:       "",
+			Usage:       "S3 bucket to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_BUCKET"},
+			Destination: &s3LogConfig.Bucket,
+		},
+		&cli.StringFlag{
+			Name:        "log-s3-region",
+			Value:       "",
+			Usage:       "S3 region to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_REGION"},
+			Destination: &s3LogConfig.Region,
+		},
+		&cli.StringFlag{
+			Name:        "log-s3-key-id",
+			Value:       "",
+			Usage:       "S3 access key id to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_KEY_ID"},
+			Destination: &s3LogConfig.AccessKeyID,
+		},
+		&cli.StringFlag{
+			Name:        "log-s3-secret",
+			Value:       "",
+			Usage:       "S3 access key secret to be used as configuration for logging",
+			EnvVars:     []string{"LOG_S3_SECRET"},
+			Destination: &s3LogConfig.SecretAccessKey,
+		},
+		&cli.StringFlag{
+			Name:        "carver-s3-bucket",
+			Value:       "",
+			Usage:       "S3 bucket to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_BUCKET"},
+			Destination: &s3CarverConfig.Bucket,
+		},
+		&cli.StringFlag{
+			Name:        "carver-s3-region",
+			Value:       "",
+			Usage:       "S3 region to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_REGION"},
+			Destination: &s3CarverConfig.Region,
+		},
+		&cli.StringFlag{
+			Name:        "carve-s3-key-id",
+			Value:       "",
+			Usage:       "S3 access key id to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_KEY_ID"},
+			Destination: &s3CarverConfig.AccessKeyID,
+		},
+		&cli.StringFlag{
+			Name:        "carve-s3-secret",
+			Value:       "",
+			Usage:       "S3 access key secret to be used as configuration for carves",
+			EnvVars:     []string{"CARVER_S3_SECRET"},
+			Destination: &s3CarverConfig.SecretAccessKey,
+		},
 	}
 	// Logging format flags
 	log.SetFlags(log.Lshortfile)
@@ -839,7 +897,11 @@ func cliAction(c *cli.Context) error {
 	}
 	// Load carver configuration if external JSON config file is used
 	if adminConfig.Carver == settings.CarverS3 {
-		carvers3, err = carves.CreateCarverS3(carverConfigFile)
+		if s3CarverConfig.Bucket != "" {
+			carvers3, err = carves.CreateCarverS3(s3CarverConfig)
+		} else {
+			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
+		}
 		if err != nil {
 			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
 		}

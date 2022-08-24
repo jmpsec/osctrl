@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,27 +14,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-// S3Configuration to hold all S3 configuration values
-type S3Configuration struct {
-	Bucket          string `json:"bucket"`
-	Region          string `json:"region"`
-	AccessKeyID     string `json:"access_key"`
-	SecretAccessKey string `json:"secret_key"`
-}
-
 // LoggerS3 will be used to log data using S3
 type LoggerS3 struct {
-	Configuration S3Configuration
+	Configuration types.S3Configuration
 	Uploader      *s3manager.Uploader
 	Enabled       bool
 }
 
 // CreateLoggerS3 to initialize the logger
-func CreateLoggerS3(s3File string) (*LoggerS3, error) {
-	config, err := LoadS3(s3File)
-	if err != nil {
-		return nil, err
-	}
+func CreateLoggerS3(config types.S3Configuration) (*LoggerS3, error) {
 	s := session.New(&aws.Config{
 		Region:      aws.String(config.Region),
 		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, ""),
@@ -46,16 +35,25 @@ func CreateLoggerS3(s3File string) (*LoggerS3, error) {
 	return l, nil
 }
 
+// CreateLoggerS3File to initialize the logger with a filename
+func CreateLoggerS3File(s3File string) (*LoggerS3, error) {
+	config, err := LoadS3(s3File)
+	if err != nil {
+		return nil, err
+	}
+	return CreateLoggerS3(config)
+}
+
 // LoadS3 - Function to load the S3 configuration from JSON file
-func LoadS3(file string) (S3Configuration, error) {
-	var _s3Cfg S3Configuration
+func LoadS3(file string) (types.S3Configuration, error) {
+	var _s3Cfg types.S3Configuration
 	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
 		return _s3Cfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	cfgRaw := viper.Sub(settings.LoggingS3)
 	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
 		return _s3Cfg, err
 	}
