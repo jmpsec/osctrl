@@ -135,7 +135,7 @@ func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, bloc
 		Environment: env,
 		BlockID:     blockid,
 		Size:        len(data),
-		Data:        GenerateS3Data(c.S3.Configuration.Bucket, env, uuid, sessionid, blockid),
+		Data:        GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid),
 		Carver:      c.Carver,
 	}
 	if c.Carver != settings.CarverS3 {
@@ -324,6 +324,9 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 
 // Archive to convert finalize a completed carve and create a file ready to download
 func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []CarvedBlock) (*CarveResult, error) {
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("can not archive 0 blocks for %s", destPath)
+	}
 	res := &CarveResult{
 		File: destPath,
 	}

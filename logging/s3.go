@@ -23,7 +23,10 @@ import (
 type LoggerS3 struct {
 	S3Config  types.S3Configuration
 	AWSConfig aws.Config
+	Client    *s3.Client
+	Uploader  *manager.Uploader
 	Enabled   bool
+	Debug     bool
 }
 
 // CreateLoggerS3 to initialize the logger
@@ -37,10 +40,15 @@ func CreateLoggerS3(s3Config types.S3Configuration) (*LoggerS3, error) {
 	if err != nil {
 		return nil, err
 	}
+	client := s3.NewFromConfig(cfg)
+	uploader := manager.NewUploader(client)
 	l := &LoggerS3{
 		S3Config:  s3Config,
 		AWSConfig: cfg,
+		Client:    client,
+		Uploader:  uploader,
 		Enabled:   true,
+		Debug:     false,
 	}
 	return l, nil
 }
@@ -82,9 +90,7 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 	if debug {
 		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
 	}
-	client := s3.NewFromConfig(logS3.AWSConfig)
-	uploader := manager.NewUploader(client)
-	result, err := uploader.Upload(ctx, &s3.PutObjectInput{
+	result, err := logS3.Uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(logS3.S3Config.Bucket),
 		Key:           aws.String(logType + ":" + environment + ":" + uuid + ":" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".json"),
 		Body:          bytes.NewBuffer(data),
