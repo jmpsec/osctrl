@@ -131,7 +131,7 @@ func (carveS3 *CarverS3) Concatenate(key string, destKey string, part int, uploa
 		UploadId:   uploadid,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error uploading part %s - %s", key, err)
+		return nil, fmt.Errorf("UploadPartCopy - %s - %s", key, err)
 	}
 	return partOutput.CopyPartResult.ETag, nil
 }
@@ -145,39 +145,47 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 	}
 	// Initiate a multipart upload
 	fkey := GenerateS3File(carve.Environment, carve.UUID, carve.SessionID, carve.Path)
-	output, err := carveS3.Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+	uploadOutput, err := carveS3.Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket: &carveS3.S3Config.Bucket,
 		Key:    aws.String(fkey),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error creating multipart upload - %s", err)
+		return nil, fmt.Errorf("CreateMultipartUpload - %s", err)
+	}
+	if uploadOutput != nil && uploadOutput.UploadId != nil {
+		if *uploadOutput.UploadId == "" {
+			return nil, fmt.Errorf("empty UploadId")
+		}
 	}
 	var parts []awsTypes.CompletedPart
-	for i, b := range blocks {
-		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.S3Config.Bucket), fkey, i, output.UploadId)
+	for _, b := range blocks {
+		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.S3Config.Bucket), fkey, b.BlockID+1, uploadOutput.UploadId)
 		if err != nil {
 			return nil, fmt.Errorf("error concatenating - %s", err)
 		}
 		p := awsTypes.CompletedPart{
 			ETag:       etag,
-			PartNumber: int32(i),
+			PartNumber: int32(b.BlockID + 1),
 		}
 		parts = append(parts, p)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("error sending data to s3 - %s", err)
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("error concatenating - %s", err)
 	}
 	// We finally complete the multipart upload.
-	_, err = carveS3.Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+	multiOutput, err := carveS3.Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
 		Bucket:   &carveS3.S3Config.Bucket,
 		Key:      aws.String(GenerateS3File(carve.Environment, carve.UUID, carve.SessionID, carve.Path)),
-		UploadId: output.UploadId,
+		UploadId: uploadOutput.UploadId,
 		MultipartUpload: &awsTypes.CompletedMultipartUpload{
 			Parts: parts,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("CompleteMultipartUpload - %s", err)
+	}
 	if carveS3.Debug {
-		log.Printf("DebugService: S3 Archived %s [%d bytes]", res.File, res.Size)
+		log.Printf("DebugService: S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
 	}
 	return res, nil
 }

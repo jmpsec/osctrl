@@ -151,6 +151,9 @@ func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 		return c.DB.Create(&block).Error // can be nil or err
 	case settings.CarverS3:
 		if c.S3 != nil {
+			if err := c.DB.Create(&block).Error; err != nil {
+				return err
+			}
 			return c.S3.Upload(block, uuid, data)
 		}
 		return fmt.Errorf("S3 carver not initialized")
@@ -274,8 +277,8 @@ func (c *Carves) ArchiveCarve(sessionid, archive string) error {
 		return fmt.Errorf("getCarveBySessionID %v", err)
 	}
 	toUpdate := map[string]interface{}{
-		"archived":      true,
-		"archived_path": archive,
+		"archived":     true,
+		"archive_path": archive,
 	}
 	if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
