@@ -80,6 +80,11 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 				log.Printf("error archiving results %v", err)
 				return
 			}
+			if archived == nil {
+				h.Inc(metricBlockErr)
+				log.Printf("empty archive %v", err)
+				return
+			}
 			if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
 				h.Inc(metricBlockErr)
 				log.Printf("error archiving carve %v", err)

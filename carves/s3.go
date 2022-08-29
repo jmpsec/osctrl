@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
@@ -26,6 +28,8 @@ const (
 	MaxUploadRetries = 3
 	// MaxChunkSize to define max size for each part. AWS defines 5MB max per part
 	MaxChunkSize = int64(5 * 1024 * 1024)
+	// DownloadLinkExpiration in minutes to expire download links
+	DownloadLinkExpiration = 5
 )
 
 // CarverS3 will be used to carve files using S3 as destination
@@ -188,4 +192,44 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		log.Printf("DebugService: S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
 	}
 	return res, nil
+}
+
+// Download - Function to download an archived carve from s3
+func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
+	ctx := context.Background()
+	if carveS3.Debug {
+		log.Printf("DebugService: Downloading %s from S3", carve.ArchivePath)
+	}
+	downloader := manager.NewDownloader(carveS3.Client)
+	var fileReader io.WriterAt
+	downloadedBytes, err := downloader.Download(ctx, fileReader, &s3.GetObjectInput{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
+	})
+	// Forcing sequential downloads so we can skip the offset from io.WriterAt
+	downloader.Concurrency = 1
+	if err != nil {
+		return nil, fmt.Errorf("Download - %s", err)
+	}
+	if carveS3.Debug {
+		log.Printf("DebugService: S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
+	}
+	return fileReader, nil
+}
+
+// GetDownloadLink - Function to generate a pre-signed link to download directly from s3
+func (carveS3 *CarverS3) GetDownloadLink(carve CarvedFile) (string, error) {
+	ctx := context.Background()
+	if carveS3.Debug {
+		log.Printf("DebugService: Downloading link %s from S3", carve.ArchivePath)
+	}
+	preClient := s3.NewPresignClient(carveS3.Client)
+	lnk, err := preClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
+	}, s3.WithPresignExpires(DownloadLinkExpiration*time.Minute))
+	if err != nil {
+		return "", fmt.Errorf("PresignGetObject - %s", err)
+	}
+	return lnk.URL, nil
 }
