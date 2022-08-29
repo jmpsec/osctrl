@@ -135,7 +135,7 @@ func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, bloc
 		Environment: env,
 		BlockID:     blockid,
 		Size:        len(data),
-		Data:        GenerateS3Data(c.S3.Configuration.Bucket, env, uuid, sessionid, blockid),
+		Data:        GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid),
 		Carver:      c.Carver,
 	}
 	if c.Carver != settings.CarverS3 {
@@ -151,6 +151,9 @@ func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 		return c.DB.Create(&block).Error // can be nil or err
 	case settings.CarverS3:
 		if c.S3 != nil {
+			if err := c.DB.Create(&block).Error; err != nil {
+				return err
+			}
 			return c.S3.Upload(block, uuid, data)
 		}
 		return fmt.Errorf("S3 carver not initialized")
@@ -274,8 +277,8 @@ func (c *Carves) ArchiveCarve(sessionid, archive string) error {
 		return fmt.Errorf("getCarveBySessionID %v", err)
 	}
 	toUpdate := map[string]interface{}{
-		"archived":      true,
-		"archived_path": archive,
+		"archived":     true,
+		"archive_path": archive,
 	}
 	if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
@@ -324,6 +327,9 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 
 // Archive to convert finalize a completed carve and create a file ready to download
 func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []CarvedBlock) (*CarveResult, error) {
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("can not archive 0 blocks for %s", destPath)
+	}
 	res := &CarveResult{
 		File: destPath,
 	}

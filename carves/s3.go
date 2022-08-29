@@ -2,20 +2,25 @@ package carves
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/spf13/viper"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	awsTypes "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 const (
@@ -23,17 +28,18 @@ const (
 	MaxUploadRetries = 3
 	// MaxChunkSize to define max size for each part. AWS defines 5MB max per part
 	MaxChunkSize = int64(5 * 1024 * 1024)
+	// DownloadLinkExpiration in minutes to expire download links
+	DownloadLinkExpiration = 5
 )
 
 // CarverS3 will be used to carve files using S3 as destination
 type CarverS3 struct {
-	Configuration types.S3Configuration
-	Session       *session.Session
-	Client        *s3.S3
-	Uploader      *s3manager.Uploader
-	Downloader    *s3manager.Downloader
-	Enabled       bool
-	Debug         bool
+	S3Config  types.S3Configuration
+	AWSConfig aws.Config
+	Client    *s3.Client
+	Uploader  *manager.Uploader
+	Enabled   bool
+	Debug     bool
 }
 
 // CreateCarverS3File to initialize the carver
@@ -46,20 +52,25 @@ func CreateCarverS3File(s3File string) (*CarverS3, error) {
 }
 
 // CreateCarverS3 to initialize the carver
-func CreateCarverS3(config types.S3Configuration) (*CarverS3, error) {
-	cfg := &aws.Config{
-		Region:      aws.String(config.Region),
-		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, ""),
+func CreateCarverS3(s3Config types.S3Configuration) (*CarverS3, error) {
+	ctx := context.Background()
+	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
+	cfg, err := config.LoadDefaultConfig(
+		ctx,
+		config.WithCredentialsProvider(creds), config.WithRegion(s3Config.Region),
+	)
+	if err != nil {
+		return nil, err
 	}
-	s := session.New(cfg)
+	client := s3.NewFromConfig(cfg)
+	uploader := manager.NewUploader(client)
 	l := &CarverS3{
-		Configuration: config,
-		Session:       s,
-		Uploader:      s3manager.NewUploader(s),
-		Downloader:    s3manager.NewDownloader(s),
-		Client:        s3.New(s, cfg),
-		Enabled:       true,
-		Debug:         true,
+		S3Config:  s3Config,
+		AWSConfig: cfg,
+		Client:    client,
+		Uploader:  uploader,
+		Enabled:   true,
+		Debug:     true,
 	}
 	return l, nil
 }
@@ -88,6 +99,7 @@ func (carveS3 *CarverS3) Settings(mgr *settings.Settings) {
 
 // Upload - Function that sends data from carves to S3
 func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
+	ctx := context.Background()
 	if carveS3.Debug {
 		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", block.Size, block.Environment, uuid)
 	}
@@ -96,11 +108,12 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 	if err != nil {
 		return fmt.Errorf("error decoding data - %v", err)
 	}
-	reader := bytes.NewReader(toUpload)
-	uploadOutput, err := carveS3.Uploader.Upload(&s3manager.UploadInput{
-		Bucket: &carveS3.Configuration.Bucket,
-		Key:    aws.String(GenerateS3Key(block.Environment, uuid, block.SessionID, block.BlockID)),
-		Body:   reader,
+	uploadOutput, err := carveS3.Uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(carveS3.S3Config.Bucket),
+		Key:           aws.String(GenerateS3Key(block.Environment, uuid, block.SessionID, block.BlockID)),
+		Body:          bytes.NewBuffer(toUpload),
+		ContentLength: int64(len(toUpload)),
+		ContentType:   aws.String(http.DetectContentType(toUpload)),
 	})
 	if err != nil {
 		return fmt.Errorf("error sending data to s3 - %s", err)
@@ -113,60 +126,110 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 
 // Concatenate - Function to concatenate a file that have been already uploaded in s3
 func (carveS3 *CarverS3) Concatenate(key string, destKey string, part int, uploadid *string) (*string, error) {
-	partOutput, err := carveS3.Client.UploadPartCopy(&s3.UploadPartCopyInput{
-		Bucket:     &carveS3.Configuration.Bucket,
-		CopySource: aws.String(url.QueryEscape(carveS3.Configuration.Bucket + "/" + key)),
-		PartNumber: aws.Int64(int64(part)),
+	ctx := context.Background()
+	partOutput, err := carveS3.Client.UploadPartCopy(ctx, &s3.UploadPartCopyInput{
+		Bucket:     &carveS3.S3Config.Bucket,
+		CopySource: aws.String(url.QueryEscape(carveS3.S3Config.Bucket + "/" + key)),
+		PartNumber: int32(part),
 		Key:        aws.String(destKey),
 		UploadId:   uploadid,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error uploading part %s - %s", key, err)
+		return nil, fmt.Errorf("UploadPartCopy - %s - %s", key, err)
 	}
 	return partOutput.CopyPartResult.ETag, nil
 }
 
 // Archive - Function to convert finalize a completed carve and create a file ready to download
 func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*CarveResult, error) {
+	ctx := context.Background()
 	res := &CarveResult{
 		Size: int64(carve.CarveSize),
-		File: GenerateS3Archive(carveS3.Configuration.Bucket, carve.Environment, carve.UUID, carve.SessionID, carve.Path),
+		File: GenerateS3Archive(carveS3.S3Config.Bucket, carve.Environment, carve.UUID, carve.SessionID, carve.Path),
 	}
 	// Initiate a multipart upload
 	fkey := GenerateS3File(carve.Environment, carve.UUID, carve.SessionID, carve.Path)
-	output, err := carveS3.Client.CreateMultipartUpload(&s3.CreateMultipartUploadInput{
-		Bucket: &carveS3.Configuration.Bucket,
+	uploadOutput, err := carveS3.Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+		Bucket: &carveS3.S3Config.Bucket,
 		Key:    aws.String(fkey),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error creating multipart upload - %s", err)
+		return nil, fmt.Errorf("CreateMultipartUpload - %s", err)
 	}
-	var parts []*s3.CompletedPart
-	for i, b := range blocks {
-		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.Configuration.Bucket), fkey, i, output.UploadId)
+	if uploadOutput != nil && uploadOutput.UploadId != nil {
+		if *uploadOutput.UploadId == "" {
+			return nil, fmt.Errorf("empty UploadId")
+		}
+	}
+	var parts []awsTypes.CompletedPart
+	for _, b := range blocks {
+		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.S3Config.Bucket), fkey, b.BlockID+1, uploadOutput.UploadId)
 		if err != nil {
 			return nil, fmt.Errorf("error concatenating - %s", err)
 		}
-		p := &s3.CompletedPart{
+		p := awsTypes.CompletedPart{
 			ETag:       etag,
-			PartNumber: aws.Int64(int64(i)),
+			PartNumber: int32(b.BlockID + 1),
 		}
 		parts = append(parts, p)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("error sending data to s3 - %s", err)
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("error concatenating - %s", err)
 	}
 	// We finally complete the multipart upload.
-	_, err = carveS3.Client.CompleteMultipartUpload(&s3.CompleteMultipartUploadInput{
-		Bucket:   &carveS3.Configuration.Bucket,
+	multiOutput, err := carveS3.Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   &carveS3.S3Config.Bucket,
 		Key:      aws.String(GenerateS3File(carve.Environment, carve.UUID, carve.SessionID, carve.Path)),
-		UploadId: output.UploadId,
-		MultipartUpload: &s3.CompletedMultipartUpload{
+		UploadId: uploadOutput.UploadId,
+		MultipartUpload: &awsTypes.CompletedMultipartUpload{
 			Parts: parts,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("CompleteMultipartUpload - %s", err)
+	}
 	if carveS3.Debug {
-		log.Printf("DebugService: S3 Archived %s [%d bytes]", res.File, res.Size)
+		log.Printf("DebugService: S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
 	}
 	return res, nil
+}
+
+// Download - Function to download an archived carve from s3
+func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
+	ctx := context.Background()
+	if carveS3.Debug {
+		log.Printf("DebugService: Downloading %s from S3", carve.ArchivePath)
+	}
+	downloader := manager.NewDownloader(carveS3.Client)
+	var fileReader io.WriterAt
+	downloadedBytes, err := downloader.Download(ctx, fileReader, &s3.GetObjectInput{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
+	})
+	// Forcing sequential downloads so we can skip the offset from io.WriterAt
+	downloader.Concurrency = 1
+	if err != nil {
+		return nil, fmt.Errorf("Download - %s", err)
+	}
+	if carveS3.Debug {
+		log.Printf("DebugService: S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
+	}
+	return fileReader, nil
+}
+
+// GetDownloadLink - Function to generate a pre-signed link to download directly from s3
+func (carveS3 *CarverS3) GetDownloadLink(carve CarvedFile) (string, error) {
+	ctx := context.Background()
+	if carveS3.Debug {
+		log.Printf("DebugService: Downloading link %s from S3", carve.ArchivePath)
+	}
+	preClient := s3.NewPresignClient(carveS3.Client)
+	lnk, err := preClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
+	}, s3.WithPresignExpires(DownloadLinkExpiration*time.Minute))
+	if err != nil {
+		return "", fmt.Errorf("PresignGetObject - %s", err)
+	}
+	return lnk.URL, nil
 }

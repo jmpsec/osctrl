@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
+	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
@@ -107,34 +108,62 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		log.Println("error getting carve")
 		return
 	}
-	// Prepare file to download
-	result, err := h.Carves.Archive(carveSession, h.CarvesFolder)
-	if err != nil {
+	// Check if carve is archived already
+	carve, err := h.Carves.GetBySession(carveSession)
+	if !ok {
 		h.Inc(metricAdminErr)
-		log.Printf("error downloading carve - %v", err)
+		log.Println("error getting carve")
 		return
 	}
-	// Mark carve as archived
-	if err := h.Carves.ArchiveCarve(carveSession, result.File); err != nil {
-		h.Inc(metricAdminErr)
-		log.Printf("error archiving carve %v", err)
+	var archived *carves.CarveResult
+	if !carve.Archived {
+		archived, err = h.Carves.Archive(carveSession, h.CarvesFolder)
+		if err != nil {
+			h.Inc(metricAdminErr)
+			log.Printf("error archiving results %v", err)
+			return
+		}
+		if archived == nil {
+			h.Inc(metricAdminErr)
+			log.Printf("empty archive %v", err)
+			return
+		}
+		if err := h.Carves.ArchiveCarve(carveSession, archived.File); err != nil {
+			h.Inc(metricAdminErr)
+			log.Printf("error archiving carve %v", err)
+		}
+	}
+	archived = &carves.CarveResult{
+		Size: int64(carve.CarveSize),
+		File: carve.ArchivePath,
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Carve download")
 	}
+	if h.Carves.Carver == settings.CarverS3 {
+		downloadURL, err := h.Carves.S3.GetDownloadLink(carve)
+		if err != nil {
+			h.Inc(metricAdminErr)
+			log.Printf("error getting carve link - %v", err)
+			return
+		}
+		http.Redirect(w, r, downloadURL, http.StatusFound)
+	} else {
+		// Send response
+		w.Header().Set("Content-Description", "File Carve Download")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", "attachment; filename="+archived.File)
+		w.Header().Set("Content-Transfer-Encoding", "binary")
+		w.Header().Set("Connection", "Keep-Alive")
+		w.Header().Set("Expires", "0")
+		w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+		w.Header().Set("Pragma", "public")
+		w.Header().Set("Content-Length", strconv.FormatInt(archived.Size, 10))
+		w.WriteHeader(http.StatusOK)
+		h.Inc(metricAdminOK)
+		var fileReader io.Reader
+		fileReader, _ = os.Open(archived.File)
+		_, _ = io.Copy(w, fileReader)
+	}
 	h.Inc(metricAdminOK)
-	// Send response
-	w.Header().Set("Content-Description", "File Carve Download")
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachment; filename="+result.File)
-	w.Header().Set("Content-Transfer-Encoding", "binary")
-	w.Header().Set("Connection", "Keep-Alive")
-	w.Header().Set("Expires", "0")
-	w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-	w.Header().Set("Pragma", "public")
-	w.Header().Set("Content-Length", strconv.FormatInt(result.Size, 10))
-	w.WriteHeader(http.StatusOK)
-	var fileReader io.Reader
-	fileReader, _ = os.Open(result.File)
-	_, _ = io.Copy(w, fileReader)
 }

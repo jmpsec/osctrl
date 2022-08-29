@@ -15,7 +15,9 @@ const (
 	// S3Key to format the s3 key for a block
 	S3Key = "%s:%s:%s:%d"
 	// S3File to format the s3 key for a reconstructed file
-	S3File = "%s:%s:%s:%s"
+	S3File = "%s:%s:%s:%s" + TarFileExtension
+	// LocalFile to format the local file name
+	LocalFile = "%s-%s-%s" + TarFileExtension
 )
 
 // Function to generate a carve block filename for s3
@@ -38,14 +40,14 @@ func GenerateS3File(env, uuid, sessionid, path string) string {
 	return fmt.Sprintf(S3File, env, uuid, sessionid, path)
 }
 
-// Function to translate from a s3 URL to just the key
+// Function to translate from a s3:// URL to just the key
 func S3URLtoKey(s3url, bucket string) string {
 	return strings.TrimPrefix(s3url, fmt.Sprintf(S3proto+"%s/", bucket))
 }
 
 // Function to generate a local file for carve archives
 func GenerateArchiveName(carve CarvedFile) string {
-	return fmt.Sprintf("%s-%s-%s%s", carve.UUID, carve.SessionID, carve.Path, TarFileExtension)
+	return fmt.Sprintf(LocalFile, carve.UUID, carve.SessionID, carve.Path)
 }
 
 // Function to check if data is compressed using zstd
