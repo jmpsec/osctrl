@@ -1027,7 +1027,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	switch c.Action {
 	case "create":
 		// FIXME verify fields
-		if !h.Envs.Exists(c.Name) {
+		if !h.Envs.Exists(c.Name) && c.Name != "" {
 			env := h.Envs.Empty(c.Name, c.Hostname)
 			env.Icon = c.Icon
 			env.Type = c.Type
@@ -1046,14 +1046,26 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				h.Inc(metricAdminErr)
 				return
 			}
+			// Generate full permissions for the user creating the environment
+			access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, true, true, true)
+			perms := h.Users.GenPermissions(ctx[sessions.CtxUser], "osctrl-admin", access)
+			if err := h.Users.CreatePermissions(perms); err != nil {
+				adminErrorResponse(w, "error generating permissions", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
 			// Create a tag for this new environment
 			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon, ctx[sessions.CtxUser]); err != nil {
 				adminErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
+			adminOKResponse(w, "environment created successfully")
+		} else {
+			adminOKResponse(w, "invalid environment")
+			h.Inc(metricAdminErr)
+			return
 		}
-		adminOKResponse(w, "environment created successfully")
 	case "delete":
 		if c.Name == h.Settings.DefaultEnv(settings.ServiceAdmin) {
 			adminErrorResponse(w, "nope, this is the default environment", http.StatusInternalServerError, fmt.Errorf("attempt to remove default environment %s", c.Name))
