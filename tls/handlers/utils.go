@@ -68,7 +68,7 @@ func (h *HandlersTLS) checkExpiredPath(maybeExpired time.Time) bool {
 }
 
 // Helper to convert an enrollment request into a osquery node
-func nodeFromEnroll(req types.EnrollRequest, environment, ipaddress, nodekey string, recBytes, envUserID int) nodes.OsqueryNode {
+func nodeFromEnroll(req types.EnrollRequest, env environments.TLSEnvironment, ipaddress, nodekey string, recBytes int) nodes.OsqueryNode {
 	// Prepare the enrollment request to be stored as raw JSON
 	enrollRaw, err := json.Marshal(req)
 	if err != nil {
@@ -88,7 +88,7 @@ func nodeFromEnroll(req types.EnrollRequest, environment, ipaddress, nodekey str
 		IPAddress:       ipaddress,
 		Username:        "unknown",
 		OsqueryUser:     "unknown",
-		Environment:     environment,
+		Environment:     env.Name,
 		CPU:             strings.TrimRight(req.HostDetails.EnrollSystemInfo.CPUBrand, "\x00"),
 		Memory:          req.HostDetails.EnrollSystemInfo.PhysicalMemory,
 		HardwareSerial:  req.HostDetails.EnrollSystemInfo.HardwareSerial,
@@ -100,7 +100,8 @@ func nodeFromEnroll(req types.EnrollRequest, environment, ipaddress, nodekey str
 		LastConfig:      time.Time{},
 		LastQueryRead:   time.Time{},
 		LastQueryWrite:  time.Time{},
-		UserID:          envUserID,
+		UserID:          env.UserID,
+		EnvironmentID:   env.ID,
 	}
 }
 

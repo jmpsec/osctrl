@@ -36,7 +36,8 @@ type OsqueryNode struct {
 	LastConfig      time.Time
 	LastQueryRead   time.Time
 	LastQueryWrite  time.Time
-	UserID          int
+	UserID          uint
+	EnvironmentID   uint
 }
 
 // ArchiveOsqueryNode as abstraction of an archived node
@@ -66,7 +67,8 @@ type ArchiveOsqueryNode struct {
 	LastConfig      time.Time
 	LastQueryRead   time.Time
 	LastQueryWrite  time.Time
-	UserID          int
+	UserID          uint
+	EnvironmentID   uint
 }
 
 // StatsData to display node stats
@@ -133,6 +135,14 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
 	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Count(&results)
+	return (results > 0)
+}
+
+// CheckByUUIDEnvID to check if node exists by UUID in a specific environment
+// UUID is expected uppercase
+func (n *NodeManager) CheckByUUIDEnvID(uuid string, envID int) bool {
+	var results int64
+	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).Count(&results)
 	return (results > 0)
 }
 
@@ -468,6 +478,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 		LastQueryRead:   node.LastQueryRead,
 		LastQueryWrite:  node.LastQueryWrite,
 		UserID:          node.UserID,
+		EnvironmentID:   node.EnvironmentID,
 	}
 }
 
