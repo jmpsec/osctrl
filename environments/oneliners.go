@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/version"
 )
 
 const (
@@ -146,11 +147,13 @@ func QuickAddScript(project, script string, environment TLSEnvironment) (string,
 	}
 	// Prepare template data
 	data := struct {
-		Project     string
-		Environment TLSEnvironment
+		Project        string
+		OsqueryVersion string
+		Environment    TLSEnvironment
 	}{
-		Project:     project,
-		Environment: environment,
+		Project:        project,
+		OsqueryVersion: version.OsqueryVersion,
+		Environment:    environment,
 	}
 	// Compile template into buffer
 	var tpl bytes.Buffer

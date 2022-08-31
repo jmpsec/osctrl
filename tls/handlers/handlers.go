@@ -20,6 +20,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/version"
 )
 
 const (
@@ -65,7 +66,7 @@ const (
 
 const (
 	// osquery version
-	defOsqueryVersion string = "5.2.2"
+	defOsqueryVersion = version.OsqueryVersion
 )
 
 // Valid values for actions in handlers

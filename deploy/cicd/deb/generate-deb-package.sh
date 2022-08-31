@@ -5,7 +5,7 @@ set -e
 OSCTRL_USER="${VARIABLE:-osctrl}"
 OSCTRL_GROUP="${VARIABLE:-osctrl}"
 WORKING_DIR="${VARIABLE:-/etc/osctrl}"
-OSQUERY_VESION="${VARIABLE:-5.2.2}"
+OSQUERY_VESION="${VARIABLE:-5.4.0}"
 OSCTRL_VERSION="${VARIABLE:-0.0.0}"
 
 ###################################### Init DEB contents ######################################
@@ -43,7 +43,7 @@ cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/db.json.exa
 
 cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example" && \
     chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example"
-    
+
 
 ###################################### General components content ######################################
 mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}"
