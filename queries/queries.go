@@ -69,6 +69,7 @@ type DistributedQuery struct {
 	Type          string
 	Path          string
 	EnvironmentID uint
+	ExtraData     string
 }
 
 // DistributedQueryTarget to keep target logic for queries

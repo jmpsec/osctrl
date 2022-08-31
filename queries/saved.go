@@ -13,6 +13,7 @@ type SavedQuery struct {
 	Creator       string
 	Query         string
 	EnvironmentID uint
+	ExtraData     string
 }
 
 // GetSavedByCreator to get a saved query by creator
