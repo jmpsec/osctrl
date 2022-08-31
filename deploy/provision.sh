@@ -173,6 +173,7 @@ BRANCH="master"
 SOURCE_PATH=/vagrant
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
+OSQUERY_VERSION="5.4.0"
 
 # Backend values
 _DB_HOST="localhost"
@@ -193,6 +194,7 @@ _T_PUB_PORT="443"
 _T_HOST="$ALL_HOST"
 _T_AUTH="none"
 _T_LOGGING="stdout"
+_T_CARVER="db"
 
 # Admin Service
 _A_INT_PORT="9001"
@@ -200,6 +202,7 @@ _A_PUB_PORT="8443"
 _A_HOST="$ALL_HOST"
 _A_AUTH="db"
 _A_LOGGING="db"
+_A_CARVER="db"
 
 # API Service
 _P_INT_PORT="9002"
@@ -207,6 +210,7 @@ _P_PUB_PORT="8444"
 _P_HOST="$ALL_HOST"
 _P_AUTH="jwt"
 _P_LOGGING="none"
+_P_CARVER="none"
 
 # Default admin credentials with random password
 _ADMIN_USER="admin"
@@ -683,7 +687,7 @@ else
     make tls
 
     # Configuration file generation for TLS service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "sudo"
+    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER" "sudo"
 
     # Systemd configuration for TLS service
     _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --config"
@@ -694,7 +698,7 @@ else
     make admin
 
     # Configuration file generation for Admin service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "sudo"
+    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER" "sudo"
 
     # Prepare data folder
     sudo mkdir -p "$DEST_PATH/data"
@@ -704,7 +708,7 @@ else
     sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
 
     # Copy osquery tables JSON file
-    sudo cp "$SOURCE_PATH/deploy/osquery/data/5.4.0.json" "$DEST_PATH/data"
+    sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
 
     # Prepare static files for Admin service
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
@@ -719,7 +723,7 @@ else
     make api
 
     # Configuration file generation for API service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "sudo"
+    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER" "sudo"
 
     # Systemd configuration for API service
     _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"

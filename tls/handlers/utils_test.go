@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/stretchr/testify/assert"
@@ -24,11 +25,12 @@ func TestGenerateCarveSessionID(t *testing.T) {
 }
 
 func TestNodeFromEnroll(t *testing.T) {
-	_env := "testing"
+	_env := environments.TLSEnvironment{
+		Name: "environment",
+	}
 	_ip := "1.2.3.4"
 	_key := "node-key"
 	_rec := 12345
-	_cer := 54321
 	req := types.EnrollRequest{
 		EnrollSecret:   "secret",
 		HostIdentifier: "thisistheuuid",
@@ -87,7 +89,7 @@ func TestNodeFromEnroll(t *testing.T) {
 	enrollRaw, _ := json.Marshal(req)
 	node := nodes.OsqueryNode{
 		UUID:          "THISISTHEUUID",
-		Environment:   _env,
+		Environment:   _env.Name,
 		IPAddress:     _ip,
 		NodeKey:       _key,
 		Username:      "unknown",
@@ -95,9 +97,10 @@ func TestNodeFromEnroll(t *testing.T) {
 		Memory:        "memory",
 		BytesReceived: _rec,
 		RawEnrollment: enrollRaw,
-		UserID:        _cer,
+		UserID:        0,
+		EnvironmentID: _env.ID,
 	}
-	resultNode := nodeFromEnroll(req, _env, _ip, _key, _rec, _cer)
+	resultNode := nodeFromEnroll(req, _env, _ip, _key, _rec)
 	assert.Equal(t, node, resultNode)
 }
 
