@@ -194,6 +194,9 @@ func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, erro
 	}
 	// Admin values
 	adminRaw := viper.Sub(service)
+	if adminRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", service, file)
+	}
 	if err := adminRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
