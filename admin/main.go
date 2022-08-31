@@ -96,7 +96,7 @@ const (
 // osquery
 const (
 	// osquery version to display tables
-	defOsqueryTablesVersion string = "5.2.2"
+	defOsqueryTablesVersion = version.OsqueryVersion
 	// JSON file with osquery tables data
 	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
 )

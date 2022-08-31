@@ -1,7 +1,7 @@
 [
   {
     "name":"account_policy_data",
-    "description":"Additional OS X user account data from the AccountPolicy section of OpenDirectory.",
+    "description":"Additional macOS user account data from the AccountPolicy section of OpenDirectory.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/account_policy_data.table",
     "platforms":[
       "darwin"
@@ -90,7 +90,7 @@
   },
   {
     "name":"ad_config",
-    "description":"OS X Active Directory configuration.",
+    "description":"macOS Active Directory configuration.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/ad_config.table",
     "platforms":[
       "darwin"
@@ -100,7 +100,7 @@
     "columns":[
       {
         "name":"name",
-        "description":"The OS X-specific configuration name",
+        "description":"The macOS-specific configuration name",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -134,7 +134,7 @@
   },
   {
     "name":"alf",
-    "description":"OS X application layer firewall (ALF) service details.",
+    "description":"macOS application layer firewall (ALF) service details.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/alf.table",
     "platforms":[
       "darwin"
@@ -202,7 +202,7 @@
   },
   {
     "name":"alf_exceptions",
-    "description":"OS X application layer firewall (ALF) service exceptions.",
+    "description":"macOS application layer firewall (ALF) service exceptions.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/alf_exceptions.table",
     "platforms":[
       "darwin"
@@ -250,7 +250,7 @@
   },
   {
     "name":"app_schemes",
-    "description":"OS X application schemes and handlers (e.g., http, file, mailto).",
+    "description":"macOS application schemes and handlers (e.g., http, file, mailto).",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/app_schemes.table",
     "platforms":[
       "darwin"
@@ -284,7 +284,7 @@
       },
       {
         "name":"external",
-        "description":"1 if this handler does NOT exist on OS X by default, else 0",
+        "description":"1 if this handler does NOT exist on macOS by default, else 0",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -292,7 +292,7 @@
       },
       {
         "name":"protected",
-        "description":"1 if this handler is protected (reserved) by OS X, else 0",
+        "description":"1 if this handler is protected (reserved) by macOS, else 0",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -602,7 +602,7 @@
   },
   {
     "name":"apps",
-    "description":"OS X applications installed in known search paths (e.g., /Applications).",
+    "description":"macOS applications installed in known search paths (e.g., /Applications).",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/apps.table",
     "platforms":[
       "darwin"
@@ -724,7 +724,7 @@
       },
       {
         "name":"minimum_system_version",
-        "description":"Minimum version of OS X required for the app to run",
+        "description":"Minimum version of macOS required for the app to run",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -767,9 +767,8 @@
   {
     "name":"apt_sources",
     "description":"Current list of APT repositories or software channels.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/apt_sources.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/apt_sources.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -1190,7 +1189,7 @@
   },
   {
     "name":"authorization_mechanisms",
-    "description":"OS X Authorization mechanisms database.",
+    "description":"macOS Authorization mechanisms database.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/authorization_mechanisms.table",
     "platforms":[
       "darwin"
@@ -1242,7 +1241,7 @@
   },
   {
     "name":"authorizations",
-    "description":"OS X Authorization rights database.",
+    "description":"macOS Authorization rights database.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/authorizations.table",
     "platforms":[
       "darwin"
@@ -2318,7 +2317,7 @@
   },
   {
     "name":"browser_plugins",
-    "description":"All C/NPAPI browser plugin details for all users.",
+    "description":"All C/NPAPI browser plugin details for all users. C/NPAPI has been deprecated on all major browsers. To query for plugins on modern browsers, try: `chrome_extensions` `firefox_addons` `safari_extensions`.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/browser_plugins.table",
     "platforms":[
       "darwin"
@@ -2673,10 +2672,12 @@
   {
     "name":"certificates",
     "description":"Certificate Authorities installed in Keychains/ca-bundles.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/macwin/certificates.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/certificates.table",
     "platforms":[
       "darwin",
-      "windows"
+      "linux",
+      "windows",
+      "freebsd"
     ],
     "evented":false,
     "cacheable":true,
@@ -2691,7 +2692,7 @@
       },
       {
         "name":"subject",
-        "description":"Certificate distinguished name",
+        "description":"Certificate distinguished name (deprecated, use subject2)",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -2699,7 +2700,7 @@
       },
       {
         "name":"issuer",
-        "description":"Certificate issuer distinguished name",
+        "description":"Certificate issuer distinguished name (deprecated, use issuer2)",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -2844,6 +2845,22 @@
       {
         "name":"store_id",
         "description":"Exists for service/user stores. Contains raw store id provided by WinAPI.",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"issuer2",
+        "description":"Certificate issuer distinguished name",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"subject2",
+        "description":"Certificate distinguished name",
         "type":"text",
         "hidden":true,
         "required":false,
@@ -3432,8 +3449,9 @@
   {
     "name":"cpu_info",
     "description":"Retrieve cpu hardware info of the machine.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/cpu_info.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/cpu_info.table",
     "platforms":[
+      "linux",
       "windows"
     ],
     "evented":false,
@@ -3466,14 +3484,6 @@
       {
         "name":"processor_type",
         "description":"The processor type, such as Central, Math, or Video.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"availability",
-        "description":"The availability and status of the CPU.",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -3532,6 +3542,14 @@
         "description":"The assigned socket on the board for the given CPU.",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"availability",
+        "description":"The availability and status of the CPU.",
+        "type":"text",
+        "hidden":true,
         "required":false,
         "index":false
       }
@@ -4457,6 +4475,14 @@
       {
         "name":"priority",
         "description":"Package priority",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"admindir",
+        "description":"libdpkg admindir. Defaults to /var/lib/dpkg",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -7215,370 +7241,6 @@
     ]
   },
   {
-    "name":"elf_dynamic",
-    "description":"ELF dynamic section information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/elf_dynamic.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"tag",
-        "description":"Tag ID",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"value",
-        "description":"Tag value",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"class",
-        "description":"Class (32 or 64)",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path to ELF file",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"elf_info",
-    "description":"ELF file information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/elf_info.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"class",
-        "description":"Class type, 32 or 64bit",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"abi",
-        "description":"Section type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"abi_version",
-        "description":"Section virtual address in memory",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"type",
-        "description":"Offset of section in file",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"machine",
-        "description":"Machine type",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"version",
-        "description":"Object file version",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"entry",
-        "description":"Entry point address",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"flags",
-        "description":"ELF header flags",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path to ELF file",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"elf_sections",
-    "description":"ELF section information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/elf_sections.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"name",
-        "description":"Section name",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"type",
-        "description":"Section type",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"vaddr",
-        "description":"Section virtual address in memory",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"offset",
-        "description":"Offset of section in file",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"size",
-        "description":"Size of section",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"flags",
-        "description":"Section attributes",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"link",
-        "description":"Link to other section",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"align",
-        "description":"Segment alignment",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path to ELF file",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"elf_segments",
-    "description":"ELF segment information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/elf_segments.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"name",
-        "description":"Segment type/name",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"offset",
-        "description":"Segment offset in file",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"vaddr",
-        "description":"Segment virtual address in memory",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"psize",
-        "description":"Size of segment in file",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"msize",
-        "description":"Segment offset in memory",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"flags",
-        "description":"Segment attributes",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"align",
-        "description":"Segment alignment",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path to ELF file",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"elf_symbols",
-    "description":"ELF symbol list.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/elf_symbols.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"name",
-        "description":"Symbol name",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"addr",
-        "description":"Symbol address (value)",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"size",
-        "description":"Size of object",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"type",
-        "description":"Symbol type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"binding",
-        "description":"Binding type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"offset",
-        "description":"Section table index",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"table",
-        "description":"Table name containing symbol",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path to ELF file",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      }
-    ]
-  },
-  {
     "name":"es_process_events",
     "description":"Process execution events from EndpointSecurity.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/es_process_events.table",
@@ -7799,6 +7461,106 @@
     ]
   },
   {
+    "name":"es_process_file_events",
+    "description":"Process execution events from EndpointSecurity.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/es_process_file_events.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":true,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"version",
+        "description":"Version of EndpointSecurity event",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"seq_num",
+        "description":"Per event sequence number",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"global_seq_num",
+        "description":"Global sequence number",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"Process (or thread) ID",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"parent",
+        "description":"Parent process ID",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"Path of executed file",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"filename",
+        "description":"The source or target filename for the event",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"dest_filename",
+        "description":"Destination filename for the event",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"event_type",
+        "description":"Type of EndpointSecurity event",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"time",
+        "description":"Time of execution in UNIX time",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"eid",
+        "description":"Event ID",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"etc_hosts",
     "description":"Line-parsed /etc/hosts.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/etc_hosts.table",
@@ -7985,69 +7747,6 @@
         "name":"tapping_process",
         "description":"The process ID of the application that created the event tap.",
         "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"example",
-    "description":"This is an example table spec.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/example.table",
-    "platforms":[
-      "darwin",
-      "linux",
-      "windows",
-      "freebsd"
-    ],
-    "evented":true,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"name",
-        "description":"Description for name column",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"points",
-        "description":"This is a signed SQLite int column",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"size",
-        "description":"This is a signed SQLite bigint column",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"action",
-        "description":"Action performed in generation",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      },
-      {
-        "name":"id",
-        "description":"An index of some sort",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Path of example",
-        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -8401,6 +8100,14 @@
         "index":false
       },
       {
+        "name":"original_filename",
+        "description":"(Executable files only) Original filename",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"bsd_flags",
         "description":"The BSD file flags (chflags). Possible values: NODUMP, UF_IMMUTABLE, UF_APPEND, OPAQUE, HIDDEN, ARCHIVED, SF_IMMUTABLE, SF_APPEND",
         "type":"text",
@@ -8720,7 +8427,7 @@
   },
   {
     "name":"gatekeeper",
-    "description":"OS X Gatekeeper Details.",
+    "description":"macOS Gatekeeper Details.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/gatekeeper.table",
     "platforms":[
       "darwin"
@@ -9040,14 +8747,6 @@
         "index":false
       },
       {
-        "name":"ssdeep",
-        "description":"ssdeep hash of provided filesystem data",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
         "name":"pid_with_namespace",
         "description":"Pids that contain a namespace",
         "type":"integer",
@@ -9254,9 +8953,7 @@
     "description":"Intel ME/CSE Info.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/intel_me_info.table",
     "platforms":[
-      "darwin",
       "linux",
-      "freebsd",
       "windows"
     ],
     "evented":false,
@@ -10001,7 +9698,7 @@
   },
   {
     "name":"kernel_extensions",
-    "description":"OS X's kernel extensions, both loaded and within the load search path.",
+    "description":"macOS's kernel extensions, both loaded and within the load search path.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/kernel_extensions.table",
     "platforms":[
       "darwin"
@@ -10363,6 +10060,14 @@
       {
         "name":"comment",
         "description":"Optional keychain comment",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"account",
+        "description":"Optional item account",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -10928,570 +10633,6 @@
     ]
   },
   {
-    "name":"lldp_neighbors",
-    "description":"LLDP neighbors of interfaces.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/lldpd/lldp_neighbors.table",
-    "platforms":[
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"interface",
-        "description":"Interface name",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"rid",
-        "description":"Neighbor chassis index",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_id_type",
-        "description":"Neighbor chassis ID type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_id",
-        "description":"Neighbor chassis ID value",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_sysname",
-        "description":"CPU brand string, contains vendor and model",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_sys_description",
-        "description":"Max number of CPU physical cores",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_bridge_capability_available",
-        "description":"Chassis bridge capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_bridge_capability_enabled",
-        "description":"Is chassis bridge capability enabled.",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_router_capability_available",
-        "description":"Chassis router capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_router_capability_enabled",
-        "description":"Chassis router capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_repeater_capability_available",
-        "description":"Chassis repeater capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_repeater_capability_enabled",
-        "description":"Chassis repeater capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_wlan_capability_available",
-        "description":"Chassis wlan capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_wlan_capability_enabled",
-        "description":"Chassis wlan capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_tel_capability_available",
-        "description":"Chassis telephone capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_tel_capability_enabled",
-        "description":"Chassis telephone capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_docsis_capability_available",
-        "description":"Chassis DOCSIS capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_docsis_capability_enabled",
-        "description":"Chassis DOCSIS capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_station_capability_available",
-        "description":"Chassis station capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_station_capability_enabled",
-        "description":"Chassis station capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_other_capability_available",
-        "description":"Chassis other capability availability",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_other_capability_enabled",
-        "description":"Chassis other capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"chassis_mgmt_ips",
-        "description":"Comma delimited list of chassis management IPS",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_id_type",
-        "description":"Port ID type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_id",
-        "description":"Port ID value",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_description",
-        "description":"Port description",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_ttl",
-        "description":"Age of neighbor port",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_mfs",
-        "description":"Port max frame size",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_aggregation_id",
-        "description":"Port aggregation ID",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_supported",
-        "description":"Auto negotiation supported",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_enabled",
-        "description":"Is auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_mau_type",
-        "description":"MAU type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_10baset_hd_enabled",
-        "description":"10Base-T HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_10baset_fd_enabled",
-        "description":"10Base-T FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100basetx_hd_enabled",
-        "description":"100Base-TX HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100basetx_fd_enabled",
-        "description":"100Base-TX FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100baset2_hd_enabled",
-        "description":"100Base-T2 HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100baset2_fd_enabled",
-        "description":"100Base-T2 FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100baset4_hd_enabled",
-        "description":"100Base-T4 HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_100baset4_fd_enabled",
-        "description":"100Base-T4 FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_1000basex_hd_enabled",
-        "description":"1000Base-X HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_1000basex_fd_enabled",
-        "description":"1000Base-X FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_1000baset_hd_enabled",
-        "description":"1000Base-T HD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"port_autoneg_1000baset_fd_enabled",
-        "description":"1000Base-T FD auto negotiation enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_device_type",
-        "description":"Dot3 power device type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_mdi_supported",
-        "description":"MDI power supported",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_mdi_enabled",
-        "description":"Is MDI power enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_paircontrol_enabled",
-        "description":"Is power pair control enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_pairs",
-        "description":"Dot3 power pairs",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_class",
-        "description":"Power class",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_enabled",
-        "description":"Is 802.3at enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_power_type",
-        "description":"802.3at power type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_power_source",
-        "description":"802.3at power source",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_power_priority",
-        "description":"802.3at power priority",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_power_allocated",
-        "description":"802.3at power allocated",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_8023at_power_requested",
-        "description":"802.3at power requested",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_device_type",
-        "description":"Chassis MED type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_capabilities",
-        "description":"Is MED capabilities enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_policy",
-        "description":"Is MED policy capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_location",
-        "description":"Is MED location capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_mdi_pse",
-        "description":"Is MED MDI PSE capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_mdi_pd",
-        "description":"Is MED MDI PD capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_capability_inventory",
-        "description":"Is MED inventory capability enabled",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"med_policies",
-        "description":"Comma delimited list of MED policies",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"vlans",
-        "description":"Comma delimited list of vlan ids",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"pvid",
-        "description":"Primary VLAN id",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"ppvids_supported",
-        "description":"Comma delimited list of supported PPVIDs",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"ppvids_enabled",
-        "description":"Comma delimited list of enabled PPVIDs",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"pids",
-        "description":"Comma delimited list of PIDs",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      }
-    ]
-  },
-  {
     "name":"load_average",
     "description":"Displays information about the system wide load averages.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/load_average.table",
@@ -11822,9 +10963,8 @@
   {
     "name":"lxd_certificates",
     "description":"LXD certificates information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_certificates.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_certificates.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -11867,9 +11007,8 @@
   {
     "name":"lxd_cluster",
     "description":"LXD cluster information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_cluster.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_cluster.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -11936,9 +11075,8 @@
   {
     "name":"lxd_cluster_members",
     "description":"LXD cluster members information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_cluster_members.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_cluster_members.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -11989,9 +11127,8 @@
   {
     "name":"lxd_images",
     "description":"LXD images information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_images.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_images.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -12154,9 +11291,8 @@
   {
     "name":"lxd_instance_config",
     "description":"LXD instance configuration information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instance_config.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_instance_config.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -12191,9 +11327,8 @@
   {
     "name":"lxd_instance_devices",
     "description":"LXD instance devices information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instance_devices.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_instance_devices.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -12244,9 +11379,8 @@
   {
     "name":"lxd_instances",
     "description":"LXD instances information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_instances.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_instances.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -12345,9 +11479,8 @@
   {
     "name":"lxd_networks",
     "description":"LXD network information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_networks.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_networks.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -12462,9 +11595,8 @@
   {
     "name":"lxd_storage_pools",
     "description":"LXD storage pool information.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/lxd_storage_pools.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/lxd_storage_pools.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -13521,6 +12653,14 @@
         "index":false
       },
       {
+        "name":"memory_available",
+        "description":"The amount of physical RAM, in bytes, available for starting new applications, without swapping",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"buffers",
         "description":"The amount of physical RAM, in bytes, used for file buffers",
         "type":"bigint",
@@ -13845,10 +12985,13 @@
   },
   {
     "name":"npm_packages",
-    "description":"Lists all npm packages in a directory or globally installed in a system.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/npm_packages.table",
+    "description":"Node packages installed in a system.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/npm_packages.table",
     "platforms":[
-      "linux"
+      "darwin",
+      "linux",
+      "windows",
+      "freebsd"
     ],
     "evented":false,
     "cacheable":false,
@@ -13863,7 +13006,7 @@
       },
       {
         "name":"version",
-        "description":"Package supplied version",
+        "description":"Package-supplied version",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -13871,7 +13014,7 @@
       },
       {
         "name":"description",
-        "description":"Package supplied description",
+        "description":"Package-supplied description",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -13879,7 +13022,7 @@
       },
       {
         "name":"author",
-        "description":"Package author name",
+        "description":"Package-supplied author",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -13887,7 +13030,15 @@
       },
       {
         "name":"license",
-        "description":"License for package",
+        "description":"License under which package is launched",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"homepage",
+        "description":"Package supplied homepage",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -13895,7 +13046,7 @@
       },
       {
         "name":"path",
-        "description":"Module's package.json path",
+        "description":"Path at which this module resides",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -13903,7 +13054,7 @@
       },
       {
         "name":"directory",
-        "description":"Node module's directory where this package is located",
+        "description":"Directory where node_modules are located",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -14912,7 +14063,7 @@
       },
       {
         "name":"output_size",
-        "description":"Total number of bytes generated by the query",
+        "description":"Cumulative total number of bytes generated by the resultant rows of the query",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14920,7 +14071,23 @@
       },
       {
         "name":"wall_time",
-        "description":"Total wall time spent executing",
+        "description":"Total wall time in seconds spent executing (deprecated), hidden=True",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"wall_time_ms",
+        "description":"Total wall time in milliseconds spent executing",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_wall_time_ms",
+        "description":"Wall time in milliseconds of the latest execution",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14928,7 +14095,15 @@
       },
       {
         "name":"user_time",
-        "description":"Total user time spent executing",
+        "description":"Total user time in milliseconds spent executing",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_user_time",
+        "description":"User time in milliseconds of the latest execution",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14936,7 +14111,15 @@
       },
       {
         "name":"system_time",
-        "description":"Total system time spent executing",
+        "description":"Total system time in milliseconds spent executing",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_system_time",
+        "description":"System time in milliseconds of the latest execution",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14944,7 +14127,15 @@
       },
       {
         "name":"average_memory",
-        "description":"Average private memory left after executing",
+        "description":"Average of the bytes of resident memory left allocated after collecting results",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"last_memory",
+        "description":"Resident memory in bytes left allocated after collecting results of the latest execution",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14954,7 +14145,7 @@
   },
   {
     "name":"package_bom",
-    "description":"OS X package bill of materials (BOM) file list.",
+    "description":"macOS package bill of materials (BOM) file list.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/package_bom.table",
     "platforms":[
       "darwin"
@@ -15022,7 +14213,7 @@
   },
   {
     "name":"package_install_history",
-    "description":"OS X package install history.",
+    "description":"macOS package install history.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/package_install_history.table",
     "platforms":[
       "darwin"
@@ -15082,7 +14273,7 @@
   },
   {
     "name":"package_receipts",
-    "description":"OS X package receipt details.",
+    "description":"macOS package receipt details.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/package_receipts.table",
     "platforms":[
       "darwin"
@@ -15141,6 +14332,50 @@
       {
         "name":"path",
         "description":"Path of receipt plist",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"password_policy",
+    "description":"Password Policies for macOS.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/password_policy.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"uid",
+        "description":"User ID for the policy if available",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"policy_identifier",
+        "description":"Policy Identifier",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"policy_content",
+        "description":"Policy content",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"policy_description",
+        "description":"Policy description",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -15852,7 +15087,7 @@
     "columns":[
       {
         "name":"key",
-        "description":"The SMC key on OS X",
+        "description":"The SMC key on macOS",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -15962,7 +15197,7 @@
   },
   {
     "name":"preferences",
-    "description":"OS X defaults and managed preferences.",
+    "description":"macOS defaults and managed preferences.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/preferences.table",
     "platforms":[
       "darwin"
@@ -16817,9 +16052,8 @@
   {
     "name":"process_open_pipes",
     "description":"Pipes and partner processes for each process.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/process_open_pipes.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/process_open_pipes.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -17310,6 +16544,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"translated",
+        "description":"Indicates whether the process is running under the Rosetta Translation Environment, yes=1, no=0, error=-1.",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -17523,7 +16765,7 @@
   },
   {
     "name":"quicklook_cache",
-    "description":"Files and thumbnails within OS X's Quicklook Cache.",
+    "description":"Files and thumbnails within macOS's Quicklook Cache.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/quicklook_cache.table",
     "platforms":[
       "darwin"
@@ -18098,7 +17340,7 @@
   },
   {
     "name":"sandboxes",
-    "description":"OS X application sandboxes container details.",
+    "description":"macOS application sandboxes container details.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/sandboxes.table",
     "platforms":[
       "darwin"
@@ -18413,9 +17655,7 @@
     "description":"Secure Boot UEFI Settings.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/secureboot.table",
     "platforms":[
-      "darwin",
       "linux",
-      "freebsd",
       "windows"
     ],
     "evented":false,
@@ -18916,7 +18156,7 @@
       {
         "name":"maximum_allowed",
         "description":"Limit on the maximum number of users allowed to use this resource concurrently. The value is only valid if the AllowMaximum property is set to FALSE.",
-        "type":"integer",
+        "type":"bigint",
         "hidden":false,
         "required":false,
         "index":false
@@ -18940,7 +18180,15 @@
       {
         "name":"type",
         "description":"Type of resource being shared. Types include: disk drives, print queues, interprocess communications (IPC), and general devices.",
-        "type":"integer",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"type_name",
+        "description":"Human readable value for the 'type' column",
+        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -18949,7 +18197,7 @@
   },
   {
     "name":"sharing_preferences",
-    "description":"OS X Sharing preferences.",
+    "description":"macOS Sharing preferences.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/sharing_preferences.table",
     "platforms":[
       "darwin"
@@ -19205,170 +18453,6 @@
     ]
   },
   {
-    "name":"shortcut_files",
-    "description":"View data about Windows Shortcut files.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/shortcut_files.table",
-    "platforms":[
-      "windows"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"path",
-        "description":"Directory name.",
-        "type":"text",
-        "hidden":false,
-        "required":true,
-        "index":false
-      },
-      {
-        "name":"target_path",
-        "description":"Target file path",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"target_modified",
-        "description":"Target Modified time.",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"target_created",
-        "description":"Target Created time.",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"target_accessed",
-        "description":"Target Accessed time.",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"target_size",
-        "description":"Size of target file.",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"relative_path",
-        "description":"Relative path to target file from lnk file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"local_path",
-        "description":"Local system path to target file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"working_path",
-        "description":"Target file directory.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"icon_path",
-        "description":"Lnk file icon location.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"common_path",
-        "description":"Common system path to target file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"command_args",
-        "description":"Command args passed to lnk file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"hostname",
-        "description":"Optional hostname of the target file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"share_name",
-        "description":"Share name of the target file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"device_type",
-        "description":"Device containing the target file.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"volume_serial",
-        "description":"Volume serial number.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"mft_entry",
-        "description":"Target mft entry.",
-        "type":"bigint",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"mft_sequence",
-        "description":"Target mft sequence.",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"description",
-        "description":"Lnk file description.",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      }
-    ]
-  },
-  {
     "name":"signature",
     "description":"File (executable, bundle, installer, disk) code signing status.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/signature.table",
@@ -19474,203 +18558,6 @@
         "name":"enabled_nvram",
         "description":"1 if this configuration is enabled, otherwise 0",
         "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"smart_drive_info",
-    "description":"Drive information read by SMART controller utilizing autodetect.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/smart/smart_drive_info.table",
-    "platforms":[
-      "darwin",
-      "linux"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "columns":[
-      {
-        "name":"device_name",
-        "description":"Name of block device",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"disk_id",
-        "description":"Physical slot number of device, only exists when hardware storage controller exists",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"driver_type",
-        "description":"The explicit device type used to retrieve the SMART information",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"model_family",
-        "description":"Drive model family",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"device_model",
-        "description":"Device Model",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"serial_number",
-        "description":"Device serial number",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"lu_wwn_device_id",
-        "description":"Device Identifier",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"additional_product_id",
-        "description":"An additional drive identifier if any",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"firmware_version",
-        "description":"Drive firmware version",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"user_capacity",
-        "description":"Bytes of drive capacity",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"sector_sizes",
-        "description":"Bytes of drive sector sizes",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"rotation_rate",
-        "description":"Drive RPM",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"form_factor",
-        "description":"Form factor if reported",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"in_smartctl_db",
-        "description":"Boolean value for if drive is recognized",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"ata_version",
-        "description":"ATA version of drive",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"transport_type",
-        "description":"Drive transport type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"sata_version",
-        "description":"SATA version, if any",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"read_device_identity_failure",
-        "description":"Error string for device id read, if any",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"smart_supported",
-        "description":"SMART support status",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"smart_enabled",
-        "description":"SMART enabled status",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"packet_device_type",
-        "description":"Packet device type",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"power_mode",
-        "description":"Device power mode",
-        "type":"text",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"warnings",
-        "description":"Warning messages from SMART controller",
-        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -20679,7 +19566,7 @@
     "columns":[
       {
         "name":"key",
-        "description":"The SMC key on OS X",
+        "description":"The SMC key on macOS",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -20962,7 +19849,7 @@
       },
       {
         "name":"owned",
-        "description":"TPM is ownned",
+        "description":"TPM is owned",
         "type":"integer",
         "hidden":false,
         "required":false,
@@ -21847,7 +20734,7 @@
   },
   {
     "name":"wifi_networks",
-    "description":"OS X known/remembered Wi-Fi networks list.",
+    "description":"macOS known/remembered Wi-Fi networks list.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/wifi_networks.table",
     "platforms":[
       "darwin"
@@ -21881,9 +20768,9 @@
       },
       {
         "name":"last_connected",
-        "description":"Last time this netword was connected to as a unix_time",
+        "description":"Last time this network was connected to as a unix_time",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -21891,7 +20778,7 @@
         "name":"passpoint",
         "description":"1 if Passpoint is supported, 0 otherwise",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -21907,7 +20794,7 @@
         "name":"roaming",
         "description":"1 if roaming is supported, 0 otherwise",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -21920,18 +20807,10 @@
         "index":false
       },
       {
-        "name":"captive_portal",
-        "description":"1 if this network has a captive portal, 0 otherwise",
-        "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
         "name":"auto_login",
         "description":"1 if auto login is enabled, 0 otherwise",
         "type":"integer",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false
       },
@@ -21947,6 +20826,62 @@
         "name":"disabled",
         "description":"1 if this network is disabled, 0 otherwise",
         "type":"integer",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"add_reason",
+        "description":"Shows why this network was added, via menubar or command line or something else ",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"added_at",
+        "description":"Time this network was added as a unix_time",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"captive_portal",
+        "description":"1 if this network has a captive portal, 0 otherwise",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"captive_login_date",
+        "description":"Time this network logged in to a captive portal as unix_time",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"was_captive_network",
+        "description":"1 if this network was previously a captive network, 0 otherwise",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"auto_join",
+        "description":"1 if this network set to join automatically, 0 otherwise",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"personal_hotspot",
+        "description":"1 if this network is a personal hotspot, 0 otherwise",
+        "type":"integer",
         "hidden":false,
         "required":false,
         "index":false
@@ -21955,7 +20890,7 @@
   },
   {
     "name":"wifi_status",
-    "description":"OS X current WiFi status.",
+    "description":"macOS current WiFi status.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/wifi_status.table",
     "platforms":[
       "darwin"
@@ -22930,6 +21865,114 @@
     ]
   },
   {
+    "name":"windows_update_history",
+    "description":"Provides the history of the windows update events.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_update_history.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"client_app_id",
+        "description":"Identifier of the client application that processed an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"date",
+        "description":"Date and the time an update was applied",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"Description of an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"hresult",
+        "description":"HRESULT value that is returned from the operation on an update",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"operation",
+        "description":"Operation on an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"result_code",
+        "description":"Result of an operation on an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"server_selection",
+        "description":"Value that indicates which server provided an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"service_id",
+        "description":"Service identifier of an update service that is not a Windows update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"support_url",
+        "description":"Hyperlink to the language-specific support information for an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"title",
+        "description":"Title of an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_id",
+        "description":"Revision-independent identifier of an update",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"update_revision",
+        "description":"Revision number of an update",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"wmi_bios_info",
     "description":"Lists important information from the system bios.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/wmi_bios_info.table",
@@ -23583,9 +22626,8 @@
   {
     "name":"yum_sources",
     "description":"Current list of Yum repositories or software channels.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/yum_sources.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/yum_sources.table",
     "platforms":[
-      "darwin",
       "linux"
     ],
     "evented":false,
@@ -23602,6 +22644,14 @@
       {
         "name":"baseurl",
         "description":"Repository base URL",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mirrorlist",
+        "description":"Mirrorlist URL",
         "type":"text",
         "hidden":false,
         "required":false,

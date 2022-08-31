@@ -27,7 +27,7 @@ _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
 _DEB_ARCH=$(dpkg --print-architecture)
 
-_OSQUERY_VER="5.2.2"
+_OSQUERY_VER="{ .OsqueryVersion }"
 _OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_OSQUERY_VER.pkg"
 _OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_$_OSQUERY_VER-1.linux_$_DEB_ARCH.deb"
 _OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_OSQUERY_VER-1.linux.x86_64.rpm"
@@ -243,8 +243,8 @@ $osqueryDaemon = (Join-Path $daemonFolder "osqueryd.exe")
 $secretFile = (Join-Path $osqueryPath "{{ .Project }}.secret")
 $flagsFile = (Join-Path $osqueryPath "osquery.flags")
 $certFile = (Join-Path $osqueryPath "{{ .Project }}.crt")
-$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-5.2.2.msi"
-$osqueryTempMSI = "C:\Windows\Temp\osquery-5.2.2.msi"
+$osqueryMSI = "https://osquery-packages.s3.amazonaws.com/windows/osquery-{ .OsqueryVersion }.msi"
+$osqueryTempMSI = "C:\Windows\Temp\osquery-{ .OsqueryVersion }.msi"
 #$osqueryMSISize = 9953280
 $serviceName = "osqueryd"
 $serviceDescription = "osquery daemon service"

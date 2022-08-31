@@ -8,7 +8,7 @@ on:
 
 env:
   GOLANG_VERSION: 1.18.1
-  OSQUERY_VERSION: 5.2.2
+  OSQUERY_VERSION: 5.4.0
 
 jobs:
   build_and_test:
@@ -160,7 +160,7 @@ jobs:
         components: ['tls', 'admin', 'api', 'cli']
         goos: ['linux']
         goarch: ['amd64']
-    steps:  
+    steps:
       ########################### Checkout code ###########################
       - name: Checkout code
         uses: actions/checkout@v3
@@ -176,7 +176,7 @@ jobs:
           echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-      
+
       ########################### Create release ###########################
       - name: Create a new release with binaries and packages
         uses: ./.github/actions/tagged_release/github
