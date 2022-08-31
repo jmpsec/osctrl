@@ -55,19 +55,20 @@ const (
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
-	Name       string `gorm:"not null;unique;index"`
-	Creator    string
-	Query      string
-	Expected   int
-	Executions int
-	Errors     int
-	Active     bool
-	Hidden     bool
-	Protected  bool
-	Completed  bool
-	Deleted    bool
-	Type       string
-	Path       string
+	Name          string `gorm:"not null;unique;index"`
+	Creator       string
+	Query         string
+	Expected      int
+	Executions    int
+	Errors        int
+	Active        bool
+	Hidden        bool
+	Protected     bool
+	Completed     bool
+	Deleted       bool
+	Type          string
+	Path          string
+	EnvironmentID uint
 }
 
 // DistributedQueryTarget to keep target logic for queries

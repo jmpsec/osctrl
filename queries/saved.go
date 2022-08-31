@@ -9,9 +9,10 @@ import (
 // SavedQuery as abstraction of a saved query to be used in distributed, schedule or packs
 type SavedQuery struct {
 	gorm.Model
-	Name    string
-	Creator string
-	Query   string
+	Name          string
+	Creator       string
+	Query         string
+	EnvironmentID uint
 }
 
 // GetSavedByCreator to get a saved query by creator
