@@ -210,6 +210,7 @@ function certbot_certificates_nginx() {
 #   string  listener
 #   string  auth_option
 #   string  logging_option
+#   string  carver_option
 #   string  sudo_command
 function configuration_service() {
   local __conf=$1
@@ -220,11 +221,12 @@ function configuration_service() {
   local __listener=$5
   local __auth=$6
   local __logging=$7
-  local __sudo=$8
+  local __carver=$8
+  local __sudo=$9
 
   log "Generating $__dest configuration"
 
-  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_LISTENER|$__listener|g" | sed "s|_SERVICE_NAME|$__service|g" | sed "s|_SERVICE_AUTH|$__auth|g" | sed "s|_SERVICE_LOGGING|$__logging|g" | $__sudo tee "$__dest"
+  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_LISTENER|$__listener|g" | sed "s|_SERVICE_NAME|$__service|g" | sed "s|_SERVICE_AUTH|$__auth|g" | sed "s|_SERVICE_LOGGING|$__logging|g" | sed "s|_SERVICE_CARVER|$__carver|g" |  $__sudo tee "$__dest"
 }
 
 # DB configuration file generation

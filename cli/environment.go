@@ -249,7 +249,7 @@ func quickAddEnvironment(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	insecure := c.Bool("insecure")
+	insecure := (c.Bool("insecure") || (env.Certificate != ""))
 	var oneLiner string
 	switch c.String("target") {
 	case targetShell:
