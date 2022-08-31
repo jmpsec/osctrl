@@ -133,7 +133,7 @@ var validAuth = map[string]bool{
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file string) (types.JSONConfigurationAPI, error) {
+func loadConfiguration(file, service string) (types.JSONConfigurationAPI, error) {
 	var cfg types.JSONConfigurationAPI
 	log.Printf("Loading %s", file)
 	// Load file and read config
@@ -141,9 +141,12 @@ func loadConfiguration(file string) (types.JSONConfigurationAPI, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
-	// TLS endpoint values
-	tlsRaw := viper.Sub(settings.ServiceAPI)
-	if err := tlsRaw.Unmarshal(&cfg); err != nil {
+	// API values
+	apiRaw := viper.Sub(service)
+	if apiRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", service, file)
+	}
+	if err := apiRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// Check if values are valid
@@ -544,7 +547,7 @@ func osctrlAPIService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if configFlag {
-		apiConfig, err = loadConfiguration(serviceConfigFile)
+		apiConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAPI)
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
 		}

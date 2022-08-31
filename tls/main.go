@@ -139,7 +139,7 @@ var validCarver = map[string]bool{
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file string) (types.JSONConfigurationTLS, error) {
+func loadConfiguration(file, service string) (types.JSONConfigurationTLS, error) {
 	var cfg types.JSONConfigurationTLS
 	log.Printf("Loading %s", file)
 	// Load file and read config
@@ -148,7 +148,10 @@ func loadConfiguration(file string) (types.JSONConfigurationTLS, error) {
 		return cfg, err
 	}
 	// TLS endpoint values
-	tlsRaw := viper.Sub(settings.ServiceTLS)
+	tlsRaw := viper.Sub(service)
+	if tlsRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", service, file)
+	}
 	if err := tlsRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
@@ -642,7 +645,7 @@ func osctrlService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if configFlag {
-		tlsConfig, err = loadConfiguration(serviceConfigFile)
+		tlsConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceTLS)
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %s", serviceConfigFile, err)
 		}
