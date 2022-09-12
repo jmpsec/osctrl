@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
@@ -18,9 +19,17 @@ func listNodes(c *cli.Context) error {
 	if c.Bool("inactive") {
 		target = "inactive"
 	}
-	nodes, err := nodesmgr.Gets(target, settingsmgr.InactiveHours())
-	if err != nil {
-		return err
+	var nds []nodes.OsqueryNode
+	if dbFlag {
+		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours())
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		nds, err = osctrlAPI.GetNodes()
+		if err != nil {
+			return err
+		}
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
@@ -32,10 +41,10 @@ func listNodes(c *cli.Context) error {
 		"IPAddress",
 		"Version",
 	})
-	if len(nodes) > 0 {
+	if len(nds) > 0 {
 		data := [][]string{}
-		fmt.Printf("Existing %s nodes (%d):\n", target, len(nodes))
-		for _, n := range nodes {
+		fmt.Printf("Existing %s nodes (%d):\n", target, len(nds))
+		for _, n := range nds {
 			_n := []string{
 				n.Hostname,
 				n.UUID,
