@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// DB configuration file
-	defDBConfigurationFile string = "config/db.json"
 	// Project name
 	projectName string = "osctrl"
 	// Application name
@@ -38,6 +36,7 @@ var (
 	err         error
 	app         *cli.App
 	dbConfig    backend.JSONConfigurationDB
+	apiConfig   JSONConfigurationAPI
 	flags       []cli.Flag
 	commands    []*cli.Command
 	settingsmgr *settings.Settings
@@ -47,12 +46,19 @@ var (
 	tagsmgr     *tags.TagManager
 	envs        *environments.Environment
 	db          *backend.DBManager
+	osctrlAPI   *OsctrlAPI
 )
 
 // Variables for flags
 var (
-	dbFlag       bool
-	dbConfigFile string
+	dbFlag        bool
+	apiFlag       bool
+	jsonFlag      bool
+	csvFlag       bool
+	prettyFlag    bool
+	insecureFlag  bool
+	dbConfigFile  string
+	apiConfigFile string
 )
 
 // Initialization code
@@ -63,15 +69,45 @@ func init() {
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
-			Usage:       "Provide DB configuration via JSON file",
+			Usage:       "Connect to local osctrl DB using JSON config file",
 			EnvVars:     []string{"DB_CONFIG"},
 			Destination: &dbFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "api",
+			Aliases:     []string{"a"},
+			Value:       true,
+			Usage:       "Connect to remote osctrl using JSON config file",
+			EnvVars:     []string{"API_CONFIG"},
+			Destination: &apiFlag,
+		},
+		&cli.StringFlag{
+			Name:        "api-file",
+			Aliases:     []string{"A"},
+			Value:       "",
+			Usage:       "Load API JSON configuration from `FILE`",
+			EnvVars:     []string{"API_CONFIG_FILE"},
+			Destination: &apiConfigFile,
+		},
+		&cli.StringFlag{
+			Name:        "api-url",
+			Aliases:     []string{"U"},
+			Usage:       "The URL for osctrl API to be used",
+			EnvVars:     []string{"API_URL"},
+			Destination: &apiConfig.URL,
+		},
+		&cli.StringFlag{
+			Name:        "api-token",
+			Aliases:     []string{"T"},
+			Usage:       "Token to authenticate with the osctrl API",
+			EnvVars:     []string{"API_TOKEN"},
+			Destination: &apiConfig.Token,
 		},
 		&cli.StringFlag{
 			Name:        "db-file",
 			Aliases:     []string{"D"},
-			Value:       defDBConfigurationFile,
-			Usage:       "Load DB configuration from `FILE`",
+			Value:       "",
+			Usage:       "Load DB JSON configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
 			Destination: &dbConfigFile,
 		},
@@ -130,6 +166,34 @@ func init() {
 			Usage:       "Maximum amount of time a connection may be reused",
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
 			Destination: &dbConfig.ConnMaxLifetime,
+		},
+		&cli.BoolFlag{
+			Name:        "insecure",
+			Aliases:     []string{"i"},
+			Value:       false,
+			Usage:       "Allow insecure server connections when using SSL",
+			Destination: &insecureFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "json",
+			Aliases:     []string{"j"},
+			Value:       false,
+			Usage:       "Print output in JSON format",
+			Destination: &jsonFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "csv",
+			Aliases:     []string{"c"},
+			Value:       false,
+			Usage:       "Print output in CSV format",
+			Destination: &csvFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "pretty",
+			Aliases:     []string{"p"},
+			Value:       true,
+			Usage:       "Print output in pretty format (table)",
+			Destination: &prettyFlag,
 		},
 	}
 	// Initialize CLI flags commands
@@ -905,16 +969,17 @@ func init() {
 					Usage:   "List enrolled nodes",
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
-							Name:    "all, v",
-							Aliases: []string{"v"},
-							Hidden:  false,
-							Usage:   "Show all nodes",
-						},
-						&cli.BoolFlag{
 							Name:    "active",
 							Aliases: []string{"a"},
-							Hidden:  true,
+							Hidden:  false,
+							Value:   true,
 							Usage:   "Show active nodes",
+						},
+						&cli.BoolFlag{
+							Name:    "all, A",
+							Aliases: []string{"A"},
+							Hidden:  false,
+							Usage:   "Show all nodes",
 						},
 						&cli.BoolFlag{
 							Name:    "inactive, i",
@@ -924,6 +989,19 @@ func init() {
 						},
 					},
 					Action: cliWrapper(listNodes),
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show an existing node",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "uuid",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID to be shown",
+						},
+					},
+					Action: cliWrapper(showNode),
 				},
 			},
 		},
@@ -1088,9 +1166,14 @@ func init() {
 			},
 		},
 		{
-			Name:   "check",
+			Name:   "check-db",
 			Usage:  "Checks DB connection",
 			Action: checkDB,
+		},
+		{
+			Name:   "check-api",
+			Usage:  "Checks API token",
+			Action: checkAPI,
 		},
 	}
 }
@@ -1116,36 +1199,68 @@ func checkDB(c *cli.Context) error {
 	return nil
 }
 
+// Action for the API check
+func checkAPI(c *cli.Context) error {
+	if apiFlag {
+		if apiConfigFile != "" {
+			apiConfig, err = loadAPIConfiguration(apiConfigFile)
+			if err != nil {
+				return fmt.Errorf("loadAPIConfiguration - %v", err)
+			}
+		}
+		// Initialize API
+		osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+	}
+	// Should be good
+	return nil
+}
+
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		// Load DB configuration if external JSON config file is used
+		// DB connection will be used
 		if dbFlag {
 			// Initialize backend
-			db, err = backend.CreateDBManagerFile(dbConfigFile)
-			if err != nil {
-				return fmt.Errorf("Failed to create backend - %v", err)
+			if dbConfigFile != "" {
+				db, err = backend.CreateDBManagerFile(dbConfigFile)
+				if err != nil {
+					return fmt.Errorf("CreateDBManagerFile - %v", err)
+				}
+			} else {
+				db, err = backend.CreateDBManager(dbConfig)
+				if err != nil {
+					return fmt.Errorf("CreateDBManager - %v", err)
+				}
 			}
-		} else {
-			db, err = backend.CreateDBManager(dbConfig)
-			if err != nil {
-				return fmt.Errorf("Failed to create backend - %v", err)
-			}
+			// Initialize users
+			adminUsers = users.CreateUserManager(db.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
+			// Initialize environment
+			envs = environments.CreateEnvironment(db.Conn)
+			// Initialize settings
+			settingsmgr = settings.NewSettings(db.Conn)
+			// Initialize nodes
+			nodesmgr = nodes.CreateNodes(db.Conn)
+			// Initialize queries
+			queriesmgr = queries.CreateQueries(db.Conn)
+			// Initialize tags
+			tagsmgr = tags.CreateTagManager(db.Conn)
+			// Execute action
+			return action(c)
 		}
-		// Initialize users
-		adminUsers = users.CreateUserManager(db.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
-		// Initialize environment
-		envs = environments.CreateEnvironment(db.Conn)
-		// Initialize settings
-		settingsmgr = settings.NewSettings(db.Conn)
-		// Initialize nodes
-		nodesmgr = nodes.CreateNodes(db.Conn)
-		// Initialize queries
-		queriesmgr = queries.CreateQueries(db.Conn)
-		// Initialize tags
-		tagsmgr = tags.CreateTagManager(db.Conn)
-		// Execute action
-		return action(c)
+		if apiFlag {
+			if apiConfigFile != "" {
+				apiConfig, err = loadAPIConfiguration(apiConfigFile)
+				if err != nil {
+					return fmt.Errorf("loadAPIConfiguration - %v", err)
+				}
+			}
+			// Initialize API
+			osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+			// Execute action
+			return action(c)
+		}
+		// If we are here, nor DB or API has been enabled
+		return nil
 	}
 }
 
