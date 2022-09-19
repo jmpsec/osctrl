@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/spf13/viper"
 )
@@ -134,18 +132,4 @@ func (api *OsctrlAPI) GetGeneric(url string, body io.Reader) ([]byte, error) {
 		return []byte{}, fmt.Errorf("can not read response - %v", err)
 	}
 	return bodyBytes, nil
-}
-
-// GetNodes to retrieve nodes from osctrl
-func (api *OsctrlAPI) GetNodes() ([]nodes.OsqueryNode, error) {
-	var nds []nodes.OsqueryNode
-	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APINodes)
-	rawNodes, err := api.GetGeneric(reqURL, nil)
-	if err != nil {
-		return nds, fmt.Errorf("error api request - %v", err)
-	}
-	if err := json.Unmarshal(rawNodes, &nds); err != nil {
-		return nds, fmt.Errorf("can not parse body - %v", err)
-	}
-	return nds, nil
 }

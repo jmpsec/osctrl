@@ -969,16 +969,17 @@ func init() {
 					Usage:   "List enrolled nodes",
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
-							Name:    "all, v",
-							Aliases: []string{"v"},
-							Hidden:  false,
-							Usage:   "Show all nodes",
-						},
-						&cli.BoolFlag{
 							Name:    "active",
 							Aliases: []string{"a"},
-							Hidden:  true,
+							Hidden:  false,
+							Value:   true,
 							Usage:   "Show active nodes",
+						},
+						&cli.BoolFlag{
+							Name:    "all, A",
+							Aliases: []string{"A"},
+							Hidden:  false,
+							Usage:   "Show all nodes",
 						},
 						&cli.BoolFlag{
 							Name:    "inactive, i",
@@ -988,6 +989,19 @@ func init() {
 						},
 					},
 					Action: cliWrapper(listNodes),
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show an existing node",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "uuid",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID to be shown",
+						},
+					},
+					Action: cliWrapper(showNode),
 				},
 			},
 		},
@@ -1159,7 +1173,7 @@ func init() {
 		{
 			Name:   "check-api",
 			Usage:  "Checks API token",
-			Action: cliWrapper(checkAPI),
+			Action: checkAPI,
 		},
 	}
 }
@@ -1188,11 +1202,14 @@ func checkDB(c *cli.Context) error {
 // Action for the API check
 func checkAPI(c *cli.Context) error {
 	if apiFlag {
-		nds, err := osctrlAPI.GetNodes()
-		if err != nil {
-			return err
+		if apiConfigFile != "" {
+			apiConfig, err = loadAPIConfiguration(apiConfigFile)
+			if err != nil {
+				return fmt.Errorf("loadAPIConfiguration - %v", err)
+			}
 		}
-		log.Printf("Received %d nodes", len(nds))
+		// Initialize API
+		osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 	}
 	// Should be good
 	return nil
