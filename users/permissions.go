@@ -21,11 +21,12 @@ type EnvAccess struct {
 // UserPermission to hold all permissions for users
 type UserPermission struct {
 	gorm.Model
-	Username    string `gorm:"index"`
-	AccessType  int
-	AccessValue bool
-	Environment string
-	GrantedBy   string
+	Username      string `gorm:"index"`
+	AccessType    int
+	AccessValue   bool
+	Environment   string
+	EnvironmentID uint
+	GrantedBy     string
 }
 
 // AccessLevel as abstraction of level of access for a user
@@ -127,6 +128,7 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 	for _, p := range perms {
 		// Access is yes for admins
 		if p.AccessType == int(AdminLevel) && p.AccessValue {
+			log.Printf("%s is admin", username)
 			return true
 		}
 		if p.AccessType == int(level) {

@@ -165,6 +165,21 @@ func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
 	return node, nil
 }
 
+// GetByIdentifier to retrieve full node object from DB, by uuid or hostname or localname
+// UUID is expected uppercase
+func (n *NodeManager) GetByIdentifier(identifier string) (OsqueryNode, error) {
+	var node OsqueryNode
+	if err := n.DB.Where(
+		"uuid = ? OR hostname = ? OR localname = ?",
+		strings.ToUpper(identifier),
+		identifier,
+		identifier,
+	).First(&node).Error; err != nil {
+		return node, err
+	}
+	return node, nil
+}
+
 // GetByUUID to retrieve full node object from DB, by uuid
 // UUID is expected uppercase
 func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {

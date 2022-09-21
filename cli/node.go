@@ -51,6 +51,11 @@ func listNodes(c *cli.Context) error {
 	if c.Bool("inactive") {
 		target = "inactive"
 	}
+	env := c.String("name")
+	if env == "" {
+		fmt.Println("Environment is required")
+		os.Exit(1)
+	}
 	// Retrieve data
 	var nds []nodes.OsqueryNode
 	if dbFlag {
@@ -59,7 +64,7 @@ func listNodes(c *cli.Context) error {
 			return err
 		}
 	} else if apiFlag {
-		nds, err = osctrlAPI.GetNodes()
+		nds, err = osctrlAPI.GetNodes(env)
 		if err != nil {
 			return err
 		}
@@ -109,6 +114,11 @@ func deleteNode(c *cli.Context) error {
 		fmt.Println("uuid is required")
 		os.Exit(1)
 	}
+	env := c.String("name")
+	if env == "" {
+		fmt.Println("Environment is required")
+		os.Exit(1)
+	}
 	if dbFlag {
 		if err := nodesmgr.ArchiveDeleteByUUID(uuid); err != nil {
 			return err
@@ -127,6 +137,11 @@ func showNode(c *cli.Context) error {
 		fmt.Println("UUID is required")
 		os.Exit(1)
 	}
+	env := c.String("name")
+	if env == "" {
+		fmt.Println("Environment is required")
+		os.Exit(1)
+	}
 	var node nodes.OsqueryNode
 	if dbFlag {
 		node, err = nodesmgr.GetByUUID(uuid)
@@ -134,7 +149,7 @@ func showNode(c *cli.Context) error {
 			return err
 		}
 	} else if apiFlag {
-		node, err = osctrlAPI.GetNode(uuid)
+		node, err = osctrlAPI.GetNode(env, uuid)
 		if err != nil {
 			return err
 		}

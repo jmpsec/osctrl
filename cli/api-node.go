@@ -8,9 +8,9 @@ import (
 )
 
 // GetNodes to retrieve nodes from osctrl
-func (api *OsctrlAPI) GetNodes() ([]nodes.OsqueryNode, error) {
+func (api *OsctrlAPI) GetNodes(env string) ([]nodes.OsqueryNode, error) {
 	var nds []nodes.OsqueryNode
-	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APINodes)
+	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APINodes, env)
 	rawNodes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return nds, fmt.Errorf("error api request - %v", err)
@@ -22,9 +22,9 @@ func (api *OsctrlAPI) GetNodes() ([]nodes.OsqueryNode, error) {
 }
 
 // GetNode to retrieve one node from osctrl
-func (api *OsctrlAPI) GetNode(identifier string) (nodes.OsqueryNode, error) {
+func (api *OsctrlAPI) GetNode(env, identifier string) (nodes.OsqueryNode, error) {
 	var node nodes.OsqueryNode
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APINodes, identifier)
+	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APINodes, env, identifier)
 	rawNode, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return node, fmt.Errorf("error api request - %v", err)

@@ -35,8 +35,8 @@ const (
 
 // JSONConfigurationAPI to hold all API configuration values
 type JSONConfigurationAPI struct {
-	URL   string `json:"url"`
-	Token string `json:"token"`
+	URL         string `json:"url"`
+	Token       string `json:"token"`
 }
 
 // OsctrlAPI

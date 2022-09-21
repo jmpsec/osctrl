@@ -22,16 +22,30 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
-	// Extract uuid
-	uuid, ok := vars["uuid"]
+	// Extract environment
+	envVar, ok := vars["environment"]
 	if !ok {
-		apiErrorResponse(w, "error getting uuid", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPINodesErr)
 		return
 	}
-	// Get node by UUID
-	// FIXME keep a cache of nodes by UUID
-	node, err := nodesmgr.GetByUUID(uuid)
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPINodesErr)
+		return
+	}
+	// Extract host identifier
+	identifier, ok := vars["identifier"]
+	if !ok {
+		apiErrorResponse(w, "error getting identifier", http.StatusInternalServerError, nil)
+		incMetric(metricAPINodesErr)
+		return
+	}
+	// Get node by identifier
+	// FIXME keep a cache of nodes by node identifier
+	node, err := nodesmgr.GetByIdentifier(identifier)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
@@ -43,14 +57,14 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, node.Environment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Serialize and serve JSON
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned node %s", uuid)
+		log.Printf("DebugService: Returned node %s", identifier)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 	incMetric(metricAPINodesOK)
@@ -60,9 +74,24 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["environment"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPINodesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPINodesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
