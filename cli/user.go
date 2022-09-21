@@ -84,7 +84,7 @@ func editUser(c *cli.Context) error {
 	}
 	notAdmin := c.Bool("non-admin")
 	if notAdmin {
-		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
+		if err := adminUsers.ChangeAdmin(username, false); err != nil {
 			return err
 		}
 	}

@@ -480,12 +480,12 @@ func osctrlAPIService() {
 	routerAPI.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
 
 	// ///////////////////////// AUTHENTICATED
-	// API: nodes
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{uuid}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{uuid}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath), handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
-	// API: queries
+	// API: nodes by environment
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{environment}/{identifier}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{environment}/{identifier}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{environment}", handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{environment}/", handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
+	// API: queries by environment
 	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiHiddenQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiHiddenQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath), handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
@@ -496,18 +496,18 @@ func osctrlAPIService() {
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/results/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath)+"/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
-	// API: platforms
+	// API: platforms by environment
 	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
-	// API: environments
+	// API: environments by environment
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{environment}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{environment}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
-	// API: tags
+	// API: tags by environment
 	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
-	// API: settings
+	// API: settings by environment
 	routerAPI.Handle(_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
