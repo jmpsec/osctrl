@@ -567,7 +567,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 			log.Printf("error refreshing last query write %v", err)
 		}
 		// Process submitted results and mark query as processed
-		go h.Logs.ProcessLogQueryResult(t, env.Name, (*h.EnvsMap)[env.Name].DebugHTTP)
+		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
 		nodeInvalid = true
 	}

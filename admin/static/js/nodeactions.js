@@ -31,14 +31,13 @@ function refreshCurrentNode() {
   location.reload();
 }
 
-function queryNodes(_uuids) {
+function queryNodes(_uuids, _url) {
   var _csrftoken = $("#csrftoken").val();
   var _query = $("#query").val();
   // Make sure semicolon always in the query
   if (_query.slice(-1) !== ';') {
     _query = _query + ';';
   }
-  var _url = '/query/run';
   var data = {
     csrftoken: _csrftoken,
     environment: "",
@@ -51,19 +50,18 @@ function queryNodes(_uuids) {
   sendPostRequest(data, _url, '', true);
 }
 
-function showQueryNodes(_uuids) {
+function showQueryNodes(_uuids, _url) {
   $('#query_action').click(function () {
     $('#queryModal').modal('hide');
-    queryNodes(_uuids);
+    queryNodes(_uuids, _url);
   });
   $("#queryModal").modal();
 }
 
-function carveFiles(_uuids) {
+function carveFiles(_uuids, _url) {
   var _csrftoken = $("#csrftoken").val();
   var _carve = $("#carve").val();
 
-  var _url = '/carves/run';
   var data = {
     csrftoken: _csrftoken,
     environment: "",
@@ -76,10 +74,10 @@ function carveFiles(_uuids) {
   sendPostRequest(data, _url, '', true);
 }
 
-function showCarveFiles(_uuids) {
+function showCarveFiles(_uuids, _url) {
   $('#carve_action').click(function () {
     $('#carveModal').modal('hide');
-    carveFiles(_uuids);
+    carveFiles(_uuids, _url);
   });
   $("#carveModal").modal();
 }

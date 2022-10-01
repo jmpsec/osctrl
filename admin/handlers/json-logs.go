@@ -77,7 +77,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Extract environment
-	envVar, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		log.Println("environment is missing")
 		h.Inc(metricJSONErr)

@@ -23,7 +23,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPINodesErr)
@@ -36,16 +36,16 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPINodesErr)
 		return
 	}
-	// Extract host identifier
-	identifier, ok := vars["identifier"]
+	// Extract host identifier for node
+	nodeVar, ok := vars["node"]
 	if !ok {
-		apiErrorResponse(w, "error getting identifier", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, nil)
 		incMetric(metricAPINodesErr)
 		return
 	}
 	// Get node by identifier
 	// FIXME keep a cache of nodes by node identifier
-	node, err := nodesmgr.GetByIdentifier(identifier)
+	node, err := nodesmgr.GetByIdentifier(nodeVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
@@ -64,7 +64,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned node %s", identifier)
+		log.Printf("DebugService: Returned node %s", nodeVar)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 	incMetric(metricAPINodesOK)
@@ -76,7 +76,7 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPINodesErr)

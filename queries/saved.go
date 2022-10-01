@@ -17,29 +17,30 @@ type SavedQuery struct {
 }
 
 // GetSavedByCreator to get a saved query by creator
-func (q *Queries) GetSavedByCreator(creator string) ([]SavedQuery, error) {
+func (q *Queries) GetSavedByCreator(creator string, envid uint) ([]SavedQuery, error) {
 	var saved []SavedQuery
-	if err := q.DB.Find(&saved).Error; err != nil {
+	if err := q.DB.Where("creator = ? AND environment_id = ?", creator, envid).Find(&saved).Error; err != nil {
 		return saved, err
 	}
 	return saved, nil
 }
 
 // GetSaved to get a saved query by creator
-func (q *Queries) GetSaved(name, creator string) (SavedQuery, error) {
+func (q *Queries) GetSaved(name, creator string, envid uint) (SavedQuery, error) {
 	var saved SavedQuery
-	if err := q.DB.Where("creator = ? AND name = ?", creator, name).Find(&saved).Error; err != nil {
+	if err := q.DB.Where("creator = ? AND name = ? AND environment_id = ?", creator, name, envid).Find(&saved).Error; err != nil {
 		return saved, err
 	}
 	return saved, nil
 }
 
 // CreateSaved to create new saved query
-func (q *Queries) CreateSaved(name, query, creator string) error {
+func (q *Queries) CreateSaved(name, query, creator string, envid uint) error {
 	saved := SavedQuery{
-		Name:    name,
-		Query:   query,
-		Creator: creator,
+		Name:          name,
+		Query:         query,
+		Creator:       creator,
+		EnvironmentID: envid,
 	}
 	if err := q.DB.Create(&saved).Error; err != nil {
 		return err
@@ -48,14 +49,15 @@ func (q *Queries) CreateSaved(name, query, creator string) error {
 }
 
 // UpdateSaved to update an existing saved query
-func (q *Queries) UpdateSaved(name, query, creator string) error {
-	saved, err := q.GetSaved(name, creator)
+func (q *Queries) UpdateSaved(name, query, creator string, envid uint) error {
+	saved, err := q.GetSaved(name, creator, envid)
 	if err != nil {
 		return fmt.Errorf("error getting saved query %v", err)
 	}
 	data := SavedQuery{
-		Name:  name,
-		Query: query,
+		Name:          name,
+		Query:         query,
+		EnvironmentID: envid,
 	}
 	if err := q.DB.Model(&saved).Updates(data).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
@@ -64,8 +66,8 @@ func (q *Queries) UpdateSaved(name, query, creator string) error {
 }
 
 // DeleteSaved to delete an existing saved query
-func (q *Queries) DeleteSaved(name, creator string) error {
-	saved, err := q.GetSaved(name, creator)
+func (q *Queries) DeleteSaved(name, creator string, envid uint) error {
+	saved, err := q.GetSaved(name, creator, envid)
 	if err != nil {
 		return fmt.Errorf("error getting saved query %v", err)
 	}

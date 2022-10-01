@@ -51,11 +51,15 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 }
 
 // ProcessLogQueryResult - Helper to process on-demand query result logs
-func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, environment string, debug bool) {
+func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, envid uint, debug bool) {
 	// Retrieve node
 	node, err := l.Nodes.GetByKey(queriesWrite.NodeKey)
 	if err != nil {
 		log.Printf("error retrieving node %s", err)
+	}
+	// Integrity check
+	if envid != node.EnvironmentID {
+		log.Printf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d]", envid, node.EnvironmentID)
 	}
 	// Tap into results so we can update internal metrics
 	for q, r := range queriesWrite.Queries {
@@ -70,9 +74,9 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 		// Update internal metrics per query
 		var err error
 		if queriesWrite.Statuses[q] != 0 {
-			err = l.Queries.IncError(q)
+			err = l.Queries.IncError(q, envid)
 		} else {
-			err = l.Queries.IncExecution(q)
+			err = l.Queries.IncExecution(q, envid)
 		}
 		if err != nil {
 			log.Printf("error updating query %s", err)
@@ -82,7 +86,7 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 			log.Printf("error adding query execution %s", err)
 		}
 		// Check if query is completed
-		if err := l.Queries.VerifyComplete(q); err != nil {
+		if err := l.Queries.VerifyComplete(q, envid); err != nil {
 			log.Printf("error verifying and completing query %s", err)
 		}
 	}

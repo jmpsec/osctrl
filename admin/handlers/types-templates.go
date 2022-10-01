@@ -34,6 +34,7 @@ type TemplateMetadata struct {
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
 	Title        string
+	EnvUUID      string
 	Selector     string
 	SelectorName string
 	Target       string
@@ -56,6 +57,7 @@ type ConfTemplateData struct {
 type EnrollTemplateData struct {
 	Title                 string
 	EnvName               string
+	EnvUUID               string
 	OnelinerExpiration    bool
 	EnrollExpiry          string
 	EnrollExpired         bool
@@ -76,6 +78,7 @@ type EnrollTemplateData struct {
 // QueryRunTemplateData for passing data to the query run template
 type QueryRunTemplateData struct {
 	Title         string
+	EnvUUID       string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
 	UUIDs         []string
@@ -91,6 +94,7 @@ type CarvesRunTemplateData QueryRunTemplateData
 // GenericTableTemplateData for passing data to a table template
 type GenericTableTemplateData struct {
 	Title        string
+	EnvUUID      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Target       string
@@ -109,6 +113,7 @@ type CarvesTableTemplateData GenericTableTemplateData
 // CarvesDetailsTemplateData for passing data to the carves details
 type CarvesDetailsTemplateData struct {
 	Title        string
+	EnvUUID      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
@@ -121,6 +126,7 @@ type CarvesDetailsTemplateData struct {
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
 	Title        string
+	EnvUUID      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
@@ -177,6 +183,7 @@ type TagsTemplateData struct {
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title        string
+	EnvUUID      string
 	Node         nodes.OsqueryNode
 	NodeTags     []tags.AdminTag
 	TagsForNode  []tags.AdminTagForNode

@@ -64,6 +64,20 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricJSONErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricJSONErr)
+		return
+	}
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
@@ -78,7 +92,7 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Retrieve carves for that target
-	qs, err := h.Queries.GetCarves(target)
+	qs, err := h.Queries.GetCarves(target, env.ID)
 	if err != nil {
 		h.Inc(metricJSONErr)
 		log.Printf("error getting query carves %v", err)

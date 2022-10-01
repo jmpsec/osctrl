@@ -51,7 +51,7 @@ func listNodes(c *cli.Context) error {
 	if c.Bool("inactive") {
 		target = "inactive"
 	}
-	env := c.String("name")
+	env := c.String("env")
 	if env == "" {
 		fmt.Println("Environment is required")
 		os.Exit(1)

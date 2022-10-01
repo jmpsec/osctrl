@@ -13,7 +13,7 @@ func (api *OsctrlAPI) GetNodes(env string) ([]nodes.OsqueryNode, error) {
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APINodes, env)
 	rawNodes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return nds, fmt.Errorf("error api request - %v", err)
+		return nds, fmt.Errorf("error api request - %v - %s", err, string(rawNodes))
 	}
 	if err := json.Unmarshal(rawNodes, &nds); err != nil {
 		return nds, fmt.Errorf("can not parse body - %v", err)
@@ -27,7 +27,7 @@ func (api *OsctrlAPI) GetNode(env, identifier string) (nodes.OsqueryNode, error)
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APINodes, env, identifier)
 	rawNode, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return node, fmt.Errorf("error api request - %v", err)
+		return node, fmt.Errorf("error api request - %v - %s", err, string(rawNode))
 	}
 	if err := json.Unmarshal(rawNode, &node); err != nil {
 		return node, fmt.Errorf("can not parse body - %v", err)
