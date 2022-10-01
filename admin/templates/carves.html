@@ -90,7 +90,7 @@
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {
-            url: "/carves/json/{{ .Target }}",
+            url: "/carves/{{ .EnvUUID }}/json/{{ .Target }}",
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
@@ -123,7 +123,7 @@
               data: 'path',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return '<span style="font-family: monospace; font-size: 1.3em;"><a href="/carves/details/'+data.name+'">'+data.path+'</a></span>';
+                  return '<span style="font-family: monospace; font-size: 1.3em;"><a href="/carves/{{ .EnvUUID }}/details/'+data.name+'">'+data.path+'</a></span>';
                 } else {
                   return data;
                 }
@@ -204,7 +204,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteCarves(names);
+                  confirmDeleteCarves(names, '/carves/{{ .EnvUUID }}/actions');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");

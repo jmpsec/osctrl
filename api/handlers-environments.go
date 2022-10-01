@@ -23,21 +23,14 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	environment, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return
 	}
-	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, environment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPIEnvsErr)
-		return
-	}
 	// Get environment by name
-	env, err := envs.Get(environment)
+	env, err := envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -47,9 +40,16 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIEnvsErr)
 		return
 	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIEnvsErr)
+		return
+	}
 	// Serialize and serve JSON
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned environment %s", environment)
+		log.Printf("DebugService: Returned environment %s", env.Name)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 	incMetric(metricAPIEnvsOK)

@@ -19,6 +19,8 @@ const (
 	APIPath = "/api/v1"
 	// APINodes for the nodes path
 	APINodes = "/nodes"
+	// APIQueries
+	APIQueries = "/queries"
 	// JSONApplication for Content-Type headers
 	JSONApplication = "application/json"
 	// JSONApplicationUTF8 for Content-Type headers, UTF charset
@@ -35,8 +37,8 @@ const (
 
 // JSONConfigurationAPI to hold all API configuration values
 type JSONConfigurationAPI struct {
-	URL         string `json:"url"`
-	Token       string `json:"token"`
+	URL   string `json:"url"`
+	Token string `json:"token"`
 }
 
 // OsctrlAPI
@@ -116,10 +118,6 @@ func (api *OsctrlAPI) GetGeneric(url string, body io.Reader) ([]byte, error) {
 	if err != nil {
 		return []byte{}, fmt.Errorf("Client.Do - %v", err)
 	}
-	// Check response code
-	if resp.StatusCode != http.StatusOK {
-		return []byte{}, fmt.Errorf("HTTP Code %d", resp.StatusCode)
-	}
 	//defer resp.Body.Close()
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -130,6 +128,10 @@ func (api *OsctrlAPI) GetGeneric(url string, body io.Reader) ([]byte, error) {
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("can not read response - %v", err)
+	}
+	// Check response code
+	if resp.StatusCode != http.StatusOK {
+		return bodyBytes, fmt.Errorf("HTTP Code %d", resp.StatusCode)
 	}
 	return bodyBytes, nil
 }

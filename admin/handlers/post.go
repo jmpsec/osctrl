@@ -98,11 +98,25 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
-	var q DistributedQueryRequest
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions for query
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -111,6 +125,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
 	}
+	var q DistributedQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
@@ -131,7 +146,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// FIXME check if query is carve and user has permissions to carve
 	// Prepare and create new query
-	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query)
+	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, env.ID)
 	if err := h.Queries.Create(newQuery); err != nil {
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
@@ -211,14 +226,14 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Remove duplicates from expected
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
-	if err := h.Queries.SetExpected(newQuery.Name, len(expectedClear)); err != nil {
+	if err := h.Queries.SetExpected(newQuery.Name, len(expectedClear), env.ID); err != nil {
 		adminErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Save query if requested and if the name is not empty
 	if q.Save && q.Name != "" {
-		if err := h.Queries.CreateSaved(q.Name, q.Query, ctx[sessions.CtxUser]); err != nil {
+		if err := h.Queries.CreateSaved(q.Name, q.Query, ctx[sessions.CtxUser], env.ID); err != nil {
 			adminErrorResponse(w, "error saving query", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -236,11 +251,25 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
-	var c DistributedCarveRequest
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -249,6 +278,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
 	}
+	var c DistributedCarveRequest
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
@@ -271,16 +301,17 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Prepare and create new carve
 	carveName := generateCarveName()
 	newQuery := queries.DistributedQuery{
-		Query:      query,
-		Name:       carveName,
-		Creator:    ctx[sessions.CtxUser],
-		Expected:   0,
-		Executions: 0,
-		Active:     true,
-		Completed:  false,
-		Deleted:    false,
-		Type:       queries.CarveQueryType,
-		Path:       c.Path,
+		Query:         query,
+		Name:          carveName,
+		Creator:       ctx[sessions.CtxUser],
+		Expected:      0,
+		Executions:    0,
+		Active:        true,
+		Completed:     false,
+		Deleted:       false,
+		Type:          queries.CarveQueryType,
+		Path:          c.Path,
+		EnvironmentID: env.ID,
 	}
 	if err := h.Queries.Create(newQuery); err != nil {
 		adminErrorResponse(w, "error creating carve", http.StatusInternalServerError, err)
@@ -360,7 +391,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Remove duplicates from expected
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
-	if err := h.Queries.SetExpected(carveName, len(expectedClear)); err != nil {
+	if err := h.Queries.SetExpected(carveName, len(expectedClear), env.ID); err != nil {
 		adminErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return
@@ -377,11 +408,25 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), true)
-	var q DistributedQueryActionRequest
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions for query
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -390,6 +435,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Decoding POST body")
 	}
+	var q DistributedQueryActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
@@ -404,7 +450,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	switch q.Action {
 	case "delete":
 		for _, n := range q.Names {
-			if err := h.Queries.Delete(n); err != nil {
+			if err := h.Queries.Delete(n, env.ID); err != nil {
 				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -413,7 +459,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		adminOKResponse(w, "queries delete successfully")
 	case "complete":
 		for _, n := range q.Names {
-			if err := h.Queries.Complete(n); err != nil {
+			if err := h.Queries.Complete(n, env.ID); err != nil {
 				adminErrorResponse(w, "error completing query", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -422,7 +468,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		adminOKResponse(w, "queries completed successfully")
 	case "activate":
 		for _, n := range q.Names {
-			if err := h.Queries.Activate(n); err != nil {
+			if err := h.Queries.Activate(n, env.ID); err != nil {
 				adminErrorResponse(w, "error activating query", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -431,7 +477,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		adminOKResponse(w, "queries activated successfully")
 	case "saved_delete":
 		for _, n := range q.Names {
-			if err := h.Queries.DeleteSaved(n, ctx[sessions.CtxUser]); err != nil {
+			if err := h.Queries.DeleteSaved(n, ctx[sessions.CtxUser], env.ID); err != nil {
 				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return

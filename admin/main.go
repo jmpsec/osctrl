@@ -743,11 +743,11 @@ func osctrlAdminService() {
 		log.Println("DebugService: Authenticated content")
 	}
 	// Admin: JSON data for environments
-	routerAdmin.Handle("/json/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler))).Methods("GET")
+	routerAdmin.Handle("/json/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler))).Methods("GET")
 	// Admin: JSON data for platforms
 	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler))).Methods("GET")
 	// Admin: JSON data for logs
-	routerAdmin.Handle("/json/logs/{type}/{environment}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/json/logs/{type}/{env}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler))).Methods("GET")
 	// Admin: JSON data for query logs
 	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler))).Methods("GET")
 	// Admin: JSON data for sidebar stats
@@ -755,7 +755,7 @@ func osctrlAdminService() {
 	// Admin: JSON data for tags
 	routerAdmin.Handle("/json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler))).Methods("GET")
 	// Admin: table for environments
-	routerAdmin.Handle("/environment/{environment}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler))).Methods("GET")
+	routerAdmin.Handle("/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler))).Methods("GET")
 	// Admin: table for platforms
 	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler))).Methods("GET")
 	// Admin: dashboard
@@ -767,31 +767,31 @@ func osctrlAdminService() {
 	// Admin: multi node action
 	routerAdmin.Handle("/node/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler))).Methods("POST")
 	// Admin: run queries
-	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/query/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler))).Methods("GET")
+	routerAdmin.Handle("/query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler))).Methods("POST")
 	// Admin: list queries
-	routerAdmin.Handle("/query/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler))).Methods("GET")
+	routerAdmin.Handle("/query/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler))).Methods("GET")
 	// Admin: saved queries
-	routerAdmin.Handle("/query/saved", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler))).Methods("GET")
+	routerAdmin.Handle("/query/{env}/saved", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler))).Methods("GET")
 	// Admin: query actions
-	routerAdmin.Handle("/query/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/query/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler))).Methods("POST")
 	// Admin: query JSON
-	routerAdmin.Handle("/query/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler))).Methods("GET")
+	routerAdmin.Handle("/query/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler))).Methods("GET")
 	// Admin: query logs
-	routerAdmin.Handle("/query/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler))).Methods("GET")
+	routerAdmin.Handle("/query/{env}/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler))).Methods("GET")
 	// Admin: carve files
-	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/carves/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler))).Methods("POST")
 	// Admin: list carves
-	routerAdmin.Handle("/carves/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler))).Methods("GET")
 	// Admin: carves actions
-	routerAdmin.Handle("/carves/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/carves/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler))).Methods("POST")
 	// Admin: carves JSON
-	routerAdmin.Handle("/carves/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler))).Methods("GET")
 	// Admin: carves details
-	routerAdmin.Handle("/carves/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/{env}/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler))).Methods("GET")
 	// Admin: carves download
-	routerAdmin.Handle("/carves/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler))).Methods("GET")
+	routerAdmin.Handle("/carves/{env}/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler))).Methods("GET")
 	// Admin: nodes configuration
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler))).Methods("GET")
 	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler))).Methods("POST")

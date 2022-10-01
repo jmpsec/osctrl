@@ -1,4 +1,4 @@
-function sendQuery() {
+function sendQuery(_queryUrl, _redir) {
   var _csrftoken = $("#csrftoken").val();
   var _env_list = $("#target_env").val();
   var _platform_list = $("#target_platform").val();
@@ -50,7 +50,6 @@ function sendQuery() {
   if (_query.slice(-1) !== ';') {
     _query = _query + ';';
   }
-  var _url = '/query/run';
   var data = {
     csrftoken: _csrftoken,
     environment_list: _env_list,
@@ -61,7 +60,7 @@ function sendQuery() {
     name: _query_name,
     query: _query
   };
-  sendPostRequest(data, _url, '/query/list', false);
+  sendPostRequest(data, _queryUrl, _redir, false);
 }
 
 function clearQuery() {
@@ -80,26 +79,21 @@ $("#query").keyup(function (event) {
   }
 });
 
-function deleteQueries(_names) {
-  actionQueries('delete', _names, window.location.pathname);
+function deleteQueries(_names, _url) {
+  actionQueries('delete', _names, _url, window.location.pathname);
 }
 
-function deleteSavedQueries(_names) {
-  actionQueries('saved_delete', _names, window.location.pathname);
+function deleteSavedQueries(_names, _url) {
+  actionQueries('saved_delete', _names, _url, window.location.pathname);
 }
 
-function completeQueries(_names) {
-  actionQueries('complete', _names, '/query/list');
+function completeQueries(_names, _url, _redir) {
+  actionQueries('complete', _names, _url, _redir);
 }
 
-function activateQueries(_names) {
-  actionQueries('activate', _names, '/query/list');
-}
-
-function actionQueries(_action, _names, _redir) {
+function actionQueries(_action, _names, _url, _redir) {
   var _csrftoken = $("#csrftoken").val();
 
-  var _url = '/query/actions';
   var data = {
     csrftoken: _csrftoken,
     names: _names,
@@ -118,19 +112,19 @@ function confirmDeleteQueries(_names) {
   $("#confirmModal").modal();
 }
 
-function confirmDeleteSavedQueries(_names) {
+function confirmDeleteSavedQueries(_names, _url) {
   var modal_message = 'Are you sure you want to delete ' + _names.length + ' query(s)?';
   $("#confirmModalMessage").text(modal_message);
   $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
-    deleteSavedQueries(_names);
+    deleteSavedQueries(_names, _url);
   });
   $("#confirmModal").modal();
 }
 
-function queryResultLink(link, query) {
+function queryResultLink(link, query, url) {
   var external_link = '<a href="' + link + '" _target="_blank"><i class="fas fa-external-link-alt"></i></a>';
-  return '<span class="query-link"><a href="/query/logs/' + query + '">' + query + '</a> - ' + external_link + '</span> ';
+  return '<span class="query-link"><a href="' + url + '">' + query + '</a> - ' + external_link + '</span> ';
 }
 
 function toggleSaveQuery() {

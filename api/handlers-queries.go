@@ -31,15 +31,29 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIQueriesErr)
 		return
 	}
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get query by name
-	query, err := queriesmgr.Get(name)
+	query, err := queriesmgr.Get(name, env.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "query not found", http.StatusNotFound, err)
@@ -61,9 +75,24 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
@@ -85,16 +114,17 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare and create new query
 	queryName := generateQueryName()
 	newQuery := queries.DistributedQuery{
-		Query:      q.Query,
-		Name:       queryName,
-		Creator:    ctx[ctxUser],
-		Expected:   0,
-		Executions: 0,
-		Active:     true,
-		Completed:  false,
-		Deleted:    false,
-		Hidden:     true,
-		Type:       queries.StandardQueryType,
+		Query:         q.Query,
+		Name:          queryName,
+		Creator:       ctx[ctxUser],
+		Expected:      0,
+		Executions:    0,
+		Active:        true,
+		Completed:     false,
+		Deleted:       false,
+		Hidden:        true,
+		Type:          queries.StandardQueryType,
+		EnvironmentID: env.ID,
 	}
 	if err := queriesmgr.Create(newQuery); err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
@@ -174,7 +204,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// Remove duplicates from expected
 	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
-	if err := queriesmgr.SetExpected(queryName, len(expectedClear)); err != nil {
+	if err := queriesmgr.SetExpected(queryName, len(expectedClear), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		incMetric(metricAPIQueriesErr)
 		return
@@ -188,15 +218,30 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get queries
-	queries, err := queriesmgr.GetQueries(queries.TargetCompleted)
+	queries, err := queriesmgr.GetQueries(queries.TargetCompleted, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		incMetric(metricAPIQueriesErr)
@@ -216,15 +261,30 @@ func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPIEnvsErr)
+		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Get queries
-	queries, err := queriesmgr.GetQueries(queries.TargetHiddenCompleted)
+	queries, err := queriesmgr.GetQueries(queries.TargetHiddenCompleted, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		incMetric(metricAPIQueriesErr)
@@ -252,14 +312,29 @@ func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIQueriesErr)
 		return
 	}
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, users.NoEnvironment) {
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get query by name
+	// TODO retrieve from redis
 	queryLogs, err := postgresQueryLogs(name)
 	if err != nil {
 		if err.Error() == "record not found" {

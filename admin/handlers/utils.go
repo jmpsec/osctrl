@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QueryLink   string = "/query/logs/{{NAME}}"
+	QueryLink   string = "/query/{{ENV}}/logs/{{NAME}}"
 	StatusLink  string = "#status-logs"
 	ResultsLink string = "#result-logs"
 )
@@ -79,31 +79,33 @@ func generateCarveQuery(file string, glob bool) string {
 }
 
 // Helper to determine if a query may be a carve
-func newQueryReady(user, query string) queries.DistributedQuery {
+func newQueryReady(user, query string, envid uint) queries.DistributedQuery {
 	if strings.Contains(query, "carve(") || strings.Contains(query, "carve=1") {
 		return queries.DistributedQuery{
-			Query:      query,
-			Name:       generateCarveName(),
-			Creator:    user,
-			Expected:   0,
-			Executions: 0,
-			Active:     true,
-			Completed:  false,
-			Deleted:    false,
-			Type:       queries.CarveQueryType,
-			Path:       query,
+			Query:         query,
+			Name:          generateCarveName(),
+			Creator:       user,
+			Expected:      0,
+			Executions:    0,
+			Active:        true,
+			Completed:     false,
+			Deleted:       false,
+			Type:          queries.CarveQueryType,
+			Path:          query,
+			EnvironmentID: envid,
 		}
 	}
 	return queries.DistributedQuery{
-		Query:      query,
-		Name:       generateQueryName(),
-		Creator:    user,
-		Expected:   0,
-		Executions: 0,
-		Active:     true,
-		Completed:  false,
-		Deleted:    false,
-		Type:       queries.StandardQueryType,
+		Query:         query,
+		Name:          generateQueryName(),
+		Creator:       user,
+		Expected:      0,
+		Executions:    0,
+		Active:        true,
+		Completed:     false,
+		Deleted:       false,
+		Type:          queries.StandardQueryType,
+		EnvironmentID: envid,
 	}
 }
 
@@ -174,8 +176,9 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 }
 
 // Helper to generate a link to results for on-demand queries
-func (h *HandlersAdmin) queryResultLink(name string) string {
-	return strings.Replace(QueryLink, "{{NAME}}", removeBackslash(name), 1)
+func (h *HandlersAdmin) queryResultLink(name string, env string) string {
+	replacer := strings.NewReplacer("{{ENV}}", env, "{{NAME}}", removeBackslash(name))
+	return replacer.Replace(QueryLink)
 }
 
 // Helper to convert the list of all TLS environments with the ones with permissions for a user

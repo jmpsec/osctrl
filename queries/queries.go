@@ -125,7 +125,7 @@ func CreateQueries(backend *gorm.DB) *Queries {
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
 	acelerate := false
 	// Get all current active queries and carves
-	queries, err := q.GetActive()
+	queries, err := q.GetActive(node.EnvironmentID)
 	if err != nil {
 		return QueryReadQueries{}, false, err
 	}
@@ -147,35 +147,77 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 }
 
 // Gets all queries by target (active/completed/all/all-full/deleted/hidden)
-func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
+func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
 	case TargetActive:
-		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", true, false, false, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"active = ? AND completed = ? AND deleted = ? AND type = ? AND environment_id = ?",
+			true,
+			false,
+			false,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetCompleted:
-		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND type = ?", false, true, false, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"active = ? AND completed = ? AND deleted = ? AND type = ? AND environment_id = ?",
+			false,
+			true,
+			false,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetHiddenCompleted:
-		if err := q.DB.Where("active = ? AND completed = ? AND deleted = ? AND hidden = ? AND type = ?", false, true, false, true, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"active = ? AND completed = ? AND deleted = ? AND hidden = ? AND type = ? AND environment_id = ?",
+			false,
+			true,
+			false,
+			true,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetAllFull:
-		if err := q.DB.Where("deleted = ? AND type = ?", false, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"deleted = ? AND type = ? AND environment_id = ?",
+			false,
+			qtype, envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetAll:
-		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, false, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"deleted = ? AND hidden = ? AND type = ? AND environment_id = ?",
+			false,
+			false,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetDeleted:
-		if err := q.DB.Where("deleted = ? AND type = ?", true, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where("deleted = ? AND type = ? AND environment_id = ?",
+			true,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	case TargetHidden:
-		if err := q.DB.Where("deleted = ? AND hidden = ? AND type = ?", false, true, qtype).Find(&queries).Error; err != nil {
+		if err := q.DB.Where(
+			"deleted = ? AND hidden = ? AND type = ? AND environment_id = ?",
+			false,
+			true,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
 			return queries, err
 		}
 	}
@@ -183,36 +225,36 @@ func (q *Queries) Gets(target, qtype string) ([]DistributedQuery, error) {
 }
 
 // GetActive all active queries and carves by target
-func (q *Queries) GetActive() ([]DistributedQuery, error) {
+func (q *Queries) GetActive(envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
-	if err := q.DB.Where("active = ?", true).Find(&queries).Error; err != nil {
+	if err := q.DB.Where("active = ? AND environment_id = ?", true, envid).Find(&queries).Error; err != nil {
 		return queries, err
 	}
 	return queries, nil
 }
 
 // GetQueries all queries by target (active/completed/all/all-full/deleted/hidden)
-func (q *Queries) GetQueries(target string) ([]DistributedQuery, error) {
-	return q.Gets(target, StandardQueryType)
+func (q *Queries) GetQueries(target string, envid uint) ([]DistributedQuery, error) {
+	return q.Gets(target, StandardQueryType, envid)
 }
 
 // GetCarves all carve queries by target (active/completed/all/all-full/deleted/hidden)
-func (q *Queries) GetCarves(target string) ([]DistributedQuery, error) {
-	return q.Gets(target, CarveQueryType)
+func (q *Queries) GetCarves(target string, envid uint) ([]DistributedQuery, error) {
+	return q.Gets(target, CarveQueryType, envid)
 }
 
 // Get to get a query by name
-func (q *Queries) Get(name string) (DistributedQuery, error) {
+func (q *Queries) Get(name string, envid uint) (DistributedQuery, error) {
 	var query DistributedQuery
-	if err := q.DB.Where("name = ?", name).Find(&query).Error; err != nil {
+	if err := q.DB.Where("name = ? AND environment_id = ?", name, envid).Find(&query).Error; err != nil {
 		return query, err
 	}
 	return query, nil
 }
 
 // Complete to mark query as completed
-func (q *Queries) Complete(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) Complete(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -223,8 +265,8 @@ func (q *Queries) Complete(name string) error {
 }
 
 // VerifyComplete to mark query as completed if the expected executions are done
-func (q *Queries) VerifyComplete(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) VerifyComplete(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -237,8 +279,8 @@ func (q *Queries) VerifyComplete(name string) error {
 }
 
 // Activate to mark query as active
-func (q *Queries) Activate(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) Activate(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -249,8 +291,8 @@ func (q *Queries) Activate(name string) error {
 }
 
 // Delete to mark query as deleted
-func (q *Queries) Delete(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) Delete(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -298,8 +340,8 @@ func (q *Queries) NotYetExecuted(name, uuid string) bool {
 }
 
 // IncExecution to increase the execution count for this query
-func (q *Queries) IncExecution(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) IncExecution(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -310,8 +352,8 @@ func (q *Queries) IncExecution(name string) error {
 }
 
 // IncError to increase the error count for this query
-func (q *Queries) IncError(name string) error {
-	query, err := q.Get(name)
+func (q *Queries) IncError(name string, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}
@@ -322,8 +364,8 @@ func (q *Queries) IncError(name string) error {
 }
 
 // SetExpected to set the number of expected executions for this query
-func (q *Queries) SetExpected(name string, expected int) error {
-	query, err := q.Get(name)
+func (q *Queries) SetExpected(name string, expected int, envid uint) error {
+	query, err := q.Get(name, envid)
 	if err != nil {
 		return err
 	}

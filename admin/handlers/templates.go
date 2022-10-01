@@ -88,7 +88,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
@@ -149,6 +149,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env.Name,
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Selector:     "environment",
 		SelectorName: env.Name,
@@ -258,10 +259,25 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -311,6 +327,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes",
+		EnvUUID:       env.UUID,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
@@ -334,10 +351,25 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -367,6 +399,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	// Prepare template data
 	templateData := QueryTableTemplateData{
 		Title:        "All on-demand queries",
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -387,10 +420,25 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -420,6 +468,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	// Prepare template data
 	templateData := SavedQueriesTemplateData{
 		Title:        "Saved queries",
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -440,10 +489,25 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -487,6 +551,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
 		Title:         "Query osquery Nodes",
+		EnvUUID:       env.UUID,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
@@ -510,10 +575,25 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -543,6 +623,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
 		Title:        "All carved files",
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -563,15 +644,29 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
@@ -606,7 +701,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get query by name
-	query, err := h.Queries.Get(name)
+	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting query %v", err)
@@ -622,6 +717,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -643,15 +739,29 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
 	if !ok {
@@ -683,7 +793,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Get query by name
-	query, err := h.Queries.Get(name)
+	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting query %v", err)
@@ -717,6 +827,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -862,6 +973,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		Title:                 env.Name + " Enroll",
 		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
 		EnvName:               env.Name,
+		EnvUUID:               env.UUID,
 		OnelinerExpiration:    h.Settings.OnelinerExpiration(),
 		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
@@ -986,6 +1098,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:        "Node View " + node.Hostname,
+		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Node:         node,
 		NodeTags:     nodeTags,

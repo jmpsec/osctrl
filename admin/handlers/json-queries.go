@@ -68,7 +68,7 @@ type QueryTarget struct {
 }
 
 // JSONQueryJSON - Helper to convert saved distributed queries to serialized JSON
-func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery) QueryJSON {
+func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery, env string) QueryJSON {
 	// Prepare progress data
 	progress := make(QueryProgress)
 	progress["expected"] = q.Expected
@@ -78,7 +78,7 @@ func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery) QueryJSON {
 	data := make(QueryData)
 	data["query"] = q.Query
 	data["name"] = q.Name
-	data["link"] = h.queryResultLink(q.Name)
+	data["link"] = h.queryResultLink(q.Name, env)
 	// Prepare status
 	status := queries.StatusActive
 	if q.Completed {
@@ -134,6 +134,20 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricJSONErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricJSONErr)
+		return
+	}
 	// Extract target
 	target, ok := vars["target"]
 	if !ok {
@@ -149,7 +163,7 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// If the target is saved queries, get them
 	if target == queries.TargetSaved {
-		qs, err := h.Queries.GetSavedByCreator(ctx[sessions.CtxUser])
+		qs, err := h.Queries.GetSavedByCreator(ctx[sessions.CtxUser], env.ID)
 		if err != nil {
 			log.Printf("error getting queries %v", err)
 			h.Inc(metricJSONErr)
@@ -170,7 +184,7 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// If we are here, retrieve distributed queries for that target
-	qs, err := h.Queries.GetQueries(target)
+	qs, err := h.Queries.GetQueries(target, env.ID)
 	if err != nil {
 		log.Printf("error getting queries %v", err)
 		h.Inc(metricJSONErr)
@@ -179,7 +193,7 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 	// Prepare data to be returned
 	qJSON := []QueryJSON{}
 	for _, q := range qs {
-		_q := h.JSONQueryJSON(q)
+		_q := h.JSONQueryJSON(q, env.UUID)
 		qJSON = append(qJSON, _q)
 	}
 	returned := ReturnedQueries{

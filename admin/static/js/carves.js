@@ -1,4 +1,4 @@
-function sendCarve() {
+function sendCarve(_url, _redir) {
   var _csrftoken = $("#csrftoken").val();
   var _env_list = $("#target_env").val();
   var _platform_list = $("#target_platform").val();
@@ -38,7 +38,6 @@ function sendCarve() {
     $("#warningModal").modal();
     return;
   }
-  var _url = '/carves/run';
   var data = {
     csrftoken: _csrftoken,
     environment_list: _env_list,
@@ -48,7 +47,7 @@ function sendCarve() {
     path: _path,
     repeat: _repeat
   };
-  sendPostRequest(data, _url, '/carves/list', false);
+  sendPostRequest(data, _url, _redir, false);
 }
 
 function clearCarve() {
@@ -61,38 +60,37 @@ $("#carve").keyup(function (event) {
   }
 });
 
-function deleteCarves(_names) {
-  actionQueries('delete', _names, window.location.pathname);
+function deleteCarves(_names, _url) {
+  actionCarves('delete', _names, _url, window.location.pathname);
 }
 
-function confirmDeleteCarves(_names) {
+function confirmDeleteCarves(_names, _url) {
   var modal_message = 'Are you sure you want to delete ' + _names.length + ' carve(s)?';
   $("#confirmModalMessage").text(modal_message);
   $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
-    deleteCarves(_names);
+    deleteCarves(_names, _url);
   });
   $("#confirmModal").modal();
 }
 
-function deleteCarve(_ids) {
-  actionCarves('delete', _ids, window.location.pathname);
+function deleteCarve(_ids, _url) {
+  actionCarves('delete', _ids, _url, window.location.pathname);
 }
 
-function confirmDeleteCarve(_ids) {
+function confirmDeleteCarve(_ids, _url) {
   var modal_message = 'Are you sure you want to delete this carve?';
   $("#confirmModalMessage").text(modal_message);
   $('#confirm_action').click(function () {
     $('#confirmModal').modal('hide');
-    deleteCarve(_ids);
+    deleteCarve(_ids, _url);
   });
   $("#confirmModal").modal();
 }
 
-function actionCarves(_action, _ids, _redir) {
+function actionCarves(_action, _ids, _url, _redir) {
   var _csrftoken = $("#csrftoken").val();
 
-  var _url = '/carves/actions';
   var data = {
     csrftoken: _csrftoken,
     ids: _ids,
@@ -101,8 +99,8 @@ function actionCarves(_action, _ids, _redir) {
   sendPostRequest(data, _url, _redir, false);
 }
 
-function downloadCarve(_sessionid) {
-  location.href = "/carves/download/" + _sessionid;
+function downloadCarve(_downloadUrl) {
+  location.href = _downloadUrl;
 }
 
 function refreshCarveDetails() {

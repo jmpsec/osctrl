@@ -86,7 +86,7 @@
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {
-            url: "/query/json/{{ .Target }}",
+            url: "/query/{{ .EnvUUID }}/json/{{ .Target }}",
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
@@ -159,7 +159,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteSavedQueries(names);
+                  confirmDeleteSavedQueries(names, '/query/{{ .EnvUUID }}/actions');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");

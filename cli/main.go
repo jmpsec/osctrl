@@ -375,7 +375,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be added",
+							Usage:   "Environment name to be added",
 						},
 						&cli.StringFlag{
 							Name:    "hostname",
@@ -405,7 +405,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.BoolFlag{
 							Name:    "debug",
@@ -451,7 +451,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "query",
@@ -494,7 +494,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "query-name",
@@ -513,7 +513,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "option",
@@ -553,7 +553,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "option",
@@ -572,7 +572,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "pack",
@@ -606,7 +606,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "pack",
@@ -630,7 +630,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "pack",
@@ -649,7 +649,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "pack",
@@ -698,7 +698,7 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Value:   "",
-							Usage:   "Environment to be updated",
+							Usage:   "Environment name to be updated",
 						},
 						&cli.StringFlag{
 							Name:    "pack",
@@ -723,7 +723,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be deleted",
+							Usage:   "Environment name to be deleted",
 						},
 					},
 					Action: cliWrapper(deleteEnvironment),
@@ -736,7 +736,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be displayed",
+							Usage:   "Environment name to be displayed",
 						},
 					},
 					Action: cliWrapper(showEnvironment),
@@ -749,7 +749,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be displayed",
+							Usage:   "Environment name to be displayed",
 						},
 					},
 					Action: cliWrapper(showFlagsEnvironment),
@@ -768,7 +768,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be used",
+							Usage:   "Environment name to be used",
 						},
 						&cli.StringFlag{
 							Name:    "target",
@@ -793,7 +793,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be used",
+							Usage:   "Environment name to be used",
 						},
 						&cli.StringFlag{
 							Name:    "certificate",
@@ -816,7 +816,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Environment to be used",
+							Usage:   "Environment name to be used",
 						},
 					},
 					Action: cliWrapper(secretEnvironment),
@@ -961,8 +961,8 @@ func init() {
 							Usage:   "Node UUID to be deleted",
 						},
 						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
+							Name:    "env",
+							Aliases: []string{"e"},
 							Usage:   "Environment to be used",
 						},
 					},
@@ -993,8 +993,8 @@ func init() {
 							Usage:   "Show inactive nodes",
 						},
 						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
+							Name:    "env",
+							Aliases: []string{"e"},
 							Usage:   "Environment to be used",
 						},
 					},
@@ -1011,8 +1011,8 @@ func init() {
 							Usage:   "Node UUID to be shown",
 						},
 						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
+							Name:    "env",
+							Aliases: []string{"e"},
 							Usage:   "Environment to be used",
 						},
 					},
@@ -1034,6 +1034,11 @@ func init() {
 							Aliases: []string{"n"},
 							Usage:   "Query name to be completed",
 						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
 					},
 					Action: cliWrapper(completeQuery),
 				},
@@ -1046,6 +1051,11 @@ func init() {
 							Name:    "name",
 							Aliases: []string{"n"},
 							Usage:   "Query name to be deleted",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
 						},
 					},
 					Action: cliWrapper(deleteQuery),
@@ -1078,6 +1088,11 @@ func init() {
 							Aliases: []string{"d"},
 							Hidden:  false,
 							Usage:   "Show deleted queries",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
 						},
 					},
 					Action: cliWrapper(listQueries),

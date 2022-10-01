@@ -197,7 +197,7 @@
                             <div class="row">
                               <div class="col-sm-6 mx-auto">
                                 <button id="query_button" type="button" class="btn btn-sm btn-outline-dark"
-                                data-tooltip="true" data-placement="top" title="Send query" onclick="sendQuery();">
+                                data-tooltip="true" data-placement="top" title="Send query" onclick="sendQuery('/query/{{ .EnvUUID }}/run', '/query/{{ .EnvUUID }}/list');">
                                   <i class="fab fa-searchengin"></i> Query
                                 </button>
                               </div>

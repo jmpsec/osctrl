@@ -97,7 +97,7 @@ func removeStringDuplicates(s []string) []string {
 
 // Helper to handle API error responses
 func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
-	log.Printf("%s: %v", msg, err)
+	log.Printf("apiErrorResponse %s: %v", msg, err)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, ApiErrorResponse{Error: msg})
 }
 

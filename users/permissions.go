@@ -128,7 +128,6 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 	for _, p := range perms {
 		// Access is yes for admins
 		if p.AccessType == int(AdminLevel) && p.AccessValue {
-			log.Printf("%s is admin", username)
 			return true
 		}
 		if p.AccessType == int(level) {

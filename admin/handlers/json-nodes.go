@@ -45,7 +45,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
 	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
+	envVar, ok := vars["env"]
 	if !ok {
 		log.Println("error getting environment")
 		h.Inc(metricJSONErr)

@@ -298,7 +298,7 @@
                   uuids.push(this.uuid);
                 });
                 if (uuids.length > 0) {
-                  showQueryNodes(uuids);
+                  showQueryNodes(uuids, '/query/{{ .EnvUUID }}/run');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more nodes");
@@ -323,7 +323,7 @@
                   uuids.push(this.uuid);
                 });
                 if (uuids.length > 0) {
-                  showCarveFiles(uuids);
+                  showCarveFiles(uuids, '/carve/{{ .EnvUUID }}/run');
                 } else {
                   console.log('Carve: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more nodes");
