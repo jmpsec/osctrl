@@ -12,6 +12,8 @@
       </li>
       -->
 
+      {{ $leftmeta := .LeftMetadata }}
+
       <li class="nav-title">Nodes by environment</li>
       {{range  $i, $e := $.Environments}}
       <li id="dropdown-env-{{ $e.Name }}" class="nav-item nav-dropdown">
@@ -29,6 +31,15 @@
               <span class="badge badge-success stats-environment-{{ $e.UUID }}-active">X</span>
             </a>
           </li>
+          {{ if and (eq $e.UUID $leftmeta.EnvUUID) ($leftmeta.ActiveNode) }}
+            <ul>
+              <li class="nav-item nav-dropdown">
+                <a style="padding-left: 2em;" class="nav-link" href="/node/{{ $leftmeta.NodeUUID }}">
+                  <i class="nav-icon fas fa-info-circle"></i> node
+                </a>
+              </li>
+            </ul>
+          {{end}}
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.UUID }}/inactive">
               <i class="nav-icon {{ $e.Icon }}"></i>
@@ -36,6 +47,15 @@
               <span class="badge badge-danger stats-environment-{{ $e.UUID }}-inactive">X</span>
             </a>
           </li>
+          {{ if and (eq $e.UUID $leftmeta.EnvUUID) ($leftmeta.InactiveNode) }}
+            <ul>
+              <li class="nav-item nav-dropdown">
+                <a style="padding-left: 2em;" class="nav-link" href="/node/{{ $leftmeta.NodeUUID }}">
+                  <i class="nav-icon fas fa-info-circle"></i> node
+                </a>
+              </li>
+            </ul>
+          {{end}}
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/environment/{{ $e.UUID }}/all">
               <i class="nav-icon {{ $e.Icon }}"></i>
@@ -63,6 +83,15 @@
               <i class="nav-icon fas fa-list"></i> query list
             </a>
           </li>
+            {{ if and (eq $e.UUID $leftmeta.EnvUUID) ($leftmeta.Query) }}
+            <ul>
+              <li class="nav-item nav-dropdown">
+                <a style="padding-left: 2em;" class="nav-link" href="/query/{{ $e.UUID }}/logs/{{ $leftmeta.QueryName }}">
+                  <i class="fas fa-search-location"></i> query
+                </a>
+              </li>
+            </ul>
+            {{end}}
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/query/{{ $e.UUID }}/saved">
               <i class="nav-icon far fa-save"></i> saved queries
@@ -78,6 +107,15 @@
               <i class="nav-icon fas fa-archive"></i> carved files
             </a>
           </li>
+          {{ if and (eq $e.UUID $leftmeta.EnvUUID) ($leftmeta.Carve) }}
+            <ul>
+              <li class="nav-item nav-dropdown">
+                <a style="padding-left: 2em;" class="nav-link" href="/carves/{{ $e.UUID }}/details/{{ $leftmeta.CarveName }}">
+                  <i class="fas fa-file-archive"></i> carve
+                </a>
+              </li>
+            </ul>
+          {{end}}
         </ul>
       </li>
       {{end}}

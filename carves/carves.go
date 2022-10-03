@@ -128,18 +128,22 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 }
 
 // InitateBlock to initiate a block based on the configured carver
-func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, blockid int) CarvedBlock {
-	res := CarvedBlock{
-		RequestID:   requestid,
-		SessionID:   sessionid,
-		Environment: env,
-		BlockID:     blockid,
-		Size:        len(data),
-		Data:        GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid),
-		Carver:      c.Carver,
-	}
+func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, blockid int, envid uint) CarvedBlock {
+	var cData string
 	if c.Carver != settings.CarverS3 {
-		res.Data = data
+		cData = data
+	} else {
+		cData = GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid)
+	}
+	res := CarvedBlock{
+		RequestID:     requestid,
+		SessionID:     sessionid,
+		Environment:   env,
+		BlockID:       blockid,
+		Size:          len(data),
+		Data:          cData,
+		Carver:        c.Carver,
+		EnvironmentID: envid,
 	}
 	return res
 }
@@ -353,24 +357,24 @@ func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []Carved
 	// Check if data is compressed
 	zstd, err := CheckCompressionBlock(blocks[0])
 	if err != nil {
-		return res, fmt.Errorf("Compression check - %v", err)
+		return res, fmt.Errorf("compression check - %v", err)
 	}
 	if zstd {
 		res.File += ZstFileExtension
 	}
 	f, err := os.OpenFile(res.File, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return res, fmt.Errorf("File creation - %v", err)
+		return res, fmt.Errorf("file creation - %v", err)
 	}
 	defer f.Close()
 	// Iterate through blocks and write decoded content to file
 	for _, b := range blocks {
 		toFile, err := base64.StdEncoding.DecodeString(b.Data)
 		if err != nil {
-			return res, fmt.Errorf("Decoding data - %v", err)
+			return res, fmt.Errorf("decoding data - %v", err)
 		}
 		if _, err := f.Write(toFile); err != nil {
-			return res, fmt.Errorf("Writing to file - %v", err)
+			return res, fmt.Errorf("writing to file - %v", err)
 		}
 		res.Size += int64(len(toFile))
 	}
