@@ -31,6 +31,18 @@ type TemplateMetadata struct {
 	CSRFToken      string
 }
 
+// AsideLeftMetadata to pass metadata to the aside left menu
+type AsideLeftMetadata struct {
+	EnvUUID      string
+	ActiveNode   bool
+	InactiveNode bool
+	NodeUUID     string
+	Query        bool
+	QueryName    string
+	Carve        bool
+	CarveName    string
+}
+
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
 	Title        string
@@ -42,6 +54,7 @@ type TableTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // ConfTemplateData for passing data to the conf template
@@ -51,6 +64,7 @@ type ConfTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // EnrollTemplateData for passing data to the conf template
@@ -73,6 +87,7 @@ type EnrollTemplateData struct {
 	Environments          []environments.TLSEnvironment
 	Platforms             []string
 	Metadata              TemplateMetadata
+	LeftMetadata          AsideLeftMetadata
 }
 
 // QueryRunTemplateData for passing data to the query run template
@@ -86,6 +101,7 @@ type QueryRunTemplateData struct {
 	Tables        []types.OsqueryTable
 	TablesVersion string
 	Metadata      TemplateMetadata
+	LeftMetadata  AsideLeftMetadata
 }
 
 // CarvesRunTemplateData for passing data to the carves run template
@@ -99,6 +115,7 @@ type GenericTableTemplateData struct {
 	Platforms    []string
 	Target       string
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // QueryTableTemplateData for passing data to the query template
@@ -121,6 +138,7 @@ type CarvesDetailsTemplateData struct {
 	Carves       []carves.CarvedFile
 	CarveBlocks  map[string][]carves.CarvedBlock
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // QueryLogsTemplateData for passing data to the query template
@@ -132,6 +150,7 @@ type QueryLogsTemplateData struct {
 	Query        queries.DistributedQuery
 	QueryTargets []queries.DistributedQueryTarget
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -140,6 +159,7 @@ type EnvironmentsTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // SettingsTemplateData for passing data to the settings template
@@ -151,6 +171,7 @@ type SettingsTemplateData struct {
 	CurrentSettings []settings.SettingValue
 	ServiceConfig   types.JSONConfigurationAdmin
 	Metadata        TemplateMetadata
+	LeftMetadata    AsideLeftMetadata
 }
 
 // UsersTemplateData for passing data to the users template
@@ -160,6 +181,7 @@ type UsersTemplateData struct {
 	Platforms    []string
 	CurrentUsers []users.AdminUser
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // ProfileTemplateData for passing data to the users profile template
@@ -169,6 +191,7 @@ type ProfileTemplateData struct {
 	Platforms    []string
 	CurrentUser  users.AdminUser
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // TagsTemplateData for passing data to the tags template
@@ -178,6 +201,7 @@ type TagsTemplateData struct {
 	Platforms    []string
 	Tags         []tags.AdminTag
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 }
 
 // NodeTemplateData for passing data to the query template
@@ -190,6 +214,7 @@ type NodeTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
 	Dashboard    bool
 	Schedule     environments.ScheduleConf
 	Packs        environments.PacksEntries

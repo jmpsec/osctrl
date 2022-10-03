@@ -25,16 +25,18 @@ type CarvedFile struct {
 	Carver          string
 	Archived        bool
 	ArchivePath     string
+	EnvironmentID   uint
 }
 
 // CarvedBlock to store each block from a carve
 type CarvedBlock struct {
 	gorm.Model
-	RequestID   string `gorm:"index"`
-	SessionID   string `gorm:"index"`
-	Environment string
-	BlockID     int
-	Data        string
-	Size        int
-	Carver      string
+	RequestID     string `gorm:"index"`
+	SessionID     string `gorm:"index"`
+	Environment   string
+	BlockID       int
+	Data          string
+	Size          int
+	Carver        string
+	EnvironmentID uint
 }

@@ -33,6 +33,7 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 		Carver:          h.Carves.Carver,
 		Archived:        false,
 		ArchivePath:     "",
+		EnvironmentID:   node.EnvironmentID,
 	}
 	// Create File Carve
 	err = h.Carves.CreateCarve(carve)
@@ -57,9 +58,9 @@ func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, en
 
 // ProcessCarveBlock - Function to process one block from a file carve
 // FIXME it can be more efficient on db access
-func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment, uuid string) {
+func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment, uuid string, envid uint) {
 	// Initiate carve block
-	block := h.Carves.InitateBlock(environment, uuid, req.RequestID, req.SessionID, req.Data, req.BlockID)
+	block := h.Carves.InitateBlock(environment, uuid, req.RequestID, req.SessionID, req.Data, req.BlockID, envid)
 	// Create Block
 	if err := h.Carves.CreateBlock(block, uuid, req.Data); err != nil {
 		h.Inc(metricBlockErr)

@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
@@ -326,7 +327,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Prepare template data
 	templateData := QueryRunTemplateData{
-		Title:         "Query osquery Nodes",
+		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -467,7 +468,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Prepare template data
 	templateData := SavedQueriesTemplateData{
-		Title:        "Saved queries",
+		Title:        "Saved queries in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -550,7 +551,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
-		Title:         "Query osquery Nodes",
+		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -622,7 +623,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
-		Title:        "All carved files",
+		Title:        "Carved files in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -714,11 +715,17 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Printf("error getting targets %v", err)
 		return
 	}
+	leftMetadata := AsideLeftMetadata{
+		EnvUUID:   env.UUID,
+		Query:     true,
+		QueryName: query.Name,
+	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:        "Query logs " + query.Name,
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		LeftMetadata: leftMetadata,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Query:        query,
@@ -824,11 +831,17 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		}
 		blocks[c.SessionID] = bs
 	}
+	leftMetadata := AsideLeftMetadata{
+		EnvUUID:   env.UUID,
+		Carve:     true,
+		CarveName: query.Name,
+	}
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		LeftMetadata: leftMetadata,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Query:        query,
@@ -1095,11 +1108,18 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	leftMetadata := AsideLeftMetadata{
+		EnvUUID:      env.UUID,
+		ActiveNode:   nodes.IsActive(node, h.Settings.InactiveHours()),
+		InactiveNode: !nodes.IsActive(node, h.Settings.InactiveHours()),
+		NodeUUID:     node.UUID,
+	}
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:        "Node View " + node.Hostname,
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		LeftMetadata: leftMetadata,
 		Node:         node,
 		NodeTags:     nodeTags,
 		TagsForNode:  tags,
