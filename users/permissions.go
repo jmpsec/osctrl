@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jmpsec/osctrl/environments"
 	"gorm.io/gorm"
 )
 
@@ -76,6 +77,13 @@ func (m *UserManager) GenEnvUserAccess(envs []string, user, query, carve, admin 
 			Admin: admin,
 		}
 	}
+	return access
+}
+
+// GenUserAccess to generate the struct with empty access
+func (m *UserManager) GenUserAccess(env environments.TLSEnvironment, envAccess EnvAccess) UserAccess {
+	access := make(UserAccess)
+	access[env.UUID] = envAccess
 	return access
 }
 

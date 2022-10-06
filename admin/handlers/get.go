@@ -95,8 +95,22 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	vars := mux.Vars(r)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	// Extract environment
+	envVar, ok := vars["env"]
+	if !ok {
+		log.Println("environment is missing")
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Printf("error getting environment %s - %v", envVar, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return

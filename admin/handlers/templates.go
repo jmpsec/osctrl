@@ -791,7 +791,6 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Printf("error getting environments %v", err)
 		return
 	}
-
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {

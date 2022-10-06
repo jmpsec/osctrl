@@ -106,48 +106,44 @@ function refreshUserToken() {
 function showPermissions(_username) {
   $("#username_permissions").val(_username);
   sendGetRequest('/users/permissions/' + _username, false, function (data) {
-    $('.switch-env-permission').each(function () {
-      var _env = $(this).attr('id');
-      if (data.environments) {
-        if (data.environments[_env]) {
-          $(this).attr('checked', true);
-        } else {
-          $(this).attr('checked', false);
+    for (var key in data) {
+      $('.' + key + '-env').each(function() {
+        var element_id = $(this).attr('id');
+        if (element_id.search('permission-read') > 0) {
+          $(this).attr('checked', data[key].user);
         }
-      } else {
-        $(this).attr('checked', false);
-      }
-    });
-    if (data.query) {
-      $("#permission-queries").attr('checked', true);
-    } else {
-      $("#permission-queries").attr('checked', false);
-    }
-    if (data.carve) {
-      $("#permission-carves").attr('checked', true);
-    } else {
-      $("#permission-carves").attr('checked', false);
+        if (element_id.search('permission-query') > 0) {
+          $(this).attr('checked', data[key].query);
+        }
+        if (element_id.search('permission-carve') > 0) {
+          $(this).attr('checked', data[key].carve);
+        }
+        if (element_id.search('permission-admin') > 0) {
+          $(this).attr('checked', data[key].admin);
+        }
+      });
     }
   });
   $("#permissionsModal").modal();
 }
 
-function savePermissions() {
+function savePermissions(_env_perm) {
   var _csrftoken = $("#csrftoken").val();
   var _username = $("#username_permissions").val();
 
-  var _queries = $("#permission-queries").is(':checked');
-  var _carves = $("#permission-carves").is(':checked');
+  var _read = $("#" + _env_perm + "-read").is(':checked');
+  var _query = $("#" + _env_perm + "-query").is(':checked');
+  var _carve = $("#" + _env_perm + "-carve").is(':checked');
+  var _admin = $("#" + _env_perm + "-admin").is(':checked');
 
-  var _envs = {};
-  $('.switch-env-permission').each(function () {
-    _envs[$(this).attr('id')] = $(this).prop('checked');
-  });
+  var _env = $("#" + _env_perm + "-env").val();
   var data = {
     csrftoken: _csrftoken,
-    environments: _envs,
-    query: _queries,
-    carve: _carves,
+    environment: _env,
+    read: _read,
+    query: _query,
+    carve: _carve,
+    admin: _admin,
   };
   sendPostRequest(data, '/users/permissions/' + _username, '', false, function (data) {
     console.log(data);
@@ -158,7 +154,7 @@ function changePassword(_username) {
   $("#new_password").val('');
   $("#confirm_password").val('');
   $("#change_password_username").val(_username);
-  $("#change_password_header").text('Change Password for '+_username);
+  $("#change_password_header").text('Change Password for ' + _username);
   $("#changePasswordModal").modal();
 }
 

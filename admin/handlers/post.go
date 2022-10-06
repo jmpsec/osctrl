@@ -1290,13 +1290,14 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Check that default environment exists
-		if (u.DefaultEnv == "") || !h.Envs.Exists(u.DefaultEnv) {
+		env, err := h.Envs.Get(u.DefaultEnv)
+		if err != nil {
 			adminErrorResponse(w, "error adding user", http.StatusInternalServerError, fmt.Errorf("environment %s does not exist", u.DefaultEnv))
 			h.Inc(metricAdminErr)
 			return
 		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.DefaultEnv, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, env.UUID, u.Admin)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
@@ -1308,18 +1309,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		/*
-			if u.Admin {
-				access = users.AdminLevel
-				namesEnvs, err = h.Envs.Names()
-				if err != nil {
-					adminErrorResponse(w, "error getting environments user", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
-			}
-		*/
-		access := h.Users.GenEnvUserAccess([]string{u.DefaultEnv}, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
+		access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
 		perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
@@ -1355,12 +1345,16 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				return
 			}
 		}
-		if u.DefaultEnv != "" && h.Envs.Exists(u.DefaultEnv) {
-			if err := h.Users.ChangeDefaultEnv(u.Username, u.DefaultEnv); err != nil {
-				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
-				h.Inc(metricAdminErr)
-				return
-			}
+		env, err := h.Envs.Get(u.DefaultEnv)
+		if err != nil {
+			adminErrorResponse(w, "error with environment", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		if err := h.Users.ChangeDefaultEnv(u.Username, env.UUID); err != nil {
+			adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
 		}
 		if u.NewPassword != "" {
 			if err := h.Users.ChangePassword(u.Username, u.NewPassword); err != nil {
@@ -1376,8 +1370,11 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		if h.Users.Exists(u.Username) {
-			if err := h.Users.Delete(u.Username); err != nil {
+		exist, user := h.Users.ExistsGet(u.Username)
+		if exist {
+			if err := h.Users.DeletePermissions(user.Username, user.DefaultEnv); err != nil {
+			}
+			if err := h.Users.Delete(user.Username); err != nil {
 				adminErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1621,6 +1618,13 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Retrieve environment
+	env, err := h.Envs.Get(p.Environment)
+	if err != nil {
+		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	// Check CSRF Token
 	if !sessions.CheckCSRFToken(ctx[sessions.CtxCSRF], p.CSRFToken) {
 		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
@@ -1629,16 +1633,25 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// TODO verify environments and this should reflect the updated struct for permissions
 	perms := users.EnvAccess{
-		User:  true,
+		User:  p.Read,
 		Query: p.Query,
 		Carve: p.Carve,
-		Admin: true,
+		Admin: p.Admin,
 	}
-	// TODO empty environment until the correct request is sent
-	if err := h.Users.ChangeAccess(usernameVar, "", perms); err != nil {
-		adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
-		return
+	// Check if user already have access to this environment
+	existing, err := h.Users.GetEnvAccess(usernameVar, p.Environment)
+	if err != nil && err.Error() == "record not found" {
+		envAccess := h.Users.GenUserAccess(env, perms)
+		generatedPerms := h.Users.GenPermissions(usernameVar, ctx[sessions.CtxUser], envAccess)
+		if err := h.Users.CreatePermissions(generatedPerms); err != nil {
+		}
+	}
+	if !users.SameAccess(perms, existing) {
+		if err := h.Users.ChangeAccess(usernameVar, p.Environment, perms); err != nil {
+			adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
