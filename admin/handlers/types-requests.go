@@ -142,10 +142,12 @@ type TagNodesRequest struct {
 
 // PermissionsRequest to receive user permissions changes requests
 type PermissionsRequest struct {
-	CSRFToken    string          `json:"csrftoken"`
-	Environments map[string]bool `json:"environments"`
-	Query        bool            `json:"query"`
-	Carve        bool            `json:"carve"`
+	CSRFToken   string `json:"csrftoken"`
+	Environment string `json:"environment"`
+	Read        bool   `json:"read"`
+	Query       bool   `json:"query"`
+	Carve       bool   `json:"carve"`
+	Admin       bool   `json:"admin"`
 }
 
 // AdminResponse to be returned to requests

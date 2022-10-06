@@ -33,6 +33,7 @@ type AdminUser struct {
 	LastUserAgent string
 	LastAccess    time.Time
 	LastTokenUse  time.Time
+	EnvironmentID uint
 }
 
 // TokenClaims to hold user claims when using JWT

@@ -45,7 +45,7 @@
                       <th width="10%">Username</th>
                       <th width="15%">Email</th>
                       <th width="10%">Fullname</th>
-                      <th width="10%">Environment</th>
+                      <th width="10%">Default Environment</th>
                       <th width="10%">Last IP</th>
                       <th width="20%">Last UserAgent</th>
                       <th width="5%">Admin</th>
@@ -85,18 +85,16 @@
                           <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
-                      {{ if not $e.Admin }}
-                        <button id="permissions-button-{{ $e.Username }}" type="button" class="btn btn-sm btn-ghost-primary" data-tooltip="true" data-placement="top" title="Permissions"
-                          onclick="showPermissions('{{ $e.Username }}');">
-                          <i class="fas fa-cogs"></i>
-                        </button>
-                      {{ end }}
                       </td>
                       <td>{{ pastFutureTimes $e.LastAccess }}</td>
                       <td>
-                        <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="Show API Token"
+                        <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="API Token"
                         onclick="showAPIToken('{{ $e.APIToken }}', '{{ pastFutureTimes $e.TokenExpire }}', '{{ $e.Username }}');">
                           <i class="fas fa-key"></i>
+                        </button>
+                        <button id="permissions-button-{{ $e.Username }}" type="button" class="btn btn-sm btn-ghost-primary" data-tooltip="true" data-placement="top" title="Permissions"
+                          onclick="showPermissions('{{ $e.Username }}');">
+                          <i class="fas fa-lock"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
                         onclick="confirmDeleteUser('{{ $e.Username }}');">
@@ -270,39 +268,28 @@
                       <table class="table table-responsive-sm table-bordered table-striped text-center">
                         <thead>
                           <tr>
-                            <th width="60%">Environments</th>
-                            <th width="20%">Run Queries</th>
-                            <th width="20%">Carve Files</th>
+                            <th width="20%">Environment</th>
+                            <th width="20%">Read</th>
+                            <th width="20%">Query</th>
+                            <th width="20%">Carve</th>
+                            <th width="20%">Admin</th>
                           </tr>
                         </thead>
                         <tbody>
+                        {{range  $i, $e := $.Environments}}
                           <tr>
                             <td>
-                              <table width="100%">
-                              {{range  $i, $e := $.Environments}}
-                                <tr>
-                                  <td>
-                                    <div class="row">
-                                      <div class="col-md-2 centered">
-                                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                                          <input id="{{ $e.Name }}" class="switch-input switch-env-permission" type="checkbox" onclick="savePermissions();">
-                                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-                                        </label>
-                                      </div>
-                                      <div class="col-md-10 centered">
-                                        Access to environment <b>{{ $e.Name }}</b>
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              {{ end }}
-                              </table>
+                              <div class="row">
+                                <div class="col-md-12 centered">
+                                  <b>{{ $e.Name }}</b>
+                                </div>
+                              </div>
                             </td>
                             <td>
                               <div class="row">
                                 <div class="col-md-12 centered">
                                   <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                                    <input id="permission-queries" class="switch-input" type="checkbox" onclick="savePermissions();">
+                                    <input id="{{ $e.Name }}-permission-read" class="switch-input {{ $e.UUID }}-env" type="checkbox" onclick="savePermissions('{{ $e.Name }}-permission');">
                                     <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                                   </label>
                                 </div>
@@ -312,13 +299,35 @@
                               <div class="row">
                                 <div class="col-md-12 centered">
                                   <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                                    <input id="permission-carves" class="switch-input" type="checkbox" onclick="savePermissions();">
+                                    <input id="{{ $e.Name }}-permission-query" class="switch-input {{ $e.UUID }}-env" type="checkbox" onclick="savePermissions('{{ $e.Name }}-permission');">
+                                    <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                  </label>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="row">
+                                <div class="col-md-12 centered">
+                                  <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                                    <input id="{{ $e.Name }}-permission-carve" class="switch-input {{ $e.UUID }}-env" type="checkbox" onclick="savePermissions('{{ $e.Name }}-permission');">
+                                    <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                                  </label>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="row">
+                                <div class="col-md-12 centered">
+                                  <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                                    <input id="{{ $e.Name }}-permission-admin" class="switch-input {{ $e.UUID }}-env" type="checkbox" onclick="savePermissions('{{ $e.Name }}-permission');">
                                     <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                                   </label>
                                 </div>
                               </div>
                             </td>
                           </tr>
+                          <input type="hidden" id="{{ $e.Name }}-permission-env" value="{{ $e.UUID }}">
+                        {{ end }}
                         </tbody>
                       </table>
                       <input type="hidden" id="username_permissions" value="">
