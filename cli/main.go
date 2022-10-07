@@ -225,13 +225,13 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "environment",
-							Aliases: []string{"E"},
+							Aliases: []string{"e"},
 							Value:   "",
 							Usage:   "Default environment for the new user",
 						},
 						&cli.StringFlag{
 							Name:    "email",
-							Aliases: []string{"e"},
+							Aliases: []string{"E"},
 							Usage:   "Email for the new user",
 						},
 						&cli.StringFlag{
@@ -259,7 +259,7 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "email",
-							Aliases: []string{"e"},
+							Aliases: []string{"E"},
 							Usage:   "Email to be used",
 						},
 						&cli.StringFlag{
@@ -281,7 +281,7 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "environment",
-							Aliases: []string{"E"},
+							Aliases: []string{"env"},
 							Usage:   "Default environment for this user",
 						},
 					},
@@ -299,7 +299,7 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "environment",
-							Aliases: []string{"E"},
+							Aliases: []string{"e"},
 							Usage:   "Environment for this user",
 						},
 						&cli.BoolFlag{
@@ -353,6 +353,19 @@ func init() {
 						},
 					},
 					Action: cliWrapper(deleteUser),
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to be displayed",
+						},
+					},
+					Action: cliWrapper(showUser),
 				},
 				{
 					Name:    "list",

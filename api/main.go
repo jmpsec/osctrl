@@ -28,27 +28,27 @@ import (
 
 const (
 	// Project name
-	projectName string = "osctrl"
+	projectName = "osctrl"
 	// Service name
-	serviceName string = projectName + "-" + settings.ServiceAPI
+	serviceName = projectName + "-" + settings.ServiceAPI
 	// Service version
-	serviceVersion string = version.OsctrlVersion
+	serviceVersion = version.OsctrlVersion
 	// Service description
-	serviceDescription string = "API service for osctrl"
+	serviceDescription = "API service for osctrl"
 	// Application description
-	appDescription string = serviceDescription + ", a fast and efficient osquery management"
+	appDescription = serviceDescription + ", a fast and efficient osquery management"
 	// Default service configuration file
-	defConfigurationFile string = "config/" + settings.ServiceAPI + ".json"
+	defConfigurationFile = "config/" + settings.ServiceAPI + ".json"
 	// Default DB configuration file
-	defDBConfigurationFile string = "config/db.json"
+	defDBConfigurationFile = "config/db.json"
 	// Default redis configuration file
-	defRedisConfigurationFile string = "config/redis.json"
+	defRedisConfigurationFile = "config/redis.json"
 	// Default TLS certificate file
-	defTLSCertificateFile string = "config/tls.crt"
+	defTLSCertificateFile = "config/tls.crt"
 	// Default TLS private key file
-	defTLSKeyFile string = "config/tls.key"
+	defTLSKeyFile = "config/tls.key"
 	// Default JWT configuration file
-	defJWTConfigurationFile string = "config/jwt.json"
+	defJWTConfigurationFile = "config/jwt.json"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 )
@@ -56,30 +56,32 @@ const (
 // Paths
 const (
 	// HTTP health path
-	healthPath string = "/health"
+	healthPath = "/health"
 	// HTTP errors path
-	errorPath     string = "/error"
-	forbiddenPath string = "/forbidden"
+	errorPath     = "/error"
+	forbiddenPath = "/forbidden"
 	// API prefix path
-	apiPrefixPath string = "/api"
+	apiPrefixPath = "/api"
 	// API version path
-	apiVersionPath string = "/v1"
+	apiVersionPath = "/v1"
 	// API nodes path
-	apiNodesPath string = "/nodes"
+	apiNodesPath = "/nodes"
 	// API queries path
-	apiQueriesPath string = "/queries"
+	apiQueriesPath = "/queries"
+	// API users path
+	apiUsersPath = "/users"
 	// API all queries path
-	apiAllQueriesPath string = "/all-queries"
+	apiAllQueriesPath = "/all-queries"
 	// API carves path
-	apiCarvesPath string = "/carves"
+	apiCarvesPath = "/carves"
 	// API platforms path
-	apiPlatformsPath string = "/platforms"
+	apiPlatformsPath = "/platforms"
 	// API environments path
-	apiEnvironmentsPath string = "/environments"
+	apiEnvironmentsPath = "/environments"
 	// API tags path
-	apiTagsPath string = "/tags"
+	apiTagsPath = "/tags"
 	// API settings path
-	apiSettingsPath string = "/settings"
+	apiSettingsPath = "/settings"
 )
 
 var (
@@ -496,6 +498,11 @@ func osctrlAPIService() {
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/results/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
+	// API: users by environment
+	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}/", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(apiUsersHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiUsersPath)+"/", handlerAuthCheck(http.HandlerFunc(apiUsersHandler))).Methods("GET")
 	// API: platforms by environment
 	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")

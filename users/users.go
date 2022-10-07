@@ -22,13 +22,13 @@ type AdminUser struct {
 	Username      string `gorm:"index"`
 	Email         string
 	Fullname      string
-	PassHash      string
-	APIToken      string
+	PassHash      string `json:"-"`
+	APIToken      string `json:"-"`
 	TokenExpire   time.Time
 	Admin         bool
 	UUID          string
 	DefaultEnv    string
-	CSRFToken     string
+	CSRFToken     string `json:"-"`
 	LastIPAddress string
 	LastUserAgent string
 	LastAccess    time.Time

@@ -137,7 +137,7 @@ func showNode(c *cli.Context) error {
 		fmt.Println("UUID is required")
 		os.Exit(1)
 	}
-	env := c.String("name")
+	env := c.String("env")
 	if env == "" {
 		fmt.Println("Environment is required")
 		os.Exit(1)
@@ -172,7 +172,7 @@ func showNode(c *cli.Context) error {
 		}
 		fmt.Println(string(jsonRaw))
 	} else if csvFlag {
-		data := nodeToData(node, header)
+		data := nodeToData(node, nil)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return err
@@ -180,7 +180,7 @@ func showNode(c *cli.Context) error {
 	} else if prettyFlag {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
-		data := nodeToData(node, header)
+		data := nodeToData(node, nil)
 		table.AppendBulk(data)
 		table.Render()
 	}
