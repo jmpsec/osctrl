@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/users"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -12,6 +15,36 @@ const (
 	// Length to truncate strings
 	lengthToTruncate = 10
 )
+
+// Helper function to convert a slice of users into the data expected for output
+func usersToData(usrs []users.AdminUser, header []string) [][]string {
+	var data [][]string
+	if header != nil {
+		data = append(data, header)
+	}
+	for _, u := range usrs {
+		data = append(data, userToData(u, nil)...)
+	}
+	return data
+}
+
+func userToData(u users.AdminUser, header []string) [][]string {
+	var data [][]string
+	if header != nil {
+		data = append(data, header)
+	}
+	_u := []string{
+		u.Username,
+		u.Fullname,
+		stringifyBool(u.Admin),
+		u.DefaultEnv,
+		u.LastIPAddress,
+		u.LastUserAgent,
+		stringifyUserAccess(nil),
+	}
+	data = append(data, _u)
+	return data
+}
 
 func addUser(c *cli.Context) error {
 	// Get values from flags
@@ -109,44 +142,104 @@ func deleteUser(c *cli.Context) error {
 }
 
 func listUsers(c *cli.Context) error {
-	users, err := adminUsers.All()
-	if err != nil {
-		return err
+	// Retrieve data
+	var usrs []users.AdminUser
+	if dbFlag {
+		usrs, err = adminUsers.All()
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		usrs, err = osctrlAPI.GetUsers()
+		if err != nil {
+			return err
+		}
 	}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
+	header := []string{
 		"Username",
 		"Fullname",
-		"PassHash",
 		"Admin?",
 		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
 		"Permissions",
-	})
-	if len(users) > 0 {
-		data := [][]string{}
-		for _, u := range users {
-			uAccess, err := adminUsers.GetAccess(u.Username)
-			if err != nil {
-				return err
-			}
-			u := []string{
-				u.Username,
-				u.Fullname,
-				truncateString(u.PassHash, lengthToTruncate),
-				stringifyBool(u.Admin),
-				u.DefaultEnv,
-				u.LastIPAddress,
-				u.LastUserAgent,
-				stringifyUserAccess(uAccess),
-			}
-			data = append(data, u)
+	}
+	// Prepare output
+	if jsonFlag {
+		jsonRaw, err := json.Marshal(usrs)
+		if err != nil {
+			return err
 		}
+		fmt.Println(string(jsonRaw))
+	} else if csvFlag {
+		data := usersToData(usrs, header)
+		w := csv.NewWriter(os.Stdout)
+		if err := w.WriteAll(data); err != nil {
+			return err
+		}
+	} else if prettyFlag {
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader(header)
+		if len(usrs) > 0 {
+			fmt.Printf("Existing users (%d):\n", len(usrs))
+			data := usersToData(usrs, nil)
+			table.AppendBulk(data)
+		} else {
+			fmt.Println("No users")
+		}
+		table.Render()
+	}
+	return nil
+}
+
+func showUser(c *cli.Context) error {
+	// Get values from flags
+	username := c.String("username")
+	if username == "" {
+		fmt.Println("username is required")
+		os.Exit(1)
+	}
+	// Retrieve data
+	var usr users.AdminUser
+	if dbFlag {
+		usr, err = adminUsers.Get(username)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		usr, err = osctrlAPI.GetUser(username)
+		if err != nil {
+			return err
+		}
+	}
+	header := []string{
+		"Username",
+		"Fullname",
+		"Admin?",
+		"Default Environment",
+		"Last IPAddress",
+		"Last UserAgent",
+		"Permissions",
+	}
+	// Prepare output
+	if jsonFlag {
+		jsonRaw, err := json.Marshal(usr)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(jsonRaw))
+	} else if csvFlag {
+		data := userToData(usr, nil)
+		w := csv.NewWriter(os.Stdout)
+		if err := w.WriteAll(data); err != nil {
+			return err
+		}
+	} else if prettyFlag {
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader(header)
+		data := userToData(usr, nil)
 		table.AppendBulk(data)
 		table.Render()
-	} else {
-		fmt.Printf("No users\n")
 	}
 	return nil
 }

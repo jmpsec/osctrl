@@ -21,6 +21,8 @@ const (
 	APINodes = "/nodes"
 	// APIQueries
 	APIQueries = "/queries"
+	// APIUsers
+	APIUSers = "/users"
 	// JSONApplication for Content-Type headers
 	JSONApplication = "application/json"
 	// JSONApplicationUTF8 for Content-Type headers, UTF charset
