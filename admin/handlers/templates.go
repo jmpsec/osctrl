@@ -813,7 +813,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Get carves for this query
-	queryCarves, err := h.Carves.GetByQuery(name)
+	queryCarves, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting carve %v", err)

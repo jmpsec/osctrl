@@ -228,9 +228,18 @@ func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 }
 
 // GetByQuery to get a carve by query name
-func (c *Carves) GetByQuery(name string) ([]CarvedFile, error) {
+func (c *Carves) GetByQuery(name string, env uint) ([]CarvedFile, error) {
 	var carves []CarvedFile
-	if err := c.DB.Where("query_name = ?", name).Find(&carves).Error; err != nil {
+	if err := c.DB.Where("query_name = ? AND environment_id = ?", name, env).Find(&carves).Error; err != nil {
+		return carves, err
+	}
+	return carves, nil
+}
+
+// GetByEnv to get carves by environment
+func (c *Carves) GetByEnv(env uint) ([]CarvedFile, error) {
+	var carves []CarvedFile
+	if err := c.DB.Where("environment_id = ?", env).Find(&carves).Error; err != nil {
 		return carves, err
 	}
 	return carves, nil

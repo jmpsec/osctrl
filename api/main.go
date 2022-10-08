@@ -498,6 +498,13 @@ func osctrlAPIService() {
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/results/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiAllQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
+	// API: carves by environment
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/{name}/", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler))).Methods("GET")
 	// API: users by environment
 	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}/", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")

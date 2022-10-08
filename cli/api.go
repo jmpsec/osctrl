@@ -21,6 +21,8 @@ const (
 	APINodes = "/nodes"
 	// APIQueries
 	APIQueries = "/queries"
+	// APICarves
+	APICarves = "/carves"
 	// APIUsers
 	APIUSers = "/users"
 	// JSONApplication for Content-Type headers

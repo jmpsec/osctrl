@@ -7,7 +7,7 @@ import (
 	"github.com/jmpsec/osctrl/queries"
 )
 
-// GetQueries to retrieve nodes from osctrl
+// GetQueries to retrieve queries from osctrl
 func (api *OsctrlAPI) GetQueries(env string) ([]queries.DistributedQuery, error) {
 	var qs []queries.DistributedQuery
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)
@@ -21,7 +21,7 @@ func (api *OsctrlAPI) GetQueries(env string) ([]queries.DistributedQuery, error)
 	return qs, nil
 }
 
-// GetQuery to retrieve one node from osctrl
+// GetQuery to retrieve one query from osctrl
 func (api *OsctrlAPI) GetQuery(env, name string) (queries.DistributedQuery, error) {
 	var q queries.DistributedQuery
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APIQueries, env, name)
@@ -35,7 +35,7 @@ func (api *OsctrlAPI) GetQuery(env, name string) (queries.DistributedQuery, erro
 	return q, nil
 }
 
-// DeleteQuery to delete node from osctrl
+// DeleteQuery to delete query from osctrl
 func (api *OsctrlAPI) DeleteQuery(env, identifier string) error {
 	return nil
 }

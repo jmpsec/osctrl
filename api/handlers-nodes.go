@@ -52,14 +52,14 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPIEnvsErr)
+		incMetric(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPIEnvsErr)
+		incMetric(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -93,7 +93,7 @@ func apiNodesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPIEnvsErr)
+		incMetric(metricAPINodesErr)
 		return
 	}
 	// Get nodes

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/backend"
+	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -42,6 +43,7 @@ var (
 	settingsmgr *settings.Settings
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
 	envs        *environments.Environment
@@ -1113,6 +1115,85 @@ func init() {
 			},
 		},
 		{
+			Name:  "carve",
+			Usage: "Commands for file carves",
+			Subcommands: []*cli.Command{
+				{
+					Name:    "complete",
+					Aliases: []string{"c"},
+					Usage:   "Mark an file carve as completed",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Carve name to be completed",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(completeCarve),
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Mark a file carve as deleted",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Carve name to be deleted",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(deleteCarve),
+				},
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "List file carves",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:    "all",
+							Aliases: []string{"v"},
+							Hidden:  true,
+							Usage:   "Show all carves",
+						},
+						&cli.BoolFlag{
+							Name:    "active",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Show active carves",
+						},
+						&cli.BoolFlag{
+							Name:    "completed, c",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Show completed carves",
+						},
+						&cli.BoolFlag{
+							Name:    "deleted",
+							Aliases: []string{"d"},
+							Hidden:  false,
+							Usage:   "Show deleted carves",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(listCarves),
+				},
+			},
+		},
+		{
 			Name:  "tag",
 			Usage: "Commands for tags",
 			Subcommands: []*cli.Command{
@@ -1285,6 +1366,8 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			nodesmgr = nodes.CreateNodes(db.Conn)
 			// Initialize queries
 			queriesmgr = queries.CreateQueries(db.Conn)
+			// Initialize carves
+			filecarves = carves.CreateFileCarves(db.Conn, settings.CarverDB, nil)
 			// Initialize tags
 			tagsmgr = tags.CreateTagManager(db.Conn)
 			// Execute action
