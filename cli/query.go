@@ -37,6 +37,7 @@ func queryToData(q queries.DistributedQuery, header []string) [][]string {
 		strconv.Itoa(q.Executions),
 		strconv.Itoa(q.Errors),
 		stringifyBool(q.Active),
+		stringifyBool(q.Hidden),
 		stringifyBool(q.Completed),
 		stringifyBool(q.Deleted),
 	}
@@ -58,6 +59,9 @@ func listQueries(c *cli.Context) error {
 	}
 	if c.Bool("deleted") {
 		target = "deleted"
+	}
+	if c.Bool("hidden") {
+		target = "hidden"
 	}
 	env := c.String("env")
 	if env == "" {
@@ -89,6 +93,7 @@ func listQueries(c *cli.Context) error {
 		"Executions",
 		"Errors",
 		"Active",
+		"Hidden",
 		"Completed",
 		"Deleted",
 	}
@@ -164,6 +169,65 @@ func deleteQuery(c *cli.Context) error {
 		return queriesmgr.Delete(name, e.ID)
 	} else if apiFlag {
 		return osctrlAPI.DeleteQuery(env, name)
+	}
+	return nil
+}
+
+func runQuery(c *cli.Context) error {
+	// Get values from flags
+	query := c.String("query")
+	if query == "" {
+		fmt.Println("Query is required")
+		os.Exit(1)
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("Environment is required")
+		os.Exit(1)
+	}
+	uuid := c.String("uuid")
+	if uuid == "" {
+		fmt.Println("UUID is required")
+		os.Exit(1)
+	}
+	hidden := c.Bool("hidden")
+	if dbFlag {
+		e, err := envs.Get(env)
+		if err != nil {
+			return err
+		}
+		queryName := queries.GenQueryName()
+		newQuery := queries.DistributedQuery{
+			Query:         query,
+			Name:          queryName,
+			Creator:       appName,
+			Expected:      0,
+			Executions:    0,
+			Active:        true,
+			Completed:     false,
+			Deleted:       false,
+			Hidden:        hidden,
+			Type:          queries.StandardQueryType,
+			EnvironmentID: e.ID,
+		}
+		if err := queriesmgr.Create(newQuery); err != nil {
+			return err
+		}
+		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
+			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, uuid); err != nil {
+				return err
+			}
+		}
+		if err := queriesmgr.SetExpected(queryName, 1, e.ID); err != nil {
+			return err
+		}
+		return nil
+	} else if apiFlag {
+		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✅ Query %s created successfully", q.Name)
 	}
 	return nil
 }

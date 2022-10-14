@@ -1076,6 +1076,35 @@ func init() {
 					Action: cliWrapper(deleteQuery),
 				},
 				{
+					Name:    "run",
+					Aliases: []string{"r"},
+					Usage:   "Start a new on-demand query",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "query",
+							Aliases: []string{"q"},
+							Usage:   "Query to be issued",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.StringFlag{
+							Name:    "uuid",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID to be used",
+						},
+						&cli.BoolFlag{
+							Name:    "hidden",
+							Aliases: []string{"x"},
+							Hidden:  false,
+							Usage:   "Mark query as hidden",
+						},
+					},
+					Action: cliWrapper(runQuery),
+				},
+				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List on-demand queries",
@@ -1103,6 +1132,12 @@ func init() {
 							Aliases: []string{"d"},
 							Hidden:  false,
 							Usage:   "Show deleted queries",
+						},
+						&cli.BoolFlag{
+							Name:    "hidden",
+							Aliases: []string{"x"},
+							Hidden:  false,
+							Usage:   "Show hidden queries",
 						},
 						&cli.StringFlag{
 							Name:    "env",
@@ -1153,6 +1188,29 @@ func init() {
 						},
 					},
 					Action: cliWrapper(deleteCarve),
+				},
+				{
+					Name:    "run",
+					Aliases: []string{"r"},
+					Usage:   "Start a new carve for a file or a directory",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "path",
+							Aliases: []string{"p"},
+							Usage:   "File or directory path to be carved",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.StringFlag{
+							Name:    "uuid",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID to be used",
+						},
+					},
+					Action: cliWrapper(runCarve),
 				},
 				{
 					Name:    "list",

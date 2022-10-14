@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/queries"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -164,6 +165,64 @@ func deleteCarve(c *cli.Context) error {
 		return queriesmgr.Delete(name, e.ID)
 	} else if apiFlag {
 		return osctrlAPI.DeleteQuery(env, name)
+	}
+	return nil
+}
+
+func runCarve(c *cli.Context) error {
+	// Get values from flags
+	path := c.String("path")
+	if path == "" {
+		fmt.Println("Path is required")
+		os.Exit(1)
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("Environment is required")
+		os.Exit(1)
+	}
+	uuid := c.String("uuid")
+	if uuid == "" {
+		fmt.Println("UUID is required")
+		os.Exit(1)
+	}
+	if dbFlag {
+		e, err := envs.Get(env)
+		if err != nil {
+			return err
+		}
+		carveName := carves.GenCarveName()
+		newQuery := queries.DistributedQuery{
+			Query:         carves.GenCarveQuery(path, false),
+			Name:          carveName,
+			Creator:       appName,
+			Expected:      0,
+			Executions:    0,
+			Active:        true,
+			Completed:     false,
+			Deleted:       false,
+			Type:          queries.CarveQueryType,
+			Path:          path,
+			EnvironmentID: e.ID,
+		}
+		if err := queriesmgr.Create(newQuery); err != nil {
+			return err
+		}
+		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
+			if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetUUID, uuid); err != nil {
+				return err
+			}
+		}
+		if err := queriesmgr.SetExpected(carveName, 1, e.ID); err != nil {
+			return err
+		}
+		return nil
+	} else if apiFlag {
+		c, err := osctrlAPI.RunCarve(env, uuid, path)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✅ Carve %s created successfully", c.Name)
 	}
 	return nil
 }

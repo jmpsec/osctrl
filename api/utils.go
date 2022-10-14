@@ -1,9 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"crypto/rand"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
 )
 
@@ -98,24 +96,5 @@ func removeStringDuplicates(s []string) []string {
 // Helper to handle API error responses
 func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
 	log.Printf("apiErrorResponse %s: %v", msg, err)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, ApiErrorResponse{Error: msg})
-}
-
-// Helper to generate a random query name
-func generateQueryName() string {
-	return "query_" + randomForNames()
-}
-
-// Helper to generate a random carve name
-func generateCarveName() string {
-	return "carve_" + randomForNames()
-}
-
-// Helper to generate a random MD5 to be used with queries/carves
-func randomForNames() string {
-	b := make([]byte, 32)
-	_, _ = rand.Read(b)
-	hasher := md5.New()
-	_, _ = hasher.Write([]byte(fmt.Sprintf("%x", b)))
-	return hex.EncodeToString(hasher.Sum(nil))
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, types.ApiErrorResponse{Error: msg})
 }

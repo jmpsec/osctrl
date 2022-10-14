@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )
@@ -97,7 +98,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIQueriesErr)
 		return
 	}
-	var q DistributedQueryRequest
+	var q types.ApiDistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -112,7 +113,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Prepare and create new query
-	queryName := generateQueryName()
+	queryName := queries.GenQueryName()
 	newQuery := queries.DistributedQuery{
 		Query:         q.Query,
 		Name:          queryName,
@@ -122,7 +123,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Active:        true,
 		Completed:     false,
 		Deleted:       false,
-		Hidden:        true,
+		Hidden:        q.Hidden,
 		Type:          queries.StandardQueryType,
 		EnvironmentID: env.ID,
 	}
@@ -131,86 +132,22 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIQueriesErr)
 		return
 	}
-	// Temporary list of UUIDs to calculate Expected
-	var expected []string
-	// Create environment target
-	if len(q.Environments) > 0 {
-		for _, e := range q.Environments {
-			if (e != "") && envs.Exists(e) {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetEnvironment, e); err != nil {
-					apiErrorResponse(w, "error creating query environment target", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours())
-				if err != nil {
-					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.UUID)
-				}
-			}
+	// Create UUID target
+	if (q.UUID != "") && nodesmgr.CheckByUUID(q.UUID) {
+		if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, q.UUID); err != nil {
+			apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
+			incMetric(metricAPICarvesErr)
+			return
 		}
 	}
-	// Create platform target
-	if len(q.Platforms) > 0 {
-		for _, p := range q.Platforms {
-			if (p != "") && checkValidPlatform(p) {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetPlatform, p); err != nil {
-					apiErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours())
-				if err != nil {
-					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.UUID)
-				}
-			}
-		}
-	}
-	// Create UUIDs target
-	if len(q.UUIDs) > 0 {
-		for _, u := range q.UUIDs {
-			if (u != "") && nodesmgr.CheckByUUID(u) {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, u); err != nil {
-					apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				expected = append(expected, u)
-			}
-		}
-	}
-	// Create hostnames target
-	if len(q.Hosts) > 0 {
-		for _, h := range q.Hosts {
-			if (h != "") && nodesmgr.CheckByHost(h) {
-				if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetLocalname, h); err != nil {
-					apiErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
-					incMetric(metricAPIQueriesErr)
-					return
-				}
-				expected = append(expected, h)
-			}
-		}
-	}
-	// Remove duplicates from expected
-	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
-	if err := queriesmgr.SetExpected(queryName, len(expectedClear), env.ID); err != nil {
+	if err := queriesmgr.SetExpected(queryName, 1, env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
-		incMetric(metricAPIQueriesErr)
+		incMetric(metricAPICarvesErr)
 		return
 	}
 	// Return query name as serialized response
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, ApiQueriesResponse{Name: newQuery.Name})
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 	incMetric(metricAPIQueriesOK)
 }
 

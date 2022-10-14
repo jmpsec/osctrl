@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/types"
 )
 
 // GetQueries to retrieve queries from osctrl
@@ -43,4 +46,28 @@ func (api *OsctrlAPI) DeleteQuery(env, identifier string) error {
 // CompleteQuery to complete a query from osctrl
 func (api *OsctrlAPI) CompleteQuery(env, identifier string) error {
 	return nil
+}
+
+// RunQuery to initiate a query in osctrl
+func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool) (types.ApiQueriesResponse, error) {
+	q := types.ApiDistributedQueryRequest{
+		UUID:   uuid,
+		Query:  query,
+		Hidden: hidden,
+	}
+	var r types.ApiQueriesResponse
+	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)
+	jsonMessage, err := json.Marshal(q)
+	if err != nil {
+		log.Printf("error marshaling data %s", err)
+	}
+	jsonParam := strings.NewReader(string(jsonMessage))
+	rawQ, err := api.PostGeneric(reqURL, jsonParam)
+	if err != nil {
+		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+	}
+	if err := json.Unmarshal(rawQ, &r); err != nil {
+		return r, fmt.Errorf("can not parse body - %v", err)
+	}
+	return r, nil
 }

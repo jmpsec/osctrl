@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+
+	"github.com/jmpsec/osctrl/utils"
 )
 
 const (
@@ -72,4 +74,17 @@ func CheckCompressionBlock(block CarvedBlock) (bool, error) {
 		return false, fmt.Errorf("error decoding block %v", err)
 	}
 	return CheckCompressionRaw(compressionCheck), nil
+}
+
+// Helper to generate a random carve name
+func GenCarveName() string {
+	return "carve_" + utils.RandomForNames()
+}
+
+// Helper to generate the carve query
+func GenCarveQuery(file string, glob bool) string {
+	if glob {
+		return "SELECT * FROM carves WHERE carve=1 AND path LIKE '" + file + "';"
+	}
+	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
 }
