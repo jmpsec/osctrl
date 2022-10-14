@@ -94,3 +94,26 @@ type ScriptRequest struct {
 	FlagsFile   string `json:"flagsFile"`
 	Certificate string `json:"certificate"`
 }
+
+// ApiDistributedQueryRequest to receive query requests
+type ApiDistributedQueryRequest struct {
+	UUID   string `json:"uuid"`
+	Query  string `json:"query"`
+	Hidden bool   `json:"hidden"`
+}
+
+// ApiDistributedCarveRequest to receive query requests
+type ApiDistributedCarveRequest struct {
+	UUID string `json:"uuid"`
+	Path string `json:"path"`
+}
+
+// ApiErrorResponse to be returned to API requests with the error message
+type ApiErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// ApiQueriesResponse to be returned to API requests for queries
+type ApiQueriesResponse struct {
+	Name string `json:"query_name"`
+}

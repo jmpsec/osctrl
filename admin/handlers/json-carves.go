@@ -101,7 +101,7 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 	// Prepare data to be returned
 	cJSON := []CarveJSON{}
 	for _, q := range qs {
-		c, err := h.Carves.GetByQuery(q.Name)
+		c, err := h.Carves.GetByQuery(q.Name, env.ID)
 		if err != nil {
 			log.Printf("error getting carves %v", err)
 			h.Inc(metricJSONErr)

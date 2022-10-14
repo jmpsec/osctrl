@@ -21,6 +21,8 @@ const (
 	APINodes = "/nodes"
 	// APIQueries
 	APIQueries = "/queries"
+	// APICarves
+	APICarves = "/carves"
 	// APIUsers
 	APIUSers = "/users"
 	// JSONApplication for Content-Type headers
@@ -103,9 +105,19 @@ func CreateAPI(config JSONConfigurationAPI, insecure bool) *OsctrlAPI {
 	return a
 }
 
-// GetGeneric - Helper function to implement generic retrieval from API
+// GetGeneric - Helper function to implement generic retrieval from API with a GET request
 func (api *OsctrlAPI) GetGeneric(url string, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, url, body)
+	return api.ReqGeneric(http.MethodGet, url, body)
+}
+
+// PostGeneric - Helper function to implement generic retrieval from API with a POST request
+func (api *OsctrlAPI) PostGeneric(url string, body io.Reader) ([]byte, error) {
+	return api.ReqGeneric(http.MethodPost, url, body)
+}
+
+// ReqGeneric - Helper function to implement generic retrieval from API with a POST request
+func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequest(reqType, url, body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("NewRequest - %v", err)
 	}

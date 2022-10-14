@@ -7,45 +7,45 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
 
 // Helper function to convert a slice of nodes into the data expected for output
-func queriesToData(qs []queries.DistributedQuery, header []string) [][]string {
+func carvesToData(cs []carves.CarvedFile, header []string) [][]string {
 	var data [][]string
 	if header != nil {
 		data = append(data, header)
 	}
-	for _, q := range qs {
-		data = append(data, queryToData(q, nil)...)
+	for _, c := range cs {
+		data = append(data, carveToData(c, nil)...)
 	}
 	return data
 }
 
-func queryToData(q queries.DistributedQuery, header []string) [][]string {
+func carveToData(c carves.CarvedFile, header []string) [][]string {
 	var data [][]string
 	if header != nil {
 		data = append(data, header)
 	}
-	_q := []string{
-		q.Name,
-		q.Creator,
-		q.Query,
-		q.Type,
-		strconv.Itoa(q.Executions),
-		strconv.Itoa(q.Errors),
-		stringifyBool(q.Active),
-		stringifyBool(q.Hidden),
-		stringifyBool(q.Completed),
-		stringifyBool(q.Deleted),
+	_c := []string{
+		c.QueryName,
+		c.Environment,
+		c.Path,
+		strconv.Itoa(c.CarveSize) + " / " + strconv.Itoa(c.BlockSize),
+		strconv.Itoa(c.CompletedBlocks) + " / " + strconv.Itoa(c.TotalBlocks),
+		c.Status,
+		c.Carver,
+		stringifyBool(c.Archived),
+		c.ArchivePath,
 	}
-	data = append(data, _q)
+	data = append(data, _c)
 	return data
 }
 
-func listQueries(c *cli.Context) error {
+func listCarves(c *cli.Context) error {
 	// Get values from flags
 	target := "all"
 	if c.Bool("all") {
@@ -60,52 +60,48 @@ func listQueries(c *cli.Context) error {
 	if c.Bool("deleted") {
 		target = "deleted"
 	}
-	if c.Bool("hidden") {
-		target = "hidden"
-	}
 	env := c.String("env")
 	if env == "" {
 		fmt.Println("Environment is required")
 		os.Exit(1)
 	}
 	// Retrieve data
-	var qs []queries.DistributedQuery
+	var cs []carves.CarvedFile
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return err
 		}
-		qs, err = queriesmgr.GetQueries(target, e.ID)
+		cs, err = filecarves.GetByEnv(e.ID)
 		if err != nil {
 			return err
 		}
 	} else if apiFlag {
-		qs, err = osctrlAPI.GetQueries(env)
+		cs, err = osctrlAPI.GetCarves(env)
 		if err != nil {
 			return err
 		}
 	}
 	header := []string{
-		"Name",
-		"Creator",
-		"Query",
-		"Type",
-		"Executions",
-		"Errors",
-		"Active",
-		"Hidden",
-		"Completed",
-		"Deleted",
+		"QueryName",
+		"Environment",
+		"Path",
+		"Block/Total Size",
+		"Completed/Total Blocks",
+		"Status",
+		"Carver",
+		"Archived",
+		"ArchivePath",
 	}
 	// Prepare output
 	if jsonFlag {
-		jsonRaw, err := json.Marshal(qs)
+		jsonRaw, err := json.Marshal(cs)
 		if err != nil {
 			return err
 		}
 		fmt.Println(string(jsonRaw))
 	} else if csvFlag {
-		data := queriesToData(qs, header)
+		data := carvesToData(cs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return err
@@ -113,9 +109,9 @@ func listQueries(c *cli.Context) error {
 	} else if prettyFlag {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
-		if len(qs) > 0 {
-			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
-			data := queriesToData(qs, nil)
+		if len(cs) > 0 {
+			fmt.Printf("Existing %s queries (%d):\n", target, len(cs))
+			data := carvesToData(cs, nil)
 			table.AppendBulk(data)
 		} else {
 			fmt.Printf("No %s nodes\n", target)
@@ -125,7 +121,7 @@ func listQueries(c *cli.Context) error {
 	return nil
 }
 
-func completeQuery(c *cli.Context) error {
+func completeCarve(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
@@ -149,7 +145,7 @@ func completeQuery(c *cli.Context) error {
 	return nil
 }
 
-func deleteQuery(c *cli.Context) error {
+func deleteCarve(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
@@ -173,11 +169,11 @@ func deleteQuery(c *cli.Context) error {
 	return nil
 }
 
-func runQuery(c *cli.Context) error {
+func runCarve(c *cli.Context) error {
 	// Get values from flags
-	query := c.String("query")
-	if query == "" {
-		fmt.Println("Query is required")
+	path := c.String("path")
+	if path == "" {
+		fmt.Println("Path is required")
 		os.Exit(1)
 	}
 	env := c.String("env")
@@ -190,44 +186,43 @@ func runQuery(c *cli.Context) error {
 		fmt.Println("UUID is required")
 		os.Exit(1)
 	}
-	hidden := c.Bool("hidden")
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return err
 		}
-		queryName := queries.GenQueryName()
+		carveName := carves.GenCarveName()
 		newQuery := queries.DistributedQuery{
-			Query:         query,
-			Name:          queryName,
+			Query:         carves.GenCarveQuery(path, false),
+			Name:          carveName,
 			Creator:       appName,
 			Expected:      0,
 			Executions:    0,
 			Active:        true,
 			Completed:     false,
 			Deleted:       false,
-			Hidden:        hidden,
-			Type:          queries.StandardQueryType,
+			Type:          queries.CarveQueryType,
+			Path:          path,
 			EnvironmentID: e.ID,
 		}
 		if err := queriesmgr.Create(newQuery); err != nil {
 			return err
 		}
 		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
-			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, uuid); err != nil {
+			if err := queriesmgr.CreateTarget(carveName, queries.QueryTargetUUID, uuid); err != nil {
 				return err
 			}
 		}
-		if err := queriesmgr.SetExpected(queryName, 1, e.ID); err != nil {
+		if err := queriesmgr.SetExpected(carveName, 1, e.ID); err != nil {
 			return err
 		}
 		return nil
 	} else if apiFlag {
-		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden)
+		c, err := osctrlAPI.RunCarve(env, uuid, path)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("✅ Query %s created successfully", q.Name)
+		fmt.Printf("✅ Carve %s created successfully", c.Name)
 	}
 	return nil
 }
