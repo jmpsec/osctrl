@@ -51,17 +51,17 @@ func addSetting(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
-		fmt.Println("name is required")
+		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
 	service := c.String("service")
 	if service == "" {
-		fmt.Println("service is required")
+		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
 	typeValue := c.String("type")
 	if typeValue == "" {
-		fmt.Println("type is required")
+		fmt.Println("❌ type is required")
 		os.Exit(1)
 	}
 	switch typeValue {
@@ -79,17 +79,17 @@ func updateSetting(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
-		fmt.Println("name is required")
+		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
 	service := c.String("service")
 	if service == "" {
-		fmt.Println("service is required")
+		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
 	typeValue := c.String("type")
 	if typeValue == "" {
-		fmt.Println("type is required")
+		fmt.Println("❌ type is required")
 		os.Exit(1)
 	}
 	info := c.String("info")
@@ -103,25 +103,37 @@ func updateSetting(c *cli.Context) error {
 		err = settingsmgr.SetString(c.String("string"), service, name, false)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("❌ error set type - %s", err)
 	}
 	if info != "" {
 		err = settingsmgr.SetInfo(info, service, name)
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("❌ error set info - %s", err)
+	}
+	if !silentFlag {
+		fmt.Println("✅ setting deleted successfully")
+	}
+	return nil
 }
 
 func deleteSetting(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
-		fmt.Println("name is required")
+		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
 	service := c.String("service")
 	if service == "" {
-		fmt.Println("service is required")
+		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
-	return settingsmgr.DeleteValue(service, name)
+	if err := settingsmgr.DeleteValue(service, name); err != nil {
+		return fmt.Errorf("❌ error get queries - %s", err)
+	}
+	if !silentFlag {
+		fmt.Println("✅ setting deleted successfully")
+	}
+	return nil
 }

@@ -58,6 +58,7 @@ var (
 	jsonFlag      bool
 	csvFlag       bool
 	prettyFlag    bool
+	silentFlag    bool
 	insecureFlag  bool
 	dbConfigFile  string
 	apiConfigFile string
@@ -195,6 +196,13 @@ func init() {
 			Aliases:     []string{"p"},
 			Value:       true,
 			Usage:       "Print output in pretty format (table)",
+			Destination: &prettyFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "silent",
+			Aliases:     []string{"s"},
+			Value:       false,
+			Usage:       "Silent mode",
 			Destination: &prettyFlag,
 		},
 	}

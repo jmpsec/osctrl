@@ -25,13 +25,13 @@ func addEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ Environment name is required")
 		os.Exit(1)
 	}
 	// Get environment hostname
 	envHost := c.String("hostname")
 	if envHost == "" {
-		fmt.Println("Environment hostname is required")
+		fmt.Println("❌ Environment hostname is required")
 		os.Exit(1)
 	}
 	// Get certificate

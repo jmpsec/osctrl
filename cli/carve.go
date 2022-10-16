@@ -62,7 +62,7 @@ func listCarves(c *cli.Context) error {
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	// Retrieve data
@@ -125,12 +125,12 @@ func completeCarve(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ carve name is required")
 		os.Exit(1)
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	if dbFlag {
@@ -149,12 +149,12 @@ func deleteCarve(c *cli.Context) error {
 	// Get values from flags
 	name := c.String("name")
 	if name == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ carve name is required")
 		os.Exit(1)
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	if dbFlag {
@@ -173,17 +173,17 @@ func runCarve(c *cli.Context) error {
 	// Get values from flags
 	path := c.String("path")
 	if path == "" {
-		fmt.Println("Path is required")
+		fmt.Println("❌ path is required")
 		os.Exit(1)
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	uuid := c.String("uuid")
 	if uuid == "" {
-		fmt.Println("UUID is required")
+		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
 	if dbFlag {
@@ -222,7 +222,9 @@ func runCarve(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("✅ Carve %s created successfully", c.Name)
+		if !silentFlag {
+			fmt.Printf("✅ carve %s created successfully", c.Name)
+		}
 	}
 	return nil
 }
