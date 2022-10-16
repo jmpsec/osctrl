@@ -50,12 +50,12 @@ func addUser(c *cli.Context) error {
 	// Get values from flags
 	username := c.String("username")
 	if username == "" {
-		fmt.Println("username is required")
+		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
 	defaultEnv := c.String("environment")
 	if defaultEnv == "" {
-		fmt.Println("environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(defaultEnv)
@@ -80,7 +80,9 @@ func addUser(c *cli.Context) error {
 	if err := adminUsers.CreatePermissions(perms); err != nil {
 		return err
 	}
-	fmt.Printf("Created user %s successfully", username)
+	if !silentFlag {
+		fmt.Printf("✅ created user %s successfully", username)
+	}
 	return nil
 }
 
@@ -88,7 +90,7 @@ func editUser(c *cli.Context) error {
 	// Get values from flags
 	username := c.String("username")
 	if username == "" {
-		fmt.Println("username is required")
+		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
 	password := c.String("password")
@@ -127,7 +129,9 @@ func editUser(c *cli.Context) error {
 			return err
 		}
 	}
-	fmt.Printf("Edited user %s successfully", username)
+	if !silentFlag {
+		fmt.Printf("✅ user %s edited successfully", username)
+	}
 	return nil
 }
 
@@ -135,7 +139,7 @@ func deleteUser(c *cli.Context) error {
 	// Get values from flags
 	username := c.String("username")
 	if username == "" {
-		fmt.Println("username is required")
+		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
 	return adminUsers.Delete(username)
@@ -196,7 +200,7 @@ func showUser(c *cli.Context) error {
 	// Get values from flags
 	username := c.String("username")
 	if username == "" {
-		fmt.Println("username is required")
+		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
 	// Retrieve data
@@ -248,7 +252,7 @@ func permissionsUser(c *cli.Context) error {
 	// Get values from flags
 	username := c.String("username")
 	if username == "" {
-		fmt.Println("username is required")
+		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
 	show := c.Bool("show")
@@ -289,7 +293,7 @@ func permissionsUser(c *cli.Context) error {
 	}
 	envName := c.String("environment")
 	if envName == "" {
-		fmt.Println("environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -317,7 +321,7 @@ func permissionsUser(c *cli.Context) error {
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return err
 		}
-		fmt.Printf("Permissions reset for user %s successfully", username)
+		fmt.Printf("✅ permissions reset for user %s successfully", username)
 	} else {
 		if user {
 			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
@@ -339,7 +343,7 @@ func permissionsUser(c *cli.Context) error {
 				return err
 			}
 		}
-		fmt.Printf("Permissions changed for user %s successfully", username)
+		fmt.Printf("✅ permissions changed for user %s successfully", username)
 	}
 	return nil
 }

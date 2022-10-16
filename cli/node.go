@@ -53,7 +53,7 @@ func listNodes(c *cli.Context) error {
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	// Retrieve data
@@ -111,12 +111,12 @@ func deleteNode(c *cli.Context) error {
 	// Get values from flags
 	uuid := c.String("uuid")
 	if uuid == "" {
-		fmt.Println("uuid is required")
+		fmt.Println("❌ uuid is required")
 		os.Exit(1)
 	}
 	env := c.String("name")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	if dbFlag {
@@ -126,7 +126,9 @@ func deleteNode(c *cli.Context) error {
 	} else if apiFlag {
 
 	}
-	fmt.Println("✅ Node has been deleted")
+	if !silentFlag {
+		fmt.Println("✅ node was deleted successfully")
+	}
 	return nil
 }
 
@@ -134,12 +136,12 @@ func showNode(c *cli.Context) error {
 	// Get values from flags
 	uuid := c.String("uuid")
 	if uuid == "" {
-		fmt.Println("UUID is required")
+		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
 	env := c.String("env")
 	if env == "" {
-		fmt.Println("Environment is required")
+		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
 	var node nodes.OsqueryNode
