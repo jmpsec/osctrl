@@ -203,7 +203,7 @@ func init() {
 			Aliases:     []string{"s"},
 			Value:       false,
 			Usage:       "Silent mode",
-			Destination: &prettyFlag,
+			Destination: &silentFlag,
 		},
 	}
 	// Initialize CLI flags commands
@@ -990,6 +990,29 @@ func init() {
 						},
 					},
 					Action: cliWrapper(deleteNode),
+				},
+				{
+					Name:    "tag",
+					Aliases: []string{"t"},
+					Usage:   "Tag an existing node",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "uuid, u",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID to be tagged",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.StringFlag{
+							Name:    "tag-value",
+							Aliases: []string{"T"},
+							Usage:   "Tag value to be used. It will be created if does not exist",
+						},
+					},
+					Action: cliWrapper(tagNode),
 				},
 				{
 					Name:    "list",

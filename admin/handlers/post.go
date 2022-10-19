@@ -1009,31 +1009,6 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 			h.Inc(metricAdminErr)
 			return
 		}
-	case "archive":
-		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: archiving node")
-		}
-		adminOKResponse(w, "node archived successfully")
-	case "tag":
-		okCount := 0
-		errCount := 0
-		for _, u := range m.UUIDs {
-			if err := h.Nodes.ArchiveDeleteByUUID(u); err != nil {
-				errCount++
-				if h.Settings.DebugService(settings.ServiceAdmin) {
-					log.Printf("DebugService: error tagging node %s %v", u, err)
-				}
-			} else {
-				okCount++
-			}
-		}
-		if errCount == 0 {
-			adminOKResponse(w, fmt.Sprintf("%d Node(s) have been deleted successfully", okCount))
-		} else {
-			adminErrorResponse(w, fmt.Sprintf("Error deleting %d node(s)", errCount), http.StatusInternalServerError, nil)
-			h.Inc(metricAdminErr)
-			return
-		}
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {

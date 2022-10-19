@@ -190,6 +190,16 @@ func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 	return node, nil
 }
 
+// GetByUUIDEnv to retrieve full node object from DB, by uuid and environment ID
+// UUID is expected uppercase
+func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error) {
+	var node OsqueryNode
+	if err := n.DB.Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envid).First(&node).Error; err != nil {
+		return node, err
+	}
+	return node, nil
+}
+
 // GetBySelector to retrieve target nodes by selector
 func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
