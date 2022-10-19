@@ -108,6 +108,11 @@ type ApiDistributedCarveRequest struct {
 	Path string `json:"path"`
 }
 
+// ApiNodeGenericRequest to receive generic node requests
+type ApiNodeGenericRequest struct {
+	UUID string `json:"uuid"`
+}
+
 // ApiErrorResponse to be returned to API requests with the error message
 type ApiErrorResponse struct {
 	Error string `json:"error"`
@@ -116,4 +121,9 @@ type ApiErrorResponse struct {
 // ApiQueriesResponse to be returned to API requests for queries
 type ApiQueriesResponse struct {
 	Name string `json:"query_name"`
+}
+
+// ApiGenericResponse to be returned to API requests for anything
+type ApiGenericResponse struct {
+	Message string `json:"message"`
 }

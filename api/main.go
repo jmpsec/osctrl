@@ -483,10 +483,16 @@ func osctrlAPIService() {
 
 	// ///////////////////////// AUTHENTICATED
 	// API: nodes by environment
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/{node}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/node/{node}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/delete/", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/all", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/all/", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/active", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/active/", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/inactive", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/inactive/", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler))).Methods("GET")
 	// API: queries by environment
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
