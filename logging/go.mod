@@ -16,12 +16,12 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/backend v0.3.0
-	github.com/jmpsec/osctrl/nodes v0.3.0
-	github.com/jmpsec/osctrl/queries v0.3.0
-	github.com/jmpsec/osctrl/settings v0.3.0
-	github.com/jmpsec/osctrl/types v0.3.0
-	github.com/jmpsec/osctrl/utils v0.3.0
+	github.com/jmpsec/osctrl/backend v0.3.1
+	github.com/jmpsec/osctrl/nodes v0.3.1
+	github.com/jmpsec/osctrl/queries v0.3.1
+	github.com/jmpsec/osctrl/settings v0.3.1
+	github.com/jmpsec/osctrl/types v0.3.1
+	github.com/jmpsec/osctrl/utils v0.3.1
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/viper v1.10.1
 )
