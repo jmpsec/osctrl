@@ -18,6 +18,6 @@ require (
 require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jmpsec/osctrl/nodes v0.0.0-20220120232002-31ecf3b9f264 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.0 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.1 // indirect
 	github.com/lib/pq v1.10.4 // indirect
 )
