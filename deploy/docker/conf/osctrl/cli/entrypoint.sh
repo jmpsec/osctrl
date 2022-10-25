@@ -13,14 +13,14 @@ if [[ -n "$OSCTRL_PASS_FILE" ]]; then
 fi
 
 ######################################### Wait until DB is up #########################################
-until /opt/osctrl/bin/osctrl-cli check
+until /opt/osctrl/bin/osctrl-cli check-db
 do
   echo "DB is not ready"
   sleep $WAIT
 done
 
 ######################################### Create environment #########################################
-/opt/osctrl/bin/osctrl-cli env add \
+/opt/osctrl/bin/osctrl-cli --db env add \
   --name "${ENV_NAME}" \
   --hostname "${HOST}" \
   --certificate "${CRT_FILE}"
@@ -31,7 +31,7 @@ else
 fi
 
 ######################################### Create admin user #########################################
-/opt/osctrl/bin/osctrl-cli user add \
+/opt/osctrl/bin/osctrl-cli --db user add \
   --admin \
   --username "${OSCTRL_USER}" \
   --password "${OSCTRL_PASS}" \

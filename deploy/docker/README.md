@@ -13,7 +13,7 @@ Follow these steps to generate a self-signed certificate that is going to be use
 1. `cp conf/tls/openssl.cnf.example conf/tls/openssl.cnf`
 2. `vim conf/tls/openssl.cnf` and set `emailAddress` with valid e-mail for your org
 3. Replace `osctrl.example.com` in all fields with your domain
-4. `openssl req -x509 -new -nodes -keyout conf/tls/tls.key -out conf/tls/tls.crt -config conf/tls/openssl.cnf`
+4. `openssl req -x509 -new -nodes -days 3650 -keyout conf/tls/tls.key -out conf/tls/tls.crt -config conf/tls/openssl.cnf`
 
 ## Generate JWT secret
 
