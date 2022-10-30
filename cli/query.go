@@ -98,19 +98,19 @@ func listQueries(c *cli.Context) error {
 		"Deleted",
 	}
 	// Prepare output
-	if jsonFlag {
+	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
 			return fmt.Errorf("❌ error json marshal - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if csvFlag {
+	} else if formatFlag == csvFormat {
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("❌ error csv writeall - %s", err)
 		}
-	} else if prettyFlag {
+	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(qs) > 0 {
