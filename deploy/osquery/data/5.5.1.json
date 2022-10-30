@@ -1368,7 +1368,7 @@
       },
       {
         "name":"algorithm",
-        "description":"algorithm of key",
+        "description":"Key type",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -1376,7 +1376,23 @@
       },
       {
         "name":"key",
-        "description":"parsed authorized keys line",
+        "description":"Key encoded as base64",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"options",
+        "description":"Optional list of login options",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"comment",
+        "description":"Optional comment",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -4134,7 +4150,7 @@
     "columns":[
       {
         "name":"hostname",
-        "description":"Hostname (domain[:port]) to CURL",
+        "description":"Hostname to CURL (domain[:port], e.g. osquery.io)",
         "type":"text",
         "hidden":false,
         "required":true,
@@ -12379,10 +12395,12 @@
   {
     "name":"memory_devices",
     "description":"Physical memory device (type 17) information retrieved from SMBIOS.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/posix/memory_devices.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/memory_devices.table",
     "platforms":[
       "darwin",
-      "linux"
+      "linux",
+      "windows",
+      "freebsd"
     ],
     "evented":false,
     "cacheable":false,
@@ -13692,7 +13710,7 @@
       },
       {
         "name":"type",
-        "description":"SDK extension type: extension or module",
+        "description":"SDK extension type: core, extension, or module",
         "type":"text",
         "hidden":false,
         "required":false,
@@ -14351,7 +14369,7 @@
     "columns":[
       {
         "name":"uid",
-        "description":"User ID for the policy if available",
+        "description":"User ID for the policy, -1 for policies that are global",
         "type":"bigint",
         "hidden":false,
         "required":false,
@@ -14834,6 +14852,22 @@
         "index":false
       },
       {
+        "name":"extra",
+        "description":"Platform-specific additional information",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"firmware_type",
+        "description":"The type of firmware (Uefi, Bios, Unknown).",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"address",
         "description":"Relative address of firmware mapping",
         "type":"text",
@@ -14853,14 +14887,6 @@
         "name":"volume_size",
         "description":"(Optional) size of firmware volume",
         "type":"integer",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"extra",
-        "description":"Platform-specific additional information",
-        "type":"text",
         "hidden":false,
         "required":false,
         "index":false
@@ -16552,6 +16578,14 @@
         "hidden":false,
         "required":false,
         "index":false
+      },
+      {
+        "name":"cgroup_path",
+        "description":"The full hierarchical path of the process's control group",
+        "type":"text",
+        "hidden":true,
+        "required":false,
+        "index":false
       }
     ]
   },
@@ -17492,7 +17526,7 @@
   },
   {
     "name":"screenlock",
-    "description":"macOS screenlock status for the current logged in user context.",
+    "description":"macOS screenlock status. Note: only fetches results for osquery's current logged-in user context. The user must also have recently logged in.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/screenlock.table",
     "platforms":[
       "darwin"
@@ -19937,6 +19971,114 @@
         "description":"Maximum limit value",
         "type":"text",
         "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"unified_log",
+    "description":"Queries the OSLog framework for entries in the system log. The maximum number of rows returned is limited for performance issues. This table introduces a new idiom for extracting sequential data in batches using multiple queries, ordered by timestamp. To trigger it, the user should include the condition \"timestamp > -1\", and the table will handle pagination.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/unified_log.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "columns":[
+      {
+        "name":"timestamp",
+        "description":"unix timestamp associated with the entry",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"storage",
+        "description":"the storage category for the entry",
+        "type":"integer",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"message",
+        "description":"composed message",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"activity",
+        "description":"the activity ID associate with the entry",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"process",
+        "description":"the name of the process that made the entry",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"the pid of the process that made the entry",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sender",
+        "description":"the name of the binary image that made the entry",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"tid",
+        "description":"the tid of the thread that made the entry",
+        "type":"bigint",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"category",
+        "description":"the category of the os_log_t used",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"subsystem",
+        "description":"the subsystem of the os_log_t used",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"level",
+        "description":"the severity level of the entry",
+        "type":"text",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"max_rows",
+        "description":"the max number of rows returned (defaults to 100)",
+        "type":"integer",
+        "hidden":true,
         "required":false,
         "index":false
       }

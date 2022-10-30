@@ -5,7 +5,7 @@ set -e
 OSCTRL_USER="${VARIABLE:-osctrl}"
 OSCTRL_GROUP="${VARIABLE:-osctrl}"
 WORKING_DIR="${VARIABLE:-/etc/osctrl}"
-OSQUERY_VESION="${VARIABLE:-5.4.0}"
+OSQUERY_VESION="${VARIABLE:-5.5.1}"
 OSCTRL_VERSION="${VARIABLE:-0.0.0}"
 
 ###################################### Init DEB contents ######################################
