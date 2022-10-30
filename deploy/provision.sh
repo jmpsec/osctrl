@@ -173,7 +173,7 @@ BRANCH="main"
 SOURCE_PATH=/vagrant
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
-OSQUERY_VERSION="5.4.0"
+OSQUERY_VERSION="5.5.1"
 
 # Backend values
 _DB_HOST="localhost"
