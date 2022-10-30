@@ -94,19 +94,19 @@ func listCarves(c *cli.Context) error {
 		"ArchivePath",
 	}
 	// Prepare output
-	if jsonFlag {
+	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(cs)
 		if err != nil {
 			return err
 		}
 		fmt.Println(string(jsonRaw))
-	} else if csvFlag {
+	} else if formatFlag == csvFormat {
 		data := carvesToData(cs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return err
 		}
-	} else if prettyFlag {
+	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(cs) > 0 {

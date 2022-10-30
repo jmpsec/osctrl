@@ -40,7 +40,6 @@ func userToData(u users.AdminUser, header []string) [][]string {
 		u.DefaultEnv,
 		u.LastIPAddress,
 		u.LastUserAgent,
-		stringifyUserAccess(nil),
 	}
 	data = append(data, _u)
 	return data
@@ -60,7 +59,7 @@ func addUser(c *cli.Context) error {
 	}
 	env, err := envs.Get(defaultEnv)
 	if err != nil {
-		return err
+		return fmt.Errorf("❌ error getting environment - %s", err)
 	}
 	password := c.String("password")
 	email := c.String("email")
@@ -68,17 +67,17 @@ func addUser(c *cli.Context) error {
 	admin := c.Bool("admin")
 	user, err := adminUsers.New(username, password, email, fullname, env.UUID, admin)
 	if err != nil {
-		return err
+		return fmt.Errorf("❌ error with new user - %s", err)
 	}
 	// Create user
 	if err := adminUsers.Create(user); err != nil {
-		return err
+		return fmt.Errorf("❌ error creating user - %s", err)
 	}
 	// Assign permissions to user
 	access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, (admin == true), (admin == true), (admin == true))
 	perms := adminUsers.GenPermissions(username, appName, access)
 	if err := adminUsers.CreatePermissions(perms); err != nil {
-		return err
+		return fmt.Errorf("❌ error creating permissions - %s", err)
 	}
 	if !silentFlag {
 		fmt.Printf("✅ created user %s successfully", username)
@@ -96,37 +95,37 @@ func editUser(c *cli.Context) error {
 	password := c.String("password")
 	if password != "" {
 		if err := adminUsers.ChangePassword(username, password); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing password - %s", err)
 		}
 	}
 	email := c.String("email")
 	if email != "" {
 		if err := adminUsers.ChangeEmail(username, email); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing email - %s", err)
 		}
 	}
 	fullname := c.String("fullname")
 	if fullname != "" {
 		if err := adminUsers.ChangeFullname(username, fullname); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing name - %s", err)
 		}
 	}
 	admin := c.Bool("admin")
 	if admin {
 		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing admin - %s", err)
 		}
 	}
 	notAdmin := c.Bool("non-admin")
 	if notAdmin {
 		if err := adminUsers.ChangeAdmin(username, false); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing non-admin - %s", err)
 		}
 	}
 	defaultEnv := c.String("environment")
 	if defaultEnv != "" {
 		if err := adminUsers.ChangeDefaultEnv(username, defaultEnv); err != nil {
-			return err
+			return fmt.Errorf("❌ error changing environment - %s", err)
 		}
 	}
 	if !silentFlag {
@@ -142,7 +141,19 @@ func deleteUser(c *cli.Context) error {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	return adminUsers.Delete(username)
+	if dbFlag {
+		if err := adminUsers.Delete(username); err != nil {
+			return fmt.Errorf("❌ error deleting - %s", err)
+		}
+	} else if apiFlag {
+		if err := osctrlAPI.DeleteUser(username); err != nil {
+			return fmt.Errorf("❌ error deleting user - %s", err)
+		}
+	}
+	if !silentFlag {
+		fmt.Println("✅ node was deleted successfully")
+	}
+	return nil
 }
 
 func listUsers(c *cli.Context) error {
@@ -151,12 +162,12 @@ func listUsers(c *cli.Context) error {
 	if dbFlag {
 		usrs, err = adminUsers.All()
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error getting users - %s", err)
 		}
 	} else if apiFlag {
 		usrs, err = osctrlAPI.GetUsers()
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error getting users - %s", err)
 		}
 	}
 	header := []string{
@@ -166,22 +177,21 @@ func listUsers(c *cli.Context) error {
 		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
-		"Permissions",
 	}
 	// Prepare output
-	if jsonFlag {
+	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(usrs)
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error serializing - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if csvFlag {
+	} else if formatFlag == csvFormat {
 		data := usersToData(usrs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return err
+			return fmt.Errorf("❌ error WriteAll - %s", err)
 		}
-	} else if prettyFlag {
+	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(usrs) > 0 {
@@ -208,12 +218,12 @@ func showUser(c *cli.Context) error {
 	if dbFlag {
 		usr, err = adminUsers.Get(username)
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error getting user - %s", err)
 		}
 	} else if apiFlag {
 		usr, err = osctrlAPI.GetUser(username)
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error getting user - %s", err)
 		}
 	}
 	header := []string{
@@ -223,127 +233,26 @@ func showUser(c *cli.Context) error {
 		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
-		"Permissions",
 	}
 	// Prepare output
-	if jsonFlag {
+	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(usr)
 		if err != nil {
-			return err
+			return fmt.Errorf("❌ error serializing - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if csvFlag {
+	} else if formatFlag == csvFormat {
 		data := userToData(usr, nil)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return err
+			return fmt.Errorf("❌ error WriteAll - %s", err)
 		}
-	} else if prettyFlag {
+	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		data := userToData(usr, nil)
 		table.AppendBulk(data)
 		table.Render()
-	}
-	return nil
-}
-
-func permissionsUser(c *cli.Context) error {
-	// Get values from flags
-	username := c.String("username")
-	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
-	}
-	show := c.Bool("show")
-	// Show is just display user existing permissions and return
-	if show {
-		existingAccess, err := adminUsers.GetAccess(username)
-		if err != nil {
-			return err
-		}
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{
-			"Username",
-			"Environment",
-			"User access",
-			"Admin access",
-			"Query access",
-			"Carve access",
-		})
-		data := [][]string{}
-		for e, p := range existingAccess {
-			env, err := envs.Get(e)
-			if err != nil {
-				return err
-			}
-			r := []string{
-				username,
-				fmt.Sprintf("%s (%s)", e, env.Name),
-				stringifyBool(p.User),
-				stringifyBool(p.Admin),
-				stringifyBool(p.Query),
-				stringifyBool(p.Carve),
-			}
-			data = append(data, r)
-		}
-		table.AppendBulk(data)
-		table.Render()
-		return nil
-	}
-	envName := c.String("environment")
-	if envName == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
-	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
-	}
-	admin := c.Bool("admin")
-	user := c.Bool("user")
-	carve := c.Bool("carve")
-	query := c.Bool("query")
-	// If admin, then all permissions follow
-	if admin {
-		user = true
-		query = true
-		carve = true
-	}
-	// Reset permissions to regular user access
-	reset := c.Bool("reset")
-	if reset {
-		if err := adminUsers.DeletePermissions(username, env.UUID); err != nil {
-			return err
-		}
-		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, query, carve, admin)
-		perms := adminUsers.GenPermissions(username, appName, access)
-		if err := adminUsers.CreatePermissions(perms); err != nil {
-			return err
-		}
-		fmt.Printf("✅ permissions reset for user %s successfully", username)
-	} else {
-		if user {
-			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
-				return err
-			}
-		}
-		if admin {
-			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
-				return err
-			}
-		}
-		if carve {
-			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
-				return err
-			}
-		}
-		if query {
-			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
-				return err
-			}
-		}
-		fmt.Printf("✅ permissions changed for user %s successfully", username)
 	}
 	return nil
 }

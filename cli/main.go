@@ -32,6 +32,13 @@ const (
 	appDescription string = appUsage + ", a fast and efficient osquery management"
 )
 
+const (
+	// Values for output format
+	jsonFormat   = "json"
+	csvFormat    = "csv"
+	prettyFormat = "pretty"
+)
+
 // Global variables
 var (
 	err         error
@@ -49,15 +56,14 @@ var (
 	envs        *environments.Environment
 	db          *backend.DBManager
 	osctrlAPI   *OsctrlAPI
+	formats     map[string]bool
 )
 
 // Variables for flags
 var (
 	dbFlag        bool
 	apiFlag       bool
-	jsonFlag      bool
-	csvFlag       bool
-	prettyFlag    bool
+	formatFlag    string
 	silentFlag    bool
 	insecureFlag  bool
 	dbConfigFile  string
@@ -177,26 +183,13 @@ func init() {
 			Usage:       "Allow insecure server connections when using SSL",
 			Destination: &insecureFlag,
 		},
-		&cli.BoolFlag{
-			Name:        "json",
-			Aliases:     []string{"j"},
-			Value:       false,
-			Usage:       "Print output in JSON format",
-			Destination: &jsonFlag,
-		},
-		&cli.BoolFlag{
-			Name:        "csv",
-			Aliases:     []string{"c"},
-			Value:       false,
-			Usage:       "Print output in CSV format",
-			Destination: &csvFlag,
-		},
-		&cli.BoolFlag{
-			Name:        "pretty",
-			Aliases:     []string{"p"},
-			Value:       true,
-			Usage:       "Print output in pretty format (table)",
-			Destination: &prettyFlag,
+		&cli.StringFlag{
+			Name:        "output-format",
+			Aliases:     []string{"o"},
+			Value:       prettyFormat,
+			Usage:       "Format to be used for data output",
+			EnvVars:     []string{"OUTPUT_FORMAT"},
+			Destination: &formatFlag,
 		},
 		&cli.BoolFlag{
 			Name:        "silent",
@@ -298,9 +291,9 @@ func init() {
 					Action: cliWrapper(editUser),
 				},
 				{
-					Name:    "permissions",
-					Aliases: []string{"p"},
-					Usage:   "Permission actions for an existing user",
+					Name:    "change-permissions",
+					Aliases: []string{"p", "access"},
+					Usage:   "Change permission in an environment for an existing user",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "username",
@@ -336,20 +329,81 @@ func init() {
 							Hidden:  false,
 							Usage:   "Grant carve permissions",
 						},
-						&cli.BoolFlag{
-							Name:    "reset",
-							Aliases: []string{"R"},
-							Hidden:  false,
-							Usage:   "Reset permissions for this user",
+					},
+					Action: cliWrapper(changePermissions),
+				},
+				{
+					Name:    "reset-permissions",
+					Aliases: []string{"R", "reset"},
+					Usage:   "Clear and reset permissions for a user in an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Usage:   "Environment for this user",
 						},
 						&cli.BoolFlag{
-							Name:    "show",
-							Aliases: []string{"s"},
+							Name:    "admin",
+							Aliases: []string{"a"},
 							Hidden:  false,
-							Usage:   "Display all permissions for this user",
+							Usage:   "Grant admin permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "user",
+							Aliases: []string{"U"},
+							Hidden:  false,
+							Usage:   "Grant user permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "query",
+							Aliases: []string{"q"},
+							Hidden:  false,
+							Usage:   "Grant query permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "carve",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Grant carve permissions",
 						},
 					},
-					Action: cliWrapper(permissionsUser),
+					Action: cliWrapper(resetPermissions),
+				},
+				{
+					Name:    "show-permissions",
+					Aliases: []string{"S", "perms"},
+					Usage:   "Show permissions for a user in an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Usage:   "Environment for this user",
+						},
+					},
+					Action: cliWrapper(showPermissions),
+				},
+				{
+					Name:    "all-permissions",
+					Aliases: []string{"A", "all-perms"},
+					Usage:   "Show all permissions for an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+					},
+					Action: cliWrapper(allPermissions),
 				},
 				{
 					Name:    "delete",
@@ -1389,6 +1443,11 @@ func init() {
 			Action: checkAPI,
 		},
 	}
+	// Initialize formats values
+	formats = make(map[string]bool)
+	formats[prettyFormat] = true
+	formats[jsonFormat] = true
+	formats[csvFormat] = true
 }
 
 // Action for the DB check
@@ -1431,18 +1490,22 @@ func checkAPI(c *cli.Context) error {
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
+		// Verify if format is correct
+		if !formats[formatFlag] {
+			return fmt.Errorf("❌ invalid format %s", formatFlag)
+		}
 		// DB connection will be used
 		if dbFlag {
 			// Initialize backend
 			if dbConfigFile != "" {
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
-					return fmt.Errorf("CreateDBManagerFile - %v", err)
+					return fmt.Errorf("❌ CreateDBManagerFile - %v", err)
 				}
 			} else {
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
-					return fmt.Errorf("CreateDBManager - %v", err)
+					return fmt.Errorf("❌ CreateDBManager - %v", err)
 				}
 			}
 			// Initialize users
@@ -1466,7 +1529,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			if apiConfigFile != "" {
 				apiConfig, err = loadAPIConfiguration(apiConfigFile)
 				if err != nil {
-					return fmt.Errorf("loadAPIConfiguration - %v", err)
+					return fmt.Errorf("❌ loadAPIConfiguration - %v", err)
 				}
 			}
 			// Initialize API
@@ -1483,7 +1546,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 func cliAction(c *cli.Context) error {
 	if c.NumFlags() == 0 {
 		if err := cli.ShowAppHelp(c); err != nil {
-			log.Fatalf("Error with CLI help - %s", err)
+			log.Fatalf("❌ Error with CLI help - %s", err)
 		}
 		return cli.Exit("\nNo flags provided", 2)
 	}
@@ -1502,6 +1565,6 @@ func main() {
 	app.Commands = commands
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatalf("Failed to execute %v", err)
+		log.Fatalf("❌ Failed to execute %v", err)
 	}
 }
