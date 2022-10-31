@@ -14,10 +14,10 @@ import (
 
 // SlunkConfiguration to hold all splunk configuration values
 type SlunkConfiguration struct {
-	URL     string `json:"url"`
-	Token   string `json:"token"`
-	Host    string `json:"host"`
-	Index   string `json:"index"`
+	URL   string `json:"url"`
+	Token string `json:"token"`
+	Host  string `json:"host"`
+	Index string `json:"index"`
 }
 
 // LoggerSplunk will be used to log data using Splunk
@@ -36,8 +36,8 @@ func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
 	l := &LoggerSplunk{
 		Configuration: config,
 		Headers: map[string]string{
-			utils.Authorization:   "Splunk " + config.Token,
-			utils.ContentType: utils.JSONApplicationUTF8,
+			utils.Authorization: "Splunk " + config.Token,
+			utils.ContentType:   utils.JSONApplicationUTF8,
 		},
 		Enabled: true,
 	}

@@ -37,7 +37,7 @@ services:
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      - SERVICE_LOGGER=stdout      
+      - SERVICE_LOGGER=stdout
       #### Database settings ####
       - DB_HOST=postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -68,7 +68,7 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=db
       - JWT_SECRET=${JWT_SECRET}
-      - SERVICE_LOGGER=stdout      
+      - SERVICE_LOGGER=stdout
       #### Database settings ####
       - DB_HOST=postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -99,7 +99,7 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=jwt
       - JWT_SECRET=${JWT_SECRET}
-      - SERVICE_LOGGER=stdout      
+      - SERVICE_LOGGER=stdout
       #### Database settings ####
       - DB_HOST=postgres
       - DB_NAME=${POSTGRES_DB_NAME}

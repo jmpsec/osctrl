@@ -47,7 +47,7 @@ runs:
       run: go mod download
       shell: bash
 
-    
+
     ########################### Build osctrl inputs.osctrl_component ###########################
     - name: Build osctrl-tls
       run: |
