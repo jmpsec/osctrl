@@ -11,7 +11,7 @@ env:
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         components: ['tls', 'admin', 'api', 'cli']
@@ -59,7 +59,7 @@ jobs:
 
   create_deb_packages:
     needs: [build_and_test]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         components: ['tls', 'admin', 'api', 'cli']
@@ -94,7 +94,7 @@ jobs:
 
   create_docker_images:
     needs: [build_and_test]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         components: ['tls', 'admin', 'api', 'cli']
