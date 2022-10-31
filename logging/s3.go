@@ -92,7 +92,7 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 	}
 	result, err := logS3.Uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(logS3.S3Config.Bucket),
-		Key:           aws.String(logType + ":" + environment + ":" + uuid + ":" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".json"),
+		Key:           aws.String(environment + "/" + logType + "/" + uuid + ":" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".json"),
 		Body:          bytes.NewBuffer(data),
 		ContentLength: int64(len(data)),
 		ContentType:   aws.String(http.DetectContentType(data)),
