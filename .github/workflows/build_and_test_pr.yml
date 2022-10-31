@@ -3,7 +3,7 @@ name: Build and test PRs pushed to osctrl
 on: [push, pull_request]
 
 env:
-  GOLANG_VERSION: 1.18.1
+  GOLANG_VERSION: 1.19.2
   OSQUERY_VERSION: 5.5.1
 
 jobs:
