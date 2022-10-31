@@ -1,20 +1,29 @@
-version: "2.2"
+version: "2.4"
 services:
   ######################################### NGINX #########################################
   nginx:
     container_name: 'osctrl-nginx'
+    image: nginx:${NGINX_VERSION}
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile-nginx
-      args:
-        NGINX_VERSION: ${NGINX_VERSION}
-    networks:
-      - default
-      - osctrl-backend
     ports:
       - 8000:80
       - 8443:443
+    networks:
+      - default
+      - osctrl-backend
+    volumes:
+      - type: bind
+        source: ./deploy/docker/conf/nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+      - type: bind
+        source: ./deploy/docker/conf/nginx/osctrl.conf
+        target: /etc/nginx/conf.d/osctrl.conf
+      - type: bind
+        source: ./deploy/docker/conf/tls/tls.crt
+        target: /etc/ssl/certs/osctrl.crt
+      - type: bind
+        source: ./deploy/docker/conf/tls/tls.key
+        target: /etc/ssl/private/osctrl.key
     depends_on:
       - osctrl-tls
       - osctrl-admin
@@ -25,6 +34,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    cpus: 2
+    mem_limit: 150M
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
@@ -55,6 +66,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    cpus: 2
+    mem_limit: 150M
 
   ######################################### osctrl-admin #########################################
   osctrl-admin:
@@ -86,6 +99,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    cpus: 2
+    mem_limit: 150M
 
   ######################################### osctrl-api #########################################
   osctrl-api:
@@ -117,6 +132,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    cpus: 2
+    mem_limit: 150M
 
   ######################################### PostgreSQL #########################################
   postgres:
@@ -136,6 +153,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    cpus: 2
+    mem_limit: 1G
 
   ######################################### Redis #########################################
   redis:
@@ -146,6 +165,8 @@ services:
       - osctrl-backend
     volumes:
       - redis-data:/data
+    cpus: 1
+    mem_limit: 100M
 
   ######################################### osctrl-cli #########################################
   # osctrl-cli is the component that creates the osctrl env and admin user
@@ -178,10 +199,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    cpus: 1
+    mem_limit: 100M
 
   ######################################### osquery #########################################
   ubuntu-osquery:
-    container_name: 'osctrl-osquery-ubuntu'
     restart: unless-stopped
     build:
       context: .
@@ -213,6 +235,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    cpus: 1
+    mem_limit: 150M
 
 networks:
   osctrl-backend:

@@ -127,7 +127,7 @@ WORKDIR /opt/osctrl
 ENTRYPOINT [ "/opt/osctrl/bin/osctrl-admin" ]
 
 ######################################## Ubuntu 20.04 node ########################################
-FROM ubuntu:20.04 as osctrl-ubuntu-osquery
+FROM ubuntu:22.04 as osctrl-ubuntu-osquery
 ARG OSCTRL_VERSION
 ARG OSQUERY_VERSION
 ARG POSTGRES_DB_NAME
