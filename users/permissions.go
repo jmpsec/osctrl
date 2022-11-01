@@ -256,6 +256,9 @@ func (m *UserManager) GetAccess(username string) (UserAccess, error) {
 func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
 	var envAccess EnvAccess
 	perms, err := m.GetPermissions(username, env)
+	if len(perms) == 0 {
+		return envAccess, fmt.Errorf("record not found")
+	}
 	if err != nil {
 		return envAccess, fmt.Errorf("error getting permissions - %s", err)
 	}
