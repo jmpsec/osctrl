@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 
 	"fmt"
 	"log"
@@ -1607,22 +1608,17 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// TODO verify environments and this should reflect the updated struct for permissions
-	perms := users.EnvAccess{
-		User:  p.Read,
-		Query: p.Query,
-		Carve: p.Carve,
-		Admin: p.Admin,
-	}
+	perms := users.GenEnvAccess(p.Admin, p.Carve, p.Query, p.Read)
 	// Check if user already have access to this environment
-	existing, err := h.Users.GetEnvAccess(usernameVar, p.Environment)
-	if err != nil && err.Error() == "record not found" {
+	existing, err := h.Users.GetEnvAccess(usernameVar, env.UUID)
+	if err != nil && strings.Contains(err.Error(), "record not found") {
 		envAccess := h.Users.GenUserAccess(env, perms)
 		generatedPerms := h.Users.GenPermissions(usernameVar, ctx[sessions.CtxUser], envAccess)
 		if err := h.Users.CreatePermissions(generatedPerms); err != nil {
 		}
 	}
 	if !users.SameAccess(perms, existing) {
-		if err := h.Users.ChangeAccess(usernameVar, p.Environment, perms); err != nil {
+		if err := h.Users.ChangeAccess(usernameVar, env.UUID, perms); err != nil {
 			adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -1632,7 +1628,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Users response sent")
 	}
-	adminOKResponse(w, "OK")
+	adminOKResponse(w, "permissions updated successfully")
 	h.Inc(metricAdminOK)
 }
 
