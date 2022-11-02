@@ -20,3 +20,8 @@ func TestBytesReceivedConversionMBytes(t *testing.T) {
 	assert.NotEmpty(t, BytesReceivedConversion(1048576))
 	assert.Equal(t, "1.0 MB", BytesReceivedConversion(1048576))
 }
+
+func TestRandomForNames(t *testing.T) {
+	assert.NotEmpty(t, RandomForNames())
+	assert.Equal(t, 32, len(RandomForNames()))
+}
