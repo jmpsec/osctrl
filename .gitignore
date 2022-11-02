@@ -60,3 +60,6 @@ notes.txt
 
 # Generated bins
 *.bin
+
+# Tests
+coverage.out

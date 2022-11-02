@@ -111,9 +111,14 @@ func TestInFutureTime(t *testing.T) {
 		{now.Add(57 * time.Second), "Expires in 56 seconds"},
 		{now.Add(400 * time.Second), "Expires in 6 minutes"},
 		{now.Add(77 * time.Hour), "Expires in 3 days"},
-		{time.Time{}, "Never"},
+		{time.Time{}, "Never Expires"},
 	}
 	for _, test := range tests {
 		assert.Equal(test.expected, InFutureTime(test.input))
 	}
+}
+
+func TestPastFutureTimesEpoch(t *testing.T) {
+	assert.NotEmpty(t, PastFutureTimesEpoch(0))
+	assert.Equal(t, "Since Thu Jan 01 01:00:00 CET 1970", PastFutureTimesEpoch(0))
 }
