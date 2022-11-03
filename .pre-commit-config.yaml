@@ -49,17 +49,13 @@ repos:
     rev: v1.0.2
     hooks:
       - id: go-fmt-import
-      - id: gofumpt
-  #     - id: go-fmt
-  #     - id: go-vet
-  #     - id: go-lint
-  #     - id: go-imports
-  #     - id: go-cyclo
-  #       args: [-over=15]
-  #     - id: validate-toml
-  #     - id: no-go-testing
-  #     - id: golangci-lint
-  #     - id: go-critic
-  #     - id: go-unit-tests
-  #     - id: go-build
-  #     - id: go-mod-tidy
+      - id: go-vet
+      - id: go-lint
+      - id: go-unit-tests
+      - id: gofumpt # requires github.com/mvdan/gofumpt
+      - id: go-err-check # requires github.com/kisielk/errcheck
+      - id: go-static-check # install https://staticcheck.io/docs/
+      #- id: golangci-lint # requires github.com/golangci/golangci-lint
+      #  args: [--config=.github/linters/.golangci.yml] # optional
+      - id: go-ruleguard # requires https://github.com/quasilyte/go-ruleguard
+        args: [rules/rules.go] # required
