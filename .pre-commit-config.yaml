@@ -45,9 +45,10 @@ repos:
       # A quick check for the deprecated `.warn()` method of python loggers
       - id: python-no-log-warn
 
-  # - repo: https://github.com/dnephin/pre-commit-golang
-  #   rev: master
-  #   hooks:
+  - repo: https://github.com/Bahjat/pre-commit-golang
+    rev: v1.0.2
+    hooks:
+      - id: gofumpt
   #     - id: go-fmt
   #     - id: go-vet
   #     - id: go-lint
