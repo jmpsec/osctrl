@@ -63,3 +63,7 @@ notes.txt
 
 # Tests
 coverage.out
+
+# Go Workspace
+go.work
+go.work.sum
