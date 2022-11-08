@@ -113,6 +113,12 @@ type ApiNodeGenericRequest struct {
 	UUID string `json:"uuid"`
 }
 
+// ApiLoginRequest to receive login requests
+type ApiLoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // ApiErrorResponse to be returned to API requests with the error message
 type ApiErrorResponse struct {
 	Error string `json:"error"`
@@ -126,4 +132,9 @@ type ApiQueriesResponse struct {
 // ApiGenericResponse to be returned to API requests for anything
 type ApiGenericResponse struct {
 	Message string `json:"message"`
+}
+
+// ApiLoginResponse to be returned to API login requests with the generated token
+type ApiLoginResponse struct {
+	Token string `json:"token"`
 }

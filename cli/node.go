@@ -61,12 +61,12 @@ func listNodes(c *cli.Context) error {
 	if dbFlag {
 		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours())
 		if err != nil {
-			return fmt.Errorf("❌ error getting nodes - %s", err)
+			return fmt.Errorf("error getting nodes - %s", err)
 		}
 	} else if apiFlag {
 		nds, err = osctrlAPI.GetNodes(env, target)
 		if err != nil {
-			return fmt.Errorf("❌ error getting nodes - %s", err)
+			return fmt.Errorf("error getting nodes - %s", err)
 		}
 	}
 	header := []string{
@@ -83,14 +83,14 @@ func listNodes(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(nds)
 		if err != nil {
-			return fmt.Errorf("❌ error marshaling - %s", err)
+			return fmt.Errorf("error marshaling - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := nodesToData(nds, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error writting csv - %s", err)
+			return fmt.Errorf("error writting csv - %s", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
@@ -121,11 +121,11 @@ func deleteNode(c *cli.Context) error {
 	}
 	if dbFlag {
 		if err := nodesmgr.ArchiveDeleteByUUID(uuid); err != nil {
-			return fmt.Errorf("❌ error deleting - %s", err)
+			return fmt.Errorf("error deleting - %s", err)
 		}
 	} else if apiFlag {
 		if err := osctrlAPI.DeleteNode(env, uuid); err != nil {
-			return fmt.Errorf("❌ error deleting node - %s", err)
+			return fmt.Errorf("error deleting node - %s", err)
 		}
 	}
 	if !silentFlag {
@@ -154,20 +154,20 @@ func tagNode(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("error env get - %s", err)
 		}
 		n, err := nodesmgr.GetByUUIDEnv(uuid, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ error get uuid - %s", err)
+			return fmt.Errorf("error get uuid - %s", err)
 		}
 		if tagsmgr.Exists(tag) {
 			if err := tagsmgr.TagNode(tag, n, appName, false); err != nil {
-				return fmt.Errorf("❌ error tagging - %s", err)
+				return fmt.Errorf("error tagging - %s", err)
 			}
 		}
 	} else if apiFlag {
 		if err := osctrlAPI.TagNode(env, uuid, tag); err != nil {
-			return fmt.Errorf("❌ error tagging node - %s", err)
+			return fmt.Errorf("error tagging node - %s", err)
 		}
 	}
 	if !silentFlag {
@@ -192,12 +192,12 @@ func showNode(c *cli.Context) error {
 	if dbFlag {
 		node, err = nodesmgr.GetByUUID(uuid)
 		if err != nil {
-			return fmt.Errorf("❌ error getting node - %s", err)
+			return fmt.Errorf("error getting node - %s", err)
 		}
 	} else if apiFlag {
 		node, err = osctrlAPI.GetNode(env, uuid)
 		if err != nil {
-			return fmt.Errorf("❌ error getting node - %s", err)
+			return fmt.Errorf("error getting node - %s", err)
 		}
 	}
 	header := []string{
@@ -214,14 +214,14 @@ func showNode(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(node)
 		if err != nil {
-			return fmt.Errorf("❌ error marshaling - %s", err)
+			return fmt.Errorf("error marshaling - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := nodeToData(node, nil)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error writting csv - %s", err)
+			return fmt.Errorf("error writting csv - %s", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)

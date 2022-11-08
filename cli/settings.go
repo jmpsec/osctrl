@@ -103,13 +103,13 @@ func updateSetting(c *cli.Context) error {
 		err = settingsmgr.SetString(c.String("string"), service, name, false)
 	}
 	if err != nil {
-		return fmt.Errorf("❌ error set type - %s", err)
+		return fmt.Errorf("error set type - %s", err)
 	}
 	if info != "" {
 		err = settingsmgr.SetInfo(info, service, name)
 	}
 	if err != nil {
-		return fmt.Errorf("❌ error set info - %s", err)
+		return fmt.Errorf("error set info - %s", err)
 	}
 	if !silentFlag {
 		fmt.Println("✅ setting deleted successfully")
@@ -130,7 +130,7 @@ func deleteSetting(c *cli.Context) error {
 		os.Exit(1)
 	}
 	if err := settingsmgr.DeleteValue(service, name); err != nil {
-		return fmt.Errorf("❌ error get queries - %s", err)
+		return fmt.Errorf("error get queries - %s", err)
 	}
 	if !silentFlag {
 		fmt.Println("✅ setting deleted successfully")

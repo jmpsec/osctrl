@@ -66,7 +66,7 @@ func changePermissions(c *cli.Context) error {
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
-			return fmt.Errorf("❌ error getting environment - %s", err)
+			return fmt.Errorf("error getting environment - %s", err)
 		}
 		// If admin, then all permissions follow
 		if admin {
@@ -77,22 +77,22 @@ func changePermissions(c *cli.Context) error {
 		// Reset permissions to regular user access
 		if user {
 			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
-				return fmt.Errorf("❌ error setting user - %s", err)
+				return fmt.Errorf("error setting user - %s", err)
 			}
 		}
 		if admin {
 			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
-				return fmt.Errorf("❌ error setting admin - %s", err)
+				return fmt.Errorf("error setting admin - %s", err)
 			}
 		}
 		if carve {
 			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
-				return fmt.Errorf("❌ error setting carve - %s", err)
+				return fmt.Errorf("error setting carve - %s", err)
 			}
 		}
 		if query {
 			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
-				return fmt.Errorf("❌ error setting query - %s", err)
+				return fmt.Errorf("error setting query - %s", err)
 			}
 		}
 	} else if apiFlag {
@@ -120,12 +120,12 @@ func showPermissions(c *cli.Context) error {
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("error env get - %s", err)
 		}
 		// Show is just display user existing permissions and return
 		userAccess, err = adminUsers.GetEnvAccess(username, env.UUID)
 		if err != nil {
-			return fmt.Errorf("❌ error getting access - %s", err)
+			return fmt.Errorf("error getting access - %s", err)
 		}
 	} else if apiFlag {
 	}
@@ -140,14 +140,14 @@ func showPermissions(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(userAccess)
 		if err != nil {
-			return fmt.Errorf("❌ error serializing - %s", err)
+			return fmt.Errorf("error serializing - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := accessToData(userAccess, envName, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error WriteAll - %s", err)
+			return fmt.Errorf("error WriteAll - %s", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
@@ -214,7 +214,7 @@ func allPermissions(c *cli.Context) error {
 		// Show is just display user existing permissions and return
 		existingAccess, err = adminUsers.GetAccess(username)
 		if err != nil {
-			return fmt.Errorf("❌ error getting access - %s", err)
+			return fmt.Errorf("error getting access - %s", err)
 		}
 	} else if apiFlag {
 	}
@@ -229,14 +229,14 @@ func allPermissions(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(existingAccess)
 		if err != nil {
-			return fmt.Errorf("❌ error serializing - %s", err)
+			return fmt.Errorf("error serializing - %s", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := permissionsToData(existingAccess, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error WriteAll - %s", err)
+			return fmt.Errorf("error WriteAll - %s", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)

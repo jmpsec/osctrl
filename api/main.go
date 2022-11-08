@@ -64,6 +64,8 @@ const (
 	apiPrefixPath = "/api"
 	// API version path
 	apiVersionPath = "/v1"
+	// API login path
+	apiLoginPath = "/login"
 	// API nodes path
 	apiNodesPath = "/nodes"
 	// API queries path
@@ -481,6 +483,9 @@ func osctrlAPIService() {
 	// API: forbidden
 	routerAPI.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
 
+	// ///////////////////////// UNAUTHENTICATED
+	routerAPI.Handle(_apiPath(apiLoginPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiLoginHandler))).Methods("POST")
+	routerAPI.Handle(_apiPath(apiLoginPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiLoginHandler))).Methods("POST")
 	// ///////////////////////// AUTHENTICATED
 	// API: nodes by environment
 	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
