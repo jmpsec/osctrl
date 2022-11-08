@@ -52,7 +52,7 @@ repos:
       #- id: go-vet
       - id: go-lint
       - id: gofumpt # requires github.com/mvdan/gofumpt
-      - id: go-static-check # install https://staticcheck.io/docs/
+      #- id: go-static-check # install https://staticcheck.io/docs/
       #- id: golangci-lint # requires github.com/golangci/golangci-lint
       #  args: [--config=.github/linters/.golangci.yml] # optional
       - id: go-ruleguard # requires https://github.com/quasilyte/go-ruleguard
