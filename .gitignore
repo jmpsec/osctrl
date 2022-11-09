@@ -64,6 +64,9 @@ notes.txt
 # Tests
 coverage.out
 
+# Configuration
+osctrl-api.json
+
 # Go Workspace
 go.work
 go.work.sum

@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
+	"golang.org/x/term"
 
 	"github.com/urfave/cli/v2"
 )
@@ -30,6 +31,8 @@ const (
 	appUsage string = "CLI for " + projectName
 	// Application description
 	appDescription string = appUsage + ", a fast and efficient osquery management"
+	// JSON file with API token
+	defaultApiConfigFile = projectName + "-api.json"
 )
 
 const (
@@ -61,13 +64,14 @@ var (
 
 // Variables for flags
 var (
-	dbFlag        bool
-	apiFlag       bool
-	formatFlag    string
-	silentFlag    bool
-	insecureFlag  bool
-	dbConfigFile  string
-	apiConfigFile string
+	dbFlag           bool
+	apiFlag          bool
+	formatFlag       string
+	silentFlag       bool
+	insecureFlag     bool
+	writeApiFileFlag bool
+	dbConfigFile     string
+	apiConfigFile    string
 )
 
 // Initialization code
@@ -93,7 +97,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "api-file",
 			Aliases:     []string{"A"},
-			Value:       "",
+			Value:       defaultApiConfigFile,
 			Usage:       "Load API JSON configuration from `FILE`",
 			EnvVars:     []string{"API_CONFIG_FILE"},
 			Destination: &apiConfigFile,
@@ -1442,6 +1446,29 @@ func init() {
 			Usage:  "Checks API token",
 			Action: checkAPI,
 		},
+		{
+			Name:  "login",
+			Usage: "Login into API and generate JSON config file with token",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "username",
+					Aliases: []string{"u"},
+					Usage:   "User to be used in login",
+				},
+				&cli.StringFlag{
+					Name:    "environment",
+					Aliases: []string{"e"},
+					Usage:   "Environment to be used in login",
+				},
+				&cli.BoolFlag{
+					Name:        "write-api-file",
+					Aliases:     []string{"w"},
+					Destination: &writeApiFileFlag,
+					Usage:       "Write API configuration to JSON file",
+				},
+			},
+			Action: loginAPI,
+		},
 	}
 	// Initialize formats values
 	formats = make(map[string]bool)
@@ -1467,6 +1494,9 @@ func checkDB(c *cli.Context) error {
 	if err := db.Check(); err != nil {
 		return err
 	}
+	if !silentFlag {
+		fmt.Println("✅ DB check successful")
+	}
 	// Should be good
 	return nil
 }
@@ -1483,6 +1513,55 @@ func checkAPI(c *cli.Context) error {
 		// Initialize API
 		osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 	}
+	if !silentFlag {
+		fmt.Println("✅ API check successful")
+	}
+	// Should be good
+	return nil
+}
+
+// Action for the API login
+func loginAPI(c *cli.Context) error {
+	// API URL can is needed
+	if apiConfig.URL == "" {
+		fmt.Println("❌ API URL is required")
+		os.Exit(1)
+	}
+	// Initialize API
+	osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+	// We need credentials
+	username := c.String("username")
+	if username == "" {
+		fmt.Println("❌ username is required")
+		os.Exit(1)
+	}
+	env := c.String("environment")
+	if env == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	fmt.Printf("\n ->  Please introduce your password: ")
+	passwordByte, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return fmt.Errorf("error reading password %s", err)
+	}
+	fmt.Println()
+	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte))
+	if err != nil {
+		return fmt.Errorf("error in login %s", err)
+	}
+	apiConfig.Token = apiResponse.Token
+	if !silentFlag {
+		fmt.Printf("\n✅ API Login successful: %s\n", apiResponse.Token)
+	}
+	if writeApiFileFlag {
+		if err := writeAPIConfiguration(apiConfigFile, apiConfig); err != nil {
+			return fmt.Errorf("error writing to file %s, %s", apiConfigFile, err)
+		}
+		if !silentFlag {
+			fmt.Printf("\n✅ API config file written: %s\n", apiConfigFile)
+		}
+	}
 	// Should be good
 	return nil
 }
@@ -1492,7 +1571,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		// Verify if format is correct
 		if !formats[formatFlag] {
-			return fmt.Errorf("❌ invalid format %s", formatFlag)
+			return fmt.Errorf("invalid format %s", formatFlag)
 		}
 		// DB connection will be used
 		if dbFlag {
@@ -1500,12 +1579,12 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			if dbConfigFile != "" {
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
-					return fmt.Errorf("❌ CreateDBManagerFile - %v", err)
+					return fmt.Errorf("CreateDBManagerFile - %v", err)
 				}
 			} else {
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
-					return fmt.Errorf("❌ CreateDBManager - %v", err)
+					return fmt.Errorf("CreateDBManager - %v", err)
 				}
 			}
 			// Initialize users
@@ -1529,7 +1608,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			if apiConfigFile != "" {
 				apiConfig, err = loadAPIConfiguration(apiConfigFile)
 				if err != nil {
-					return fmt.Errorf("❌ loadAPIConfiguration - %v", err)
+					return fmt.Errorf("loadAPIConfiguration - %v", err)
 				}
 			}
 			// Initialize API
@@ -1565,6 +1644,6 @@ func main() {
 	app.Commands = commands
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatalf("❌ Failed to execute %v", err)
+		log.Fatalf("❌ Failed to execute - %v", err)
 	}
 }

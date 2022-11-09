@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,8 @@ const (
 	APICarves = "/carves"
 	// APIUsers
 	APIUSers = "/users"
+	// APILogin
+	APILogin = "/login"
 	// JSONApplication for Content-Type headers
 	JSONApplication = "application/json"
 	// JSONApplicationUTF8 for Content-Type headers, UTF charset
@@ -52,7 +55,7 @@ type OsctrlAPI struct {
 	Headers       map[string]string
 }
 
-// loadAPIConfiguration to load the DB configuration file and assign to variables
+// loadAPIConfiguration to load the API configuration file and assign to variables
 func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
 	var config JSONConfigurationAPI
 	// Load file and read config
@@ -70,6 +73,23 @@ func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
 	}
 	// No errors!
 	return config, nil
+}
+
+// writeAPIConfiguration to write the API configuration file and update values
+func writeAPIConfiguration(file string, apiConf JSONConfigurationAPI) error {
+	if apiConf.URL == "" || apiConf.Token == "" {
+		return fmt.Errorf("invalid JSON values")
+	}
+	fileData := make(map[string]JSONConfigurationAPI)
+	fileData[projectName] = apiConf
+	confByte, err := json.MarshalIndent(fileData, "", " ")
+	if err != nil {
+		return fmt.Errorf("error serializing data %s", err)
+	}
+	if err := ioutil.WriteFile(file, confByte, 0644); err != nil {
+		return fmt.Errorf("error writing to file %s", err)
+	}
+	return nil
 }
 
 // CreateAPI to initialize the API client and handlers
