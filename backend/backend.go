@@ -19,9 +19,9 @@ const (
 
 // DBManager have access to backend
 type DBManager struct {
-	Conn       *gorm.DB
-	Config     *JSONConfigurationDB
-	DSN        string
+	Conn   *gorm.DB
+	Config *JSONConfigurationDB
+	DSN    string
 }
 
 // JSONConfigurationDB to hold all backend configuration values

@@ -25,7 +25,7 @@ runs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
-      
+
     ########################### Download osctrl binary ###########################
     - name: Download a osctrl binaries
       uses: actions/download-artifact@v3

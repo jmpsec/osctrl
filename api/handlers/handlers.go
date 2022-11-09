@@ -7,4 +7,3 @@ const (
 	metricHealthReq = "health-req"
 	metricHealthOK  = "health-ok"
 )
-

@@ -11,8 +11,7 @@
 
 import sys
 import json
-import requests
-import uuid
+import requests  # pylint: disable=import-error
 
 NODES_PATH = "/nodes"
 QUERIES_PATH = "/queries"
@@ -21,44 +20,46 @@ PLATFORMS_PATH = "/platforms"
 TAGS_PATH = "/tags"
 SETTINGS_PATH = "/settings"
 
-API_PATH = '/api/v1'
+API_PATH = "/api/v1"
 
 PARAMS = 2
 
 
-def _post(_url, _data, _headers):
+def _post(_url, _data, _headers):  # pylint: disable=inconsistent-return-statements
     try:
-        #print('POST ', _url)
-        #print('DATA: ', _data)
-        response = requests.post(url=_url,
-                                 data=json.dumps(_data),
-                                 headers=_headers)
+        # print('POST ', _url)
+        # print('DATA: ', _data)
+        response = requests.post(
+            url=_url,
+            data=json.dumps(_data),
+            headers=_headers,
+        )
 
-        print('HTTP {status_code}'.format(status_code=response.status_code))
+        print(f"HTTP {response.status_code}")
 
-        if response.status_code == 200:
+        if response.status_code == 200:  # pylint: disable=no-else-return
             parsed_json = json.loads(response.content)
-            #print(json.dumps(parsed_json, indent=2, sort_keys=True))
+            # print(json.dumps(parsed_json, indent=2, sort_keys=True))
             return parsed_json
         else:
             print(response.content)
 
     except requests.exceptions.RequestException as e:
-        print('HTTP Request failed')
+        print("HTTP Request failed")
         print(e)
 
 
-def _get(_url, _headers):
+def _get(_url, _headers):  # pylint: disable=inconsistent-return-statements
     try:
-        print('GET ', _url)
+        print("GET ", _url)
         response = requests.get(url=_url, headers=_headers, verify=False)
 
-        print('HTTP {status_code}'.format(status_code=response.status_code))
+        print(f"HTTP {response.status_code}")
 
         return response
 
     except requests.exceptions.RequestException as e:
-        print('HTTP Request failed')
+        print("HTTP Request failed")
         print(e)
 
 
@@ -67,29 +68,26 @@ def _process_response(response):
         json_formatted_str = json.dumps(json.loads(response.content), indent=2)
         print(json_formatted_str)
     elif resp.status_code == 404:
-        print('No nodes found')
+        print("No nodes found")
     else:
-        print('Returned HTTP ' + resp.status_code)
+        print("Returned HTTP " + resp.status_code)
         print(str(response.content))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < PARAMS:
-        print
-        print('Usage: ' + sys.argv[0] + ' "url" "token"')
-        exit(1)
+        print()
+        print("Usage: " + sys.argv[0] + ' "url" "token"')
+        exit(1)  # pylint: disable=consider-using-sys-exit
 
     _url = sys.argv[1]
-    print('API is in = ', _url)
+    print("API is in = ", _url)
     _token = sys.argv[2]
-    print('Using token = ', _token)
+    print("Using token = ", _token)
 
-    print
+    print()
 
-    headers = {
-        "X-Real-IP": '1.2.3.4',
-        "Authorization": 'Bearer ' + _token
-    }
+    headers = {"X-Real-IP": "1.2.3.4", "Authorization": "Bearer " + _token}
     # Nodes ---------------------------------------------------------------
     resp = _get(_url + API_PATH + NODES_PATH, headers)
     _process_response(resp)
@@ -114,4 +112,4 @@ if __name__ == '__main__':
     resp = _get(_url + API_PATH + SETTINGS_PATH, headers)
     _process_response(resp)
 
-    print('Done')
+    print("Done")

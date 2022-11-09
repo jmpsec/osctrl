@@ -6,23 +6,23 @@
 # Usage: python fake_logging.py port
 #
 
-_NAME = "FakeServerLogging"
-_BIND = "0.0.0.0"
-_PARAMS = 2
-
-_UTF = 'utf-8'
-
 import http.server
 import socketserver
 import sys
 import time
 import json
 
+_NAME = "FakeServerLogging"
+_BIND = "0.0.0.0"
+_PARAMS = 2
+
+_UTF = "utf-8"
+
 
 class FakeServer(http.server.SimpleHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
-        self.send_header('Content-type', 'application/json')
+        self.send_header("Content-type", "application/json")
         self.end_headers()
 
     def do_GET(self):
@@ -30,7 +30,7 @@ class FakeServer(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(bytes("{'text':'Success','code':0}", _UTF))
 
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
+        content_length = int(self.headers["Content-Length"])
         post_data = self.rfile.read(content_length)
         self._set_headers()
         self.wfile.write(bytes("{'text':'Success','code':0}", _UTF))
@@ -47,20 +47,20 @@ class FakeServer(http.server.SimpleHTTPRequestHandler):
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < _PARAMS:
-        print
-        print('Usage: ' + sys.argv[0] + ' port')
-        exit(1)
+        print()
+        print("Usage: " + sys.argv[0] + " port")
+        exit(1)  # pylint: disable=consider-using-sys-exit
 
     _port = int(sys.argv[1])
 
     httpd = socketserver.TCPServer((_BIND, _port), FakeServer)
-    print(time.asctime(), _NAME + ' UP - %s:%s' % (_BIND, _port))
+    print(f"{time.asctime()},{_NAME}  UP - {_BIND}:{_port}")
 
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print(time.asctime(), _NAME + ' DOWN - %s:%s' % (_BIND, _port))
+    print(f"{time.asctime()},{ _NAME} DOWN - {_BIND}:{_port}")

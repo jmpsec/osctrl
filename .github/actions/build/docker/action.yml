@@ -30,7 +30,7 @@ outputs:
   docker_image_digest:
     description: Dockerhub image digest
     value: ${{ toJson(steps.docker_build.outputs.digest) }}
-  
+
 
 runs:
   using: "composite"
