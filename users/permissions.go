@@ -161,7 +161,7 @@ func (m *UserManager) ChangePermission(username, environment string, perm UserPe
 		return fmt.Errorf("user %s does not exist", username)
 	}
 	if perm.Username != username || perm.Environment != environment {
-		return fmt.Errorf("username/envioronment mismatch [%s/%s]", username, environment)
+		return fmt.Errorf("username/environment mismatch [%s/%s]", username, environment)
 	}
 	m.DB.Model(&perm).Updates(map[string]interface{}{
 		"access_type":  perm.AccessType,
