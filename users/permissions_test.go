@@ -256,7 +256,7 @@ func TestPermissions(t *testing.T) {
 
 		assert.NoError(t, err)
 	})
-	t.Run("SetEnvLevel", func(t *testing.T) {
+	t.Run("ChangePermissions", func(t *testing.T) {
 		mock.ExpectQuery(
 			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
 
@@ -293,12 +293,25 @@ func TestPermissions(t *testing.T) {
 		assert.Equal(t, int(AdminLevel), int(uPerm.AccessType))
 		assert.Equal(t, true, uPerm.AccessValue)
 	})
+	t.Run("GetPermissions", func(t *testing.T) {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2) AND "user_permissions"."deleted_at" IS NULL`)).WithArgs("testUser", "testEnv").WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", AdminLevel, true, "test").AddRow("testUser", QueryLevel, true, "test"))
+
+		uPerms, err := manager.GetPermissions("testUser", "testEnv")
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(uPerms))
+	})
 	t.Run("SetEnvLevel", func(t *testing.T) {
 		mock.ExpectQuery(
 			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
 
 		mock.ExpectQuery(
-			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", AdminLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", AdminLevel, false, "test").AddRow("testUser", QueryLevel, false, "test"))
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", AdminLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", AdminLevel, false, "test"))
 
 		err := manager.SetEnvLevel("testUser", "testEnv", AdminLevel, true)
 
@@ -345,6 +358,98 @@ func TestPermissions(t *testing.T) {
 			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", UserLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", UserLevel, false, "test"))
 
 		err := manager.SetEnvUser("testUser", "testEnv", true)
+
+		assert.NoError(t, err)
+	})
+	t.Run("ChangeAccess", func(t *testing.T) {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", UserLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", UserLevel, true, "test"))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", QueryLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", QueryLevel, false, "test"))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", CarveLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", CarveLevel, false, "test"))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT 1`)).WithArgs("testUser", "testEnv", AdminLevel).WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by"}).AddRow("testUser", AdminLevel, false, "test"))
+
+		envAccess := EnvAccess{
+			User:  true,
+			Query: true,
+			Carve: true,
+			Admin: true,
+		}
+		err := manager.ChangeAccess("testUser", "testEnv", envAccess)
+
+		assert.NoError(t, err)
+	})
+	t.Run("GetAccess", func(t *testing.T) {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE username = $1 AND "user_permissions"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by", "environment"}).AddRow("testUser", AdminLevel, true, "test", "testEnv").AddRow("testUser", UserLevel, true, "test", "testEnv").AddRow("testUser", CarveLevel, false, "test", "testEnv").AddRow("testUser", QueryLevel, false, "test", "testEnv"))
+
+		uAccess, err := manager.GetAccess("testUser")
+
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(uAccess))
+		for k, v := range uAccess {
+			assert.Equal(t, "testEnv", k)
+			assert.Equal(t, true, v.Admin)
+			assert.Equal(t, true, v.User)
+			assert.Equal(t, false, v.Query)
+			assert.Equal(t, false, v.Carve)
+		}
+	})
+	t.Run("GetEnvAccess", func(t *testing.T) {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2) AND "user_permissions"."deleted_at" IS NULL`)).WithArgs("testUser", "testEnv").WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by", "environment"}).AddRow("testUser", AdminLevel, true, "test", "testEnv").AddRow("testUser", UserLevel, true, "test", "testEnv").AddRow("testUser", CarveLevel, false, "test", "testEnv").AddRow("testUser", QueryLevel, false, "test", "testEnv"))
+
+		eAccess, err := manager.GetEnvAccess("testUser", "testEnv")
+
+		assert.NoError(t, err)
+		assert.Equal(t, true, eAccess.Admin)
+		assert.Equal(t, true, eAccess.User)
+		assert.Equal(t, false, eAccess.Query)
+		assert.Equal(t, false, eAccess.Carve)
+	})
+	t.Run("DeletePermissions", func(t *testing.T) {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2) AND "user_permissions"."deleted_at" IS NULL`)).WithArgs("testUser", "testEnv").WillReturnRows(sqlmock.NewRows([]string{"username", "access_type", "access_value", "granted_by", "id"}).AddRow("testUser", AdminLevel, true, "test", 1).AddRow("testUser", QueryLevel, true, "test", 2))
+
+		mock.ExpectBegin()
+		mock.ExpectExec(
+			regexp.QuoteMeta(`DELETE FROM "user_permissions" WHERE "user_permissions"."id" = $1`)).WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		mock.ExpectBegin()
+		mock.ExpectExec(
+			regexp.QuoteMeta(`DELETE FROM "user_permissions" WHERE "user_permissions"."id" = $1`)).WithArgs(2).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err := manager.DeletePermissions("testUser", "testEnv")
 
 		assert.NoError(t, err)
 	})
