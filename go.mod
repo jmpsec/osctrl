@@ -41,8 +41,8 @@ replace github.com/jmpsec/osctrl/utils => ./utils
 replace github.com/jmpsec/osctrl/version => ./version
 
 require (
-	github.com/crewjam/saml v0.4.6
-	github.com/golang-jwt/jwt/v4 v4.2.0
+	github.com/crewjam/saml v0.4.9
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/gorilla/mux v1.8.0
 	github.com/jmpsec/osctrl/admin/handlers v0.3.1
 	github.com/jmpsec/osctrl/admin/sessions v0.3.1
