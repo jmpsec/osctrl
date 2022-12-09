@@ -1612,12 +1612,17 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	// Check if user already have access to this environment
 	existing, err := h.Users.GetEnvAccess(usernameVar, env.UUID)
 	if err != nil && strings.Contains(err.Error(), "record not found") {
+		log.Printf("record not found in GetEnvAccess\n")
 		envAccess := h.Users.GenUserAccess(env, perms)
+		log.Printf("GenUserAccess and %+v\n", envAccess)
 		generatedPerms := h.Users.GenPermissions(usernameVar, ctx[sessions.CtxUser], envAccess)
 		if err := h.Users.CreatePermissions(generatedPerms); err != nil {
+			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
 		}
 	}
-	if !users.SameAccess(perms, existing) {
+	if existing != (users.EnvAccess{}) && !users.SameAccess(perms, existing) {
 		if err := h.Users.ChangeAccess(usernameVar, env.UUID, perms); err != nil {
 			adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
