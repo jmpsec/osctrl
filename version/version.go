@@ -4,5 +4,5 @@ const (
 	// OsctrlVersion to have the version for all components
 	OsctrlVersion = "0.3.1"
 	// OsqueryVersion to have the version for osquery defined
-	OsqueryVersion = "5.5.1"
+	OsqueryVersion = "5.6.0"
 )
