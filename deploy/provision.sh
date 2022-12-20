@@ -736,27 +736,27 @@ else
 
   # Create initial environment to enroll machines
   log "Creating environment $ENVIRONMENT"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+  "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
 
   # Create admin user
   log "Creating admin user"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -E "$ENVIRONMENT" -n "Admin"
+  "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
 
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
     log "Decrease intervals for environment $ENVIRONMENT"
-    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
+    "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
     log "Enable verbose mode"
-    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
+    "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
     log "Disable splay for schedule"
-    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "schedule_splay_percent" -t int -i 0
+    "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment add-osquery-option -n "$ENVIRONMENT" -o "schedule_splay_percent" -t int -i 0
     log "Add uptime query to schedule"
-    "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
+    "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
   fi
 
   # Make newly created environment as default
   log "Making environment $ENVIRONMENT as default"
-  "$DEST_PATH"/osctrl-cli -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
+  "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
 
   log "Checking if service is ready"
   while true; do
@@ -773,7 +773,7 @@ else
   # Enroll host in environment
   if [[ "$ENROLL" == true ]]; then
     log "Adding host in environment $ENVIRONMENT"
-    eval $( "$DEST_PATH"/osctrl-cli -D "$__db_conf" environment quick-add -n "$ENVIRONMENT" )
+    eval $( "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment quick-add -n "$ENVIRONMENT" )
   fi
 
   # Ascii art is always appreciated
