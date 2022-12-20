@@ -12,13 +12,13 @@ ENV_NAME="dev"
 WAIT=5
 
 # Wait until DB is up
-until /opt/osctrl/bin/osctrl-cli -D "$DB_JSON" check
+until /opt/osctrl/bin/osctrl-cli --db -D "$DB_JSON" check
 do
   sleep $WAIT
 done
 
 # Wait until osctrl environment is up
-until /opt/osctrl/bin/osctrl-cli -D "$DB_JSON" env show --name "$ENV_NAME"
+until /opt/osctrl/bin/osctrl-cli --db -D "$DB_JSON" env show --name "$ENV_NAME"
 do
   sleep $WAIT
 done
@@ -26,8 +26,8 @@ done
 # To enroll, check existance for flags and secret and they are not empty
 while [ ! -f "$FLAGS_FILE" ] && [ ! -s "$FLAGS_FILE" ] && [ ! -f "$SECRET_FILE" ] && [ ! -s "$SECRET_FILE" ];
 do
-    /opt/osctrl/bin/osctrl-cli -D "$DB_JSON" env secret --name "$ENV_NAME" > ${SECRET_FILE}
-    /opt/osctrl/bin/osctrl-cli -D "$DB_JSON" env show-flags --name "$ENV_NAME" | sed 's/=uuid/=ephemeral/g' > ${FLAGS_FILE}
+    /opt/osctrl/bin/osctrl-cli --db -D "$DB_JSON" env secret --name "$ENV_NAME" > ${SECRET_FILE}
+    /opt/osctrl/bin/osctrl-cli --db -D "$DB_JSON" env show-flags --name "$ENV_NAME" | sed 's/=uuid/=ephemeral/g' > ${FLAGS_FILE}
     sed -i "s#--enroll_secret_path=.*#--enroll_secret_path=${SECRET_FILE}#g" ${FLAGS_FILE}
     sed -i "s#--enroll_secret_path=.*#--enroll_secret_path=${SECRET_FILE}#g" ${FLAGS_FILE}
     sed -i "s#--distributed_interval=.*#--distributed_interval=60#g" ${FLAGS_FILE}

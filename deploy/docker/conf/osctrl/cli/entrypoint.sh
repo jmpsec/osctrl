@@ -13,7 +13,7 @@ if [[ -n "$OSCTRL_PASS_FILE" ]]; then
 fi
 
 ######################################### Wait until DB is up #########################################
-until /opt/osctrl/bin/osctrl-cli check-db
+until /opt/osctrl/bin/osctrl-cli --db check-db
 do
   echo "DB is not ready"
   sleep $WAIT

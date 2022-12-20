@@ -4,8 +4,8 @@ ENV_NAME="${ENV_NAME:=dev}"
 HOST="${HOST:=nginx}"
 
 if [ ! -f "/etc/osquery/osquery.secret" ]; then
-  ######################################### Wait until DB is up ######################################### 
-  until /opt/osctrl/bin/osctrl-cli check-db
+  ######################################### Wait until DB is up #########################################
+  until /opt/osctrl/bin/osctrl-cli --db check-db
   do
     echo "DB is not ready"
     sleep $WAIT
