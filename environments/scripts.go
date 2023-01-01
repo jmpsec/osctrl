@@ -2,11 +2,18 @@ package environments
 
 // QuickAddScriptShell to keep the raw template for the quick add shell script
 const QuickAddScriptShell = `
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # {{ .Project }} - Tool to quick-add OSX/Linux nodes
 #
 # IMPORTANT! If osquery is not installed, it will be installed.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+if [[ "${TRACE-0}" == "1" ]]; then
+    set -o xtrace
+fi
 
 _PROJECT="{{ .Project }}"
 _SECRET="{{ .Environment.Secret }}"
@@ -40,9 +47,10 @@ _SECRET_FILE=""
 _FLAGS=""
 _CERT=""
 _SERVICE=""
+_OS=""
 
 fail() {
-  echo "[!] $1"
+  echo "[!] $1" >&2
   exit 1
 }
 
@@ -51,66 +59,70 @@ log() {
 }
 
 installOsquery() {
-  log "Installing osquery for $OS"
-  if [ "$OS" = "linux" ]; then
+  log "Installing osquery for $_OS"
+  if [[ "$_OS" = "linux" ]]; then
     log "Installing osquery in Linux"
     distro=$(/usr/bin/rpm -q -f /usr/bin/rpm >/dev/null 2>&1)
-    if [ "$?" = "0" ]; then
+    if [[ "$?" = "0" ]]; then
       log "RPM based system detected"
-      _RPM="$(echo $_OSQUERY_RPM | cut -d"/" -f5)"
+      local _RPM="$(echo $_OSQUERY_RPM | cut -d"/" -f5)"
       sudo curl -# "$_OSQUERY_RPM" -o "/tmp/$_RPM"
       sudo rpm -ivh "/tmp/$_RPM"
     else
       log "DEB based system detected"
-      _DEB="$(echo $_OSQUERY_DEB | cut -d"/" -f5)"
+      local _DEB="$(echo $_OSQUERY_DEB | cut -d"/" -f5)"
       sudo curl -# "$_OSQUERY_DEB" -o "/tmp/$_DEB"
       sudo dpkg -i "/tmp/$_DEB"
     fi
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     log "Installing osquery in OSX"
-    _PKG="$(echo $_OSQUERY_PKG | cut -d"/" -f5)"
+    local _PKG="$(echo $_OSQUERY_PKG | cut -d"/" -f5)"
     sudo curl -# "$_OSQUERY_PKG" -o "/tmp/$_PKG"
     sudo installer -pkg "/tmp/$_PKG" -target /
   fi
-  if [ "$OS" = "freebsd" ]; then
+  if [[ "$_OS" = "freebsd" ]]; then
     log "Installing osquery in FreeBSD"
     sudo ASSUME_ALWAYS_YES=YES pkg install osquery
   fi
 }
 
 verifyOsquery() {
-  osqueryi=$(which osqueryi)
-  if [ "$?" = "1" ]; then
-    #read -p "[+] $_PROJECT needs osquery. Do you want to install it? [y/n]" yn
+  local osqueryi=$(which osqueryi)
+  if [[ "$?" = "1" ]]; then
+    #read -p "[+] $_PROJECT needs osquery $_OSQUERY_VER. Do you want to install it? [y/n]" yn
     #case $yn in
     #  [Yy]* ) installOsquery;;
     #  [Nn]* ) exit 1;;
     #  * ) exit 1;;
     #esac
-    log "[+] $_PROJECT needs osquery"
+    log "$_PROJECT needs osquery $_OSQUERY_VER"
     installOsquery
   else
-    osqueryi -version
+		local osquery_version=$(osqueryi -version | cut -d' ' -f3)
+		if [[ "$(echo "$_OSQUERY_VER\n$osquery_version" | sort -rV | head -n 1)" != "$_OSQUERY_VER" ]]; then
+			log "Installed version of osquery is $osquery_version, needs to upgrade to $_OSQUERY_VER"
+			installOsquery
+		fi
   fi
 }
 
 whatOS() {
   OS=$(echo $(uname)|tr '[:upper:]' '[:lower:]')
-  log "OS=$OS"
-  if [ "$OS" = "linux" ]; then
+  log "OS=$_OS"
+  if [[ "$OS" = "linux" ]]; then
     _SECRET_FILE="$_SECRET_LINUX"
     _FLAGS="$_FLAGS_LINUX"
     _CERT="$_CERT_LINUX"
     _SERVICE="$_OSQUERY_SERVICE_LINUX"
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     _SECRET_FILE="$_SECRET_OSX"
     _FLAGS="$_FLAGS_OSX"
     _CERT="$_CERT_OSX"
     _SERVICE="$_OSQUERY_SERVICE_OSX"
   fi
-  if [ "$OS" = "freebsd" ]; then
+  if [[ "$_OS" = "freebsd" ]]; then
     _SECRET_FILE="$_SECRET_FREEBSD"
     _FLAGS="$_FLAGS_FREEBSD"
     _CERT="$_CERT_FREEBSD"
@@ -123,7 +135,7 @@ whatOS() {
 }
 
 stopOsquery() {
-  if [ "$OS" = "linux" ]; then
+  if [[ "$_OS" = "linux" ]]; then
     log "Stopping $_OSQUERY_SERVICE_LINUX"
     if which systemctl >/dev/null; then
       sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
@@ -133,15 +145,15 @@ stopOsquery() {
       sudo /etc/init.d/"$_OSQUERY_SERVICE_LINUX" stop
     fi
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     log "Stopping $_OSQUERY_SERVICE_OSX"
     if launchctl list | grep -qcm1 "$_OSQUERY_SERVICE_OSX"; then
       sudo launchctl unload "$_PLIST_OSX"
     fi
   fi
-  if [ "$OS" = "freebsd" ]; then
+  if [[ "$_OS" = "freebsd" ]]; then
     log "Stopping $_OSQUERY_SERVICE_FREEBSD"
-    if [ "$(service osqueryd onestatus)" = "osqueryd is running." ]; then
+    if [[ "$(service osqueryd onestatus)" = "osqueryd is running." ]]; then
       sudo service "$_OSQUERY_SERVICE_FREEBSD" onestop
     fi
   fi
@@ -169,7 +181,7 @@ EOF"
 }
 
 startOsquery() {
-  if [ "$OS" = "linux" ]; then
+  if [[ "$_OS" = "linux" ]]; then
     log "Starting $_OSQUERY_SERVICE_LINUX"
     if which systemctl >/dev/null; then
       sudo systemctl start "$_OSQUERY_SERVICE_LINUX"
@@ -179,12 +191,12 @@ startOsquery() {
       sudo update-rc.d "$_OSQUERY_SERVICE_LINUX" defaults
     fi
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     log "Starting $_OSQUERY_SERVICE_OSX"
     sudo cp "$_OSQUERY_PLIST" "$_PLIST_OSX"
     sudo launchctl load "$_PLIST_OSX"
   fi
-  if [ "$OS" = "freebsd" ]; then
+  if [[ "$_OS" = "freebsd" ]]; then
     log "Starting $_OSQUERY_SERVICE_FREEBSD"
     echo 'osqueryd_enable="YES"' | sudo tee -a /etc/rc.conf
     sudo service "$_OSQUERY_SERVICE_FREEBSD" start
@@ -193,8 +205,8 @@ startOsquery() {
 
 bye() {
   result=$?
-  if [ "$result" != "0" ]; then
-    echo "[!] Fail to enroll $_PROJECT node"
+  if [[ "$result" != "0" ]]; then
+    echo "[!] Fail to enroll $_PROJECT node" >&2
   fi
   exit $result
 }
@@ -202,7 +214,6 @@ bye() {
 trap "bye" EXIT
 whatOS
 verifyOsquery
-set -e
 stopOsquery
 prepareSecret
 prepareFlags
@@ -496,11 +507,18 @@ QuickAdd-Node
 
 // QuickRemoveScriptShell to keep the raw template for the quick remove shell script
 const QuickRemoveScriptShell = `
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # {{ .Project }} - Tool to quick-remove OSX/Linux nodes
 #
 # IMPORTANT! osquery will not be removed.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+if [[ "${TRACE-0}" == "1" ]]; then
+    set -o xtrace
+fi
 
 _PROJECT="{{ .Project }}"
 _SECRET_LINUX=/etc/osquery/${_PROJECT}.secret
@@ -536,14 +554,14 @@ log() {
 
 whatOS() {
 	OS=$(echo $(uname)|tr '[:upper:]' '[:lower:]')
-  log "OS=$OS"
-  if [ "$OS" = "linux" ]; then
+  log "OS=$_OS"
+  if [[ "$_OS" = "linux" ]]; then
     _SECRET_FILE="$_SECRET_LINUX"
     _FLAGS="$_FLAGS_LINUX"
     _CERT="$_CERT_LINUX"
     _SERVICE="$_OSQUERY_SERVICE_LINUX"
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     _SECRET_FILE="$_SECRET_OSX"
     _FLAGS="$_FLAGS_OSX"
     _CERT="$_CERT_OSX"
@@ -557,7 +575,7 @@ whatOS() {
 }
 
 stopOsquery() {
-  if [ "$OS" = "linux" ]; then
+  if [[ "$_OS" = "linux" ]]; then
     log "Stopping $_OSQUERY_SERVICE_LINUX"
     if which systemctl >/dev/null; then
       sudo systemctl stop "$_OSQUERY_SERVICE_LINUX"
@@ -570,16 +588,16 @@ stopOsquery() {
       sudo update-rc.d -f "$_OSQUERY_SERVICE_LINUX" remove
     fi
   fi
-  if [ "$OS" = "darwin" ]; then
+  if [[ "$_OS" = "darwin" ]]; then
     log "Stopping $_OSQUERY_SERVICE_OSX"
     if launchctl list | grep -qcm1 "$_OSQUERY_SERVICE_OSX"; then
       sudo launchctl unload "$_PLIST_OSX"
       sudo rm -f "$_PLIST_OSX"
     fi
   fi
-  if [ "$OS" = "freebsd" ]; then
+  if [[ "$_OS" = "freebsd" ]]; then
     log "Stopping $_OSQUERY_SERVICE_FREEBSD"
-    if [ "$(service osqueryd onestatus)" = "osqueryd is running." ]; then
+    if [[ "$(service osqueryd onestatus)" = "osqueryd is running." ]]; then
       sudo service "$_OSQUERY_SERVICE_FREEBSD" onestop
     fi
     cat /etc/rc.conf | grep "osqueryd_enable" | sed 's/YES/NO/g' | sudo tee /etc/rc.conf
@@ -603,15 +621,14 @@ removeCert() {
 
 bye() {
   result=$?
-  if [ "$result" != "0" ]; then
-    echo "[!] Fail to remove $_PROJECT node"
+  if [[ "$result" != "0" ]]; then
+    echo "[!] Failed to remove $_PROJECT node" >&2
   fi
   exit $result
 }
 
 trap "bye" EXIT
 whatOS
-set -e
 stopOsquery
 removeSecret
 removeFlags
