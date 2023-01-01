@@ -92,9 +92,18 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		d.Settings(mgr)
 		l.Logger = d
 	case settings.LoggingS3:
-		d, err := CreateLoggerS3File(loggingFile)
-		if err != nil {
-			return nil, err
+		var d *LoggerS3
+		var err error
+		if s3Conf.Bucket != "" {
+			d, err = CreateLoggerS3(s3Conf)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			d, err = CreateLoggerS3File(loggingFile)
+			if err != nil {
+				return nil, err
+			}
 		}
 		d.Settings(mgr)
 		l.Logger = d
