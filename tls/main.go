@@ -73,28 +73,29 @@ var (
 
 // Global variables
 var (
-	err            error
-	tlsConfig      types.JSONConfigurationTLS
-	dbConfig       backend.JSONConfigurationDB
-	redisConfig    cache.JSONConfigurationRedis
-	db             *backend.DBManager
-	redis          *cache.RedisManager
-	settingsmgr    *settings.Settings
-	envs           *environments.Environment
-	envsmap        environments.MapEnvironments
-	settingsmap    settings.MapSettings
-	nodesmgr       *nodes.NodeManager
-	queriesmgr     *queries.Queries
-	filecarves     *carves.Carves
-	tlsMetrics     *metrics.Metrics
-	loggerTLS      *logging.LoggerTLS
-	handlersTLS    *handlers.HandlersTLS
-	tagsmgr        *tags.TagManager
-	carvers3       *carves.CarverS3
-	s3LogConfig    types.S3Configuration
-	s3CarverConfig types.S3Configuration
-	app            *cli.App
-	flags          []cli.Flag
+	err             error
+	tlsConfig       types.JSONConfigurationTLS
+	dbConfig        backend.JSONConfigurationDB
+	redisConfig     cache.JSONConfigurationRedis
+	db              *backend.DBManager
+	redis           *cache.RedisManager
+	settingsmgr     *settings.Settings
+	envs            *environments.Environment
+	envsmap         environments.MapEnvironments
+	settingsmap     settings.MapSettings
+	nodesmgr        *nodes.NodeManager
+	queriesmgr      *queries.Queries
+	filecarves      *carves.Carves
+	tlsMetrics      *metrics.Metrics
+	ingestedMetrics *metrics.IngestedManager
+	loggerTLS       *logging.LoggerTLS
+	handlersTLS     *handlers.HandlersTLS
+	tagsmgr         *tags.TagManager
+	carvers3        *carves.CarverS3
+	s3LogConfig     types.S3Configuration
+	s3CarverConfig  types.S3Configuration
+	app             *cli.App
+	flags           []cli.Flag
 )
 
 // Variables for flags
@@ -519,12 +520,15 @@ func osctrlService() {
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)
 	}
-	// Initialize metrics
+	// Initialize service metrics
 	log.Println("Loading service metrics")
 	tlsMetrics, err = loadingMetrics(settingsmgr)
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
+	// Initialize ingested data metrics
+	log.Println("Initialize ingested")
+	ingestedMetrics = metrics.CreateIngested(db.Conn)
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3LogConfig, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
@@ -577,6 +581,7 @@ func osctrlService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithMetrics(tlsMetrics),
+		handlers.WithIngested(ingestedMetrics),
 		handlers.WithLogs(loggerTLS),
 	)
 
