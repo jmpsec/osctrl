@@ -14,6 +14,7 @@ type CarvedFile struct {
 	SessionID       string
 	QueryName       string
 	UUID            string `gorm:"index"`
+	NodeID          uint
 	Environment     string
 	Path            string
 	CarveSize       int

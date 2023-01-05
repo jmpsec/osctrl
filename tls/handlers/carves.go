@@ -22,6 +22,7 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 		CarveID:         req.CarveGUID,
 		RequestID:       req.RequestID,
 		UUID:            node.UUID,
+		NodeID:          node.ID,
 		Environment:     environment,
 		Path:            req.Path,
 		QueryName:       queryName,

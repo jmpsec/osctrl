@@ -93,6 +93,7 @@ type HandlersTLS struct {
 	Settings    *settings.Settings
 	SettingsMap *settings.MapSettings
 	Metrics     *metrics.Metrics
+	Ingested    *metrics.IngestedManager
 	Logs        *logging.LoggerTLS
 }
 
@@ -104,70 +105,77 @@ type TLSResponse struct {
 // Option to pass to creator
 type Option func(*HandlersTLS)
 
-// WithEnvs to pass environment as option
+// WithEnvs to pass value as option
 func WithEnvs(envs *environments.Environment) Option {
 	return func(h *HandlersTLS) {
 		h.Envs = envs
 	}
 }
 
-// WithEnvsMap to pass environment as option
+// WithEnvsMap to pass value as option
 func WithEnvsMap(envsmap *environments.MapEnvironments) Option {
 	return func(h *HandlersTLS) {
 		h.EnvsMap = envsmap
 	}
 }
 
-// WithSettings to pass environment as option
+// WithSettings to pass value as option
 func WithSettings(settings *settings.Settings) Option {
 	return func(h *HandlersTLS) {
 		h.Settings = settings
 	}
 }
 
-// WithSettingsMap to pass environment as option
+// WithSettingsMap to pass value as option
 func WithSettingsMap(settingsmap *settings.MapSettings) Option {
 	return func(h *HandlersTLS) {
 		h.SettingsMap = settingsmap
 	}
 }
 
-// WithNodes to pass environment as option
+// WithNodes to pass value as option
 func WithNodes(nodes *nodes.NodeManager) Option {
 	return func(h *HandlersTLS) {
 		h.Nodes = nodes
 	}
 }
 
-// WithTags to pass environment as option
+// WithTags to pass value as option
 func WithTags(tags *tags.TagManager) Option {
 	return func(h *HandlersTLS) {
 		h.Tags = tags
 	}
 }
 
-// WithQueries to pass environment as option
+// WithQueries to pass value as option
 func WithQueries(queries *queries.Queries) Option {
 	return func(h *HandlersTLS) {
 		h.Queries = queries
 	}
 }
 
-// WithCarves to pass environment as option
+// WithCarves to pass value as option
 func WithCarves(carves *carves.Carves) Option {
 	return func(h *HandlersTLS) {
 		h.Carves = carves
 	}
 }
 
-// WithMetrics to pass environment as option
+// WithMetrics to pass value as option
 func WithMetrics(metrics *metrics.Metrics) Option {
 	return func(h *HandlersTLS) {
 		h.Metrics = metrics
 	}
 }
 
-// WithLogs to pass environment as option
+// WithIngested to pass value as option
+func WithIngested(ingested *metrics.IngestedManager) Option {
+	return func(h *HandlersTLS) {
+		h.Ingested = ingested
+	}
+}
+
+// WithLogs to pass value as option
 func WithLogs(logs *logging.LoggerTLS) Option {
 	return func(h *HandlersTLS) {
 		h.Logs = logs
@@ -342,6 +350,11 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricConfigErr)
 			log.Printf("error refreshing last config %v", err)
 		}
+		// Record ingested data
+		if err := h.Ingested.IngestConfig(env.ID, node.ID, len(body)); err != nil {
+			h.Inc(metricConfigErr)
+			log.Printf("error with ingested config %v", err)
+		}
 		response = []byte(env.Configuration)
 	} else {
 		response = types.ConfigResponse{NodeInvalid: true}
@@ -414,8 +427,13 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	if h.Nodes.CheckByKey(t.NodeKey) {
+	node, err := h.Nodes.GetByKey(t.NodeKey); if err == nil {
 		nodeInvalid = false
+		// Record ingested data
+		if err := h.Ingested.IngestLog(env.ID, node.ID, len(body), t.LogType); err != nil {
+			h.Inc(metricLogErr)
+			log.Printf("error with ingested log %v", err)
+		}
 		// Process logs and update metadata
 		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
@@ -469,6 +487,11 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	qs := make(queries.QueryReadQueries)
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		// Record ingested data
+		if err := h.Ingested.IngestQueryRead(env.ID, node.ID, len(body)); err != nil {
+			h.Inc(metricReadErr)
+			log.Printf("error with ingested query-read %v", err)
+		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricReadErr)
@@ -543,6 +566,11 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		// Record ingested data
+		if err := h.Ingested.IngestQueryWrite(env.ID, node.ID, len(body)); err != nil {
+			h.Inc(metricWriteErr)
+			log.Printf("error with ingested query-write %v", err)
+		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricWriteErr)
@@ -777,6 +805,11 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	var carveSessionID string
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+		// Record ingested data
+		if err := h.Ingested.IngestCarveInit(env.ID, node.ID, len(body)); err != nil {
+			h.Inc(metricInitErr)
+			log.Printf("error with ingested carve-init %v", err)
+		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricInitErr)
@@ -843,6 +876,11 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	blockCarve := false
 	// Check if provided session_id matches with the request_id (carve query name)
 	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
+		// Record ingested data
+		if err := h.Ingested.IngestCarveBlock(env.ID, carve.NodeID, len(body)); err != nil {
+			h.Inc(metricInitErr)
+			log.Printf("error with ingested carve-block %v", err)
+		}
 		blockCarve = true
 		// Process received block
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
