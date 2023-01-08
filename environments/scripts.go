@@ -9,7 +9,7 @@ const QuickAddScriptShell = `
 # IMPORTANT! If osquery is not installed, it will be installed.
 
 # Use TRACE=1 to debug script
-if [ "${TRACE}" == "1" ]; then
+if [ "$TRACE" = "1" ]; then
   set -o xtrace
 fi
 
@@ -98,7 +98,7 @@ verifyOsquery() {
     installOsquery
   else
     local osquery_version=$(osqueryi -version | cut -d' ' -f3)
-    if [ "$(echo "$_OSQUERY_VER\n$osquery_version" | sort -rV | head -n 1)" != "$_OSQUERY_VER" ]; then
+    if [ "$(echo "$_OSQUERY_VER:$osquery_version" | tr ':' '\n' | sort -rV | head -n 1)" != "$_OSQUERY_VER" ]; then
       log "Installed version of osquery is $osquery_version, needs to upgrade to $_OSQUERY_VER"
       installOsquery
     else
@@ -110,7 +110,7 @@ verifyOsquery() {
 whatOS() {
   _OS=$(echo $(uname)|tr '[:upper:]' '[:lower:]')
   log "_OS=$_OS"
-  if [ "$OS" = "linux" ]; then
+  if [ "$_OS" = "linux" ]; then
     _SECRET_FILE="$_SECRET_LINUX"
     _FLAGS="$_FLAGS_LINUX"
     _CERT="$_CERT_LINUX"
@@ -160,20 +160,20 @@ stopOsquery() {
 }
 
 prepareSecret() {
-  log "Preparing osquery secret"
+  log "Preparing osquery secret in $_SECRET_FILE"
   echo "$_SECRET" | sudo tee "$_SECRET_FILE"
   sudo chmod 700 "$_SECRET_FILE"
 }
 
 prepareFlags() {
-  log "Preparing osquery flags"
+  log "Preparing osquery flags in $_FLAGS"
   sudo sh -c "cat <<EOF | sed -e 's@__SECRET_FILE__@$_SECRET_FILE@g' | sed 's@__CERT_FILE__@$_CERT@g' > $_FLAGS
 {{ .Environment.Flags }}
 EOF"
 }
 
 prepareCert() {
-  log "Preparing osquery certificate"
+  log "Preparing osquery certificate in $_CERT"
   sudo mkdir -p $(dirname "$_CERT")
   sudo sh -c "cat <<EOF > $_CERT
 {{ .Environment.Certificate }}
@@ -514,7 +514,7 @@ const QuickRemoveScriptShell = `
 # IMPORTANT! osquery will not be removed.
 
 # Use TRACE=1 to debug script
-if [ "${TRACE}" == "1" ]; then
+if [ "$TRACE" = "1" ]; then
   set -o xtrace
 fi
 
