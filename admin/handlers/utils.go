@@ -143,10 +143,10 @@ func removeBackslash(rawString string) string {
 	return strings.ReplaceAll(rawString, "\\", " ")
 }
 
-// Helper to convert json.RawMessage into indented string
-func jsonRawIndent(raw json.RawMessage) string {
+// Helper to convert string into indented string
+func jsonRawIndent(raw string) string {
 	var out bytes.Buffer
-	if err := json.Indent(&out, raw, "", "    "); err != nil {
+	if err := json.Indent(&out, []byte(raw), "", "    "); err != nil {
 		return string(raw)
 	}
 	return string(out.Bytes())
