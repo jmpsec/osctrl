@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -30,7 +29,7 @@ type OsqueryNode struct {
 	DaemonHash      string
 	ConfigHash      string
 	BytesReceived   int
-	RawEnrollment   json.RawMessage
+	RawEnrollment   string
 	LastStatus      time.Time
 	LastResult      time.Time
 	LastConfig      time.Time
@@ -62,7 +61,7 @@ type ArchiveOsqueryNode struct {
 	ConfigHash      string
 	DaemonHash      string
 	BytesReceived   int
-	RawEnrollment   json.RawMessage
+	RawEnrollment   string
 	LastStatus      time.Time
 	LastResult      time.Time
 	LastConfig      time.Time

@@ -94,7 +94,7 @@ func nodeFromEnroll(req types.EnrollRequest, env environments.TLSEnvironment, ip
 		HardwareSerial:  req.HostDetails.EnrollSystemInfo.HardwareSerial,
 		ConfigHash:      req.HostDetails.EnrollOsqueryInfo.ConfigHash,
 		BytesReceived:   recBytes,
-		RawEnrollment:   enrollRaw,
+		RawEnrollment:   string(enrollRaw),
 		LastStatus:      time.Time{},
 		LastResult:      time.Time{},
 		LastConfig:      time.Time{},

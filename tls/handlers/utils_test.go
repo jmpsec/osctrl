@@ -96,7 +96,7 @@ func TestNodeFromEnroll(t *testing.T) {
 		OsqueryUser:   "unknown",
 		Memory:        "memory",
 		BytesReceived: _rec,
-		RawEnrollment: enrollRaw,
+		RawEnrollment: string(enrollRaw),
 		UserID:        0,
 		EnvironmentID: _env.ID,
 	}
