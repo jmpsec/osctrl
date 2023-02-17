@@ -247,6 +247,13 @@ func init() {
 			Destination: &redisConfigFile,
 		},
 		&cli.StringFlag{
+			Name:        "redis-connection-string",
+			Value:       "",
+			Usage:       "Redis connection string, must include schema (<redis|rediss|unix>://<user>:<pass>@<host>:<port>/<db>?<options>",
+			EnvVars:     []string{"REDIS_CONNECTION_STRING"},
+			Destination: &redisConfig.ConnectionString,
+		},
+		&cli.StringFlag{
 			Name:        "redis-host",
 			Value:       "127.0.0.1",
 			Usage:       "Redis host to be connected to",

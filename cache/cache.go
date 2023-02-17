@@ -39,6 +39,7 @@ type JSONConfigurationRedis struct {
 	Host                  string `json:"host"`
 	Port                  string `json:"port"`
 	Password              string `json:"password"`
+	ConnectionString      string `json:"connectionstring"`
 	DB                    int    `json:"db"`
 	StatusExpirationHours int    `json:"status_exp_hours"`
 	ResultExpirationHours int    `json:"result_exp_hours"`
@@ -79,11 +80,16 @@ func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
 
 // GetRedis to get redis client ready
 func (rm *RedisManager) GetRedis() *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr:     PrepareAddr(*rm.Config),
-		Password: rm.Config.Password,
-		DB:       rm.Config.DB,
-	})
+	opt, err := redis.ParseURL(rm.Config.ConnectionString)
+	if err != nil {
+		//use current behavior
+		return redis.NewClient(&redis.Options{
+			Addr:     PrepareAddr(*rm.Config),
+			Password: rm.Config.Password,
+			DB:       rm.Config.DB,
+		})
+	}
+	return redis.NewClient(opt)
 }
 
 // Check to verify if connection is open and ready
