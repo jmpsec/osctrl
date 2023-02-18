@@ -39,7 +39,7 @@ jobs:
       - name: Build osctrl binaries
         # Build all osctrl components for linux for all archs
         # Build all osctrl components for darwin for all archs
-        # Build all osctrl cli for windows for all archs
+        # Build osctrl cli for windows for all archs
         if: matrix.goos == 'linux' || matrix.goos == 'darwin' || (matrix.goos == 'windows' && matrix.components == 'cli')
         uses: ./.github/actions/build/binaries
         with:
