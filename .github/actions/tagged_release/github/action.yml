@@ -30,24 +30,36 @@ runs:
       shell: bash
       run: "ls -la"
 
-    - name: Rename binary
+    - name: Rename Linux or darwin binary
+      if: go_os == 'linux' || go_os == 'darwin'
       shell: bash
       run: |
         mv \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
+    - name: Rename Windows binary
+      if: go_os == 'windows'
+      shell: bash
+      run: |
+        mv \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.exe
+
     ########################### Download osctrl DEB package ###########################
     - name: Download a osctrl binaries
+      if: go_os == 'linux'
       uses: actions/download-artifact@v3
       with:
         name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
 
     - name: LS
+      if: go_os == 'linux'
       shell: bash
       run: "ls -la"
 
     - name: Rename DEB package
+      if: go_os == 'linux'
       shell: bash
       run: |
         mv \
@@ -62,4 +74,5 @@ runs:
         files: |
           osctrl-*.bin
           osctrl-*.deb
+          osctrl-*.exe
         body_path: ./CHANGELOG.md
