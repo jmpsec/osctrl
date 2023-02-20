@@ -1,6 +1,0 @@
-{
-    "jwt": {
-      "jwtSecret": "{{ JWT_SECRET }}",
-      "hoursToExpire": 3
-    }
-  }

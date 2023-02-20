@@ -1,7 +1,6 @@
-# Running osctrl with Docker
+# osctrl Docker dev environment
 
-You can use Docker to run **osctrl** using the `docker-compose.yml` that ties all the components together.
-There a couple of manual steps that are required before having a fully functional deployment:
+This directory contains all the necessary configs to setup the osctrl Docker dev environment.  There a couple of manual steps that are required before having a fully functional deployment:
 
 1. Generate TLS/SSL termination certificate and private key
 2. Generate JWT secret for API tokens
@@ -11,15 +10,16 @@ There a couple of manual steps that are required before having a fully functiona
 Follow these steps to generate a self-signed certificate that is going to be used for the osctrl deployment:
 
 1. `cp conf/tls/openssl.cnf.example conf/tls/openssl.cnf`
-2. `vim conf/tls/openssl.cnf` and set `emailAddress` with valid e-mail for your org
-3. Replace `osctrl.example.com` in all fields with your domain
-4. `openssl req -x509 -new -nodes -days 3650 -keyout conf/tls/tls.key -out conf/tls/tls.crt -config conf/tls/openssl.cnf`
+1. `BASE_DOMAIN=<DOMAIN> openssl req -x509 -new -nodes -days <X - ex: 365) -keyout conf/tls/osctrl.key -out conf/tls/osctrl.crt -config conf/tls/openssl.cnf`
+    1. Replace `<DOMAIN>` with an a domain like `osctrl.example.com`
+    1. ![docker_openssl_generate](../../.img/docker_openssl_generate.png)
 
 ## Generate JWT secret
 
 You can generate a random enough JWT secret to be used with the `osctrl-api` and `osctrl-admin` components using one of the following commands:
 
 1. `uuidgen | shasum -a 256 | awk '{print $1}'`
+    1. ![docker_uuid_gen](../../.img/docker_uuid_gen.png)
 1. `vim .env` and set `JWT_SECRET`
 
 ## Set .env
@@ -55,9 +55,6 @@ You can generate a random enough JWT secret to be used with the `osctrl-api` and
     1. Enter `<OSCTRL_PASS>` for password
 
 ## References
-
-### osctrl
-
 * [What is osctrl?](https://osctrl.net/)
 * [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.3.4#/)
 
@@ -71,7 +68,4 @@ You can generate a random enough JWT secret to be used with the `osctrl-api` and
 * [Advanced Dockerfiles: Faster Builds and Smaller Images Using BuildKit and Multistage Builds](https://www.docker.com/blog/advanced-dockerfiles-faster-builds-and-smaller-images-using-buildkit-and-multistage-builds/)
 * [Using openssl to get the certificate from a server](https://stackoverflow.com/questions/7885785/using-openssl-to-get-the-certificate-from-a-server)
 * [Osquery flags](https://osquery.readthedocs.io/en/stable/installation/cli-flags/)
-
-### mkcert
-
 * [mkcert is a simple tool for making locally-trusted development certificates](https://github.com/FiloSottile/mkcert)

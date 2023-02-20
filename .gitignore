@@ -70,3 +70,7 @@ osctrl-api.json
 # Go Workspace
 go.work
 go.work.sum
+
+deploy/docker/conf/tls/*
+.env
+!deploy/docker/conf/tls/openssl.cnf.example

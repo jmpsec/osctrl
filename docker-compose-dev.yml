@@ -10,7 +10,7 @@ services:
       - 8443:443
     networks:
       - default
-      - osctrl-backend
+      - osctrl-dev-backend
     volumes:
       - type: bind
         source: ./deploy/docker/conf/nginx/nginx.conf
@@ -19,29 +19,27 @@ services:
         source: ./deploy/docker/conf/nginx/osctrl.conf
         target: /etc/nginx/conf.d/osctrl.conf
       - type: bind
-        source: ./deploy/docker/conf/tls/tls.crt
+        source: ./deploy/docker/conf/tls/osctrl.crt
         target: /etc/ssl/certs/osctrl.crt
       - type: bind
-        source: ./deploy/docker/conf/tls/tls.key
+        source: ./deploy/docker/conf/tls/osctrl.key
         target: /etc/ssl/private/osctrl.key
     depends_on:
       - osctrl-tls
       - osctrl-admin
       - osctrl-api
-    healthcheck:
-      test: ["CMD", "curl", "-f", "-k", "https://localhost"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    cpus: 2
-    mem_limit: 150M
+
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
-    image: jmpsec/osctrl-tls:v${OSCTRL_VERSION}
-    container_name: 'osctrl-tls'
+    image: 'osctrl-tls-dev:v${OSCTRL_VERSION}'
+    container_name: 'osctrl-tls-dev'
     restart: unless-stopped
+    build:
+      context: .
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-tls
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
     environment:
       #### TLS settings ####
       - SERVICE_LISTENER=0.0.0.0
@@ -57,23 +55,27 @@ services:
       #### Redis settings ####
       - REDIS_HOST=redis
     networks:
-      - osctrl-backend
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:9000:9000
+    volumes:
+      - .:/usr/src/app:rw,delegated
     depends_on:
       - postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    cpus: 2
-    mem_limit: 150M
+      - redis
+
 
   ######################################### osctrl-admin #########################################
   osctrl-admin:
-    container_name: 'osctrl-admin'
+    image: 'osctrl-admin-dev:v${OSCTRL_VERSION}'
+    container_name: 'osctrl-admin-dev'
     restart: unless-stopped
-    image: jmpsec/osctrl-admin:v${OSCTRL_VERSION}
+    build:
+      context: .
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-admin
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
     environment:
       #### TLS settings ####
       - SERVICE_LISTENER=0.0.0.0
@@ -90,23 +92,27 @@ services:
       #### Redis settings ####
       - REDIS_HOST=redis
     networks:
-      - osctrl-backend
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:9001:9001
+    volumes:
+      - .:/usr/src/app:rw,delegated
     depends_on:
       - postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    cpus: 2
-    mem_limit: 150M
+      - redis
+
 
   ######################################### osctrl-api #########################################
   osctrl-api:
-    container_name: 'osctrl-api'
+    image: 'osctrl-api-dev:v${OSCTRL_VERSION}'
+    container_name: 'osctrl-api-dev'
     restart: unless-stopped
-    image: jmpsec/osctrl-api:v${OSCTRL_VERSION}
+    build:
+      context: .
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-api
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
     environment:
       #### TLS settings ####
       - SERVICE_LISTENER=0.0.0.0
@@ -123,21 +129,19 @@ services:
       #### Redis settings ####
       - REDIS_HOST=redis
     networks:
-      - osctrl-backend
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:9002:9002
+    volumes:
+      - .:/usr/src/app:rw,delegated
     depends_on:
       - postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9002"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    cpus: 2
-    mem_limit: 150M
+      - redis
+
 
   ######################################### PostgreSQL #########################################
   postgres:
-    container_name: 'osctrl-postgres'
+    container_name: 'osctrl-postgres-dev'
     restart: unless-stopped
     image: postgres:${POSTGRES_VERSION}
     environment:
@@ -145,109 +149,104 @@ services:
       - POSTGRES_USER=${POSTGRES_DB_USERNAME}
       - POSTGRES_PASSWORD=${POSTGRES_DB_PASSWORD}
     networks:
-      - osctrl-backend
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:5432:5432
     volumes:
-      - postgres-db:/var/lib/postgresql/data
+      - postgres-dev-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "$$POSTGRES_DB"]
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_DB_USERNAME} -d ${POSTGRES_DB_NAME}'"]
       interval: 10s
       timeout: 5s
       retries: 5
-    cpus: 2
-    mem_limit: 1G
+
 
   ######################################### Redis #########################################
   redis:
-    container_name: 'osctrl-redis'
+    container_name: 'osctrl-redis-dev'
     restart: unless-stopped
     image: redis:${REDIS_VERSION}
     networks:
-      - osctrl-backend
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:6379:6379
     volumes:
-      - redis-data:/data
+      - redis-dev-data:/data
     healthcheck:
       test: ["CMD", "redis-cli","ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    cpus: 1
-    mem_limit: 100M
+
 
   ######################################### osctrl-cli #########################################
   # osctrl-cli is the component that creates the osctrl env and admin user
   ##############################################################################################
-  osctrl-cli:
-    container_name: 'osctrl-cli'
-    restart: unless-stopped
-    image: jmpsec/osctrl-cli:v${OSCTRL_VERSION}
-    tty: true # entrypoint executes `/bin/sh`
-    environment:
-      #### osctrl env ####
-      - ENV_NAME=dev
-      - CERT_FILE=/opt/osctrl/config/osctrl.crt
-      - HOST=osctrl-nginx
-      #### osctrl admin ####
-      - OSCTRL_USER=${OSCTRL_USER}
-      - OSCTRL_PASS=${OSCTRL_PASS}
-      #### Database settings ####
-      - DB_HOST=postgres
-      - DB_NAME=${POSTGRES_DB_NAME}
-      - DB_USER=${POSTGRES_DB_USERNAME}
-      - DB_PASS=${POSTGRES_DB_PASSWORD}
-    networks:
-      - osctrl-backend
-    depends_on:
-      - postgres
-    healthcheck:
-      test: ["CMD", "/opt/osctrl/bin/osctrl-cli", "check"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    cpus: 1
-    mem_limit: 100M
+  # osctrl-cli:
+  #   image: 'osctrl-cli-dev:v${OSCTRL_VERSION}'
+  #   container_name: 'osctrl-cli-dev'
+  #   restart: unless-stopped
+  #   build:
+  #     context: .
+  #     dockerfile: docker-dev/Dockerfile-cli
+  #     args:
+  #       GOLANG_VERSION: ${GOLANG_VERSION}
+  #       OSQUERY_VERSION: ${OSQUERY_VERSION}
+  #   tty: true # entrypoint executes `/bin/sh`
+  #   environment:
+  #     #### osctrl env ####
+  #     - ENV_NAME=dev
+  #     - CERT_FILE=/opt/osctrl/config/osctrl.crt
+  #     - HOST=osctrl-nginx
+  #     #### osctrl admin ####
+  #     - OSCTRL_USER=${OSCTRL_USER}
+  #     - OSCTRL_PASS=${OSCTRL_PASS}
+  #     - API_URL=http://osctrl-api:9002
+  #     #### Database settings ####
+  #     - DB_HOST=postgres
+  #     - DB_NAME=${POSTGRES_DB_NAME}
+  #     - DB_USER=${POSTGRES_DB_USERNAME}
+  #     - DB_PASS=${POSTGRES_DB_PASSWORD}
+  #   networks:
+  #     - osctrl-dev-backend
+  #   volumes:
+  #     - .:/usr/src/app:rw,delegated
+  #   depends_on:
+  #     - postgres
 
   ######################################### osquery #########################################
-  ubuntu-osquery:
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile-osquery
-      args:
-        OSQUERY_VERSION: ${OSQUERY_VERSION}
-        OSCTRL_VERSION: ${OSCTRL_VERSION}
-    environment:
-      #### osquery enroll ####
-      - ENV_NAME=dev
-      - HOST=osctrl-nginx
-      #### Database settings ####
-      - DB_HOST=postgres
-      - DB_NAME=${POSTGRES_DB_NAME}
-      - DB_USER=${POSTGRES_DB_USERNAME}
-      - DB_PASS=${POSTGRES_DB_PASSWORD}
-    networks:
-      - osctrl-backend
-    volumes:
-      - osquery-data:/var/osquery
-      - osquery-conf:/etc/osquery
-    depends_on:
-      - osctrl-tls
-      - osctrl-api
-      - postgres
-    healthcheck:
-      test: ["CMD", "test", "-f", "/var/run/osqueryd.pidfile"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    cpus: 1
-    mem_limit: 150M
+  # ubuntu-osquery:
+  #   restart: unless-stopped
+  #   build:
+  #     context: .
+  #     dockerfile: deploy/docker/Dockerfile-osquery
+  #     args:
+  #       OSQUERY_VERSION: ${OSQUERY_VERSION}
+  #       OSCTRL_VERSION: ${OSCTRL_VERSION}
+  #   environment:
+  #     #### osquery enroll ####
+  #     - ENV_NAME=dev
+  #     - HOST=osctrl-nginx
+  #     #### Database settings ####
+  #     - DB_HOST=postgres
+  #     - DB_NAME=${POSTGRES_DB_NAME}
+  #     - DB_USER=${POSTGRES_DB_USERNAME}
+  #     - DB_PASS=${POSTGRES_DB_PASSWORD}
+  #   networks:
+  #     - osctrl-dev-backend
+  #   volumes:
+  #     - osquery-dev-data:/var/osquery
+  #     - osquery-dev-conf:/etc/osquery
+  #   depends_on:
+  #     - osctrl-tls
+  #     - osctrl-api
+  #     - postgres
 
 networks:
-  osctrl-backend:
+  osctrl-dev-backend:
 
 volumes:
-  postgres-db:
-  redis-data:
-  osquery-data:
-  osquery-conf:
+  postgres-dev-db:
+  redis-dev-data:
+  osquery-dev-data:
+  osquery-dev-conf:

@@ -1,0 +1,26 @@
+ARG GOLANG_VERSION
+FROM golang:${GOLANG_VERSION} AS osctrl-api-dev
+
+WORKDIR /usr/src/app
+
+ENV GO111MODULE="on"
+ENV GOOS="linux"
+ENV CGO_ENABLED=0
+
+# Hot reloading mod
+RUN go install github.com/cosmtrek/air@v1.41.0 
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.1
+
+# Copy code
+COPY . /usr/src/app
+
+# Download deps
+RUN go mod download
+RUN go mod verify
+
+### Copy osctrl-api bin and configs ###
+RUN mkdir -p /opt/osctrl/{bin,config}
+RUN go build -o /opt/osctrl/bin/osctrl-api api/*.go
+
+EXPOSE 9002
+ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-api.toml"]

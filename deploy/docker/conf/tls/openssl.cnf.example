@@ -6,14 +6,14 @@ x509_extensions = v3_req
 distinguished_name = dn
 
 [dn]
-emailAddress = dev@osctrl.example.com
-CN = osctrl.example.com
+emailAddress = dev@${ENV:BASE_DOMAIN}
+CN = osctrl.${ENV:BASE_DOMAIN}
 
 [v3_req]
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = osctrl.example.com
+DNS.1 = osctrl.${ENV:BASE_DOMAIN}
 DNS.2 = osctrl-nginx
 DNS.3 = nginx
 DNS.4 = osctrl
