@@ -211,6 +211,9 @@ services:
     networks:
       - osctrl-dev-backend
     volumes:
+      - type: bind
+        source: ./deploy/docker/conf/tls/osctrl.crt
+        target: /opt/osctrl/config/osctrl.crt
       - .:/usr/src/app:rw,delegated
     depends_on:
       - postgres
