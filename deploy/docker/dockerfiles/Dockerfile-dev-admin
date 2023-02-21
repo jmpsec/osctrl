@@ -21,7 +21,10 @@ RUN go mod download
 RUN go mod verify
 
 ### Copy osctrl-admin bin and configs ###
-RUN mkdir -p /opt/osctrl/{bin,config,carved_files} || true
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/script
+RUN mkdir -p /opt/osctrl/carved_files
 
 ### Copy osctrl-admin web templates ###
 COPY admin/templates/ /opt/osctrl/tmpl_admin

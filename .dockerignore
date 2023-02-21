@@ -2,3 +2,7 @@
 LICENSE
 Vagrantfile
 *.png
+tmp/
+bin/
+docker-compose.yml
+docker-compose-dev.yml

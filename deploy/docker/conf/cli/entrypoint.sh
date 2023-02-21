@@ -13,7 +13,7 @@ if [[ -n "$OSCTRL_PASS_FILE" ]]; then
 fi
 
 ######################################### Wait until DB is up #########################################
-until /opt/osctrl/bin/osctrl-cli --db check-db
+until /opt/osctrl/bin/osctrl-cli check-db
 do
   echo "DB is not ready"
   sleep $WAIT
@@ -25,9 +25,9 @@ done
   --hostname "${HOST}" \
   --certificate "${CERT_FILE}"
 if [ $? -eq 0 ]; then
-  echo "Created environment dev"
+  echo "Created environment ${ENV_NAME}"
 else
-  echo "Environment dev exists"
+  echo "Environment ${ENV_NAME} exists"
 fi
 
 ######################################### Create admin user #########################################
@@ -46,5 +46,14 @@ fi
 
 echo "The environment ${ENV_NAME} is ready"
 
+echo "
+##############################################################################
+#                Successfully created an osctrl user and env 
+# 
+# osctrl admin user: ${OSCTRL_USER}
+# osctrl env name: ${ENV_NAME}
+##############################################################################
+"
+
 # Start a shell to avoid re-running this script
-/bin/sh
+/bin/bash

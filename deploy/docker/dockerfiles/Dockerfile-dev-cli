@@ -1,3 +1,4 @@
+#################################################### osctrl-cli-dev ####################################################
 ARG GOLANG_VERSION
 FROM golang:${GOLANG_VERSION} AS osctrl-cli-dev
 
@@ -19,8 +20,32 @@ RUN go mod download
 RUN go mod verify
 
 ### Copy osctrl-api bin and configs ###
-RUN mkdir -p /opt/osctrl/{bin,config}
-RUN go build -o ./bin/osctrl-cli cli/*.go
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/script
+RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
 
-EXPOSE 9000
+#### User and env init script ####
+COPY deploy/docker/conf/cli/entrypoint.sh /opt/osctrl/script/init.sh
+RUN chmod +x /opt/osctrl/script/init.sh
+
 ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-cli.toml"]
+CMD ["/opt/osctrl/script/init.sh"]
+
+#################################################### osctrl-ubuntu-osquery ####################################################
+FROM osctrl-cli-dev as osctrl-ubuntu-osquery
+
+ARG OSQUERY_VERSION
+
+USER root
+
+# Install Osquery
+RUN apt-get update -y -qq && apt-get install -y curl host
+RUN curl -L https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb \
+    --output /tmp/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb
+RUN dpkg -i /tmp/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb
+
+# Entrypoint
+COPY deploy/docker/conf/osquery/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]

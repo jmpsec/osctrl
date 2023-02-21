@@ -2,7 +2,7 @@ version: "2.4"
 services:
   ######################################### NGINX #########################################
   nginx:
-    container_name: 'osctrl-nginx'
+    container_name: 'osctrl-nginx-dev'
     image: nginx:${NGINX_VERSION}
     restart: unless-stopped
     ports:
@@ -32,8 +32,8 @@ services:
 
   ######################################### osctrl-tls #########################################
   osctrl-tls:
-    image: 'osctrl-tls-dev:v${OSCTRL_VERSION}'
     container_name: 'osctrl-tls-dev'
+    image: 'osctrl-tls-dev:v${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -67,8 +67,8 @@ services:
 
   ######################################### osctrl-admin #########################################
   osctrl-admin:
-    image: 'osctrl-admin-dev:v${OSCTRL_VERSION}'
     container_name: 'osctrl-admin-dev'
+    image: 'osctrl-admin-dev:v${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -104,8 +104,8 @@ services:
 
   ######################################### osctrl-api #########################################
   osctrl-api:
-    image: 'osctrl-api-dev:v${OSCTRL_VERSION}'
     container_name: 'osctrl-api-dev'
+    image: 'osctrl-api-dev:v${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -142,8 +142,8 @@ services:
   ######################################### PostgreSQL #########################################
   postgres:
     container_name: 'osctrl-postgres-dev'
-    restart: unless-stopped
     image: postgres:${POSTGRES_VERSION}
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=${POSTGRES_DB_NAME}
       - POSTGRES_USER=${POSTGRES_DB_USERNAME}
@@ -164,8 +164,8 @@ services:
   ######################################### Redis #########################################
   redis:
     container_name: 'osctrl-redis-dev'
-    restart: unless-stopped
     image: redis:${REDIS_VERSION}
+    restart: unless-stopped
     networks:
       - osctrl-dev-backend
     ports:
@@ -182,65 +182,73 @@ services:
   ######################################### osctrl-cli #########################################
   # osctrl-cli is the component that creates the osctrl env and admin user
   ##############################################################################################
-  # osctrl-cli:
-  #   image: 'osctrl-cli-dev:v${OSCTRL_VERSION}'
-  #   container_name: 'osctrl-cli-dev'
-  #   restart: unless-stopped
-  #   build:
-  #     context: .
-  #     dockerfile: docker-dev/Dockerfile-cli
-  #     args:
-  #       GOLANG_VERSION: ${GOLANG_VERSION}
-  #       OSQUERY_VERSION: ${OSQUERY_VERSION}
-  #   tty: true # entrypoint executes `/bin/sh`
-  #   environment:
-  #     #### osctrl env ####
-  #     - ENV_NAME=dev
-  #     - CERT_FILE=/opt/osctrl/config/osctrl.crt
-  #     - HOST=osctrl-nginx
-  #     #### osctrl admin ####
-  #     - OSCTRL_USER=${OSCTRL_USER}
-  #     - OSCTRL_PASS=${OSCTRL_PASS}
-  #     - API_URL=http://osctrl-api:9002
-  #     #### Database settings ####
-  #     - DB_HOST=postgres
-  #     - DB_NAME=${POSTGRES_DB_NAME}
-  #     - DB_USER=${POSTGRES_DB_USERNAME}
-  #     - DB_PASS=${POSTGRES_DB_PASSWORD}
-  #   networks:
-  #     - osctrl-dev-backend
-  #   volumes:
-  #     - .:/usr/src/app:rw,delegated
-  #   depends_on:
-  #     - postgres
+  osctrl-cli:
+    container_name: 'osctrl-cli-dev'
+    image: 'osctrl-cli-dev:v${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      target: osctrl-cli-dev
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-cli
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
+    tty: true # entrypoint executes `/bin/sh`
+    environment:
+      #### osctrl env ####
+      - ENV_NAME=dev
+      - CERT_FILE=/opt/osctrl/config/osctrl.crt
+      - HOST=nginx
+      #### osctrl admin ####
+      - OSCTRL_USER=${OSCTRL_USER}
+      - OSCTRL_PASS=${OSCTRL_PASS}
+      - API_URL=http://osctrl-api:9002
+      #### Database settings ####
+      - DB_HOST=postgres
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-dev-backend
+    volumes:
+      - .:/usr/src/app:rw,delegated
+    depends_on:
+      - postgres
+      - redis
 
   ######################################### osquery #########################################
-  # ubuntu-osquery:
-  #   restart: unless-stopped
-  #   build:
-  #     context: .
-  #     dockerfile: deploy/docker/Dockerfile-osquery
-  #     args:
-  #       OSQUERY_VERSION: ${OSQUERY_VERSION}
-  #       OSCTRL_VERSION: ${OSCTRL_VERSION}
-  #   environment:
-  #     #### osquery enroll ####
-  #     - ENV_NAME=dev
-  #     - HOST=osctrl-nginx
-  #     #### Database settings ####
-  #     - DB_HOST=postgres
-  #     - DB_NAME=${POSTGRES_DB_NAME}
-  #     - DB_USER=${POSTGRES_DB_USERNAME}
-  #     - DB_PASS=${POSTGRES_DB_PASSWORD}
-  #   networks:
-  #     - osctrl-dev-backend
-  #   volumes:
-  #     - osquery-dev-data:/var/osquery
-  #     - osquery-dev-conf:/etc/osquery
-  #   depends_on:
-  #     - osctrl-tls
-  #     - osctrl-api
-  #     - postgres
+  osquery:
+    container_name: 'osctrl-osquery-dev'
+    image: 'osctrl-osquery-dev:v${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      target: osctrl-ubuntu-osquery
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-cli
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
+    environment:
+      #### osquery enroll ####
+      - ENV_NAME=dev
+      - HOST=nginx
+      #### Database settings ####
+      - DB_HOST=postgres
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-dev-backend
+    volumes:
+      - type: bind
+        source: ./deploy/docker/conf/tls/osctrl.crt
+        target: /opt/osctrl/config/osctrl.crt
+      - osquery-dev-data:/var/osquery
+      - osquery-dev-conf:/etc/osquery
+    depends_on:
+      - osctrl-tls
+      - osctrl-api
+      - postgres
 
 networks:
   osctrl-dev-backend:

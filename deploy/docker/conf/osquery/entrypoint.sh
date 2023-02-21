@@ -2,10 +2,11 @@
 
 ENV_NAME="${ENV_NAME:=dev}"
 HOST="${HOST:=nginx}"
+WAIT="${WAIT:=5}"
 
 if [ ! -f "/etc/osquery/osquery.secret" ]; then
   ######################################### Wait until DB is up #########################################
-  until /opt/osctrl/bin/osctrl-cli --db check-db
+  until /opt/osctrl/bin/osctrl-cli check-db
   do
     echo "DB is not ready"
     sleep $WAIT
@@ -15,8 +16,8 @@ if [ ! -f "/etc/osquery/osquery.secret" ]; then
   # Wait until for env to exist
   until /opt/osctrl/bin/osctrl-cli --db env show --name "${ENV_NAME}"
   do
-      echo "${ENV_NAME} does not exist"
-      sleep 3
+    echo "${ENV_NAME} does not exist"
+    sleep 3
   done
 
   # Get enroll secret
