@@ -42,7 +42,7 @@ type NodeJSON struct {
 // JSONEnvironmentHandler - Handler for JSON endpoints by environment
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -85,7 +85,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 		h.Inc(metricJSONErr)
 		return
 	}
-	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours())
+	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironment))
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		h.Inc(metricJSONErr)
@@ -124,7 +124,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 // JSONPlatformHandler - Handler for JSON endpoints by platform
 func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
@@ -154,7 +154,7 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricJSONErr)
 		return
 	}
-	nodes, err := h.Nodes.GetByPlatform(platform, target, h.Settings.InactiveHours())
+	nodes, err := h.Nodes.GetByPlatform(platform, target, h.Settings.InactiveHours(settings.NoEnvironment))
 	if err != nil {
 		log.Printf("error getting nodes %v", err)
 		h.Inc(metricJSONErr)

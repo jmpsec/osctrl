@@ -20,7 +20,7 @@ const (
 // GET Handler to return one environment as JSON
 func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIEnvsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -58,7 +58,7 @@ func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler to return all environments as JSON
 func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIEnvsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {

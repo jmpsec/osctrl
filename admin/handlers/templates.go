@@ -33,8 +33,8 @@ func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version stri
 		TLSDebug:       h.Settings.DebugService(settings.ServiceTLS),
 		AdminDebug:     h.Settings.DebugService(settings.ServiceAdmin),
 		APIDebug:       h.Settings.DebugService(settings.ServiceAPI),
-		AdminDebugHTTP: h.Settings.DebugHTTP(settings.ServiceAdmin),
-		APIDebugHTTP:   h.Settings.DebugHTTP(settings.ServiceAPI),
+		AdminDebugHTTP: h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment),
+		APIDebugHTTP:   h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment),
 	}
 }
 
@@ -56,7 +56,7 @@ func (h *HandlersAdmin) NewTemplateFiles(base string, layoutFilename string) *Te
 // LoginHandler for login page for GET requests
 func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/login.html",
@@ -86,7 +86,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // EnvironmentHandler for environment view of the table
 func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -173,7 +173,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 // PlatformHandler for platform view of the table
 func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
@@ -259,7 +259,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 // QueryRunGETHandler for GET requests to run queries
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -312,7 +312,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get all nodes
-	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours())
+	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironment))
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting all nodes: %v", err)
@@ -351,7 +351,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 // QueryListGETHandler for GET requests to queries
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -420,7 +420,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 // SavedQueriesGETHandler for GET requests to queries
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -489,7 +489,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 // CarvesRunGETHandler for GET requests to run file carves
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -536,7 +536,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Get all nodes
-	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours())
+	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironment))
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting all nodes: %v", err)
@@ -575,7 +575,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 // CarvesListGETHandler for GET requests to carves
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -644,7 +644,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 // QueryLogsHandler for GET requests to see query results by name
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -745,7 +745,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 // CarvesDetailsHandler for GET requests to see carves details by name
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -862,7 +862,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 // ConfGETHandler for GET requests for /conf
 func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -930,7 +930,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -986,7 +986,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
 		EnvName:               env.Name,
 		EnvUUID:               env.UUID,
-		OnelinerExpiration:    h.Settings.OnelinerExpiration(),
+		OnelinerExpiration:    h.Settings.OnelinerExpiration(settings.NoEnvironment),
 		EnrollExpiry:          strings.ToUpper(utils.InFutureTime(env.EnrollExpire)),
 		EnrollExpired:         environments.IsItExpired(env.EnrollExpire),
 		RemoveExpiry:          strings.ToUpper(utils.InFutureTime(env.RemoveExpire)),
@@ -1015,7 +1015,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 // NodeHandler for node view
 func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract uuid
 	uuid, ok := vars["uuid"]
@@ -1089,7 +1089,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// If dashboard enabled, retrieve packs and schedule
-	dashboardEnabled := h.Settings.NodeDashboard()
+	dashboardEnabled := h.Settings.NodeDashboard(settings.NoEnvironment)
 	var packs environments.PacksEntries
 	var schedule environments.ScheduleConf
 	if dashboardEnabled {
@@ -1109,8 +1109,8 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	leftMetadata := AsideLeftMetadata{
 		EnvUUID:      env.UUID,
-		ActiveNode:   nodes.IsActive(node, h.Settings.InactiveHours()),
-		InactiveNode: !nodes.IsActive(node, h.Settings.InactiveHours()),
+		ActiveNode:   nodes.IsActive(node, h.Settings.InactiveHours(settings.NoEnvironment)),
+		InactiveNode: !nodes.IsActive(node, h.Settings.InactiveHours(settings.NoEnvironment)),
 		NodeUUID:     node.UUID,
 	}
 	// Prepare template data
@@ -1142,7 +1142,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 // EnvsGETHandler for GET requests for /env
 func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
@@ -1194,7 +1194,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 // SettingsGETHandler for GET requests for /settings
 func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
@@ -1239,7 +1239,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get setting values
-	_settings, err := h.Settings.RetrieveValues(serviceVar, false)
+	_settings, err := h.Settings.RetrieveValues(serviceVar, false, settings.NoEnvironment)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Printf("error getting settings: %v", err)
@@ -1275,7 +1275,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 // UsersGETHandler for GET requests for /users
 func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
@@ -1340,7 +1340,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 // TagsGETHandler for GET requests for /tags
 func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions
@@ -1405,7 +1405,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 // EditProfileGETHandler for user profile edit
 func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions

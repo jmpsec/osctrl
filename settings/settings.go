@@ -94,17 +94,23 @@ const (
 	JSONSessionKey string = "json_sessionkey"
 )
 
+// Values for generic IDs
+const (
+	NoEnvironment = iota
+)
+
 // SettingValue to hold each value for settings
 type SettingValue struct {
 	gorm.Model
-	Name    string `gorm:"index"`
-	Service string
-	JSON    bool
-	Type    string
-	String  string
-	Boolean bool
-	Integer int64
-	Info    string
+	Name          string `gorm:"index"`
+	Service       string
+	EnvironmentID uint
+	JSON          bool
+	Type          string
+	String        string
+	Boolean       bool
+	Integer       int64
+	Info          string
 }
 
 // MapSettings to hold all values by service
@@ -141,23 +147,24 @@ func NewSettings(backend *gorm.DB) *Settings {
 }
 
 // EmptyValue creates an empty value
-func (conf *Settings) EmptyValue(service, name, typeValue string) SettingValue {
+func (conf *Settings) EmptyValue(service, name, typeValue string, envID uint) SettingValue {
 	return SettingValue{
-		Name:    name,
-		Service: service,
-		JSON:    false,
-		Type:    typeValue,
-		String:  "",
-		Integer: int64(0),
-		Boolean: false,
-		Info:    "",
+		Name:          name,
+		Service:       service,
+		EnvironmentID: envID,
+		JSON:          false,
+		Type:          typeValue,
+		String:        "",
+		Integer:       int64(0),
+		Boolean:       false,
+		Info:          "",
 	}
 }
 
 // NewValue creates a new settings value
-func (conf *Settings) NewValue(service, name, typeValue string, value interface{}) error {
+func (conf *Settings) NewValue(service, name, typeValue string, value interface{}, envID uint) error {
 	// Empty new value
-	entry := conf.EmptyValue(service, name, typeValue)
+	entry := conf.EmptyValue(service, name, typeValue, envID)
 	switch typeValue {
 	case TypeBoolean:
 		entry.Boolean = value.(bool)
@@ -174,9 +181,9 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 }
 
 // NewJSON creates a new JSON value
-func (conf *Settings) NewJSON(service, name, value string) error {
+func (conf *Settings) NewJSON(service, name, value string, envID uint) error {
 	// Empty new JSON value
-	entry := conf.EmptyValue(service, name, TypeString)
+	entry := conf.EmptyValue(service, name, TypeString, envID)
 	entry.JSON = true
 	entry.String = value
 	// Create record in database
@@ -187,18 +194,18 @@ func (conf *Settings) NewJSON(service, name, value string) error {
 }
 
 // NewStringValue creates a new settings value
-func (conf *Settings) NewStringValue(service, name, value string) error {
-	return conf.NewValue(service, name, TypeString, value)
+func (conf *Settings) NewStringValue(service, name, value string, envID uint) error {
+	return conf.NewValue(service, name, TypeString, value, envID)
 }
 
 // NewBooleanValue creates a new settings value
-func (conf *Settings) NewBooleanValue(service, name string, value bool) error {
-	return conf.NewValue(service, name, TypeBoolean, value)
+func (conf *Settings) NewBooleanValue(service, name string, value bool, envID uint) error {
+	return conf.NewValue(service, name, TypeBoolean, value, envID)
 }
 
 // NewIntegerValue creates a new settings value
-func (conf *Settings) NewIntegerValue(service, name string, value int64) error {
-	return conf.NewValue(service, name, TypeInteger, value)
+func (conf *Settings) NewIntegerValue(service, name string, value int64, envID uint) error {
+	return conf.NewValue(service, name, TypeInteger, value, envID)
 }
 
 // VerifyType to make sure type is valid
@@ -214,8 +221,8 @@ func (conf *Settings) VerifyService(sType string) bool {
 }
 
 // DeleteValue deletes an existing settings value
-func (conf *Settings) DeleteValue(service, name string) error {
-	value, err := conf.RetrieveValue(service, name)
+func (conf *Settings) DeleteValue(service, name string, envID uint) error {
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return fmt.Errorf("DeleteValue %v", err)
 	}
@@ -234,10 +241,28 @@ func (conf *Settings) RetrieveAllValues() ([]SettingValue, error) {
 	return values, nil
 }
 
+// RetrieveAllEnvValues retrieves and returns all values excepting JSON from backend
+func (conf *Settings) RetrieveAllEnvValues(envID uint) ([]SettingValue, error) {
+	var values []SettingValue
+	if err := conf.DB.Where("json = ? AND environment_id = ?", false, envID).Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
 // RetrieveAll retrieves and returns all values from backend
 func (conf *Settings) RetrieveAll() ([]SettingValue, error) {
 	var values []SettingValue
 	if err := conf.DB.Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
+// RetrieveAllEnv retrieves and returns all values from backend per environment
+func (conf *Settings) RetrieveAllEnv(envID uint) ([]SettingValue, error) {
+	var values []SettingValue
+	if err := conf.DB.Where("environment_id = ?", envID).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
@@ -252,14 +277,23 @@ func (conf *Settings) RetrieveAllJSON(service string) ([]SettingValue, error) {
 	return values, nil
 }
 
+// RetrieveAllEnvJSON retrieves and returns all JSON values from backend
+func (conf *Settings) RetrieveAllEnvJSON(service string, envID uint) ([]SettingValue, error) {
+	var values []SettingValue
+	if err := conf.DB.Where("service = ? AND json = ? AND environment_id = ?", service, true, envID).Find(&values).Error; err != nil {
+		return values, err
+	}
+	return values, nil
+}
+
 // SetJSON sets the JSON configuration value
-func (conf *Settings) SetJSON(service, name, value string) error {
-	if !conf.IsJSON(service, name) {
-		if err := conf.NewJSON(service, name, value); err != nil {
+func (conf *Settings) SetJSON(service, name, value string, envID uint) error {
+	if !conf.IsJSON(service, name, envID) {
+		if err := conf.NewJSON(service, name, value, envID); err != nil {
 			return err
 		}
 	} else {
-		if err := conf.SetString(value, service, name, true); err != nil {
+		if err := conf.SetString(value, service, name, true, envID); err != nil {
 			return err
 		}
 	}
@@ -267,98 +301,98 @@ func (conf *Settings) SetJSON(service, name, value string) error {
 }
 
 // SetTLSJSON sets all the JSON configuration values for TLS service
-func (conf *Settings) SetTLSJSON(cfg types.JSONConfigurationTLS) error {
-	if err := conf.SetJSON(ServiceTLS, JSONListener, cfg.Listener); err != nil {
+func (conf *Settings) SetTLSJSON(cfg types.JSONConfigurationTLS, envID uint) error {
+	if err := conf.SetJSON(ServiceTLS, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONPort, cfg.Port); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONHost, cfg.Host); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONAuth, cfg.Auth); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONCarver, cfg.Carver); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONCarver, cfg.Carver, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAdminJSON sets all the JSON configuration values for admin service
-func (conf *Settings) SetAdminJSON(cfg types.JSONConfigurationAdmin) error {
-	if err := conf.SetJSON(ServiceAdmin, JSONListener, cfg.Listener); err != nil {
+func (conf *Settings) SetAdminJSON(cfg types.JSONConfigurationAdmin, envID uint) error {
+	if err := conf.SetJSON(ServiceAdmin, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONPort, cfg.Port); err != nil {
+	if err := conf.SetJSON(ServiceAdmin, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONHost, cfg.Host); err != nil {
+	if err := conf.SetJSON(ServiceAdmin, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONAuth, cfg.Auth); err != nil {
+	if err := conf.SetJSON(ServiceAdmin, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger); err != nil {
+	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONSessionKey, cfg.SessionKey); err != nil {
+	if err := conf.SetJSON(ServiceAdmin, JSONSessionKey, cfg.SessionKey, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAPIJSON sets all the JSON configuration values for API service
-func (conf *Settings) SetAPIJSON(cfg types.JSONConfigurationAPI) error {
-	if err := conf.SetJSON(ServiceAPI, JSONListener, cfg.Listener); err != nil {
+func (conf *Settings) SetAPIJSON(cfg types.JSONConfigurationAPI, envID uint) error {
+	if err := conf.SetJSON(ServiceAPI, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONPort, cfg.Port); err != nil {
+	if err := conf.SetJSON(ServiceAPI, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONHost, cfg.Host); err != nil {
+	if err := conf.SetJSON(ServiceAPI, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONAuth, cfg.Auth); err != nil {
+	if err := conf.SetJSON(ServiceAPI, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // RetrieveValues retrieves and returns all values from backend
-func (conf *Settings) RetrieveValues(service string, jsonSetting bool) ([]SettingValue, error) {
+func (conf *Settings) RetrieveValues(service string, jsonSetting bool, envID uint) ([]SettingValue, error) {
 	var values []SettingValue
-	if err := conf.DB.Where("service = ? AND json = ?", service, jsonSetting).Find(&values).Error; err != nil {
+	if err := conf.DB.Where("service = ? AND json = ? AND environment_id = ?", service, jsonSetting, envID).Find(&values).Error; err != nil {
 		return values, err
 	}
 	return values, nil
 }
 
 // RetrieveValue retrieves one value from settings by service and name from backend
-func (conf *Settings) RetrieveValue(service, name string) (SettingValue, error) {
+func (conf *Settings) RetrieveValue(service, name string, envID uint) (SettingValue, error) {
 	var value SettingValue
-	if err := conf.DB.Where("json = ? AND service = ?", false, service).Where("name = ?", name).First(&value).Error; err != nil {
+	if err := conf.DB.Where("json = ? AND service = ? AND environment_id = ?", false, service, envID).Where("name = ?", name).First(&value).Error; err != nil {
 		return SettingValue{}, err
 	}
 	return value, nil
 }
 
 // RetrieveJSON retrieves one JSON value from settings by service and name from backend
-func (conf *Settings) RetrieveJSON(service, name string) (SettingValue, error) {
+func (conf *Settings) RetrieveJSON(service, name string, envID uint) (SettingValue, error) {
 	var value SettingValue
-	if err := conf.DB.Where("json = ? AND service = ?", true, service).Where("name = ?", name).First(&value).Error; err != nil {
+	if err := conf.DB.Where("json = ? AND service = ? AND environment_id = ?", true, service, envID).Where("name = ?", name).First(&value).Error; err != nil {
 		return SettingValue{}, err
 	}
 	return value, nil
 }
 
 // GetMap returns the map of values by service, excluding JSON
-func (conf *Settings) GetMap(service string) (MapSettings, error) {
-	all, err := conf.RetrieveValues(service, false)
+func (conf *Settings) GetMap(service string, envID uint) (MapSettings, error) {
+	all, err := conf.RetrieveValues(service, false, envID)
 	if err != nil {
 		return MapSettings{}, fmt.Errorf("error getting values %v", err)
 	}
@@ -370,14 +404,14 @@ func (conf *Settings) GetMap(service string) (MapSettings, error) {
 }
 
 // GetValue gets one value from settings by service and name
-func (conf *Settings) GetValue(service, name string) (SettingValue, error) {
-	return conf.RetrieveValue(service, name)
+func (conf *Settings) GetValue(service, name string, envID uint) (SettingValue, error) {
+	return conf.RetrieveValue(service, name, envID)
 }
 
 // SetInteger sets a numeric settings value by service and name
-func (conf *Settings) SetInteger(intValue int64, service, name string) error {
+func (conf *Settings) SetInteger(intValue int64, service, name string, envID uint) error {
 	// Retrieve current value
-	value, err := conf.RetrieveValue(service, name)
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return fmt.Errorf("SetInteger %d %v", intValue, err)
 	}
@@ -390,8 +424,8 @@ func (conf *Settings) SetInteger(intValue int64, service, name string) error {
 }
 
 // GetInteger gets a numeric settings value by service and name
-func (conf *Settings) GetInteger(service, name string) (int64, error) {
-	value, err := conf.RetrieveValue(service, name)
+func (conf *Settings) GetInteger(service, name string, envID uint) (int64, error) {
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return 0, err
 	}
@@ -399,9 +433,9 @@ func (conf *Settings) GetInteger(service, name string) (int64, error) {
 }
 
 // SetBoolean sets a boolean settings value by service and name
-func (conf *Settings) SetBoolean(boolValue bool, service, name string) error {
+func (conf *Settings) SetBoolean(boolValue bool, service, name string, envID uint) error {
 	// Retrieve current value
-	value, err := conf.RetrieveValue(service, name)
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return fmt.Errorf("SetBoolean %v %v", boolValue, err)
 	}
@@ -414,8 +448,8 @@ func (conf *Settings) SetBoolean(boolValue bool, service, name string) error {
 }
 
 // GetBoolean gets a boolean settings value by service and name
-func (conf *Settings) GetBoolean(service, name string) (bool, error) {
-	value, err := conf.RetrieveValue(service, name)
+func (conf *Settings) GetBoolean(service, name string, envID uint) (bool, error) {
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return false, err
 	}
@@ -423,8 +457,8 @@ func (conf *Settings) GetBoolean(service, name string) (bool, error) {
 }
 
 // GetString gets a string settings value by service and name
-func (conf *Settings) GetString(service, name string) (string, error) {
-	value, err := conf.RetrieveValue(service, name)
+func (conf *Settings) GetString(service, name string, envID uint) (string, error) {
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return "", err
 	}
@@ -432,17 +466,17 @@ func (conf *Settings) GetString(service, name string) (string, error) {
 }
 
 // SetString sets a boolean settings value by service and name
-func (conf *Settings) SetString(strValue string, service, name string, _json bool) error {
+func (conf *Settings) SetString(strValue string, service, name string, _json bool, envID uint) error {
 	var err error
 	var val SettingValue
 	// Retrieve current value
 	if _json {
-		val, err = conf.RetrieveJSON(service, name)
+		val, err = conf.RetrieveJSON(service, name, envID)
 		if err != nil {
 			return fmt.Errorf("SetString %s %v", strValue, err)
 		}
 	} else {
-		val, err = conf.RetrieveValue(service, name)
+		val, err = conf.RetrieveValue(service, name, envID)
 		if err != nil {
 			return fmt.Errorf("SetString %s %v", strValue, err)
 		}
@@ -456,8 +490,8 @@ func (conf *Settings) SetString(strValue string, service, name string, _json boo
 }
 
 // GetInfo gets the info of a setting
-func (conf *Settings) GetInfo(service, name string) (string, error) {
-	value, err := conf.RetrieveValue(service, name)
+func (conf *Settings) GetInfo(service, name string, envID uint) (string, error) {
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return "", err
 	}
@@ -465,9 +499,9 @@ func (conf *Settings) GetInfo(service, name string) (string, error) {
 }
 
 // SetInfo sets the info of a setting
-func (conf *Settings) SetInfo(info string, service, name string) error {
+func (conf *Settings) SetInfo(info string, service, name string, envID uint) error {
 	// Retrieve current value
-	value, err := conf.RetrieveValue(service, name)
+	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return fmt.Errorf("SetInfo %s %v", info, err)
 	}
@@ -480,8 +514,8 @@ func (conf *Settings) SetInfo(info string, service, name string) error {
 }
 
 // IsValue checks if a settings value exists by service and name
-func (conf *Settings) IsValue(service, name string) bool {
-	_, err := conf.RetrieveValue(service, name)
+func (conf *Settings) IsValue(service, name string, envID uint) bool {
+	_, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
 		return false
 	}
@@ -489,8 +523,8 @@ func (conf *Settings) IsValue(service, name string) bool {
 }
 
 // IsJSON checks if a JSON value exists by service and name
-func (conf *Settings) IsJSON(service, name string) bool {
-	_, err := conf.RetrieveJSON(service, name)
+func (conf *Settings) IsJSON(service, name string, envID uint) bool {
+	_, err := conf.RetrieveJSON(service, name, envID)
 	if err != nil {
 		return false
 	}
@@ -498,8 +532,8 @@ func (conf *Settings) IsJSON(service, name string) bool {
 }
 
 // DebugHTTP checks if http debugging is enabled by service
-func (conf *Settings) DebugHTTP(service string) bool {
-	value, err := conf.RetrieveValue(service, DebugHTTP)
+func (conf *Settings) DebugHTTP(service string, envID uint) bool {
+	value, err := conf.RetrieveValue(service, DebugHTTP, envID)
 	if err != nil {
 		return false
 	}
@@ -508,7 +542,7 @@ func (conf *Settings) DebugHTTP(service string) bool {
 
 // DebugService checks if debugging is enabled by service
 func (conf *Settings) DebugService(service string) bool {
-	value, err := conf.RetrieveValue(service, DebugService)
+	value, err := conf.RetrieveValue(service, DebugService, NoEnvironment)
 	if err != nil {
 		return false
 	}
@@ -517,7 +551,7 @@ func (conf *Settings) DebugService(service string) bool {
 
 // ServiceMetrics checks if metrics are enabled by service
 func (conf *Settings) ServiceMetrics(service string) bool {
-	value, err := conf.RetrieveValue(service, ServiceMetrics)
+	value, err := conf.RetrieveValue(service, ServiceMetrics, NoEnvironment)
 	if err != nil {
 		return false
 	}
@@ -526,7 +560,7 @@ func (conf *Settings) ServiceMetrics(service string) bool {
 
 // RefreshEnvs gets the interval in seconds to refresh environments by service
 func (conf *Settings) RefreshEnvs(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshEnvs)
+	value, err := conf.RetrieveValue(service, RefreshEnvs, NoEnvironment)
 	if err != nil {
 		return 0
 	}
@@ -535,7 +569,7 @@ func (conf *Settings) RefreshEnvs(service string) int64 {
 
 // RefreshSettings gets the interval in seconds to refresh settings by service
 func (conf *Settings) RefreshSettings(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshSettings)
+	value, err := conf.RetrieveValue(service, RefreshSettings, NoEnvironment)
 	if err != nil {
 		return 0
 	}
@@ -544,7 +578,7 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 
 // CleanupSessions gets the interval in seconds to cleanup expired sessions by service
 func (conf *Settings) CleanupSessions() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions)
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions, NoEnvironment)
 	if err != nil {
 		return 0
 	}
@@ -552,8 +586,8 @@ func (conf *Settings) CleanupSessions() int64 {
 }
 
 // InactiveHours gets the value in hours for a node to be inactive by service
-func (conf *Settings) InactiveHours() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, InactiveHours)
+func (conf *Settings) InactiveHours(envID uint) int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, InactiveHours, envID)
 	if err != nil {
 		return 0
 	}
@@ -563,7 +597,7 @@ func (conf *Settings) InactiveHours() int64 {
 // DefaultEnv gets the default environment
 // FIXME customize the fallover one
 func (conf *Settings) DefaultEnv(service string) string {
-	value, err := conf.RetrieveValue(service, DefaultEnv)
+	value, err := conf.RetrieveValue(service, DefaultEnv, NoEnvironment)
 	if err != nil {
 		return "dev"
 	}
@@ -571,8 +605,8 @@ func (conf *Settings) DefaultEnv(service string) string {
 }
 
 // NodeDashboard checks if display dashboard per node is enabled
-func (conf *Settings) NodeDashboard() bool {
-	value, err := conf.RetrieveValue(ServiceAdmin, NodeDashboard)
+func (conf *Settings) NodeDashboard(envID uint) bool {
+	value, err := conf.RetrieveValue(ServiceAdmin, NodeDashboard, envID)
 	if err != nil {
 		return false
 	}
@@ -580,8 +614,8 @@ func (conf *Settings) NodeDashboard() bool {
 }
 
 // OnelinerExpiration checks if enrolling links will expire
-func (conf *Settings) OnelinerExpiration() bool {
-	value, err := conf.RetrieveValue(ServiceTLS, OnelinerExpiration)
+func (conf *Settings) OnelinerExpiration(envID uint) bool {
+	value, err := conf.RetrieveValue(ServiceTLS, OnelinerExpiration, envID)
 	if err != nil {
 		return false
 	}

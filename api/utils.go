@@ -34,7 +34,7 @@ func refreshEnvironments() environments.MapEnvironments {
 // Helper to refresh the settings until cache/Redis support is implemented
 func refreshSettings() settings.MapSettings {
 	log.Printf("Refreshing settings...\n")
-	_settingsmap, err := settingsmgr.GetMap(settings.ServiceAPI)
+	_settingsmap, err := settingsmgr.GetMap(settings.ServiceAPI, settings.NoEnvironment)
 	if err != nil {
 		log.Printf("error refreshing settings %v\n", err)
 		return settings.MapSettings{}

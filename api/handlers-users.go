@@ -20,7 +20,7 @@ const (
 // GET Handler for single JSON nodes
 func apiUserHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract username
 	usernameVar, ok := vars["username"]
@@ -54,7 +54,7 @@ func apiUserHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for multiple JSON nodes
 func apiUsersHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
