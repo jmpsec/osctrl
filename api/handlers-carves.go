@@ -25,7 +25,7 @@ const (
 // GET Handler to return a single carve in JSON
 func apiCarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -77,7 +77,7 @@ func apiCarveShowHandler(w http.ResponseWriter, r *http.Request) {
 // POST Handler to run a carve
 func apiCarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -156,7 +156,7 @@ func apiCarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler to return carves in JSON
 func apiCarvesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]

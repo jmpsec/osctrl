@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/settings"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -59,7 +60,7 @@ func listNodes(c *cli.Context) error {
 	// Retrieve data
 	var nds []nodes.OsqueryNode
 	if dbFlag {
-		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours())
+		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours(settings.NoEnvironment))
 		if err != nil {
 			return fmt.Errorf("error getting nodes - %s", err)
 		}

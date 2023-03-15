@@ -54,7 +54,7 @@ type CarveTarget struct {
 // JSONCarvesHandler for JSON carves by target
 func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
 	// Check permissions

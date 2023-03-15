@@ -22,7 +22,7 @@ const (
 // GET Handler for single JSON nodes
 func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -75,7 +75,7 @@ func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for active JSON nodes
 func apiActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -121,7 +121,7 @@ func apiActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for inactive JSON nodes
 func apiInactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -167,7 +167,7 @@ func apiInactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for all JSON nodes
 func apiAllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -213,7 +213,7 @@ func apiAllNodesHandler(w http.ResponseWriter, r *http.Request) {
 // POST Handler to delete single node
 func apiDeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]

@@ -66,11 +66,11 @@ func addSetting(c *cli.Context) error {
 	}
 	switch typeValue {
 	case settings.TypeString:
-		return settingsmgr.NewStringValue(service, name, c.String("string"))
+		return settingsmgr.NewStringValue(service, name, c.String("string"), settings.NoEnvironment)
 	case settings.TypeInteger:
-		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"))
+		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"), settings.NoEnvironment)
 	case settings.TypeBoolean:
-		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"))
+		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"), settings.NoEnvironment)
 	}
 	return nil
 }
@@ -96,17 +96,17 @@ func updateSetting(c *cli.Context) error {
 	var err error
 	switch typeValue {
 	case settings.TypeInteger:
-		err = settingsmgr.SetInteger(c.Int64("integer"), service, name)
+		err = settingsmgr.SetInteger(c.Int64("integer"), service, name, settings.NoEnvironment)
 	case settings.TypeBoolean:
-		err = settingsmgr.SetBoolean(c.Bool("true"), service, name)
+		err = settingsmgr.SetBoolean(c.Bool("true"), service, name, settings.NoEnvironment)
 	case settings.TypeString:
-		err = settingsmgr.SetString(c.String("string"), service, name, false)
+		err = settingsmgr.SetString(c.String("string"), service, name, false, settings.NoEnvironment)
 	}
 	if err != nil {
 		return fmt.Errorf("error set type - %s", err)
 	}
 	if info != "" {
-		err = settingsmgr.SetInfo(info, service, name)
+		err = settingsmgr.SetInfo(info, service, name, settings.NoEnvironment)
 	}
 	if err != nil {
 		return fmt.Errorf("error set info - %s", err)
@@ -129,7 +129,7 @@ func deleteSetting(c *cli.Context) error {
 		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
-	if err := settingsmgr.DeleteValue(service, name); err != nil {
+	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironment); err != nil {
 		return fmt.Errorf("error get queries - %s", err)
 	}
 	if !silentFlag {
