@@ -41,8 +41,8 @@ replace github.com/jmpsec/osctrl/utils => ./utils
 replace github.com/jmpsec/osctrl/version => ./version
 
 require (
-	github.com/crewjam/saml v0.4.9
-	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/crewjam/saml v0.4.13
+	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/gorilla/mux v1.8.0
 	github.com/jmpsec/osctrl/admin/handlers v0.3.1
 	github.com/jmpsec/osctrl/admin/sessions v0.3.1
@@ -115,7 +115,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.26.1 // indirect
-	github.com/russellhaering/goxmldsig v1.1.1 // indirect
+	github.com/russellhaering/goxmldsig v1.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
