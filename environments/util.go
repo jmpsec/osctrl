@@ -44,5 +44,5 @@ func IsPlatformQuery(pQuery, pCheck string) bool {
 
 // IsPlatformLinux to know if a linux is going to trigger a query
 func IsPlatformLinux(pCheck string) bool {
-	return (pCheck == "ubuntu" || pCheck == "centos" || pCheck == "rhel" || pCheck == "fedora" || pCheck == "debian" || pCheck == "opensuse" || pCheck == "arch")
+	return (pCheck == "ubuntu" || pCheck == "centos" || pCheck == "rhel" || pCheck == "fedora" || pCheck == "debian" || pCheck == "opensuse" || pCheck == "arch" || pCheck == "amzn")
 }
