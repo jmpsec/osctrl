@@ -24,11 +24,12 @@ const (
 
 // Types of authentication
 const (
-	AuthNone string = "none"
-	AuthJSON string = "json"
-	AuthDB   string = "db"
-	AuthSAML string = "saml"
-	AuthJWT  string = "jwt"
+	AuthNone   string = "none"
+	AuthJSON   string = "json"
+	AuthDB     string = "db"
+	AuthSAML   string = "saml"
+	AuthJWT    string = "jwt"
+	AuthOAuth2 string = "oauth2"
 )
 
 // Types of logging
