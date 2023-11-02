@@ -3988,8 +3988,9 @@
   {
     "name":"cpu_info",
     "description":"Retrieve cpu hardware info of the machine.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/cpu_info.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/cpu_info.table",
     "platforms":[
+      "darwin",
       "linux",
       "windows"
     ],
@@ -4109,6 +4110,30 @@
           "windows",
           "win32",
           "cygwin"
+        ]
+      },
+      {
+        "name":"number_of_efficiency_cores",
+        "description":"The number of efficiency cores of the CPU. Only available on Apple Silicon",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
+        "name":"number_of_performance_cores",
+        "description":"The number of performance cores of the CPU. Only available on Apple Silicon",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
         ]
       }
     ]
@@ -6918,6 +6943,15 @@
         "index":false
       },
       {
+        "name":"memory_cached",
+        "description":"Memory cached",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"memory_max_usage",
         "description":"Memory maximum usage",
         "type":"bigint",
@@ -8634,6 +8668,15 @@
         "type":"text",
         "notes":"",
         "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"codesigning_flags",
+        "description":"Codesigning flags matching one of these options, in a comma separated list: NOT_VALID, ADHOC, NOT_RUNTIME, INSTALLER. See kern/cs_blobs.h in XNU for descriptions.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
         "required":false,
         "index":false
       }
@@ -11402,6 +11445,103 @@
     ]
   },
   {
+    "name":"kernel_keys",
+    "description":"List of security data, authentication keys and encryption keys.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/linux/kernel_keys.table",
+    "platforms":[
+      "linux"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[
+      "select * from kernel_keys"
+    ],
+    "columns":[
+      {
+        "name":"serial_number",
+        "description":"The serial key of the key.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"flags",
+        "description":"A set of flags describing the state of the key.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"usage",
+        "description":"the number of threads and open file references thatrefer to this key.",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"timeout",
+        "description":"The amount of time until the key will expire,expressed in human-readable form. The string perm heremeans that the key is permanent (no timeout).  Thestring expd means that the key has already expired.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"permissions",
+        "description":"The key permissions, expressed as four hexadecimalbytes containing, from left to right, thepossessor, user, group, and other permissions.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uid",
+        "description":"The user ID of the key owner.",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"gid",
+        "description":"The group ID of the key.",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"type",
+        "description":"The key type.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"description",
+        "description":"The key description.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"kernel_modules",
     "description":"Linux kernel modules both loaded and within the load search path.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/linux/kernel_modules.table",
@@ -11702,7 +11842,7 @@
       },
       {
         "name":"created",
-        "description":"Data item was created",
+        "description":"Date item was created",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -17822,6 +17962,196 @@
     ]
   },
   {
+    "name":"process_etw_events",
+    "description":"Windows process execution events.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/process_etw_events.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":true,
+    "cacheable":false,
+    "notes":"",
+    "examples":[
+      "select * from process_etw_events;",
+      "select * from process_etw_events WHERE time >= (( SELECT unix_time FROM time) - 60 );",
+      "select * from process_etw_events WHERE datetime > '2022-11-18 16:48:00';",
+      "select * from process_etw_events WHERE datetime BETWEEN '2022-11-18 16:40:00' AND '2022-11-18 16:50:00';"
+    ],
+    "columns":[
+      {
+        "name":"type",
+        "description":"Event Type (ProcessStart, ProcessStop)",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pid",
+        "description":"Process ID",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ppid",
+        "description":"Parent Process ID",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"session_id",
+        "description":"Session ID",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"flags",
+        "description":"Process Flags",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"exit_code",
+        "description":"Exit Code - Present only on ProcessStop events",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"Path of executed binary",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cmdline",
+        "description":"Command Line",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"username",
+        "description":"User rights - primary token username",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"token_elevation_type",
+        "description":"Primary token elevation type - Present only on ProcessStart events",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"token_elevation_status",
+        "description":"Primary token elevation status - Present only on ProcessStart events",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mandatory_label",
+        "description":"Primary token mandatory label sid - Present only on ProcessStart events",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"datetime",
+        "description":"Event timestamp in DATETIME format",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"time_windows",
+        "description":"Event timestamp in Windows format",
+        "type":"bigint",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"time",
+        "description":"Event timestamp in Unix format",
+        "type":"bigint",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"eid",
+        "description":"Event ID",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"header_pid",
+        "description":"Process ID of the process reporting the event",
+        "type":"bigint",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"process_sequence_number",
+        "description":"Process Sequence Number - Present only on ProcessStart events",
+        "type":"bigint",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"parent_process_sequence_number",
+        "description":"Parent Process Sequence Number - Present only on ProcessStart events",
+        "type":"bigint",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"process_events",
     "description":"Track time/action process executions.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/process_events.table",
@@ -20467,8 +20797,9 @@
   {
     "name":"secureboot",
     "description":"Secure Boot UEFI Settings.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/linwin/secureboot.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/secureboot.table",
     "platforms":[
+      "darwin",
       "linux",
       "windows"
     ],
@@ -20487,8 +20818,247 @@
         "index":false
       },
       {
+        "name":"secure_mode",
+        "description":"Secure mode for Intel-based macOS: 0 disabled, 1 full security, 2 medium security",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
         "name":"setup_mode",
         "description":"Whether setup mode is enabled",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "linux",
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      }
+    ]
+  },
+  {
+    "name":"security_profile_info",
+    "description":"Information on the security profile of a given system by listing the system Account and Audit Policies. This table mimics the exported securitypolicy output from the secedit tool.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/security_profile_info.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[],
+    "columns":[
+      {
+        "name":"minimum_password_age",
+        "description":"Determines the minimum number of days that a password must be used before the user can change it",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"maximum_password_age",
+        "description":"Determines the maximum number of days that a password can be used before the client requires the user to change it",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"minimum_password_length",
+        "description":"Determines the least number of characters that can make up a password for a user account",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"password_complexity",
+        "description":"Determines whether passwords must meet a series of strong-password guidelines",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"password_history_size",
+        "description":"Number of unique new passwords that must be associated with a user account before an old password can be reused",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"lockout_bad_count",
+        "description":"Number of failed logon attempts after which a user account MUST be locked out",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"logon_to_change_password",
+        "description":"Determines if logon session is required to change the password",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"force_logoff_when_expire",
+        "description":"Determines whether SMB client sessions with the SMB server will be forcibly disconnected when the client's logon hours expire",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"new_administrator_name",
+        "description":"Determines the name of the Administrator account on the local computer",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"new_guest_name",
+        "description":"Determines the name of the Guest account on the local computer",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"clear_text_password",
+        "description":"Determines whether passwords MUST be stored by using reversible encryption",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"lsa_anonymous_name_lookup",
+        "description":"Determines if an anonymous user is allowed to query the local LSA policy",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"enable_admin_account",
+        "description":"Determines whether the Administrator account on the local computer is enabled",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"enable_guest_account",
+        "description":"Determines whether the Guest account on the local computer is enabled",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_system_events",
+        "description":"Determines whether the operating system MUST audit System Change, System Startup, System Shutdown, Authentication Component Load, and Loss or Excess of Security events",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_logon_events",
+        "description":"Determines whether the operating system MUST audit each instance of a user attempt to log on or log off this computer",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_object_access",
+        "description":"Determines whether the operating system MUST audit each instance of user attempts to access a non-Active Directory object that has its own SACL specified",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_privilege_use",
+        "description":"Determines whether the operating system MUST audit each instance of user attempts to exercise a user right",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_policy_change",
+        "description":"Determines whether the operating system MUST audit each instance of user attempts to change user rights assignment policy, audit policy, account policy, or trust policy",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_account_manage",
+        "description":"Determines whether the operating system MUST audit each event of account management on a computer",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_process_tracking",
+        "description":"Determines whether the operating system MUST audit process-related events",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_ds_access",
+        "description":"Determines whether the operating system MUST audit each instance of user attempts to access an Active Directory object that has its own system access control list (SACL) specified",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"audit_account_logon",
+        "description":"Determines whether the operating system MUST audit each time this computer validates the credentials of an account",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -22566,6 +23136,15 @@
       {
         "name":"sub_state",
         "description":"The low-level unit activation state, values depend on unit type",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"unit_file_state",
+        "description":"Whether the unit file is enabled, e.g. `enabled`, `masked`, `disabled`, etc",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -25369,7 +25948,7 @@
   },
   {
     "name":"windows_security_products",
-    "description":"Enumeration of registered Windows security products.",
+    "description":"Enumeration of registered Windows security products. Note: Not compatible with Windows Server.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_security_products.table",
     "platforms":[
       "windows"
@@ -26107,6 +26686,18 @@
         "hidden":true,
         "required":false,
         "index":false
+      },
+      {
+        "name":"pid_with_namespace",
+        "description":"Pids that contain a namespace",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "linux"
+        ]
       }
     ]
   },
