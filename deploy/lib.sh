@@ -422,9 +422,9 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
-# Install go 1.18 from tgz
-function install_go_18() {
-  local __version="1.18"
+# Install go 1.20 from tgz
+function install_go_21() {
+  local __version="1.21.3"
   local __file="go$__version.linux-amd64.tar.gz"
   local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
