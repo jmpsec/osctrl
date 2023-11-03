@@ -9,8 +9,8 @@
     <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE">
       <img alt="Software License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square&fuckgithubcache=1">
     </a>
-    <a href="https://travis-ci.org/jmpsec/osctrl">
-      <img alt="Travis" src="https://img.shields.io/travis/jmpsec/osctrl/master.svg?style=flat-square&fuckgithubcache=1">
+    <a href="https://github.com/jmpsec/osctrl">
+      <img alt="Build Status" src="https://github.com/jmpsec/osctrl/actions/workflows/build_and_test_main_merge.yml/badge.svg?branch=main&fuckgithubcache=1">
     </a>
     <a href="https://goreportcard.com/report/github.com/jmpsec/osctrl">
       <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/jmpsec/osctrl?style=flat-square&fuckgithubcache=1">
