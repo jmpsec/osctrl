@@ -62,14 +62,13 @@ jobs:
       #     golang_version: "${{ env.GOLANG_VERSION }}"
 
   create_deb_packages:
-    if: matrix.goos == 'linux'
-    needs: [build_and_test]
-    runs-on: ubuntu-22.04
     strategy:
       matrix:
         components: ['tls', 'admin', 'api', 'cli']
         goos: ['linux']
         goarch: ['amd64']
+    needs: [build_and_test]
+    runs-on: ubuntu-22.04
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
@@ -98,7 +97,6 @@ jobs:
           osquery_version: ${{ env.OSQUERY_VERSION }}
 
   create_docker_images:
-    if: matrix.goos == 'linux'
     needs: [build_and_test]
     runs-on: ubuntu-22.04
     strategy:
