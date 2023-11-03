@@ -1,52 +1,52 @@
 openapi: 3.0.1
 servers:
-  - url: '{server}/api/v1'
+  - url: "{server}/api/v1"
     variables:
       server:
         default: https://osctrl.net
 info:
   title: osctrl-api
-  description: 'This the API for osctrl, a fast and efficient osquery management solution.'
-  version: 0.3.1
+  description: "This the API for osctrl, a fast and efficient osquery management solution."
+  version: 0.3.2
 externalDocs:
   description: osctrl documentation
   url: https://osctrl.net
 tags:
-- name: nodes
-  description: Enrolled nodes in osctrl
-  externalDocs:
-    description: osctrl nodes
-    url: https://github.com/jmpsec/osctrl/tree/master/nodes
-- name: queries
-  description: On-demand queries in osctrl
-  externalDocs:
-    description: on-demand queries
-    url: https://github.com/jmpsec/osctrl/tree/master/queries
-- name: platforms
-  description: Platforms of enrolled nodes in osctrl
-  externalDocs:
-    description: osctrl platforms
-    url: https://github.com/jmpsec/osctrl/tree/master/queries
-- name: environments
-  description: Environments within osctrl
-  externalDocs:
-    description: osctrl environments
-    url: https://github.com/jmpsec/osctrl/tree/master/environments
-- name: tags
-  description: Tags for enrolled nodes in osctrl
-  externalDocs:
-    description: osctrl tags
-    url: https://github.com/jmpsec/osctrl/tree/master/tags
-- name: settings
-  description: Settings for all osctrl components
-  externalDocs:
-    description: osctrl settings
-    url: https://github.com/jmpsec/osctrl/tree/master/settings
+  - name: nodes
+    description: Enrolled nodes in osctrl
+    externalDocs:
+      description: osctrl nodes
+      url: https://github.com/jmpsec/osctrl/tree/master/nodes
+  - name: queries
+    description: On-demand queries in osctrl
+    externalDocs:
+      description: on-demand queries
+      url: https://github.com/jmpsec/osctrl/tree/master/queries
+  - name: platforms
+    description: Platforms of enrolled nodes in osctrl
+    externalDocs:
+      description: osctrl platforms
+      url: https://github.com/jmpsec/osctrl/tree/master/queries
+  - name: environments
+    description: Environments within osctrl
+    externalDocs:
+      description: osctrl environments
+      url: https://github.com/jmpsec/osctrl/tree/master/environments
+  - name: tags
+    description: Tags for enrolled nodes in osctrl
+    externalDocs:
+      description: osctrl tags
+      url: https://github.com/jmpsec/osctrl/tree/master/tags
+  - name: settings
+    description: Settings for all osctrl components
+    externalDocs:
+      description: osctrl settings
+      url: https://github.com/jmpsec/osctrl/tree/master/settings
 paths:
   /nodes:
     get:
       tags:
-      - nodes
+        - nodes
       summary: Get a single node by UUID
       description: Returns the osctrl node by the provided UUID
       operationId: apiNodesHandler
@@ -58,76 +58,76 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/OsqueryNode'
+                  $ref: "#/components/schemas/OsqueryNode"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no nodes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting nodes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /nodes/{uuid}:
     get:
       tags:
-      - nodes
+        - nodes
       summary: Get node
       description: Returns all enrolled osctrl nodes
       operationId: apiNodeHandler
       parameters:
-      - name: uuid
-        in: path
-        description: UUID of the requested enrolled node
-        required: true
-        schema:
-          type: string
+        - name: uuid
+          in: path
+          description: UUID of the requested enrolled node
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OsqueryNode'
+                $ref: "#/components/schemas/OsqueryNode"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: node not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting node
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /queries:
     get:
       tags:
-      - queries
+        - queries
       summary: Get on-demand queries
       description: Returns all hidden osctrl on-demand queries
       operationId: apiHiddenQueriesShowHandler
@@ -139,32 +139,32 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/DistributedQuery'
+                  $ref: "#/components/schemas/DistributedQuery"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
     post:
       tags:
-      - queries
+        - queries
       summary: Run new query
       description: Creates a new on-demand query to run
       operationId: apiQueriesRunHandler
@@ -172,14 +172,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DistributedQueryRequest'
+              $ref: "#/components/schemas/DistributedQueryRequest"
       responses:
         200:
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiQueriesResponse'
+                $ref: "#/components/schemas/ApiQueriesResponse"
         403:
           description: no access
           content: {}
@@ -190,99 +190,99 @@ paths:
           description: error getting queries
           content: {}
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /queries/{name}:
     get:
       tags:
-      - queries
+        - queries
       summary: Get on-demand query
       description: Returns the requested on-demand query by name
       operationId: apiQueryShowHandler
       parameters:
-      - name: name
-        in: path
-        description: Name of the requested on-demand query
-        required: true
-        schema:
-          type: string
+        - name: name
+          in: path
+          description: Name of the requested on-demand query
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DistributedQuery'
+                $ref: "#/components/schemas/DistributedQuery"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: query not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting query
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /queries/results/{name}:
     get:
       tags:
-      - queries
+        - queries
       summary: Get on-demand query results
       description: Returns the requested on-demand query results by name
       operationId: apiQueryResultsHandler
       parameters:
-      - name: name
-        in: path
-        description: Name of the requested on-demand query
-        required: true
-        schema:
-          type: string
+        - name: name
+          in: path
+          description: Name of the requested on-demand query
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIQueryData'
+                $ref: "#/components/schemas/APIQueryData"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: query not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting results
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /all-queries:
     get:
       tags:
-      - queries
+        - queries
       summary: Get on-demand queries
       description: Returns all osctrl on-demand queries
       operationId: apiAllQueriesShowHandler
@@ -294,33 +294,33 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/DistributedQuery'
+                  $ref: "#/components/schemas/DistributedQuery"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /platforms:
     get:
       tags:
-      - platforms
+        - platforms
       summary: Get platforms
       description: Returns all osctrl platforms of enrolled nodes
       operationId: apiPlatformsHandler
@@ -338,27 +338,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting queries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /environments:
     get:
       tags:
-      - environments
+        - environments
       summary: Get environments
       description: Returns all osctrl environments to enroll nodes
       operationId: apiEnvironmentsHandler
@@ -370,70 +370,70 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TLSEnvironment'
+                  $ref: "#/components/schemas/TLSEnvironment"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no environments
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting environments
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /environments/{environment}:
     get:
       tags:
-      - environments
+        - environments
       summary: Get environment
       description: Returns the requested osctrl environment to enroll nodes
       operationId: apiEnvironmentHandler
       parameters:
-      - name: environment
-        in: path
-        description: Name of the requested osctrl environment to enroll nodes
-        required: true
-        schema:
-          type: string
+        - name: environment
+          in: path
+          description: Name of the requested osctrl environment to enroll nodes
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TLSEnvironment'
+                $ref: "#/components/schemas/TLSEnvironment"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting environment
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /tags:
     get:
       tags:
-      - tags
+        - tags
       summary: Get tags
       description: Returns all osctrl environments to enroll nodes
       operationId: apiTagsHandler
@@ -445,27 +445,27 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/AdminTag'
+                  $ref: "#/components/schemas/AdminTag"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting tags
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /settings:
     get:
       tags:
-      - settings
+        - settings
       summary: Get settings
       description: Returns all osctrl services settings
       operationId: apiSettingsHandler
@@ -477,37 +477,37 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SettingValue'
+                  $ref: "#/components/schemas/SettingValue"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting settings
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /settings/{service}:
     get:
       tags:
-      - settings
+        - settings
       summary: Get settings
       description: Returns all osctrl settings per service
       operationId: apiSettingsServiceHandler
       parameters:
-      - name: service
-        in: path
-        description: Name of the service to retrieve settings, including JSON
-        required: true
-        schema:
-          type: string
+        - name: service
+          in: path
+          description: Name of the service to retrieve settings, including JSON
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -516,37 +516,37 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SettingValue'
+                  $ref: "#/components/schemas/SettingValue"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting settings
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
   /settings/{service}/json:
     get:
       tags:
-      - settings
+        - settings
       summary: Get JSON settings
       description: Returns JSON osctrl settings per service
       operationId: apiSettingsServiceJSONHandler
       parameters:
-      - name: service
-        in: path
-        description: Name of the service to retrieve JSON only settings
-        required: true
-        schema:
-          type: string
+        - name: service
+          in: path
+          description: Name of the service to retrieve JSON only settings
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -555,23 +555,23 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SettingValue'
+                  $ref: "#/components/schemas/SettingValue"
         403:
           description: no access
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting settings
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
-      - Authorization:
-        - read
-        - write
+        - Authorization:
+            - read
+            - write
 components:
   schemas:
     OsqueryNode:
