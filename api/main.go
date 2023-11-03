@@ -544,8 +544,12 @@ func osctrlAPIService() {
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/{env}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/{env}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler))).Methods("GET")
 
 	// Launch listeners for API server
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port
