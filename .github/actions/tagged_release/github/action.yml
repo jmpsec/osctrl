@@ -39,7 +39,7 @@ runs:
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
     - name: Rename Windows binary
-      if: go_os == 'windows'
+      if: ${{ inputs.go_os }} == 'windows'
       shell: bash
       run: |
         mv \
