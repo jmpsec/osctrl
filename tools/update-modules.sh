@@ -3,7 +3,7 @@
 # Helper to update all go.mod files with the latest commit of osctrl
 
 # If more than one parameter, show usage
-if [ $# -gt 1] ; then
+if [ $# -gt 1 ] ; then
   echo "Usage: $0 <module_directory>"
   exit 1
 fi
