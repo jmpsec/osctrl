@@ -12,13 +12,13 @@ inputs:
     description: Dockerhub image digest
   docker_hub_org:
     required: true
-    description: Pass DockerHub org to aciton
+    description: Pass DockerHub org to action
   docker_hub_username:
     required: true
-    description: Pass DockerHub username to aciton
+    description: Pass DockerHub username to action
   docker_hub_access_token:
     required: true
-    description: Pass DockerHub access token to aciton
+    description: Pass DockerHub access token to action
   codesign_password:
     required: true
     description: Provide password for codesign private key

@@ -31,7 +31,7 @@ runs:
       run: "ls -la"
 
     - name: Rename Linux or darwin binary
-      if: go_os == 'linux' || go_os == 'darwin'
+      if: ${{ inputs.go_os }} == 'linux' || ${{ inputs.go_os }} == 'darwin'
       shell: bash
       run: |
         mv \
@@ -48,18 +48,18 @@ runs:
 
     ########################### Download osctrl DEB package ###########################
     - name: Download a osctrl binaries
-      if: go_os == 'linux'
+      if: ${{ inputs.go_os }} == 'linux'
       uses: actions/download-artifact@v3
       with:
         name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
 
     - name: LS
-      if: go_os == 'linux'
+      if: ${{ inputs.go_os }} == 'linux'
       shell: bash
       run: "ls -la"
 
     - name: Rename DEB package
-      if: go_os == 'linux'
+      if: ${{ inputs.go_os }} == 'linux'
       shell: bash
       run: |
         mv \
