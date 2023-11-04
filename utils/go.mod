@@ -3,7 +3,7 @@ module utils
 go 1.18
 
 require (
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.4.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.8.1
 )

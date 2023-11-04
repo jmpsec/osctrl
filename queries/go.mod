@@ -8,8 +8,8 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.0.0-20231103085153-d61207d0ce25
-	github.com/jmpsec/osctrl/utils v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/nodes v0.0.0-20231104125212-d6ff03b91b7b
+	github.com/jmpsec/osctrl/utils v0.0.0-20231104125212-d6ff03b91b7b
 	gorm.io/gorm v1.25.5
 )
 

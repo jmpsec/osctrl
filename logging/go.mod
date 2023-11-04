@@ -17,7 +17,7 @@ replace github.com/jmpsec/osctrl/types => ../types
 replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
-	github.com/aws/aws-sdk-go v1.47.2
+	github.com/aws/aws-sdk-go v1.47.3
 	github.com/aws/aws-sdk-go-v2 v1.22.1
 	github.com/aws/aws-sdk-go-v2/config v1.22.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.15.1
@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.42.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jmpsec/osctrl/backend v0.3.2
-	github.com/jmpsec/osctrl/cache v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/cache v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/jmpsec/osctrl/nodes v0.3.2
 	github.com/jmpsec/osctrl/queries v0.3.2
 	github.com/jmpsec/osctrl/settings v0.3.2
@@ -60,7 +60,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.4.3 // indirect
+	github.com/jackc/pgx/v5 v5.5.0 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -83,8 +84,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
