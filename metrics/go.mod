@@ -21,7 +21,7 @@ require (
 require (
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.2 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20231103085153-d61207d0ce25 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20231104125212-d6ff03b91b7b // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.2 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/types v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -54,8 +54,8 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

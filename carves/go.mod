@@ -16,7 +16,7 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jmpsec/osctrl/nodes v0.3.2 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.2 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/types v0.0.0-20231104125212-d6ff03b91b7b
 )
 
 require (
@@ -25,8 +25,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.15.1
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.13.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.42.0
-	github.com/jmpsec/osctrl/settings v0.0.0-20231103085153-d61207d0ce25
-	github.com/jmpsec/osctrl/utils v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/settings v0.0.0-20231104125212-d6ff03b91b7b
+	github.com/jmpsec/osctrl/utils v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/spf13/viper v1.17.0
 	gorm.io/gorm v1.25.5
 )
@@ -66,8 +66,8 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

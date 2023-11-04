@@ -37,20 +37,20 @@ require (
 	github.com/jmpsec/osctrl/admin/sessions v0.3.2
 	github.com/jmpsec/osctrl/backend v0.3.2 // indirect
 	github.com/jmpsec/osctrl/carves v0.3.2
-	github.com/jmpsec/osctrl/environments v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/environments v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/jmpsec/osctrl/logging v0.0.0-20220120232002-31ecf3b9f264
-	github.com/jmpsec/osctrl/metrics v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/metrics v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/jmpsec/osctrl/nodes v0.3.2
 	github.com/jmpsec/osctrl/queries v0.3.2
 	github.com/jmpsec/osctrl/settings v0.3.2
-	github.com/jmpsec/osctrl/tags v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/tags v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/jmpsec/osctrl/types v0.3.2
 	github.com/jmpsec/osctrl/users v0.3.2
 	github.com/jmpsec/osctrl/utils v0.3.2
 )
 
 require (
-	github.com/jmpsec/osctrl/cache v0.0.0-20231103085153-d61207d0ce25
+	github.com/jmpsec/osctrl/cache v0.0.0-20231104125212-d6ff03b91b7b
 	gorm.io/gorm v1.25.5
 )
 
@@ -105,8 +105,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
