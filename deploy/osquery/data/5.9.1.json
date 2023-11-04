@@ -3888,6 +3888,164 @@
     ]
   },
   {
+    "name":"connected_displays",
+    "description":"Provides information about the connected displays of the machine.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/connected_displays.table",
+    "platforms":[
+      "darwin"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[],
+    "columns":[
+      {
+        "name":"name",
+        "description":"The name of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"product_id",
+        "description":"The product ID of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"serial_number",
+        "description":"The serial number of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"vendor_id",
+        "description":"The vendor ID of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufactured_week",
+        "description":"The manufacture week of the display. This field is 0 if not supported",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"manufactured_year",
+        "description":"The manufacture year of the display. This field is 0 if not supported",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"display_id",
+        "description":"The display ID.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"pixels",
+        "description":"The number of pixels of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"resolution",
+        "description":"The resolution of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"ambient_brightness_enabled",
+        "description":"The ambient brightness setting associated with the display. This will be 1 if enabled and is 0 if disabled or not supported.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"connection_type",
+        "description":"The connection type associated with the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"display_type",
+        "description":"The type of display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"main",
+        "description":"If the display is the main display.",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"mirror",
+        "description":"If the display is mirrored or not. This field is 1 if mirrored and 0 if not mirrored.",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"online",
+        "description":"The online status of the display. This field is 1 if the display is online and 0 if it is offline.",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"rotation",
+        "description":"The orientation of the display.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"connectivity",
     "description":"Provides the overall system's network state.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/windows/connectivity.table",
@@ -4117,7 +4275,7 @@
         "description":"The number of efficiency cores of the CPU. Only available on Apple Silicon",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -4129,7 +4287,7 @@
         "description":"The number of performance cores of the CPU. Only available on Apple Silicon",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5683,7 +5841,7 @@
         "description":"Currently authenticated user if available",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5695,7 +5853,7 @@
         "description":"UUID of authenticated user if available",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5707,7 +5865,7 @@
         "description":"FileVault status with one of following values: on | off | unknown",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -7163,7 +7321,7 @@
         "description":"cgroup namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7175,7 +7333,7 @@
         "description":"IPC namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7187,7 +7345,7 @@
         "description":"Mount namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7199,7 +7357,7 @@
         "description":"Network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7211,7 +7369,7 @@
         "description":"PID namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7223,7 +7381,7 @@
         "description":"User namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7235,7 +7393,7 @@
         "description":"UTS namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -8684,7 +8842,7 @@
   },
   {
     "name":"es_process_file_events",
-    "description":"Process execution events from EndpointSecurity.",
+    "description":"File integrity monitoring events from EndpointSecurity including process context.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/es_process_file_events.table",
     "platforms":[
       "darwin"
@@ -9401,7 +9559,7 @@
         "description":"The BSD file flags (chflags). Possible values: NODUMP, UF_IMMUTABLE, UF_APPEND, OPAQUE, HIDDEN, ARCHIVED, SF_IMMUTABLE, SF_APPEND",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -9931,7 +10089,7 @@
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -10660,7 +10818,7 @@
         "description":"PCI slot number",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -11868,6 +12026,15 @@
         "index":false
       },
       {
+        "name":"pk_hash",
+        "description":"Hash of associated public key (SHA1 of subjectPublicKey, see RFC 8520 4.2.1.2)",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"path",
         "description":"Path to keychain containing item",
         "type":"text",
@@ -12468,7 +12635,7 @@
         "description":"The inode number of the network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -15821,6 +15988,18 @@
         "index":false
       },
       {
+        "name":"extra",
+        "description":"Optional extra release specification",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
         "name":"install_date",
         "description":"The install date of the OS.",
         "type":"bigint",
@@ -16950,7 +17129,7 @@
         "description":"PCI Device class ID in hex format",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -16962,7 +17141,7 @@
         "description":"PCI Device  subclass in hex format",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -16974,7 +17153,7 @@
         "description":"PCI Device subclass",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -16986,7 +17165,7 @@
         "description":"Vendor ID of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -16998,7 +17177,7 @@
         "description":"Vendor of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17010,7 +17189,7 @@
         "description":"Model ID of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17022,7 +17201,7 @@
         "description":"Device description of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18394,7 +18573,7 @@
         "description":"OpenBSM Attribute: Status of the process",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -18406,7 +18585,7 @@
         "description":"Filesystem user ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18418,7 +18597,7 @@
         "description":"Saved user ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18430,7 +18609,7 @@
         "description":"Filesystem group ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18442,7 +18621,7 @@
         "description":"Saved group ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18454,7 +18633,7 @@
         "description":"Syscall name: fork, vfork, clone, execve, execveat",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -19096,7 +19275,7 @@
         "description":"The inode number of the network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -19458,7 +19637,7 @@
         "description":"A 64bit pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19470,7 +19649,7 @@
         "description":"The 64bit parent pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19482,7 +19661,7 @@
         "description":"Indicates the specific processor designed for installation.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19494,7 +19673,7 @@
         "description":"Indicates the specific processor on which an entry may be used.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19506,7 +19685,7 @@
         "description":"Indicates whether the process is running under the Rosetta Translation Environment, yes=1, no=0, error=-1.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19518,7 +19697,7 @@
         "description":"The full hierarchical path of the process's control group",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -20334,7 +20513,7 @@
   },
   {
     "name":"safari_extensions",
-    "description":"Safari browser extension details for all users.",
+    "description":"Safari browser extension details for all users. This table requires Full Disk Access (FDA) permission.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/safari_extensions.table",
     "platforms":[
       "darwin"
@@ -20343,6 +20522,7 @@
     "cacheable":false,
     "notes":"",
     "examples":[
+      "select * from safari_extensions where uid=501",
       "select count(*) from users JOIN safari_extensions using (uid)"
     ],
     "columns":[
@@ -20430,6 +20610,33 @@
       {
         "name":"path",
         "description":"Path to extension XAR bundle",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"bundle_version",
+        "description":"The version of the build that identifies an iteration of the bundle",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"copyright",
+        "description":"A human-readable copyright notice for the bundle",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"extension_type",
+        "description":"Extension Type: WebOrAppExtension or LegacyExtension",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -20822,7 +21029,7 @@
         "description":"Secure mode for Intel-based macOS: 0 disabled, 1 full security, 2 medium security",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -20834,7 +21041,7 @@
         "description":"Whether setup mode is enabled",
         "type":"integer",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -22792,7 +22999,7 @@
         "description":"Specific attribute of opaque type",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -22969,6 +23176,15 @@
       {
         "name":"cpu_logical_cores",
         "description":"Number of logical CPU cores available to the system",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cpu_sockets",
+        "description":"Number of processor sockets in the system",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -23678,7 +23894,7 @@
   },
   {
     "name":"unified_log",
-    "description":"Queries the OSLog framework for entries in the system log. The maximum number of rows returned is limited for performance issues. This table introduces a new idiom for extracting sequential data in batches using multiple queries, ordered by timestamp. To trigger it, the user should include the condition \"timestamp > -1\", and the table will handle pagination.",
+    "description":"Queries the OSLog framework for entries in the system log. The maximum number of rows returned is limited for performance issues. Use timestamp > or >= constraints to optimize query performance. This table introduces a new idiom for extracting sequential data in batches using multiple queries, ordered by timestamp. To trigger it, the user should include the condition \"timestamp > -1\", and the table will handle pagination. Note that the saved pagination counter is incremented globally across all queries and table invocations within a query. To avoid multiple table invocations within a query, use only AND and = constraints in WHERE clause.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/unified_log.table",
     "platforms":[
       "darwin"
@@ -23688,9 +23904,13 @@
     "notes":"",
     "examples":[
       "select * from unified_log",
+      "select * from unified_log where process = 'osqueryd'",
+      "select * from unified_log where predicate = 'process = \"osqueryd\" OR process = \"Santa\"'",
+      "select * from unified_log where predicate = 'processImagePath = \"/opt/osquery/lib/osquery.app/Contents/MacOS/osqueryd\"'",
       "select * from unified_log where max_rows = 1234",
       "select * from unified_log where timestamp > -1",
-      "select * from unified_log where timestamp > -1 and max_rows = 500"
+      "select * from unified_log where timestamp > -1 and max_rows = 500",
+      "select * from unified_log where timestamp > -1 and timestamp > (select unix_time - 86400 from time)"
     ],
     "columns":[
       {
@@ -23796,6 +24016,15 @@
         "name":"max_rows",
         "description":"the max number of rows returned (defaults to 100)",
         "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"predicate",
+        "description":"predicate to search (see `log help predicates`), note that this is merged into the predicate created from the column constraints",
+        "type":"text",
         "notes":"",
         "hidden":true,
         "required":false,
@@ -24394,7 +24623,7 @@
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -25862,6 +26091,140 @@
         "type":"text",
         "notes":"",
         "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"windows_search",
+    "description":"Run searches against the Windows system index database using Advanced Query Syntax. See https://learn.microsoft.com/en-us/windows/win32/search/-search-3x-advancedquerysyntax for details.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/windows_search.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[
+      "select * from windows_search",
+      "select * from windows_search where query = 'folder:documents'",
+      "select * from windows_search where query = '\"some text in file\" folder:documents'",
+      "select * from windows_search where query = '\"some text in file\" folder:documents' and additional_properties = 'system.mimetype,system.itemurl'",
+      "select * from windows_search where sort = 'system.size desc'",
+      "select * from windows_search where sort = 'system.size desc' and max_results = 10",
+      "select *, json_extract(properties, '$.\"system.itemurl\"') as itemurl from windows_search where max_results = 5 and additional_properties = 'system.itemurl' and sort = 'system.size desc'",
+      "select properties -> '$.\"system.itemurl\"' as itemurl from windows_search where max_results = 5 and additional_properties = 'system.itemurl' and sort = 'system.size desc'",
+      "select * from windows_search WHERE query = 'folder:documents' AND date_created >= (( SELECT unix_time FROM time) - 60 )",
+      "select *, datetime(date_created, 'unixepoch') as datetime from windows_search WHERE query = 'folder:documents' AND datetime > '2022-11-18 16:48:00'",
+      "select *, datetime(date_created, 'unixepoch') as datetime from windows_search WHERE query = 'folder:documents' AND datetime BETWEEN '2022-11-18 16:40:00' AND '2023-11-18 16:50:00'"
+    ],
+    "columns":[
+      {
+        "name":"name",
+        "description":"The name of the item",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"The full path of the item.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"size",
+        "description":"The item size in bytes.",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"date_created",
+        "description":"The unix timestamp of when the item was created.",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"date_modified",
+        "description":"The unix timestamp of when the item was last modified",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"owner",
+        "description":"The owner of the item",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"type",
+        "description":"The item type",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"properties",
+        "description":"Additional property values JSON",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"query",
+        "description":"Windows search query",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sort",
+        "description":"Sort for windows api",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"max_results",
+        "description":"Maximum number of results returned by windows api, set to -1 for unlimited",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"additional_properties",
+        "description":"Comma separated list of columns to include in properties JSON",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
         "required":false,
         "index":false
       }
