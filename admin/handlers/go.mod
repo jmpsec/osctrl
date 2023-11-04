@@ -34,19 +34,19 @@ replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/jmpsec/osctrl/admin/sessions v0.3.2
-	github.com/jmpsec/osctrl/backend v0.3.2 // indirect
-	github.com/jmpsec/osctrl/carves v0.3.2
+	github.com/jmpsec/osctrl/admin/sessions v0.3.3
+	github.com/jmpsec/osctrl/backend v0.3.3 // indirect
+	github.com/jmpsec/osctrl/carves v0.3.3
 	github.com/jmpsec/osctrl/environments v0.0.0-20231104125212-d6ff03b91b7b
 	github.com/jmpsec/osctrl/logging v0.0.0-20220120232002-31ecf3b9f264
 	github.com/jmpsec/osctrl/metrics v0.0.0-20231104125212-d6ff03b91b7b
-	github.com/jmpsec/osctrl/nodes v0.3.2
-	github.com/jmpsec/osctrl/queries v0.3.2
-	github.com/jmpsec/osctrl/settings v0.3.2
+	github.com/jmpsec/osctrl/nodes v0.3.3
+	github.com/jmpsec/osctrl/queries v0.3.3
+	github.com/jmpsec/osctrl/settings v0.3.3
 	github.com/jmpsec/osctrl/tags v0.0.0-20231104125212-d6ff03b91b7b
-	github.com/jmpsec/osctrl/types v0.3.2
-	github.com/jmpsec/osctrl/users v0.3.2
-	github.com/jmpsec/osctrl/utils v0.3.2
+	github.com/jmpsec/osctrl/types v0.3.3
+	github.com/jmpsec/osctrl/users v0.3.3
+	github.com/jmpsec/osctrl/utils v0.3.3
 )
 
 require (
@@ -86,7 +86,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmpsec/osctrl/version v0.3.2 // indirect
+	github.com/jmpsec/osctrl/version v0.3.3 // indirect
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

@@ -7,7 +7,7 @@ servers:
 info:
   title: osctrl-api
   description: "This the API for osctrl, a fast and efficient osquery management solution."
-  version: 0.3.2
+  version: 0.3.3
 externalDocs:
   description: osctrl documentation
   url: https://osctrl.net
