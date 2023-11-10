@@ -7,7 +7,7 @@ on:
 
 env:
   GOLANG_VERSION: 1.21.3
-  OSQUERY_VERSION: 5.9.1
+  OSQUERY_VERSION: 5.10.2
 
 jobs:
   build_and_test:

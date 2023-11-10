@@ -3919,7 +3919,7 @@
       },
       {
         "name":"serial_number",
-        "description":"The serial number of the display.",
+        "description":"The serial number of the display. (may not be unique)",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -5798,7 +5798,7 @@
         "notes":"",
         "hidden":false,
         "required":false,
-        "index":true
+        "index":false
       },
       {
         "name":"uuid",
@@ -27199,6 +27199,15 @@
       {
         "name":"folder_id",
         "description":"Folder identifier for the VM",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"cloud_id",
+        "description":"Cloud identifier for the VM",
         "type":"text",
         "notes":"",
         "hidden":false,
