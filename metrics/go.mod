@@ -21,7 +21,7 @@ require (
 require (
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.3 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20231104125212-d6ff03b91b7b // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -29,7 +29,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
@@ -43,7 +43,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.3 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20231104125212-d6ff03b91b7b
+	github.com/jmpsec/osctrl/types v0.0.0-20231110082853-6bc81c822742
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect

@@ -16,9 +16,9 @@ replace github.com/jmpsec/osctrl/version => ../version
 
 require (
 	github.com/google/uuid v1.4.0
-	github.com/jmpsec/osctrl/settings v0.0.0-20231104125212-d6ff03b91b7b
-	github.com/jmpsec/osctrl/utils v0.0.0-20231104125212-d6ff03b91b7b
-	github.com/jmpsec/osctrl/version v0.0.0-20231104125212-d6ff03b91b7b
+	github.com/jmpsec/osctrl/settings v0.0.0-20231110082853-6bc81c822742
+	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742
+	github.com/jmpsec/osctrl/version v0.0.0-20231110082853-6bc81c822742
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.8.1
 	gorm.io/gorm v1.25.5
@@ -30,7 +30,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.3 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.3 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20231104125212-d6ff03b91b7b // indirect
+	github.com/jmpsec/osctrl/types v0.0.0-20231110082853-6bc81c822742 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

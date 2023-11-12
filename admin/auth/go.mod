@@ -29,8 +29,8 @@ require (
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
-	github.com/gorilla/securecookie v1.1.1 // indirect
-	github.com/gorilla/sessions v1.2.1 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/gorilla/sessions v1.2.2 // indirect
 	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
@@ -42,6 +42,6 @@ require (
 	github.com/jmpsec/osctrl/version v0.3.3 // indirect
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.15.0 // indirect
 	gorm.io/gorm v1.25.5 // indirect
 )
