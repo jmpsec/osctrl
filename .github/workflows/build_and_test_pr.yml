@@ -27,9 +27,9 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       ########################### Build osctrl ###########################
       - name: Build osctrl binaries
