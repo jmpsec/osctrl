@@ -20,7 +20,7 @@ require (
 	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742
 	github.com/jmpsec/osctrl/version v0.0.0-20231110082853-6bc81c822742
 	github.com/segmentio/ksuid v1.0.4
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	gorm.io/gorm v1.25.5
 )
 
