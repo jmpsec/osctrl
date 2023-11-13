@@ -34,19 +34,19 @@ runs:
       shell: bash
       run: "ls -la"
 
-    - name: Rename Linux or darwin binary
+    - name: Copy linux or darwin binary
       if: ${{ inputs.go_os }} == 'linux' || ${{ inputs.go_os }} == 'darwin'
       shell: bash
       run: |
-        mv \
+        cp \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
-    - name: Rename Windows binary
+    - name: Copy windows binary
       if: ${{ inputs.go_os }} == 'windows'
       shell: bash
       run: |
-        mv \
+        cp \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.exe
 
@@ -55,20 +55,7 @@ runs:
       if: ${{ inputs.go_os }} == 'linux'
       uses: actions/download-artifact@v3
       with:
-        name: osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
-
-    - name: LS
-      if: ${{ inputs.go_os }} == 'linux'
-      shell: bash
-      run: "ls -la"
-
-    - name: Rename DEB package
-      if: ${{ inputs.go_os }} == 'linux'
-      shell: bash
-      run: |
-        mv \
-        osctrl-${{ inputs.osctrl_component }}_0.0.${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb \
-        osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}_${{ inputs.go_arch }}.deb
+        name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
 
     ########################### Release ###########################
     - name: Release
