@@ -21,10 +21,14 @@ runs:
   using: "composite"
   steps:
     ########################### Download osctrl binary ###########################
-    - name: Download a osctrl binaries
+    - name: Download osctrl binaries
       uses: actions/download-artifact@v3
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    - name: PWD
+      shell: bash
+      run: "pwd"
 
     - name: LS
       shell: bash
@@ -47,7 +51,7 @@ runs:
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.exe
 
     ########################### Download osctrl DEB package ###########################
-    - name: Download a osctrl binaries
+    - name: Download osctrl binaries
       if: ${{ inputs.go_os }} == 'linux'
       uses: actions/download-artifact@v3
       with:
@@ -75,4 +79,3 @@ runs:
           osctrl-*.bin
           osctrl-*.deb
           osctrl-*.exe
-        body_path: ./CHANGELOG.md
