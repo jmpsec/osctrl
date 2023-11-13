@@ -20,8 +20,8 @@ require (
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.3 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.3 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.4 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.4 // indirect
 	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 )

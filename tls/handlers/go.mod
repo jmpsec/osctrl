@@ -32,17 +32,17 @@ replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/jmpsec/osctrl/backend v0.3.3 // indirect
+	github.com/jmpsec/osctrl/backend v0.3.4 // indirect
 	github.com/jmpsec/osctrl/carves v0.0.0-20231110082853-6bc81c822742
 	github.com/jmpsec/osctrl/environments v0.0.0-20231110082853-6bc81c822742
 	github.com/jmpsec/osctrl/logging v0.0.0-20231110082853-6bc81c822742
 	github.com/jmpsec/osctrl/metrics v0.0.0-20231110082853-6bc81c822742
-	github.com/jmpsec/osctrl/nodes v0.3.3
-	github.com/jmpsec/osctrl/queries v0.3.3
-	github.com/jmpsec/osctrl/settings v0.3.3
+	github.com/jmpsec/osctrl/nodes v0.3.4
+	github.com/jmpsec/osctrl/queries v0.3.4
+	github.com/jmpsec/osctrl/settings v0.3.4
 	github.com/jmpsec/osctrl/tags v0.0.0-20231110082853-6bc81c822742
-	github.com/jmpsec/osctrl/types v0.3.3
-	github.com/jmpsec/osctrl/utils v0.3.3
+	github.com/jmpsec/osctrl/types v0.3.4
+	github.com/jmpsec/osctrl/utils v0.3.4
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.8.4
 )
