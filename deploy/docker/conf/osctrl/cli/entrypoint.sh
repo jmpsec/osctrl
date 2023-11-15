@@ -23,7 +23,7 @@ done
 /opt/osctrl/bin/osctrl-cli --db env add \
   --name "${ENV_NAME}" \
   --hostname "${HOST}" \
-  --certificate "${CRT_FILE}"
+  --certificate "${CERT_FILE}"
 if [ $? -eq 0 ]; then
   echo "Created environment dev"
 else
