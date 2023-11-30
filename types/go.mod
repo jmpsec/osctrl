@@ -16,7 +16,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.4 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20231115211954-bc86d2938496 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	gorm.io/gorm v1.25.5 // indirect
 )

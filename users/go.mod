@@ -21,11 +21,11 @@ replace github.com/jmpsec/osctrl/version => ../version
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/jmpsec/osctrl/environments v0.0.0-20231110082853-6bc81c822742
-	github.com/jmpsec/osctrl/types v0.0.0-20231110082853-6bc81c822742
-	github.com/jmpsec/osctrl/utils v0.0.0-20231110082853-6bc81c822742
-	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.15.0
+	github.com/jmpsec/osctrl/environments v0.0.0-20231115211954-bc86d2938496
+	github.com/jmpsec/osctrl/types v0.0.0-20231115211954-bc86d2938496
+	github.com/jmpsec/osctrl/utils v0.0.0-20231115211954-bc86d2938496
+	github.com/stretchr/testify v1.8.4
+	golang.org/x/crypto v0.16.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.25.5
 )
