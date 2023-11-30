@@ -108,11 +108,12 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 	if err != nil {
 		return fmt.Errorf("error decoding data - %v", err)
 	}
+	ptrContentLength := int64(len(toUpload))
 	uploadOutput, err := carveS3.Uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(carveS3.S3Config.Bucket),
 		Key:           aws.String(GenerateS3Key(block.Environment, uuid, block.SessionID, block.BlockID)),
 		Body:          bytes.NewBuffer(toUpload),
-		ContentLength: int64(len(toUpload)),
+		ContentLength: &ptrContentLength,
 		ContentType:   aws.String(http.DetectContentType(toUpload)),
 	})
 	if err != nil {
@@ -127,10 +128,11 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 // Concatenate - Function to concatenate a file that have been already uploaded in s3
 func (carveS3 *CarverS3) Concatenate(key string, destKey string, part int, uploadid *string) (*string, error) {
 	ctx := context.Background()
+	ptrPartNumber := int32(part)
 	partOutput, err := carveS3.Client.UploadPartCopy(ctx, &s3.UploadPartCopyInput{
 		Bucket:     &carveS3.S3Config.Bucket,
 		CopySource: aws.String(url.QueryEscape(carveS3.S3Config.Bucket + "/" + key)),
-		PartNumber: int32(part),
+		PartNumber: &ptrPartNumber,
 		Key:        aws.String(destKey),
 		UploadId:   uploadid,
 	})
@@ -167,9 +169,10 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		if err != nil {
 			return nil, fmt.Errorf("error concatenating - %s", err)
 		}
+		ptrPartNumber := int32(b.BlockID + 1)
 		p := awsTypes.CompletedPart{
 			ETag:       etag,
-			PartNumber: int32(b.BlockID + 1),
+			PartNumber: &ptrPartNumber,
 		}
 		parts = append(parts, p)
 	}
