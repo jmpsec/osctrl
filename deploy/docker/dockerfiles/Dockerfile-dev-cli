@@ -9,7 +9,7 @@ ENV GOOS="linux"
 ENV CGO_ENABLED=0
 
 # Hot reloading mod
-RUN go install github.com/cosmtrek/air@v1.41.0 
+RUN go install github.com/cosmtrek/air@v1.41.0
 RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.1
 
 # Copy code
@@ -41,9 +41,11 @@ USER root
 
 # Install Osquery
 RUN apt-get update -y -qq && apt-get install -y curl host
-RUN curl -L https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb \
-    --output /tmp/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb
-RUN dpkg -i /tmp/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb
+RUN ubuntuArch="$(dpkg --print-architecture)"; \
+  curl -L https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb \
+  --output /tmp/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb
+RUN ubuntuArch="$(dpkg --print-architecture)"; \
+  dpkg -i /tmp/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb
 
 # Entrypoint
 COPY deploy/docker/conf/osquery/entrypoint.sh /entrypoint.sh
