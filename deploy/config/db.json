@@ -7,6 +7,7 @@
     "password": "_DB_PASSWORD",
     "max_idle_conns": 20,
     "max_open_conns": 100,
-    "conn_max_lifetime": 30
+    "conn_max_lifetime": 30,
+    "conn_retry": 10
   }
 }
