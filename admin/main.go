@@ -41,6 +41,8 @@ const (
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
+	// Default timeout to attempt backend reconnect
+	defaultBackendRetryTimeout int = 7
 )
 
 // Paths
@@ -99,11 +101,6 @@ const (
 	defOsqueryTablesVersion = version.OsqueryVersion
 	// JSON file with osquery tables data
 	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
-)
-
-var (
-	// Wait for backend in seconds
-	backendWait = 7 * time.Second
 )
 
 // Global general variables
@@ -422,6 +419,13 @@ func init() {
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
 			Destination: &dbConfig.ConnMaxLifetime,
 		},
+		&cli.IntFlag{
+			Name:        "db-conn-retry",
+			Value:       defaultBackendRetryTimeout,
+			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
+			EnvVars:     []string{"DB_CONN_RETRY"},
+			Destination: &dbConfig.ConnRetry,
+		},
 		&cli.BoolFlag{
 			Name:        "tls",
 			Aliases:     []string{"t"},
@@ -618,10 +622,13 @@ func osctrlAdminService() {
 			break
 		}
 		if err != nil {
-			log.Fatalf("Failed to connect to backend - %v", err)
+			log.Printf("Failed to connect to backend - %v", err)
+			if dbConfig.ConnRetry == 0 {
+				log.Fatalf("Connection to backend failed and no retry was set")
+			}
 		}
-		log.Println("Backend NOT ready! waiting...")
-		time.Sleep(backendWait)
+		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
+		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
 	log.Println("Initializing cache...")
 	redis, err = cache.CreateRedisManager(redisConfig)
