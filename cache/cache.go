@@ -44,6 +44,7 @@ type JSONConfigurationRedis struct {
 	StatusExpirationHours int    `json:"status_exp_hours"`
 	ResultExpirationHours int    `json:"result_exp_hours"`
 	QueryExpirationHours  int    `json:"query_exp_hours"`
+	ConnRetry             int    `json:"conn_retry"`
 }
 
 // CachedQueryWriteData to store in cache query logs

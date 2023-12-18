@@ -64,6 +64,8 @@ const (
 	defaultOnelinerExpiration bool = true
 	// Default timeout to attempt backend reconnect
 	defaultBackendRetryTimeout int = 7
+	// Default timeout to attempt redis reconnect
+	defaultRedisRetryTimeout int = 7
 )
 
 // Global variables
@@ -297,6 +299,13 @@ func init() {
 			EnvVars:     []string{"REDIS_QUERY_EXP"},
 			Destination: &redisConfig.QueryExpirationHours,
 		},
+		&cli.IntFlag{
+			Name:        "redis-conn-retry",
+			Value:       defaultRedisRetryTimeout,
+			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
+			EnvVars:     []string{"REDIS_CONN_RETRY"},
+			Destination: &redisConfig.ConnRetry,
+		},
 		&cli.BoolFlag{
 			Name:        "db",
 			Aliases:     []string{"d"},
@@ -493,6 +502,7 @@ func init() {
 
 // Go go!
 func osctrlService() {
+	// ////////////////////////////// Backend
 	log.Println("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
@@ -510,12 +520,24 @@ func osctrlService() {
 		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
 		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
+	// ////////////////////////////// Cache
 	log.Println("Initializing cache...")
-	redis, err = cache.CreateRedisManager(redisConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to redis - %v", err)
+	// Attempt to connect to cache waiting until is ready
+	for {
+		redis, err = cache.CreateRedisManager(redisConfig)
+		if redis != nil {
+			log.Println("Connection to cache successful!")
+			break
+		}
+		if err != nil {
+			log.Fatalf("Failed to connect to cache - %v", err)
+			if redisConfig.ConnRetry == 0 {
+				log.Fatalf("Connection to cache failed and no retry was set")
+			}
+		}
+		log.Printf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
+		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
 	}
-	log.Println("Connection to cache successful!")
 	log.Println("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 	log.Println("Initialize settings")
