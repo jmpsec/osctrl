@@ -53,6 +53,8 @@ const (
 	defaultRefresh int = 300
 	// Default timeout to attempt backend reconnect
 	defaultBackendRetryTimeout int = 7
+	// Default timeout to attempt redis reconnect
+	defaultRedisRetryTimeout int = 7
 )
 
 // Paths
@@ -269,6 +271,13 @@ func init() {
 			EnvVars:     []string{"REDIS_DB"},
 			Destination: &redisConfig.DB,
 		},
+		&cli.IntFlag{
+			Name:        "redis-conn-retry",
+			Value:       defaultRedisRetryTimeout,
+			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
+			EnvVars:     []string{"REDIS_CONN_RETRY"},
+			Destination: &redisConfig.ConnRetry,
+		},
 		&cli.BoolFlag{
 			Name:        "db",
 			Aliases:     []string{"d"},
@@ -407,7 +416,8 @@ func init() {
 
 // Go go!
 func osctrlAPIService() {
-	// Backend
+	// ////////////////////////////// Backend
+	log.Println("Initializing backend...")
 	for {
 		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
@@ -423,10 +433,22 @@ func osctrlAPIService() {
 		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
 		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
-	// Redis - cache
-	redis, err = cache.CreateRedisManager(redisConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to redis - %v", err)
+	// ////////////////////////////// Cache
+	log.Println("Initializing cache...")
+	for {
+		redis, err = cache.CreateRedisManager(redisConfig)
+		if redis != nil {
+			log.Println("Connection to cache successful!")
+			break
+		}
+		if err != nil {
+			log.Printf("Failed to connect to cache - %v", err)
+			if redisConfig.ConnRetry == 0 {
+				log.Fatalf("Connection to cache failed and no retry was set")
+			}
+		}
+		log.Printf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
+		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
 	}
 	log.Println("Initialize users")
 	apiUsers = users.CreateUserManager(db.Conn, &jwtConfig)
@@ -445,7 +467,6 @@ func osctrlAPIService() {
 	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver, nil)
 	log.Println("Loading service settings")
 	loadingSettings()
-
 	// Ticker to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
