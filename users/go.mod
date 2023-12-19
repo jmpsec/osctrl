@@ -25,7 +25,7 @@ require (
 	github.com/jmpsec/osctrl/types v0.0.0-20231115211954-bc86d2938496
 	github.com/jmpsec/osctrl/utils v0.0.0-20231115211954-bc86d2938496
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.25.5
 )
