@@ -107,25 +107,28 @@ const (
 
 // Global general variables
 var (
-	err            error
-	adminConfig    types.JSONConfigurationAdmin
-	s3LogConfig    types.S3Configuration
-	s3CarverConfig types.S3Configuration
-	dbConfig       backend.JSONConfigurationDB
-	redisConfig    cache.JSONConfigurationRedis
-	db             *backend.DBManager
-	redis          *cache.RedisManager
-	settingsmgr    *settings.Settings
-	nodesmgr       *nodes.NodeManager
-	queriesmgr     *queries.Queries
-	carvesmgr      *carves.Carves
-	sessionsmgr    *sessions.SessionManager
-	envs           *environments.Environment
-	adminUsers     *users.UserManager
-	tagsmgr        *tags.TagManager
-	carvers3       *carves.CarverS3
-	app            *cli.App
-	flags          []cli.Flag
+	err               error
+	adminConfigValues types.JSONConfigurationAdmin
+	adminConfig       types.JSONConfigurationAdmin
+	s3LogConfig       types.S3Configuration
+	s3CarverConfig    types.S3Configuration
+	dbConfigValues    backend.JSONConfigurationDB
+	dbConfig          backend.JSONConfigurationDB
+	redisConfigValues cache.JSONConfigurationRedis
+	redisConfig       cache.JSONConfigurationRedis
+	db                *backend.DBManager
+	redis             *cache.RedisManager
+	settingsmgr       *settings.Settings
+	nodesmgr          *nodes.NodeManager
+	queriesmgr        *queries.Queries
+	carvesmgr         *carves.Carves
+	sessionsmgr       *sessions.SessionManager
+	envs              *environments.Environment
+	adminUsers        *users.UserManager
+	tagsmgr           *tags.TagManager
+	carvers3          *carves.CarverS3
+	app               *cli.App
+	flags             []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	adminMetrics  *metrics.Metrics
@@ -165,7 +168,8 @@ var (
 
 // JWT variables
 var (
-	jwtConfig types.JSONConfigurationJWT
+	jwtConfigValues types.JSONConfigurationJWT
+	jwtConfig       types.JSONConfigurationJWT
 )
 
 // Valid values for auth in configuration
@@ -236,7 +240,7 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Listener for the service",
 			EnvVars:     []string{"SERVICE_LISTENER"},
-			Destination: &adminConfig.Listener,
+			Destination: &adminConfigValues.Listener,
 		},
 		&cli.StringFlag{
 			Name:        "port",
@@ -244,7 +248,7 @@ func init() {
 			Value:       "9001",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
-			Destination: &adminConfig.Port,
+			Destination: &adminConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -252,7 +256,7 @@ func init() {
 			Value:       settings.AuthDB,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
-			Destination: &adminConfig.Auth,
+			Destination: &adminConfigValues.Auth,
 		},
 		&cli.StringFlag{
 			Name:        "host",
@@ -260,14 +264,14 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Exposed hostname the service uses",
 			EnvVars:     []string{"SERVICE_HOST"},
-			Destination: &adminConfig.Host,
+			Destination: &adminConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "session-key",
 			Value:       "",
 			Usage:       "Session key to generate cookies from it",
 			EnvVars:     []string{"SESSION_KEY"},
-			Destination: &adminConfig.SessionKey,
+			Destination: &adminConfigValues.SessionKey,
 		},
 		&cli.StringFlag{
 			Name:        "logging",
@@ -275,7 +279,7 @@ func init() {
 			Value:       settings.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGER"},
-			Destination: &adminConfig.Logger,
+			Destination: &adminConfigValues.Logger,
 		},
 		&cli.BoolFlag{
 			Name:        "redis",
@@ -298,63 +302,63 @@ func init() {
 			Value:       "",
 			Usage:       "Redis connection string, must include schema (<redis|rediss|unix>://<user>:<pass>@<host>:<port>/<db>?<options>",
 			EnvVars:     []string{"REDIS_CONNECTION_STRING"},
-			Destination: &redisConfig.ConnectionString,
+			Destination: &redisConfigValues.ConnectionString,
 		},
 		&cli.StringFlag{
 			Name:        "redis-host",
 			Value:       "127.0.0.1",
 			Usage:       "Redis host to be connected to",
 			EnvVars:     []string{"REDIS_HOST"},
-			Destination: &redisConfig.Host,
+			Destination: &redisConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "redis-port",
 			Value:       "6379",
 			Usage:       "Redis port to be connected to",
 			EnvVars:     []string{"REDIS_PORT"},
-			Destination: &redisConfig.Port,
+			Destination: &redisConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "redis-pass",
 			Value:       "",
 			Usage:       "Password to be used for redis",
 			EnvVars:     []string{"REDIS_PASS"},
-			Destination: &redisConfig.Password,
+			Destination: &redisConfigValues.Password,
 		},
 		&cli.IntFlag{
 			Name:        "redis-db",
 			Value:       0,
 			Usage:       "Redis database to be selected after connecting",
 			EnvVars:     []string{"REDIS_DB"},
-			Destination: &redisConfig.DB,
+			Destination: &redisConfigValues.DB,
 		},
 		&cli.IntFlag{
 			Name:        "redis-status-exp",
 			Value:       cache.StatusExpiration,
 			Usage:       "Redis expiration in hours for status logs",
 			EnvVars:     []string{"REDIS_STATUS_EXP"},
-			Destination: &redisConfig.StatusExpirationHours,
+			Destination: &redisConfigValues.StatusExpirationHours,
 		},
 		&cli.IntFlag{
 			Name:        "redis-result-exp",
 			Value:       cache.ResultExpiration,
 			Usage:       "Redis expiration in hours for result logs",
 			EnvVars:     []string{"REDIS_RESULT_EXP"},
-			Destination: &redisConfig.ResultExpirationHours,
+			Destination: &redisConfigValues.ResultExpirationHours,
 		},
 		&cli.IntFlag{
 			Name:        "redis-query-exp",
 			Value:       cache.QueryExpiration,
 			Usage:       "Redis expiration in hours for query logs",
 			EnvVars:     []string{"REDIS_QUERY_EXP"},
-			Destination: &redisConfig.QueryExpirationHours,
+			Destination: &redisConfigValues.QueryExpirationHours,
 		},
 		&cli.IntFlag{
 			Name:        "redis-conn-retry",
 			Value:       defaultRedisRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"REDIS_CONN_RETRY"},
-			Destination: &redisConfig.ConnRetry,
+			Destination: &redisConfigValues.ConnRetry,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -377,63 +381,63 @@ func init() {
 			Value:       "127.0.0.1",
 			Usage:       "Backend host to be connected to",
 			EnvVars:     []string{"DB_HOST"},
-			Destination: &dbConfig.Host,
+			Destination: &dbConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "db-port",
 			Value:       "5432",
 			Usage:       "Backend port to be connected to",
 			EnvVars:     []string{"DB_PORT"},
-			Destination: &dbConfig.Port,
+			Destination: &dbConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "db-name",
 			Value:       "osctrl",
 			Usage:       "Database name to be used in the backend",
 			EnvVars:     []string{"DB_NAME"},
-			Destination: &dbConfig.Name,
+			Destination: &dbConfigValues.Name,
 		},
 		&cli.StringFlag{
 			Name:        "db-user",
 			Value:       "postgres",
 			Usage:       "Username to be used for the backend",
 			EnvVars:     []string{"DB_USER"},
-			Destination: &dbConfig.Username,
+			Destination: &dbConfigValues.Username,
 		},
 		&cli.StringFlag{
 			Name:        "db-pass",
 			Value:       "postgres",
 			Usage:       "Password to be used for the backend",
 			EnvVars:     []string{"DB_PASS"},
-			Destination: &dbConfig.Password,
+			Destination: &dbConfigValues.Password,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
 			Usage:       "Maximum number of connections in the idle connection pool",
 			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
-			Destination: &dbConfig.MaxIdleConns,
+			Destination: &dbConfigValues.MaxIdleConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-open-conns",
 			Value:       100,
 			Usage:       "Maximum number of open connections to the database",
 			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
-			Destination: &dbConfig.MaxOpenConns,
+			Destination: &dbConfigValues.MaxOpenConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-max-lifetime",
 			Value:       30,
 			Usage:       "Maximum amount of time a connection may be reused",
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
-			Destination: &dbConfig.ConnMaxLifetime,
+			Destination: &dbConfigValues.ConnMaxLifetime,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-retry",
 			Value:       defaultBackendRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"DB_CONN_RETRY"},
-			Destination: &dbConfig.ConnRetry,
+			Destination: &dbConfigValues.ConnRetry,
 		},
 		&cli.BoolFlag{
 			Name:        "tls",
@@ -485,14 +489,14 @@ func init() {
 			Name:        "jwt-secret",
 			Usage:       "Password to be used for the backend",
 			EnvVars:     []string{"JWT_SECRET"},
-			Destination: &jwtConfig.JWTSecret,
+			Destination: &jwtConfigValues.JWTSecret,
 		},
 		&cli.IntFlag{
 			Name:        "jwt-expire",
 			Value:       3,
 			Usage:       "Maximum amount of hours for the tokens to expire",
 			EnvVars:     []string{"JWT_EXPIRE"},
-			Destination: &jwtConfig.HoursToExpire,
+			Destination: &jwtConfigValues.HoursToExpire,
 		},
 		&cli.StringFlag{
 			Name:        "osquery-version",
@@ -862,7 +866,6 @@ func osctrlAdminService() {
 	if adminConfig.Auth == settings.AuthSAML {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
 	}
-
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
 	if tlsServer {
@@ -899,6 +902,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
 		}
+	} else {
+		adminConfig = adminConfigValues
 	}
 	// Load redis configuration if external JSON config file is used
 	if redisFlag {
@@ -906,6 +911,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load redis configuration - %v", err)
 		}
+	} else {
+		redisConfig = redisConfigValues
 	}
 	// Load DB configuration if external JSON config file is used
 	if dbFlag {
@@ -913,6 +920,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load DB configuration - %v", err)
 		}
+	} else {
+		dbConfig = dbConfigValues
 	}
 	// Load SAML configuration if this authentication is used in the service config
 	if adminConfig.Auth == settings.AuthSAML {
@@ -927,6 +936,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load JWT configuration - %v", err)
 		}
+	} else {
+		jwtConfig = jwtConfigValues
 	}
 	// Load osquery tables JSON file
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
