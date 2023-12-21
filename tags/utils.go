@@ -8,10 +8,10 @@ import (
 
 // Helper to generate a random color in hex for HTML
 func RandomColor() string {
-	rand.Seed(time.Now().UnixNano())
-	red := rand.Intn(255)
-	green := rand.Intn(255)
-	blue := rand.Intn(255)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	red := r.Intn(255)
+	green := r.Intn(255)
+	blue := r.Intn(255)
 
 	return "#" + GetHex(red) + GetHex(green) + GetHex(blue)
 }
