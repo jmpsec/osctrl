@@ -21,9 +21,9 @@ replace github.com/jmpsec/osctrl/version => ../version
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/jmpsec/osctrl/environments v0.0.0-20231115211954-bc86d2938496
-	github.com/jmpsec/osctrl/types v0.0.0-20231115211954-bc86d2938496
-	github.com/jmpsec/osctrl/utils v0.0.0-20231115211954-bc86d2938496
+	github.com/jmpsec/osctrl/environments v0.0.0-20231221224851-87ae6d485538
+	github.com/jmpsec/osctrl/types v0.0.0-20231221224851-87ae6d485538
+	github.com/jmpsec/osctrl/utils v0.0.0-20231221224851-87ae6d485538
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.17.0
 	gorm.io/driver/postgres v1.4.5
@@ -32,7 +32,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/google/uuid v1.4.0 // indirect
+	github.com/google/uuid v1.5.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.13.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
