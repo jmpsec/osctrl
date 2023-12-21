@@ -92,25 +92,29 @@ const (
 
 // Global variables
 var (
-	err         error
-	apiConfig   types.JSONConfigurationAPI
-	dbConfig    backend.JSONConfigurationDB
-	redisConfig cache.JSONConfigurationRedis
-	jwtConfig   types.JSONConfigurationJWT
-	db          *backend.DBManager
-	redis       *cache.RedisManager
-	apiUsers    *users.UserManager
-	tagsmgr     *tags.TagManager
-	settingsmgr *settings.Settings
-	envs        *environments.Environment
-	envsmap     environments.MapEnvironments
-	settingsmap settings.MapSettings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	filecarves  *carves.Carves
-	_metrics    *metrics.Metrics
-	app         *cli.App
-	flags       []cli.Flag
+	err               error
+	apiConfigValues   types.JSONConfigurationAPI
+	apiConfig         types.JSONConfigurationAPI
+	dbConfigValues    backend.JSONConfigurationDB
+	dbConfig          backend.JSONConfigurationDB
+	redisConfigValues cache.JSONConfigurationRedis
+	redisConfig       cache.JSONConfigurationRedis
+	jwtConfigValues   types.JSONConfigurationJWT
+	jwtConfig         types.JSONConfigurationJWT
+	db                *backend.DBManager
+	redis             *cache.RedisManager
+	apiUsers          *users.UserManager
+	tagsmgr           *tags.TagManager
+	settingsmgr       *settings.Settings
+	envs              *environments.Environment
+	envsmap           environments.MapEnvironments
+	settingsmap       settings.MapSettings
+	nodesmgr          *nodes.NodeManager
+	queriesmgr        *queries.Queries
+	filecarves        *carves.Carves
+	_metrics          *metrics.Metrics
+	app               *cli.App
+	flags             []cli.Flag
 )
 
 // Variables for flags
@@ -186,7 +190,7 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Listener for the service",
 			EnvVars:     []string{"SERVICE_LISTENER"},
-			Destination: &apiConfig.Listener,
+			Destination: &apiConfigValues.Listener,
 		},
 		&cli.StringFlag{
 			Name:        "port",
@@ -194,7 +198,7 @@ func init() {
 			Value:       "9002",
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
-			Destination: &apiConfig.Port,
+			Destination: &apiConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -202,7 +206,7 @@ func init() {
 			Value:       settings.AuthNone,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
-			Destination: &apiConfig.Auth,
+			Destination: &apiConfigValues.Auth,
 		},
 		&cli.StringFlag{
 			Name:        "host",
@@ -210,7 +214,7 @@ func init() {
 			Value:       "0.0.0.0",
 			Usage:       "Exposed hostname the service uses",
 			EnvVars:     []string{"SERVICE_HOST"},
-			Destination: &apiConfig.Host,
+			Destination: &apiConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "logging",
@@ -241,42 +245,42 @@ func init() {
 			Value:       "",
 			Usage:       "Redis connection string, must include schema (<redis|rediss|unix>://<user>:<pass>@<host>:<port>/<db>?<options>",
 			EnvVars:     []string{"REDIS_CONNECTION_STRING"},
-			Destination: &redisConfig.ConnectionString,
+			Destination: &redisConfigValues.ConnectionString,
 		},
 		&cli.StringFlag{
 			Name:        "redis-host",
 			Value:       "127.0.0.1",
 			Usage:       "Redis host to be connected to",
 			EnvVars:     []string{"REDIS_HOST"},
-			Destination: &redisConfig.Host,
+			Destination: &redisConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "redis-port",
 			Value:       "6379",
 			Usage:       "Redis port to be connected to",
 			EnvVars:     []string{"REDIS_PORT"},
-			Destination: &redisConfig.Port,
+			Destination: &redisConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "redis-pass",
 			Value:       "",
 			Usage:       "Password to be used for redis",
 			EnvVars:     []string{"REDIS_PASS"},
-			Destination: &redisConfig.Password,
+			Destination: &redisConfigValues.Password,
 		},
 		&cli.IntFlag{
 			Name:        "redis-db",
 			Value:       0,
 			Usage:       "Redis database to be selected after connecting",
 			EnvVars:     []string{"REDIS_DB"},
-			Destination: &redisConfig.DB,
+			Destination: &redisConfigValues.DB,
 		},
 		&cli.IntFlag{
 			Name:        "redis-conn-retry",
 			Value:       defaultRedisRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"REDIS_CONN_RETRY"},
-			Destination: &redisConfig.ConnRetry,
+			Destination: &redisConfigValues.ConnRetry,
 		},
 		&cli.BoolFlag{
 			Name:        "db",
@@ -299,63 +303,63 @@ func init() {
 			Value:       "127.0.0.1",
 			Usage:       "Backend host to be connected to",
 			EnvVars:     []string{"DB_HOST"},
-			Destination: &dbConfig.Host,
+			Destination: &dbConfigValues.Host,
 		},
 		&cli.StringFlag{
 			Name:        "db-port",
 			Value:       "5432",
 			Usage:       "Backend port to be connected to",
 			EnvVars:     []string{"DB_PORT"},
-			Destination: &dbConfig.Port,
+			Destination: &dbConfigValues.Port,
 		},
 		&cli.StringFlag{
 			Name:        "db-name",
 			Value:       "osctrl",
 			Usage:       "Database name to be used in the backend",
 			EnvVars:     []string{"DB_NAME"},
-			Destination: &dbConfig.Name,
+			Destination: &dbConfigValues.Name,
 		},
 		&cli.StringFlag{
 			Name:        "db-user",
 			Value:       "postgres",
 			Usage:       "Username to be used for the backend",
 			EnvVars:     []string{"DB_USER"},
-			Destination: &dbConfig.Username,
+			Destination: &dbConfigValues.Username,
 		},
 		&cli.StringFlag{
 			Name:        "db-pass",
 			Value:       "postgres",
 			Usage:       "Password to be used for the backend",
 			EnvVars:     []string{"DB_PASS"},
-			Destination: &dbConfig.Password,
+			Destination: &dbConfigValues.Password,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
 			Usage:       "Maximum number of connections in the idle connection pool",
 			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
-			Destination: &dbConfig.MaxIdleConns,
+			Destination: &dbConfigValues.MaxIdleConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-open-conns",
 			Value:       100,
 			Usage:       "Maximum number of open connections to the database",
 			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
-			Destination: &dbConfig.MaxOpenConns,
+			Destination: &dbConfigValues.MaxOpenConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-max-lifetime",
 			Value:       30,
 			Usage:       "Maximum amount of time a connection may be reused",
 			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
-			Destination: &dbConfig.ConnMaxLifetime,
+			Destination: &dbConfigValues.ConnMaxLifetime,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-retry",
 			Value:       defaultBackendRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"DB_CONN_RETRY"},
-			Destination: &dbConfig.ConnRetry,
+			Destination: &dbConfigValues.ConnRetry,
 		},
 		&cli.BoolFlag{
 			Name:        "tls",
@@ -400,14 +404,14 @@ func init() {
 			Name:        "jwt-secret",
 			Usage:       "Password to be used for the backend",
 			EnvVars:     []string{"JWT_SECRET"},
-			Destination: &jwtConfig.JWTSecret,
+			Destination: &jwtConfigValues.JWTSecret,
 		},
 		&cli.IntFlag{
 			Name:        "jwt-expire",
 			Value:       3,
 			Usage:       "Maximum amount of hours for the tokens to expire",
 			EnvVars:     []string{"JWT_EXPIRE"},
-			Destination: &jwtConfig.HoursToExpire,
+			Destination: &jwtConfigValues.HoursToExpire,
 		},
 	}
 	// Logging format flags
@@ -615,6 +619,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
 		}
+	} else {
+		apiConfig = apiConfigValues
 	}
 	// Load DB configuration if external JSON config file is used
 	if dbFlag {
@@ -622,6 +628,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load DB configuration - %v", err)
 		}
+	} else {
+		dbConfig = dbConfigValues
 	}
 	// Load redis configuration if external JSON config file is used
 	if redisFlag {
@@ -629,6 +637,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load redis configuration - %v", err)
 		}
+	} else {
+		redisConfig = redisConfigValues
 	}
 	// Load JWT configuration if external JWT JSON config file is used
 	if jwtFlag {
@@ -636,6 +646,8 @@ func cliAction(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to load JWT configuration - %v", err)
 		}
+	} else {
+		jwtConfig = jwtConfigValues
 	}
 	return nil
 }
