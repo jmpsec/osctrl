@@ -22,6 +22,7 @@
 # Argument for PART:
 #   admin   Provision will deploy only the admin interface.
 #   tls     Provision will deploy only the TLS endpoint.
+#   api     Provision will deploy only the API endpoint.
 #   all     Provision will deploy both the admin and the TLS endpoint.
 #
 # Optional Parameters:
@@ -95,6 +96,7 @@ function usage() {
   printf "\nArguments for PART:\n"
   printf "  admin \tProvision will deploy only the admin interface.\n"
   printf "  tls \t\tProvision will deploy only the TLS endpoint.\n"
+  printf "  api \t\tProvision will deploy only the API endpoint.\n"
   printf "  all \t\tProvision will deploy both the admin and the TLS endpoint.\n"
   printf "\nOptional Parameters:\n"
   printf "  --public-tls-port PORT \tPort for the TLS endpoint service. Default is 443\n"
@@ -473,6 +475,9 @@ if [[ "$UPGRADE" == true ]]; then
     # Prepare static files for Admin service
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+
+    # Copy osquery tables JSON file
+    sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
 
     # Restart service with new binary
     make install_admin
