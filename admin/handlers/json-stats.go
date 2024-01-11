@@ -25,7 +25,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	vars := mux.Vars(r)
 	// Extract stats target
 	target, ok := vars["target"]

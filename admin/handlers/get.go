@@ -70,7 +70,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
@@ -94,7 +94,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	vars := mux.Vars(r)
 	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Extract environment
 	envVar, ok := vars["env"]
 	if !ok {

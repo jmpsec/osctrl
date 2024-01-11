@@ -676,7 +676,7 @@ func osctrlAdminService() {
 	log.Println("Initialize carves")
 	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver, carvers3)
 	log.Println("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db.Conn, projectName, adminConfig.SessionKey)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, adminConfig.SessionKey)
 	log.Println("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatalf("Error loading settings - %v", err)

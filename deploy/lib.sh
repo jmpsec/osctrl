@@ -422,7 +422,7 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
-# Install go 1.20 from tgz
+# Install go 1.21 from tgz
 function install_go_21() {
   local __version="1.21.3"
   local __file="go$__version.linux-amd64.tar.gz"

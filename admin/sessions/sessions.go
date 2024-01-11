@@ -39,10 +39,11 @@ const (
 )
 
 const (
-	CtxUser  = "user"
-	CtxEmail = "email"
-	CtxCSRF  = "csrftoken"
-	CtxLevel = "level"
+	CtxUser    = "user"
+	CtxEmail   = "email"
+	CtxCSRF    = "csrftoken"
+	CtxLevel   = "level"
+	CtxSession = "session"
 )
 
 // sessionValues to keep session values
