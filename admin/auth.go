@@ -16,10 +16,10 @@ const (
 	carveLevel string = "carve"
 )
 
+// Using the default name for the cookie in SAML:
+// https://github.com/crewjam/saml/blob/main/samlsp/session_cookie.go#L11
 const (
-	ctxUser  = "user"
-	ctxEmail = "email"
-	ctxCSRF  = "csrftoken"
+	authCookieName = "token"
 )
 
 // Handler to check access to a resource based on the authentication enabled
@@ -30,16 +30,16 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)
 			if !authenticated {
-				http.Redirect(w, r, "/login", http.StatusFound)
+				http.Redirect(w, r, loginPath, http.StatusFound)
 				return
 			}
 			// Set middleware values
 			s := make(sessions.ContextValue)
-			s[ctxUser] = session.Username
-			s[ctxCSRF] = session.Values[ctxCSRF].(string)
-			ctx := context.WithValue(r.Context(), sessions.ContextKey("session"), s)
+			s[sessions.CtxUser] = session.Username
+			s[sessions.CtxCSRF] = session.Values[sessions.CtxCSRF].(string)
+			ctx := context.WithValue(r.Context(), sessions.ContextKey(sessions.CtxSession), s)
 			// Update metadata for the user
-			if err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"]); err != nil {
+			if err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s[sessions.CtxCSRF]); err != nil {
 				log.Printf("error updating metadata for user %s: %v", session.Username, err)
 			}
 			// Access granted
@@ -49,7 +49,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			if err != nil {
 				log.Printf("GetSession %v", err)
 			}
-			cookiev, err := r.Cookie(samlConfig.TokenName)
+			cookiev, err := r.Cookie(authCookieName)
 			if err != nil {
 				log.Printf("error extracting JWT data: %v", err)
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
@@ -92,11 +92,11 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Set middleware values
 			s := make(sessions.ContextValue)
-			s[ctxUser] = session.Username
-			s[ctxCSRF] = session.Values[ctxCSRF].(string)
-			ctx := context.WithValue(r.Context(), sessions.ContextKey("session"), s)
+			s[sessions.CtxUser] = session.Username
+			s[sessions.CtxCSRF] = session.Values[sessions.CtxCSRF].(string)
+			ctx := context.WithValue(r.Context(), sessions.ContextKey(sessions.CtxSession), s)
 			// Update metadata for the user
-			err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s["csrftoken"])
+			err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s[sessions.CtxCSRF])
 			if err != nil {
 				log.Printf("error updating metadata for user %s: %v", session.Username, err)
 			}

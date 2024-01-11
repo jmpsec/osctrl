@@ -65,7 +65,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
@@ -126,7 +126,7 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
 	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey("session")).(sessions.ContextValue)
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
