@@ -205,6 +205,23 @@ func showFlagsEnvironment(c *cli.Context) error {
 	return nil
 }
 
+func genFlagsEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("Environment name is required")
+		os.Exit(1)
+	}
+	flags, err := envs.GenerateFlagsEnv(envName, "", "")
+	if err != nil {
+		return err
+	}
+	if err := envs.UpdateFlags(envName, flags); err != nil {
+		return err
+	}
+	return nil
+}
+
 func listEnvironment(c *cli.Context) error {
 	envAll, err := envs.All()
 	if err != nil {

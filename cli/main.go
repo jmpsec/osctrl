@@ -836,6 +836,19 @@ func init() {
 					Action: cliWrapper(showFlagsEnvironment),
 				},
 				{
+					Name:    "gen-flags",
+					Aliases: []string{"g"},
+					Usage:   "Generate and save the flags for a TLS environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Environment name to be displayed",
+						},
+					},
+					Action: cliWrapper(genFlagsEnvironment),
+				},
+				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS environments",
