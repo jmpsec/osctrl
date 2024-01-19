@@ -126,8 +126,9 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 		log.Printf("user %s does not exist", username)
 		return false
 	}
-	if environment == NoEnvironment {
-		return m.IsAdmin(username)
+	// If user is an admin, access is yes
+	if m.IsAdmin(username) {
+		return true
 	}
 	var perms []UserPermission
 	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
