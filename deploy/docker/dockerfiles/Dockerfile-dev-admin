@@ -1,0 +1,37 @@
+######################################## osctrl-dev-base ########################################
+ARG GOLANG_VERSION
+FROM golang:${GOLANG_VERSION} AS osctrl-admin-dev
+
+WORKDIR /usr/src/app
+
+ARG OSQUERY_VERSION
+ENV GO111MODULE="on"
+ENV GOOS="linux"
+ENV CGO_ENABLED=0
+
+# Hot reloading mod
+RUN go install github.com/cosmtrek/air@v1.41.0 
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.1
+
+# Copy code
+COPY . /usr/src/app
+
+# Download deps
+RUN go mod download
+RUN go mod verify
+
+### Copy osctrl-admin bin and configs ###
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/script
+RUN mkdir -p /opt/osctrl/carved_files
+
+### Copy osctrl-admin web templates ###
+COPY admin/templates/ /opt/osctrl/tmpl_admin
+COPY admin/static/ /opt/osctrl/static
+COPY deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
+RUN go build -o /opt/osctrl/bin/osctrl-admin admin/*.go
+
+EXPOSE 9001
+ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-admin.toml"]
+

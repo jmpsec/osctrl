@@ -1,21 +1,21 @@
-# Config file for [Air](https://github.com/cosmtrek/air) in TOML format for osctrl-api
+# Config file for [Air](https://github.com/cosmtrek/air) in TOML format for osctrl-tls
 
 # Working directory
 # . or absolute path, please note that the directories following must be under root
 root = "."
-tmp_dir = "bin"
+tmp_dir = "/tmp"
 
 [build]
-  bin = "./bin/osctrl-api"
-  cmd = "go build -o ./bin/osctrl-api api/*.go"
+  bin = "./bin/osctrl-tls"
+  cmd = "go build -o /opt/osctrl/bin/osctrl-tls /usr/src/app/tls/*.go"
   # It's not necessary to trigger build each time file changes if it's too frequent.
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "bin"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "deploy"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = "./bin/osctrl-api"
+  full_bin = "cd /opt/osctrl && ./bin/osctrl-tls"
   include_dir = []
   include_ext = ["go"]
   kill_delay = "0s"

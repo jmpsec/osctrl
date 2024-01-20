@@ -214,6 +214,47 @@ services:
     cpus: 1
     mem_limit: 100M
 
+  ######################################### osquery #########################################
+  osquery:
+    container_name: 'osctrl-osquery'
+    image: 'osctrl-osquery:v${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      target: osctrl-ubuntu-osquery
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-cli
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
+    environment:
+      #### osquery enroll ####
+      - ENV_NAME=dev
+      - HOST=osctrl-nginx
+      #### Database settings ####
+      - DB_HOST=postgres
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-backend
+    volumes:
+      - type: bind
+        source: ./deploy/docker/conf/tls/osctrl.crt
+        target: /opt/osctrl/config/osctrl.crt
+      - osquery-data:/var/osquery
+      - osquery-conf:/etc/osquery
+    depends_on:
+      - osctrl-tls
+      - osctrl-api
+      - postgres
+    healthcheck:
+      test: ["CMD", "test", "-f", "/var/run/osqueryd.pidfile"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    cpus: 1
+    mem_limit: 150M
 
 networks:
   osctrl-backend:

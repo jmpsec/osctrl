@@ -1,0 +1,53 @@
+#################################################### osctrl-cli-dev ####################################################
+ARG GOLANG_VERSION
+FROM golang:${GOLANG_VERSION} AS osctrl-cli-dev
+
+WORKDIR /usr/src/app
+
+ENV GO111MODULE="on"
+ENV GOOS="linux"
+ENV CGO_ENABLED=0
+
+# Hot reloading mod
+RUN go install github.com/cosmtrek/air@v1.41.0
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.1
+
+# Copy code
+COPY . /usr/src/app
+
+# Download deps
+RUN go mod download
+RUN go mod verify
+
+### Copy osctrl-api bin and configs ###
+RUN mkdir -p /opt/osctrl/bin
+RUN mkdir -p /opt/osctrl/config
+RUN mkdir -p /opt/osctrl/script
+RUN go build -o /opt/osctrl/bin/osctrl-cli cli/*.go
+
+#### User and env init script ####
+COPY deploy/docker/conf/cli/entrypoint.sh /opt/osctrl/script/init.sh
+RUN chmod +x /opt/osctrl/script/init.sh
+
+ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-cli.toml"]
+CMD ["/opt/osctrl/script/init.sh"]
+
+#################################################### osctrl-ubuntu-osquery ####################################################
+FROM osctrl-cli-dev as osctrl-ubuntu-osquery
+
+ARG OSQUERY_VERSION
+
+USER root
+
+# Install Osquery
+RUN apt-get update -y -qq && apt-get install -y curl host
+RUN ubuntuArch="$(dpkg --print-architecture)"; \
+  curl -L https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb \
+  --output /tmp/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb
+RUN ubuntuArch="$(dpkg --print-architecture)"; \
+  dpkg -i /tmp/osquery_${OSQUERY_VERSION}-1.linux_${ubuntuArch}.deb
+
+# Entrypoint
+COPY deploy/docker/conf/osquery/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]

@@ -130,24 +130,40 @@ logs_tls:
 	sudo journalctl -f -t $(TLS_NAME)
 
 # Display docker logs for TLS server
-docker_logs_tls:
-	docker logs -f $(TLS_NAME)
+docker_dev_logs_tls:
+	docker logs -f $(TLS_NAME)-dev
 
 # Display systemd logs for Admin server
 logs_admin:
 	sudo journalctl -f -t $(ADMIN_NAME)
 
 # Display docker logs for Admin server
-docker_logs_admin:
-	docker logs -f $(ADMIN_NAME)
+docker_dev_logs_admin:
+	docker logs -f $(ADMIN_NAME)-dev
 
 # Display systemd logs for API server
 logs_api:
 	sudo journalctl -f -t $(API_NAME)
 
 # Display docker logs for API server
-docker_logs_api:
-	docker logs -f $(API_NAME)
+docker_dev_logs_api:
+	docker logs -f $(API_NAME)-dev
+
+# Display docker logs for nginx server
+docker_dev_logs_nginx:
+	docker logs -f osctrl-nginx-dev
+
+# Display docker logs for osquery client
+docker_dev_logs_osquery:
+	docker logs -f osctrl-osquery-dev
+
+# Display docker logs for postgresql server
+docker_dev_logs_postgresql:
+	docker logs -f osctrl-postgres-dev
+
+# Display docker logs for redis server
+docker_dev_logs_redis:
+	docker logs -f osctrl-redis-dev
 
 # Destroy existing vagrant development VM
 vagrant_destroy:
@@ -161,34 +177,26 @@ vagrant_up:
 	mkcert -key-file "certs/osctrl-admin.key" -cert-file "certs/osctrl-admin.crt" "osctrl.dev"
 	vagrant up
 
-# Build prod docker containers and run them (also generates new certificates)
-docker_prod:
-	./deploy/docker/dockerize.sh -u -b -f -J
-
 # Build dev docker containers and run them (also generates new certificates)
-docker_dev:
-	./deploy/docker/dockerize.sh -u -b -f -J -D
+docker_dev_build:
+ifeq (,$(wildcard .env))
+$(error Missing .env file)
+endif
+ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.crt))
+$(error Missing TLS certificate file)
+endif
+ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
+$(error Missing TLS private key file)
+endif
+	docker-compose -f docker-compose-dev.yml build
 
 # Run docker containers
-docker_up:
-	./deploy/docker/dockerize.sh -u
-
-# Build docker containers
-docker_build:
-	./deploy/docker/dockerize.sh -b
+docker_dev_up:
+	docker-compose -f docker-compose-dev.yml up
 
 # Takes down docker containers
-docker_down:
-	./deploy/docker/dockerize.sh -d
-
-# Cleans docker containers and certificates
-docker_clean:
-	make docker_down
-	./deploy/docker/dockerize.sh -x
-	rm -Rf deploy/docker/conf/tls/*.crt
-	rm -Rf deploy/docker/conf/tls/*.key
-	rm -Rf .env
-	docker volume rm osctrl-postgres-db
+docker_dev_down:
+	docker-compose -f docker-compose-dev.yml down
 
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
