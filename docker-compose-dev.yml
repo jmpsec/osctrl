@@ -1,7 +1,7 @@
 version: "2.4"
 services:
   ######################################### NGINX #########################################
-  nginx:
+  osctrl-nginx:
     container_name: 'osctrl-nginx-dev'
     image: nginx:${NGINX_VERSION}
     restart: unless-stopped
@@ -48,12 +48,12 @@ services:
       - SERVICE_AUTH=none
       - SERVICE_LOGGER=stdout
       #### Database settings ####
-      - DB_HOST=postgres
+      - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_HOST=redis
+      - REDIS_HOST=osctrl-redis
     networks:
       - osctrl-dev-backend
     ports:
@@ -61,8 +61,8 @@ services:
     volumes:
       - .:/usr/src/app:rw,delegated
     depends_on:
-      - postgres
-      - redis
+      - osctrl-postgres
+      - osctrl-redis
 
 
   ######################################### osctrl-admin #########################################
@@ -85,12 +85,12 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=stdout
       #### Database settings ####
-      - DB_HOST=postgres
+      - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_HOST=redis
+      - REDIS_HOST=osctrl-redis
     networks:
       - osctrl-dev-backend
     ports:
@@ -98,8 +98,8 @@ services:
     volumes:
       - .:/usr/src/app:rw,delegated
     depends_on:
-      - postgres
-      - redis
+      - osctrl-postgres
+      - osctrl-redis
 
 
   ######################################### osctrl-api #########################################
@@ -122,12 +122,12 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=stdout
       #### Database settings ####
-      - DB_HOST=postgres
+      - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_HOST=redis
+      - REDIS_HOST=osctrl-redis
     networks:
       - osctrl-dev-backend
     ports:
@@ -135,12 +135,12 @@ services:
     volumes:
       - .:/usr/src/app:rw,delegated
     depends_on:
-      - postgres
-      - redis
+      - osctrl-postgres
+      - osctrl-redis
 
 
   ######################################### PostgreSQL #########################################
-  postgres:
+  osctrl-postgres:
     container_name: 'osctrl-postgres-dev'
     image: postgres:${POSTGRES_VERSION}
     restart: unless-stopped
@@ -162,7 +162,7 @@ services:
 
 
   ######################################### Redis #########################################
-  redis:
+  osctrl-redis:
     container_name: 'osctrl-redis-dev'
     image: redis:${REDIS_VERSION}
     restart: unless-stopped
@@ -198,13 +198,13 @@ services:
       #### osctrl env ####
       - ENV_NAME=dev
       - CERT_FILE=/opt/osctrl/config/osctrl.crt
-      - HOST=nginx
+      - HOST=osctrl-nginx
       #### osctrl admin ####
       - OSCTRL_USER=${OSCTRL_USER}
       - OSCTRL_PASS=${OSCTRL_PASS}
       - API_URL=http://osctrl-api:9002
       #### Database settings ####
-      - DB_HOST=postgres
+      - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
@@ -216,8 +216,8 @@ services:
         target: /opt/osctrl/config/osctrl.crt
       - .:/usr/src/app:rw,delegated
     depends_on:
-      - postgres
-      - redis
+      - osctrl-postgres
+      - osctrl-redis
 
   ######################################### osquery #########################################
   osquery:
@@ -234,9 +234,9 @@ services:
     environment:
       #### osquery enroll ####
       - ENV_NAME=dev
-      - HOST=nginx
+      - HOST=osctrl-nginx
       #### Database settings ####
-      - DB_HOST=postgres
+      - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
@@ -251,7 +251,7 @@ services:
     depends_on:
       - osctrl-tls
       - osctrl-api
-      - postgres
+      - osctrl-postgres
 
 networks:
   osctrl-dev-backend:

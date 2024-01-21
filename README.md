@@ -24,13 +24,11 @@
 
 With **osctrl** you can monitor all your systems running osquery, distribute its configuration fast, collect all the status and result logs and allow you to run on-demand queries.
 
-## Running osctrl with docker
+## Running osctrl with docker for development
 
-You can use docker to run **osctrl** and all the components are defined in the `Dockerfile-osctrl`. Also there is a `docker-compose.yml` that ties all the components together, to serve a functional deployment.
+You can use docker to run **osctrl** and all the components are defined in the `docker-compose-dev.yml` that ties all the components together, to serve a functional deployment.
 
-Inside of the `docker` folder, execute the command `./dockerize.sh -u` to build and run all containers necessary for **osctrl**.
-
-Ultimately you can just execute `make docker_all` and it will automagically build and run **osctrl** locally in docker.
+Ultimately you can just execute `make docker_dev` and it will automagically build and run **osctrl** locally in docker, for development purposes.
 
 ## Running osctrl with vagrant
 
