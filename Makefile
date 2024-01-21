@@ -165,6 +165,30 @@ docker_dev_logs_postgresql:
 docker_dev_logs_redis:
 	docker logs -f osctrl-redis-dev
 
+# Docker shell into TLS server
+docker_dev_shell_tls:
+	docker exec -it $(TLS_NAME)-dev /bin/bash
+
+# Docker shell into Admin server
+docker_dev_shell_admin:
+	docker exec -it $(ADMIN_NAME)-dev /bin/bash
+
+# Docker shell into API server
+docker_dev_shell_api:
+	docker exec -it $(API_NAME)-dev /bin/bash
+
+# Docker shell into osquery client
+docker_dev_shell_osquery:
+	docker exec -it osctrl-osquery-dev /bin/bash
+
+# Docker shell into postgresql server
+docker_dev_shell_postgres:
+	docker exec -it osctrl-postgres-dev /bin/bash
+
+# Docker shell into redis server
+docker_dev_shell_redis:
+	docker exec -it osctrl-redis-dev /bin/sh
+
 # Destroy existing vagrant development VM
 vagrant_destroy:
 	rm -Rf certs/*
@@ -189,6 +213,11 @@ ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
 $(error Missing TLS private key file)
 endif
 	docker-compose -f docker-compose-dev.yml build
+
+# Build and run dev docker containers
+make docker_dev:
+	make docker_dev_build
+	make docker_dev_up
 
 # Run docker containers
 docker_dev_up:

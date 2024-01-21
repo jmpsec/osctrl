@@ -2,7 +2,7 @@
 
 ENV_NAME="${ENV_NAME:=dev}"
 CERT_FILE="${CERT_FILE:=/opt/osctrl/config/osctrl.crt}"
-HOST="${HOST:=osctrl-nginx}"
+HOST="${HOST:=nginx}"
 OSCTRL_USER="${OSCTRL_USER:=admin}"
 OSCTRL_PASS="${OSCTRL_PASS:=admin}"
 WAIT="${WAIT:=5}"
@@ -48,8 +48,8 @@ echo "The environment ${ENV_NAME} is ready"
 
 echo "
 ##############################################################################
-#                Successfully created an osctrl user and env 
-# 
+#                Successfully created an osctrl user and env
+#
 # osctrl admin user: ${OSCTRL_USER}
 # osctrl env name: ${ENV_NAME}
 ##############################################################################
