@@ -3,7 +3,7 @@ package handlers
 import (
 	"compress/gzip"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -246,7 +246,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.EnrollRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error reading POST body %v", err)
@@ -327,7 +327,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.ConfigRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricConfigErr)
 		log.Printf("error reading POST body %v", err)
@@ -408,7 +408,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Extract POST body and decode JSON
 	var t types.LogRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricLogErr)
 		log.Printf("error reading POST body %v", err)
@@ -427,7 +427,8 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	var nodeInvalid bool
 	// Check if provided node_key is valid and if so, update node
-	node, err := h.Nodes.GetByKey(t.NodeKey); if err == nil {
+	node, err := h.Nodes.GetByKey(t.NodeKey)
+	if err == nil {
 		nodeInvalid = false
 		// Record ingested data
 		if err := h.Ingested.IngestLog(env.ID, node.ID, len(body), t.LogType); err != nil {
@@ -472,7 +473,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryReadRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricReadErr)
 		log.Printf("error reading POST body %v", err)
@@ -552,7 +553,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.QueryWriteRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricWriteErr)
 		log.Printf("error reading POST body %v", err)
@@ -790,7 +791,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveInitRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error reading POST body %v", err)
@@ -862,7 +863,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CarveBlockRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error reading POST body %v", err)
@@ -923,7 +924,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.FlagsRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricFlagsErr)
 		log.Printf("error reading POST body %v", err)
@@ -979,7 +980,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.CertRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricCertErr)
 		log.Printf("error reading POST body %v", err)
@@ -1029,7 +1030,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.VerifyRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricVerifyErr)
 		log.Printf("error reading POST body %v", err)
@@ -1118,7 +1119,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Decode read POST body
 	var t types.ScriptRequest
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricScriptErr)
 		log.Printf("error reading POST body %v", err)
