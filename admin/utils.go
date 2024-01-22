@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -106,7 +106,7 @@ func loadOsqueryTables(file string) ([]types.OsqueryTable, error) {
 			log.Fatalf("Failed to close tables file %v", err)
 		}
 	}()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	if err := json.Unmarshal(byteValue, &tables); err != nil {
 		return tables, err
 	}

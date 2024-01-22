@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -79,7 +78,7 @@ func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]st
 		}
 	}()
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, []byte("Can not read response"), err
 	}

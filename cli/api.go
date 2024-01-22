@@ -159,7 +159,7 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 		}
 	}()
 	// Read body
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("can not read response - %v", err)
 	}
