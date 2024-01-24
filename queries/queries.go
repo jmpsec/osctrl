@@ -136,9 +136,12 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 		if err != nil {
 			return QueryReadQueries{}, false, err
 		}
-		if len(targets) == 1 {
-			acelerate = true
-		}
+		// FIXME disable acceleration until figure out edge cases where it would trigger by mistake
+		/*
+			if len(targets) == 1 {
+				acelerate = true
+			}
+		*/
 		if isQueryTarget(node, targets) && q.NotYetExecuted(_q.Name, node.UUID) {
 			qs[_q.Name] = _q.Query
 		}
