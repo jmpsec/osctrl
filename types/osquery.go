@@ -164,7 +164,7 @@ type LogResultData struct {
 
 // LogStatusData to be used processing status logs from nodes
 type LogStatusData struct {
-	Line           string         `json:"line"`
+	Line           StringInt      `json:"line"`
 	Message        string         `json:"message"`
 	Version        string         `json:"version"`
 	Filename       string         `json:"filename"`
