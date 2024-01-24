@@ -134,7 +134,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			_l := LogJSON{
 				Created: _c,
 				First:   s.Message,
-				Second:  s.Severity,
+				Second:  strconv.Itoa(int(s.Severity)),
 			}
 			logJSON = append(logJSON, _l)
 		}

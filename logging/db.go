@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,7 +136,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 			Message:     l.Message,
 			Version:     l.Version,
 			Filename:    l.Filename,
-			Severity:    l.Severity,
+			Severity:    strconv.Itoa(int(l.Severity)),
 		}
 		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
 			log.Printf("Error creating status log entry %s", err)

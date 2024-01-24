@@ -168,7 +168,7 @@ type LogStatusData struct {
 	Message        string         `json:"message"`
 	Version        string         `json:"version"`
 	Filename       string         `json:"filename"`
-	Severity       string         `json:"severity"`
+	Severity       StringInt      `json:"severity"`
 	UnixTime       StringInt      `json:"unixTime"`
 	Decorations    LogDecorations `json:"decorations"`
 	CalendarTime   string         `json:"calendarTime"`
