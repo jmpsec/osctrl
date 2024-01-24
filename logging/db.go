@@ -132,7 +132,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 		entry := OsqueryStatusData{
 			UUID:        strings.ToUpper(l.HostIdentifier),
 			Environment: environment,
-			Line:        l.Line,
+			Line:        strconv.Itoa(int(l.Line)),
 			Message:     l.Message,
 			Version:     l.Version,
 			Filename:    l.Filename,
