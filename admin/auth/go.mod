@@ -21,9 +21,9 @@ replace github.com/jmpsec/osctrl/utils => ../../utils
 replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
-	github.com/jmpsec/osctrl/admin/sessions v0.3.4
-	github.com/jmpsec/osctrl/settings v0.3.4
-	github.com/jmpsec/osctrl/users v0.3.4
+	github.com/jmpsec/osctrl/admin/sessions v0.3.5
+	github.com/jmpsec/osctrl/settings v0.3.5
+	github.com/jmpsec/osctrl/users v0.3.5
 )
 
 require (
@@ -33,12 +33,12 @@ require (
 	github.com/gorilla/sessions v1.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/environments v0.3.4 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.4 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.4 // indirect
-	github.com/jmpsec/osctrl/types v0.3.4 // indirect
-	github.com/jmpsec/osctrl/utils v0.3.4 // indirect
-	github.com/jmpsec/osctrl/version v0.3.4 // indirect
+	github.com/jmpsec/osctrl/environments v0.3.5 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.5 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.5 // indirect
+	github.com/jmpsec/osctrl/types v0.3.5 // indirect
+	github.com/jmpsec/osctrl/utils v0.3.5 // indirect
+	github.com/jmpsec/osctrl/version v0.3.5 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	gorm.io/gorm v1.25.5 // indirect

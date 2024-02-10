@@ -23,13 +23,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.13
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.15.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.7
-	github.com/jmpsec/osctrl/backend v0.3.4
+	github.com/jmpsec/osctrl/backend v0.3.5
 	github.com/jmpsec/osctrl/cache v0.0.0-20231221224851-87ae6d485538
-	github.com/jmpsec/osctrl/nodes v0.3.4
-	github.com/jmpsec/osctrl/queries v0.3.4
-	github.com/jmpsec/osctrl/settings v0.3.4
-	github.com/jmpsec/osctrl/types v0.3.4
-	github.com/jmpsec/osctrl/utils v0.3.4
+	github.com/jmpsec/osctrl/nodes v0.3.5
+	github.com/jmpsec/osctrl/queries v0.3.5
+	github.com/jmpsec/osctrl/settings v0.3.5
+	github.com/jmpsec/osctrl/types v0.3.5
+	github.com/jmpsec/osctrl/utils v0.3.5
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/viper v1.18.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1

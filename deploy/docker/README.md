@@ -56,7 +56,7 @@ You can generate a random enough JWT secret to be used with the `osctrl-api` and
 ## References
 
 * [What is osctrl?](https://osctrl.net/)
-* [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.3.4#/)
+* [osctrl-api](https://app.swaggerhub.com/apis-docs/jmpsec/osctrl-api/0.3.5#/)
 
 ### Docker
 

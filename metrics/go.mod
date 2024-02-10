@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/google/uuid v1.5.0 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.4 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.5 // indirect
 	github.com/jmpsec/osctrl/utils v0.0.0-20231221224851-87ae6d485538 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
@@ -41,7 +41,7 @@ require (
 	github.com/jackc/pgx/v5 v5.2.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.4 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.5 // indirect
 	github.com/jmpsec/osctrl/types v0.0.0-20231221224851-87ae6d485538
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
