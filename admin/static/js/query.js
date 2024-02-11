@@ -123,7 +123,10 @@ function confirmDeleteSavedQueries(_names, _url) {
 }
 
 function queryResultLink(link, query, url) {
-  var external_link = '<a href="' + link + '" _target="_blank"><i class="fas fa-external-link-alt"></i></a>';
+  var external_link =
+    '<a href="' +
+    link +
+    '" _target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
   return '<span class="query-link"><a href="' + url + '">' + query + '</a> - ' + external_link + '</span> ';
 }
 
