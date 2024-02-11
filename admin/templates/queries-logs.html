@@ -28,7 +28,7 @@
                 {{ else }}
                   <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
                 {{ end }}
-                 - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank"><i class="fas fa-external-link-alt"></i></a>
+                 - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
