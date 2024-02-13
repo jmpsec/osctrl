@@ -18,19 +18,18 @@ inputs:
     description: Define the Docker tag
   docker_hub_org:
     required: true
-    description: Pass DockerHub org to aciton
+    description: Pass DockerHub org to action
   docker_hub_username:
     required: true
-    description: Pass DockerHub username to aciton
+    description: Pass DockerHub username to action
   docker_hub_access_token:
     required: true
-    description: Pass DockerHub access token to aciton
+    description: Pass DockerHub access token to action
 
 outputs:
   docker_image_digest:
     description: Dockerhub image digest
     value: ${{ toJson(steps.docker_build.outputs.digest) }}
-
 
 runs:
   using: "composite"
@@ -42,10 +41,18 @@ runs:
         fetch-depth: 2
 
     ########################### Download osctrl binary ###########################
-    - name: Download a osctrl binaries
+    - name: Download osctrl binary
       uses: actions/download-artifact@v4.1.2
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Copy binary to prepare for Docker ###########################
+    - name: Copy binary to prepare for Docker
+      shell: bash
+      run: |
+        cp \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
