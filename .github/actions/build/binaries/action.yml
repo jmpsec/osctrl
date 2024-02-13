@@ -19,9 +19,7 @@ inputs:
   golang_version:
     required: false
     description: Define the version of golang to compile with
-    default: 1.18.1
-
-
+    default: 1.21.3
 
 runs:
   using: "composite"
@@ -32,7 +30,6 @@ runs:
       with:
         fetch-depth: 2
 
-
     ########################### Install go to env ###########################
     - name: Set up Go
       uses: actions/setup-go@v5.0.0
@@ -41,12 +38,10 @@ runs:
     - run: go version
       shell: bash
 
-
     ########################### Get GO deps #############################
     - name: Get GO deps
       run: go mod download
       shell: bash
-
 
     ########################### Build osctrl inputs.osctrl_component ###########################
     - name: Build osctrl component
@@ -55,7 +50,6 @@ runs:
         go build -o osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         ./${{ inputs.osctrl_component }}
       shell: bash
-
 
     ########################### Upload artifacts ###########################
     - name: Upload osctrl binaries
