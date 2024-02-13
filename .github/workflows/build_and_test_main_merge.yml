@@ -20,7 +20,7 @@ jobs:
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 2
 
@@ -72,7 +72,7 @@ jobs:
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 2
 
@@ -107,7 +107,7 @@ jobs:
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 2
 

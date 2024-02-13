@@ -28,14 +28,14 @@ runs:
   steps:
     ########################### Checkout code ###########################
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.1
       with:
         fetch-depth: 2
 
 
     ########################### Install go to env ###########################
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5.0.0
       with:
         go-version: ${{ inputs.golang_version }}
     - run: go version
@@ -49,7 +49,7 @@ runs:
 
 
     ########################### Build osctrl inputs.osctrl_component ###########################
-    - name: Build osctrl-tls
+    - name: Build osctrl component
       run: |
         GOOS=${{ inputs.go_os }} GOARCH=${{ inputs.go_arch }} \
         go build -o osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
@@ -59,8 +59,7 @@ runs:
 
     ########################### Upload artifacts ###########################
     - name: Upload osctrl binaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.1
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
-        path: osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
         retention-days: 10
