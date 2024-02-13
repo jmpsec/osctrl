@@ -1,2 +1,2 @@
-/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}/service.json
-/etc/systemd/system/osctrl-{{ OSCTRL_COMPONTENT }}.service
+/etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}/service.json
+/etc/systemd/system/osctrl-{{ OSCTRL_COMPONENT }}.service

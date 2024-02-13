@@ -39,7 +39,7 @@ runs:
 
     ########################### Lint golang code ###########################
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4.0.0
       with:
         version: v1.29
 
