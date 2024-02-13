@@ -47,7 +47,7 @@ runs:
         OSQUERY_VESION: ${{ inputs.osquery_version }}
         OSCTRL_VERSION: ${{ inputs.commit_sha }}
 
-    - name: Create DEB package contents
+    - name: Create DEB package contents for tagged version
       uses: jiro4989/build-deb-action@v3.0.0
       if: startsWith(github.ref, 'refs/tags/')
       with:
@@ -69,9 +69,17 @@ runs:
         desc: "DEB package for osctrl-${OSCTRL_COMPONENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
 
     ########################### Upload DEBs ###########################
-    - name: Upload osctrl DEBs
+    - name: Upload osctrl DEBs for tagged version
       uses: actions/upload-artifact@v4.3.1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
         path: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        retention-days: 10
+
+    - name: Upload osctrl DEBs
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        path: osctrl-${{ inputs.osctrl_component }}_${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
         retention-days: 10
