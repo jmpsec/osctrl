@@ -13,11 +13,11 @@ then
     chown root:root -R /etc/osctrl
 fi
 
-if [ ! -d "/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}" ]
+if [ ! -d "/etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}" ]
 then
-    echo "Directory /etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }} DOES NOT exists."
-    mkdir /etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}
-    chown root:osctrl /etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}
+    echo "Directory /etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }} DOES NOT exists."
+    mkdir /etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}
+    chown root:osctrl /etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}
 fi
 
 ################### Create osctrl log directory ###################

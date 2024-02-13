@@ -3,24 +3,24 @@
 set -e
 
 ################### Set perms on config directory ###################
-if [ -d "/etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}" ]
+if [ -d "/etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}" ]
 then
-    chown root:osctrl -R /etc/osctrl/osctrl-{{ OSCTRL_COMPONTENT }}
+    chown root:osctrl -R /etc/osctrl/osctrl-{{ OSCTRL_COMPONENT }}
 fi
 
 ################### Copy common configs ###################
 if [ ! -f /usr/share/osctrl/db.json.example ]
 then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONTENT }}/db.json.example /usr/share/osctrl/db.json.example
+    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/db.json.example /usr/share/osctrl/db.json.example
     chown root:root /usr/share/osctrl/db.json.example
 fi
 
 if [ ! -f /usr/share/osctrl/redis.json.example ]
 then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONTENT }}/redis.json.example /usr/share/osctrl/redis.json.example
+    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/redis.json.example /usr/share/osctrl/redis.json.example
     chown root:root /usr/share/osctrl/redis.json.example
 fi
-rm -rd /tmp/osctrl-{{ OSCTRL_COMPONTENT }}
+rm -rd /tmp/osctrl-{{ OSCTRL_COMPONENT }}
 
 ################### osctrl-admin web assets ###################
 if [ -d "/usr/share/osctrl/tmpl_admin" ]
@@ -36,8 +36,6 @@ then
 
     # new files and folders inherit group ownership from the parent folder
     chmod g+s /usr/share/osctrl/tmpl_admin/
-
-
 fi
 
 if [ -d "/usr/share/osctrl/static" ]

@@ -64,7 +64,7 @@ runs:
         package: osctrl-${{ inputs.osctrl_component }}
         package_root: ".debpkg-osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}"
         maintainer: jmpsec/osctrl
-        version: ${{ inputs.commit_sha }}
+        version: "0.0-${{ inputs.commit_sha }}"
         arch: ${{ inputs.go_arch }}
         desc: "DEB package for osctrl-${OSCTRL_COMPONENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
 
