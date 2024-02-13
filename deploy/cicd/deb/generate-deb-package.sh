@@ -9,64 +9,64 @@ OSQUERY_VESION="${VARIABLE:-5.10.2}"
 OSCTRL_VERSION="${VARIABLE:-0.0.0}"
 
 ###################################### Init DEB contents ######################################
-DEB_DIR=".debpkg-osctrl-${OSCTRL_COMPONTENT}-${COMMIT_SHA}-${GOOS}-${GOARCH}"
+DEB_DIR=".debpkg-osctrl-${OSCTRL_COMPONENT}-${COMMIT_SHA}-${GOOS}-${GOARCH}"
 mkdir -p "${DEB_DIR}/DEBIAN"
 mkdir -p "${DEB_DIR}/usr/local/bin"
 mkdir -p "${DEB_DIR}/usr/share/osctrl"
 mkdir -p "${DEB_DIR}/etc/osctrl"
 mkdir -p "${DEB_DIR}/etc/systemd/system"
-mkdir -p "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONTENT}"
-mkdir -p "${DEB_DIR}/var/log/osctrl-${OSCTRL_COMPONTENT}"
+mkdir -p "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONENT}"
+mkdir -p "${DEB_DIR}/var/log/osctrl-${OSCTRL_COMPONENT}"
 
 
 ###################################### Pre/post init scripts ######################################
 cp deploy/cicd/deb/pre-init.sh "${DEB_DIR}/DEBIAN/preinst" && \
     chmod 755 "${DEB_DIR}/DEBIAN/preinst" && \
-    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/preinst"
+    sed -i "s#{{ OSCTRL_COMPONENT }}#${OSCTRL_COMPONENT}#g" "${DEB_DIR}/DEBIAN/preinst"
 
 cp deploy/cicd/deb/post-init.sh "${DEB_DIR}/DEBIAN/postinst" && \
     chmod 755 "${DEB_DIR}/DEBIAN/postinst" && \
-    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/postinst"
+    sed -i "s#{{ OSCTRL_COMPONENT }}#${OSCTRL_COMPONENT}#g" "${DEB_DIR}/DEBIAN/postinst"
 
 ###################################### deb-conffiles ######################################
 # https://manpages.debian.org/testing/dpkg-dev/deb-conffiles.5.en.html
 # https://askubuntu.com/questions/473354/how-to-mark-some-file-in-debian-package-as-config
 cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
-    sed -i "s#{{ OSCTRL_COMPONTENT }}#${OSCTRL_COMPONTENT}#g" "${DEB_DIR}/DEBIAN/conffiles"
+    sed -i "s#{{ OSCTRL_COMPONENT }}#${OSCTRL_COMPONENT}#g" "${DEB_DIR}/DEBIAN/conffiles"
 
 
 ###################################### Example configs ######################################
-mkdir -p "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}"
+mkdir -p "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}"
 
-cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/db.json.example" && \
-    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/db.json.example"
+cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example"
 
-cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example" && \
-    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONTENT}/redis.json.example"
+cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example"
 
 
 ###################################### General components content ######################################
-mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}"
+mkdir -p "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}"
 
-cp osctrl-${OSCTRL_COMPONTENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}" && \
-    chmod 755 "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONTENT}"
+cp osctrl-${OSCTRL_COMPONENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONENT}" && \
+    chmod 755 "${DEB_DIR}/usr/local/bin/osctrl-${OSCTRL_COMPONENT}"
 
-cp deploy/config/service.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json" && \
-    chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json"
+cp deploy/config/service.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/service.json" && \
+    chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/service.json"
 
-cp deploy/config/service.json "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json.example" && \
-    chmod 640 "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json.example"
+cp deploy/config/service.json "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONENT}/service.json.example" && \
+    chmod 640 "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONENT}/service.json.example"
 
 ###################################### Generate SystemD config ######################################
-EXECSTART="/usr/local/bin/osctrl-${OSCTRL_COMPONTENT} \\
+EXECSTART="/usr/local/bin/osctrl-${OSCTRL_COMPONENT} \\
     --config \\
-    --config-file /etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/service.json \\
+    --config-file /etc/osctrl/osctrl-${OSCTRL_COMPONENT}/service.json \\
     --redis \\
     --redis-file /etc/osctrl/redis.json \\
     --db \\
     --db-file /etc/osctrl/db.json"
 
-if [ "$OSCTRL_COMPONTENT" == "admin" ]
+if [ "$OSCTRL_COMPONENT" == "admin" ]
 then
     ADMIN_ARGS=" \\
     --jwt \\
@@ -78,7 +78,7 @@ then
     EXECSTART+=${ADMIN_ARGS}
 fi
 
-if [ "$OSCTRL_COMPONTENT" == "api" ]
+if [ "$OSCTRL_COMPONENT" == "api" ]
 then
     API_ARGS=" \\
     --jwt \\
@@ -86,10 +86,10 @@ then
     EXECSTART+=${API_ARGS}
 fi
 
-cat > "${DEB_DIR}/etc/systemd/system/osctrl-${OSCTRL_COMPONTENT}.service" << EOF
+cat > "${DEB_DIR}/etc/systemd/system/osctrl-${OSCTRL_COMPONENT}.service" << EOF
 [Unit]
-Description=osctrl-${OSCTRL_COMPONTENT}
-ConditionPathExists=${WORKING_DIR}/osctrl-${OSCTRL_COMPONTENT}
+Description=osctrl-${OSCTRL_COMPONENT}
+ConditionPathExists=${WORKING_DIR}/osctrl-${OSCTRL_COMPONENT}
 After=network.target
 
 [Service]
@@ -99,28 +99,28 @@ Group=${OSCTRL_GROUP}
 Restart=on-failure
 RestartSec=10
 
-WorkingDirectory=${WORKING_DIR}/osctrl-${OSCTRL_COMPONTENT}
+WorkingDirectory=${WORKING_DIR}/osctrl-${OSCTRL_COMPONENT}
 ExecStart=${EXECSTART}
 
 # make sure log directory exists and owned by syslog
 PermissionsStartOnly=true
-ExecStartPre=/bin/mkdir -p /var/log/osctrl-${OSCTRL_COMPONTENT}
-ExecStartPre=/bin/chown osctrl:osctrl /var/log/osctrl-${OSCTRL_COMPONTENT}
-ExecStartPre=/bin/chmod 755 /var/log/osctrl-${OSCTRL_COMPONTENT}
+ExecStartPre=/bin/mkdir -p /var/log/osctrl-${OSCTRL_COMPONENT}
+ExecStartPre=/bin/chown osctrl:osctrl /var/log/osctrl-${OSCTRL_COMPONENT}
+ExecStartPre=/bin/chmod 755 /var/log/osctrl-${OSCTRL_COMPONENT}
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=osctrl-${OSCTRL_COMPONTENT}
+SyslogIdentifier=osctrl-${OSCTRL_COMPONENT}
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 ###################################### Generate contents of DEB ######################################
-if [ "$OSCTRL_COMPONTENT" == "admin" ]
+if [ "$OSCTRL_COMPONENT" == "admin" ]
 then
     #### Copy configs ####
-    cp deploy/config/jwt.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json" && \
-        chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json"
+    cp deploy/config/jwt.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/jwt.json" && \
+        chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/jwt.json"
 
     # Setup Osctrl-admin file carves
     mkdir -p "${DEB_DIR}/var/osctrl/carves"
@@ -138,11 +138,11 @@ then
 
 fi
 
-if [ "$OSCTRL_COMPONTENT" == "api" ]
+if [ "$OSCTRL_COMPONENT" == "api" ]
 then
     #### Copy configs ####
-    cp deploy/config/jwt.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json" && \
-        chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONTENT}/jwt.json"
+    cp deploy/config/jwt.json "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/jwt.json" && \
+        chmod 640 "${DEB_DIR}/etc/osctrl/osctrl-${OSCTRL_COMPONENT}/jwt.json"
 
     # Define conffiles
     echo "/etc/osctrl/osctrl-api/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
