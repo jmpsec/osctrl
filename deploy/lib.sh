@@ -358,23 +358,6 @@ function db_user_postgresql() {
   sudo su - "$__pguser" -c "$__psql -d $__pgdb -c '$_dbstatementgrant'"
 }
 
-# Configure PostgreSQL
-#   string  postgres_conf_file_location
-#   string  postgres_service_name
-#   string  postgres_hba_file
-function configure_postgres() {
-  local __conf=$1
-  local __service=$2
-  local __hba=$3
-
-  log "PostgreSQL permissions"
-
-  sudo cp "$__conf" "$__hba"
-
-  sudo systemctl restart "$__service"
-  sudo systemctl enable "$__service"
-}
-
 # Configure Redis
 #   string  redis_conf_file_location
 #   string  redis_service_name
