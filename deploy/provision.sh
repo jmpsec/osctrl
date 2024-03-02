@@ -620,18 +620,18 @@ else
 
   # PostgreSQL - Backend
   if [[ "$POSTGRES" == true ]]; then
-    POSTGRES_CONF="$SOURCE_PATH/deploy/postgres/pg_hba.conf"
     if [[ "$DISTRO" == "ubuntu" ]]; then
-      package postgresql
+      package postgresql-14
       package postgresql-contrib
+      package postgresql-client-14
       POSTGRES_SERVICE="postgresql"
-      POSTGRES_HBA="/etc/postgresql/12/main/pg_hba.conf"
-      POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
+      POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
     elif [[ "$DISTRO" == "centos" ]]; then
-      log "For CentOS, please install Postgres > 12 manually"
+      log "For CentOS, please install Postgres 14 manually"
       exit $OHNOES
     fi
-    configure_postgres "$POSTGRES_CONF" "$POSTGRES_SERVICE" "$POSTGRES_HBA"
+    sudo systemctl enable "$POSTGRES_SERVICE"
+    sudo systemctl start "$POSTGRES_SERVICE"
     db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
   fi
 
