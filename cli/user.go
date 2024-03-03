@@ -80,7 +80,7 @@ func addUser(c *cli.Context) error {
 		return fmt.Errorf("error creating permissions - %s", err)
 	}
 	if !silentFlag {
-		fmt.Printf("✅ created user %s successfully", username)
+		fmt.Printf("✅ created user %s successfully\n", username)
 	}
 	return nil
 }
@@ -123,13 +123,19 @@ func editUser(c *cli.Context) error {
 		}
 	}
 	defaultEnv := c.String("environment")
-	if defaultEnv != "" {
-		if err := adminUsers.ChangeDefaultEnv(username, defaultEnv); err != nil {
-			return fmt.Errorf("error changing environment - %s", err)
-		}
+	if defaultEnv == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	env, err := envs.Get(defaultEnv)
+	if err != nil {
+		return fmt.Errorf("error getting environment - %s", err)
+	}
+	if err := adminUsers.ChangeDefaultEnv(username, env.UUID); err != nil {
+		return fmt.Errorf("error changing environment - %s", err)
 	}
 	if !silentFlag {
-		fmt.Printf("✅ user %s edited successfully", username)
+		fmt.Printf("✅ user %s edited successfully\n", username)
 	}
 	return nil
 }
@@ -151,7 +157,7 @@ func deleteUser(c *cli.Context) error {
 		}
 	}
 	if !silentFlag {
-		fmt.Println("✅ node was deleted successfully")
+		fmt.Println("✅ user was deleted successfully")
 	}
 	return nil
 }

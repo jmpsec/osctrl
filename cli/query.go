@@ -151,7 +151,7 @@ func completeQuery(c *cli.Context) error {
 		}
 	}
 	if !silentFlag {
-		fmt.Printf("✅ query %s completed successfully", name)
+		fmt.Printf("✅ query %s completed successfully\n", name)
 	}
 	return nil
 }
@@ -182,7 +182,7 @@ func deleteQuery(c *cli.Context) error {
 		}
 	}
 	if !silentFlag {
-		fmt.Printf("✅ query %s deleted successfully", name)
+		fmt.Printf("✅ query %s deleted successfully\n", name)
 	}
 	return nil
 }
@@ -236,7 +236,7 @@ func runQuery(c *cli.Context) error {
 			return fmt.Errorf("error set expected - %s", err)
 		}
 		if !silentFlag {
-			fmt.Printf("✅ query %s created successfully", queryName)
+			fmt.Printf("✅ query %s created successfully\n", queryName)
 		}
 		return nil
 	} else if apiFlag {
@@ -245,7 +245,7 @@ func runQuery(c *cli.Context) error {
 			return fmt.Errorf("error run query - %s", err)
 		}
 		if !silentFlag {
-			fmt.Printf("✅ query %s created successfully", q.Name)
+			fmt.Printf("✅ query %s created successfully\n", q.Name)
 		}
 	}
 	return nil
