@@ -223,7 +223,7 @@ func runCarve(c *cli.Context) error {
 			return err
 		}
 		if !silentFlag {
-			fmt.Printf("✅ carve %s created successfully", c.Name)
+			fmt.Printf("✅ carve %s created successfully\n", c.Name)
 		}
 	}
 	return nil

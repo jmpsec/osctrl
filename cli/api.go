@@ -20,13 +20,13 @@ const (
 	APIPath = "/api/v1"
 	// APINodes for the nodes path
 	APINodes = "/nodes"
-	// APIQueries
+	// APIQueries for the queries path
 	APIQueries = "/queries"
-	// APICarves
+	// APICarves for the carves path
 	APICarves = "/carves"
-	// APIUsers
+	// APIUsers for the users path
 	APIUSers = "/users"
-	// APILogin
+	// APILogin for the login path
 	APILogin = "/login"
 	// JSONApplication for Content-Type headers
 	JSONApplication = "application/json"
@@ -48,7 +48,7 @@ type JSONConfigurationAPI struct {
 	Token string `json:"token"`
 }
 
-// OsctrlAPI
+// OsctrlAPI to keep the struct for the API client
 type OsctrlAPI struct {
 	Configuration JSONConfigurationAPI
 	Client        *http.Client

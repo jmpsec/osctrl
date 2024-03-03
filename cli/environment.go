@@ -25,13 +25,13 @@ func addEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("❌ Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get environment hostname
 	envHost := c.String("hostname")
 	if envHost == "" {
-		fmt.Println("❌ Environment hostname is required")
+		fmt.Println("❌ environment hostname is required")
 		os.Exit(1)
 	}
 	// Get certificate
@@ -73,10 +73,10 @@ func addEnvironment(c *cli.Context) error {
 			return err
 		}
 	} else {
-		fmt.Printf("Environment %s already exists!\n", envName)
+		fmt.Printf("❌ environment %s already exists!\n", envName)
 		os.Exit(1)
 	}
-	fmt.Printf("Environment %s was created successfully\n", envName)
+	fmt.Printf("✅ environment %s was created successfully\n", envName)
 	return nil
 }
 
@@ -84,7 +84,7 @@ func updateEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -125,7 +125,7 @@ func updateEnvironment(c *cli.Context) error {
 	if err := envs.UpdateFlags(envName, flags); err != nil {
 		return err
 	}
-	fmt.Printf("Environment %s was updated successfully\n", envName)
+	fmt.Printf("✅ environment %s was updated successfully\n", envName)
 	return nil
 }
 
@@ -133,7 +133,7 @@ func deleteEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	return envs.Delete(envName)
@@ -143,7 +143,7 @@ func showEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -194,7 +194,7 @@ func showFlagsEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -209,7 +209,7 @@ func genFlagsEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	flags, err := envs.GenerateFlagsEnv(envName, "", "")
@@ -259,7 +259,7 @@ func quickAddEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -274,7 +274,7 @@ func quickAddEnvironment(c *cli.Context) error {
 	case targetPowershell:
 		oneLiner, _ = environments.QuickAddOneLinerPowershell(insecure, env)
 	default:
-		fmt.Printf("Invalid target! It can be %s or %s\n", targetShell, targetPowershell)
+		fmt.Printf("❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
 		os.Exit(1)
 	}
 	fmt.Printf("%s\n", oneLiner)
@@ -285,7 +285,7 @@ func flagsEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	secret := c.String("secret")
@@ -306,7 +306,7 @@ func secretEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	env, err := envs.Get(envName)
@@ -321,25 +321,25 @@ func addScheduledQuery(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
 	queryName := c.String("query-name")
 	if queryName == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Get query
 	query := c.String("query")
 	if query == "" {
-		fmt.Println("Query is required")
+		fmt.Println("❌ query is required")
 		os.Exit(1)
 	}
 	// Get interval
 	interval := c.Int("interval")
 	if interval == 0 {
-		fmt.Println("Interval is required")
+		fmt.Println("❌ interval is required")
 		os.Exit(1)
 	}
 	// Add new scheduled query
@@ -352,7 +352,7 @@ func addScheduledQuery(c *cli.Context) error {
 	if err := envs.AddScheduleConfQuery(envName, queryName, qData); err != nil {
 		return err
 	}
-	fmt.Printf("Query %s was created successfully\n", queryName)
+	fmt.Printf("✅ query %s was created successfully\n", queryName)
 	return nil
 }
 
@@ -360,20 +360,20 @@ func removeScheduledQuery(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
 	queryName := c.String("query-name")
 	if queryName == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Remove query
 	if err := envs.RemoveScheduleConfQuery(envName, queryName); err != nil {
 		return err
 	}
-	fmt.Printf("Query %s was removed successfully\n", queryName)
+	fmt.Printf("✅ query %s was removed successfully\n", queryName)
 	return nil
 }
 
@@ -381,19 +381,19 @@ func addOsqueryOption(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get option
 	option := c.String("option")
 	if option == "" {
-		fmt.Println("Option is required")
+		fmt.Println("❌ option is required")
 		os.Exit(1)
 	}
 	// Get option type
 	optionType := c.String("type")
 	if optionType == "" {
-		fmt.Println("Option type is required")
+		fmt.Println("❌ option type is required")
 		os.Exit(1)
 	}
 	// Get option value based on the type
@@ -406,14 +406,14 @@ func addOsqueryOption(c *cli.Context) error {
 	case optionTypeString:
 		optionValue = c.String("string-value")
 	default:
-		fmt.Printf("Invalid type! It can be %s, %s or %s\n", optionTypeBool, optionTypeInt, optionTypeString)
+		fmt.Printf("❌ invalid type! It can be %s, %s or %s\n", optionTypeBool, optionTypeInt, optionTypeString)
 		os.Exit(1)
 	}
 	// Add osquery option
 	if err := envs.AddOptionsConf(envName, option, optionValue); err != nil {
 		return err
 	}
-	fmt.Printf("Option %s was added successfully\n", option)
+	fmt.Printf("✅ option %s was added successfully\n", option)
 	return nil
 }
 
@@ -421,20 +421,20 @@ func removeOsqueryOption(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get option
 	option := c.String("option")
 	if option == "" {
-		fmt.Println("Option is required")
+		fmt.Println("❌ option is required")
 		os.Exit(1)
 	}
 	// Remove osquery option
 	if err := envs.RemoveOptionsConf(envName, option); err != nil {
 		return err
 	}
-	fmt.Printf("Option %s was added successfully\n", option)
+	fmt.Printf("✅ option %s was added successfully\n", option)
 	return nil
 }
 
@@ -442,13 +442,13 @@ func addNewPack(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
 	pName := c.String("pack")
 	if pName == "" {
-		fmt.Println("Pack name is required")
+		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Compose query pack
@@ -461,7 +461,7 @@ func addNewPack(c *cli.Context) error {
 	if err := envs.AddQueryPackConf(envName, pName, pack); err != nil {
 		return err
 	}
-	fmt.Printf("Pack %s was added successfully\n", pName)
+	fmt.Printf("✅ pack %s was added successfully\n", pName)
 	return nil
 }
 
@@ -469,20 +469,20 @@ func removePack(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
 	pName := c.String("pack")
 	if pName == "" {
-		fmt.Println("Pack name is required")
+		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Remove pack from configuration
 	if err := envs.RemoveQueryPackConf(envName, pName); err != nil {
 		return err
 	}
-	fmt.Printf("Pack %s was added successfully\n", pName)
+	fmt.Printf("✅ pack %s was added successfully\n", pName)
 	return nil
 }
 
@@ -490,26 +490,26 @@ func addLocalPack(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
 	pName := c.String("pack")
 	if pName == "" {
-		fmt.Println("Pack name is required")
+		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get pack local path
 	pPath := c.String("pack-path")
 	if pPath == "" {
-		fmt.Println("Pack path is required")
+		fmt.Println("❌ pack path is required")
 		os.Exit(1)
 	}
 	// Add pack to configuration option
 	if err := envs.AddQueryPackConf(envName, pName, pPath); err != nil {
 		return err
 	}
-	fmt.Printf("Pack %s was added successfully\n", pName)
+	fmt.Printf("✅ pack %s was added successfully\n", pName)
 	return nil
 }
 
@@ -517,31 +517,31 @@ func addPackQuery(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
 	packName := c.String("pack")
 	if packName == "" {
-		fmt.Println("Pack name is required")
+		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get query
 	query := c.String("query")
 	if query == "" {
-		fmt.Println("Query is required")
+		fmt.Println("❌ query is required")
 		os.Exit(1)
 	}
 	// Get query name
 	queryName := c.String("query-name")
 	if queryName == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Get interval
 	interval := c.Int("interval")
 	if interval == 0 {
-		fmt.Println("Interval is required")
+		fmt.Println("❌ interval is required")
 		os.Exit(1)
 	}
 	// Add new scheduled query
@@ -554,7 +554,7 @@ func addPackQuery(c *cli.Context) error {
 	if err := envs.AddQueryToPackConf(envName, packName, queryName, qData); err != nil {
 		return err
 	}
-	fmt.Printf("Query %s was added to pack %s successfully\n", queryName, packName)
+	fmt.Printf("✅ query %s was added to pack %s successfully\n", queryName, packName)
 	return nil
 }
 
@@ -562,25 +562,25 @@ func removePackQuery(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
-		fmt.Println("Environment name is required")
+		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
 	packName := c.String("pack")
 	if packName == "" {
-		fmt.Println("Pack name is required")
+		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get query name
 	queryName := c.String("query-name")
 	if queryName == "" {
-		fmt.Println("Query name is required")
+		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Remove query
 	if err := envs.RemoveQueryFromPackConf(envName, packName, queryName); err != nil {
 		return err
 	}
-	fmt.Printf("Query %s was removed from pack %s successfully\n", queryName, packName)
+	fmt.Printf("✅ query %s was removed from pack %s successfully\n", queryName, packName)
 	return nil
 }
