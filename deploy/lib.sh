@@ -353,6 +353,9 @@ function db_user_postgresql() {
   sudo su - "$__pguser" -c "$__psql -c 'ALTER ROLE $__dbuser WITH CREATEDB'"
   sudo su - "$__pguser" -c "$__psql -c 'CREATE DATABASE $__pgdb'"
 
+  log "Make user owner of database"
+  sudo su - "$__pguser" -c "ALTER DATABASE $__pgdb OWNER TO $__dbuser;"
+
   log "Granting privileges to user"
   local _dbstatementgrant="GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $__dbuser;"
   sudo su - "$__pguser" -c "$__psql -d $__pgdb -c '$_dbstatementgrant'"

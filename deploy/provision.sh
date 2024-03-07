@@ -413,7 +413,11 @@ source "$SOURCE_PATH/deploy/lib.sh"
 
 # Detect Linux distro
 if [[ -f "/etc/debian_version" ]]; then
-  DISTRO="ubuntu"
+  if [[ $(grep -Fxq "Debian" /etc/issue) ]]; then
+    DISTRO="debian"
+  else
+    DISTRO="ubuntu"
+  fi
 elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
 fi
@@ -621,11 +625,28 @@ else
   # PostgreSQL - Backend
   if [[ "$POSTGRES" == true ]]; then
     if [[ "$DISTRO" == "ubuntu" ]]; then
-      package postgresql-14
+      # Ubuntu 22.04 uses postgresql 14
+      if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "22" ]]; then
+        package postgresql-14
+        package postgresql-contrib
+        package postgresql-client-14
+        POSTGRES_SERVICE="postgresql"
+        POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
+      else
+        # Assuming we are in Ubuntu 20.04, which uses postgresql 12
+        package postgresql
+        package postgresql-contrib
+        package postgresql-client-12
+        POSTGRES_SERVICE="postgresql"
+        POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
+      fi
+    # Debian uses postgresql 15
+    elif [[ "$DISTRO" == "debian" ]]; then
+      package postgresql
       package postgresql-contrib
-      package postgresql-client-14
+      package postgresql-client-15
       POSTGRES_SERVICE="postgresql"
-      POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
+      POSTGRES_PSQL="/usr/lib/postgresql/15/bin/psql"
     elif [[ "$DISTRO" == "centos" ]]; then
       log "For CentOS, please install Postgres 14 manually"
       exit $OHNOES
