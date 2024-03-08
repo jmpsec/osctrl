@@ -801,13 +801,6 @@ else
     log "Adding host in environment $ENVIRONMENT"
     eval $( "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment quick-add -n "$ENVIRONMENT" )
   fi
-
-  # Ascii art is always appreciated
-  if [[ "$DISTRO" == "ubuntu" ]]; then
-    set_motd_ubuntu "$SOURCE_PATH/deploy/motd-osctrl.sh"
-  elif [[ "$DISTRO" == "centos" ]]; then
-    set_motd_centos "$SOURCE_PATH/deploy/motd-osctrl.sh"
-  fi
 fi
 
 echo
