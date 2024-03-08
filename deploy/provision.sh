@@ -659,10 +659,10 @@ else
   # Redis - Cache
   if [[ "$REDIS" == true ]]; then
     REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
-    if [[ "$DISTRO" == "ubuntu" ]]; then
+    REDIS_SERVICE="redis-server.service"
+    REDIS_ETC="/etc/redis/redis.conf"
+    if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
       package redis-server
-      REDIS_SERVICE="redis-server.service"
-      REDIS_ETC="/etc/redis/redis.conf"
     elif [[ "$DISTRO" == "centos" ]]; then
       log "For CentOS, please install Redis manually"
       exit $OHNOES
@@ -672,7 +672,7 @@ else
 
   # Metrics - InfluxDB + Telegraf + Grafana
   if [[ "$METRICS" == true ]]; then
-    if [[ "$DISTRO" == "ubuntu" ]]; then
+    if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
       install_influx_telegraf
       configure_influx_telegraf
       install_grafana
