@@ -413,7 +413,7 @@ source "$SOURCE_PATH/deploy/lib.sh"
 
 # Detect Linux distro
 if [[ -f "/etc/debian_version" ]]; then
-  if [[ $(grep -Fxq "Debian" /etc/issue) ]]; then
+  if [[ $(grep "Debian" /etc/issue) ]]; then
     DISTRO="debian"
   else
     DISTRO="ubuntu"
