@@ -354,7 +354,8 @@ function db_user_postgresql() {
   sudo su - "$__pguser" -c "$__psql -c 'CREATE DATABASE $__pgdb'"
 
   log "Make user owner of database"
-  sudo su - "$__pguser" -c "ALTER DATABASE $__pgdb OWNER TO $__dbuser;"
+  local _dbstatementowner="ALTER DATABASE $__pgdb OWNER TO $__dbuser;"
+  sudo su - "$__pguser" -c "$__psql -c \"$_dbstatementowner\""
 
   log "Granting privileges to user"
   local _dbstatementgrant="GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $__dbuser;"
