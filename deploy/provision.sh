@@ -45,7 +45,6 @@
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
 #   -n          --nginx         Install and configure nginx as TLS termination
 #   -P          --postgres      Install and configure PostgreSQL as backend
-#   -M          --metrics       Install and configure all services for metrics (InfluxDB + Telegraf + Grafana)
 #   -R          --redis         Install and configure Redis as cache
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
@@ -117,7 +116,6 @@ function usage() {
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
-  printf "  -M          --metrics \tInstall and configure all services for metrics (InfluxDB + Telegraf + Grafana)\n"
   printf "  -R          --redis \t\tInstall and configure Redis as cache\n"
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
@@ -164,7 +162,6 @@ KEYFILE=""
 CERTFILE=""
 DOMAIN=""
 EMAIL=""
-METRICS=false
 ENROLL=false
 UPDATE=false
 NGINX=false
@@ -227,7 +224,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nMEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,metrics,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -342,11 +339,6 @@ while true; do
     -R|--redis)
       SHOW_USAGE=false
       REDIS=true
-      shift
-      ;;
-    -M|--metrics)
-      SHOW_USAGE=false
-      METRICS=true
       shift
       ;;
     -E|--enroll)
@@ -668,19 +660,6 @@ else
       exit $OHNOES
     fi
     configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
-  fi
-
-  # Metrics - InfluxDB + Telegraf + Grafana
-  if [[ "$METRICS" == true ]]; then
-    if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
-      install_influx_telegraf
-      configure_influx_telegraf
-      install_grafana
-      configure_grafana
-    elif [[ "$DISTRO" == "centos" ]]; then
-      log "Not ready yet to install metrics for CentOS"
-      exit $OHNOES
-    fi
   fi
 
   # Prepare destination and configuration folder
