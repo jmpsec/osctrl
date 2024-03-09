@@ -18,7 +18,7 @@ function _log() {
 
 # Update packages
 function package_repo_update() {
-  if [[ "$DISTRO" == "ubuntu" ]]; then
+  if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
     log "Running apt-get update"
     sudo DEBIAN_FRONTEND=noninteractive apt-get update
   elif [[ "$DISTRO" == "centos" ]]; then
@@ -30,7 +30,7 @@ function package_repo_update() {
 # Install a package in the system
 #   string  package_name
 function package() {
-  if [[ "$DISTRO" == "ubuntu" ]]; then
+  if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
     INSTALLED=`dpkg-query -W -f='${Status} ${Version}\n' "$1" || true`
     if [[ -n "$INSTALLED" && ! "$INSTALLED" = *"unknown ok not-installed"* ]]; then
       log "$1 is already installed. skipping."
@@ -386,18 +386,6 @@ function configure_redis() {
   sudo systemctl enable "$__service"
 }
 
-# Customize the MOTD in Ubuntu
-#   string  path_to_motd_script
-function set_motd_ubuntu() {
-  local __motd=$1
-
-  # If the cloudguest MOTD exists, disable it
-  if [[ -f /etc/update-motd.d/51/cloudguest ]]; then
-    sudo chmod -x /etc/update-motd.d/51-cloudguest
-  fi
-  sudo cp "$__motd" /etc/update-motd.d/10-help-text
-}
-
 # Customize the MOTD in CentOS
 #   string  path_to_motd_script
 function set_motd_centos() {
@@ -426,51 +414,4 @@ function install_go_21() {
     source /etc/profile
     go version
   fi
-}
-
-# Install Grafana 6.7.4 in Ubuntu
-function install_grafana() {
-  local __version="6.7.4"
-  local __file="grafana_${__version}_amd64.deb"
-
-  log "Installing Grafana $__version dependencies"
-  package adduser
-  package libfontconfig
-  log "Downloading Grafana $__version package"
-  wget "https://dl.grafana.com/oss/release/$__file" -O "/tmp/grafana_${__version}_amd64.deb"
-  sudo dpkg -i "/tmp/grafana_${__version}_amd64.deb"
-}
-
-# Configure Grafana service in Ubuntu
-function configure_grafana() {
-  log "Reloading systemd manager configuration"
-  sudo systemctl daemon-reload
-  log "Enabling Grafana service"
-  sudo systemctl enable grafana-server
-  log "Starting grafana-server"
-  sudo systemctl start grafana-server
-}
-
-# Install InfluxDB and Telegraf in Ubuntu
-function install_influx_telegraf() {
-  local __repo="/etc/apt/sources.list.d/influxdb.list"
-  log "Adding InfluxDB+Telegraf repository"
-  if [[ ! -f "$__repo" ]]; then
-    echo "deb https://repos.influxdata.com/ubuntu bionic stable" | sudo tee "$__repo"
-  fi
-  log "Import apt key"
-  sudo curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
-  sudo apt-get update
-  package influxdb
-  package telegraf
-}
-
-# Configure  InfluxDB and Telegraf in Ubuntu
-function configure_influx_telegraf() {
-  log "Enabling and starting InfluxDB service"
-  sudo systemctl enable influxdb
-  sudo systemctl start influxdb
-  log "Enabling and starting Telegraf service"
-  sudo systemctl enable telegraf
-  sudo systemctl start telegraf
 }
