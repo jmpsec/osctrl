@@ -38,8 +38,8 @@ const XForwardedFor string = "X-Forwarded-For"
 // Authorization for header key
 const Authorization string = "Authorization"
 
-// osctrlUserAgent for customized User-Agent
-const osctrlUserAgent string = "osctrl-http-client/1.1"
+// OsctrlUserAgent for customized User-Agent
+const OsctrlUserAgent string = "osctrl-http-client/1.1"
 
 // SendRequest - Helper function to send HTTP requests
 func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]string) (int, []byte, error) {
@@ -61,7 +61,7 @@ func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]st
 		return 0, []byte("Cound not prepare request"), err
 	}
 	// Set custom User-Agent
-	req.Header.Set(UserAgent, osctrlUserAgent)
+	req.Header.Set(UserAgent, OsctrlUserAgent)
 	// Prepare headers
 	for key, value := range headers {
 		req.Header.Add(key, value)
@@ -71,18 +71,15 @@ func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]st
 	if err != nil {
 		return 0, []byte("Error sending request"), err
 	}
-	//defer resp.Body.Close()
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			log.Printf("Failed to close body %v", err)
 		}
 	}()
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, []byte("Can not read response"), err
 	}
-
 	return resp.StatusCode, bodyBytes, nil
 }
 

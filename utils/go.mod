@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/google/uuid v1.5.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
