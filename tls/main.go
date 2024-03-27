@@ -122,15 +122,15 @@ var validAuth = map[string]bool{
 
 // Valid values for logging in configuration
 var validLogging = map[string]bool{
-	settings.LoggingNone:    true,
-	settings.LoggingStdout:  true,
-	settings.LoggingFile:    true,
-	settings.LoggingDB:      true,
-	settings.LoggingGraylog: true,
-	settings.LoggingSplunk:  true,
-	settings.LoggingKafka:   true,
-	settings.LoggingKinesis: true,
-	settings.LoggingS3:      true,
+	settings.LoggingNone:     true,
+	settings.LoggingStdout:   true,
+	settings.LoggingFile:     true,
+	settings.LoggingDB:       true,
+	settings.LoggingGraylog:  true,
+	settings.LoggingSplunk:   true,
+	settings.LoggingLogstash: true,
+	settings.LoggingKinesis:  true,
+	settings.LoggingS3:       true,
 }
 
 // Valid values for carver in configuration

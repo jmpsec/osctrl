@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// Default file to store logs
+	// DefaultFileLog file to store logs
 	DefaultFileLog = "osctrl.log"
 )
 
@@ -104,6 +104,13 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 			if err != nil {
 				return nil, err
 			}
+		}
+		d.Settings(mgr)
+		l.Logger = d
+	case settings.LoggingLogstash:
+		d, err := CreateLoggerLogstash(loggingFile)
+		if err != nil {
+			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d

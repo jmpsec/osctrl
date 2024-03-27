@@ -34,16 +34,15 @@ const (
 
 // Types of logging
 const (
-	LoggingNone    string = "none"
-	LoggingStdout  string = "stdout"
-	LoggingFile    string = "file"
-	LoggingDB      string = "db"
-	LoggingGraylog string = "graylog"
-	LoggingSplunk  string = "splunk"
-	LoggingELK     string = "elk"
-	LoggingKafka   string = "kafka"
-	LoggingKinesis string = "kinesis"
-	LoggingS3      string = "s3"
+	LoggingNone     string = "none"
+	LoggingStdout   string = "stdout"
+	LoggingFile     string = "file"
+	LoggingDB       string = "db"
+	LoggingGraylog  string = "graylog"
+	LoggingSplunk   string = "splunk"
+	LoggingLogstash string = "logstash"
+	LoggingKinesis  string = "kinesis"
+	LoggingS3       string = "s3"
 )
 
 // Types of carver
