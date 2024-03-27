@@ -28,18 +28,18 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/utils v0.0.0-20231221224851-87ae6d485538
-	gorm.io/gorm v1.25.5
+	github.com/jmpsec/osctrl/utils v0.0.0-20240327104917-8f400f8f2808
+	gorm.io/gorm v1.25.8
 )
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20231221224851-87ae6d485538 // indirect
+	github.com/jmpsec/osctrl/environments v0.0.0-20240327104847-8f8749e1bf8c // indirect
 	github.com/jmpsec/osctrl/settings v0.3.5 // indirect
 	github.com/jmpsec/osctrl/version v0.3.5 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 )
