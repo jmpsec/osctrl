@@ -1,6 +1,6 @@
 module admin/auth
 
-go 1.21
+go 1.21.3
 
 replace github.com/jmpsec/osctrl/admin/sessions => ../../admin/sessions
 
@@ -40,6 +40,6 @@ require (
 	github.com/jmpsec/osctrl/utils v0.3.5 // indirect
 	github.com/jmpsec/osctrl/version v0.3.5 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	gorm.io/gorm v1.25.8 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	gorm.io/gorm v1.25.9 // indirect
 )

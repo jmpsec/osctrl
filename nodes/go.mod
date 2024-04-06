@@ -1,10 +1,10 @@
 module nodes
 
-go 1.21
+go 1.21.3
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	gorm.io/gorm v1.25.8
+	gorm.io/gorm v1.25.9
 )
 
 require (

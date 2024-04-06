@@ -1,6 +1,6 @@
 module types
 
-go 1.21
+go 1.21.3
 
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
@@ -16,7 +16,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.5 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20240327104917-8f400f8f2808 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20240406145525-19acb3c03380 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	gorm.io/gorm v1.25.8 // indirect
+	gorm.io/gorm v1.25.9 // indirect
 )

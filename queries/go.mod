@@ -1,6 +1,6 @@
 module queries
 
-go 1.21
+go 1.21.3
 
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
@@ -8,9 +8,9 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.0.0-20240327104917-8f400f8f2808
-	github.com/jmpsec/osctrl/utils v0.0.0-20240327104917-8f400f8f2808
-	gorm.io/gorm v1.25.8
+	github.com/jmpsec/osctrl/nodes v0.0.0-20240406145525-19acb3c03380
+	github.com/jmpsec/osctrl/utils v0.0.0-20240406145525-19acb3c03380
+	gorm.io/gorm v1.25.9
 )
 
 require (
