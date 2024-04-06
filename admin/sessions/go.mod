@@ -1,6 +1,6 @@
 module admin/sessions
 
-go 1.21.3
+go 1.21
 
 replace github.com/jmpsec/osctrl/environments => ../../environments
 
