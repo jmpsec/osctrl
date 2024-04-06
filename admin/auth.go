@@ -16,10 +16,8 @@ const (
 	carveLevel string = "carve"
 )
 
-// Using the default name for the cookie in SAML:
-// https://github.com/crewjam/saml/blob/main/samlsp/session_cookie.go#L11
 const (
-	authCookieName = "token"
+	authCookieName = "osctrl-admin-session"
 )
 
 // Handler to check access to a resource based on the authentication enabled
