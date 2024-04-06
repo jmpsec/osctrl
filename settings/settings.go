@@ -30,6 +30,7 @@ const (
 	AuthSAML  string = "saml"
 	AuthJWT   string = "jwt"
 	AuthOAuth string = "oauth"
+	AuthOIDC  string = "oidc"
 )
 
 // Types of logging
