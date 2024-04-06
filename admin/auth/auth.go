@@ -169,12 +169,12 @@ func (a *AdminAuth) HandlerAuthCheck(h http.Handler) http.Handler {
 			}
 			newUser, err := a.Users.New(username, "", email, fullname, (s[sessions.CtxLevel] == sessions.AdminLevel))
 			if err != nil {
-				log.Printf("Error with new user %s: %v", username, err)
+				log.Printf("Error with new user: %v", err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
 				return
 			}
 			if err := a.Users.Create(newUser); err != nil {
-				log.Printf("Error creating user %s: %v", username, err)
+				log.Printf("Error creating user: %v", err)
 				http.Redirect(w, r, forbiddenPath, http.StatusFound)
 				return
 			}
