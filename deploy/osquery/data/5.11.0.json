@@ -1153,87 +1153,6 @@
     ]
   },
   {
-    "name":"atom_packages",
-    "description":"Lists all atom packages in a directory or globally installed in a system.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/atom_packages.table",
-    "platforms":[
-      "darwin",
-      "linux",
-      "windows"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "notes":"",
-    "examples":[
-      "select * from atom_packages"
-    ],
-    "columns":[
-      {
-        "name":"name",
-        "description":"Package display name",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"version",
-        "description":"Package supplied version",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"description",
-        "description":"Package supplied description",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"path",
-        "description":"Package's package.json path",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"license",
-        "description":"License for package",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"homepage",
-        "description":"Package supplied homepage",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"uid",
-        "description":"The local user that owns the plugin",
-        "type":"bigint",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":true
-      }
-    ]
-  },
-  {
     "name":"augeas",
     "description":"Configuration files parsed by augeas.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/augeas.table",
@@ -3072,7 +2991,7 @@
   },
   {
     "name":"certificates",
-    "description":"Certificate Authorities installed in Keychains/ca-bundles.",
+    "description":"Certificate Authorities installed in Keychains/ca-bundles. NOTE: osquery limits frequent access to keychain files on macOS. This limit is controlled by keychain_access_interval flag.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/certificates.table",
     "platforms":[
       "darwin",
@@ -8759,7 +8678,7 @@
       },
       {
         "name":"team_id",
-        "description":"Team identifier of thd process",
+        "description":"Team identifier of the process",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -9543,6 +9462,90 @@
       {
         "name":"original_filename",
         "description":"(Executable files only) Original filename",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_target_path",
+        "description":"Full path to the file the shortcut points to",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_target_type",
+        "description":"Display name for the target type",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_target_location",
+        "description":"Folder name where the shortcut target resides",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_start_in",
+        "description":"Full path to the working directory to use when executing the shortcut target",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_run",
+        "description":"Window mode the target of the shortcut should be run in",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "windows",
+          "win32",
+          "cygwin"
+        ]
+      },
+      {
+        "name":"shortcut_comment",
+        "description":"Comment on the shortcut",
         "type":"text",
         "notes":"",
         "hidden":true,
@@ -11891,7 +11894,7 @@
   },
   {
     "name":"keychain_acls",
-    "description":"Applications that have ACL entries in the keychain.",
+    "description":"Applications that have ACL entries in the keychain. NOTE: osquery limits frequent access to keychain files. This limit is controlled by keychain_access_interval flag.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/keychain_acls.table",
     "platforms":[
       "darwin"
@@ -11952,7 +11955,7 @@
   },
   {
     "name":"keychain_items",
-    "description":"Generic details about keychain items.",
+    "description":"Generic details about keychain items. NOTE: osquery limits frequent access to keychain files. This limit is controlled by keychain_access_interval flag.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/keychain_items.table",
     "platforms":[
       "darwin"
@@ -19178,7 +19181,7 @@
         "notes":"",
         "hidden":false,
         "required":false,
-        "index":true
+        "index":false
       },
       {
         "name":"fd",
@@ -21026,7 +21029,43 @@
       },
       {
         "name":"secure_mode",
-        "description":"Secure mode for Intel-based macOS: 0 disabled, 1 full security, 2 medium security",
+        "description":"(Intel) Secure mode: 0 disabled, 1 full security, 2 medium security",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
+        "name":"description",
+        "description":"(Apple Silicon) Human-readable description: 'Full Security', 'Reduced Security', or 'Permissive Security'",
+        "type":"text",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
+        "name":"kernel_extensions",
+        "description":"(Apple Silicon) Allow user management of kernel extensions from identified developers (1 if allowed)",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "darwin"
+        ]
+      },
+      {
+        "name":"mdm_operations",
+        "description":"(Apple Silicon) Allow remote (MDM) management of kernel extensions and automatic software updates (1 if allowed)",
         "type":"integer",
         "notes":"",
         "hidden":true,
@@ -24936,6 +24975,105 @@
       {
         "name":"swap_outs",
         "description":"The total number of compressed pages that have been swapped back in from disk.",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
+    "name":"vscode_extensions",
+    "description":"Lists all vscode extensions.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/vscode_extensions.table",
+    "platforms":[
+      "darwin",
+      "linux",
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[
+      "select * from vscode_extensions"
+    ],
+    "columns":[
+      {
+        "name":"name",
+        "description":"Extension Name",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uuid",
+        "description":"Extension UUID",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"version",
+        "description":"Extension version",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"path",
+        "description":"Extension path",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"publisher",
+        "description":"Publisher Name",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"publisher_id",
+        "description":"Publisher ID",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"installed_at",
+        "description":"Installed Timestamp",
+        "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"prerelease",
+        "description":"Pre release version",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"uid",
+        "description":"The local user that owns the plugin",
         "type":"bigint",
         "notes":"",
         "hidden":false,
