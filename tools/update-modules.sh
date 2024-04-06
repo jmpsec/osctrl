@@ -32,4 +32,9 @@ do
   cd - || exit 1
 done
 
+# Run go mod tidy
+echo "[+] Running go mod tidy"
+go mod tidy
+
 echo "[+] Done"
+exit 0

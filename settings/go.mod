@@ -1,6 +1,6 @@
 module settings
 
-go 1.21
+go 1.21.3
 
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
@@ -12,8 +12,8 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/types v0.0.0-20240327104847-8f8749e1bf8c
-	gorm.io/gorm v1.25.8
+	github.com/jmpsec/osctrl/types v0.0.0-20240406145525-19acb3c03380
+	gorm.io/gorm v1.25.9
 )
 
 require (
@@ -22,6 +22,6 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.5 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.5 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20240327104917-8f400f8f2808 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20240406145525-19acb3c03380 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 )
