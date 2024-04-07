@@ -19,7 +19,7 @@ function sendLogout() {
   var data = {
     csrftoken: _csrf
   };
-  sendPostRequest(data, _url, '/login', false);
+  sendPostRequest(data, _url, '/logout', false);
 }
 
 $("#login_password").keyup(function(event) {

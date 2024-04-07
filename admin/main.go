@@ -766,8 +766,9 @@ func osctrlAdminService() {
 		// login
 		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginHandler).Methods("GET")
 		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginPOSTHandler).Methods("POST")
-		// logout
-		routerAdmin.Handle(logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
+		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, loginPath, http.StatusFound)
+		}).Methods("GET")
 	}
 	// Admin: health of service
 	routerAdmin.HandleFunc(healthPath, handlersAdmin.HealthHandler).Methods("GET")
@@ -864,6 +865,8 @@ func osctrlAdminService() {
 	// edit profile
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler))).Methods("GET")
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler))).Methods("POST")
+	// logout
+	routerAdmin.Handle(logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
@@ -873,9 +876,6 @@ func osctrlAdminService() {
 		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
 		}).Methods("GET")
-		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
-		}).Methods("POST")
 	}
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
