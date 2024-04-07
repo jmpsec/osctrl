@@ -53,6 +53,8 @@ const (
 	healthPath string = "/health"
 	// Default endpoint to handle Login
 	loginPath string = "/login"
+	// Default endpoint to handle Logout
+	logoutPath string = "/logout"
 	// Default endpoint to handle HTTP(500) errors
 	errorPath string = "/error"
 	// Default endpoint to handle Forbidden(403) errors
@@ -760,10 +762,13 @@ func osctrlAdminService() {
 		log.Println("DebugService: Unauthenticated content")
 	}
 	// Admin: login only if local auth is enabled
-	if adminConfig.Auth != settings.AuthNone {
+	if adminConfig.Auth != settings.AuthNone && adminConfig.Auth != settings.AuthSAML {
 		// login
 		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginHandler).Methods("GET")
 		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginPOSTHandler).Methods("POST")
+		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, loginPath, http.StatusFound)
+		}).Methods("GET")
 	}
 	// Admin: health of service
 	routerAdmin.HandleFunc(healthPath, handlersAdmin.HealthHandler).Methods("GET")
@@ -861,10 +866,16 @@ func osctrlAdminService() {
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler))).Methods("GET")
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler))).Methods("POST")
 	// logout
-	routerAdmin.Handle("/logout", handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
+	routerAdmin.Handle(logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
 		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
+		routerAdmin.HandleFunc(loginPath, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
+		}).Methods("GET")
+		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
+		}).Methods("GET")
 	}
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port

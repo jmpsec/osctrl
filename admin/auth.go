@@ -5,8 +5,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 )
 
 const (
@@ -43,40 +45,60 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthSAML:
-			_, err := samlMiddleware.Session.GetSession(r)
+			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
 				log.Printf("GetSession %v", err)
-			}
-			cookiev, err := r.Cookie(authCookieName)
-			if err != nil {
-				log.Printf("error extracting JWT data: %v", err)
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 				return
 			}
-			jwtdata, err := parseJWTFromCookie(samlData.KeyPair, cookiev.Value)
-			if err != nil {
-				log.Printf("error parsing JWT: %v", err)
-				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
+			if samlSession == nil {
+				log.Printf("GetSession %v", err)
+				http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
+				return
+			}
+			jwtSessionClaims, ok := samlSession.(samlsp.JWTSessionClaims)
+			if !ok {
+				log.Printf("JWTSessionClaims %v", err)
+				return
+			}
+			samlUser := jwtSessionClaims.Subject
+			if samlUser == "" {
+				log.Printf("SAML user is empty")
 				return
 			}
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)
 			if !authenticated {
 				// Create user if it does not exist
-				if !adminUsers.Exists(jwtdata.Username) {
-					log.Printf("user not found: %s", jwtdata.Username)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
-					return
-				}
-				u, err := adminUsers.Get(jwtdata.Username)
-				if err != nil {
-					log.Printf("error getting user %s: %v", jwtdata.Username, err)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
-					return
+				var u users.AdminUser
+				if !adminUsers.Exists(samlUser) {
+					if !samlConfig.JITProvision {
+						log.Printf("user not found: %s", samlUser)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+					u, err = adminUsers.New(samlUser, "", samlUser, "", "", false)
+					if err != nil {
+						log.Printf("error creating user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+					if err := adminUsers.Create(u); err != nil {
+						log.Printf("error creating user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+				} else {
+					u, err = adminUsers.Get(samlUser)
+					if err != nil {
+						log.Printf("error getting user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
 				}
 				access, err := adminUsers.GetEnvAccess(u.Username, u.DefaultEnv)
 				if err != nil {
-					log.Printf("error getting access for %s: %v", jwtdata.Username, err)
+					log.Printf("error getting access for %s: %v", samlUser, err)
 					http.Redirect(w, r, forbiddenPath, http.StatusFound)
 					return
 				}
