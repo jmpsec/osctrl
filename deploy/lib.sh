@@ -415,3 +415,19 @@ function install_go_21() {
     go version
   fi
 }
+
+# Generate self-signed certificate for SAML authentication
+#   string  path_to_certs
+#   string  certificate_name
+#   int     rsa_bits
+function self_signed_saml() {
+  local __certs=$1
+  local __name=$2
+  local __bits=$3
+
+  local __samlcert="$__certs/$__name.crt"
+  local __samlkey="$__certs/$__name.key"
+
+  sudo openssl req -x509 -newkey rsa:$__bits -sha256 -days 365 -nodes \
+  -keyout "$__samlkey" -out "$__samlcert" -subj "/CN=$__name"
+}
