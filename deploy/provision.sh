@@ -41,7 +41,7 @@
 #   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle
 #   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt
 #   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt
-#   -s PATH     --source PATH   Path to code. Default is /vagrant
+#   -s PATH     --source PATH   Path to code. Default is ~/osctrl
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
 #   -n          --nginx         Install and configure nginx as TLS termination
 #   -P          --postgres      Install and configure PostgreSQL as backend
@@ -51,8 +51,8 @@
 #   -U          --upgrade       Keep osctrl upgraded with the latest code from Github
 #
 # Examples:
-#   Provision service in development mode, code is in /vagrant and all components (admin, tls, api):
-#     provision.sh -m dev -s /vagrant -p all
+#   Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):
+#     provision.sh -m dev -s /code/osctrl -p all
 #   Provision service in production mode using my own certificate and only with TLS endpoint:
 #     provision.sh -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls
 #   Upgrade service with the latest code from Github. Does not create services nor certificates:
@@ -112,7 +112,7 @@ function usage() {
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
   printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt\n"
   printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt\n"
-  printf "  -s PATH     --source PATH \tPath to code. Default is /vagrant\n"
+  printf "  -s PATH     --source PATH \tPath to code. Default is ~/osctrl\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
@@ -121,8 +121,8 @@ function usage() {
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "  -U          --upgrade \tKeep osctrl upgraded with the latest code from Github\n"
   printf "\nExamples:\n"
-  printf "  Provision service in development mode, code is in /vagrant and all components (admin, tls, api):\n"
-  printf "\t%s -m dev -s /vagrant -p all\n" "${0}"
+  printf "  Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):\n"
+  printf "\t%s -m dev -s /code/osctrl -p all\n" "${0}"
   printf "  Provision service in production mode using my own certificate and only with TLS endpoint:\n"
   printf "\t%s -m prod -t own -k /etc/certs/my.key -c /etc/certs/cert.crt -p tls\n" "${0}"
   printf "  Upgrade service with the latest code from Github. Does not create services nor certificates:\n"
@@ -169,7 +169,7 @@ POSTGRES=false
 REDIS=false
 UPGRADE=false
 BRANCH="main"
-SOURCE_PATH=/vagrant
+SOURCE_PATH=~/osctrl
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
 OSQUERY_VERSION="5.11.0"
