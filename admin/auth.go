@@ -8,6 +8,7 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/users"
 )
 
 const (
@@ -50,6 +51,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				return
 			}
 			if samlSession == nil {
+				log.Printf("GetSession %v", err)
 				http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
 				return
 			}
@@ -67,16 +69,31 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			authenticated, session := sessionsmgr.CheckAuth(r)
 			if !authenticated {
 				// Create user if it does not exist
+				var u users.AdminUser
 				if !adminUsers.Exists(samlUser) {
-					log.Printf("user not found: %s", samlUser)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
-					return
-				}
-				u, err := adminUsers.Get(samlUser)
-				if err != nil {
-					log.Printf("error getting user %s: %v", samlUser, err)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
-					return
+					if !samlConfig.JITProvision {
+						log.Printf("user not found: %s", samlUser)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+					u, err = adminUsers.New(samlUser, "", samlUser, "", "", false)
+					if err != nil {
+						log.Printf("error creating user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+					if err := adminUsers.Create(u); err != nil {
+						log.Printf("error creating user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
+				} else {
+					u, err = adminUsers.Get(samlUser)
+					if err != nil {
+						log.Printf("error getting user %s: %v", samlUser, err)
+						http.Redirect(w, r, forbiddenPath, http.StatusFound)
+						return
+					}
 				}
 				access, err := adminUsers.GetEnvAccess(u.Username, u.DefaultEnv)
 				if err != nil {

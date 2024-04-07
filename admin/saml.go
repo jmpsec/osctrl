@@ -17,15 +17,13 @@ import (
 
 // JSONConfigurationSAML to keep all SAML details for auth
 type JSONConfigurationSAML struct {
-	CertPath    string `json:"certpath"`
-	KeyPath     string `json:"keypath"`
-	MetaDataURL string `json:"metadataurl"`
-	RootURL     string `json:"rooturl"`
-	LoginURL    string `json:"loginurl"`
-	LogoutURL   string `json:"logouturl"`
-	EmailAttr   string `json:"attremail"`
-	UserAttr    string `json:"attruser"`
-	DisplayAttr string `json:"attrdisplay"`
+	CertPath     string `json:"certpath"`
+	KeyPath      string `json:"keypath"`
+	MetaDataURL  string `json:"metadataurl"`
+	RootURL      string `json:"rooturl"`
+	LoginURL     string `json:"loginurl"`
+	LogoutURL    string `json:"logouturl"`
+	JITProvision bool   `json:"jitprovision"`
 }
 
 // Structure to keep all SAML related data
