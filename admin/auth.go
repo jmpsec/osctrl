@@ -48,6 +48,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
 				log.Printf("GetSession %v", err)
+				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 				return
 			}
 			if samlSession == nil {
