@@ -22,7 +22,7 @@ type JSONConfigurationSAML struct {
 	MetaDataURL string `json:"metadataurl"`
 	RootURL     string `json:"rooturl"`
 	LoginURL    string `json:"loginurl"`
-	TokenName   string `json:"nametoken"`
+	LogoutURL   string `json:"logouturl"`
 	EmailAttr   string `json:"attremail"`
 	UserAttr    string `json:"attruser"`
 	DisplayAttr string `json:"attrdisplay"`
