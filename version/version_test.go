@@ -11,5 +11,5 @@ func TestOsqueryVersion(t *testing.T) {
 }
 
 func TestOsctrlVersion(t *testing.T) {
-	assert.Equal(t, "0.3.5", OsctrlVersion)
+	assert.Equal(t, "0.3.6", OsctrlVersion)
 }
