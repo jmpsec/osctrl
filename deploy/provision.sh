@@ -789,10 +789,10 @@ if [[ "$MODE" == "dev" ]]; then
   log " -> https://$DEV_HOST:$_A_PUB_PORT"
   echo
 fi
-log " -> https://$_A_HOST:$_A_PUB_PORT"
 
 if [[ "$UPGRADE" == false ]]; then
   echo
+  log " -> https://$_A_HOST:$_A_PUB_PORT"
   log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
   echo
 fi
