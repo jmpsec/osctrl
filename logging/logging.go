@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/jmpsec/osctrl/backend"
-	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -21,18 +20,16 @@ type LoggerTLS struct {
 	Logging      string
 	Logger       interface{}
 	AlwaysLogger *LoggerDB
-	RedisCache   *cache.RedisManager
 	Nodes        *nodes.NodeManager
 	Queries      *queries.Queries
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries, redis *cache.RedisManager) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging:    logging,
-		Nodes:      nodes,
-		Queries:    queries,
-		RedisCache: redis,
+		Logging: logging,
+		Nodes:   nodes,
+		Queries: queries,
 	}
 	switch logging {
 	case settings.LoggingSplunk:
@@ -209,10 +206,6 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 			logTLS.AlwaysLogger.Log(logType, data, environment, uuid, debug)
 		}
 	}
-	// Add logs to cache
-	if err := logTLS.RedisCache.SetLogs(logType, uuid, environment, data); err != nil {
-		log.Printf("error sending %s logs to cache %s", logType, err)
-	}
 }
 
 // QueryLog will send query result logs via the configured method of logging
@@ -296,10 +289,5 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		if logAlways {
 			logTLS.AlwaysLogger.Query(data, environment, uuid, name, status, debug)
 		}
-	}
-
-	// Add logs to cache always
-	if err := logTLS.RedisCache.SetQueryLogs(uuid, name, data); err != nil {
-		log.Printf("error sending %s logs to cache %s", logType, err)
 	}
 }

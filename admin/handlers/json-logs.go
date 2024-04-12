@@ -118,8 +118,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == types.StatusLog && h.RedisCache != nil {
-		statusLogs, err := h.RedisCache.StatusLogs(UUID, env.Name, secondsBack)
+	if logType == types.StatusLog && h.AdminConfig.Logger == settings.LoggingDB {
+		statusLogs, err := h.DBLogger.StatusLogs(UUID, env.Name, secondsBack)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -128,13 +128,13 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		// Prepare data to be returned
 		for _, s := range statusLogs {
 			_c := CreationTimes{
-				Display:   utils.PastFutureTimesEpoch(int64(s.UnixTime)),
-				Timestamp: strconv.Itoa(int(s.UnixTime)),
+				Display:   utils.PastFutureTimes(s.CreatedAt),
+				Timestamp: strconv.Itoa(int(s.CreatedAt.Unix())),
 			}
 			_l := LogJSON{
 				Created: _c,
 				First:   s.Message,
-				Second:  strconv.Itoa(int(s.Severity)),
+				Second:  s.Severity,
 			}
 			logJSON = append(logJSON, _l)
 		}
@@ -191,7 +191,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	queryLogJSON := []QueryLogJSON{}
 	// Get logs
 	if h.RedisCache != nil {
-		queryLogs, err := h.RedisCache.QueryLogs(name)
+		queryLogs, err := h.DBLogger.QueryLogs(name)
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -200,16 +200,16 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		// Prepare data to be returned
 		for _, q := range queryLogs {
 			// Get target node
-			node, err := h.Nodes.GetByUUID(q.HostIdentifier)
+			node, err := h.Nodes.GetByUUID(q.UUID)
 			if err != nil {
-				node.UUID = q.HostIdentifier
+				node.UUID = q.UUID
 				node.Localname = ""
 			}
 			_c := CreationTimes{
-				Display:   utils.PastFutureTimesEpoch(int64(q.UnixTime)),
-				Timestamp: utils.PastFutureTimesEpoch(int64(q.UnixTime)),
+				Display:   utils.PastFutureTimes(q.CreatedAt),
+				Timestamp: strconv.Itoa(int(q.CreatedAt.Unix())),
 			}
-			qData, err := json.Marshal(q.QueryData)
+			qData, err := json.Marshal(q.Data)
 			if err != nil {
 				log.Printf("error serializing logs %v", err)
 				h.Inc(metricJSONErr)

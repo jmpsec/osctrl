@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -53,6 +56,7 @@ type HandlersAdmin struct {
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *types.JSONConfigurationAdmin
+	DBLogger        *logging.LoggerDB
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -165,6 +169,22 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 func WithAdminConfig(config *types.JSONConfigurationAdmin) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.AdminConfig = config
+	}
+}
+
+func WithDBLogger(dbfile string) HandlersOption {
+	return func(h *HandlersAdmin) {
+		if dbfile == "" {
+			h.DBLogger = nil
+			return
+		}
+		logger, err := logging.CreateLoggerDBFile(dbfile)
+		if err != nil {
+			log.Printf("error creating DB logger %v", err)
+			logger.Enabled = false
+			logger.Database = nil
+		}
+		h.DBLogger = logger
 	}
 }
 

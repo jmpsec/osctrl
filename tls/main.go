@@ -569,7 +569,7 @@ func osctrlService() {
 	ingestedMetrics = metrics.CreateIngested(db.Conn)
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3LogConfig, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr, redis)
+	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3LogConfig, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
