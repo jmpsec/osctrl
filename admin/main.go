@@ -728,6 +728,11 @@ func osctrlAdminService() {
 		}
 	}()
 
+	// Set the logger configuration file to empty if we are logging to anything but the DB
+	if adminConfig.Logger != settings.LoggingDB {
+		loggerFile = ""
+	}
+
 	// Initialize Admin handlers before router
 	handlersAdmin = handlers.CreateHandlersAdmin(
 		handlers.WithDB(db.Conn),
@@ -748,6 +753,7 @@ func osctrlAdminService() {
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithCarvesFolder(carvedFilesFolder),
 		handlers.WithAdminConfig(&adminConfig),
+		handlers.WithDBLogger(loggerFile),
 	)
 
 	// ////////////////////////// ADMIN

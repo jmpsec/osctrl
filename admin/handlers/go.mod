@@ -53,6 +53,19 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go v1.51.16 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
+	github.com/jmpsec/osctrl/backend v0.3.6 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/rs/zerolog v1.32.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+)
+
+require (
 	github.com/aws/aws-sdk-go-v2 v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.2 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.11 // indirect
@@ -85,6 +98,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/jmpsec/osctrl/logging v0.0.0-20240410133052-b368e7664a99
 	github.com/jmpsec/osctrl/version v0.3.6 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -106,5 +120,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.5.4 // indirect
+	gorm.io/driver/postgres v1.5.7 // indirect
 )

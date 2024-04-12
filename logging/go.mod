@@ -4,8 +4,6 @@ go 1.21
 
 replace github.com/jmpsec/osctrl/backend => ../backend
 
-replace github.com/jmpsec/osctrl/cache => ../cache
-
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
 replace github.com/jmpsec/osctrl/queries => ../queries
