@@ -1465,3 +1465,67 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	}
 	h.Inc(metricAdminOK)
 }
+
+// DashboardGETHandler for dashboard page
+func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"pastFutureTimes": utils.PastFutureTimes,
+	}
+	// Prepare template
+	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "dashboard.html").filepaths
+	t, err := template.New("dashboard.html").Funcs(funcMap).ParseFiles(tempateFiles...)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting dashboard template: %v", err)
+		return
+	}
+	// Get stats for all environments
+	envAll, err := h.Envs.All()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environments %v", err)
+		return
+	}
+	// Get stats for all platforms
+	platforms, err := h.Nodes.GetAllPlatforms()
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting platforms: %v", err)
+		return
+	}
+	// Get current user
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting user: %v", err)
+		return
+	}
+	// Prepare template data
+	templateData := DashboardTemplateData{
+		Title:        "Dashboard for " + user.Username,
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
+		Platforms:    platforms,
+		CurrentUser:  user,
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("template error %v", err)
+		return
+	}
+	if h.Settings.DebugService(settings.ServiceAdmin) {
+		log.Println("DebugService: Dashboard template served")
+	}
+	h.Inc(metricAdminOK)
+}

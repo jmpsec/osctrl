@@ -55,7 +55,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login response sent")
 	}
-	adminOKResponse(w, "/environment/"+user.DefaultEnv+"/active")
+	adminOKResponse(w, "/dashboard")
 	h.Inc(metricAdminOK)
 }
 

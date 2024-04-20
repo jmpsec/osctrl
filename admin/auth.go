@@ -77,7 +77,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
-					u, err = adminUsers.New(samlUser, "", samlUser, "", "", false)
+					u, err = adminUsers.New(samlUser, "", samlUser, "", false)
 					if err != nil {
 						log.Printf("error creating user %s: %v", samlUser, err)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)

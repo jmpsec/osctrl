@@ -37,7 +37,6 @@ func userToData(u users.AdminUser, header []string) [][]string {
 		u.Username,
 		u.Fullname,
 		stringifyBool(u.Admin),
-		u.DefaultEnv,
 		u.LastIPAddress,
 		u.LastUserAgent,
 	}
@@ -52,32 +51,17 @@ func addUser(c *cli.Context) error {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	defaultEnv := c.String("environment")
-	if defaultEnv == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
-	}
-	env, err := envs.Get(defaultEnv)
-	if err != nil {
-		return fmt.Errorf("error getting environment - %s", err)
-	}
 	password := c.String("password")
 	email := c.String("email")
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
-	user, err := adminUsers.New(username, password, email, fullname, env.UUID, admin)
+	user, err := adminUsers.New(username, password, email, fullname, admin)
 	if err != nil {
 		return fmt.Errorf("error with new user - %s", err)
 	}
 	// Create user
 	if err := adminUsers.Create(user); err != nil {
 		return fmt.Errorf("error creating user - %s", err)
-	}
-	// Assign permissions to user
-	access := adminUsers.GenEnvUserAccess([]string{env.UUID}, true, (admin == true), (admin == true), (admin == true))
-	perms := adminUsers.GenPermissions(username, appName, access)
-	if err := adminUsers.CreatePermissions(perms); err != nil {
-		return fmt.Errorf("error creating permissions - %s", err)
 	}
 	if !silentFlag {
 		fmt.Printf("✅ created user %s successfully\n", username)

@@ -114,7 +114,7 @@ func TestUserManager(t *testing.T) {
 
 		mock.ExpectBegin()
 		mock.ExpectQuery(
-			regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","uuid","default_env","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING "id"`)).WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.UUID, user.DefaultEnv, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
+			regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING "id"`)).WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 		mock.ExpectCommit()
 		err := manager.Create(user)
 
@@ -128,14 +128,13 @@ func TestUserManager(t *testing.T) {
 	t.Run("NewUser", func(t *testing.T) {
 		mock.ExpectQuery(
 			regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testUser").WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
-		user, err := manager.New("testUser", "testPassword", "aa@bb.com", "Test Name", "testEnv", true)
+		user, err := manager.New("testUser", "testPassword", "aa@bb.com", "Test Name", true)
 
 		assert.NoError(t, err)
 
 		assert.Equal(t, "aa@bb.com", user.Email)
 		assert.Equal(t, "testUser", user.Username)
 		assert.Equal(t, true, user.Admin)
-		assert.Equal(t, "testEnv", user.DefaultEnv)
 	})
 	t.Run("ExistsUserFalse", func(t *testing.T) {
 		mock.ExpectQuery(

@@ -27,7 +27,6 @@ type AdminUser struct {
 	TokenExpire   time.Time
 	Admin         bool
 	UUID          string
-	DefaultEnv    string
 	CSRFToken     string `json:"-"`
 	LastIPAddress string
 	LastUserAgent string
@@ -157,7 +156,7 @@ func (m *UserManager) Create(user AdminUser) error {
 }
 
 // New empty user
-func (m *UserManager) New(username, password, email, fullname, defaultEnv string, admin bool) (AdminUser, error) {
+func (m *UserManager) New(username, password, email, fullname string, admin bool) (AdminUser, error) {
 	if !m.Exists(username) {
 		passhash, err := m.HashPasswordWithSalt(password)
 		if err != nil {
@@ -168,7 +167,6 @@ func (m *UserManager) New(username, password, email, fullname, defaultEnv string
 			PassHash:   passhash,
 			UUID:       utils.GenUUID(),
 			Admin:      admin,
-			DefaultEnv: defaultEnv,
 			Email:      email,
 			Fullname:   fullname,
 		}, nil

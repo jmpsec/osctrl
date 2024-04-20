@@ -868,10 +868,12 @@ func osctrlAdminService() {
 	// Admin: manage tokens
 	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler))).Methods("GET")
 	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler))).Methods("POST")
-	// edit profile
+	// Admin: edit profile
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler))).Methods("GET")
 	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler))).Methods("POST")
-	// logout
+	// Admin: dashboard and search bar
+	routerAdmin.Handle("/dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler))).Methods("GET")
+	// Admin: logout
 	routerAdmin.Handle(logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
