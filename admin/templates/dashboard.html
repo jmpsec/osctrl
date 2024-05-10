@@ -25,107 +25,20 @@
                 <i class="fas fa-user-edit"></i> osctrl Dashboard for {{ $metadata.Username }}
 
                   <div class="card-header-actions">
-                    <button id="profile_save" class="btn btn-sm btn-dark"
-                      data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="profileEditSave();">
-                      <i class="far fa-save"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-warning" data-tooltip="true" data-placement="top" title="Change Password" onclick="profileChangePassword('{{ $metadata.Username }}');">
-                      <i class="fas fa-user-lock"></i>
-                    </button>
                   </div>
 
               </div>
 
               <div class="card-body">
 
-              {{ with .CurrentUser }}
                 <div class="form-group row">
-                  <label class="col-md-2 col-form-label" for="profile_username"><b>Username:</b></label>
-                  <input type="hidden" id="profile_username" value="{{ .Username }}">
-                  <div class="col-md-4">
-                    {{ .Username }}
-                  </div>
-                  <label class="col-md-2 col-form-label" for="profile_email"><b>Email:</b></label>
-                  <div class="col-md-4">
-                    <input class="form-control" name="profile_email" id="profile_email" type="text" autocomplete="off" value="{{ .Email }}">
+                  <div class="col-md-12">
+                    <input class="form-control" name="dashboard_search" id="search_box" type="text" autocomplete="off" value="">
                   </div>
                 </div>
-                <div class="form-group row">
-                  <label class="col-md-2 col-form-label" for="profile_fullname"><b>Full Name:</b></label>
-                  <div class="col-md-4">
-                    <input class="form-control" name="profile_fullname" id="profile_fullname" type="text" autocomplete="off" value="{{ .Fullname }}">
-                  </div>
-                  <label class="col-md-2 col-form-label" for="profile_env"><b>Default Environment:</b></label>
-                  <div class="col-md-4">
-                    {{ .DefaultEnv }}
-                  </div>
-                </div>
-                <div class="form-group row">
-                  <label class="col-md-2 col-form-label" for="profile_useragent"><b>Last UserAgent:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    <code>{{ .LastUserAgent }}</code>
-                  </div>
-                  <label class="col-md-2 col-form-label" for="profile_access"><b>Last Access:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    {{ pastFutureTimes .LastAccess }}
-                  </div>
-                </div>
-                <div class="form-group row">
-                  <label class="col-md-2 col-form-label" for="profile_ip"><b>Last IP Address:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    <code>{{ .LastIPAddress }}</code>
-                  </div>
-                  <label class="col-md-2 col-form-label" for="profile_token"><b>Last Token Access:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    {{ pastFutureTimes .LastTokenUse }}
-                  </div>
-                </div>
-              {{ end }}
 
               </div>
             </div>
-
-          <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModal" aria-hidden="true">
-            <div class="modal-dialog modal-dark" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h4 class="modal-title">Change Password for {{ $metadata.Username }}</h4>
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div class="modal-body">
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label" for="old_password">Old Password: </label>
-                    <div class="col-md-8">
-                      <input class="form-control" name="old_password" id="old_password" type="password" autocomplete="off">
-                    </div>
-                  </div>
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label" for="new_password">New Password: </label>
-                    <div class="col-md-8">
-                      <input class="form-control" name="new_password" id="new_password" type="password" autocomplete="off">
-                    </div>
-                  </div>
-                  <div class="form-group row">
-                    <label id="confirm_password_label" class="col-md-4 col-form-label" for="confirm_password">Confirm Password: </label>
-                    <div class="col-md-8">
-                      <input class="form-control" name="confirm_password" id="confirm_password" type="password" autocomplete="off">
-                      <small id="confirm_password_help" class="text-danger"></small>
-                    </div>
-                  </div>
-                  <input type="hidden" id="change_password_username" value="">
-                </div>
-                <div class="modal-footer">
-                  <button id="changePasswordButton" type="button" class="btn btn-primary" onclick="profileConfirmChangePassword();">Change Password</button>
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
-              </div>
-              <!-- /.modal-content -->
-            </div>
-            <!-- /.modal-dialog -->
-          </div>
-          <!-- /.modal -->
 
           {{ template "page-modals" . }}
 

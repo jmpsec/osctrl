@@ -282,14 +282,6 @@ func (m *UserManager) ChangeEmail(username, email string) error {
 	return nil
 }
 
-// ChangeDefaultEnv for user by username, it must be the UUID of the environment
-func (m *UserManager) ChangeDefaultEnv(username, env string) error {
-	if err := m.DB.Model(&AdminUser{}).Where("username = ?", username).Update("default_env", env).Error; err != nil {
-		return fmt.Errorf("Update default_env %v", err)
-	}
-	return nil
-}
-
 // ChangeFullname for user by username
 func (m *UserManager) ChangeFullname(username, fullname string) error {
 	user, err := m.Get(username)

@@ -258,16 +258,6 @@ func TestUserManager(t *testing.T) {
 
 		assert.NoError(t, err)
 	})
-	t.Run("ChangeDefaultEnv", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectExec(
-			regexp.QuoteMeta(`UPDATE "admin_users" SET "default_env"=$1,"updated_at"=$2 WHERE username = $3 AND "admin_users"."deleted_at" IS NULL`)).WithArgs("testEnv", sqlmock.AnyArg(), "testUser").WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectCommit()
-
-		err := manager.ChangeDefaultEnv("testUser", "testEnv")
-
-		assert.NoError(t, err)
-	})
 	t.Run("UpdateToken", func(t *testing.T) {
 		tt := time.Now()
 		mock.ExpectQuery(

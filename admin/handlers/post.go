@@ -39,13 +39,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricAdminErr)
 		return
 	}
-	envAccess, err := h.Users.GetEnvAccess(user.Username, user.DefaultEnv)
-	if err != nil {
-		adminErrorResponse(w, "error processing login", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
-		return
-	}
-	_, err = h.Sessions.Save(r, w, user, envAccess)
+	_, err := h.Sessions.Save(r, w, user)
 	if err != nil {
 		adminErrorResponse(w, "session error", http.StatusForbidden, err)
 		h.Inc(metricAdminErr)
@@ -1265,15 +1259,8 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		// Check that default environment exists
-		env, err := h.Envs.Get(u.DefaultEnv)
-		if err != nil {
-			adminErrorResponse(w, "error adding user", http.StatusInternalServerError, fmt.Errorf("environment %s does not exist", u.DefaultEnv))
-			h.Inc(metricAdminErr)
-			return
-		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, env.UUID, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.Admin)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
@@ -1285,7 +1272,8 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
+		// TODO verify environments
+		access := h.Users.GenEnvUserAccess(u.Environments, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
 		perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
@@ -1321,17 +1309,6 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				return
 			}
 		}
-		env, err := h.Envs.Get(u.DefaultEnv)
-		if err != nil {
-			adminErrorResponse(w, "error with environment", http.StatusInternalServerError, err)
-			h.Inc(metricAdminErr)
-			return
-		}
-		if err := h.Users.ChangeDefaultEnv(u.Username, env.UUID); err != nil {
-			adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
-			h.Inc(metricAdminErr)
-			return
-		}
 		if u.NewPassword != "" {
 			if err := h.Users.ChangePassword(u.Username, u.NewPassword); err != nil {
 				adminErrorResponse(w, "error changing password", http.StatusInternalServerError, err)
@@ -1348,7 +1325,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		}
 		exist, user := h.Users.ExistsGet(u.Username)
 		if exist {
-			if err := h.Users.DeletePermissions(user.Username, user.DefaultEnv); err != nil {
+			if err := h.Users.DeleteAllPermissions(user.Username); err != nil {
 			}
 			if err := h.Users.Delete(user.Username); err != nil {
 				adminErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
@@ -1768,13 +1745,6 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 		if u.Email != user.Email {
 			if err := h.Users.ChangeEmail(user.Username, u.Email); err != nil {
 				adminErrorResponse(w, "error changing email", http.StatusInternalServerError, err)
-				h.Inc(metricAdminErr)
-				return
-			}
-		}
-		if u.DefaultEnv != user.DefaultEnv && h.Envs.Exists(u.DefaultEnv) {
-			if err := h.Users.ChangeDefaultEnv(user.Username, u.DefaultEnv); err != nil {
-				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}

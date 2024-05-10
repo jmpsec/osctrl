@@ -45,11 +45,10 @@
                       <th width="10%">Username</th>
                       <th width="15%">Email</th>
                       <th width="10%">Fullname</th>
-                      <th width="10%">Default Environment</th>
                       <th width="10%">Last IP</th>
-                      <th width="20%">Last UserAgent</th>
+                      <th width="25%">Last UserAgent</th>
                       <th width="5%">Admin</th>
-                      <th width="10%">Last Session</th>
+                      <th width="15%">Last Session</th>
                       <th width="10%"></th>
                     </tr>
                   </thead>
@@ -156,17 +155,6 @@
                           <input id="user_token" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
-                      </div>
-
-                      <label class="col-md-3 col-form-label" for="default_env">Default Environment: </label>
-                      <div class="col-md-3">
-                        <select class="form-control" style="width: 100%;" name="default_env" id="default_env">
-                          <option value=""></option>
-                        {{ range  $i, $e := $.Environments }}
-                          <option value="{{ $e.Name }}">{{ $e.Name }}</option>
-                        {{ end }}
-                        </select>
-                        <small class="text-muted">read access will be granted</small>
                       </div>
 
                     </div>

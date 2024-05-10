@@ -256,7 +256,7 @@ func (m *UserManager) GetAccess(username string) (UserAccess, error) {
 // GetEnvAccess to get the access for a user and a specific environment
 func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
 	var envAccess EnvAccess
-	perms, err := m.GetPermissions(username, env)
+	perms, err := m.GetEnvPermissions(username, env)
 	if len(perms) == 0 {
 		return envAccess, fmt.Errorf("record not found")
 	}
@@ -291,7 +291,7 @@ func (m *UserManager) GetPermission(username, environment string, aType AccessLe
 }
 
 // GetPermissions to extract permissions by username and environment
-func (m *UserManager) GetPermissions(username, environment string) ([]UserPermission, error) {
+func (m *UserManager) GetEnvPermissions(username, environment string) ([]UserPermission, error) {
 	var perms []UserPermission
 	if !m.Exists(username) {
 		return perms, fmt.Errorf("user %s does not exist", username)
@@ -302,14 +302,43 @@ func (m *UserManager) GetPermissions(username, environment string) ([]UserPermis
 	return perms, nil
 }
 
-// Delete all permissions by username and environment
-func (m *UserManager) DeletePermissions(username, environment string) error {
+// GetAllPermissions to extract permissions by username
+func (m *UserManager) GetAllPermissions(username string) ([]UserPermission, error) {
+	var perms []UserPermission
+	if !m.Exists(username) {
+		return perms, fmt.Errorf("user %s does not exist", username)
+	}
+	if err := m.DB.Where("username = ?", username).Find(&perms).Error; err != nil {
+		return perms, err
+	}
+	return perms, nil
+}
+
+// DeleteEnvPermissions to delete all permissions by username and environment
+func (m *UserManager) DeleteEnvPermissions(username, environment string) error {
 	if !m.Exists(username) {
 		return fmt.Errorf("user %s does not exist", username)
 	}
-	perms, err := m.GetPermissions(username, environment)
+	perms, err := m.GetEnvPermissions(username, environment)
 	if err != nil {
 		return fmt.Errorf("error getting permissions for %s/%s", username, environment)
+	}
+	for _, p := range perms {
+		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {
+			return fmt.Errorf("error deleting permission %v", err)
+		}
+	}
+	return nil
+}
+
+// DeleteAllPermissions to delete all permissions by username
+func (m *UserManager) DeleteAllPermissions(username string) error {
+	if !m.Exists(username) {
+		return fmt.Errorf("user %s does not exist", username)
+	}
+	perms, err := m.GetAllPermissions(username)
+	if err != nil {
+		return fmt.Errorf("error getting permissions for %s", username)
 	}
 	for _, p := range perms {
 		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {

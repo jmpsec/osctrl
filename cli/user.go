@@ -106,18 +106,6 @@ func editUser(c *cli.Context) error {
 			return fmt.Errorf("error changing non-admin - %s", err)
 		}
 	}
-	defaultEnv := c.String("environment")
-	if defaultEnv == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
-	}
-	env, err := envs.Get(defaultEnv)
-	if err != nil {
-		return fmt.Errorf("error getting environment - %s", err)
-	}
-	if err := adminUsers.ChangeDefaultEnv(username, env.UUID); err != nil {
-		return fmt.Errorf("error changing environment - %s", err)
-	}
 	if !silentFlag {
 		fmt.Printf("✅ user %s edited successfully\n", username)
 	}
@@ -164,7 +152,6 @@ func listUsers(c *cli.Context) error {
 		"Username",
 		"Fullname",
 		"Admin?",
-		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
 	}
