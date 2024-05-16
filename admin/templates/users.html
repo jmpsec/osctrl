@@ -63,22 +63,21 @@
                         <p id="fullname" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Fullname }}</p>
                       </td>
                       <td>
-                        <p id="environment" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.DefaultEnv }}</p>
+                        {{ if eq $e.LastIPAddress "" }}
+                          None
+                        {{ else }}
+                          {{ $e.LastIPAddress }}
+                        {{ end }}
                       </td>
                       <td>
-                      {{ if eq $e.LastIPAddress "" }}
-                        None
-                      {{ else }}
-                        {{ $e.LastIPAddress }}
-                      {{ end }}
+                        <code>
+                        {{ if eq $e.LastUserAgent "" }}
+                          None
+                        {{ else }}
+                          {{ $e.LastUserAgent }}
+                        {{ end }}
+                        </code>
                       </td>
-                      <td><code>
-                      {{ if eq $e.LastUserAgent "" }}
-                        None
-                      {{ else }}
-                        {{ $e.LastUserAgent }}
-                      {{ end }}
-                      </code></td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
@@ -362,9 +361,6 @@
           }
           if (type_edit === 'fullname') {
             data.fullname = value;
-          }
-          if (type_edit === 'environment') {
-            data.environment = value;
           }
           console.log(settings);
           sendPostRequest(data, window.location.pathname, '', false);
