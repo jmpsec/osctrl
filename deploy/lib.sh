@@ -400,7 +400,11 @@ function set_motd_centos() {
 # Install go 1.21.3 from tgz
 function install_go_21() {
   local __version="1.21.3"
-  local __file="go$__version.linux-amd64.tar.gz"
+  local __arch="$(uname -i)"
+  if [[ "$__arch" == "aarch64" ]]; then
+    __arch="arm64"
+  fi
+  local __file="go$__version.linux-$__arch.tar.gz"
   local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
     log  "Installing Golang $__version"
