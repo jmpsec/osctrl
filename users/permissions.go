@@ -122,14 +122,20 @@ func (m *UserManager) GenPermissions(username, granted string, access UserAccess
 
 // CheckPermissions to verify access for a username
 func (m *UserManager) CheckPermissions(username string, level AccessLevel, environment string) bool {
-	if !m.Exists(username) {
+	exist, user := m.ExistsGet(username)
+	if !exist {
 		log.Printf("user %s does not exist", username)
 		return false
 	}
 	// If user is an admin, access is yes
-	if m.IsAdmin(username) {
+	if user.Admin {
 		return true
 	}
+	// If environment is not set, access is granted based on access level
+	if (environment == NoEnvironment) && (level == UserLevel) {
+		return true
+	}
+	// Check if the user has access to the environment
 	var perms []UserPermission
 	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
 		return false

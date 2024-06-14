@@ -23,7 +23,7 @@ const (
 // GET Handler to return a single query in JSON
 func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]
@@ -75,7 +75,7 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 // POST Handler to run a query
 func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -154,7 +154,7 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler to return all queries in JSON
 func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -197,7 +197,7 @@ func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler to return hidden queries in JSON
 func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -240,7 +240,7 @@ func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler to return a single query results in JSON
 func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract name
 	name, ok := vars["name"]

@@ -21,7 +21,7 @@ const okContent = "✅"
 // Handle health requests
 func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), true)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
 	incMetric(metricHealthOK)
@@ -30,7 +30,7 @@ func healthHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Handle root requests
 func rootHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricHealthReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), true)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
 	incMetric(metricAPIOK)
@@ -39,7 +39,7 @@ func rootHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Handle error requests
 func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), true)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(errorContent))
 	incMetric(metricAPIErr)
@@ -48,7 +48,7 @@ func errorHTTPHandler(w http.ResponseWriter, r *http.Request) {
 // Handle forbidden error requests
 func forbiddenHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, []byte(errorContent))
 	incMetric(metricAPIErr)

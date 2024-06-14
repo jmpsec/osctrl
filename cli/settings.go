@@ -66,11 +66,11 @@ func addSetting(c *cli.Context) error {
 	}
 	switch typeValue {
 	case settings.TypeString:
-		return settingsmgr.NewStringValue(service, name, c.String("string"), settings.NoEnvironment)
+		return settingsmgr.NewStringValue(service, name, c.String("string"), settings.NoEnvironmentID)
 	case settings.TypeInteger:
-		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"), settings.NoEnvironment)
+		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"), settings.NoEnvironmentID)
 	case settings.TypeBoolean:
-		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"), settings.NoEnvironment)
+		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"), settings.NoEnvironmentID)
 	}
 	return nil
 }
@@ -96,17 +96,17 @@ func updateSetting(c *cli.Context) error {
 	var err error
 	switch typeValue {
 	case settings.TypeInteger:
-		err = settingsmgr.SetInteger(c.Int64("integer"), service, name, settings.NoEnvironment)
+		err = settingsmgr.SetInteger(c.Int64("integer"), service, name, settings.NoEnvironmentID)
 	case settings.TypeBoolean:
-		err = settingsmgr.SetBoolean(c.Bool("true"), service, name, settings.NoEnvironment)
+		err = settingsmgr.SetBoolean(c.Bool("true"), service, name, settings.NoEnvironmentID)
 	case settings.TypeString:
-		err = settingsmgr.SetString(c.String("string"), service, name, false, settings.NoEnvironment)
+		err = settingsmgr.SetString(c.String("string"), service, name, false, settings.NoEnvironmentID)
 	}
 	if err != nil {
 		return fmt.Errorf("error set type - %s", err)
 	}
 	if info != "" {
-		err = settingsmgr.SetInfo(info, service, name, settings.NoEnvironment)
+		err = settingsmgr.SetInfo(info, service, name, settings.NoEnvironmentID)
 	}
 	if err != nil {
 		return fmt.Errorf("error set info - %s", err)
@@ -129,7 +129,7 @@ func deleteSetting(c *cli.Context) error {
 		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
-	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironment); err != nil {
+	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironmentID); err != nil {
 		return fmt.Errorf("error get queries - %s", err)
 	}
 	if !silentFlag {

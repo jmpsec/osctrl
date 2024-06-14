@@ -22,7 +22,7 @@ const (
 // POST Handler for API login request
 func apiLoginHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPILoginReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]

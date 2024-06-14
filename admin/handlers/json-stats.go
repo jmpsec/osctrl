@@ -23,7 +23,7 @@ var (
 // JSONStatsHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	vars := mux.Vars(r)
@@ -64,7 +64,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricJSONErr)
 			return
 		}
-		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironment))
+		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			h.Inc(metricAdminErr)
 			log.Printf("error getting stats %v", err)
@@ -77,7 +77,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricJSONErr)
 			return
 		}
-		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours(settings.NoEnvironment))
+		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			log.Printf("error getting platform stats for %s - %v", identifier, err)
 			return

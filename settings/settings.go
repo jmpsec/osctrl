@@ -77,7 +77,6 @@ const (
 	MetricsHost        string = "metrics_host"
 	MetricsPort        string = "metrics_port"
 	MetricsProtocol    string = "metrics_protocol"
-	DefaultEnv         string = "default_env"
 	InactiveHours      string = "inactive_hours"
 	AcceleratedSeconds string = "accelerated_seconds"
 	NodeDashboard      string = "node_dashboard"
@@ -97,7 +96,7 @@ const (
 
 // Values for generic IDs
 const (
-	NoEnvironment = iota
+	NoEnvironmentID = iota
 )
 
 // SettingValue to hold each value for settings
@@ -543,7 +542,7 @@ func (conf *Settings) DebugHTTP(service string, envID uint) bool {
 
 // DebugService checks if debugging is enabled by service
 func (conf *Settings) DebugService(service string) bool {
-	value, err := conf.RetrieveValue(service, DebugService, NoEnvironment)
+	value, err := conf.RetrieveValue(service, DebugService, NoEnvironmentID)
 	if err != nil {
 		return false
 	}
@@ -552,7 +551,7 @@ func (conf *Settings) DebugService(service string) bool {
 
 // ServiceMetrics checks if metrics are enabled by service
 func (conf *Settings) ServiceMetrics(service string) bool {
-	value, err := conf.RetrieveValue(service, ServiceMetrics, NoEnvironment)
+	value, err := conf.RetrieveValue(service, ServiceMetrics, NoEnvironmentID)
 	if err != nil {
 		return false
 	}
@@ -561,7 +560,7 @@ func (conf *Settings) ServiceMetrics(service string) bool {
 
 // RefreshEnvs gets the interval in seconds to refresh environments by service
 func (conf *Settings) RefreshEnvs(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshEnvs, NoEnvironment)
+	value, err := conf.RetrieveValue(service, RefreshEnvs, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}
@@ -570,7 +569,7 @@ func (conf *Settings) RefreshEnvs(service string) int64 {
 
 // RefreshSettings gets the interval in seconds to refresh settings by service
 func (conf *Settings) RefreshSettings(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshSettings, NoEnvironment)
+	value, err := conf.RetrieveValue(service, RefreshSettings, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}
@@ -579,7 +578,7 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 
 // CleanupSessions gets the interval in seconds to cleanup expired sessions by service
 func (conf *Settings) CleanupSessions() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions, NoEnvironment)
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}
@@ -593,16 +592,6 @@ func (conf *Settings) InactiveHours(envID uint) int64 {
 		return 0
 	}
 	return value.Integer
-}
-
-// DefaultEnv gets the default environment
-// FIXME customize the fallover one
-func (conf *Settings) DefaultEnv(service string) string {
-	value, err := conf.RetrieveValue(service, DefaultEnv, NoEnvironment)
-	if err != nil {
-		return "dev"
-	}
-	return value.String
 }
 
 // NodeDashboard checks if display dashboard per node is enabled

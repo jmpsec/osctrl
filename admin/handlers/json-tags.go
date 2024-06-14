@@ -14,7 +14,7 @@ import (
 // JSONTagsHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) JSONTagsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
