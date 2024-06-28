@@ -117,7 +117,7 @@ func (sm *SessionManager) Get(cookie string) (UserSession, error) {
 // GetByUsername returns all the existing sessions for the given username
 func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) {
 	var sessionsRaw []UserSession
-	if err := sm.db.Where("username = ?", username).Error; err != nil {
+	if err := sm.db.Where("username = ?", username).First(&sessionsRaw).Error; err != nil {
 		return sessionsRaw, err
 	}
 	var sessionsFinal []UserSession
