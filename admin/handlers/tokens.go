@@ -23,7 +23,7 @@ type TokenJSON struct {
 // TokensGETHandler for GET requests for /tokens/{username}
 func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricTokenReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -63,7 +63,7 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 // TokensPOSTHandler for POST request for /tokens/{username}/refresh
 func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricTokenReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

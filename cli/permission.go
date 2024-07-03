@@ -186,7 +186,7 @@ func resetPermissions(c *cli.Context) error {
 			query = true
 			carve = true
 		}
-		if err := adminUsers.DeletePermissions(username, env.UUID); err != nil {
+		if err := adminUsers.DeleteEnvPermissions(username, env.UUID); err != nil {
 			return err
 		}
 		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, user, query, carve, admin)

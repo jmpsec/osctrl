@@ -42,7 +42,6 @@ const (
 	CtxUser    = "user"
 	CtxEmail   = "email"
 	CtxCSRF    = "csrftoken"
-	CtxLevel   = "level"
 	CtxSession = "session"
 )
 
@@ -118,7 +117,7 @@ func (sm *SessionManager) Get(cookie string) (UserSession, error) {
 // GetByUsername returns all the existing sessions for the given username
 func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) {
 	var sessionsRaw []UserSession
-	if err := sm.db.Where("username = ?", username).Error; err != nil {
+	if err := sm.db.Where("username = ?", username).First(&sessionsRaw).Error; err != nil {
 		return sessionsRaw, err
 	}
 	var sessionsFinal []UserSession
@@ -132,7 +131,7 @@ func (sm *SessionManager) GetByUsername(username string) ([]UserSession, error) 
 }
 
 // New creates a session with name without adding it to the registry.
-func (sm *SessionManager) New(r *http.Request, username, level string) (UserSession, error) {
+func (sm *SessionManager) New(r *http.Request, username string) (UserSession, error) {
 	session := UserSession{
 		Username:  username,
 		IPAddress: utils.GetIP(r),
@@ -141,7 +140,6 @@ func (sm *SessionManager) New(r *http.Request, username, level string) (UserSess
 	}
 	values := make(SessionValues)
 	values["auth"] = true
-	values[CtxLevel] = level
 	values[CtxUser] = username
 	values[CtxCSRF] = GenerateCSRF()
 	session.Values = values
@@ -171,17 +169,17 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 }
 
 // Save session and set cookie header
-func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser, access users.EnvAccess) (UserSession, error) {
+func (sm *SessionManager) Save(r *http.Request, w http.ResponseWriter, user users.AdminUser) (UserSession, error) {
 	var s UserSession
 	if cookie, err := r.Cookie(sm.CookieName); err != nil {
-		s, err = sm.New(r, user.Username, LevelPermissions(user, access))
+		s, err = sm.New(r, user.Username)
 		if err != nil {
 			return s, err
 		}
 	} else {
 		s, err = sm.Get(cookie.Value)
 		if err != nil {
-			s, err = sm.New(r, user.Username, LevelPermissions(user, access))
+			s, err = sm.New(r, user.Username)
 			if err != nil {
 				return s, err
 			}

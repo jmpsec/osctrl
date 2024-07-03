@@ -194,6 +194,16 @@ type ProfileTemplateData struct {
 	LeftMetadata AsideLeftMetadata
 }
 
+// DashboardTemplateData for passing data to the dashboard template
+type DashboardTemplateData struct {
+	Title        string
+	Environments []environments.TLSEnvironment
+	Platforms    []string
+	CurrentUser  users.AdminUser
+	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
+}
+
 // TagsTemplateData for passing data to the tags template
 type TagsTemplateData struct {
 	Title        string

@@ -77,7 +77,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
-					u, err = adminUsers.New(samlUser, "", samlUser, "", "", false)
+					u, err = adminUsers.New(samlUser, "", samlUser, "", false)
 					if err != nil {
 						log.Printf("error creating user %s: %v", samlUser, err)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
@@ -96,14 +96,8 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 						return
 					}
 				}
-				access, err := adminUsers.GetEnvAccess(u.Username, u.DefaultEnv)
-				if err != nil {
-					log.Printf("error getting access for %s: %v", samlUser, err)
-					http.Redirect(w, r, forbiddenPath, http.StatusFound)
-					return
-				}
 				// Create new session
-				session, err = sessionsmgr.Save(r, w, u, access)
+				session, err = sessionsmgr.Save(r, w, u)
 				if err != nil {
 					log.Printf("session error: %v", err)
 					http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)

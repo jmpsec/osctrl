@@ -60,7 +60,7 @@ func listNodes(c *cli.Context) error {
 	// Retrieve data
 	var nds []nodes.OsqueryNode
 	if dbFlag {
-		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours(settings.NoEnvironment))
+		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			return fmt.Errorf("error getting nodes - %s", err)
 		}

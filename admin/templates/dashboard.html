@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ $metadata := .Metadata }}
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-aside-left" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+
+          <!--
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-search"></i> osctrl Search for UUIDs, Hostnames, IP Addresses and Usernames
+
+                  <div class="card-header-actions">
+                  </div>
+
+              </div>
+
+              <div class="card-body">
+                <div class="form-group row">
+                  <div class="input-group col-md-12">
+                    <span class="input-group-text" id="basic-addon1"><i class="fas fa-search"></i></span>
+                    <input class="form-control" name="dashboard_search" id="search_box" type="text" autocomplete="off" value="">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          -->
+
+          {{range  $i, $e := $.Environments}}
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-user-edit"></i> Dashboard for environment {{ $e.Name }}
+
+                  <div class="card-header-actions">
+                  </div>
+
+              </div>
+
+              <div class="card-body">
+
+                <div class="form-group row">
+                  <div class="row col-md-12 justify-content-md-center">
+                    <div class="col-md-4">
+                      <div class="c-callout c-callout-info">
+                        <small class="text-muted">Active nodes</small>
+                        <div class="row justify-content-md-center">
+                          <div class="text-value-lg">
+                            <a href="/environment/{{ $e.UUID }}/active">
+                              <span class="mr-4 badge badge-success stats-environment-{{ $e.UUID }}-active">X</span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="c-callout c-callout-info">
+                        <small class="text-muted">Inactive/Offline nodes</small>
+                        <div class="row justify-content-md-center">
+                          <div class="text-value-lg">
+                            <a href="/environment/{{ $e.UUID }}/inactive">
+                              <span class="mr-4 badge badge-danger stats-environment-{{ $e.UUID }}-inactive">X</span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="c-callout c-callout-info">
+                        <small class="text-muted">Total nodes</small>
+                        <div class="row justify-content-md-center">
+                          <div class="text-value-lg">
+                            <a href="/environment/{{ $e.UUID }}/all">
+                              <span class="mr-4 badge badge-light stats-environment-{{ $e.UUID }}-total">X</span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          {{end}}
+
+          {{ template "page-modals" . }}
+
+          </div>
+
+      </main>
+
+      {{ if eq $metadata.Level "admin" }}
+        {{ template "page-aside-right" . }}
+      {{ end }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script type="text/javascript">
+      $(document).ready(function() {
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+      });
+    </script>
+  </body>
+</html>

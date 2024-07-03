@@ -21,7 +21,7 @@ import (
 // LoginPOSTHandler for login page for POST requests
 func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	var l LoginRequest
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
@@ -39,13 +39,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricAdminErr)
 		return
 	}
-	envAccess, err := h.Users.GetEnvAccess(user.Username, user.DefaultEnv)
-	if err != nil {
-		adminErrorResponse(w, "error processing login", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
-		return
-	}
-	_, err = h.Sessions.Save(r, w, user, envAccess)
+	_, err := h.Sessions.Save(r, w, user)
 	if err != nil {
 		adminErrorResponse(w, "session error", http.StatusForbidden, err)
 		h.Inc(metricAdminErr)
@@ -55,14 +49,14 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Login response sent")
 	}
-	adminOKResponse(w, "/environment/"+user.DefaultEnv+"/active")
+	adminOKResponse(w, "/dashboard")
 	h.Inc(metricAdminOK)
 }
 
 // LogoutPOSTHandler for POST requests to logout
 func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	var l LogoutRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -98,7 +92,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 // QueryRunPOSTHandler for POST requests to run queries
 func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -164,7 +158,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 					h.Inc(metricAdminErr)
 					return
 				}
-				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironment))
+				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
@@ -186,7 +180,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 					h.Inc(metricAdminErr)
 					return
 				}
-				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironment))
+				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
@@ -251,7 +245,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 // CarvesRunPOSTHandler for POST requests to run file carves
 func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -330,7 +324,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 					h.Inc(metricAdminErr)
 					return
 				}
-				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironment))
+				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
@@ -352,7 +346,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 					h.Inc(metricAdminErr)
 					return
 				}
-				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironment))
+				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
@@ -408,7 +402,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 // QueryActionsPOSTHandler for POST requests to queries
 func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["env"]
@@ -496,7 +490,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 // CarvesActionsPOSTHandler - Handler for POST requests to carves
 func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var q DistributedCarvesActionRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -547,7 +541,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 // ConfPOSTHandler for POST requests for saving configuration
 func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -780,7 +774,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 // IntervalsPOSTHandler for POST requests for saving intervals
 func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment and verify
 	envVar, ok := vars["environment"]
@@ -850,7 +844,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 // ExpirationPOSTHandler for POST requests for expiring enroll links
 func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -964,7 +958,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 // NodeActionsPOSTHandler for POST requests for multi node action
 func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var m NodeMultiActionRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1021,7 +1015,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 // EnvsPOSTHandler for POST request for /environments
 func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var c EnvironmentsRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1089,11 +1083,6 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case "delete":
-		if c.Name == h.Settings.DefaultEnv(settings.ServiceAdmin) {
-			adminErrorResponse(w, "nope, this is the default environment", http.StatusInternalServerError, fmt.Errorf("attempt to remove default environment %s", c.Name))
-			h.Inc(metricAdminErr)
-			return
-		}
 		if h.Envs.Exists(c.Name) {
 			if err := h.Envs.Delete(c.Name); err != nil {
 				adminErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
@@ -1132,7 +1121,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 // SettingsPOSTHandler for POST request for /settings
 func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract service
 	serviceVar, ok := vars["service"]
@@ -1181,11 +1170,11 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		var err error
 		switch s.Type {
 		case settings.TypeBoolean:
-			err = h.Settings.NewBooleanValue(serviceVar, s.Name, utils.StringToBoolean(s.Value), settings.NoEnvironment)
+			err = h.Settings.NewBooleanValue(serviceVar, s.Name, utils.StringToBoolean(s.Value), settings.NoEnvironmentID)
 		case settings.TypeInteger:
-			err = h.Settings.NewIntegerValue(serviceVar, s.Name, utils.StringToInteger(s.Value), settings.NoEnvironment)
+			err = h.Settings.NewIntegerValue(serviceVar, s.Name, utils.StringToInteger(s.Value), settings.NoEnvironmentID)
 		case settings.TypeString:
-			err = h.Settings.NewStringValue(serviceVar, s.Name, s.Value, settings.NoEnvironment)
+			err = h.Settings.NewStringValue(serviceVar, s.Name, s.Value, settings.NoEnvironmentID)
 		}
 		if err != nil {
 			adminErrorResponse(w, "error adding setting", http.StatusInternalServerError, err)
@@ -1202,11 +1191,11 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		var err error
 		switch s.Type {
 		case settings.TypeBoolean:
-			err = h.Settings.SetBoolean(s.Boolean, serviceVar, s.Name, settings.NoEnvironment)
+			err = h.Settings.SetBoolean(s.Boolean, serviceVar, s.Name, settings.NoEnvironmentID)
 		case settings.TypeInteger:
-			err = h.Settings.SetInteger(utils.StringToInteger(s.Value), serviceVar, s.Name, settings.NoEnvironment)
+			err = h.Settings.SetInteger(utils.StringToInteger(s.Value), serviceVar, s.Name, settings.NoEnvironmentID)
 		case settings.TypeString:
-			err = h.Settings.SetString(s.Value, serviceVar, s.Name, false, settings.NoEnvironment)
+			err = h.Settings.SetString(s.Value, serviceVar, s.Name, false, settings.NoEnvironmentID)
 		}
 		if err != nil {
 			adminErrorResponse(w, "error changing setting", http.StatusInternalServerError, err)
@@ -1215,7 +1204,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 		adminOKResponse(w, "setting changed successfully")
 	case "delete":
-		if err := h.Settings.DeleteValue(serviceVar, s.Name, settings.NoEnvironment); err != nil {
+		if err := h.Settings.DeleteValue(serviceVar, s.Name, settings.NoEnvironmentID); err != nil {
 			adminErrorResponse(w, "error deleting setting", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -1232,7 +1221,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 // UsersPOSTHandler for POST request for /users
 func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1265,15 +1254,8 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		// Check that default environment exists
-		env, err := h.Envs.Get(u.DefaultEnv)
-		if err != nil {
-			adminErrorResponse(w, "error adding user", http.StatusInternalServerError, fmt.Errorf("environment %s does not exist", u.DefaultEnv))
-			h.Inc(metricAdminErr)
-			return
-		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, env.UUID, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.Admin)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
@@ -1285,7 +1267,8 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			h.Inc(metricAdminErr)
 			return
 		}
-		access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
+		// TODO verify environments
+		access := h.Users.GenEnvUserAccess(u.Environments, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
 		perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
@@ -1321,17 +1304,6 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				return
 			}
 		}
-		env, err := h.Envs.Get(u.DefaultEnv)
-		if err != nil {
-			adminErrorResponse(w, "error with environment", http.StatusInternalServerError, err)
-			h.Inc(metricAdminErr)
-			return
-		}
-		if err := h.Users.ChangeDefaultEnv(u.Username, env.UUID); err != nil {
-			adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
-			h.Inc(metricAdminErr)
-			return
-		}
 		if u.NewPassword != "" {
 			if err := h.Users.ChangePassword(u.Username, u.NewPassword); err != nil {
 				adminErrorResponse(w, "error changing password", http.StatusInternalServerError, err)
@@ -1348,7 +1320,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		}
 		exist, user := h.Users.ExistsGet(u.Username)
 		if exist {
-			if err := h.Users.DeletePermissions(user.Username, user.DefaultEnv); err != nil {
+			if err := h.Users.DeleteAllPermissions(user.Username); err != nil {
 			}
 			if err := h.Users.Delete(user.Username); err != nil {
 				adminErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
@@ -1409,7 +1381,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 // TagsPOSTHandler for POST request for /tags
 func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var t TagsRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1497,7 +1469,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 // TagNodesPOSTHandler for POST request for /tags/nodes
 func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	var t TagNodesRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1567,7 +1539,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 // PermissionsPOSTHandler for POST request for /users/permissions
 func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract username and verify
 	usernameVar, ok := vars["username"]
@@ -1638,7 +1610,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 // EnrollPOSTHandler for POST requests enroll data
 func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	vars := mux.Vars(r)
 	// Extract environment
 	envVar, ok := vars["environment"]
@@ -1705,7 +1677,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 // EditProfilePOSTHandler for POST requests to edit profile
 func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1772,13 +1744,6 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 				return
 			}
 		}
-		if u.DefaultEnv != user.DefaultEnv && h.Envs.Exists(u.DefaultEnv) {
-			if err := h.Users.ChangeDefaultEnv(user.Username, u.DefaultEnv); err != nil {
-				adminErrorResponse(w, "error changing default environment", http.StatusInternalServerError, err)
-				h.Inc(metricAdminErr)
-				return
-			}
-		}
 		adminOKResponse(w, "profiled updated successfully")
 	}
 	// Serialize and send response
@@ -1791,7 +1756,7 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 // SavedQueriesPOSTHandler for POST requests to save queries
 func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	var s SavedQueryRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

@@ -17,7 +17,7 @@ import (
 
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	w.Header().Set(utils.ContentType, "image/png")
 	http.ServeFile(w, r, "/static/favicon.png")
 }
@@ -39,27 +39,21 @@ func (h *HandlersAdmin) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler for forbidden error requests
 func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
 }
 
 // RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
-	// Redirect to table for active nodes in default environment
-	defaultEnvironment := h.Settings.DefaultEnv(settings.ServiceAdmin)
-	if h.Envs.Exists(defaultEnvironment) {
-		http.Redirect(w, r, "/environment/"+defaultEnvironment+"/active", http.StatusFound)
-	} else {
-		http.Redirect(w, r, "/environments", http.StatusFound)
-	}
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract username and verify
 	usernameVar, ok := vars["username"]
@@ -91,7 +85,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

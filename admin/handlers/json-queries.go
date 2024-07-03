@@ -124,7 +124,7 @@ func (h *HandlersAdmin) JSONSavedJSON(q queries.SavedQuery) SavedJSON {
 // JSONQueryHandler - Handler for JSON queries by target
 func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

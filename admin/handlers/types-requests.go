@@ -110,16 +110,16 @@ type EnvironmentsRequest struct {
 
 // UsersRequest to receive user action requests
 type UsersRequest struct {
-	CSRFToken   string `json:"csrftoken"`
-	Action      string `json:"action"`
-	Username    string `json:"username"`
-	Email       string `json:"email"`
-	Fullname    string `json:"fullname"`
-	OldPassword string `json:"old_password"`
-	NewPassword string `json:"new_password"`
-	Token       bool   `json:"token"`
-	Admin       bool   `json:"admin"`
-	DefaultEnv  string `json:"environment"`
+	CSRFToken    string   `json:"csrftoken"`
+	Action       string   `json:"action"`
+	Username     string   `json:"username"`
+	Email        string   `json:"email"`
+	Fullname     string   `json:"fullname"`
+	OldPassword  string   `json:"old_password"`
+	NewPassword  string   `json:"new_password"`
+	Token        bool     `json:"token"`
+	Admin        bool     `json:"admin"`
+	Environments []string `json:"environments"`
 }
 
 // TagsRequest to receive tag action requests

@@ -20,7 +20,7 @@ const (
 // GET Handler for all settings including JSON
 func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
@@ -46,7 +46,7 @@ func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for service specific settings excluding JSON
 func apiSettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract service
 	service, ok := vars["service"]
@@ -69,7 +69,7 @@ func apiSettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironment)
+	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		incMetric(metricAPISettingsErr)
@@ -86,7 +86,7 @@ func apiSettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for service and environment specific settings excluding JSON
 func apiSettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract service
 	service, ok := vars["service"]
@@ -127,7 +127,7 @@ func apiSettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironment)
+	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		incMetric(metricAPISettingsErr)
@@ -144,7 +144,7 @@ func apiSettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for service specific settings including JSON
 func apiSettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	service, ok := vars["service"]
@@ -167,7 +167,7 @@ func apiSettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironment)
+	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		incMetric(metricAPISettingsErr)
@@ -184,7 +184,7 @@ func apiSettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
 // GET Handler for service and environment specific settings including JSON
 func apiSettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironment), false)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	vars := mux.Vars(r)
 	// Extract environment
 	service, ok := vars["service"]
@@ -225,7 +225,7 @@ func apiSettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironment)
+	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		incMetric(metricAPISettingsErr)
