@@ -203,15 +203,15 @@ vagrant_up:
 
 # Build dev docker containers and run them (also generates new certificates)
 docker_dev_build:
-	ifeq (,$(wildcard .env))
-		$(error Missing .env file)
-	endif
-	ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.crt))
-		$(error Missing TLS certificate file)
-	endif
-	ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
-		$(error Missing TLS private key file)
-	endif
+ifeq (,$(wildcard ./.env))
+	$(error Missing .env file)
+endif
+ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.crt))
+	$(error Missing TLS certificate file)
+endif
+ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
+	$(error Missing TLS private key file)
+endif
 	docker-compose -f docker-compose-dev.yml build
 
 # Build and run dev docker containers
