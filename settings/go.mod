@@ -12,8 +12,8 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/types v0.0.0-20240406145525-19acb3c03380
-	gorm.io/gorm v1.25.9
+	github.com/jmpsec/osctrl/types v0.0.0-20240703203156-d4954f3bc5b7
+	gorm.io/gorm v1.25.10
 )
 
 require (
@@ -22,6 +22,6 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.6 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.6 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20240406145525-19acb3c03380 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20240703203156-d4954f3bc5b7 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 )
