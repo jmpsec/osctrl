@@ -759,10 +759,6 @@ else
     "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" environment add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
   fi
 
-  # Make newly created environment as default
-  log "Making environment $ENVIRONMENT as default"
-  "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" settings add -n default_env -s admin --type string --string "$ENVIRONMENT"
-
   log "Checking if service is ready"
   while true; do
     _readiness=$(curl -k --write-out %{http_code} --head --silent --output /dev/null "https://$_T_HOST")

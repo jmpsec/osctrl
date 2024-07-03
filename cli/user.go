@@ -207,7 +207,6 @@ func showUser(c *cli.Context) error {
 		"Username",
 		"Fullname",
 		"Admin?",
-		"Default Environment",
 		"Last IPAddress",
 		"Last UserAgent",
 	}

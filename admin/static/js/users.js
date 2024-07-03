@@ -17,7 +17,6 @@ function confirmAddUser() {
   var _password = $("#user_password").val();
   var _admin = $("#user_admin").is(':checked');
   var _token = $("#user_token").is(':checked');
-  var _env = $("#default_env").val();
 
   var data = {
     csrftoken: _csrftoken,
@@ -28,7 +27,6 @@ function confirmAddUser() {
     new_password: _password,
     admin: _admin,
     token: _token,
-    environment: _env
   };
   sendPostRequest(data, _url, _url, false);
 }
