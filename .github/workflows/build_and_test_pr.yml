@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   GOLANG_VERSION: 1.19.2
-  OSQUERY_VERSION: 5.11.0
+  OSQUERY_VERSION: 5.12.1
 
 jobs:
   build_and_test:
