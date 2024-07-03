@@ -20,7 +20,7 @@ replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
 	github.com/gorilla/securecookie v1.1.2
-	github.com/gorilla/sessions v1.2.2
+	github.com/gorilla/sessions v1.3.0
 	github.com/jmpsec/osctrl/nodes v0.3.6 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.6 // indirect
 	github.com/jmpsec/osctrl/types v0.3.6 // indirect
@@ -28,8 +28,8 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/utils v0.0.0-20240406145525-19acb3c03380
-	gorm.io/gorm v1.25.9
+	github.com/jmpsec/osctrl/utils v0.0.0-20240703203156-d4954f3bc5b7
+	gorm.io/gorm v1.25.10
 )
 
 require (
@@ -37,9 +37,9 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20240406145525-19acb3c03380 // indirect
+	github.com/jmpsec/osctrl/environments v0.0.0-20240703203156-d4954f3bc5b7 // indirect
 	github.com/jmpsec/osctrl/settings v0.3.6 // indirect
 	github.com/jmpsec/osctrl/version v0.3.6 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
 )

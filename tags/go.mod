@@ -6,8 +6,8 @@ replace github.com/jmpsec/osctrl/nodes => ../nodes
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.0.0-20240406145525-19acb3c03380
-	gorm.io/gorm v1.25.9
+	github.com/jmpsec/osctrl/nodes v0.0.0-20240703203156-d4954f3bc5b7
+	gorm.io/gorm v1.25.10
 )
 
 require (
