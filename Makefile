@@ -189,18 +189,6 @@ docker_dev_shell_postgres:
 docker_dev_shell_redis:
 	docker exec -it osctrl-redis-dev /bin/sh
 
-# Destroy existing vagrant development VM
-vagrant_destroy:
-	rm -Rf certs/*
-	vagrant destroy -f
-
-# Bring up a vagrant VM for local development
-vagrant_up:
-	make vagrant_destroy
-	mkdir -p "certs"
-	mkcert -key-file "certs/osctrl-admin.key" -cert-file "certs/osctrl-admin.crt" "osctrl.dev"
-	vagrant up
-
 # Build dev docker containers and run them (also generates new certificates)
 docker_dev_build:
 ifeq (,$(wildcard ./.env))

@@ -9,9 +9,6 @@
 .vscode
 .idea
 
-# Vagrant metadata
-.vagrant
-
 # Logs
 *.log
 

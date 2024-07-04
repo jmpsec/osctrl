@@ -30,10 +30,6 @@ You can use docker to run **osctrl** and all the components are defined in the `
 
 Ultimately you can just execute `make docker_dev` and it will automagically build and run **osctrl** locally in docker, for development purposes.
 
-## Running osctrl with vagrant
-
-Vagrant machines can be used for **osctrl** local development. Execute `vagrant up` to create a local virtual machine running Ubuntu 20.04. Once it has finished deploying, **osctrl** will be ready to be used and you can access it following the instructions in the terminal.
-
 ## Documentation
 
 You can find the documentation of the project in [https://osctrl.net](https://osctrl.net)
