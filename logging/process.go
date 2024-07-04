@@ -1,11 +1,11 @@
 package logging
 
 import (
-	"encoding/json"
 	"log"
 
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/types"
+	"encoding/json"
 )
 
 // ProcessLogs - Helper to process logs
