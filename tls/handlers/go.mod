@@ -33,21 +33,23 @@ replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jmpsec/osctrl/backend v0.3.6 // indirect
-	github.com/jmpsec/osctrl/carves v0.0.0-20240703203156-d4954f3bc5b7
-	github.com/jmpsec/osctrl/environments v0.0.0-20240703203156-d4954f3bc5b7
-	github.com/jmpsec/osctrl/logging v0.0.0-20240703203156-d4954f3bc5b7
-	github.com/jmpsec/osctrl/metrics v0.0.0-20240703203156-d4954f3bc5b7
+	github.com/jmpsec/osctrl/carves v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/environments v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/metrics v0.0.0-20240704175315-b3e7d3dd0a86
 	github.com/jmpsec/osctrl/nodes v0.3.6
 	github.com/jmpsec/osctrl/queries v0.3.6
 	github.com/jmpsec/osctrl/settings v0.3.6
-	github.com/jmpsec/osctrl/tags v0.0.0-20240703203156-d4954f3bc5b7
+	github.com/jmpsec/osctrl/tags v0.0.0-20240704175315-b3e7d3dd0a86
 	github.com/jmpsec/osctrl/types v0.3.6
 	github.com/jmpsec/osctrl/utils v0.3.6
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.9.0
 )
 
-require github.com/jmpsec/osctrl/version v0.0.0-20240703203156-d4954f3bc5b7
+require (
+	github.com/jmpsec/osctrl/logging v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/version v0.0.0-20240704175315-b3e7d3dd0a86
+)
 
 require (
 	github.com/aws/aws-sdk-go v1.54.14 // indirect
@@ -70,11 +72,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
-	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -84,7 +83,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmpsec/osctrl/cache v0.0.0-20240406145525-19acb3c03380 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -104,10 +102,11 @@ require (
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
 	gorm.io/gorm v1.25.10 // indirect
