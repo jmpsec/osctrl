@@ -75,10 +75,6 @@ It requires to install [requests](https://pypi.org/project/requests/)  with `pip
 
 Helper script to create official releases for osctrl. It used the GitHub API to list the latest release but it has been deprecated in favour of GitHub Actions.
 
-## vagrant_tmux.sh
-
-Helper for tmux and osctrl, when deployed in Vagrant.
-
 ## packages
 
 Random scripts to generate packages for Linux or macOS. They have not been tested in a while. Use them at your own risk.
