@@ -255,6 +255,10 @@ func (r *RedisManager) SetLogs(logType, hostID, envOrName string, data []byte) e
 	if err := r.Client.Set(ctx, hKey, data, tExpire).Err(); err != nil {
 		return fmt.Errorf("%s Set: %s", logType, err)
 	}
+	// Make sure we expire the key
+	if err := r.Client.Expire(ctx, hKey, tExpire).Err(); err != nil {
+		return fmt.Errorf("%s Expire: %s", logType, err)
+	}
 	return nil
 }
 

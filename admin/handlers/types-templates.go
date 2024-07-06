@@ -143,14 +143,15 @@ type CarvesDetailsTemplateData struct {
 
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
-	Title        string
-	EnvUUID      string
-	Environments []environments.TLSEnvironment
-	Platforms    []string
-	Query        queries.DistributedQuery
-	QueryTargets []queries.DistributedQueryTarget
-	Metadata     TemplateMetadata
-	LeftMetadata AsideLeftMetadata
+	Title         string
+	EnvUUID       string
+	Environments  []environments.TLSEnvironment
+	Platforms     []string
+	Query         queries.DistributedQuery
+	QueryTargets  []queries.DistributedQueryTarget
+	Metadata      TemplateMetadata
+	LeftMetadata  AsideLeftMetadata
+	ServiceConfig types.JSONConfigurationAdmin
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -216,16 +217,17 @@ type TagsTemplateData struct {
 
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
-	Title        string
-	EnvUUID      string
-	Node         nodes.OsqueryNode
-	NodeTags     []tags.AdminTag
-	TagsForNode  []tags.AdminTagForNode
-	Environments []environments.TLSEnvironment
-	Platforms    []string
-	Metadata     TemplateMetadata
-	LeftMetadata AsideLeftMetadata
-	Dashboard    bool
-	Schedule     environments.ScheduleConf
-	Packs        environments.PacksEntries
+	Title         string
+	EnvUUID       string
+	Node          nodes.OsqueryNode
+	NodeTags      []tags.AdminTag
+	TagsForNode   []tags.AdminTagForNode
+	Environments  []environments.TLSEnvironment
+	Platforms     []string
+	Metadata      TemplateMetadata
+	LeftMetadata  AsideLeftMetadata
+	Dashboard     bool
+	Schedule      environments.ScheduleConf
+	Packs         environments.PacksEntries
+	ServiceConfig types.JSONConfigurationAdmin
 }

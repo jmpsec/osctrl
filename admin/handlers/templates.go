@@ -722,14 +722,15 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
-		Title:        "Query logs " + query.Name,
-		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		LeftMetadata: leftMetadata,
-		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
-		Query:        query,
-		QueryTargets: targets,
+		Title:         "Query logs " + query.Name,
+		EnvUUID:       env.UUID,
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		LeftMetadata:  leftMetadata,
+		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
+		Platforms:     platforms,
+		Query:         query,
+		QueryTargets:  targets,
+		ServiceConfig: *h.AdminConfig,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
@@ -1115,18 +1116,19 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := NodeTemplateData{
-		Title:        "Node View " + node.Hostname,
-		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
-		LeftMetadata: leftMetadata,
-		Node:         node,
-		NodeTags:     nodeTags,
-		TagsForNode:  tags,
-		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
-		Dashboard:    dashboardEnabled,
-		Packs:        packs,
-		Schedule:     schedule,
+		Title:         "Node View " + node.Hostname,
+		EnvUUID:       env.UUID,
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		LeftMetadata:  leftMetadata,
+		Node:          node,
+		NodeTags:      nodeTags,
+		TagsForNode:   tags,
+		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
+		Platforms:     platforms,
+		Dashboard:     dashboardEnabled,
+		Packs:         packs,
+		Schedule:      schedule,
+		ServiceConfig: *h.AdminConfig,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
