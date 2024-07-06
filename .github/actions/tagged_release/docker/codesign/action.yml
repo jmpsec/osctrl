@@ -4,10 +4,10 @@ inputs:
   osctrl_component:
     required: true
     description: Define the osctrl component to compile
-  docker_tag:
+  docker_tags:
     required: true
     description: Define the Docker tag
-  docker_image_digest:
+  docker_image_digests:
     required: true
     description: Dockerhub image digest
   docker_hub_org:
@@ -58,16 +58,28 @@ runs:
       env:
         COSIGN_PASSWORD: "${{ inputs.codesign_password }}"
       run: |
-        IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}"
         echo "${{ inputs.codesign_private_key }}" > cosign.key
-        cosign sign --key cosign.key docker.io/$IMAGE_NAME@${{ inputs.docker_image_digest }}
+        for tag in ${{ inputs.docker_tags }}
+        do
+          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
+          for digest in ${{ inputs.docker_image_digest }}
+          do
+            cosign sign --key cosign.key docker.io/$IMAGE_NAME@sha256:$digest
+          done
+        done
         rm -f cosign.key
 
     ########################### Verify signed image using cosign ###########################
     - name: Verify the signed published Docker image
       shell: bash
       run: |
-        IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:${{ inputs.docker_tag }}"
         echo "${{ inputs.codesign_public_cert }}" > cosign.key
-        cosign verify --key cosign.key docker.io/$IMAGE_NAME@${{ inputs.docker_image_digest }}
+        for tag in ${{ inputs.docker_tags }}
+        do
+          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
+          for digest in ${{ inputs.docker_image_digest }}
+          do
+            cosign verify --key cosign.key docker.io/$IMAGE_NAME@sha256:$digest
+          done
+        done
         rm -f cosign.key
