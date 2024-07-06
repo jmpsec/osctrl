@@ -2,6 +2,7 @@
 <html lang="en">
 
   {{ $metadata := .Metadata }}
+  {{ $serviceConfig := .ServiceConfig }}
 
   {{ template "page-head" . }}
 
@@ -71,6 +72,7 @@
                   </tbody>
                 </table>
                 <br>
+              {{ if eq $serviceConfig.Logger "db" }}
                 <table id="tableQueryLogs" class="table table-bordered table-striped" style="width:100%">
                   <input type="hidden" id="refresh_value" value="yes">
                   <thead>
@@ -81,6 +83,11 @@
                     </tr>
                   </thead>
                 </table>
+              {{ else }}
+                <div class="alert alert-warning" role="alert">
+                  <i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration.
+                </div>
+              {{ end }}
 
               </div>
             </div>

@@ -337,7 +337,7 @@ func (conf *Settings) SetAdminJSON(cfg types.JSONConfigurationAdmin, envID uint)
 	if err := conf.SetJSON(ServiceAdmin, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
+	if err := conf.SetJSON(ServiceAdmin, JSONLogger, cfg.Logger, envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(ServiceAdmin, JSONSessionKey, cfg.SessionKey, envID); err != nil {

@@ -190,7 +190,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	// Iterate through targets to get logs
 	queryLogJSON := []QueryLogJSON{}
 	// Get logs
-	if h.RedisCache != nil {
+	if h.DBLogger != nil {
 		queryLogs, err := h.DBLogger.QueryLogs(name)
 		if err != nil {
 			log.Printf("error getting logs %v", err)

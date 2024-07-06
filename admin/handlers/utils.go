@@ -168,6 +168,12 @@ func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfig
 		if v.Name == settings.JSONAuth {
 			cfg.Auth = v.String
 		}
+		if v.Name == settings.JSONLogger {
+			cfg.Logger = v.String
+		}
+		if v.Name == settings.JSONCarver {
+			cfg.Carver = v.String
+		}
 		if v.Name == settings.JSONSessionKey {
 			cfg.SessionKey = v.String
 		}

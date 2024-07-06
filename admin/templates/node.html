@@ -2,6 +2,7 @@
 <html lang="en">
 
   {{ $metadata := .Metadata }}
+  {{ $serviceConfig := .ServiceConfig }}
 
   {{ template "page-head" . }}
 
@@ -390,6 +391,7 @@
                               </button>
                             </div>
                           </div>
+                        {{ if eq $serviceConfig.Logger "db" }}
                           <div id="status-table" class="card-body table-responsive">
                             <table id="tableStatusLogs" class="table table-bordered table-striped" style="width:100%">
                               <input type="hidden" id="status_refresh_value" value="yes">
@@ -402,6 +404,11 @@
                               </thead>
                             </table>
                           </div>
+                        {{ else }}
+                          <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration. No logs to display.
+                          </div>
+                        {{ end }}
                         </div>
                       </div>
 
@@ -429,6 +436,7 @@
                               </button>
                             </div>
                           </div>
+                        {{ if eq $serviceConfig.Logger "db" }}
                           <div id="results-table" class="card-body table-responsive">
                             <table id="tableResultLogs" class="table table-bordered table-striped" style="width:100%">
                               <input type="hidden" id="result_refresh_value" value="yes">
@@ -441,6 +449,11 @@
                               </thead>
                             </table>
                           </div>
+                        {{ else }}
+                          <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration. No logs to display.
+                          </div>
+                        {{ end }}
                         </div>
                       </div>
 
