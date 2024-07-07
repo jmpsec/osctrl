@@ -39,7 +39,7 @@ runs:
       shell: bash
       run: |
         cp \
-        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
     - name: Copy windows binary
@@ -47,7 +47,7 @@ runs:
       shell: bash
       run: |
         cp \
-        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.exe
 
     ########################### Download osctrl DEB package ###########################
