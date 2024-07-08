@@ -33,7 +33,7 @@ ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-cli.toml"]
 CMD ["/opt/osctrl/script/init.sh"]
 
 #################################################### osctrl-ubuntu-osquery ####################################################
-FROM osctrl-cli-dev as osctrl-ubuntu-osquery
+FROM osctrl-cli-dev AS osctrl-ubuntu-osquery
 
 ARG OSQUERY_VERSION
 
