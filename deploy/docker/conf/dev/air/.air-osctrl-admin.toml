@@ -7,10 +7,11 @@ tmp_dir = "/tmp"
 
 [build]
   bin = "./bin/osctrl-admin"
+  pre_cmd = ["cp -R /usr/src/app/admin/templates/ /opt/osctrl/tmpl_admin", "cp -R /usr/src/app/admin/static/ /opt/osctrl/static"]
   cmd = "go build -o /opt/osctrl/bin/osctrl-admin /usr/src/app/admin/*.go"
   # It's not necessary to trigger build each time file changes if it's too frequent.
   delay = 1000
-  exclude_dir = ["tmp", "vendor", "testdata", "deploy"]
+  exclude_dir = ["tmp", "vendor", "testdata", "deploy", "api", "cli", "tls"]
   exclude_file = []
   exclude_regex = ["_test\\.go"]
   exclude_unchanged = false
