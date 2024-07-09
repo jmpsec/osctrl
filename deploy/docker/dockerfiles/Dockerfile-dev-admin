@@ -23,7 +23,6 @@ RUN go mod verify
 ### Copy osctrl-admin bin and configs ###
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
-RUN mkdir -p /opt/osctrl/script
 RUN mkdir -p /opt/osctrl/carved_files
 
 ### Copy osctrl-admin web templates ###
