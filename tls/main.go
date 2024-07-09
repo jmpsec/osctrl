@@ -111,6 +111,7 @@ var (
 	tlsKeyFile        string
 	loggerFlag        bool
 	loggerFile        string
+	loggerDbSame      bool
 	alwaysLog         bool
 	carverConfigFile  string
 )
@@ -422,6 +423,13 @@ func init() {
 			Destination: &loggerFile,
 		},
 		&cli.BoolFlag{
+			Name:        "logger-db-same",
+			Value:       false,
+			Usage:       "Use the same DB configuration for the logger",
+			EnvVars:     []string{"LOGGER_DB_SAME"},
+			Destination: &loggerDbSame,
+		},
+		&cli.BoolFlag{
 			Name:        "always-log",
 			Aliases:     []string{"a", "always"},
 			Value:       false,
@@ -569,11 +577,11 @@ func osctrlService() {
 	ingestedMetrics = metrics.CreateIngested(db.Conn)
 	// Initialize TLS logger
 	log.Println("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(tlsConfig.Logger, loggerFile, s3LogConfig, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
+	loggerTLS, err = logging.CreateLoggerTLS(
+		tlsConfig.Logger, loggerFile, s3LogConfig, loggerDbSame, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
 		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
-
 	// Sleep to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?

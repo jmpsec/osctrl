@@ -25,7 +25,7 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, loggerSame, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
 		Logging: logging,
 		Nodes:   nodes,
@@ -47,12 +47,21 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		g.Settings(mgr)
 		l.Logger = g
 	case settings.LoggingDB:
-		d, err := CreateLoggerDBFile(loggingFile)
-		if err != nil {
-			return nil, err
+		if loggerSame {
+			d, err := CreateLoggerDBConfig(dbConf)
+			if err != nil {
+				return nil, err
+			}
+			d.Settings(mgr)
+			l.Logger = d
+		} else {
+			d, err := CreateLoggerDBFile(loggingFile)
+			if err != nil {
+				return nil, err
+			}
+			d.Settings(mgr)
+			l.Logger = d
 		}
-		d.Settings(mgr)
-		l.Logger = d
 	case settings.LoggingStdout:
 		d, err := CreateLoggerStdout()
 		if err != nil {

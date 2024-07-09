@@ -154,6 +154,7 @@ var (
 	osqueryTablesFile    string
 	osqueryTablesVersion string
 	loggerFile           string
+	loggerDbSame         bool
 	staticFilesFolder    string
 	staticOffline        bool
 	carvedFilesFolder    string
@@ -522,6 +523,13 @@ func init() {
 			EnvVars:     []string{"LOGGER_FILE"},
 			Destination: &loggerFile,
 		},
+		&cli.BoolFlag{
+			Name:        "logger-db-same",
+			Value:       false,
+			Usage:       "Use the same DB configuration for the logger",
+			EnvVars:     []string{"LOGGER_DB_SAME"},
+			Destination: &loggerDbSame,
+		},
 		&cli.StringFlag{
 			Name:        "static",
 			Aliases:     []string{"s"},
@@ -728,9 +736,13 @@ func osctrlAdminService() {
 		}
 	}()
 
-	// Set the logger configuration file to empty if we are logging to anything but the DB
-	if adminConfig.Logger != settings.LoggingDB {
-		loggerFile = ""
+	var loggerDBConfig *backend.JSONConfigurationDB
+	loggerFile = ""
+	// Set the logger configuration file if we have a DB logger
+	if adminConfig.Logger == settings.LoggingDB {
+		if loggerDbSame {
+			loggerDBConfig = &dbConfig
+		}
 	}
 
 	// Initialize Admin handlers before router
@@ -753,7 +765,7 @@ func osctrlAdminService() {
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithCarvesFolder(carvedFilesFolder),
 		handlers.WithAdminConfig(&adminConfig),
-		handlers.WithDBLogger(loggerFile),
+		handlers.WithDBLogger(loggerFile, loggerDBConfig),
 	)
 
 	// ////////////////////////// ADMIN

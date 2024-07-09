@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
+	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
@@ -172,10 +173,20 @@ func WithAdminConfig(config *types.JSONConfigurationAdmin) HandlersOption {
 	}
 }
 
-func WithDBLogger(dbfile string) HandlersOption {
+func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOption {
 	return func(h *HandlersAdmin) {
 		if dbfile == "" {
-			h.DBLogger = nil
+			if config == nil {
+				h.DBLogger = nil
+				return
+			}
+			logger, err := logging.CreateLoggerDBConfig(*config)
+			if err != nil {
+				log.Printf("error creating DB logger %v", err)
+				logger.Enabled = false
+				logger.Database = nil
+			}
+			h.DBLogger = logger
 			return
 		}
 		logger, err := logging.CreateLoggerDBFile(dbfile)
