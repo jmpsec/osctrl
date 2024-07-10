@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/utils v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/utils v0.0.0-20240710135334-c020425d8ffe
 	gorm.io/gorm v1.25.10
 )
 
@@ -37,9 +37,9 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20240704175315-b3e7d3dd0a86 // indirect
+	github.com/jmpsec/osctrl/environments v0.0.0-20240710135334-c020425d8ffe // indirect
 	github.com/jmpsec/osctrl/settings v0.3.7 // indirect
 	github.com/jmpsec/osctrl/version v0.3.7 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
 )
