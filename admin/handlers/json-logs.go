@@ -118,12 +118,12 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// }
 	// Extract parameter for limit
 	// If parameter is not present or invalid, it defaults to 100 items
-	limitItems := int64(100)
+	limitItems := int(100)
 	limit, ok := r.URL.Query()["limit"]
 	if ok {
-		l, err := strconv.ParseInt(limit[0], 10, 64)
+		l, err := strconv.ParseInt(limit[0], 10, 32)
 		if err == nil {
-			limitItems = int64(l)
+			limitItems = int(l)
 		}
 	}
 	// Get logs
