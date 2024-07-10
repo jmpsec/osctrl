@@ -118,18 +118,18 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// }
 	// Extract parameter for limit
 	// If parameter is not present or invalid, it defaults to 100 items
-	limitItems := 100
+	limitItems := int64(100)
 	limit, ok := r.URL.Query()["limit"]
 	if ok {
 		l, err := strconv.ParseInt(limit[0], 10, 64)
 		if err == nil {
-			limitItems = int(l)
+			limitItems = int64(l)
 		}
 	}
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == types.StatusLog && h.AdminConfig.Logger == settings.LoggingDB {
-		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, limitItems)
+		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -149,7 +149,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			logJSON = append(logJSON, _l)
 		}
 	} else if logType == types.ResultLog && h.AdminConfig.Logger == settings.LoggingDB {
-		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, limitItems)
+		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
