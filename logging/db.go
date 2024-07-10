@@ -197,7 +197,16 @@ func (logDB *LoggerDB) QueryLogs(name string) ([]OsqueryQueryData, error) {
 func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]OsqueryStatusData, error) {
 	var logs []OsqueryStatusData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at < ?", minusSeconds).Find(&logs).Error; err != nil {
+		return logs, err
+	}
+	return logs, nil
+}
+
+// StatusLogsLimit will retrieve a limited number of status logs
+func (logDB *LoggerDB) StatusLogsLimit(uuid, environment string, limit int) ([]OsqueryStatusData, error) {
+	var logs []OsqueryStatusData
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Order("created_at desc").Limit(limit).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
@@ -207,7 +216,16 @@ func (logDB *LoggerDB) StatusLogs(uuid, environment string, seconds int64) ([]Os
 func (logDB *LoggerDB) ResultLogs(uuid, environment string, seconds int64) ([]OsqueryResultData, error) {
 	var logs []OsqueryResultData
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
-	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at > ?", minusSeconds).Find(&logs).Error; err != nil {
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Where("created_at < ?", minusSeconds).Find(&logs).Error; err != nil {
+		return logs, err
+	}
+	return logs, nil
+}
+
+// ResultLogsLimit will retrieve a limited number of result logs
+func (logDB *LoggerDB) ResultLogsLimit(uuid, environment string, limit int) ([]OsqueryResultData, error) {
+	var logs []OsqueryResultData
+	if err := logDB.Database.Conn.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Order("created_at").Limit(limit).Find(&logs).Error; err != nil {
 		return logs, err
 	}
 	return logs, nil
