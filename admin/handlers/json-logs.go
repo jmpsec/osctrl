@@ -108,18 +108,28 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Extract parameter for seconds
 	// If parameter is not present or invalid, it defaults to 6 hours back
-	secondsBack := int64(utils.SixHours)
-	seconds, ok := r.URL.Query()["seconds"]
+	// secondsBack := int64(utils.SixHours)
+	// seconds, ok := r.URL.Query()["seconds"]
+	// if ok {
+	// 	s, err := strconv.ParseInt(seconds[0], 10, 64)
+	// 	if err == nil {
+	// 		secondsBack = s
+	// 	}
+	// }
+	// Extract parameter for limit
+	// If parameter is not present or invalid, it defaults to 100 items
+	limitItems := int(100)
+	limit, ok := r.URL.Query()["limit"]
 	if ok {
-		s, err := strconv.ParseInt(seconds[0], 10, 64)
+		l, err := strconv.ParseInt(limit[0], 10, 32)
 		if err == nil {
-			secondsBack = s
+			limitItems = int(l)
 		}
 	}
 	// Get logs
 	logJSON := []LogJSON{}
 	if logType == types.StatusLog && h.AdminConfig.Logger == settings.LoggingDB {
-		statusLogs, err := h.DBLogger.StatusLogs(UUID, env.Name, secondsBack)
+		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -138,8 +148,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == types.ResultLog && h.RedisCache != nil {
-		resultLogs, err := h.RedisCache.ResultLogs(UUID, env.Name, secondsBack)
+	} else if logType == types.ResultLog && h.AdminConfig.Logger == settings.LoggingDB {
+		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Printf("error getting logs %v", err)
 			h.Inc(metricJSONErr)
@@ -149,8 +159,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		for _, r := range resultLogs {
 			_l := LogJSON{
 				Created: CreationTimes{
-					Display:   utils.PastFutureTimesEpoch(int64(r.UnixTime)),
-					Timestamp: strconv.Itoa(int(r.UnixTime)),
+					Display:   utils.PastFutureTimes(r.CreatedAt),
+					Timestamp: strconv.Itoa(int(r.CreatedAt.Unix())),
 				},
 				First:  r.Name,
 				Second: string(r.Columns),

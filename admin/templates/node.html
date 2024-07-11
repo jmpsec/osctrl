@@ -371,7 +371,8 @@
                         <div class="card mt-2">
                           <div id="status-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
-                            <label for="back_hours_status">Last <b><output id="back_output_status">6</output></b> hours of status logs for node {{ .UUID }}</label>
+                            <!-- <label for="back_hours_status">Last <b><output id="back_output_status">6</output></b> hours of status logs for node {{ .UUID }}</label> -->
+                            <label for="back_hours_status">Last <b><output>100</output id="back_output_status"></b> entries of status logs for node {{ .UUID }}</label>
                             <a href="#status-logs" target="_blank">
                               <i class="fas fa-external-link-alt"></i>
                             </a>
@@ -416,7 +417,8 @@
                         <div class="card mt-2">
                           <div id="result-card-header" class="card-header">
                             <i class="fas fa-stream"></i>
-                            <label for="back_hours_result">Last <b><output id="back_output_result">6</output></b> hours of status logs for node {{ .UUID }}</label>
+                            <!-- <label for="back_hours_result">Last <b><output id="back_output_result">6</output></b> hours of result logs for node {{ .UUID }}</label> -->
+                            <label for="back_hours_result">Last <b><output id="back_output_result">100</output></b> entries of result logs for node {{ .UUID }}</label>
                             <a href="#result-logs" target="_blank">
                               <i class="fas fa-external-link-alt"></i>
                             </a>

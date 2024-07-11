@@ -2,7 +2,7 @@ package version
 
 const (
 	// OsctrlVersion to have the version for all components
-	OsctrlVersion = "0.3.6"
+	OsctrlVersion = "0.3.7"
 	// OsqueryVersion to have the version for osquery defined
 	OsqueryVersion = "5.12.1"
 )

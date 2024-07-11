@@ -32,7 +32,7 @@ services:
   ######################################### osctrl-tls #########################################
   osctrl-tls:
     container_name: 'osctrl-tls-dev'
-    image: 'osctrl-tls-dev:v${OSCTRL_VERSION}'
+    image: 'osctrl-tls-dev:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -40,12 +40,13 @@ services:
       args:
         GOLANG_VERSION: ${GOLANG_VERSION}
     environment:
-      #### TLS settings ####
+      #### osctrl-tls configuration settings ####
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=db
+      - LOGGER_DB_SAME=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -67,7 +68,7 @@ services:
   ######################################### osctrl-admin #########################################
   osctrl-admin:
     container_name: 'osctrl-admin-dev'
-    image: 'osctrl-admin-dev:v${OSCTRL_VERSION}'
+    image: 'osctrl-admin-dev:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -76,13 +77,15 @@ services:
         GOLANG_VERSION: ${GOLANG_VERSION}
         OSQUERY_VERSION: ${OSQUERY_VERSION}
     environment:
-      #### TLS settings ####
+      #### osctrl-admin configuration settings ####
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9001
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=db
       - JWT_SECRET=${JWT_SECRET}
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=db
+      - LOGGER_DB_SAME=true
+      - SESSION_KEY=${SESSION_KEY}
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -104,7 +107,7 @@ services:
   ######################################### osctrl-api #########################################
   osctrl-api:
     container_name: 'osctrl-api-dev'
-    image: 'osctrl-api-dev:v${OSCTRL_VERSION}'
+    image: 'osctrl-api-dev:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -113,13 +116,13 @@ services:
         GOLANG_VERSION: ${GOLANG_VERSION}
         OSQUERY_VERSION: ${OSQUERY_VERSION}
     environment:
-      #### TLS settings ####
+      #### osctrl-api configuration settings ####
       - SERVICE_LISTENER=0.0.0.0
       - SERVICE_PORT=9002
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=jwt
       - JWT_SECRET=${JWT_SECRET}
-      - SERVICE_LOGGER=stdout
+      - SERVICE_LOGGER=db
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -183,7 +186,7 @@ services:
   ##############################################################################################
   osctrl-cli:
     container_name: 'osctrl-cli-dev'
-    image: 'osctrl-cli-dev:v${OSCTRL_VERSION}'
+    image: 'osctrl-cli-dev:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -221,7 +224,7 @@ services:
   ######################################### osquery #########################################
   osquery:
     container_name: 'osctrl-osquery-dev'
-    image: 'osctrl-osquery-dev:v${OSCTRL_VERSION}'
+    image: 'osctrl-osquery-dev:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .

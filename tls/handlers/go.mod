@@ -32,27 +32,27 @@ replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/jmpsec/osctrl/backend v0.3.6 // indirect
-	github.com/jmpsec/osctrl/carves v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/environments v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/metrics v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/nodes v0.3.6
-	github.com/jmpsec/osctrl/queries v0.3.6
-	github.com/jmpsec/osctrl/settings v0.3.6
-	github.com/jmpsec/osctrl/tags v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/types v0.3.6
-	github.com/jmpsec/osctrl/utils v0.3.6
+	github.com/jmpsec/osctrl/backend v0.3.7 // indirect
+	github.com/jmpsec/osctrl/carves v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/environments v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/metrics v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/nodes v0.3.7
+	github.com/jmpsec/osctrl/queries v0.3.7
+	github.com/jmpsec/osctrl/settings v0.3.7
+	github.com/jmpsec/osctrl/tags v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/types v0.3.7
+	github.com/jmpsec/osctrl/utils v0.3.7
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.9.0
 )
 
 require (
-	github.com/jmpsec/osctrl/logging v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/version v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/logging v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/version v0.0.0-20240710135334-c020425d8ffe
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.54.14 // indirect
+	github.com/aws/aws-sdk-go v1.54.17 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.30.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.3 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.24 // indirect
@@ -99,8 +99,8 @@ require (
 	github.com/spf13/viper v1.19.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect

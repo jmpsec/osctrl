@@ -12,7 +12,7 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/jmpsec/osctrl/types v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/types v0.0.0-20240710135334-c020425d8ffe
 	github.com/spf13/viper v1.19.0
 )
 
@@ -24,9 +24,9 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.6 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.6 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20240704175315-b3e7d3dd0a86 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.7 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.7 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20240710135334-c020425d8ffe // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

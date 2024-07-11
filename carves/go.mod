@@ -14,9 +14,9 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.3.6 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.6 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/nodes v0.3.7 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.7 // indirect
+	github.com/jmpsec/osctrl/types v0.0.0-20240710135334-c020425d8ffe
 )
 
 require (
@@ -25,8 +25,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.24
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.58.0
-	github.com/jmpsec/osctrl/settings v0.0.0-20240704175315-b3e7d3dd0a86
-	github.com/jmpsec/osctrl/utils v0.0.0-20240704175315-b3e7d3dd0a86
+	github.com/jmpsec/osctrl/settings v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/utils v0.0.0-20240710135334-c020425d8ffe
 	github.com/spf13/viper v1.19.0
 	gorm.io/gorm v1.25.10
 )
@@ -65,7 +65,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
