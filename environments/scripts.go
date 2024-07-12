@@ -30,12 +30,7 @@ _SECRET_FREEBSD=/usr/local/etc/${_PROJECT}.secret
 _FLAGS_FREEBSD=/usr/local/etc/osquery.flags
 _CERT_FREEBSD=/usr/local/etc/certs/${_PROJECT}.crt
 
-_DEB_ARCH=$(dpkg --print-architecture)
-
 _OSQUERY_VER="{{ .OsqueryVersion }}"
-_OSQUERY_PKG="https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_OSQUERY_VER.pkg"
-_OSQUERY_DEB="https://osquery-packages.s3.amazonaws.com/deb/osquery_$_OSQUERY_VER-1.linux_$_DEB_ARCH.deb"
-_OSQUERY_RPM="https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_OSQUERY_VER-1.linux.x86_64.rpm"
 
 _OSQUERY_SERVICE_LINUX="osqueryd"
 _OSQUERY_SERVICE_OSX="io.osquery.agent"
@@ -56,6 +51,19 @@ log() {
   echo "[+] $1"
 }
 
+osquery_downloadable() {
+	local _VER=$1
+	local _type=$2
+	if [ "$_type" = "deb" ]; then
+		local _DEB_ARCH=$(dpkg --print-architecture)
+		echo "https://osquery-packages.s3.amazonaws.com/deb/osquery_$_VER-1.linux_$_DEB_ARCH.deb"
+	elif [ "$_type" = "rpm" ]; then
+		echo "https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_VER-1.linux.x86_64.rpm"
+	elif [ "$_type" = "pkg" ]; then
+		echo "https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_VER.pkg"
+	fi
+}
+
 installOsquery() {
   log "Installing osquery for $_OS"
   if [ "$_OS" = "linux" ]; then
@@ -63,11 +71,13 @@ installOsquery() {
     distro=$(/usr/bin/rpm -q -f /usr/bin/rpm >/dev/null 2>&1)
     if [ "$?" = "0" ]; then
       log "RPM based system detected"
+			local _OSQUERY_RPM=$(osquery_downloadable $_OSQUERY_VER rpm)
       local _RPM="$(echo $_OSQUERY_RPM | cut -d"/" -f5)"
       sudo curl -# "$_OSQUERY_RPM" -o "/tmp/$_RPM"
       sudo rpm -ivh "/tmp/$_RPM"
     else
       log "DEB based system detected"
+			local _OSQUERY_DEB=$(osquery_downloadable $_OSQUERY_VER deb)
       local _DEB="$(echo $_OSQUERY_DEB | cut -d"/" -f5)"
       sudo curl -# "$_OSQUERY_DEB" -o "/tmp/$_DEB"
       sudo dpkg -i "/tmp/$_DEB"
@@ -75,6 +85,7 @@ installOsquery() {
   fi
   if [ "$_OS" = "darwin" ]; then
     log "Installing osquery in OSX"
+		local _OSQUERY_PKG=$(osquery_downloadable $_OSQUERY_VER pkg)
     local _PKG="$(echo $_OSQUERY_PKG | cut -d"/" -f5)"
     sudo curl -# "$_OSQUERY_PKG" -o "/tmp/$_PKG"
     sudo installer -pkg "/tmp/$_PKG" -target /
