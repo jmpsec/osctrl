@@ -1,4 +1,4 @@
-module metrics
+module github.com/jmpsec/osctrl/metrics
 
 go 1.21
 
@@ -15,21 +15,21 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	gorm.io/driver/postgres v1.5.9
-	gorm.io/gorm v1.25.10
+	gorm.io/gorm v1.25.11
 )
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jmpsec/osctrl/nodes v0.3.7 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20240710135334-c020425d8ffe // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20240712215734-76cb76cf1447 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
+	golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -44,7 +44,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/queries v0.3.7 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20240710135334-c020425d8ffe
+	github.com/jmpsec/osctrl/types v0.0.0-20240712215734-76cb76cf1447
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
