@@ -1,4 +1,4 @@
-module utils
+module github.com/jmpsec/osctrl/utils
 
 go 1.21
 
