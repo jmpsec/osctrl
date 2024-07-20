@@ -1148,3 +1148,65 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	h.Inc(metricScriptOk)
 }
+
+// EnrollPackageHandler - Function to handle the endpoint for quick enrollment package download
+func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricOnelinerReq)
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricOnelinerErr)
+		log.Printf("error getting environment - %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Debug HTTP
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Retrieve package
+	downloadPackage, ok := vars["package"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Package is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Retrieve SecretPath variable
+	secretPath, ok := vars["secretpath"]
+	if !ok {
+		h.Inc(metricOnelinerErr)
+		log.Println("Path is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Check if provided SecretPath is valid and is not expired
+		if !h.checkValidEnrollSecretPath(env, secretPath) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Invalid secret path for enrolling package")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+			return
+		}
+		if !h.checkExpiredEnrollSecretPath(env) {
+			h.Inc(metricOnelinerErr)
+			log.Println("Expired enrolling path for package")
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
+			return
+		}
+	// Prepare download
+	log.Printf("Package: %s", downloadPackage)
+	switch downloadPackage {
+	case settings.PackageDeb:
+
+
+	}
+	// Send response
+	utils.HTTPResponse(w, utils.TextPlainUTF8, http.StatusOK, []byte("aaa"))
+	h.Inc(metricOnelinerOk)
+}

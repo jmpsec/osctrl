@@ -654,6 +654,8 @@ func osctrlService() {
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler).Methods("POST")
 	// TLS: Quick enroll/remove script
 	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
+	// TLS: Download enrolling package
+	routerTLS.HandleFunc("/{environment}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler).Methods("GET")
 	// TLS: osctrld retrieve flags
 	routerTLS.HandleFunc("/{environment}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler).Methods("POST")
 	// TLS: osctrld retrieve certificate

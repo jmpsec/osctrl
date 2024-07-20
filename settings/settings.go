@@ -55,8 +55,16 @@ const (
 
 // Types of script
 const (
-	ScriptEnroll string = "enroll"
-	ScriptRemove string = "remove"
+	ScriptEnroll  string = "enroll"
+	ScriptRemove  string = "remove"
+)
+
+// Types of package
+const (
+	PackageDeb string = "deb"
+	PackageRpm string = "rpm"
+	PackagePkg string = "pkg"
+	PackateMsi string = "msi"
 )
 
 // Types of platform

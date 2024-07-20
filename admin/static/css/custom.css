@@ -121,17 +121,14 @@ body {
 }
 
 .stripes-red {
-  color: white;
   background: repeating-linear-gradient(45deg, #ccc, #ccc 10px, #f86c6b 10px, #f86c6b 20px);
 }
 
 .stripes-warning {
-  color: white;
   background: repeating-linear-gradient(45deg, #000000, #000000 10px, #f6d415 10px, #f6d415 20px);
 }
 
 .stripes-green {
-  color: white;
   background: repeating-linear-gradient(45deg, #ccc, #ccc 10px, #4dbd74 10px, #4dbd74 20px);
 }
 

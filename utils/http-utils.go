@@ -10,10 +10,14 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 )
 
 // JSONApplication for Content-Type headers
 const JSONApplication string = "application/json"
+
+// OctetStream for Content-Type headers
+const OctetStream string = "application/octet-stream"
 
 // JSONApplicationUTF8 for Content-Type headers, UTF charset
 const JSONApplicationUTF8 string = JSONApplication + "; charset=UTF-8"
@@ -24,8 +28,44 @@ const TextPlain string = "text/plain"
 // TextPlainUTF8 for Content-Type headers, UTF charset
 const TextPlainUTF8 string = TextPlain + "; charset=UTF-8"
 
+// KeepAlive for Connection headers
+const KeepAlive string = "Keep-Alive"
+
 // ContentType for header key
 const ContentType string = "Content-Type"
+
+// ContentDescription for header key
+const ContentDescription string = "Content-Description"
+
+// ContentDisposition for header key
+const ContentDisposition string = "Content-Disposition"
+
+// ContentLength for header key
+const ContentLength string = "Content-Length"
+
+// Connection for header key
+const Connection string = "Connection"
+
+// Expires for header key
+const Expires string = "Expires"
+
+// CacheControl for header key
+const CacheControl string = "Cache-Control"
+
+// CacheControlMustRevalidate for header key
+const CacheControlMustRevalidate string = "must-revalidate, post-check=0, pre-check=0"
+
+// Pragma for header key
+const Pragma string = "Pragma"
+
+// PragmaPublic for header key
+const PragmaPublic string = "public"
+
+// ContentTransferEncoding for header key
+const ContentTransferEncoding string = "Content-Transfer-Encoding"
+
+// TransferEncodingBinary for header key
+const TransferEncodingBinary string = "binary"
 
 // UserAgent for header key
 const UserAgent string = "User-Agent"
@@ -141,4 +181,17 @@ func HTTPResponse(w http.ResponseWriter, cType string, code int, data interface{
 	}
 	w.WriteHeader(code)
 	_, _ = w.Write(content)
+}
+
+// HTTPDownload - Helper to send HTTP response with a file
+func HTTPDownload(w http.ResponseWriter, description, filename string, filesize int64) {
+	w.Header().Set(ContentDescription, description)
+	w.Header().Set(ContentType, OctetStream)
+	w.Header().Set(ContentDisposition, "attachment; filename="+filename)
+	w.Header().Set(ContentTransferEncoding, TransferEncodingBinary)
+	w.Header().Set(Connection, KeepAlive)
+	w.Header().Set(Expires, "0")
+	w.Header().Set(CacheControl, CacheControlMustRevalidate)
+	w.Header().Set(Pragma, PragmaPublic)
+	w.Header().Set(ContentLength, strconv.FormatInt(filesize, 10))
 }
