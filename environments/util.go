@@ -1,7 +1,8 @@
 package environments
 
 import (
-	"io/ioutil"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -12,7 +13,7 @@ const (
 
 // ReadExternalFile to read an external file and return contents
 func ReadExternalFile(path string) string {
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
@@ -45,4 +46,15 @@ func IsPlatformQuery(pQuery, pCheck string) bool {
 // IsPlatformLinux to know if a linux is going to trigger a query
 func IsPlatformLinux(pCheck string) bool {
 	return (pCheck == "ubuntu" || pCheck == "centos" || pCheck == "rhel" || pCheck == "fedora" || pCheck == "debian" || pCheck == "opensuse" || pCheck == "arch" || pCheck == "amzn")
+}
+
+// PackageDownloadURL to get the download URL for a package
+func PackageDownloadURL(env TLSEnvironment, pkg string) string {
+	if pkg == "" {
+		return ""
+	}
+	if strings.HasPrefix(pkg, "https://") {
+		return pkg
+	}
+	return fmt.Sprintf("https://%s/%s/%s/package/%s", env.Hostname, env.UUID, env.Secret, pkg)
 }

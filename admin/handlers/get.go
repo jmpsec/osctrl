@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
@@ -158,15 +157,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		http.Redirect(w, r, downloadURL, http.StatusFound)
 	} else {
 		// Send response
-		w.Header().Set("Content-Description", "File Carve Download")
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Disposition", "attachment; filename="+archived.File)
-		w.Header().Set("Content-Transfer-Encoding", "binary")
-		w.Header().Set("Connection", "Keep-Alive")
-		w.Header().Set("Expires", "0")
-		w.Header().Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-		w.Header().Set("Pragma", "public")
-		w.Header().Set("Content-Length", strconv.FormatInt(archived.Size, 10))
+		utils.HTTPDownload(w, "File Carve Download", archived.File, archived.Size)
 		w.WriteHeader(http.StatusOK)
 		h.Inc(metricAdminOK)
 		var fileReader io.Reader

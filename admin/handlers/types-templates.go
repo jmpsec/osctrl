@@ -75,6 +75,15 @@ type EnrollTemplateData struct {
 	OnelinerExpiration    bool
 	EnrollExpiry          string
 	EnrollExpired         bool
+	DisplayPackages       bool
+	DebPackage            string
+	DebPackageURL         string
+	RpmPackage            string
+	RpmPackageURL         string
+	MsiPackage            string
+	MsiPackageURL         string
+	PkgPackage            string
+	PkgPackageURL         string
 	RemoveExpiry          string
 	RemoveExpired         bool
 	QuickAddShell         string

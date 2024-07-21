@@ -521,6 +521,26 @@ func init() {
 							Value:   0,
 							Usage:   "Query interval in seconds",
 						},
+						&cli.StringFlag{
+							Name:    "deb",
+							Aliases: []string{"deb-package"},
+							Usage:   "DEB package to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "rpm",
+							Aliases: []string{"rpm-package"},
+							Usage:   "RPM package to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "msi",
+							Aliases: []string{"msi-package"},
+							Usage:   "MSI package to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "pkg",
+							Aliases: []string{"pkg-package"},
+							Usage:   "PKG package to be updated",
+						},
 					},
 					Action: cliWrapper(updateEnvironment),
 				},

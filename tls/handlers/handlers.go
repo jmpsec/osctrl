@@ -3,9 +3,11 @@ package handlers
 import (
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -50,6 +52,9 @@ const (
 	metricOnelinerReq = "oneliner-req"
 	metricOnelinerErr = "oneliner-err"
 	metricOnelinerOk  = "oneliner-ok"
+	metricPackageReq  = "package-req"
+	metricPackageErr  = "package-err"
+	metricPackageOk   = "package-ok"
 	metricFlagsReq    = "flags-req"
 	metricFlagsErr    = "flags-err"
 	metricFlagsOk     = "flags-ok"
@@ -67,12 +72,22 @@ const (
 const (
 	// osquery version
 	defOsqueryVersion = version.OsqueryVersion
+	// path for enroll packages
+	enrollPackagesPath = "packages"
 )
 
 // Valid values for actions in handlers
 var validAction = map[string]bool{
 	settings.ScriptEnroll: true,
 	settings.ScriptRemove: true,
+}
+
+// Valid values for enroll packages
+var validEnrollPackage = map[string]bool{
+	settings.PackageDeb: true,
+	settings.PackageRpm: true,
+	settings.PackageMsi: true,
+	settings.PackagePkg: true,
 }
 
 // Valid values for platforms in handlers
@@ -1147,4 +1162,120 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 	h.Inc(metricScriptOk)
+}
+
+// EnrollPackageHandler - Function to handle the endpoint for quick enrollment package download
+func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricPackageReq)
+	// Retrieve environment variable
+	vars := mux.Vars(r)
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricPackageErr)
+		log.Println("Environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricPackageErr)
+		log.Printf("error getting environment - %v", err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Debug HTTP
+	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
+	// Retrieve package
+	packageVar, ok := vars["package"]
+	if !ok {
+		h.Inc(metricPackageErr)
+		log.Println("Package is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Check if requested package is valid
+	if !validEnrollPackage[packageVar] {
+		h.Inc(metricPackageErr)
+		log.Printf("invalid package: %s", packageVar)
+		return
+	}
+	// Retrieve SecretPath variable
+	secretPath, ok := vars["secretpath"]
+	if !ok {
+		h.Inc(metricPackageErr)
+		log.Println("Path is missing")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	// Check if provided SecretPath is valid and is not expired
+	if !h.checkValidEnrollSecretPath(env, secretPath) {
+		h.Inc(metricPackageErr)
+		log.Println("Invalid secret path for enrolling package")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		return
+	}
+	if !h.checkExpiredEnrollSecretPath(env) {
+		h.Inc(metricPackageErr)
+		log.Println("Expired enrolling path for package")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
+		return
+	}
+	// Prepare download
+	var fDesc, fName, fPath string
+	switch packageVar {
+	case settings.PackageDeb:
+		if strings.HasPrefix(env.DebPackage, "http") {
+			http.Redirect(w, r, env.DebPackage, http.StatusFound)
+			h.Inc(metricPackageOk)
+			return
+		}
+		fDesc = "Enrolling DEB Package for Linux"
+		fName = genPackageFilename(env.Name, settings.PackageDeb, version.OsqueryVersion, version.OsctrlVersion)
+		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.DebPackage)
+	case settings.PackageRpm:
+		if strings.HasPrefix(env.RpmPackage, "http") {
+			http.Redirect(w, r, env.RpmPackage, http.StatusFound)
+			h.Inc(metricPackageOk)
+			return
+		}
+		fDesc = "Enrolling RPM Package for Linux"
+		fName = genPackageFilename(env.Name, settings.PackageRpm, version.OsqueryVersion, version.OsctrlVersion)
+		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.RpmPackage)
+	case settings.PackagePkg:
+		if strings.HasPrefix(env.PkgPackage, "http") {
+			http.Redirect(w, r, env.PkgPackage, http.StatusFound)
+			h.Inc(metricPackageOk)
+			return
+		}
+		fDesc = "Enrolling PKG Package for Mac"
+		fName = genPackageFilename(env.Name, settings.PackagePkg, version.OsqueryVersion, version.OsctrlVersion)
+		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.PkgPackage)
+	case settings.PackageMsi:
+		if strings.HasPrefix(env.MsiPackage, "http") {
+			http.Redirect(w, r, env.MsiPackage, http.StatusFound)
+			h.Inc(metricPackageOk)
+			return
+		}
+		fDesc = "Enrolling MSI Package for Windows"
+		fName = genPackageFilename(env.Name, settings.PackageMsi, defOsqueryVersion, version.OsctrlVersion)
+		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.MsiPackage)
+	}
+	// Initiate download
+	fi, err := os.Stat(fPath)
+	if err != nil {
+		h.Inc(metricPackageErr)
+		log.Printf("Error loading file for package %s - %v", fPath, err)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Package Error"})
+		return
+	}
+	utils.HTTPDownload(w, fDesc, fName, fi.Size())
+	w.WriteHeader(http.StatusOK)
+	var fileReader io.Reader
+	fileReader, _ = os.Open(fPath)
+	_, err = io.Copy(w, fileReader)
+	if err != nil {
+		h.Inc(metricPackageErr)
+		log.Printf("error copying file %v", err)
+	}
+	h.Inc(metricPackageOk)
 }

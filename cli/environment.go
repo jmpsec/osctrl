@@ -99,6 +99,23 @@ func updateEnvironment(c *cli.Context) error {
 	if hostname != "" {
 		env.Hostname = hostname
 	}
+	// Packages
+	deb := c.String("deb")
+	if deb != "" {
+		env.DebPackage = deb
+	}
+	rpm := c.String("rpm")
+	if rpm != "" {
+		env.RpmPackage = rpm
+	}
+	msi := c.String("msi")
+	if msi != "" {
+		env.MsiPackage = msi
+	}
+	pkg := c.String("pkg")
+	if pkg != "" {
+		env.PkgPackage = pkg
+	}
 	// Intervals
 	loggingInterval := c.Int("logging")
 	if loggingInterval != 0 {
@@ -158,6 +175,10 @@ func showEnvironment(c *cli.Context) error {
 	fmt.Printf(" EnrollSecretPath: %s\n", env.EnrollSecretPath)
 	fmt.Printf(" RemoveExpire: %v\n", env.RemoveExpire)
 	fmt.Printf(" RemoveSecretPath: %s\n", env.RemoveSecretPath)
+	fmt.Printf(" DebPackage: %s\n", env.DebPackage)
+	fmt.Printf(" RpmPackage: %s\n", env.RpmPackage)
+	fmt.Printf(" MsiPackage: %s\n", env.MsiPackage)
+	fmt.Printf(" PkgPackage: %s\n", env.PkgPackage)
 	fmt.Printf(" Type: %v\n", env.Type)
 	fmt.Printf(" DebugHTTP? %v\n", env.DebugHTTP)
 	fmt.Printf(" Icon: %s\n", env.Icon)

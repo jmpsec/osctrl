@@ -40,4 +40,3 @@ func TestStringToBooleanTrue(t *testing.T) {
 func TestStringToBooleanWhatever(t *testing.T) {
 	assert.Equal(t, false, StringToBoolean("whatever"))
 }
-

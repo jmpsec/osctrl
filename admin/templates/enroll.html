@@ -66,12 +66,12 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or Mac to quickly add/update nodes in the environment {{ .EnvName }}. It will install osquery in the system:
+                    Run this command in Linux or Mac to quickly add/update nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-sh">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-sh">
                       Copy
                     </button>
                     <div class="highlight {{ if .EnrollExpired }}stripes-red{{ end }}">
@@ -87,12 +87,12 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Windows to quickly add nodes in the environment {{ .EnvName }}. It will install osquery in the system:
+                    Run this command in Windows to quickly add nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-ps">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#enroll-cmd-ps">
                       Copy
                     </button>
                     <div class="highlight {{ if .EnrollExpired }}stripes-red{{ end }}">
@@ -102,6 +102,105 @@
                     </div>
                   </div>
                 </div>
+
+              {{ if .DisplayPackages }}
+                <hr>
+
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    Install one of the following packages to enroll nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
+                  </div>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-md-12">
+                    <div class="highlight {{ if .EnrollExpired }}stripes-red{{ end }}">
+                      <div class="row">
+                      {{ if ne .DebPackageURL "" }}
+                        <div class="col-md-3">
+                          <div class="card">
+                            <div class="card-header">
+                              <i class="fas fa-download"></i> DEB package for Linux
+                              <div class="card-header-actions">
+                                <button id="button-clipboard-hrefs" class="btn btn-sm btn-block btn-dark"
+                                  data-tooltip="true" data-placement="top" title="Copy DEB link" data-clipboard-action="copy" data-clipboard-text="{{ .DebPackageURL }}">
+                                  <i class="fas fa-clipboard"></i>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="card-body">
+                              <a href="{{ .DebPackageURL }}" class="btn btn-lg btn-primary mr-2">
+                                <i class="fab fa-ubuntu"></i> Download
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      {{ end }}
+                      {{ if ne .RpmPackageURL "" }}
+                        <div class="col-md-3">
+                          <div class="card">
+                            <div class="card-header">
+                              <i class="fas fa-download"></i> RPM package for Linux
+                              <div class="card-header-actions">
+                                <button id="button-clipboard-hrefs" class="btn btn-sm btn-block btn-dark"
+                                  data-tooltip="true" data-placement="top" title="Copy RPM link" data-clipboard-action="copy" data-clipboard-text="{{ .RpmPackageURL }}">
+                                  <i class="fas fa-clipboard"></i>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="card-body">
+                              <a href="{{ .RpmPackageURL }}" class="btn btn-lg btn-primary">
+                                <i class="fab fa-redhat"></i> Download
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      {{ end }}
+                      {{ if ne .PkgPackageURL "" }}
+                        <div class="col-md-3">
+                          <div class="card">
+                            <div class="card-header">
+                              <i class="fas fa-download"></i> Mac package
+                              <div class="card-header-actions">
+                                <button id="button-clipboard-hrefs" class="btn btn-sm btn-block btn-dark"
+                                  data-tooltip="true" data-placement="top" title="Copy PKG link" data-clipboard-action="copy" data-clipboard-text="{{ .PkgPackageURL }}">
+                                  <i class="fas fa-clipboard"></i>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="card-body">
+                              <a href="{{ .PkgPackageURL }}" class="btn btn-lg btn-primary">
+                                <i class="fab fa-apple"></i> Download
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      {{ end }}
+                      {{ if ne .MsiPackageURL "" }}
+                        <div class="col-md-3">
+                          <div class="card">
+                            <div class="card-header">
+                              <i class="fas fa-download"></i> Windows MSI installer
+                              <div class="card-header-actions">
+                                <button id="button-clipboard-hrefs" class="btn btn-sm btn-block btn-dark"
+                                  data-tooltip="true" data-placement="top" title="Copy MSI link" data-clipboard-action="copy" data-clipboard-text="{{ .MsiPackageURL }}">
+                                  <i class="fas fa-clipboard"></i>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="card-body">
+                              <a href="{{ .MsiPackageURL }}" class="btn btn-lg btn-primary">
+                                <i class="fab fa-windows"></i> Download
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      {{ end }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              {{ end }}
 
               </div>
             </div>
@@ -157,7 +256,7 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-sh">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-sh">
                       Copy
                     </button>
                     <div class="highlight {{ if .RemoveExpired }}stripes-red{{ end }}">
@@ -177,7 +276,7 @@
                 </div>
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    <button id="button-clipboard-ps" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-ps">
+                    <button id="button-clipboard-values" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#remove-cmd-ps">
                       Copy
                     </button>
                     <div class="highlight {{ if .RemoveExpired }}stripes-red{{ end }}">
@@ -279,6 +378,74 @@
                   </div>
                 </div>
 
+                <hr>
+
+              {{ if eq $metadata.Level "admin" }}
+                <div class="row mb-4">
+                  <div class="row col-md-12">
+                    <div class="col-md-6">
+                      <div class="col-md-12 mb-4">
+                        Enrolling DEB package for Linux:
+                      </div>
+                      <div class="input-group mb-3">
+                        <span class="input-group-text">
+                          <i class="fab fa-ubuntu"></i>
+                        </span>
+                        <input id="deb-package-value" type="text" class="form-control" aria-label="DEB Package" value="{{ .DebPackage }}">
+                        <button class="btn btn-dark" data-tooltip="true" data-placement="top" title="Save DEB package value" onclick="saveDebPackage();">
+                        <i class="fas fa-save"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="col-md-12 mb-4">
+                        Enrolling RPM package for Linux:
+                      </div>
+                      <div class="input-group mb-3">
+                        <span class="input-group-text">
+                          <i class="fab fa-redhat"></i>
+                        </span>
+                        <input id="rpm-package-value" type="text" class="form-control" aria-label="RPM Package" value="{{ .RpmPackage }}">
+                        <button class="btn btn-dark" data-tooltip="true" data-placement="top" title="Save RPM package value" onclick="saveRpmPackage();">
+                        <i class="fas fa-save"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row col-md-12">
+                    <div class="col-md-6">
+                      <div class="col-md-12 mb-4">
+                        Enrolling PKG package for Mac:
+                      </div>
+                      <div class="input-group mb-3">
+                        <span class="input-group-text">
+                          <i class="fab fa-apple"></i>
+                        </span>
+                        <input id="pkg-package-value" type="text" class="form-control" aria-label="PKG Package" value="{{ .PkgPackage }}">
+                        <button class="btn btn-dark" data-tooltip="true" data-placement="top" title="Save PKG package value" onclick="savePkgPackage();">
+                        <i class="fas fa-save"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="col-md-12 mb-4">
+                        Enrolling MSI package for Windows:
+                      </div>
+                      <div class="input-group mb-3">
+                        <span class="input-group-text">
+                          <i class="fab fa-windows"></i>
+                        </span>
+                        <input id="msi-package-value" type="text" class="form-control" aria-label="MSI Package" value="{{ .MsiPackage }}">
+                        <button class="btn btn-dark" data-tooltip="true" data-placement="top" title="Save MSI package value" onclick="saveMsiPackage();">
+                        <i class="fas fa-save"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
+
+
               </div>
             </div>
 
@@ -323,43 +490,8 @@
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Clipboard.js initialization
-        var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
-        clipboard_sh.on('success', function(e) {
-          console.info('Action:', e.action);
-          console.info('Text:', e.text);
-          console.info('Trigger:', e.trigger);
-          $(e.trigger).text('Copied!');
-          e.clearSelection();
-          setTimeout(function() {
-            $(e.trigger).text('Copy');
-          }, 2500);
-        });
-        clipboard_sh.on('error', function(e) {
-          $(e.trigger).text('Error');
-          console.error('Action:', e.action);
-          console.error('Trigger:', e.trigger);
-        });
-        var clipboard_ps = new ClipboardJS('#button-clipboard-ps');
-        clipboard_ps.on('success', function(e) {
-          console.info('Action:', e.action);
-          console.info('Text:', e.text);
-          console.info('Trigger:', e.trigger);
-          $(e.trigger).text('Copied!');
-          e.clearSelection();
-          setTimeout(function() {
-            $(e.trigger).text('Copy');
-          }, 2500);
-        });
-        clipboard_ps.on('error', function(e) {
-          $(e.trigger).text('Error');
-          console.error('Action:', e.action);
-          console.error('Trigger:', e.trigger);
-        });
         var clipboard_values = new ClipboardJS('#button-clipboard-values');
         clipboard_values.on('success', function(e) {
-          console.info('Action:', e.action);
-          console.info('Text:', e.text);
-          console.info('Trigger:', e.trigger);
           $(e.trigger).text('Copied!');
           e.clearSelection();
           setTimeout(function() {
@@ -367,6 +499,19 @@
           }, 2500);
         });
         clipboard_values.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
+        });
+        var clipboard_hrefs = new ClipboardJS('#button-clipboard-hrefs');
+        clipboard_hrefs.on('success', function(e) {
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).html('<i class="fas fa-clipboard"></i>');
+          }, 2500);
+        });
+        clipboard_hrefs.on('error', function(e) {
           $(e.trigger).text('Error');
           console.error('Action:', e.action);
           console.error('Trigger:', e.trigger);

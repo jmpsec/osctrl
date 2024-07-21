@@ -61,6 +61,10 @@ type TLSEnvironment struct {
 	RemoveSecretPath string
 	RemoveExpire     time.Time
 	Type             string
+	DebPackage       string
+	RpmPackage       string
+	MsiPackage       string
+	PkgPackage       string
 	DebugHTTP        bool
 	Icon             string
 	Options          string
@@ -128,6 +132,10 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 		RemoveSecretPath: utils.GenKSUID(),
 		EnrollExpire:     time.Now(),
 		RemoveExpire:     time.Now(),
+		DebPackage:       "",
+		RpmPackage:       "",
+		MsiPackage:       "",
+		PkgPackage:       "",
 		Type:             DefaultEnvironmentType,
 		DebugHTTP:        false,
 		Icon:             DefaultEnvironmentIcon,
@@ -289,6 +297,38 @@ func (environment *Environment) UpdateATC(idEnv, atc string) error {
 func (environment *Environment) UpdateCertificate(idEnv, certificate string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("certificate", certificate).Error; err != nil {
 		return fmt.Errorf("UpdateUpdateCertificate %v", err)
+	}
+	return nil
+}
+
+// UpdateDebPackage to update DEB package for an environment
+func (environment *Environment) UpdateDebPackage(idEnv, debpackage string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("deb_package", debpackage).Error; err != nil {
+		return fmt.Errorf("UpdateDebPackage %v", err)
+	}
+	return nil
+}
+
+// UpdateRpmPackage to update RPM package for an environment
+func (environment *Environment) UpdateRpmPackage(idEnv, rpmpackage string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("rpm_package", rpmpackage).Error; err != nil {
+		return fmt.Errorf("UpdateRpmPackage %v", err)
+	}
+	return nil
+}
+
+// UpdateMsiPackage to update MSI package for an environment
+func (environment *Environment) UpdateMsiPackage(idEnv, msipackage string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("msi_package", msipackage).Error; err != nil {
+		return fmt.Errorf("UpdateMsiPackage %v", err)
+	}
+	return nil
+}
+
+// UpdatePkgPackage to update PKG package for an environment
+func (environment *Environment) UpdatePkgPackage(idEnv, pkgpackage string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("pkg_package", pkgpackage).Error; err != nil {
+		return fmt.Errorf("UpdatePkgPackage %v", err)
 	}
 	return nil
 }

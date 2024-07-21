@@ -178,3 +178,31 @@ func TestGetIP(t *testing.T) {
 		assert.Equal(t, "", ip)
 	})
 }
+
+func TestHTTPDownload(t *testing.T) {
+	t.Run("HTTPDownload headers", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		HTTPDownload(rr, "whatever", "file.txt", 123)
+		assert.Equal(t, OctetStream, rr.Header().Get(ContentType))
+		assert.Equal(t, TransferEncodingBinary, rr.Header().Get(ContentTransferEncoding))
+		assert.Equal(t, KeepAlive, rr.Header().Get(Connection))
+		assert.Equal(t, "0", rr.Header().Get(Expires))
+		assert.Equal(t, CacheControlMustRevalidate, rr.Header().Get(CacheControl))
+		assert.Equal(t, PragmaPublic, rr.Header().Get(Pragma))
+	})
+	t.Run("content-description", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		HTTPDownload(rr, "whatever", "file.txt", 123)
+		assert.Equal(t, "whatever", rr.Header().Get(ContentDescription))
+	})
+	t.Run("content-disposition", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		HTTPDownload(rr, "whatever", "file.txt", 123)
+		assert.Equal(t, "attachment; filename=file.txt", rr.Header().Get(ContentDisposition))
+	})
+	t.Run("content-length", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		HTTPDownload(rr, "whatever", "file.txt", 123)
+		assert.Equal(t, "123", rr.Header().Get(ContentLength))
+	})
+}
