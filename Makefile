@@ -215,6 +215,18 @@ docker_dev_up:
 docker_dev_down:
 	docker-compose -f docker-compose-dev.yml down
 
+# Rebuild only the TLS server
+docker_dev_rebuild_tls:
+	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(TLS_NAME)
+
+# Rebuild only the Admin server
+docker_dev_rebuild_admin:
+	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(ADMIN_NAME)
+
+# Rebuild only the API server
+docker_dev_rebuild_api:
+	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
+
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
 gofmt-tls:
