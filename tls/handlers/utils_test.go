@@ -109,3 +109,9 @@ func TestUniq(t *testing.T) {
 	bb := []string{"a", "b", "c"}
 	assert.Equal(t, bb, aa)
 }
+
+func TestPackageFilename(t *testing.T) {
+	aa := genPackageFilename("test", "1.2.3", "3.2.1", "msi")
+	bb := "osctrl-test-1.2.3-osquery-3.2.1.msi"
+	assert.Equal(t, bb, aa)
+}

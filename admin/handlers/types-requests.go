@@ -78,7 +78,9 @@ type ConfigurationRequest struct {
 // EnrollRequest to receive changes to enroll certificates
 type EnrollRequest struct {
 	CSRFToken      string `json:"csrftoken"`
+	Action         string `json:"action"`
 	CertificateB64 string `json:"certificate"`
+	PackageURL     string `json:"packageurl"`
 }
 
 // IntervalsRequest to receive changes to intervals

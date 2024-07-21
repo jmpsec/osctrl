@@ -1650,21 +1650,76 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 		h.Inc(metricAdminErr)
 		return
 	}
-	if e.CertificateB64 == "" {
-		adminErrorResponse(w, "empty certificate", http.StatusInternalServerError, nil)
-		h.Inc(metricAdminErr)
-		return
-	}
-	certificate, err := base64.StdEncoding.DecodeString(e.CertificateB64)
-	if err != nil {
-		adminErrorResponse(w, "error decoding certificate", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
-		return
-	}
-	if err := h.Envs.UpdateCertificate(env.UUID, string(certificate)); err != nil {
-		adminErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
-		h.Inc(metricAdminErr)
-		return
+	switch e.Action {
+	case "enroll_certificate":
+		if e.CertificateB64 == "" {
+			adminErrorResponse(w, "empty certificate", http.StatusInternalServerError, nil)
+			h.Inc(metricAdminErr)
+			return
+		}
+		certificate, err := base64.StdEncoding.DecodeString(e.CertificateB64)
+		if err != nil {
+			adminErrorResponse(w, "error decoding certificate", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		if err := h.Envs.UpdateCertificate(env.UUID, string(certificate)); err != nil {
+			adminErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+	case "package_deb":
+		if e.PackageURL != env.DebPackage {
+			if e.PackageURL == "" {
+				adminErrorResponse(w, "empty package URL", http.StatusInternalServerError, nil)
+				h.Inc(metricAdminErr)
+				return
+			}
+			if err := h.Envs.UpdateDebPackage(env.UUID, e.PackageURL); err != nil {
+				adminErrorResponse(w, "error saving package URL", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+	case "package_rpm":
+		if e.PackageURL != env.RpmPackage {
+			if e.PackageURL == "" {
+				adminErrorResponse(w, "empty package URL", http.StatusInternalServerError, nil)
+				h.Inc(metricAdminErr)
+				return
+			}
+			if err := h.Envs.UpdateRpmPackage(env.UUID, e.PackageURL); err != nil {
+				adminErrorResponse(w, "error saving package URL", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+	case "package_pkg":
+		if e.PackageURL != env.PkgPackage {
+			if e.PackageURL == "" {
+				adminErrorResponse(w, "empty package URL", http.StatusInternalServerError, nil)
+				h.Inc(metricAdminErr)
+				return
+			}
+			if err := h.Envs.UpdatePkgPackage(env.UUID, e.PackageURL); err != nil {
+				adminErrorResponse(w, "error saving package URL", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+	case "package_msi":
+		if e.PackageURL != env.MsiPackage {
+			if e.PackageURL == "" {
+				adminErrorResponse(w, "empty package URL", http.StatusInternalServerError, nil)
+				h.Inc(metricAdminErr)
+				return
+			}
+			if err := h.Envs.UpdateMsiPackage(env.UUID, e.PackageURL); err != nil {
+				adminErrorResponse(w, "error saving package URL", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {

@@ -64,7 +64,7 @@ const (
 	PackageDeb string = "deb"
 	PackageRpm string = "rpm"
 	PackagePkg string = "pkg"
-	PackateMsi string = "msi"
+	PackageMsi string = "msi"
 )
 
 // Types of platform

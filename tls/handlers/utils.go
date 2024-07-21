@@ -118,4 +118,7 @@ func uniq(duplicated []string) []string {
 	return result
 }
 
-//
+// Helper to generate the filename to download an enroll package
+func genPackageFilename(envName, osctrlVersion, osqueryVersion, pkgType string) string {
+	return fmt.Sprintf("osctrl-%s-%s-osquery-%s.%s", envName, osctrlVersion, osqueryVersion, pkgType)
+}
