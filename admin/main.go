@@ -859,6 +859,7 @@ func osctrlAdminService() {
 	// Admin: nodes enroll
 	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler))).Methods("GET")
 	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler))).Methods("POST")
+	routerAdmin.Handle("/enroll/{environment}/download/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler))).Methods("GET")
 	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler))).Methods("POST")
 	// Admin: server settings
 	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler))).Methods("GET")

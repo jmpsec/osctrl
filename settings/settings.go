@@ -55,8 +55,8 @@ const (
 
 // Types of script
 const (
-	ScriptEnroll  string = "enroll"
-	ScriptRemove  string = "remove"
+	ScriptEnroll string = "enroll"
+	ScriptRemove string = "remove"
 )
 
 // Types of package
@@ -65,6 +65,17 @@ const (
 	PackageRpm string = "rpm"
 	PackagePkg string = "pkg"
 	PackageMsi string = "msi"
+)
+
+// Types of download target
+const (
+	DownloadSecret       string = "secret"
+	DownloadCert         string = "cert"
+	DownloadFlags        string = "flags"
+	DownloadFlagsMac     string = "flagsMac"
+	DownloadFlagsWin     string = "flagsWindows"
+	DownloadFlagsLinux   string = "flagsLinux"
+	DownloadFlagsFreeBSD string = "flagsFreeBSD"
 )
 
 // Types of platform
