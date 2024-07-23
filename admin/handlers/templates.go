@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -19,6 +21,17 @@ import (
 // TemplateFiles for building UI layout
 type TemplateFiles struct {
 	filepaths []string
+}
+
+// Valid values for download target
+var validTarget = map[string]bool{
+	settings.DownloadSecret:       true,
+	settings.DownloadCert:         true,
+	settings.DownloadFlags:        true,
+	settings.DownloadFlagsLinux:   true,
+	settings.DownloadFlagsMac:     true,
+	settings.DownloadFlagsWin:     true,
+	settings.DownloadFlagsFreeBSD: true,
 }
 
 // TemplateMetadata - Helper to prepare template metadata
@@ -1019,6 +1032,90 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Enroll template served")
 	}
+	h.Inc(metricAdminOK)
+}
+
+// EnrollGETHandler for GET requests for /enroll
+func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAdminReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	vars := mux.Vars(r)
+	// Extract environment
+	envVar, ok := vars["environment"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting environment")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Printf("error getting environment: %v", err)
+		return
+	}
+	// Get download target
+	targetVar, ok := vars["target"]
+	if !ok {
+		h.Inc(metricAdminErr)
+		log.Println("error getting download target")
+		return
+	}
+	// Check if requested download target is valid
+	if !validTarget[targetVar] {
+		h.Inc(metricAdminErr)
+		log.Printf("invalid download target: %s", targetVar)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		h.Inc(metricAdminErr)
+		return
+	}
+	// Prepare download
+	var toDownload []byte
+	var fName, description string
+	switch targetVar {
+	case settings.DownloadSecret:
+		toDownload = []byte(env.Secret)
+		description = "osctrl secret for " + env.Name
+		fName = "osctrl-" + env.Name + ".secret"
+	case settings.DownloadCert:
+		toDownload = []byte(env.Certificate)
+		description = "osctrl certificate for " + env.Name
+		fName = "osctrl-" + env.Name + ".crt"
+	case settings.DownloadFlags:
+		toDownload = []byte(env.Flags)
+		description = "osctrl flags for " + env.Name
+		fName = "osctrl-" + env.Name + ".flags"
+	case settings.DownloadFlagsMac:
+		osxPath := "/private/var/osquery"
+		toDownload = []byte(h.generateFlags(env.Flags, osxPath+"/osctrl-"+env.Name+".secret", osxPath+"/osctrl-"+env.Name+".crt"))
+		description = "osctrl flags for " + env.Name + " (macOS)"
+		fName = "osctrl-" + env.Name + ".flags"
+	case settings.DownloadFlagsWin:
+		winPath := "C:\\Program Files\\osquery"
+		toDownload = []byte(h.generateFlags(env.Flags, winPath+"\\osctrl-"+env.Name+".secret", winPath+"\\osctrl-"+env.Name+".crt"))
+		description = "osctrl flags for " + env.Name + " (Windows)"
+		fName = "osctrl-" + env.Name + ".flags"
+	case settings.DownloadFlagsLinux:
+		lnxPath := "/etc/osquery"
+		toDownload = []byte(h.generateFlags(env.Flags, lnxPath+"/osctrl-"+env.Name+".secret", lnxPath+"/osctrl-"+env.Name+".crt"))
+		description = "osctrl flags for " + env.Name + " (Linux)"
+		fName = "osctrl-" + env.Name + ".flags"
+	case settings.DownloadFlagsFreeBSD:
+		bsdPath := "/usr/local/etc"
+		toDownload = []byte(h.generateFlags(env.Flags, bsdPath+"/osctrl-"+env.Name+".secret", bsdPath+"/osctrl-"+env.Name+".crt"))
+		description = "osctrl flags for " + env.Name + " (FreeBSD)"
+		fName = "osctrl-" + env.Name + ".flags"
+	}
+	utils.HTTPDownload(w, description, fName, int64(len(toDownload)))
+	w.WriteHeader(http.StatusOK)
+	h.Inc(metricAdminOK)
+	_, _ = io.Copy(w, bytes.NewReader(toDownload))
 	h.Inc(metricAdminOK)
 }
 

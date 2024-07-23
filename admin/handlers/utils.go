@@ -197,3 +197,9 @@ func (h *HandlersAdmin) allowedEnvironments(username string, allEnvs []environme
 	}
 	return envs
 }
+
+// Helper to generate flags with the correct paths for secret file and certificate
+func (h *HandlersAdmin) generateFlags(flagsRaw, secretFile, certFile string) string {
+	replaced := strings.Replace(flagsRaw, "__SECRET_FILE__", secretFile, 1)
+	return strings.Replace(replaced, "__CERT_FILE__", certFile, 1)
+}
