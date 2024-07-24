@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-if launchctl list | grep -qcm1 io.osquery.agent; then
-  sudo launchctl unload /Library/LaunchDaemons/io.osquery.agent.plist
-fi
-
-exit 0
