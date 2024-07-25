@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-sudo cp /private/var/osquery/io.osquery.agent.plist /Library/LaunchDaemons/io.osquery.agent.plist
-sudo launchctl load /Library/LaunchDaemons/io.osquery.agent.plist
-
-exit 0

@@ -9,6 +9,9 @@
     <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE">
       <img alt="Software License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square&fuckgithubcache=1">
     </a>
+    <a href="https://github.com/jmpsec/osctrl">
+      <img alt="Build Status" src="https://github.com/jmpsec/osctrl/actions/workflows/build_and_test_main_merge.yml/badge.svg?branch=main&fuckgithubcache=1">
+    </a>
     <a href="https://goreportcard.com/report/github.com/jmpsec/osctrl">
       <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/jmpsec/osctrl?style=flat-square&fuckgithubcache=1">
     </a>
@@ -71,10 +74,26 @@ required arguments:
 
 It requires to install [requests](https://pypi.org/project/requests/)  with `pip install requests`.
 
-## git-release.sh
+## build-osctrl-deb.sh
 
-Helper script to create official releases for osctrl. It used the GitHub API to list the latest release but it has been deprecated in favour of GitHub Actions.
+Script to repack the osquery DEB package with the osctrl configuration files to be used with the `osctrl-tls` service. It is recommended to execute as root to avoid permission issues with the `tar` command and the existing permissions of the osquery DEB package.
 
-## packages
+```shell
+$ ./build-osctrl-deb.sh -h
 
-Random scripts to generate packages for Linux or macOS. They have not been tested in a while. Use them at your own risk.
+Usage: ./tools/build-osctrl-deb.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...
+
+Options:
+  -h          Show this help message and exit
+  -c CERT     Path to the osquery certificate file
+  -s SECRET   Path to the osquery secret file (default: osquery.secret)
+  -f FLAGS    Path to the osquery flags file (default: osquery.flags)
+  -i DEB      Path to the osquery DEB file. Required.
+  -o DEB      Path to the osctrl DEB file. Required.
+  -x          Clear the temporary directory after the process
+  -v          Enable verbose mode with 'set -x'
+
+Example:
+  ./tools/build-osctrl-deb.sh -i osquery_5.12.1-1.linux.amd64.deb -o osctrl_5.12.1-1_amd64.deb
+
+```shell
