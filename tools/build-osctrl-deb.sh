@@ -15,6 +15,8 @@ function usage() {
   echo "  -f FLAGS    Path to the osquery flags file (default: osquery.flags)"
   echo "  -i DEB      Path to the osquery DEB file. Required."
   echo "  -o DEB      Path to the osctrl DEB file. Required."
+  echo "  -x          Clear the temporary directory after the process"
+  echo "  -v          Enable verbose mode with 'set -x'"
   echo
   echo "Example:"
   echo "  $0 -i osquery_5.12.1-1.linux.amd64.deb -o osctrl_5.12.1-1_amd64.deb"
@@ -23,18 +25,31 @@ function usage() {
 # Stop script on error
 set -e
 
+# If the script is not running in Linux, use gtar instead of tar
+TAR="tar"
+if [[ "$(uname)" == "Darwin" ]]; then
+  TAR="gtar"
+fi
+
+# Check if tar/gtar is installed
+if ! command -v $TAR &> /dev/null
+then
+    echo "[!] $TAR could not be found"
+    exit 1
+fi
+
 # Default values
 CERT=""
-OSCTRL_CERT="osctrl.crt"
 SECRET="osquery.secret"
-OSCTRL_SECRET="osctrl.secret"
 FLAGS="osquery.flags"
 OSCTRL_FLAGS="osquery.flags"
 OSQUERY_DEB=""
 OSCTRL_DEB=""
+REMOVE_TMP_DIR="false"
+VERBOSE_MODE="false"
 
 # Parse command line arguments
-while getopts "c:s:f:i:o:h" opt; do
+while getopts "c:s:f:i:o:xh" opt; do
     case "$opt" in
     c)
       CERT=${OPTARG}
@@ -51,12 +66,24 @@ while getopts "c:s:f:i:o:h" opt; do
     o)
       OSCTRL_DEB=${OPTARG}
       ;;
+    x)
+      REMOVE_TMP_DIR="true"
+      ;;
+    v)
+      VERBOSE_MODE="true"
+      ;;
     h | *)
       usage
       exit 1
       ;;
   esac
 done
+
+# Detect if the script is running as root
+if [[ $EUID -ne 0 ]]; then
+  echo "[!] This script should run as root to avoid permission issues with the DEB package."
+  exit 1
+fi
 
 # If no osquery DEB file or no osctrl DEB file, show usage
 if [[ -z "$OSQUERY_DEB" ]] || [[ ! -f "$OSQUERY_DEB" ]]; then
@@ -90,8 +117,10 @@ then
     exit 1
 fi
 
-# From here, set -x to debug the script
-set -x
+# If we want verbose, set -x to debug the script
+if [[ "$VERBOSE_MODE" == "true" ]]; then
+  set -x
+fi
 
 # Create a temporary directory to unpack the DEB file
 TMP_DIR=$(date +'%Y%m%d-%H%M%S')
@@ -110,28 +139,33 @@ ar x "$OSQUERY_DEB"
 # Extract the control.tar.gz file
 echo "[+] Extracting control.tar.gz to control"
 mkdir -p "control"
-tar -xzf "control.tar.gz" -C "control"
+$TAR -xzf "control.tar.gz" -C "control"
 
 # Extract the data.tar.gz file
 echo "[+] Extracting data.tar.gz to data"
 mkdir -p "data"
-tar -xzf "data.tar.gz" -C "data"
+$TAR -xzf "data.tar.gz" -C "data"
+
+# Get paths from the flags file for certificate and secret
+echo "[+] Getting paths from the flags file"
+CERTPATH=$(grep "tls_server_certs=" "$cwd/$FLAGS" | awk -F'=' '{print $2}')
+SECRETPATH=$(grep "enroll_secret_path=" "$cwd/$FLAGS" | awk -F'=' '{print $2}')
 
 # Copy the osctrl files to the data directory
 echo "[+] Copying osctrl files to data directory"
-if [[ ! -z "$CERT" ]]; then
-  cp "$cwd/$CERT" "data/etc/osquery/$OSCTRL_CERT"
+if [[ ! -z "$CERT" ]] && [[ ! -z "$CERTPATH" ]]; then
+  cp "$cwd/$CERT" "data$CERTPATH"
 fi
-cp "$cwd/$SECRET" "data/etc/osquery/$OSCTRL_SECRET"
+cp "$cwd/$SECRET" "data$SECRETPATH"
 cp "$cwd/$FLAGS" "data/etc/osquery/$OSCTRL_FLAGS"
 
 # Append the new file MD5 hashes to the control file
 echo "[+] Appending md5sums for osctrl files to control file"
 if [[ ! -z "$CERT" ]]; then
-  echo "etc/osquery/$OSCTRL_CERT $(md5sum "data/etc/osquery/$OSCTRL_CERT" | awk '{print $1}')" >> "control/md5sums"
+  echo "$(printf "%s  %s\n" "$(md5sum "data$CERTPATH" | awk '{print $1}')" "$(echo $CERTPATH | sed 's/^.//')")" >> "control/md5sums"
 fi
-echo "etc/osquery/$OSCTRL_SECRET $(md5sum "data/etc/osquery/$OSCTRL_SECRET" | awk '{print $1}')" >> "control/md5sums"
-echo "etc/osquery/$OSCTRL_FLAGS $(md5sum "data/etc/osquery/$OSCTRL_FLAGS" | awk '{print $1}')" >> "control/md5sums"
+echo "$(printf "%s  %s\n" "$(md5sum "data$SECRETPATH" | awk '{print $1}')" "$(echo $SECRETPATH | sed 's/^.//')")" >> "control/md5sums"
+echo "$(printf "%s  %s\n" "$(md5sum "data/etc/osquery/$OSCTRL_FLAGS" | awk '{print $1}')" "etc/osquery/$OSCTRL_FLAGS")" >> "control/md5sums"
 
 # Remove old DEB signature, since it won't be valid anymore
 echo "[+] Removing old DEB signature"
@@ -139,11 +173,11 @@ rm -f "_gpgorigin"
 
 # Repack the control.tar.gz file
 echo "[+] Repacking control.tar.gz"
-tar -czf "control.tar.gz" -C "control" .
+$TAR -czf "control.tar.gz" -C "control" .
 
 # Repack the data.tar.gz file
 echo "[+] Repacking data.tar.gz"
-tar -czf "data.tar.gz" -C "data" .
+$TAR -czf "data.tar.gz" -C "data" .
 
 # Repack the DEB file
 echo "[+] Repacking DEB file"
@@ -153,9 +187,11 @@ ar r "$OSCTRL_DEB" "debian-binary" "control.tar.gz" "data.tar.gz"
 # Move the new DEB file to the original directory
 cp "$OSCTRL_DEB" "$cwd"
 
-# Clean up the temporary directory
+# Clean up
 cd "$cwd"
-rm -rf "$TMP_DIR"
-
+if [[ "$REMOVE_TMP_DIR" == "true" ]]; then
+  echo "[+] Removing temporary directory"
+  rm -rf "$TMP_DIR"
+fi
 
 echo "✅ Completed repacking osquery DEB file: $OSCTRL_DEB"
