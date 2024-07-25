@@ -1,7 +1,7 @@
 # osctrl toolset
 
 <p align="center">
-  <img alt="osctrl" src="logo.png" width="300" />
+  <img alt="osctrl" src="../logo.png" width="300" />
   <p align="center">
     Fast and efficient osquery management.
   </p>
