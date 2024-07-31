@@ -19,7 +19,7 @@ function usage() {
   echo "  -v          Enable verbose mode with 'set -x'"
   echo
   echo "Example:"
-  echo "  $0 -i osquery_5.12.1-1.linux.amd64.deb -o osctrl_5.12.1-1_amd64.deb"
+  echo "  $0 -i osquery_5.12.1-1.linux.amd64.deb -o osquery-osctrl_5.12.1-1_amd64.deb"
 }
 
 # Stop script on error
@@ -96,7 +96,7 @@ if [[ -z "$OSCTRL_DEB" ]]; then
 fi
 
 echo "[+] Using osquery DEB file: ${OSQUERY_DEB}"
-echo "[+] Using osctrl DEB file: ${OSCTRL_DEB}"
+echo "[+] Generating osctrl DEB file: ${OSCTRL_DEB}"
 if [[ ! -z "$CERT" ]]; then
   echo "[+] Using osquery certificate file: ${CERT}"
 fi

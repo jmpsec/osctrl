@@ -94,6 +94,30 @@ Options:
   -v          Enable verbose mode with 'set -x'
 
 Example:
-  ./tools/build-osctrl-deb.sh -i osquery_5.12.1-1.linux.amd64.deb -o osctrl_5.12.1-1_amd64.deb
+  ./tools/build-osctrl-deb.sh -i osquery_5.12.1-1.linux.amd64.deb -o osquery-osctrl_5.12.1-1_amd64.deb"
+
+```
+
+## build-osctrl-pkg.sh
+
+Script to repack the osquery PKG package with the osctrl configuration files to be used with the `osctrl-tls` service.
 
 ```shell
+$ ./build-osctrl-pkg.sh -h
+
+Usage: ./build-osctrl-pkg.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGUMENT]] ...
+
+Options:
+  -h          Show this help message and exit
+  -c CERT     Path to the osquery certificate file
+  -s SECRET   Path to the osquery secret file (default: osquery.secret)
+  -f FLAGS    Path to the osquery flags file (default: osquery.flags)
+  -i PKG      Path to the osquery DEB file. Required.
+  -o PKG      Path to the osctrl DEB file. Required.
+  -x          Clear the temporary directory after the process
+  -v          Enable verbose mode with 'set -x'
+
+Example:
+  ./build-osctrl-pkg.sh -i osquery_5.12.1.pkg -o osquery-osctrl_5.12.1.pkg
+
+```
