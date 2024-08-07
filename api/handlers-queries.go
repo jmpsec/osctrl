@@ -132,16 +132,83 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 		incMetric(metricAPIQueriesErr)
 		return
 	}
-	// Create UUID target
-	if (q.UUID != "") && nodesmgr.CheckByUUID(q.UUID) {
-		if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, q.UUID); err != nil {
-			apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
-			incMetric(metricAPICarvesErr)
-			return
+
+	// Temporary list of UUIDs to calculate Expected
+	var expected []string
+	// Create targets
+	if len(q.Environments) > 0 {
+		for _, e := range q.Environments {
+			if (e != "") && envs.Exists(e) {
+				if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetEnvironment, e); err != nil {
+					apiErrorResponse(w, "error creating query environment target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				nodes, err := nodesmgr.GetByEnv(e, "active", settingsmgr.InactiveHours(settings.NoEnvironmentID))
+				if err != nil {
+					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				for _, n := range nodes {
+					expected = append(expected, n.UUID)
+				}
+			}
 		}
 	}
+	// Create platform target
+	if len(q.Platforms) > 0 {
+		platforms, _ := nodesmgr.GetAllPlatforms()
+		for _, p := range q.Platforms {
+			if (p != "") && checkValidPlatform(platforms, p) {
+				if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetPlatform, p); err != nil {
+					apiErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				nodes, err := nodesmgr.GetByPlatform(p, "active", settingsmgr.InactiveHours(settings.NoEnvironmentID))
+				if err != nil {
+					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				for _, n := range nodes {
+					expected = append(expected, n.UUID)
+				}
+			}
+		}
+	}
+	// Create UUIDs target
+	if len(q.UUIDs) > 0 {
+		for _, u := range q.UUIDs {
+			if (u != "") && nodesmgr.CheckByUUID(u) {
+				if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetUUID, u); err != nil {
+					apiErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				expected = append(expected, u)
+			}
+		}
+	}
+	// Create hostnames target
+	if len(q.Hosts) > 0 {
+		for _, _h := range q.Hosts {
+			if (_h != "") && nodesmgr.CheckByHost(_h) {
+				if err := queriesmgr.CreateTarget(newQuery.Name, queries.QueryTargetLocalname, _h); err != nil {
+					apiErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
+					incMetric(metricAPIQueriesErr)
+					return
+				}
+				expected = append(expected, _h)
+			}
+		}
+	}
+
+	// Remove duplicates from expected
+	expectedClear := removeStringDuplicates(expected)
 	// Update value for expected
-	if err := queriesmgr.SetExpected(queryName, 1, env.ID); err != nil {
+	if err := queriesmgr.SetExpected(queryName, len(expectedClear), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		incMetric(metricAPICarvesErr)
 		return
