@@ -65,11 +65,7 @@ func _apiPath(target string) string {
 }
 
 // Helper to verify if a platform is valid
-func checkValidPlatform(platform string) bool {
-	platforms, err := nodesmgr.GetAllPlatforms()
-	if err != nil {
-		return false
-	}
+func checkValidPlatform(platforms []string, platform string) bool {
 	for _, p := range platforms {
 		if p == platform {
 			return true

@@ -51,7 +51,7 @@ func (api *OsctrlAPI) CompleteQuery(env, identifier string) error {
 // RunQuery to initiate a query in osctrl
 func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool) (types.ApiQueriesResponse, error) {
 	q := types.ApiDistributedQueryRequest{
-		UUID:   uuid,
+		UUIDs:   []string{uuid},
 		Query:  query,
 		Hidden: hidden,
 	}

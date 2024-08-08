@@ -97,9 +97,12 @@ type ScriptRequest struct {
 
 // ApiDistributedQueryRequest to receive query requests
 type ApiDistributedQueryRequest struct {
-	UUID   string `json:"uuid"`
-	Query  string `json:"query"`
-	Hidden bool   `json:"hidden"`
+	UUIDs  []string `json:"uuid_list"`
+	Platforms  []string `json:"platform_list"`
+	Environments  []string `json:"environment_list"`
+	Hosts  []string `json:"host_list"`
+	Query  string   `json:"query"`
+	Hidden bool     `json:"hidden"`
 }
 
 // ApiDistributedCarveRequest to receive query requests
