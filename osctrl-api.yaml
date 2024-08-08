@@ -22,6 +22,16 @@ tags:
     externalDocs:
       description: on-demand queries
       url: https://github.com/jmpsec/osctrl/tree/master/queries
+  - name: carves
+    description: File carves in osctrl
+    externalDocs:
+      description: osctrl file carves
+      url: https://github.com/jmpsec/osctrl/tree/master/carves
+  - name: users
+    description: Existing users in osctrl
+    externalDocs:
+      description: osctrl users
+      url: https://github.com/jmpsec/osctrl/tree/master/users
   - name: platforms
     description: Platforms of enrolled nodes in osctrl
     externalDocs:
@@ -43,13 +53,20 @@ tags:
       description: osctrl settings
       url: https://github.com/jmpsec/osctrl/tree/master/settings
 paths:
-  /nodes:
+  /nodes/{env}/all:
     get:
       tags:
         - nodes
-      summary: Get a single node by UUID
-      description: Returns the osctrl node by the provided UUID
-      operationId: apiNodesHandler
+      summary: Get all the nodes by environment
+      description: Returns all the enrolled nodes by environment
+      operationId: apiAllNodesHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -79,19 +96,106 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
-  /nodes/{uuid}:
+            - admin
+  /nodes/{env}/active:
     get:
       tags:
         - nodes
-      summary: Get node
-      description: Returns all enrolled osctrl nodes
+      summary: Get all the active nodes by environment
+      description: Returns all the enrolled active nodes by environment
+      operationId: apiActiveNodesHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OsqueryNode"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /nodes/{env}/inactive:
+    get:
+      tags:
+        - nodes
+      summary: Get all the inactive nodes by environment
+      description: Returns all the enrolled inactive nodes by environment
+      operationId: apiInactiveNodesHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OsqueryNode"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /nodes/node/{identifier}:
+    get:
+      tags:
+        - nodes
+      summary: Get a single node by identifier
+      description: Returns a single enrolled node by identifier (UUID, hostname or localname)
       operationId: apiNodeHandler
       parameters:
-        - name: uuid
+        - name: identifier
           in: path
-          description: UUID of the requested enrolled node
+          description: Identifier of the requested enrolled node (UUID, hostname or localname)
           required: true
           schema:
             type: string
@@ -123,14 +227,67 @@ paths:
       security:
         - Authorization:
             - read
-            - write
-  /queries:
+  /nodes/{env}/delete:
+    post:
+      tags:
+        - nodes
+      summary: Delete node
+      description: Deletes an enrolled node by identifier (UUID, hostname or localname)
+      operationId: apiDeleteNodeHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiNodeGenericRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiGenericResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error deleting node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /queries/{env}:
     get:
       tags:
         - queries
-      summary: Get on-demand queries
-      description: Returns all hidden osctrl on-demand queries
-      operationId: apiHiddenQueriesShowHandler
+      summary: Get all on-demand queries
+      description: Returns all on-demand queries by environment
+      operationId: apiAllQueriesShowHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -160,8 +317,7 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - query
     post:
       tags:
         - queries
@@ -172,7 +328,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DistributedQueryRequest"
+              $ref: "#/components/schemas/ApiDistributedQueryRequest"
       responses:
         200:
           description: successful operation
@@ -182,25 +338,39 @@ paths:
                 $ref: "#/components/schemas/ApiQueriesResponse"
         403:
           description: no access
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         404:
           description: no queries
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         500:
           description: error getting queries
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
-  /queries/{name}:
+            - query
+  /queries/{env}/{name}:
     get:
       tags:
         - queries
       summary: Get on-demand query
-      description: Returns the requested on-demand query by name
+      description: Returns the requested on-demand query by name and environment
       operationId: apiQueryShowHandler
       parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
         - name: name
           in: path
           description: Name of the requested on-demand query
@@ -234,14 +404,13 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
-  /queries/results/{name}:
+            - query
+  /queries/{env}/results/{name}:
     get:
       tags:
         - queries
       summary: Get on-demand query results
-      description: Returns the requested on-demand query results by name
+      description: Returns the requested on-demand query results by name and environment
       operationId: apiQueryResultsHandler
       parameters:
         - name: name
@@ -277,15 +446,21 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
-  /all-queries:
+            - query
+  /all-queries/{env}:
     get:
       tags:
         - queries
-      summary: Get on-demand queries
-      description: Returns all osctrl on-demand queries
+      summary: Get all on-demand queries
+      description: Returns all on-demand queries by environment
       operationId: apiAllQueriesShowHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get queries
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -315,15 +490,21 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
-  /platforms:
+            - query
+  /carves/{env}:
     get:
       tags:
-        - platforms
-      summary: Get platforms
-      description: Returns all osctrl platforms of enrolled nodes
-      operationId: apiPlatformsHandler
+        - queries
+      summary: Get file carves
+      description: Returns all file carves by environment
+      operationId: apiCarvesShowHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get carves
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: successful operation
@@ -332,7 +513,46 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/CarvedFile"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no carves
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting carves
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - carve
+    post:
+      tags:
+        - queries
+      summary: Run new file carve
+      description: Creates a new file carve to run
+      operationId: apiCarvesRunHandler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiDistributedCarveRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiQueriesResponse"
         403:
           description: no access
           content:
@@ -353,8 +573,169 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - carve
+  /carves/{env}/{name}:
+    get:
+      tags:
+        - queries
+      summary: Get a file carve
+      description: Returns a file carve by environment and name
+      operationId: apiCarveShowHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get carves
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          description: Name of the requested file carve
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CarvedFile"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no carves
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting carve
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - carve
+  /users:
+    get:
+      tags:
+        - users
+      summary: Get users
+      description: Returns all users in osctrl
+      operationId: apiUsersHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /users/{username}:
+    get:
+      tags:
+        - users
+      summary: Get a user
+      description: Returns a single users in osctrl by username
+      operationId: apiUserHandler
+      parameters:
+        - name: username
+          in: path
+          description: Username of the requested user
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /platforms:
+    get:
+      tags:
+        - platforms
+      summary: Get platforms
+      description: Returns all platforms of enrolled nodes in osctrl
+      operationId: apiPlatformsHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting platforms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /environments:
     get:
       tags:
@@ -392,8 +773,7 @@ paths:
       security:
         - Authorization:
             - read
-            - write
-  /environments/{environment}:
+  /environments/{env}:
     get:
       tags:
         - environments
@@ -401,9 +781,9 @@ paths:
       description: Returns the requested osctrl environment to enroll nodes
       operationId: apiEnvironmentHandler
       parameters:
-        - name: environment
+        - name: env
           in: path
-          description: Name of the requested osctrl environment to enroll nodes
+          description: Name or UUID of the requested osctrl environment
           required: true
           schema:
             type: string
@@ -429,13 +809,12 @@ paths:
       security:
         - Authorization:
             - read
-            - write
   /tags:
     get:
       tags:
         - tags
       summary: Get tags
-      description: Returns all osctrl environments to enroll nodes
+      description: Returns all osctrl tags for enrolled nodes
       operationId: apiTagsHandler
       responses:
         200:
@@ -460,8 +839,7 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - admin
   /settings:
     get:
       tags:
@@ -492,8 +870,7 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - admin
   /settings/{service}:
     get:
       tags:
@@ -531,8 +908,51 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - admin
+  /settings/{service}/{env}:
+    get:
+      tags:
+        - settings
+      summary: Get settings
+      description: Returns all osctrl settings per service and environment
+      operationId: apiSettingsServiceHandler
+      parameters:
+        - name: service
+          in: path
+          description: Name of the service to retrieve settings, including JSON
+          required: true
+          schema:
+            type: string
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get settings
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SettingValue"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /settings/{service}/json:
     get:
       tags:
@@ -570,8 +990,51 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
       security:
         - Authorization:
-            - read
-            - write
+            - admin
+  /settings/{service}/json/{env}:
+    get:
+      tags:
+        - settings
+      summary: Get JSON settings
+      description: Returns JSON osctrl settings per service
+      operationId: apiSettingsServiceEnvJSONHandler
+      parameters:
+        - name: service
+          in: path
+          description: Name of the service to retrieve JSON only settings
+          required: true
+          schema:
+            type: string
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get JSON settings
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SettingValue"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
 components:
   schemas:
     OsqueryNode:
@@ -603,6 +1066,8 @@ components:
           type: string
         Localname:
           type: string
+        IPAddress:
+          type: string
         Username:
           type: string
         OsqueryUser:
@@ -619,6 +1084,9 @@ components:
           type: string
         ConfigHash:
           type: string
+        BytesReceived:
+          type: integer
+          format: int32
         RawEnrollment:
           type: string
         LastStatus:
@@ -636,6 +1104,19 @@ components:
         LastQueryWrite:
           type: string
           format: date-time
+        UserID:
+          type: integer
+          format: int32
+        EnvironmentID:
+          type: integer
+          format: int32
+        ExtraData:
+          type: string
+    ApiNodeGenericRequest:
+      type: object
+      properties:
+        uuid:
+          type: string
     DistributedQuery:
       type: object
       properties:
@@ -680,6 +1161,20 @@ components:
           type: string
         Path:
           type: string
+        EnvironmentID:
+          type: integer
+          format: int32
+        ExtraData:
+          type: string
+    ApiDistributedQueryRequest:
+      type: object
+      properties:
+        uuid:
+          type: string
+        query:
+          type: string
+        hidden:
+          type: boolean
     DistributedQueryRequest:
       type: object
       properties:
@@ -713,6 +1208,111 @@ components:
           type: string
     APIQueryData:
       type: object
+    CarvedFile:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        CarveID:
+          type: string
+        RequestID:
+          type: string
+        SessionID:
+          type: string
+        QueryName:
+          type: string
+        UUID:
+          type: string
+        NodeID:
+          type: integer
+          format: int32
+        Environment:
+          type: string
+        Path:
+          type: string
+        CarveSize:
+          type: integer
+          format: int32
+        BlockSize:
+          type: integer
+          format: int32
+        TotalBlocks:
+          type: integer
+          format: int32
+        CompletedBlocks:
+          type: integer
+          format: int32
+        Status:
+          type: string
+        CompletedAt:
+          type: string
+          format: date-time
+        Carver:
+          type: string
+        Archived:
+          type: boolean
+        ArchivePath:
+          type: string
+        EnvironmentID:
+          type: integer
+          format: int32
+    AdminUser:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Username:
+          type: string
+        Email:
+          type: string
+        Fullname:
+          type: string
+        PassHash:
+          type: string
+        APIToken:
+          type: string
+        TokenExpire:
+          type: string
+          format: date-time
+        Admin:
+          type: boolean
+        UUID:
+          type: string
+        CSRFToken:
+          type: string
+        LastIPAddress:
+          type: string
+        LastUserAgent:
+          type: string
+        LastAccess:
+          type: string
+          format: date-time
+        LastTokenUse:
+          type: string
+          format: date-time
+        EnvironmentID:
+          type: integer
+          format: int32
     TLSEnvironment:
       type: object
       properties:
@@ -746,9 +1346,27 @@ components:
           format: date-time
         Type:
           type: string
+        DebPackage:
+          type: string
+        RpmPackage:
+          type: string
+        MsiPackage:
+          type: string
+        PkgPackage:
+          type: string
         DebugHTTP:
           type: boolean
         Icon:
+          type: string
+        Options:
+          type: string
+        Schedule:
+          type: string
+        Packs:
+          type: string
+        Decorators:
+          type: string
+        ATC:
           type: string
         Configuration:
           type: string
@@ -787,6 +1405,11 @@ components:
           type: string
         CarverBlockPath:
           type: string
+        AcceptEnrolls:
+          type: boolean
+        UserID:
+          type: integer
+          format: int32
     AdminTag:
       type: object
       properties:
@@ -810,6 +1433,8 @@ components:
           type: string
         Icon:
           type: string
+        CreatedBy:
+          type: string
     SettingValue:
       type: object
       properties:
@@ -825,8 +1450,13 @@ components:
         DeletedAt:
           type: string
           format: date-time
+        Name:
+          type: string
         Service:
           type: string
+        EnvironmentID:
+          type: integer
+          format: int32
         JSON:
           type: boolean
         Type:
