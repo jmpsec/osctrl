@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-
 	"gorm.io/gorm"
 )
 
@@ -12,12 +10,12 @@ type OsqueryQueryData struct {
 	UUID        string `gorm:"index"`
 	Environment string
 	Name        string
-	Data        json.RawMessage
+	Data        string
 	Status      int
 }
 
 // APIQueryData to return query results from API
-type APIQueryData map[string]json.RawMessage
+type APIQueryData map[string]string
 
 // Function to retrieve the query log by name
 func postgresQueryLogs(name string) (APIQueryData, error) {
