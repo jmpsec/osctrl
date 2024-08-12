@@ -137,6 +137,11 @@ type ApiGenericResponse struct {
 	Message string `json:"message"`
 }
 
+// ApiDataResponse to be returned to API requests for generic data
+type ApiDataResponse struct {
+	Data string `json:"data"`
+}
+
 // ApiLoginResponse to be returned to API login requests with the generated token
 type ApiLoginResponse struct {
 	Token string `json:"token"`
