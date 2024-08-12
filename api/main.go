@@ -566,6 +566,10 @@ func osctrlAPIService() {
 	// API: environments by environment
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}/", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
 	// API: tags
