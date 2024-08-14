@@ -33,6 +33,8 @@ const (
 	appDescription string = appUsage + ", a fast and efficient osquery management"
 	// JSON file with API token
 	defaultApiConfigFile = projectName + "-api.json"
+	// JSON file with DB configuration
+	defaultDBConfigFile = "config/db.json"
 )
 
 const (
@@ -81,7 +83,7 @@ func init() {
 		&cli.BoolFlag{
 			Name:        "db",
 			Aliases:     []string{"d"},
-			Value:       false,
+			Value:       true,
 			Usage:       "Connect to local osctrl DB using JSON config file",
 			EnvVars:     []string{"DB_CONFIG"},
 			Destination: &dbFlag,
@@ -89,7 +91,7 @@ func init() {
 		&cli.BoolFlag{
 			Name:        "api",
 			Aliases:     []string{"a"},
-			Value:       true,
+			Value:       false,
 			Usage:       "Connect to remote osctrl using JSON config file",
 			EnvVars:     []string{"API_CONFIG"},
 			Destination: &apiFlag,
@@ -119,7 +121,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "db-file",
 			Aliases:     []string{"D"},
-			Value:       "",
+			Value:       defaultDBConfigFile,
 			Usage:       "Load DB JSON configuration from `FILE`",
 			EnvVars:     []string{"DB_CONFIG_FILE"},
 			Destination: &dbConfigFile,
