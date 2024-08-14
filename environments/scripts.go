@@ -58,7 +58,8 @@ osquery_downloadable() {
 		local _DEB_ARCH=$(dpkg --print-architecture)
 		echo "https://osquery-packages.s3.amazonaws.com/deb/osquery_$_VER-1.linux_$_DEB_ARCH.deb"
 	elif [ "$_type" = "rpm" ]; then
-		echo "https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_VER-1.linux.x86_64.rpm"
+		local _RPM_ARCH=$(uname -m)
+		echo "https://osquery-packages.s3.amazonaws.com/rpm/osquery-$_VER-1.linux.$_RPM_ARCH.rpm"
 	elif [ "$_type" = "pkg" ]; then
 		echo "https://osquery-packages.s3.amazonaws.com/darwin/osquery-$_VER.pkg"
 	fi
