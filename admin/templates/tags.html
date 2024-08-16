@@ -46,6 +46,7 @@
                       <th>Description</th>
                       <th>Color</th>
                       <th>Icon</th>
+                      <th>Environment</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -58,6 +59,7 @@
                         <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
                       </td>
                       <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
+                      <td><b>{{ environmentFinder $t.EnvironmentID $.Environments }}</b></td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>

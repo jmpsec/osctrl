@@ -1071,7 +1071,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			// Create a tag for this new environment
-			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon, ctx[sessions.CtxUser]); err != nil {
+			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon, ctx[sessions.CtxUser], env.ID); err != nil {
 				adminErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1414,8 +1414,15 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			h.Inc(metricAdminErr)
 			return
 		}
+		// Retrieve environment
+		env, err := h.Envs.Get(t.Environment)
+		if err != nil {
+			adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
 		// Prepare user to create
-		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser]); err != nil {
+		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser], env.ID); err != nil {
 			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return

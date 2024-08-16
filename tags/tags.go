@@ -21,11 +21,12 @@ const (
 // AdminTag to hold all tags
 type AdminTag struct {
 	gorm.Model
-	Name        string `gorm:"index"`
-	Description string
-	Color       string
-	Icon        string
-	CreatedBy   string
+	Name          string `gorm:"index"`
+	Description   string
+	Color         string
+	Icon          string
+	CreatedBy     string
+	EnvironmentID uint
 }
 
 // AdminTagForNode to check if this tag is used for an specific node
@@ -86,7 +87,7 @@ func (m *TagManager) Create(tag *AdminTag) error {
 }
 
 // New empty tag
-func (m *TagManager) New(name, description, color, icon, user string) (AdminTag, error) {
+func (m *TagManager) New(name, description, color, icon, user string, envID uint) (AdminTag, error) {
 	tagColor := color
 	tagIcon := icon
 	if tagColor == "" {
@@ -97,19 +98,20 @@ func (m *TagManager) New(name, description, color, icon, user string) (AdminTag,
 	}
 	if !m.Exists(name) {
 		return AdminTag{
-			Name:        name,
-			Description: description,
-			Color:       strings.ToLower(tagColor),
-			Icon:        strings.ToLower(tagIcon),
-			CreatedBy:   user,
+			Name:          name,
+			Description:   description,
+			Color:         strings.ToLower(tagColor),
+			Icon:          strings.ToLower(tagIcon),
+			CreatedBy:     user,
+			EnvironmentID: envID,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
 }
 
 // NewTag to create a tag and creates it without returning it
-func (m *TagManager) NewTag(name, description, color, icon, user string) error {
-	tag, err := m.New(name, description, color, icon, user)
+func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint) error {
+	tag, err := m.New(name, description, color, icon, user, envID)
 	if err != nil {
 		return err
 	}
@@ -136,6 +138,15 @@ func (m *TagManager) ExistsGet(name string) (bool, AdminTag) {
 func (m *TagManager) All() ([]AdminTag, error) {
 	var tags []AdminTag
 	if err := m.DB.Find(&tags).Error; err != nil {
+		return tags, err
+	}
+	return tags, nil
+}
+
+// All get all tags by environment
+func (m *TagManager) GetByEnv(envID uint) ([]AdminTag, error) {
+	var tags []AdminTag
+	if err := m.DB.Where("environment_id = ?", envID).Find(&tags).Error; err != nil {
 		return tags, err
 	}
 	return tags, nil
@@ -221,11 +232,12 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 	check, tag := m.ExistsGet(name)
 	if !check {
 		newTag := AdminTag{
-			Name:        name,
-			Description: DefaultAutocreated,
-			Color:       RandomColor(),
-			Icon:        DefaultTagIcon,
-			CreatedBy:   user,
+			Name:          name,
+			Description:   DefaultAutocreated,
+			Color:         RandomColor(),
+			Icon:          DefaultTagIcon,
+			CreatedBy:     user,
+			EnvironmentID: node.EnvironmentID,
 		}
 		if err := m.Create(&newTag); err != nil {
 			return fmt.Errorf("error creating tag %v", err)
