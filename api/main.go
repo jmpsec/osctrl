@@ -563,6 +563,8 @@ func osctrlAPIService() {
 	// API: platforms
 	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler))).Methods("GET")
 	// API: environments by environment
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
@@ -575,6 +577,8 @@ func osctrlAPIService() {
 	// API: tags
 	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler))).Methods("GET")
+	routerAPI.Handle(_apiPath(apiTagsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler))).Methods("GET")
 	// API: settings by environment
 	routerAPI.Handle(_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
 	routerAPI.Handle(_apiPath(apiSettingsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")

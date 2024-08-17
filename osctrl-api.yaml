@@ -736,6 +736,50 @@ paths:
       security:
         - Authorization:
             - admin
+  /platforms/{env}:
+    get:
+      tags:
+        - platforms
+      summary: Get platforms
+      description: Returns all platforms of enrolled nodes in osctrl by environment
+      operationId: apiPlatformsEnvHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get platforms
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no platforms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting platforms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /environments:
     get:
       tags:
@@ -939,6 +983,50 @@ paths:
                   $ref: "#/components/schemas/AdminTag"
         403:
           description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /tags/{env}:
+    get:
+      tags:
+        - tags
+      summary: Get tags
+      description: Returns all osctrl tags for enrolled nodes by environment
+      operationId: apiTagsEnvHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment to get platforms
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no tags
           content:
             application/json:
               schema:

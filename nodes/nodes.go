@@ -275,6 +275,21 @@ func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 	return platforms, nil
 }
 
+// GetEnvPlatforms to get the platforms with nodes in them by environment
+func (n *NodeManager) GetEnvPlatforms(environment string) ([]string, error) {
+	var platforms []string
+	var platform string
+	rows, err := n.DB.Table("osquery_nodes").Select("DISTINCT(platform)").Where("environment = ?", environment).Rows()
+	if err != nil {
+		return platforms, nil
+	}
+	for rows.Next() {
+		_ = rows.Scan(&platform)
+		platforms = append(platforms, platform)
+	}
+	return platforms, nil
+}
+
 // GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
 func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
 	var stats StatsData

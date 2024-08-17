@@ -1071,7 +1071,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			// Create a tag for this new environment
-			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon, ctx[sessions.CtxUser]); err != nil {
+			if err := h.Tags.NewTag(env.Name, "Tag for environment "+env.Name, "", env.Icon, ctx[sessions.CtxUser], env.ID); err != nil {
 				adminErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1406,6 +1406,13 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Retrieve environment
+	env, err := h.Envs.Get(t.Environment)
+	if err != nil {
+		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	switch t.Action {
 	case "add":
 		// FIXME password complexity?
@@ -1415,7 +1422,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Prepare user to create
-		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser]); err != nil {
+		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser], env.ID); err != nil {
 			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -1423,21 +1430,21 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "tag added successfully")
 	case "edit":
 		if t.Description != "" {
-			if err := h.Tags.ChangeDescription(t.Name, t.Description); err != nil {
+			if err := h.Tags.ChangeDescription(t.Name, t.Description, env.ID); err != nil {
 				adminErrorResponse(w, "error changing description", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
 		if t.Icon != "" {
-			if err := h.Tags.ChangeIcon(t.Name, t.Icon); err != nil {
+			if err := h.Tags.ChangeIcon(t.Name, t.Icon, env.ID); err != nil {
 				adminErrorResponse(w, "error changing icon", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
 		if t.Color != "" {
-			if err := h.Tags.ChangeColor(t.Name, t.Color); err != nil {
+			if err := h.Tags.ChangeColor(t.Name, t.Color, env.ID); err != nil {
 				adminErrorResponse(w, "error changing color", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1451,7 +1458,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if h.Tags.Exists(t.Name) {
-			if err := h.Tags.Delete(t.Name); err != nil {
+			if err := h.Tags.Delete(t.Name, env.ID); err != nil {
 				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
