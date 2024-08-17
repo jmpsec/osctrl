@@ -6,6 +6,10 @@ function createTag() {
     confirmCreateTag();
   });
   generateColor();
+  $("#tag_name").val("");
+  $("#tag_description").val("");
+  $("#tag_icon").val("");
+  $("#tag_env").val("");
   $("#createEditTagModal").modal();
 }
 
