@@ -1459,8 +1459,9 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastFutureTimes": utils.PastFutureTimes,
-		"inFutureTime":    utils.InFutureTime,
+		"pastFutureTimes":   utils.PastFutureTimes,
+		"inFutureTime":      utils.InFutureTime,
+		"environmentFinder": environments.EnvironmentFinder,
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "tags.html").filepaths

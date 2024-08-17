@@ -21,11 +21,12 @@ const (
 // AdminTag to hold all tags
 type AdminTag struct {
 	gorm.Model
-	Name        string `gorm:"index"`
-	Description string
-	Color       string
-	Icon        string
-	CreatedBy   string
+	Name          string `gorm:"index"`
+	Description   string
+	Color         string
+	Icon          string
+	CreatedBy     string
+	EnvironmentID uint
 }
 
 // AdminTagForNode to check if this tag is used for an specific node
@@ -66,12 +67,15 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 }
 
 // Get tag by name
-func (m *TagManager) Get(name string) (AdminTag, error) {
+func (m *TagManager) Get(name string, envID uint) (AdminTag, error) {
 	var tag AdminTag
 	if name == "" {
 		return tag, fmt.Errorf("empty tag")
 	}
-	if err := m.DB.Where("name = ?", name).First(&tag).Error; err != nil {
+	if envID == 0 {
+		return tag, fmt.Errorf("empty environment")
+	}
+	if err := m.DB.Where("name = ? AND environment_id = ?", name, envID).First(&tag).Error; err != nil {
 		return tag, err
 	}
 	return tag, nil
@@ -86,7 +90,7 @@ func (m *TagManager) Create(tag *AdminTag) error {
 }
 
 // New empty tag
-func (m *TagManager) New(name, description, color, icon, user string) (AdminTag, error) {
+func (m *TagManager) New(name, description, color, icon, user string, envID uint) (AdminTag, error) {
 	tagColor := color
 	tagIcon := icon
 	if tagColor == "" {
@@ -97,19 +101,20 @@ func (m *TagManager) New(name, description, color, icon, user string) (AdminTag,
 	}
 	if !m.Exists(name) {
 		return AdminTag{
-			Name:        name,
-			Description: description,
-			Color:       strings.ToLower(tagColor),
-			Icon:        strings.ToLower(tagIcon),
-			CreatedBy:   user,
+			Name:          name,
+			Description:   description,
+			Color:         strings.ToLower(tagColor),
+			Icon:          strings.ToLower(tagIcon),
+			CreatedBy:     user,
+			EnvironmentID: envID,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
 }
 
 // NewTag to create a tag and creates it without returning it
-func (m *TagManager) NewTag(name, description, color, icon, user string) error {
-	tag, err := m.New(name, description, color, icon, user)
+func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint) error {
+	tag, err := m.New(name, description, color, icon, user, envID)
 	if err != nil {
 		return err
 	}
@@ -124,8 +129,8 @@ func (m *TagManager) Exists(name string) bool {
 }
 
 // ExistsGet checks if tag exists and returns the tag
-func (m *TagManager) ExistsGet(name string) (bool, AdminTag) {
-	tag, err := m.Get(name)
+func (m *TagManager) ExistsGet(name string, envID uint) (bool, AdminTag) {
+	tag, err := m.Get(name, envID)
 	if err != nil {
 		return false, AdminTag{}
 	}
@@ -141,9 +146,18 @@ func (m *TagManager) All() ([]AdminTag, error) {
 	return tags, nil
 }
 
+// All get all tags by environment
+func (m *TagManager) GetByEnv(envID uint) ([]AdminTag, error) {
+	var tags []AdminTag
+	if err := m.DB.Where("environment_id = ?", envID).Find(&tags).Error; err != nil {
+		return tags, err
+	}
+	return tags, nil
+}
+
 // Delete tag by name
-func (m *TagManager) Delete(name string) error {
-	tag, err := m.Get(name)
+func (m *TagManager) Delete(name string, envID uint) error {
+	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
 	}
@@ -154,8 +168,8 @@ func (m *TagManager) Delete(name string) error {
 }
 
 // ChangeDescription to update description for a tag
-func (m *TagManager) ChangeDescription(name, description string) error {
-	tag, err := m.Get(name)
+func (m *TagManager) ChangeDescription(name, description string, envID uint) error {
+	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
 	}
@@ -168,8 +182,8 @@ func (m *TagManager) ChangeDescription(name, description string) error {
 }
 
 // ChangeColor to update color for a tag
-func (m *TagManager) ChangeColor(name, color string) error {
-	tag, err := m.Get(name)
+func (m *TagManager) ChangeColor(name, color string, envID uint) error {
+	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
 	}
@@ -182,8 +196,8 @@ func (m *TagManager) ChangeColor(name, color string) error {
 }
 
 // ChangeIcon to update icon for a tag
-func (m *TagManager) ChangeIcon(name, icon string) error {
-	tag, err := m.Get(name)
+func (m *TagManager) ChangeIcon(name, icon string, envID uint) error {
+	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
 	}
@@ -218,14 +232,15 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 	if len(name) == 0 {
 		return fmt.Errorf("empty tag")
 	}
-	check, tag := m.ExistsGet(name)
+	check, tag := m.ExistsGet(name, node.EnvironmentID)
 	if !check {
 		newTag := AdminTag{
-			Name:        name,
-			Description: DefaultAutocreated,
-			Color:       RandomColor(),
-			Icon:        DefaultTagIcon,
-			CreatedBy:   user,
+			Name:          name,
+			Description:   DefaultAutocreated,
+			Color:         RandomColor(),
+			Icon:          DefaultTagIcon,
+			CreatedBy:     user,
+			EnvironmentID: node.EnvironmentID,
 		}
 		if err := m.Create(&newTag); err != nil {
 			return fmt.Errorf("error creating tag %v", err)
@@ -290,7 +305,7 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		if t.Tag == "" {
 			continue
 		}
-		tag, err := m.Get(t.Tag)
+		tag, err := m.Get(t.Tag, node.EnvironmentID)
 		if err != nil {
 			return tags, err
 		}
