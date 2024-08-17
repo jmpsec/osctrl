@@ -5,9 +5,9 @@
     "name": "_DB_NAME",
     "username": "_DB_USERNAME",
     "password": "_DB_PASSWORD",
-    "max_idle_conns": 20,
-    "max_open_conns": 100,
-    "conn_max_lifetime": 30,
-    "conn_retry": 10
+    "maxIdleConns": 20,
+    "maxOpenConns": 100,
+    "connMaxLifetime": 30,
+    "connRetry": 10
   }
 }
