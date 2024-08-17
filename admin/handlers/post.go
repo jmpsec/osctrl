@@ -1406,18 +1406,18 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Retrieve environment
+	env, err := h.Envs.Get(t.Environment)
+	if err != nil {
+		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		h.Inc(metricAdminErr)
+		return
+	}
 	switch t.Action {
 	case "add":
 		// FIXME password complexity?
 		if h.Tags.Exists(t.Name) {
 			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
-			h.Inc(metricAdminErr)
-			return
-		}
-		// Retrieve environment
-		env, err := h.Envs.Get(t.Environment)
-		if err != nil {
-			adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
@@ -1430,21 +1430,21 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "tag added successfully")
 	case "edit":
 		if t.Description != "" {
-			if err := h.Tags.ChangeDescription(t.Name, t.Description); err != nil {
+			if err := h.Tags.ChangeDescription(t.Name, t.Description, env.ID); err != nil {
 				adminErrorResponse(w, "error changing description", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
 		if t.Icon != "" {
-			if err := h.Tags.ChangeIcon(t.Name, t.Icon); err != nil {
+			if err := h.Tags.ChangeIcon(t.Name, t.Icon, env.ID); err != nil {
 				adminErrorResponse(w, "error changing icon", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
 		if t.Color != "" {
-			if err := h.Tags.ChangeColor(t.Name, t.Color); err != nil {
+			if err := h.Tags.ChangeColor(t.Name, t.Color, env.ID); err != nil {
 				adminErrorResponse(w, "error changing color", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
@@ -1458,7 +1458,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if h.Tags.Exists(t.Name) {
-			if err := h.Tags.Delete(t.Name); err != nil {
+			if err := h.Tags.Delete(t.Name, env.ID); err != nil {
 				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return

@@ -59,7 +59,9 @@
                         <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
                       </td>
                       <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
-                      <td><b>{{ environmentFinder $t.EnvironmentID $.Environments }}</b></td>
+                      <td>
+                        <b>{{ environmentFinder $t.EnvironmentID $.Environments }}</b>
+                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments }}" id="tag_env_{{ $t.Name }}"></td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>
@@ -113,6 +115,17 @@
                         <input class="form-control" name="tag_icon" id="tag_icon" type="text" value="fas fa-tag">
                       </div>
                     </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="tag_env">Environment: </label>
+                      <div class="col-md-4">
+                        <select class="form-control" name="tag_env" id="tag_env">
+                          <option value=""></option>
+                        {{ range  $i, $e := $.Environments }}
+                          <option value="{{ $e.UUID }}">{{ $e.Name }}</option>
+                        {{ end }}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                   <div class="modal-footer">
                     <button id="modal_button_tag" type="button" class="btn btn-primary" data-dismiss="modal">Create</button>
@@ -147,6 +160,11 @@
         $('#tag_icon').on('input', function() {
           $("#tag_show_icon").removeClass();
           $("#tag_show_icon").addClass($('#tag_icon').val());
+        });
+
+        // Select2 initialization
+        $('#tag_env').select2({
+          theme: "classic"
         });
 
         // Enable all tooltips
