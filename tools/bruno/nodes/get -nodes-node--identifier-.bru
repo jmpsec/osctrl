@@ -1,0 +1,19 @@
+meta {
+  name: get -nodes-node--identifier-
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://osctrl.net/api/v1/nodes/node/{identifier}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  identifier:
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,19 @@
+meta {
+  name: get -settings--service-
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://osctrl.net/api/v1/settings/{service}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  service:
+}
+
+auth:bearer {
+  token: {{token}}
+}

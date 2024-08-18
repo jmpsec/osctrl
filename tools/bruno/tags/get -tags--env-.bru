@@ -1,0 +1,19 @@
+meta {
+  name: get -tags--env-
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://osctrl.net/api/v1/tags/{env}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  env:
+}
+
+auth:bearer {
+  token: {{token}}
+}

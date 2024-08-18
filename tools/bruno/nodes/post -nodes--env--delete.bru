@@ -1,0 +1,25 @@
+meta {
+  name: post -nodes--env--delete
+  type: http
+  seq: 5
+}
+
+post {
+  url: https://osctrl.net/api/v1/nodes/{env}/delete
+  body: json
+  auth: bearer
+}
+
+params:path {
+  env:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "uuid": ""
+  }
+}
