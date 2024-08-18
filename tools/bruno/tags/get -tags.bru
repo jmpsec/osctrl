@@ -1,0 +1,15 @@
+meta {
+  name: get -tags
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://osctrl.net/api/v1/tags
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

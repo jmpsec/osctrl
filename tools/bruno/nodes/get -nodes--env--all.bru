@@ -1,0 +1,19 @@
+meta {
+  name: get -nodes--env--all
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://osctrl.net/api/v1/nodes/{env}/all
+  body: none
+  auth: bearer
+}
+
+params:path {
+  env:
+}
+
+auth:bearer {
+  token: {{token}}
+}

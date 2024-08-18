@@ -1,0 +1,19 @@
+meta {
+  name: get -nodes--env--inactive
+  type: http
+  seq: 3
+}
+
+get {
+  url: https://osctrl.net/api/v1/nodes/{env}/inactive
+  body: none
+  auth: bearer
+}
+
+params:path {
+  env:
+}
+
+auth:bearer {
+  token: {{token}}
+}

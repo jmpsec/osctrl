@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "osctrl-api",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

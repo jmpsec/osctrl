@@ -1,0 +1,19 @@
+meta {
+  name: get -carves--env-
+  type: http
+  seq: 6
+}
+
+get {
+  url: https://osctrl.net/api/v1/carves/{env}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  env:
+}
+
+auth:bearer {
+  token: {{token}}
+}

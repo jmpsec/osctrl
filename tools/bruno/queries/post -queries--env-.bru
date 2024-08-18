@@ -1,0 +1,23 @@
+meta {
+  name: post -queries--env-
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://osctrl.net/api/v1/queries/{env}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "uuid": "",
+    "query": "",
+    "hidden": ""
+  }
+}

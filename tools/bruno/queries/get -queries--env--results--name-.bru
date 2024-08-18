@@ -1,0 +1,19 @@
+meta {
+  name: get -queries--env--results--name-
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://osctrl.net/api/v1/queries/{env}/results/{name}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  name:
+}
+
+auth:bearer {
+  token: {{token}}
+}

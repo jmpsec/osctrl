@@ -1,0 +1,19 @@
+meta {
+  name: get -users--username-
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://osctrl.net/api/v1/users/{username}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  username:
+}
+
+auth:bearer {
+  token: {{token}}
+}

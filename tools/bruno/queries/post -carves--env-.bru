@@ -1,0 +1,15 @@
+meta {
+  name: post -carves--env-
+  type: http
+  seq: 7
+}
+
+post {
+  url: https://osctrl.net/api/v1/carves/{env}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
