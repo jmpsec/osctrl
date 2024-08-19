@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/queries"
@@ -26,17 +25,16 @@ const (
 func apiCarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		incMetric(metricAPICarvesErr)
 		return
 	}
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPICarvesErr)
 		return
@@ -78,10 +76,9 @@ func apiCarveShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiCarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPICarvesErr)
 		return
@@ -157,10 +154,9 @@ func apiCarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 func apiCarvesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPICarvesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPICarvesErr)
 		return

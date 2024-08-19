@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
@@ -24,17 +23,16 @@ const (
 func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
@@ -76,10 +74,9 @@ func apiQueryShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
@@ -222,10 +219,9 @@ func apiQueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
@@ -265,10 +261,9 @@ func apiAllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
@@ -308,17 +303,16 @@ func apiHiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 func apiQueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return
 	}
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIQueriesErr)
 		return

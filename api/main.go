@@ -22,7 +22,6 @@ import (
 	"github.com/jmpsec/osctrl/version"
 	"github.com/urfave/cli/v2"
 
-	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
@@ -512,84 +511,55 @@ func osctrlAPIService() {
 		log.Println("DebugService: Creating router")
 	}
 	// Create router for API endpoint
-	routerAPI := mux.NewRouter()
+	muxAPI := http.NewServeMux()
 	// API: root
-	routerAPI.HandleFunc("/", rootHTTPHandler)
+	muxAPI.HandleFunc("GET /", rootHTTPHandler)
 	// API: testing
-	routerAPI.HandleFunc(healthPath, healthHTTPHandler).Methods("GET")
+	muxAPI.HandleFunc("GET "+healthPath, healthHTTPHandler)
 	// API: error
-	routerAPI.HandleFunc(errorPath, errorHTTPHandler).Methods("GET")
+	muxAPI.HandleFunc("GET "+errorPath, errorHTTPHandler)
 	// API: forbidden
-	routerAPI.HandleFunc(forbiddenPath, forbiddenHTTPHandler).Methods("GET")
+	muxAPI.HandleFunc("GET "+forbiddenPath, forbiddenHTTPHandler)
 
 	// ///////////////////////// UNAUTHENTICATED
-	routerAPI.Handle(_apiPath(apiLoginPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiLoginHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiLoginPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiLoginHandler))).Methods("POST")
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiLoginHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: nodes by environment
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/all", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/all/", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/active", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/active/", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/inactive", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/inactive/", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/node/{node}/", handlerAuthCheck(http.HandlerFunc(apiNodeHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiNodesPath)+"/{env}/delete/", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler))).Methods("POST")
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/all", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/active", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/inactive", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler)))
 	// API: queries by environment
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiQueriesPath)+"/{env}/results/{name}/", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiAllQueriesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler)))
 	// API: carves by environment
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler))).Methods("POST")
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiCarvesPath)+"/{env}/{name}/", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler)))
 	// API: users by environment
-	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiUsersPath)+"/{username}/", handlerAuthCheck(http.HandlerFunc(apiUserHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(apiUsersHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiUsersPath)+"/", handlerAuthCheck(http.HandlerFunc(apiUsersHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(apiUserHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(apiUsersHandler)))
 	// API: platforms
-	routerAPI.Handle(_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiPlatformsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler)))
 	// API: environments by environment
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}/", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiEnvironmentsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler)))
 	// API: tags
-	routerAPI.Handle(_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiTagsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiTagsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiTagsPath)+"/{env}/", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler)))
 	// API: settings by environment
-	routerAPI.Handle(_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/", handlerAuthCheck(http.HandlerFunc(apiSettingsHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/{env}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler))).Methods("GET")
-	routerAPI.Handle(_apiPath(apiSettingsPath)+"/{service}/json/{env}/", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler))).Methods("GET")
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler)))
 
 	// Launch listeners for API server
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port
@@ -607,7 +577,7 @@ func osctrlAPIService() {
 		}
 		srv := &http.Server{
 			Addr:         serviceListener,
-			Handler:      routerAPI,
+			Handler:      muxAPI,
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
@@ -615,7 +585,7 @@ func osctrlAPIService() {
 		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
 	} else {
 		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, routerAPI))
+		log.Fatal(http.ListenAndServe(serviceListener, muxAPI))
 	}
 }
 
