@@ -794,9 +794,9 @@ func osctrlAdminService() {
 	// Admin: forbidden
 	adminMux.HandleFunc("GET "+forbiddenPath, handlersAdmin.ForbiddenHandler)
 	// Admin: favicon
-	adminMux.HandleFunc(faviconPath, handlersAdmin.FaviconHandler)
+	adminMux.HandleFunc("GET " + faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
-	adminMux.Handle("/static/", http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
+	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 
 	// ///////////////////////// AUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -886,7 +886,7 @@ func osctrlAdminService() {
 	adminMux.Handle("POST "+logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler)))
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
-		adminMux.Handle("/saml/", samlMiddleware)
+		adminMux.Handle("GET /saml/", samlMiddleware)
 		adminMux.HandleFunc("GET "+loginPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 		})
