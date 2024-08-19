@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/logging"
@@ -237,9 +236,8 @@ func (h *HandlersTLS) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricEnrollReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricEnrollErr)
 		log.Println("Environment is missing")
 		return
@@ -324,9 +322,8 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricConfigReq)
 	var response interface{}
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricConfigErr)
 		log.Println("Environment is missing")
 		return
@@ -391,9 +388,8 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricLogReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricLogErr)
 		log.Println("Environment is missing")
 		return
@@ -470,9 +466,8 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricReadReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricReadErr)
 		log.Println("Environment is missing")
 		return
@@ -550,9 +545,8 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricWriteReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricWriteErr)
 		log.Println("Environment is missing")
 		return
@@ -630,9 +624,8 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricOnelinerReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Environment is missing")
 		return
@@ -648,16 +641,16 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	// Debug HTTP
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Retrieve type of script
-	script, ok := vars["script"]
-	if !ok {
+	script := r.PathValue("script")
+	if script == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Script is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
 	// Retrieve SecretPath variable
-	secretPath, ok := vars["secretpath"]
-	if !ok {
+	secretPath := r.PathValue("secretpath")
+	if secretPath == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Path is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
@@ -708,9 +701,8 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricOnelinerReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Environment is missing")
 		return
@@ -726,16 +718,16 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	// Debug HTTP
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Retrieve type of script
-	script, ok := vars["script"]
-	if !ok {
+	script := r.PathValue("script")
+	if script == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Script is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
 	// Retrieve SecretPath variable
-	secretPath, ok := vars["secretpath"]
-	if !ok {
+	secretPath := r.PathValue("secretpath")
+	if secretPath == "" {
 		h.Inc(metricOnelinerErr)
 		log.Println("Path is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
@@ -788,9 +780,8 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricInitReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricInitErr)
 		log.Println("Environment is missing")
 		return
@@ -860,9 +851,8 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricBlockReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricBlockErr)
 		log.Println("Environment is missing")
 		return
@@ -921,9 +911,8 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricFlagsReq)
 	var response []byte
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricFlagsErr)
 		log.Println("Environment is missing")
 		return
@@ -977,9 +966,8 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricCertReq)
 	var response []byte
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricCertErr)
 		log.Println("Environment is missing")
 		return
@@ -1027,9 +1015,8 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricVerifyReq)
 	var response types.VerifyResponse
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricVerifyErr)
 		log.Println("Environment is missing")
 		return
@@ -1087,9 +1074,8 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricScriptReq)
 	var response []byte
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricScriptErr)
 		log.Println("Environment is missing")
 		return
@@ -1102,8 +1088,8 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Retrieve and check action
-	actionVar, ok := vars["action"]
-	if !ok {
+	actionVar := r.PathValue("action")
+	if actionVar == "" {
 		h.Inc(metricScriptErr)
 		log.Println("Action is missing")
 		return
@@ -1114,8 +1100,8 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Retrieve and check platform
-	platformVar, ok := vars["platform"]
-	if !ok {
+	platformVar := r.PathValue("platform")
+	if platformVar == "" {
 		h.Inc(metricScriptErr)
 		log.Println("Platform is missing")
 		return
@@ -1168,9 +1154,8 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricPackageReq)
 	// Retrieve environment variable
-	vars := mux.Vars(r)
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricPackageErr)
 		log.Println("Environment is missing")
 		return
@@ -1186,8 +1171,8 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	// Debug HTTP
 	utils.DebugHTTPDump(r, (*h.EnvsMap)[env.Name].DebugHTTP, true)
 	// Retrieve package
-	packageVar, ok := vars["package"]
-	if !ok {
+	packageVar := r.PathValue("package")
+	if packageVar == "" {
 		h.Inc(metricPackageErr)
 		log.Println("Package is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
@@ -1200,8 +1185,8 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Retrieve SecretPath variable
-	secretPath, ok := vars["secretpath"]
-	if !ok {
+	secretPath := r.PathValue("secretpath")
+	if secretPath == "" {
 		h.Inc(metricPackageErr)
 		log.Println("Path is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
