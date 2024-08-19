@@ -14,8 +14,8 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jmpsec/osctrl/nodes v0.3.7 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.7 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.8 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.8 // indirect
 	github.com/jmpsec/osctrl/types v0.0.0-20240712215734-76cb76cf1447
 )
 
