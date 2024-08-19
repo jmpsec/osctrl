@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
@@ -62,10 +61,9 @@ type QueryLogJSON struct {
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract type
-	logType, ok := vars["type"]
-	if !ok {
+	logType := r.PathValue("type")
+	if logType == "" {
 		log.Println("error getting log type")
 		h.Inc(metricJSONErr)
 		return
@@ -77,8 +75,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricJSONErr)
 		return
@@ -100,8 +98,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Extract UUID
 	// FIXME verify UUID
-	UUID, ok := vars["uuid"]
-	if !ok {
+	UUID := r.PathValue("uuid")
+	if UUID == "" {
 		log.Println("error getting UUID")
 		h.Inc(metricJSONErr)
 		return
@@ -188,11 +186,10 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		h.Inc(metricJSONErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract query name
 	// FIXME verify name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		log.Println("error getting name")
 		h.Inc(metricJSONErr)
 		return

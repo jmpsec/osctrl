@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/settings"
@@ -53,10 +52,9 @@ func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract username and verify
-	usernameVar, ok := vars["username"]
-	if !ok || !h.Users.Exists(usernameVar) {
+	usernameVar := r.PathValue("username")
+	if usernameVar == "" || !h.Users.Exists(usernameVar) {
 		if h.Settings.DebugService(settings.ServiceAdmin) {
 			log.Printf("DebugService: error getting username")
 		}
@@ -85,12 +83,11 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricAdminErr)
 		return
@@ -109,17 +106,17 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Extract id to download
-	carveSession, ok := vars["sessionid"]
-	if !ok {
+	carveSession := r.PathValue("sessionid")
+	if carveSession == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting carve")
 		return
 	}
 	// Check if carve is archived already
 	carve, err := h.Carves.GetBySession(carveSession)
-	if !ok {
+	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Println("error getting carve")
+		log.Printf("error getting carve %v", err)
 		return
 	}
 	var archived *carves.CarveResult

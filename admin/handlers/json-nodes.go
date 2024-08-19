@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
@@ -43,10 +42,9 @@ type NodeJSON struct {
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("error getting environment")
 		h.Inc(metricJSONErr)
 		return
@@ -73,8 +71,8 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Extract target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		log.Println("error getting target")
 		h.Inc(metricJSONErr)
 		return
@@ -133,17 +131,16 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricJSONErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract platform
-	platform, ok := vars["platform"]
-	if !ok {
+	platform := r.PathValue("platform")
+	if platform == "" {
 		log.Println("error getting platform")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		log.Println("error getting target")
 		h.Inc(metricJSONErr)
 		return

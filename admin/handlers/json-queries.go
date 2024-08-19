@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -133,10 +132,9 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricJSONErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricJSONErr)
 		return
@@ -149,8 +147,8 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Extract target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		log.Println("error getting target")
 		h.Inc(metricJSONErr)
 		return

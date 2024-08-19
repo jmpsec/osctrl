@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/crewjam/saml/samlsp"
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/handlers"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
@@ -773,7 +772,7 @@ func osctrlAdminService() {
 		log.Println("DebugService: Creating router")
 	}
 	// Create router for admin
-	routerAdmin := mux.NewRouter()
+	adminMux := http.NewServeMux()
 
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
@@ -782,119 +781,118 @@ func osctrlAdminService() {
 	// Admin: login only if local auth is enabled
 	if adminConfig.Auth != settings.AuthNone && adminConfig.Auth != settings.AuthSAML {
 		// login
-		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginHandler).Methods("GET")
-		routerAdmin.HandleFunc(loginPath, handlersAdmin.LoginPOSTHandler).Methods("POST")
-		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
+		adminMux.HandleFunc("GET "+loginPath, handlersAdmin.LoginHandler)
+		adminMux.HandleFunc("POST "+loginPath, handlersAdmin.LoginPOSTHandler)
+		adminMux.HandleFunc("GET "+logoutPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, loginPath, http.StatusFound)
-		}).Methods("GET")
+		})
 	}
 	// Admin: health of service
-	routerAdmin.HandleFunc(healthPath, handlersAdmin.HealthHandler).Methods("GET")
+	adminMux.HandleFunc("GET "+healthPath, handlersAdmin.HealthHandler)
 	// Admin: error
-	routerAdmin.HandleFunc(errorPath, handlersAdmin.ErrorHandler).Methods("GET")
+	adminMux.HandleFunc("GET "+errorPath, handlersAdmin.ErrorHandler)
 	// Admin: forbidden
-	routerAdmin.HandleFunc(forbiddenPath, handlersAdmin.ForbiddenHandler).Methods("GET")
+	adminMux.HandleFunc("GET "+forbiddenPath, handlersAdmin.ForbiddenHandler)
 	// Admin: favicon
-	routerAdmin.HandleFunc(faviconPath, handlersAdmin.FaviconHandler)
+	adminMux.HandleFunc("GET " + faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
-	routerAdmin.PathPrefix("/static/").Handler(
-		http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
+	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 
 	// ///////////////////////// AUTHENTICATED CONTENT
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
 		log.Println("DebugService: Authenticated content")
 	}
 	// Admin: JSON data for environments
-	routerAdmin.Handle("/json/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler))).Methods("GET")
+	adminMux.Handle("GET /json/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler)))
 	// Admin: JSON data for platforms
-	routerAdmin.Handle("/json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler))).Methods("GET")
+	adminMux.Handle("GET /json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler)))
 	// Admin: JSON data for logs
-	routerAdmin.Handle("/json/logs/{type}/{env}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler))).Methods("GET")
+	adminMux.Handle("GET /json/logs/{type}/{env}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler)))
 	// Admin: JSON data for query logs
-	routerAdmin.Handle("/json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler))).Methods("GET")
+	adminMux.Handle("GET /json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler)))
 	// Admin: JSON data for sidebar stats
-	routerAdmin.Handle("/json/stats/{target}/{identifier}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler))).Methods("GET")
+	adminMux.Handle("GET /json/stats/{target}/{identifier}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler)))
 	// Admin: JSON data for tags
-	routerAdmin.Handle("/json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler))).Methods("GET")
+	adminMux.Handle("GET /json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler)))
 	// Admin: table for environments
-	routerAdmin.Handle("/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler))).Methods("GET")
+	adminMux.Handle("GET /environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler)))
 	// Admin: table for platforms
-	routerAdmin.Handle("/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler))).Methods("GET")
+	adminMux.Handle("GET /platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler)))
 	// Admin: root
-	routerAdmin.Handle("/", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler))).Methods("GET")
+	adminMux.Handle("GET /", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler)))
 	// Admin: node view
-	routerAdmin.Handle("/node/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler))).Methods("GET")
+	adminMux.Handle("GET /node/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler)))
 	// Admin: multi node action
-	routerAdmin.Handle("/node/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler))).Methods("POST")
+	adminMux.Handle("POST /node/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler)))
 	// Admin: run queries
-	routerAdmin.Handle("/query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler)))
+	adminMux.Handle("POST /query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler)))
 	// Admin: list queries
-	routerAdmin.Handle("/query/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler))).Methods("GET")
+	adminMux.Handle("GET /query/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler)))
 	// Admin: saved queries
-	routerAdmin.Handle("/query/{env}/saved", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler))).Methods("GET")
+	adminMux.Handle("GET /query/{env}/saved", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler)))
 	// Admin: query actions
-	routerAdmin.Handle("/query/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler))).Methods("POST")
+	adminMux.Handle("POST /query/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler)))
 	// Admin: query JSON
-	routerAdmin.Handle("/query/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler))).Methods("GET")
+	adminMux.Handle("GET /query/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler)))
 	// Admin: query logs
-	routerAdmin.Handle("/query/{env}/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler))).Methods("GET")
+	adminMux.Handle("GET /query/{env}/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler)))
 	// Admin: carve files
-	routerAdmin.Handle("/carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler))).Methods("GET")
-	routerAdmin.Handle("/carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler)))
+	adminMux.Handle("POST /carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler)))
 	// Admin: list carves
-	routerAdmin.Handle("/carves/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler))).Methods("GET")
+	adminMux.Handle("GET /carves/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler)))
 	// Admin: carves actions
-	routerAdmin.Handle("/carves/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler))).Methods("POST")
+	adminMux.Handle("POST /carves/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler)))
 	// Admin: carves JSON
-	routerAdmin.Handle("/carves/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler))).Methods("GET")
+	adminMux.Handle("GET /carves/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler)))
 	// Admin: carves details
-	routerAdmin.Handle("/carves/{env}/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler))).Methods("GET")
+	adminMux.Handle("GET /carves/{env}/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler)))
 	// Admin: carves download
-	routerAdmin.Handle("/carves/{env}/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler))).Methods("GET")
+	adminMux.Handle("GET /carves/{env}/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler)))
 	// Admin: nodes configuration
-	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler))).Methods("GET")
-	routerAdmin.Handle("/conf/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/intervals/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /conf/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler)))
+	adminMux.Handle("POST /conf/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler)))
+	adminMux.Handle("POST /intervals/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler)))
 	// Admin: nodes enroll
-	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler))).Methods("GET")
-	routerAdmin.Handle("/enroll/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/enroll/{environment}/download/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler))).Methods("GET")
-	routerAdmin.Handle("/expiration/{environment}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /enroll/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler)))
+	adminMux.Handle("POST /enroll/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler)))
+	adminMux.Handle("GET /enroll/{env}/download/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler)))
+	adminMux.Handle("POST /expiration/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler)))
 	// Admin: server settings
-	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler)))
+	adminMux.Handle("POST /settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler)))
 	// Admin: manage environments
-	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler)))
+	adminMux.Handle("POST /environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler)))
 	// Admin: manage users
-	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler))).Methods("GET")
-	routerAdmin.Handle("/users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler)))
+	adminMux.Handle("POST /users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler)))
+	adminMux.Handle("GET /users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler)))
+	adminMux.Handle("POST /users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler)))
 	// Admin: manage tags
-	routerAdmin.Handle("/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler))).Methods("GET")
-	routerAdmin.Handle("/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler))).Methods("POST")
-	routerAdmin.Handle("/tags/nodes", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler)))
+	adminMux.Handle("POST /tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler)))
+	adminMux.Handle("POST /tags/nodes", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler)))
 	// Admin: manage tokens
-	routerAdmin.Handle("/tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler))).Methods("GET")
-	routerAdmin.Handle("/tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler)))
+	adminMux.Handle("POST /tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler)))
 	// Admin: edit profile
-	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler))).Methods("GET")
-	routerAdmin.Handle("/profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler))).Methods("POST")
+	adminMux.Handle("GET /profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler)))
+	adminMux.Handle("POST /profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler)))
 	// Admin: dashboard and search bar
-	routerAdmin.Handle("/dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler))).Methods("GET")
+	adminMux.Handle("GET /dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler)))
 	// Admin: logout
-	routerAdmin.Handle(logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler))).Methods("POST")
+	adminMux.Handle("POST "+logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler)))
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
-		routerAdmin.PathPrefix("/saml/").Handler(samlMiddleware)
-		routerAdmin.HandleFunc(loginPath, func(w http.ResponseWriter, r *http.Request) {
+		adminMux.Handle("GET /saml/", samlMiddleware)
+		adminMux.HandleFunc("GET "+loginPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
-		}).Methods("GET")
-		routerAdmin.HandleFunc(logoutPath, func(w http.ResponseWriter, r *http.Request) {
+		})
+		adminMux.HandleFunc("GET "+logoutPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
-		}).Methods("GET")
+		})
 	}
 	// Launch HTTP server for admin
 	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
@@ -912,7 +910,7 @@ func osctrlAdminService() {
 		}
 		srv := &http.Server{
 			Addr:         serviceAdmin,
-			Handler:      routerAdmin,
+			Handler:      adminMux,
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
@@ -920,7 +918,7 @@ func osctrlAdminService() {
 		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
 	} else {
 		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
-		log.Fatal(http.ListenAndServe(serviceAdmin, routerAdmin))
+		log.Fatal(http.ListenAndServe(serviceAdmin, adminMux))
 	}
 }
 
