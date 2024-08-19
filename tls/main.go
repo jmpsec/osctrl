@@ -23,7 +23,6 @@ import (
 	"github.com/jmpsec/osctrl/version"
 	"github.com/urfave/cli/v2"
 
-	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
@@ -636,34 +635,34 @@ func osctrlService() {
 		log.Println("DebugService: Creating router")
 	}
 	// Create router for TLS endpoint
-	routerTLS := mux.NewRouter()
+	muxTLS := http.NewServeMux()
 	// TLS: root
-	routerTLS.HandleFunc("/", handlersTLS.RootHandler)
+	muxTLS.HandleFunc("GET /", handlersTLS.RootHandler)
 	// TLS: testing
-	routerTLS.HandleFunc(healthPath, handlersTLS.HealthHandler).Methods("GET")
+	muxTLS.HandleFunc("GET "+healthPath, handlersTLS.HealthHandler)
 	// TLS: error
-	routerTLS.HandleFunc(errorPath, handlersTLS.ErrorHandler).Methods("GET")
+	muxTLS.HandleFunc("GET "+errorPath, handlersTLS.ErrorHandler)
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultEnrollPath, handlersTLS.EnrollHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultConfigPath, handlersTLS.ConfigHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultLogPath, handlersTLS.LogHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryReadPath, handlersTLS.QueryReadHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultQueryWritePath, handlersTLS.QueryWriteHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverInitPath, handlersTLS.CarveInitHandler).Methods("POST")
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler).Methods("POST")
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultEnrollPath, handlersTLS.EnrollHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.ConfigHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultLogPath, handlersTLS.LogHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultQueryReadPath, handlersTLS.QueryReadHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultQueryWritePath, handlersTLS.QueryWriteHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCarverInitPath, handlersTLS.CarveInitHandler)
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler)
 	// TLS: Quick enroll/remove script
-	routerTLS.HandleFunc("/{environment}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler).Methods("GET")
+	muxTLS.HandleFunc("GET /{env}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler)
 	// TLS: Download enrolling package
-	routerTLS.HandleFunc("/{environment}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler).Methods("GET")
+	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler)
 	// TLS: osctrld retrieve flags
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler).Methods("POST")
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler)
 	// TLS: osctrld retrieve certificate
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultCertPath, handlersTLS.CertHandler).Methods("POST")
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCertPath, handlersTLS.CertHandler)
 	// TLS: osctrld verification
-	routerTLS.HandleFunc("/{environment}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler).Methods("POST")
+	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler)
 	// TLS: osctrld retrieve script to install/remove osquery
-	routerTLS.HandleFunc("/{environment}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler).Methods("POST")
+	muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
 
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
@@ -682,7 +681,7 @@ func osctrlService() {
 		}
 		srv := &http.Server{
 			Addr:         serviceListener,
-			Handler:      routerTLS,
+			Handler:      muxTLS,
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
@@ -690,7 +689,7 @@ func osctrlService() {
 		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
 	} else {
 		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, routerTLS))
+		log.Fatal(http.ListenAndServe(serviceListener, muxTLS))
 	}
 }
 

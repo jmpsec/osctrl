@@ -31,7 +31,6 @@ replace github.com/jmpsec/osctrl/version => ../../version
 replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
-	github.com/gorilla/mux v1.8.1
 	github.com/jmpsec/osctrl/backend v0.3.8 // indirect
 	github.com/jmpsec/osctrl/environments v0.0.0-20240819084417-5d0c74745216
 	github.com/jmpsec/osctrl/metrics v0.0.0-20240819084417-5d0c74745216
