@@ -1,6 +1,6 @@
 module github.com/jmpsec/osctrl/nodes
 
-go 1.21
+go 1.23
 
 require gorm.io/gorm v1.25.11
 

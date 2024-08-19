@@ -437,7 +437,7 @@ package rsync
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_21
+  install_go_23
 fi
 
 # Upgrade service

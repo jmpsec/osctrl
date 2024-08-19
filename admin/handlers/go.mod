@@ -1,6 +1,6 @@
 module github.com/jmpsec/osctrl/admin/handlers
 
-go 1.21
+go 1.23
 
 replace github.com/jmpsec/osctrl/admin/sessions => ../../admin/sessions
 

@@ -1,6 +1,6 @@
 module github.com/jmpsec/osctrl/logging
 
-go 1.21
+go 1.23
 
 replace github.com/jmpsec/osctrl/backend => ../backend
 

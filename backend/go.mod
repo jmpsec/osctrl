@@ -1,6 +1,6 @@
 module github.com/jmpsec/osctrl/backend
 
-go 1.21
+go 1.23
 
 require (
 	github.com/spf13/viper v1.19.0
