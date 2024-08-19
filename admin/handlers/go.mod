@@ -33,7 +33,6 @@ replace github.com/jmpsec/osctrl/utils => ../../utils
 replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
-	github.com/gorilla/mux v1.8.1
 	github.com/jmpsec/osctrl/admin/sessions v0.3.8
 	github.com/jmpsec/osctrl/carves v0.3.8
 	github.com/jmpsec/osctrl/environments v0.0.0-20240819084417-5d0c74745216

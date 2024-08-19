@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
@@ -32,10 +31,9 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricAdminErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract username
-	username, ok := vars["username"]
-	if !ok {
+	username := r.PathValue("username")
+	if username == "" {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -72,10 +70,9 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		h.Inc(metricTokenErr)
 		return
 	}
-	vars := mux.Vars(r)
 	// Extract username and verify
-	username, ok := vars["username"]
-	if !ok || !h.Users.Exists(username) {
+	username := r.PathValue("username")
+	if username == "" || !h.Users.Exists(username) {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return

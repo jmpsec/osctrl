@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
@@ -26,10 +25,9 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
-	vars := mux.Vars(r)
 	// Extract stats target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting target")
 		return
@@ -41,8 +39,8 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Extract identifier
-	identifier, ok := vars["identifier"]
-	if !ok {
+	identifier := r.PathValue("identifier")
+	if identifier == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting target identifier")
 		return

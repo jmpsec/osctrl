@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/queries"
@@ -93,10 +92,9 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricAdminErr)
 		return
@@ -246,10 +244,9 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricAdminErr)
 		return
@@ -403,10 +400,9 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricAdminErr)
 		return
@@ -542,10 +538,9 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("environment")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -775,10 +770,9 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment and verify
-	envVar, ok := vars["environment"]
-	if !ok || !h.Envs.Exists(envVar) {
+	envVar := r.PathValue("environment")
+	if envVar == "" || !h.Envs.Exists(envVar) {
 		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -845,10 +839,9 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("environment")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -1122,10 +1115,9 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract service
-	serviceVar, ok := vars["service"]
-	if !ok {
+	serviceVar := r.PathValue("service")
+	if serviceVar == "" {
 		adminErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1547,10 +1539,9 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract username and verify
-	usernameVar, ok := vars["username"]
-	if !ok || !h.Users.Exists(usernameVar) {
+	usernameVar := r.PathValue("username")
+	if usernameVar == "" || !h.Users.Exists(usernameVar) {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1618,10 +1609,9 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("environment")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return

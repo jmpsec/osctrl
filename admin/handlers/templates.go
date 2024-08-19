@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
@@ -100,10 +99,9 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -125,8 +123,8 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Extract target
 	// FIXME verify target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting target")
 		return
@@ -187,19 +185,18 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract platform
 	// FIXME verify platform
-	platform, ok := vars["platform"]
-	if !ok {
+	platform := r.PathValue("platform")
+	if platform == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting platform")
 		return
 	}
 	// Extract target
 	// FIXME verify target
-	target, ok := vars["target"]
-	if !ok {
+	target := r.PathValue("target")
+	if target == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting target")
 		return
@@ -273,10 +270,9 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -365,10 +361,9 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -434,10 +429,9 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -503,10 +497,9 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -589,10 +582,9 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -658,10 +650,9 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -682,8 +673,8 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Extract name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting name")
 		return
@@ -760,10 +751,9 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		log.Println("environment is missing")
 		h.Inc(metricAdminErr)
 		return
@@ -784,8 +774,8 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Extract name
-	name, ok := vars["name"]
-	if !ok {
+	name := r.PathValue("name")
+	if name == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting name")
 		return
@@ -877,10 +867,9 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -945,10 +934,9 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -1039,10 +1027,9 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["environment"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
 		return
@@ -1055,8 +1042,8 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get download target
-	targetVar, ok := vars["target"]
-	if !ok {
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting download target")
 		return
@@ -1123,10 +1110,9 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract uuid
-	uuid, ok := vars["uuid"]
-	if !ok {
+	uuid := r.PathValue("uuid")
+	if uuid == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting uuid")
 		return
@@ -1303,7 +1289,6 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1313,8 +1298,8 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Extract service
-	serviceVar, ok := vars["service"]
-	if !ok {
+	serviceVar := r.PathValue("service")
+	if serviceVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting service")
 		return
