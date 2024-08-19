@@ -43,7 +43,6 @@ replace github.com/jmpsec/osctrl/version => ./version
 require (
 	github.com/crewjam/saml v0.4.14
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/gorilla/mux v1.8.1
 	github.com/jmpsec/osctrl/admin/handlers v0.3.8
 	github.com/jmpsec/osctrl/admin/sessions v0.3.8
 	github.com/jmpsec/osctrl/backend v0.3.8

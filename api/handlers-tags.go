@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
@@ -47,10 +46,9 @@ func apiTagsHandler(w http.ResponseWriter, r *http.Request) {
 func apiTagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPITagsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return

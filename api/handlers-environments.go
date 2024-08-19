@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
@@ -23,10 +22,9 @@ const (
 func apiEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return
@@ -87,10 +85,9 @@ func apiEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 func apiEnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return
@@ -114,8 +111,8 @@ func apiEnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Extract target
-	targetVar, ok := vars["target"]
-	if !ok {
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
 		apiErrorResponse(w, "error getting target", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return
@@ -159,10 +156,9 @@ func apiEnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 func apiEnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract environment
-	envVar, ok := vars["env"]
-	if !ok {
+	envVar := r.PathValue("env")
+	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return
@@ -186,8 +182,8 @@ func apiEnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Extract target
-	targetVar, ok := vars["target"]
-	if !ok {
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
 		apiErrorResponse(w, "error getting target", http.StatusInternalServerError, nil)
 		incMetric(metricAPIEnvsErr)
 		return

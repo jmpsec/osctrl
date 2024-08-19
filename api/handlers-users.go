@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
@@ -21,10 +20,9 @@ const (
 func apiUserHandler(w http.ResponseWriter, r *http.Request) {
 	incMetric(metricAPINodesReq)
 	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	vars := mux.Vars(r)
 	// Extract username
-	usernameVar, ok := vars["username"]
-	if !ok {
+	usernameVar := r.PathValue("username")
+	if usernameVar == "" {
 		apiErrorResponse(w, "error with username", http.StatusInternalServerError, nil)
 		incMetric(metricAPIUsersErr)
 		return
