@@ -539,7 +539,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
-	envVar := r.PathValue("environment")
+	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
@@ -771,7 +771,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment and verify
-	envVar := r.PathValue("environment")
+	envVar := r.PathValue("env")
 	if envVar == "" || !h.Envs.Exists(envVar) {
 		adminErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAdminErr)
@@ -840,7 +840,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
-	envVar := r.PathValue("environment")
+	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
@@ -1610,7 +1610,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
-	envVar := r.PathValue("environment")
+	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
 		log.Println("error getting environment")
