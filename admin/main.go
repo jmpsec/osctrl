@@ -736,10 +736,10 @@ func osctrlAdminService() {
 	}()
 
 	var loggerDBConfig *backend.JSONConfigurationDB
-	loggerFile = ""
 	// Set the logger configuration file if we have a DB logger
 	if adminConfig.Logger == settings.LoggingDB {
 		if loggerDbSame {
+			loggerFile = ""
 			loggerDBConfig = &dbConfig
 		}
 	}
