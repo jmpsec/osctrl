@@ -59,6 +59,18 @@ const (
 	ScriptRemove string = "remove"
 )
 
+// Types of enroll/remove actions
+const (
+	ActionExpire    string = "expire"
+	ActionExtend    string = "extend"
+	ActionRotate    string = "rotate"
+	ActionNotexpire string = "notexpire"
+	SetMacPackage   string = "set_pkg"
+	SetMsiPackage   string = "set_msi"
+	SetDebPackage   string = "set_deb"
+	SetRpmPackage   string = "set_rpm"
+)
+
 // Types of package
 const (
 	PackageDeb string = "deb"
