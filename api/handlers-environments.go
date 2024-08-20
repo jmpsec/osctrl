@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -214,5 +215,181 @@ func apiEnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("DebugService: Returned environment %s", types.ApiDataResponse{Data: returnData})
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+	incMetric(metricAPIEnvsOK)
+}
+
+// POST Handler to perform actions (extend, expire) in enroll values
+func apiEnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAPIQueriesReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Extract action
+	actionVar := r.PathValue("action")
+	if actionVar == "" {
+		apiErrorResponse(w, "error getting action", http.StatusInternalServerError, nil)
+		incMetric(metricAPIEnvsErr)
+		return
+	}
+	var e types.ApiActionsRequest
+	// Parse request JSON body
+	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		incMetric(metricAPIEnvsErr)
+		return
+	}
+	var msgReturn string
+	switch actionVar {
+	case settings.ActionExtend:
+		if err := envs.ExtendEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error extending enrollment", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "enrollment extended successfully"
+	case settings.ActionExpire:
+		if err := envs.ExpireEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error expiring enrollment", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+	case settings.ActionRotate:
+		if err := envs.RotateEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error rotating enrollment", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "enrollment rotated successfully"
+	case settings.ActionNotexpire:
+		if err := envs.NotExpireEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error setting no expiration", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "enrollment set to not expire"
+	case settings.SetMacPackage:
+		if err := envs.UpdatePkgPackage(env.UUID, e.MacPkgURL); err != nil {
+			apiErrorResponse(w, "error setting PKG", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "PKG updated successfully"
+	case settings.SetMsiPackage:
+		if err := envs.UpdateMsiPackage(env.UUID, e.MsiPkgURL); err != nil {
+			apiErrorResponse(w, "error setting MSI", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "MSI updated successfully"
+	case settings.SetDebPackage:
+		if err := envs.UpdateDebPackage(env.UUID, e.DebPkgURL); err != nil {
+			apiErrorResponse(w, "error setting DEB", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "DEB updated successfully"
+	case settings.SetRpmPackage:
+		if err := envs.UpdateRpmPackage(env.UUID, e.RpmPkgURL); err != nil {
+			apiErrorResponse(w, "error setting RPM", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "RPM updated successfully"
+	}
+	// Return query name as serialized response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+	incMetric(metricAPIEnvsOK)
+}
+
+// POST Handler to perform actions (extend, expire) in remove values
+func apiEnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
+	incMetric(metricAPIQueriesReq)
+	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		incMetric(metricAPIQueriesErr)
+		return
+	}
+	// Extract action
+	actionVar := r.PathValue("action")
+	if actionVar == "" {
+		apiErrorResponse(w, "error getting action", http.StatusInternalServerError, nil)
+		incMetric(metricAPIEnvsErr)
+		return
+	}
+	var e types.ApiActionsRequest
+	// Parse request JSON body
+	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		incMetric(metricAPIEnvsErr)
+		return
+	}
+	var msgReturn string
+	switch actionVar {
+	case settings.ActionExtend:
+		if err := envs.ExtendEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error extending remove", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "remove extended successfully"
+	case settings.ActionExpire:
+		if err := envs.ExpireEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error expiring remove", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+	case settings.ActionRotate:
+		if err := envs.RotateEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error rotating remove", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "remove rotated successfully"
+	case settings.ActionNotexpire:
+		if err := envs.NotExpireEnroll(env.UUID); err != nil {
+			apiErrorResponse(w, "error setting no remove", http.StatusInternalServerError, err)
+			incMetric(metricAPIEnvsErr)
+			return
+		}
+		msgReturn = "remove set to not expire"
+	}
+	// Return query name as serialized response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 	incMetric(metricAPIEnvsOK)
 }

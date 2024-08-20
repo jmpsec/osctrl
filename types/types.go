@@ -97,12 +97,12 @@ type ScriptRequest struct {
 
 // ApiDistributedQueryRequest to receive query requests
 type ApiDistributedQueryRequest struct {
-	UUIDs  []string `json:"uuid_list"`
-	Platforms  []string `json:"platform_list"`
-	Environments  []string `json:"environment_list"`
-	Hosts  []string `json:"host_list"`
-	Query  string   `json:"query"`
-	Hidden bool     `json:"hidden"`
+	UUIDs        []string `json:"uuid_list"`
+	Platforms    []string `json:"platform_list"`
+	Environments []string `json:"environment_list"`
+	Hosts        []string `json:"host_list"`
+	Query        string   `json:"query"`
+	Hidden       bool     `json:"hidden"`
 }
 
 // ApiDistributedCarveRequest to receive query requests
@@ -145,4 +145,13 @@ type ApiDataResponse struct {
 // ApiLoginResponse to be returned to API login requests with the generated token
 type ApiLoginResponse struct {
 	Token string `json:"token"`
+}
+
+// ApiActionsRequest to receive action requests
+type ApiActionsRequest struct {
+	Certificate string `json:"certificate"`
+	MacPkgURL   string `json:"url_mac_pkg"`
+	MsiPkgURL   string `json:"url_msi_pkg"`
+	RpmPkgURL   string `json:"url_rpm_pkg"`
+	DebPkgURL   string `json:"url_deb_pkg"`
 }

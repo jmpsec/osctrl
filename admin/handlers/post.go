@@ -911,28 +911,28 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 		}
 	case settings.ScriptRemove:
 		switch e.Action {
-		case "expire":
+		case settings.ActionExpire:
 			if err := h.Envs.ExpireRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error expiring remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link expired successfully")
-		case "extend":
+		case settings.ActionExtend:
 			if err := h.Envs.ExtendRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error extending remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link extended successfully")
-		case "rotate":
+		case settings.ActionRotate:
 			if err := h.Envs.RotateRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error rotating remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 			adminOKResponse(w, "link rotated successfully")
-		case "notexpire":
+		case settings.ActionNotexpire:
 			if err := h.Envs.NotExpireRemove(env.UUID); err != nil {
 				adminErrorResponse(w, "error not expiring remove", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
