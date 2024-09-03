@@ -819,6 +819,102 @@ func init() {
 					Action: cliWrapper(removePackQuery),
 				},
 				{
+					Name: "node-actions",
+					Subcommands: []*cli.Command{
+						{
+							Name:    "show-flags",
+							Aliases: []string{"s"},
+							Usage:   "Show the enroll flags for a TLS environment",
+							Action:  cliWrapper(showFlagsEnvironment),
+						},
+						{
+							Name:    "new-flags",
+							Aliases: []string{"f"},
+							Usage:   "Generate new enroll flags and save them for a TLS environment",
+							Action:  cliWrapper(newFlagsEnvironment),
+						},
+						{
+							Name:    "gen-flags",
+							Aliases: []string{"F"},
+							Usage:   "Generate and show the enroll flags for a TLS environment",
+							Flags: []cli.Flag{
+								&cli.StringFlag{
+									Name:    "certificate",
+									Aliases: []string{"crt"},
+									Usage:   "Certificate file path to be used",
+								},
+								&cli.StringFlag{
+									Name:    "secret",
+									Aliases: []string{"s"},
+									Usage:   "Secret file path to be used",
+								},
+							},
+							Action: cliWrapper(genFlagsEnvironment),
+						},
+						{
+							Name:    "quick-add",
+							Aliases: []string{"q"},
+							Usage:   "Generates one-liner for quick enrolling nodes to a TLS environment",
+							Flags: []cli.Flag{
+								&cli.StringFlag{
+									Name:    "target",
+									Aliases: []string{"t"},
+									Value:   "sh",
+									Usage:   "Type of one-liner script",
+								},
+								&cli.BoolFlag{
+									Name:    "insecure",
+									Aliases: []string{"i"},
+									Value:   false,
+									Usage:   "Generate insecure one-liner, without HTTPS",
+								},
+							},
+							Action: cliWrapper(quickAddEnvironment),
+						},
+						{
+							Name:    "quick-remove",
+							Aliases: []string{"Q"},
+							Usage:   "Generates one-liner for quick removing nodes to a TLS environment",
+							Flags: []cli.Flag{
+								&cli.StringFlag{
+									Name:    "target",
+									Aliases: []string{"t"},
+									Value:   "sh",
+									Usage:   "Type of one-liner script",
+								},
+								&cli.BoolFlag{
+									Name:    "insecure",
+									Aliases: []string{"i"},
+									Value:   false,
+									Usage:   "Generate insecure one-liner, without HTTPS",
+								},
+							},
+							Action: cliWrapper(quickRemoveEnvironment),
+						},
+						{
+							Name:    "secret",
+							Aliases: []string{"x"},
+							Usage:   "Output the secret to enroll nodes in an environment",
+							Action:  cliWrapper(secretEnvironment),
+						},
+						{
+							Name:    "certificate",
+							Aliases: []string{"c", "cert"},
+							Usage:   "Output the certificate to enroll nodes in an environment",
+							Action:  cliWrapper(certificateEnvironment),
+						},
+					},
+					Usage: "Node enroll actions for an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Value:   "",
+							Usage:   "Environment name to be updated",
+						},
+					},
+				},
+				{
 					Name:    "delete",
 					Aliases: []string{"d"},
 					Usage:   "Delete an existing TLS environment",
@@ -845,97 +941,10 @@ func init() {
 					Action: cliWrapper(showEnvironment),
 				},
 				{
-					Name:    "show-flags",
-					Aliases: []string{"w"},
-					Usage:   "Show the flags for a TLS environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Environment name to be displayed",
-						},
-					},
-					Action: cliWrapper(showFlagsEnvironment),
-				},
-				{
-					Name:    "gen-flags",
-					Aliases: []string{"g"},
-					Usage:   "Generate and save the flags for a TLS environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Environment name to be displayed",
-						},
-					},
-					Action: cliWrapper(genFlagsEnvironment),
-				},
-				{
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List all existing TLS environments",
 					Action:  cliWrapper(listEnvironment),
-				},
-				{
-					Name:    "quick-add",
-					Aliases: []string{"q"},
-					Usage:   "Generates one-liner for quick adding nodes to environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Environment name to be used",
-						},
-						&cli.StringFlag{
-							Name:    "target",
-							Aliases: []string{"t"},
-							Value:   "sh",
-							Usage:   "Type of one-liner",
-						},
-						&cli.BoolFlag{
-							Name:    "insecure",
-							Aliases: []string{"i"},
-							Value:   false,
-							Usage:   "Generate insecure one-liner",
-						},
-					},
-					Action: cliWrapper(quickAddEnvironment),
-				},
-				{
-					Name:    "flags",
-					Aliases: []string{"f"},
-					Usage:   "Generates the flags to run nodes in an environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Environment name to be used",
-						},
-						&cli.StringFlag{
-							Name:    "certificate",
-							Aliases: []string{"crt"},
-							Usage:   "Certificate path to be used",
-						},
-						&cli.StringFlag{
-							Name:    "secret",
-							Aliases: []string{"s"},
-							Usage:   "Secret file path to be used",
-						},
-					},
-					Action: cliWrapper(flagsEnvironment),
-				},
-				{
-					Name:    "secret",
-					Aliases: []string{"x"},
-					Usage:   "Output the secret to enroll nodes in an environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Environment name to be used",
-						},
-					},
-					Action: cliWrapper(secretEnvironment),
 				},
 			},
 		},

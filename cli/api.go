@@ -26,6 +26,8 @@ const (
 	APICarves = "/carves"
 	// APIUsers for the users path
 	APIUSers = "/users"
+	// APIEnvironments for the environments path
+	APIEnvironments = "/environments"
 	// APILogin for the login path
 	APILogin = "/login"
 	// JSONApplication for Content-Type headers

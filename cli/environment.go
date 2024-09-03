@@ -40,43 +40,48 @@ func addEnvironment(c *cli.Context) error {
 	if certFile != "" {
 		certificate = environments.ReadExternalFile(certFile)
 	}
-	// Create environment if it does not exist
-	if !envs.Exists(envName) {
-		newEnv := envs.Empty(envName, envHost)
-		newEnv.DebugHTTP = c.Bool("debug")
-		newEnv.Configuration = envs.GenEmptyConfiguration(true)
-		newEnv.Certificate = certificate
-		newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
-		newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
-		if err := envs.Create(newEnv); err != nil {
-			return err
+	if dbFlag {
+		// Create environment if it does not exist
+		if !envs.Exists(envName) {
+			newEnv := envs.Empty(envName, envHost)
+			newEnv.DebugHTTP = c.Bool("debug")
+			newEnv.Configuration = envs.GenEmptyConfiguration(true)
+			newEnv.Certificate = certificate
+			newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
+			newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
+			if err := envs.Create(newEnv); err != nil {
+				return err
+			}
+			// Update configuration parts from serialized
+			cnf, err := envs.GenStructConf([]byte(newEnv.Configuration))
+			if err != nil {
+				return err
+			}
+			if err := envs.UpdateConfigurationParts(envName, cnf); err != nil {
+				return err
+			}
+			// Create a tag for this new environment
+			if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName, newEnv.ID); err != nil {
+				return err
+			}
+			// Generate flags
+			flags, err := envs.GenerateFlags(newEnv, "", "")
+			if err != nil {
+				return err
+			}
+			// Update flags in the newly created environment
+			if err := envs.UpdateFlags(envName, flags); err != nil {
+				return err
+			}
+		} else {
+			fmt.Printf("❌ environment %s already exists!\n", envName)
+			os.Exit(1)
 		}
-		// Update configuration parts from serialized
-		cnf, err := envs.GenStructConf([]byte(newEnv.Configuration))
-		if err != nil {
-			return err
-		}
-		if err := envs.UpdateConfigurationParts(envName, cnf); err != nil {
-			return err
-		}
-		// Create a tag for this new environment
-		if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName, newEnv.ID); err != nil {
-			return err
-		}
-		// Generate flags
-		flags, err := envs.GenerateFlags(newEnv, "", "")
-		if err != nil {
-			return err
-		}
-		// Update flags in the newly created environment
-		if err := envs.UpdateFlags(envName, flags); err != nil {
-			return err
-		}
-	} else {
-		fmt.Printf("❌ environment %s already exists!\n", envName)
+		fmt.Printf("✅ environment %s was created successfully\n", envName)
+	} else if apiFlag {
+		fmt.Println("❌ API not supported yet for this operation")
 		os.Exit(1)
 	}
-	fmt.Printf("✅ environment %s was created successfully\n", envName)
 	return nil
 }
 
@@ -87,62 +92,67 @@ func updateEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		debug := c.Bool("debug")
+		env.DebugHTTP = debug
+		enroll := c.Bool("enroll")
+		env.AcceptEnrolls = enroll
+		hostname := c.String("hostname")
+		if hostname != "" {
+			env.Hostname = hostname
+		}
+		// Packages
+		deb := c.String("deb")
+		if deb != "" {
+			env.DebPackage = deb
+		}
+		rpm := c.String("rpm")
+		if rpm != "" {
+			env.RpmPackage = rpm
+		}
+		msi := c.String("msi")
+		if msi != "" {
+			env.MsiPackage = msi
+		}
+		pkg := c.String("pkg")
+		if pkg != "" {
+			env.PkgPackage = pkg
+		}
+		// Intervals
+		loggingInterval := c.Int("logging")
+		if loggingInterval != 0 {
+			env.LogInterval = loggingInterval
+		}
+		configInterval := c.Int("config")
+		if configInterval != 0 {
+			env.ConfigInterval = configInterval
+		}
+		queryInterval := c.Int("query")
+		if queryInterval != 0 {
+			env.QueryInterval = queryInterval
+		}
+		// Update environment
+		if err := envs.Update(env); err != nil {
+			return err
+		}
+		// Make sure flags are up to date
+		flags, err := envs.GenerateFlags(env, "", "")
+		if err != nil {
+			return err
+		}
+		// Update flags in the newly created environment
+		if err := envs.UpdateFlags(envName, flags); err != nil {
+			return err
+		}
+		fmt.Printf("✅ environment %s was updated successfully\n", envName)
+	} else if apiFlag {
+		fmt.Println("❌ API not supported yet for this operation")
+		os.Exit(1)
 	}
-	debug := c.Bool("debug")
-	env.DebugHTTP = debug
-	enroll := c.Bool("enroll")
-	env.AcceptEnrolls = enroll
-	hostname := c.String("hostname")
-	if hostname != "" {
-		env.Hostname = hostname
-	}
-	// Packages
-	deb := c.String("deb")
-	if deb != "" {
-		env.DebPackage = deb
-	}
-	rpm := c.String("rpm")
-	if rpm != "" {
-		env.RpmPackage = rpm
-	}
-	msi := c.String("msi")
-	if msi != "" {
-		env.MsiPackage = msi
-	}
-	pkg := c.String("pkg")
-	if pkg != "" {
-		env.PkgPackage = pkg
-	}
-	// Intervals
-	loggingInterval := c.Int("logging")
-	if loggingInterval != 0 {
-		env.LogInterval = loggingInterval
-	}
-	configInterval := c.Int("config")
-	if configInterval != 0 {
-		env.ConfigInterval = configInterval
-	}
-	queryInterval := c.Int("query")
-	if queryInterval != 0 {
-		env.QueryInterval = queryInterval
-	}
-	// Update environment
-	if err := envs.Update(env); err != nil {
-		return err
-	}
-	// Make sure flags are up to date
-	flags, err := envs.GenerateFlags(env, "", "")
-	if err != nil {
-		return err
-	}
-	// Update flags in the newly created environment
-	if err := envs.UpdateFlags(envName, flags); err != nil {
-		return err
-	}
-	fmt.Printf("✅ environment %s was updated successfully\n", envName)
 	return nil
 }
 
@@ -153,7 +163,13 @@ func deleteEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	return envs.Delete(envName)
+	if dbFlag {
+		return envs.Delete(envName)
+	} else if apiFlag {
+		fmt.Println("❌ API not supported yet for this operation")
+		os.Exit(1)
+	}
+	return nil
 }
 
 func showEnvironment(c *cli.Context) error {
@@ -163,9 +179,17 @@ func showEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Printf(" UUID: %s\n", env.UUID)
 	fmt.Printf(" Name: %s\n", env.Name)
@@ -218,35 +242,56 @@ func showFlagsEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Printf("%s\n", env.Flags)
 	return nil
 }
 
-func genFlagsEnvironment(c *cli.Context) error {
+func newFlagsEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	flags, err := envs.GenerateFlagsEnv(envName, "", "")
-	if err != nil {
-		return err
-	}
-	if err := envs.UpdateFlags(envName, flags); err != nil {
-		return err
+	if dbFlag {
+		flags, err := envs.GenerateFlagsEnv(envName, "", "")
+		if err != nil {
+			return err
+		}
+		if err := envs.UpdateFlags(envName, flags); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		fmt.Println("❌ API not supported yet for this operation")
+		os.Exit(1)
 	}
 	return nil
 }
 
 func listEnvironment(c *cli.Context) error {
-	envAll, err := envs.All()
-	if err != nil {
-		return err
+	var envAll []environments.TLSEnvironment
+	if dbFlag {
+		envAll, err = envs.All()
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		envAll, err = osctrlAPI.GetEnvironments()
+		if err != nil {
+			return err
+		}
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
@@ -283,9 +328,17 @@ func quickAddEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
 	}
 	insecure := (c.Bool("insecure") || (env.Certificate != ""))
 	var oneLiner string
@@ -302,7 +355,41 @@ func quickAddEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func flagsEnvironment(c *cli.Context) error {
+func quickRemoveEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	insecure := (c.Bool("insecure") || (env.Certificate != ""))
+	var oneLiner string
+	switch c.String("target") {
+	case targetShell:
+		oneLiner, _ = environments.QuickRemoveOneLinerShell(insecure, env)
+	case targetPowershell:
+		oneLiner, _ = environments.QuickRemoveOneLinerPowershell(insecure, env)
+	default:
+		fmt.Printf("❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", oneLiner)
+	return nil
+}
+
+func genFlagsEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
 	if envName == "" {
@@ -311,9 +398,17 @@ func flagsEnvironment(c *cli.Context) error {
 	}
 	secret := c.String("secret")
 	cert := c.String("certificate")
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
 	}
 	flags, err := envs.GenerateFlags(env, secret, cert)
 	if err != nil {
@@ -330,11 +425,42 @@ func secretEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	env, err := envs.Get(envName)
-	if err != nil {
-		return err
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Printf("%s\n", env.Secret)
+	return nil
+}
+
+func certificateEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	var env environments.TLSEnvironment
+	if dbFlag {
+		env, err = envs.Get(envName)
+		if err != nil {
+			return err
+		}
+	} else if apiFlag {
+		env, err = osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("%s\n", env.Certificate)
 	return nil
 }
 
