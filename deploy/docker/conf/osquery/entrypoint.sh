@@ -21,13 +21,13 @@ if [ ! -f "/etc/osquery/osquery.secret" ]; then
   done
 
   # Get enroll secret
-  /opt/osctrl/bin/osctrl-cli --db env enroll-actions secret --name "${ENV_NAME}" > /etc/osquery/osquery.secret
+  /opt/osctrl/bin/osctrl-cli --db env node-actions --name "${ENV_NAME}" secret > /etc/osquery/osquery.secret
 
   # Get server cert
   echo "" | openssl s_client -connect ${HOST}:443 2>/dev/null | sed -n -e '/BEGIN\ CERTIFICATE/,/END\ CERTIFICATE/ p' > /etc/osquery/osctrl.crt
 
   # Get and set Osquery flags
-  /opt/osctrl/bin/osctrl-cli --db env enroll-actions show-flags --name "${ENV_NAME}" > /etc/osquery/osquery.flags
+  /opt/osctrl/bin/osctrl-cli --db env node-actions --name "${ENV_NAME}" show-flags > /etc/osquery/osquery.flags
   sed -i "s#__SECRET_FILE__#/etc/osquery/osquery.secret#g" /etc/osquery/osquery.flags
   echo "--tls_server_certs=/etc/osquery/osctrl.crt" >> /etc/osquery/osquery.flags
 fi

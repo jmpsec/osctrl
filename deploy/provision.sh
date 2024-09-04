@@ -774,7 +774,7 @@ else
   # Enroll host in environment
   if [[ "$ENROLL" == true ]]; then
     log "Adding host in environment $ENVIRONMENT"
-    eval $( "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" env enroll-actions quick-add -n "$ENVIRONMENT" )
+    eval $( "$DEST_PATH"/osctrl-cli --db -D "$__db_conf" env node-actions -n "$ENVIRONMENT" quick-add)
   fi
 fi
 
