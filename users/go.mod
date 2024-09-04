@@ -21,9 +21,9 @@ replace github.com/jmpsec/osctrl/version => ../version
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/jmpsec/osctrl/environments v0.0.0-20240819084417-5d0c74745216
-	github.com/jmpsec/osctrl/types v0.0.0-20240819084417-5d0c74745216
-	github.com/jmpsec/osctrl/utils v0.0.0-20240819084417-5d0c74745216
+	github.com/jmpsec/osctrl/environments v0.0.0-20240904183539-155969b2e259
+	github.com/jmpsec/osctrl/types v0.0.0-20240904183539-155969b2e259
+	github.com/jmpsec/osctrl/utils v0.0.0-20240904183539-155969b2e259
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.26.0
 	gorm.io/driver/postgres v1.4.5
@@ -49,6 +49,6 @@ require (
 	github.com/jmpsec/osctrl/version v0.3.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
