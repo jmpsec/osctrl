@@ -218,6 +218,10 @@ docker_dev_up:
 docker_dev_down:
 	docker-compose -f docker-compose-dev.yml down
 
+# Deletes all osctrl docker images
+docker_dev_clean:
+	docker images | grep osctrl | awk '{print $$3}' | xargs -rI {} docker rmi -f {}
+
 # Rebuild only the TLS server
 docker_dev_rebuild_tls:
 	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(TLS_NAME)
