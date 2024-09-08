@@ -355,6 +355,110 @@ func quickAddEnvironment(c *cli.Context) error {
 	return nil
 }
 
+func extendEnrollEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "enrollment extended successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.ExtendEnroll(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.ExtendEnrollment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func rotateEnrollEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "enrollment rotated successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.ExtendEnroll(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.ExtendEnrollment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func expireEnrollEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "enrollment expired successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.ExpireEnroll(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.ExpireEnrollment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func notexpireEnrollEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "enrollment set to NOT expire"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.NotExpireEnroll(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.NotexpireEnrollment(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
 func quickRemoveEnvironment(c *cli.Context) error {
 	// Get environment name
 	envName := c.String("name")
@@ -386,6 +490,110 @@ func quickRemoveEnvironment(c *cli.Context) error {
 		os.Exit(1)
 	}
 	fmt.Printf("%s\n", oneLiner)
+	return nil
+}
+
+func extendRemoveEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "remove extended successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.ExtendRemove(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.ExtendRemove(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func rotateRemoveEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "remove rotated successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.RotateRemove(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.RotateRemove(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func expireRemoveEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "remove expired successfully"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.ExpireRemove(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.ExpireRemove(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
+	return nil
+}
+
+func notexpireRemoveEnvironment(c *cli.Context) error {
+	// Get environment name
+	envName := c.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	msg := "remove set to NOT expire"
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.NotExpireRemove(env.UUID); err != nil {
+			return err
+		}
+	} else if apiFlag {
+		msg, err = osctrlAPI.NotexpireRemove(envName)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✅ %s\n", msg)
 	return nil
 }
 
