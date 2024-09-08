@@ -272,6 +272,7 @@ func apiEnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
 			incMetric(metricAPIEnvsErr)
 			return
 		}
+		msgReturn = "enrollment expired successfully"
 	case settings.ActionRotate:
 		if err := envs.RotateEnroll(env.UUID); err != nil {
 			apiErrorResponse(w, "error rotating enrollment", http.StatusInternalServerError, err)
