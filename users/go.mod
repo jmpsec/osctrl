@@ -43,10 +43,10 @@ require (
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.8 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.8 // indirect
-	github.com/jmpsec/osctrl/settings v0.3.8 // indirect
-	github.com/jmpsec/osctrl/version v0.3.8 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.9 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.9 // indirect
+	github.com/jmpsec/osctrl/settings v0.3.9 // indirect
+	github.com/jmpsec/osctrl/version v0.3.9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	golang.org/x/text v0.18.0 // indirect
