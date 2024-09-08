@@ -225,22 +225,26 @@ func apiEnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIQueriesErr)
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIEnvsErr)
 		return
 	}
-	// Get environment
+	// Get environment by name
 	env, err := envs.Get(envVar)
 	if err != nil {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIQueriesErr)
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
 	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPIQueriesErr)
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Extract action
@@ -315,6 +319,10 @@ func apiEnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		msgReturn = "RPM updated successfully"
+	default:
+		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("invalid action %s", actionVar))
+		incMetric(metricAPIEnvsErr)
+		return
 	}
 	// Return query name as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
@@ -328,15 +336,19 @@ func apiEnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIQueriesErr)
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		incMetric(metricAPIEnvsErr)
 		return
 	}
-	// Get environment
+	// Get environment by name
 	env, err := envs.Get(envVar)
 	if err != nil {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIQueriesErr)
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		incMetric(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
@@ -389,6 +401,10 @@ func apiEnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		msgReturn = "remove set to not expire"
+	default:
+		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("invalid action %s", actionVar))
+		incMetric(metricAPIEnvsErr)
+		return
 	}
 	// Return query name as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})

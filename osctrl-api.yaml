@@ -909,6 +909,122 @@ paths:
       security:
         - Authorization:
             - read
+    post:
+      tags:
+        - environments
+      summary: Get enroll values for an environment
+      description: Returns each of the node enrollment values (secret, certificate, flags, one-liner) for the requested osctrl environment
+      operationId: apiEnvEnrollActionsHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+        - name: target
+          in: path
+          description: Target to retrieve (secret, cert, flags, enroll.sh, enroll.ps1)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiDataResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - read
+  /environments/{env}/enroll/{action}:
+    post:
+      tags:
+        - environments
+      summary: Perform enroll actions for an environment
+      description: Executes an action (extend/rotate/expire/notexpire) in the enrollment URL for the requested osctrl environment
+      operationId: apiEnvEnrollActionsHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: path
+          description: Action to execute (extend, rotate, expire, notexpire)
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiActionsRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiDataResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /environments/{env}/remove/{target}:
     get:
       tags:
@@ -965,6 +1081,67 @@ paths:
       security:
         - Authorization:
             - read
+  /environments/{env}/remove/{action}:
+    post:
+      tags:
+        - environments
+      summary: Perform remove actions for an environment
+      description: Executes an action (extend/rotate/expire/notexpire) in the remove URL for the requested osctrl environment
+      operationId: apiEnvRemoveActionsHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: path
+          description: Action to execute (extend, rotate, expire, notexpire)
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiActionsRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiDataResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /tags:
     get:
       tags:
@@ -1669,6 +1846,19 @@ components:
           type: integer
           format: int64
         Info:
+          type: string
+    ApiActionsRequest:
+      type: object
+      properties:
+        Certificate:
+          type: string
+        MacPkgURL:
+          type: string
+        MsiPkgURL:
+          type: string
+        RpmPkgURL:
+          type: string
+        DebPkgURL:
           type: string
   securitySchemes:
     Authorization:
