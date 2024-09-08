@@ -24,8 +24,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.8 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.8 // indirect
+	github.com/jmpsec/osctrl/nodes v0.3.9 // indirect
+	github.com/jmpsec/osctrl/queries v0.3.9 // indirect
 	github.com/jmpsec/osctrl/utils v0.0.0-20240904183539-155969b2e259 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
