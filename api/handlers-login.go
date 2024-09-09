@@ -58,7 +58,7 @@ func apiLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Do we have a token already?
 	if user.APIToken == "" {
-		token, exp, err := apiUsers.CreateToken(l.Username)
+		token, exp, err := apiUsers.CreateToken(l.Username, serviceName)
 		if err != nil {
 			apiErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 			incMetric(metricAPILoginErr)

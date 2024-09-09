@@ -1268,7 +1268,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if u.Token {
-			token, exp, err := h.Users.CreateToken(newUser.Username)
+			token, exp, err := h.Users.CreateToken(newUser.Username, h.AdminConfig.Host)
 			if err != nil {
 				adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
@@ -1348,7 +1348,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 						return
 					}
 				*/
-				token, exp, err := h.Users.CreateToken(u.Username)
+				token, exp, err := h.Users.CreateToken(u.Username, h.AdminConfig.Host)
 				if err != nil {
 					adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
