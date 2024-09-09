@@ -38,7 +38,7 @@ type AdminUser struct {
 // TokenClaims to hold user claims when using JWT
 type TokenClaims struct {
 	Username string `json:"username"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 // UserManager have all users of the system
@@ -100,15 +100,14 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 }
 
 // CreateToken to create a new JWT token for a given user
-func (m *UserManager) CreateToken(username string) (string, time.Time, error) {
+func (m *UserManager) CreateToken(username, issuer string) (string, time.Time, error) {
 	expirationTime := time.Now().Add(time.Hour * time.Duration(m.JWTConfig.HoursToExpire))
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
-		StandardClaims: jwt.StandardClaims{
-			// In JWT, the expiry time is expressed as unix milliseconds
-			ExpiresAt: expirationTime.Unix(),
-			Issuer:    DefaultTokeIssuer,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			Issuer:    issuer,
 		},
 	}
 	// Declare the token with the algorithm used for signing, and the claims
@@ -163,12 +162,12 @@ func (m *UserManager) New(username, password, email, fullname string, admin bool
 			return AdminUser{}, err
 		}
 		return AdminUser{
-			Username:   username,
-			PassHash:   passhash,
-			UUID:       utils.GenUUID(),
-			Admin:      admin,
-			Email:      email,
-			Fullname:   fullname,
+			Username: username,
+			PassHash: passhash,
+			UUID:     utils.GenUUID(),
+			Admin:    admin,
+			Email:    email,
+			Fullname: fullname,
 		}, nil
 	}
 	return AdminUser{}, fmt.Errorf("%s already exists", username)

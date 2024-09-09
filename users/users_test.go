@@ -77,7 +77,7 @@ func TestUserManager(t *testing.T) {
 		assert.Equal(t, 123, int(user.EnvironmentID))
 	})
 	t.Run("CreateCheckToken", func(t *testing.T) {
-		token, tt, err := manager.CreateToken("testUsername")
+		token, tt, err := manager.CreateToken("testUsername", "issuer")
 		assert.NoError(t, err)
 		assert.NotEmpty(t, token)
 		now := time.Now()
