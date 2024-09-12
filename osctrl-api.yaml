@@ -59,7 +59,7 @@ paths:
         - nodes
       summary: Get all the nodes by environment
       description: Returns all the enrolled nodes by environment
-      operationId: apiAllNodesHandler
+      operationId: AllNodesHandler
       parameters:
         - name: env
           in: path
@@ -103,7 +103,7 @@ paths:
         - nodes
       summary: Get all the active nodes by environment
       description: Returns all the enrolled active nodes by environment
-      operationId: apiActiveNodesHandler
+      operationId: ActiveNodesHandler
       parameters:
         - name: env
           in: path
@@ -147,7 +147,7 @@ paths:
         - nodes
       summary: Get all the inactive nodes by environment
       description: Returns all the enrolled inactive nodes by environment
-      operationId: apiInactiveNodesHandler
+      operationId: InactiveNodesHandler
       parameters:
         - name: env
           in: path
@@ -191,7 +191,7 @@ paths:
         - nodes
       summary: Get a single node by identifier
       description: Returns a single enrolled node by identifier (UUID, hostname or localname)
-      operationId: apiNodeHandler
+      operationId: NodeHandler
       parameters:
         - name: identifier
           in: path
@@ -233,7 +233,7 @@ paths:
         - nodes
       summary: Delete node
       description: Deletes an enrolled node by identifier (UUID, hostname or localname)
-      operationId: apiDeleteNodeHandler
+      operationId: DeleteNodeHandler
       parameters:
         - name: env
           in: path
@@ -280,7 +280,7 @@ paths:
         - queries
       summary: Get all on-demand queries
       description: Returns all on-demand queries by environment
-      operationId: apiAllQueriesShowHandler
+      operationId: AllQueriesShowHandler
       parameters:
         - name: env
           in: path
@@ -323,7 +323,7 @@ paths:
         - queries
       summary: Run new query
       description: Creates a new on-demand query to run
-      operationId: apiQueriesRunHandler
+      operationId: QueriesRunHandler
       requestBody:
         content:
           application/json:
@@ -363,7 +363,7 @@ paths:
         - queries
       summary: Get on-demand query
       description: Returns the requested on-demand query by name and environment
-      operationId: apiQueryShowHandler
+      operationId: QueryShowHandler
       parameters:
         - name: env
           in: path
@@ -411,7 +411,7 @@ paths:
         - queries
       summary: Get on-demand query results
       description: Returns the requested on-demand query results by name and environment
-      operationId: apiQueryResultsHandler
+      operationId: QueryResultsHandler
       parameters:
         - name: name
           in: path
@@ -453,7 +453,7 @@ paths:
         - queries
       summary: Get all on-demand queries
       description: Returns all on-demand queries by environment
-      operationId: apiAllQueriesShowHandler
+      operationId: AllQueriesShowHandler
       parameters:
         - name: env
           in: path
@@ -497,7 +497,7 @@ paths:
         - queries
       summary: Get file carves
       description: Returns all file carves by environment
-      operationId: apiCarvesShowHandler
+      operationId: CarvesShowHandler
       parameters:
         - name: env
           in: path
@@ -540,7 +540,7 @@ paths:
         - queries
       summary: Run new file carve
       description: Creates a new file carve to run
-      operationId: apiCarvesRunHandler
+      operationId: CarvesRunHandler
       requestBody:
         content:
           application/json:
@@ -580,7 +580,7 @@ paths:
         - queries
       summary: Get a file carve
       description: Returns a file carve by environment and name
-      operationId: apiCarveShowHandler
+      operationId: CarveShowHandler
       parameters:
         - name: env
           in: path
@@ -630,7 +630,7 @@ paths:
         - users
       summary: Get users
       description: Returns all users in osctrl
-      operationId: apiUsersHandler
+      operationId: UsersHandler
       responses:
         200:
           description: successful operation
@@ -667,7 +667,7 @@ paths:
         - users
       summary: Get a user
       description: Returns a single users in osctrl by username
-      operationId: apiUserHandler
+      operationId: UserHandler
       parameters:
         - name: username
           in: path
@@ -711,7 +711,7 @@ paths:
         - platforms
       summary: Get platforms
       description: Returns all platforms of enrolled nodes in osctrl
-      operationId: apiPlatformsHandler
+      operationId: PlatformsHandler
       responses:
         200:
           description: successful operation
@@ -742,7 +742,7 @@ paths:
         - platforms
       summary: Get platforms
       description: Returns all platforms of enrolled nodes in osctrl by environment
-      operationId: apiPlatformsEnvHandler
+      operationId: PlatformsEnvHandler
       parameters:
         - name: env
           in: path
@@ -786,7 +786,7 @@ paths:
         - environments
       summary: Get environments
       description: Returns all osctrl environments to enroll nodes
-      operationId: apiEnvironmentsHandler
+      operationId: EnvironmentsHandler
       responses:
         200:
           description: successful operation
@@ -823,7 +823,7 @@ paths:
         - environments
       summary: Get environment
       description: Returns the requested osctrl environment to enroll nodes
-      operationId: apiEnvironmentHandler
+      operationId: EnvironmentHandler
       parameters:
         - name: env
           in: path
@@ -859,7 +859,7 @@ paths:
         - environments
       summary: Get enroll values for an environment
       description: Returns each of the node enrollment values (secret, certificate, flags, one-liner) for the requested osctrl environment
-      operationId: apiEnvEnrollHandler
+      operationId: EnvEnrollHandler
       parameters:
         - name: env
           in: path
@@ -914,7 +914,7 @@ paths:
         - environments
       summary: Get enroll values for an environment
       description: Returns each of the node enrollment values (secret, certificate, flags, one-liner) for the requested osctrl environment
-      operationId: apiEnvEnrollActionsHandler
+      operationId: EnvEnrollActionsHandler
       parameters:
         - name: env
           in: path
@@ -970,7 +970,7 @@ paths:
         - environments
       summary: Perform enroll actions for an environment
       description: Executes an action (extend/rotate/expire/notexpire) in the enrollment URL for the requested osctrl environment
-      operationId: apiEnvEnrollActionsHandler
+      operationId: EnvEnrollActionsHandler
       parameters:
         - name: env
           in: path
@@ -1031,7 +1031,7 @@ paths:
         - environments
       summary: Get remove values for an environment
       description: Returns each of the node removal values (one-liner shell or powershell) for the requested osctrl environment
-      operationId: apiEnvironmentHandler
+      operationId: EnvironmentHandler
       parameters:
         - name: env
           in: path
@@ -1087,7 +1087,7 @@ paths:
         - environments
       summary: Perform remove actions for an environment
       description: Executes an action (extend/rotate/expire/notexpire) in the remove URL for the requested osctrl environment
-      operationId: apiEnvRemoveActionsHandler
+      operationId: EnvRemoveActionsHandler
       parameters:
         - name: env
           in: path
@@ -1148,7 +1148,7 @@ paths:
         - tags
       summary: Get tags
       description: Returns all osctrl tags for enrolled nodes
-      operationId: apiTagsHandler
+      operationId: TagsHandler
       responses:
         200:
           description: successful operation
@@ -1179,7 +1179,7 @@ paths:
         - tags
       summary: Get tags
       description: Returns all osctrl tags for enrolled nodes by environment
-      operationId: apiTagsEnvHandler
+      operationId: TagsEnvHandler
       parameters:
         - name: env
           in: path
@@ -1223,7 +1223,7 @@ paths:
         - settings
       summary: Get settings
       description: Returns all osctrl services settings
-      operationId: apiSettingsHandler
+      operationId: SettingsHandler
       responses:
         200:
           description: successful operation
@@ -1254,7 +1254,7 @@ paths:
         - settings
       summary: Get settings
       description: Returns all osctrl settings per service
-      operationId: apiSettingsServiceHandler
+      operationId: SettingsServiceHandler
       parameters:
         - name: service
           in: path
@@ -1292,7 +1292,7 @@ paths:
         - settings
       summary: Get settings
       description: Returns all osctrl settings per service and environment
-      operationId: apiSettingsServiceHandler
+      operationId: SettingsServiceHandler
       parameters:
         - name: service
           in: path
@@ -1336,7 +1336,7 @@ paths:
         - settings
       summary: Get JSON settings
       description: Returns JSON osctrl settings per service
-      operationId: apiSettingsServiceJSONHandler
+      operationId: SettingsServiceJSONHandler
       parameters:
         - name: service
           in: path
@@ -1374,7 +1374,7 @@ paths:
         - settings
       summary: Get JSON settings
       description: Returns JSON osctrl settings per service
-      operationId: apiSettingsServiceEnvJSONHandler
+      operationId: SettingsServiceEnvJSONHandler
       parameters:
         - name: service
           in: path
