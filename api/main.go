@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jmpsec/osctrl/api/handlers"
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
@@ -111,7 +112,8 @@ var (
 	nodesmgr          *nodes.NodeManager
 	queriesmgr        *queries.Queries
 	filecarves        *carves.Carves
-	_metrics          *metrics.Metrics
+	apiMetrics        *metrics.Metrics
+	handlersApi       *handlers.HandlersApi
 	app               *cli.App
 	flags             []cli.Flag
 )
@@ -469,7 +471,14 @@ func osctrlAPIService() {
 	log.Println("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver, nil)
 	log.Println("Loading service settings")
-	loadingSettings()
+	if err := loadingSettings(settingsmgr); err != nil {
+		log.Fatalf("Error loading settings - %v", err)
+	}
+	log.Println("Loading service metrics")
+	apiMetrics, err = loadingMetrics(settingsmgr)
+	if err != nil {
+		log.Fatalf("Error loading metrics - %v", err)
+	}
 	// Ticker to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
@@ -506,6 +515,22 @@ func osctrlAPIService() {
 		}
 	}()
 
+	// Initialize Admin handlers before router
+	handlersApi = handlers.CreateHandlersApi(
+		handlers.WithDB(db.Conn),
+		handlers.WithEnvs(envs),
+		handlers.WithUsers(apiUsers),
+		handlers.WithTags(tagsmgr),
+		handlers.WithNodes(nodesmgr),
+		handlers.WithQueries(queriesmgr),
+		handlers.WithCarves(filecarves),
+		handlers.WithSettings(settingsmgr),
+		handlers.WithMetrics(apiMetrics),
+		handlers.WithCache(redis),
+		handlers.WithVersion(serviceVersion),
+		handlers.WithName(serviceName),
+	)
+
 	// ///////////////////////// API
 	if settingsmgr.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Creating router")
@@ -513,55 +538,55 @@ func osctrlAPIService() {
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
 	// API: root
-	muxAPI.HandleFunc("GET /", rootHTTPHandler)
+	muxAPI.HandleFunc("GET /", handlersApi.RootHandler)
 	// API: testing
-	muxAPI.HandleFunc("GET "+healthPath, healthHTTPHandler)
+	muxAPI.HandleFunc("GET "+healthPath, handlersApi.HealthHandler)
 	// API: error
-	muxAPI.HandleFunc("GET "+errorPath, errorHTTPHandler)
+	muxAPI.HandleFunc("GET "+errorPath, handlersApi.ErrorHandler)
 	// API: forbidden
-	muxAPI.HandleFunc("GET "+forbiddenPath, forbiddenHTTPHandler)
+	muxAPI.HandleFunc("GET "+forbiddenPath, handlersApi.ForbiddenHandler)
 
 	// ///////////////////////// UNAUTHENTICATED
-	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiLoginHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: nodes by environment
-	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/all", handlerAuthCheck(http.HandlerFunc(apiAllNodesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/active", handlerAuthCheck(http.HandlerFunc(apiActiveNodesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/inactive", handlerAuthCheck(http.HandlerFunc(apiInactiveNodesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(apiNodeHandler)))
-	muxAPI.Handle("POST "+_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(apiDeleteNodeHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/all", handlerAuthCheck(http.HandlerFunc(handlersApi.AllNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/active", handlerAuthCheck(http.HandlerFunc(handlersApi.ActiveNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/inactive", handlerAuthCheck(http.HandlerFunc(handlersApi.InactiveNodesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiNodesPath)+"/{env}/node/{node}", handlerAuthCheck(http.HandlerFunc(handlersApi.NodeHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler)))
 	// API: queries by environment
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler)))
-	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiQueriesRunHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryShowHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(apiQueryResultsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(apiAllQueriesShowHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler)))
 	// API: carves by environment
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesShowHandler)))
-	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiCarvesRunHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(apiCarveShowHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
 	// API: users by environment
-	muxAPI.Handle("GET "+_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(apiUserHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(apiUsersHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler)))
 	// API: platforms
-	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(apiPlatformsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiPlatformsEnvHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler)))
 	// API: environments by environment
-	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollHandler)))
-	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{action}", handlerAuthCheck(http.HandlerFunc(apiEnvEnrollActionsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(apiEnvironmentHandler)))
-	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}", handlerAuthCheck(http.HandlerFunc(apiEnvRemoveActionsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(apiEnvironmentsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{action}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler)))
 	// API: tags
-	muxAPI.Handle("GET "+_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(apiTagsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(apiTagsEnvHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.TagsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.TagsEnvHandler)))
 	// API: settings by environment
-	muxAPI.Handle("GET "+_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(apiSettingsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceJSONHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}", handlerAuthCheck(http.HandlerFunc(apiSettingsServiceEnvJSONHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}", handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json", handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceJSONHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler)))
 
 	// Launch listeners for API server
 	serviceListener := apiConfig.Listener + ":" + apiConfig.Port

@@ -4,21 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/types"
-	"github.com/jmpsec/osctrl/utils"
 )
-
-// Helper to send metrics if it is enabled
-func incMetric(name string) {
-	if _metrics != nil && settingsmgr.ServiceMetrics(settings.ServiceAPI) {
-		_metrics.Inc(name)
-	}
-}
 
 // Helper to refresh the environments map until cache/Redis support is implemented
 func refreshEnvironments() environments.MapEnvironments {
@@ -62,35 +52,4 @@ func apiVersion() {
 // Helper to compose paths for API
 func _apiPath(target string) string {
 	return apiPrefixPath + apiVersionPath + target
-}
-
-// Helper to verify if a platform is valid
-func checkValidPlatform(platforms []string, platform string) bool {
-	for _, p := range platforms {
-		if p == platform {
-			return true
-		}
-	}
-	return false
-}
-
-// Helper to remove duplicates from []string
-func removeStringDuplicates(s []string) []string {
-	seen := make(map[string]struct{}, len(s))
-	i := 0
-	for _, v := range s {
-		if _, ok := seen[v]; ok {
-			continue
-		}
-		seen[v] = struct{}{}
-		s[i] = v
-		i++
-	}
-	return s[:i]
-}
-
-// Helper to handle API error responses
-func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
-	log.Printf("apiErrorResponse %s: %v", msg, err)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, types.ApiErrorResponse{Error: msg})
 }

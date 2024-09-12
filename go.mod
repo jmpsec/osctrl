@@ -45,6 +45,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/jmpsec/osctrl/admin/handlers v0.3.9
 	github.com/jmpsec/osctrl/admin/sessions v0.3.9
+	github.com/jmpsec/osctrl/api/handlers v0.3.9
 	github.com/jmpsec/osctrl/backend v0.3.9
 	github.com/jmpsec/osctrl/cache v0.3.9
 	github.com/jmpsec/osctrl/carves v0.3.9
@@ -77,7 +78,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	gorm.io/gorm v1.25.11 // indirect
+	gorm.io/gorm v1.25.12 // indirect
 )
 
 require (

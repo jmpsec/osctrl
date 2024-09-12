@@ -17,8 +17,6 @@ type contextValue map[string]string
 type contextKey string
 
 const (
-	// Username to use when there is no authentication
-	usernameAPI string = "osctrl-api-user"
 	// Key to identify request context
 	contextAPI string = "osctrl-api-context"
 )
