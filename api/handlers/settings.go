@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"fmt"
@@ -10,226 +10,220 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
-const (
-	metricAPISettingsReq = "settings-req"
-	metricAPISettingsErr = "settings-err"
-	metricAPISettingsOK  = "settings-ok"
-)
-
-// GET Handler for all settings including JSON
-func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// SettingsHandler - GET Handler for all settings including JSON
+func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPISettingsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveAll()
+	serviceSettings, err := h.Settings.RetrieveAll()
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
-	incMetric(metricAPISettingsOK)
+	h.Inc(metricAPISettingsOK)
 }
 
-// GET Handler for service specific settings excluding JSON
-func apiSettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// SettingsServiceHandler - GET Handler for service specific settings excluding JSON
+func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPISettingsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
 		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Make sure service is valid
-	if !settingsmgr.VerifyType(service) {
+	if !h.Settings.VerifyType(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironmentID)
+	serviceSettings, err := h.Settings.RetrieveValues(service, false, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
-	incMetric(metricAPISettingsOK)
+	h.Inc(metricAPISettingsOK)
 }
 
-// GET Handler for service and environment specific settings excluding JSON
-func apiSettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// SettingsServiceEnvHandler - GET Handler for service and environment specific settings excluding JSON
+func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPISettingsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
 		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Make sure service is valid
-	if !settingsmgr.VerifyType(service) {
+	if !h.Settings.VerifyType(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, false, settings.NoEnvironmentID)
+	serviceSettings, err := h.Settings.RetrieveValues(service, false, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
-	incMetric(metricAPISettingsOK)
+	h.Inc(metricAPISettingsOK)
 }
 
-// GET Handler for service specific settings including JSON
-func apiSettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// SettingsServiceJSONHandler - GET Handler for service specific settings including JSON
+func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPISettingsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
 		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Make sure service is valid
-	if !settingsmgr.VerifyType(service) {
+	if !h.Settings.VerifyType(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironmentID)
+	serviceSettings, err := h.Settings.RetrieveValues(service, true, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
-	incMetric(metricAPISettingsOK)
+	h.Inc(metricAPISettingsOK)
 }
 
 // GET Handler for service and environment specific settings including JSON
-func apiSettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPISettingsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPISettingsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
 		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Make sure service is valid
-	if !settingsmgr.VerifyType(service) {
+	if !h.Settings.VerifyType(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Get settings
-	serviceSettings, err := settingsmgr.RetrieveValues(service, true, settings.NoEnvironmentID)
+	serviceSettings, err := h.Settings.RetrieveValues(service, true, settings.NoEnvironmentID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
-		incMetric(metricAPISettingsErr)
+		h.Inc(metricAPISettingsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
-	incMetric(metricAPISettingsOK)
+	h.Inc(metricAPISettingsOK)
 }

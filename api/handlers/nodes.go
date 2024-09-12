@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -12,244 +12,238 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
-const (
-	metricAPINodesReq = "nodes-req"
-	metricAPINodesErr = "nodes-err"
-	metricAPINodesOK  = "nodes-ok"
-)
-
-// GET Handler for single JSON nodes
-func apiNodeHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// NodeHandler - GET Handler for single JSON nodes
+func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPINodesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Extract host identifier for node
 	nodeVar := r.PathValue("node")
 	if nodeVar == "" {
 		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get node by identifier
 	// FIXME keep a cache of nodes by node identifier
-	node, err := nodesmgr.GetByIdentifier(nodeVar)
+	node, err := h.Nodes.GetByIdentifier(nodeVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned node %s", nodeVar)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
-	incMetric(metricAPINodesOK)
+	h.Inc(metricAPINodesOK)
 }
 
-// GET Handler for active JSON nodes
-func apiActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// ActiveNodesHandler - GET Handler for active JSON nodes
+func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPINodesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get nodes
-	nodes, err := nodesmgr.Gets("active", 24)
+	nodes, err := h.Nodes.Gets("active", 24)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	if len(nodes) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
-	incMetric(metricAPINodesOK)
+	h.Inc(metricAPINodesOK)
 }
 
-// GET Handler for inactive JSON nodes
-func apiInactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// InactiveNodesHandler - GET Handler for inactive JSON nodes
+func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPINodesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get nodes
-	nodes, err := nodesmgr.Gets("inactive", 24)
+	nodes, err := h.Nodes.Gets("inactive", 24)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	if len(nodes) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
-	incMetric(metricAPINodesOK)
+	h.Inc(metricAPINodesOK)
 }
 
-// GET Handler for all JSON nodes
-func apiAllNodesHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// AllNodesHandler - GET Handler for all JSON nodes
+func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPINodesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get nodes
-	nodes, err := nodesmgr.Gets("all", 0)
+	nodes, err := h.Nodes.Gets("all", 0)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	if len(nodes) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
-	incMetric(metricAPINodesOK)
+	h.Inc(metricAPINodesOK)
 }
 
-// POST Handler to delete single node
-func apiDeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPINodesReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// DeleteNodeHandler - POST Handler to delete single node
+func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPINodesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	var n types.ApiNodeGenericRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
-	if err := nodesmgr.ArchiveDeleteByUUID(n.UUID); err != nil {
+	if err := h.Nodes.ArchiveDeleteByUUID(n.UUID); err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPINodesErr)
+		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Printf("DebugService: Returned node %s", n.UUID)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
-	incMetric(metricAPINodesOK)
+	h.Inc(metricAPINodesOK)
 }

@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"fmt"
@@ -10,78 +10,72 @@ import (
 	"github.com/jmpsec/osctrl/utils"
 )
 
-const (
-	metricAPITagsReq = "tags-req"
-	metricAPITagsErr = "tags-err"
-	metricAPITagsOK  = "tags-ok"
-)
-
-// GET Handler for multiple JSON tags
-func apiTagsHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPITagsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// TagsHandler - GET Handler for multiple JSON tags
+func (h *HandlersApi) TagsHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPITagsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPITagsErr)
+		h.Inc(metricAPITagsErr)
 		return
 	}
 	// Get tags
-	tags, err := tagsmgr.All()
+	tags, err := h.Tags.All()
 	if err != nil {
 		apiErrorResponse(w, "error getting tags", http.StatusInternalServerError, err)
-		incMetric(metricAPITagsErr)
+		h.Inc(metricAPITagsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned tags")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
-	incMetric(metricAPITagsOK)
+	h.Inc(metricAPITagsOK)
 }
 
-// GET Handler to return tags for one environment as JSON
-func apiTagsEnvHandler(w http.ResponseWriter, r *http.Request) {
-	incMetric(metricAPITagsReq)
-	utils.DebugHTTPDump(r, settingsmgr.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+// TagsEnvHandler - GET Handler to return tags for one environment as JSON
+func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPITagsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := envs.Get(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
 		} else {
 			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 		}
-		incMetric(metricAPIEnvsErr)
+		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
-	if !apiUsers.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		incMetric(metricAPITagsErr)
+		h.Inc(metricAPITagsErr)
 		return
 	}
 	// Get tags
-	tags, err := tagsmgr.GetByEnv(env.ID)
+	tags, err := h.Tags.GetByEnv(env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting tags", http.StatusInternalServerError, err)
-		incMetric(metricAPITagsErr)
+		h.Inc(metricAPITagsErr)
 		return
 	}
 	// Serialize and serve JSON
-	if settingsmgr.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(settings.ServiceAPI) {
 		log.Println("DebugService: Returned tags")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
-	incMetric(metricAPITagsOK)
+	h.Inc(metricAPITagsOK)
 }
