@@ -27,7 +27,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricEnrollErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -35,12 +35,13 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if environment accept enrolls
 	if !env.AcceptEnrolls {
 		h.Inc(metricEnrollErr)
-		log.Printf("environment not enrolling %v", err)
+		utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -51,11 +52,13 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricEnrollErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if received secret is valid
@@ -94,6 +97,8 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		h.Inc(metricEnrollErr)
 		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+		return
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
@@ -113,7 +118,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricConfigErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -131,11 +136,13 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricConfigErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricConfigErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if provided node_key is valid and if so, update node
@@ -179,7 +186,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricLogErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -187,6 +194,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricLogErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if body is compressed, if so, uncompress
@@ -195,11 +203,15 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.Inc(metricLogErr)
 			log.Printf("error decoding gzip body %v", err)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+			return
 		}
 		defer func() {
 			if err := r.Body.Close(); err != nil {
 				h.Inc(metricLogErr)
 				log.Printf("Failed to close body %v", err)
+				utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+				return
 			}
 		}()
 	}
@@ -211,17 +223,21 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricLogErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricLogErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			h.Inc(metricLogErr)
 			log.Printf("Failed to close body %v", err)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+			return
 		}
 	}()
 	var nodeInvalid bool
@@ -257,7 +273,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricReadErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -265,6 +281,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricReadErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -275,11 +292,13 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricReadErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricReadErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	var nodeInvalid, accelerate bool
@@ -336,7 +355,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricWriteErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -344,6 +363,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.Inc(metricWriteErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -354,11 +374,13 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.Inc(metricWriteErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricWriteErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	var nodeInvalid bool
@@ -415,7 +437,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -492,7 +514,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -571,7 +593,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricInitErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -579,6 +601,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -589,11 +612,13 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricInitErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	initCarve := false
@@ -642,7 +667,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricBlockErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -650,6 +675,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -660,11 +686,13 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricBlockErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	blockCarve := false
@@ -702,7 +730,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricFlagsErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -710,6 +738,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricFlagsErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -720,11 +749,13 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricFlagsErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricFlagsErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if provided secret is valid and if so, prepare flags
@@ -733,11 +764,13 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.Inc(metricFlagsErr)
 			log.Printf("error generating flags %v", err)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
 		response = []byte(flagsStr)
 	} else {
-		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		h.Inc(metricFlagsErr)
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -757,7 +790,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricCertErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -765,6 +798,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricCertErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -775,18 +809,21 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricCertErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricCertErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if provided secret is valid and if so, prepare flags
 	if h.checkValidSecret(t.Secret, env) {
 		response = []byte(env.Certificate)
 	} else {
-		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		h.Inc(metricCertErr)
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte("uh oh..."))
 		return
 	}
 	// Debug HTTP
@@ -806,7 +843,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricVerifyErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -814,6 +851,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricVerifyErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -824,11 +862,13 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricVerifyErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricVerifyErr)
 		log.Printf("error parsing POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if provided secret is valid and if so, prepare flags
@@ -837,6 +877,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.Inc(metricVerifyErr)
 			log.Printf("error generating flags %v", err)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
 		response = types.VerifyResponse{
@@ -845,7 +886,8 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 			OsqueryVersion: defOsqueryVersion,
 		}
 	} else {
-		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte("uh oh..."))
+		h.Inc(metricVerifyErr)
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -865,7 +907,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricScriptErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -873,30 +915,33 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricScriptErr)
 		log.Printf("error getting environment %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Retrieve and check action
 	actionVar := r.PathValue("action")
 	if actionVar == "" {
 		h.Inc(metricScriptErr)
-		log.Println("Action is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	if !validAction[actionVar] {
 		h.Inc(metricScriptErr)
 		log.Printf("invalid action: %s", actionVar)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Retrieve and check platform
 	platformVar := r.PathValue("platform")
 	if platformVar == "" {
 		h.Inc(metricScriptErr)
-		log.Println("Platform is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	if !validPlatform[platformVar] {
 		h.Inc(metricScriptErr)
 		log.Printf("invalid platform: %s", platformVar)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	if platformVar == settings.PlatformDarwin || platformVar == settings.PlatformLinux {
@@ -912,11 +957,13 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Inc(metricScriptErr)
 		log.Printf("error reading POST body %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricScriptErr)
 		log.Printf("error parsing POST body - %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Check if provided secret is valid and if so, prepare flags
@@ -925,9 +972,14 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.Inc(metricScriptErr)
 			log.Printf("error preparing script - %v", err)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
 		response = []byte(script)
+	} else {
+		h.Inc(metricScriptErr)
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+		return
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
@@ -945,7 +997,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricPackageErr)
-		log.Println("Environment is missing")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Get environment
@@ -953,7 +1005,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		h.Inc(metricPackageErr)
 		log.Printf("error getting environment - %v", err)
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP
@@ -962,35 +1014,32 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	packageVar := r.PathValue("package")
 	if packageVar == "" {
 		h.Inc(metricPackageErr)
-		log.Println("Package is missing")
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Check if requested package is valid
 	if !validEnrollPackage[packageVar] {
 		h.Inc(metricPackageErr)
 		log.Printf("invalid package: %s", packageVar)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Retrieve SecretPath variable
 	secretPath := r.PathValue("secretpath")
 	if secretPath == "" {
 		h.Inc(metricPackageErr)
-		log.Println("Path is missing")
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if !h.checkValidEnrollSecretPath(env, secretPath) {
 		h.Inc(metricPackageErr)
-		log.Println("Invalid secret path for enrolling package")
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
 	if !h.checkExpiredEnrollSecretPath(env) {
 		h.Inc(metricPackageErr)
-		log.Println("Expired enrolling path for package")
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
 	// Prepare download
@@ -1038,7 +1087,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		h.Inc(metricPackageErr)
 		log.Printf("Error loading file for package %s - %v", fPath, err)
-		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Package Error"})
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	utils.HTTPDownload(w, fDesc, fName, fi.Size())
@@ -1049,6 +1098,8 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		h.Inc(metricPackageErr)
 		log.Printf("error copying file %v", err)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
 	}
 	h.Inc(metricPackageOk)
 }
