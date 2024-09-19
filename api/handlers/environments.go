@@ -20,12 +20,12 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -83,12 +83,12 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -108,7 +108,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract target
 	targetVar := r.PathValue("target")
 	if targetVar == "" {
-		apiErrorResponse(w, "error getting target", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting target", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
@@ -154,12 +154,12 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -219,12 +219,12 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -244,7 +244,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 	// Extract action
 	actionVar := r.PathValue("action")
 	if actionVar == "" {
-		apiErrorResponse(w, "error getting action", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
@@ -330,12 +330,12 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -355,7 +355,7 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 	// Extract action
 	actionVar := r.PathValue("action")
 	if actionVar == "" {
-		apiErrorResponse(w, "error getting action", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}

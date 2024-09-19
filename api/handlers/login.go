@@ -19,12 +19,12 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPILoginErr)
 		return
 	}
-	// Get environment
-	env, err := h.Envs.Get(envVar)
+	// Get environment by UUID
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPILoginErr)

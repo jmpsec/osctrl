@@ -20,19 +20,19 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
-		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting name", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPIQueriesErr)
@@ -71,12 +71,12 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPIQueriesErr)
@@ -99,7 +99,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	// FIXME check validity of query
 	// Query can not be empty
 	if q.Query == "" {
-		apiErrorResponse(w, "query can not be empty", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
@@ -216,12 +216,12 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPIQueriesErr)
@@ -258,12 +258,12 @@ func (h *HandlersApi) HiddenQueriesShowHandler(w http.ResponseWriter, r *http.Re
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPIQueriesErr)
@@ -300,7 +300,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
-		apiErrorResponse(w, "error getting name", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting name", http.StatusBadRequest, nil)
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
@@ -312,7 +312,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPIQueriesErr)

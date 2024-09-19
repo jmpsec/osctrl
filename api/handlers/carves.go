@@ -28,12 +28,12 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPICarvesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPICarvesErr)
@@ -72,12 +72,12 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPICarvesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPICarvesErr)
@@ -150,12 +150,12 @@ func (h *HandlersApi) apiCarvesShowHandler(w http.ResponseWriter, r *http.Reques
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPICarvesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPICarvesErr)

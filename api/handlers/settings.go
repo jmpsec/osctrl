@@ -43,7 +43,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
-		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting service", http.StatusBadRequest, nil)
 		h.Inc(metricAPISettingsErr)
 		return
 	}
@@ -82,7 +82,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
-		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting service", http.StatusBadRequest, nil)
 		h.Inc(metricAPISettingsErr)
 		return
 	}
@@ -95,12 +95,12 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -139,7 +139,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
-		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting service", http.StatusBadRequest, nil)
 		h.Inc(metricAPISettingsErr)
 		return
 	}
@@ -178,7 +178,7 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
-		apiErrorResponse(w, "error getting service", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting service", http.StatusBadRequest, nil)
 		h.Inc(metricAPISettingsErr)
 		return
 	}
@@ -191,12 +191,12 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
