@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
@@ -19,12 +20,12 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPINodesErr)
@@ -40,7 +41,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract host identifier for node
 	nodeVar := r.PathValue("node")
 	if nodeVar == "" {
-		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting node", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
@@ -71,12 +72,12 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPINodesErr)
@@ -90,7 +91,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get nodes
-	nodes, err := h.Nodes.Gets("active", 24)
+	nodes, err := h.Nodes.Gets(nodes.ActiveNodes, 24)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		h.Inc(metricAPINodesErr)
@@ -116,12 +117,12 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPINodesErr)
@@ -135,7 +136,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get nodes
-	nodes, err := h.Nodes.Gets("inactive", 24)
+	nodes, err := h.Nodes.Gets(nodes.InactiveNodes, 24)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		h.Inc(metricAPINodesErr)
@@ -161,14 +162,14 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
@@ -180,7 +181,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get nodes
-	nodes, err := h.Nodes.Gets("all", 0)
+	nodes, err := h.Nodes.Gets(nodes.AllNodes, 0)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		h.Inc(metricAPINodesErr)
@@ -206,12 +207,12 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPINodesErr)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		h.Inc(metricAPINodesErr)

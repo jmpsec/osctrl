@@ -11,7 +11,7 @@ import (
 )
 
 // TagsHandler - GET Handler for multiple JSON tags
-func (h *HandlersApi) TagsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPITagsReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
@@ -43,12 +43,12 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.Get(envVar)
+	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)

@@ -17,7 +17,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract username
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" {
-		apiErrorResponse(w, "error with username", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with username", http.StatusBadRequest, nil)
 		h.Inc(metricAPIUsersErr)
 		return
 	}

@@ -76,6 +76,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OsqueryNode"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -120,6 +126,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OsqueryNode"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -164,6 +176,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OsqueryNode"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -206,6 +224,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OsqueryNode"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -253,6 +277,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiGenericResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -297,6 +327,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/DistributedQuery"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -336,6 +372,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiQueriesResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -384,6 +426,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DistributedQuery"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -1148,7 +1196,7 @@ paths:
         - tags
       summary: Get tags
       description: Returns all osctrl tags for enrolled nodes
-      operationId: TagsHandler
+      operationId: AllTagsHandler
       responses:
         200:
           description: successful operation
@@ -1196,6 +1244,12 @@ paths:
                 type: array
                 items:
                   type: string
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -1271,6 +1325,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SettingValue"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -1315,6 +1375,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SettingValue"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:
@@ -1397,6 +1463,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SettingValue"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:

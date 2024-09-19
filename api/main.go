@@ -565,21 +565,21 @@ func osctrlAPIService() {
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
-	// API: users by environment
+	// API: users
 	muxAPI.Handle("GET "+_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler)))
 	// API: platforms
 	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler)))
-	// API: environments by environment
+	// API: environments
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{action}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler)))
-	// API: tags
-	muxAPI.Handle("GET "+_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.TagsHandler)))
+	// API: tags by environment
+	muxAPI.Handle("GET "+_apiPath(apiTagsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.AllTagsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiTagsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.TagsEnvHandler)))
 	// API: settings by environment
 	muxAPI.Handle("GET "+_apiPath(apiSettingsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsHandler)))
