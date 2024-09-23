@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/logging"
@@ -10,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -197,5 +200,16 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 func (h *HandlersTLS) Inc(name string) {
 	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceTLS) {
 		h.Metrics.Inc(name)
+	}
+}
+
+func (h *HandlersTLS) prometheusMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			timer := prometheus.NewTimer(requestDuration.WithLabelValues(r.Method, r.URL.Path, "200"))
+			defer timer.ObserveDuration()
+			next.ServeHTTP(w, r)
+
+		})
 	}
 }

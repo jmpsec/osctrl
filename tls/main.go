@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 
 	"github.com/spf13/viper"
@@ -214,6 +215,13 @@ func init() {
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &tlsConfigValues.Auth,
+		},
+		&cli.StringFlag{
+			Name:        "metrics-port",
+			Value:       "9090",
+			Usage:       "Port to expose prometheus metrics",
+			EnvVars:     []string{"METRICS_PORT"},
+			Destination: &tlsConfigValues.MetricsPort,
 		},
 		&cli.StringFlag{
 			Name:        "host",
@@ -571,6 +579,19 @@ func osctrlService() {
 	if err != nil {
 		log.Fatalf("Error loading metrics - %v", err)
 	}
+	// Creating a new prometheus service and register the metrics
+
+	prometheusServer := http.NewServeMux()
+	prometheusServer.Handle("/metrics", promhttp.Handler())
+
+	go func() {
+		log.Println("Starting prometheus server")
+		err := http.ListenAndServe(tlsConfig.MetricsPort, prometheusServer)
+		if err != nil {
+			log.Fatalf("Error starting prometheus server: %v", err)
+		}
+	}()
+
 	// Initialize ingested data metrics
 	log.Println("Initialize ingested")
 	ingestedMetrics = metrics.CreateIngested(db.Conn)
