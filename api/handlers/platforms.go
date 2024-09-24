@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // PlatformsHandler - GET Handler for multiple JSON platforms
@@ -30,7 +30,7 @@ func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned platforms")
+		log.Debug().Msg("DebugService: Returned platforms")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, platforms)
 	h.Inc(metricAPIPlatformsOK)
@@ -74,7 +74,7 @@ func (h *HandlersApi) PlatformsEnvHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned platforms")
+		log.Debug().Msg("DebugService: Returned platforms")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, platforms)
 	h.Inc(metricAPIPlatformsOK)

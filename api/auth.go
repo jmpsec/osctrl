@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // contextValue to hold session data in the context
@@ -70,7 +70,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Update metadata for the user
 			if err := apiUsers.UpdateTokenIPAddress(utils.GetIP(r), claims.Username); err != nil {
-				log.Printf("error updating token for user %s: %v", claims.Username, err)
+				log.Err(err).Msgf("error updating token for user %s", claims.Username)
 			}
 			// Set middleware values
 			s := make(contextValue)

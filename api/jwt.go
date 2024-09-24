@@ -1,17 +1,16 @@
 package main
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
 // Function to load the configuration file
 func loadJWTConfiguration(file string) (types.JSONConfigurationJWT, error) {
 	var cfg types.JSONConfigurationJWT
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {

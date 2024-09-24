@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // UserHandler - GET Handler for single JSON nodes
@@ -37,7 +37,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned user %s", usernameVar)
+		log.Debug().Msgf("DebugService: Returned user %s", usernameVar)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, user)
 	h.Inc(metricAPIUsersOK)
@@ -68,7 +68,7 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned users")
+		log.Debug().Msg("DebugService: Returned users")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, users)
 	h.Inc(metricAPIUsersOK)

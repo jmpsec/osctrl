@@ -3,13 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // LoginHandler - POST Handler for API login request
@@ -67,7 +67,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returning token for %s", user.Username)
+		log.Debug().Msgf("DebugService: Returning token for %s", user.Username)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiLoginResponse{Token: user.APIToken})
 	h.Inc(metricAPILoginOK)

@@ -3,19 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/rs/zerolog/log"
 )
 
 // Helper to refresh the environments map until cache/Redis support is implemented
 func refreshEnvironments() environments.MapEnvironments {
-	log.Printf("Refreshing environments...\n")
+	log.Info().Msg("Refreshing environments...")
 	_envsmap, err := envs.GetMap()
 	if err != nil {
-		log.Printf("error refreshing environments %v\n", err)
+		log.Err(err).Msg("error refreshing environments")
 		return environments.MapEnvironments{}
 	}
 	return _envsmap
@@ -23,10 +23,10 @@ func refreshEnvironments() environments.MapEnvironments {
 
 // Helper to refresh the settings until cache/Redis support is implemented
 func refreshSettings() settings.MapSettings {
-	log.Printf("Refreshing settings...\n")
+	log.Info().Msg("Refreshing settings...")
 	_settingsmap, err := settingsmgr.GetMap(settings.ServiceAPI, settings.NoEnvironmentID)
 	if err != nil {
-		log.Printf("error refreshing settings %v\n", err)
+		log.Err(err).Msg("error refreshing settings")
 		return settings.MapSettings{}
 	}
 	return _settingsmap

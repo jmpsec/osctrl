@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // SettingsHandler - GET Handler for all settings including JSON
@@ -30,7 +30,7 @@ func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned settings")
+		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 	h.Inc(metricAPISettingsOK)
@@ -69,7 +69,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned settings")
+		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 	h.Inc(metricAPISettingsOK)
@@ -126,7 +126,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned settings")
+		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 	h.Inc(metricAPISettingsOK)
@@ -165,7 +165,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned settings")
+		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 	h.Inc(metricAPISettingsOK)
@@ -222,7 +222,7 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned settings")
+		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 	h.Inc(metricAPISettingsOK)

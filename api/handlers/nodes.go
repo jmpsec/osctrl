@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/nodes"
@@ -11,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // NodeHandler - GET Handler for single JSON nodes
@@ -59,7 +59,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned node %s", nodeVar)
+		log.Debug().Msgf("DebugService: Returned node %s", nodeVar)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 	h.Inc(metricAPINodesOK)
@@ -104,7 +104,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned nodes")
+		log.Debug().Msg("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 	h.Inc(metricAPINodesOK)
@@ -149,7 +149,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned nodes")
+		log.Debug().Msg("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 	h.Inc(metricAPINodesOK)
@@ -194,7 +194,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned nodes")
+		log.Debug().Msg("DebugService: Returned nodes")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 	h.Inc(metricAPINodesOK)
@@ -243,7 +243,7 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned node %s", n.UUID)
+		log.Debug().Msgf("DebugService: Returned node %s", n.UUID)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 	h.Inc(metricAPINodesOK)
