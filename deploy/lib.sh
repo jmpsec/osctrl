@@ -404,6 +404,11 @@ function install_go_23() {
   if [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
   fi
+
+  if [[ "$__arch" == "x86_64" ]]; then
+    __arch="amd64"
+  fi
+  
   local __file="go$__version.linux-$__arch.tar.gz"
   local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
