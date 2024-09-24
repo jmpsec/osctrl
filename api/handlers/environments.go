@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/environments"
@@ -11,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // EnvironmentHandler - GET Handler to return one environment as JSON
@@ -44,7 +44,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned environment %s", env.Name)
+		log.Debug().Msgf("DebugService: Returned environment %s", env.Name)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 	h.Inc(metricAPIEnvsOK)
@@ -70,7 +70,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned environments")
+		log.Debug().Msg("DebugService: Returned environments")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envAll)
 	h.Inc(metricAPIEnvsOK)
@@ -141,7 +141,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned environment %s", returnData)
+		log.Debug().Msgf("DebugService: Returned environment %s", returnData)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 	h.Inc(metricAPIEnvsOK)
@@ -206,7 +206,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Printf("DebugService: Returned environment %s", types.ApiDataResponse{Data: returnData})
+		log.Debug().Msgf("DebugService: Returned environment %s", types.ApiDataResponse{Data: returnData})
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 	h.Inc(metricAPIEnvsOK)

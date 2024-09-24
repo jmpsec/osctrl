@@ -3,9 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/jmpsec/osctrl/api/handlers"
@@ -21,6 +22,8 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/spf13/viper"
@@ -143,7 +146,7 @@ var validAuth = map[string]bool{
 // Function to load the configuration file and assign to variables
 func loadConfiguration(file, service string) (types.JSONConfigurationAPI, error) {
 	var cfg types.JSONConfigurationAPI
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -415,75 +418,78 @@ func init() {
 			Destination: &jwtConfigValues.HoursToExpire,
 		},
 	}
-	// Logging format flags
-	log.SetFlags(log.Lshortfile)
+	// Initialize zerolog logger with our custom parameters
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
 }
 
 // Go go!
 func osctrlAPIService() {
 	// ////////////////////////////// Backend
-	log.Println("Initializing backend...")
+	log.Info().Msg("Initializing backend...")
 	for {
 		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
-			log.Println("Connection to backend successful!")
+			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
-			log.Printf("Failed to connect to backend - %v", err)
+			log.Err(err).Msg("Failed to connect to backend")
 			if dbConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to backend failed and no retry was set")
+				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
+		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
 		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
-	log.Println("Initializing cache...")
+	log.Info().Msg("Initializing cache...")
 	for {
 		redis, err = cache.CreateRedisManager(redisConfig)
 		if redis != nil {
-			log.Println("Connection to cache successful!")
+			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
-			log.Printf("Failed to connect to cache - %v", err)
+			log.Err(err).Msg("Failed to connect to cache")
 			if redisConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to cache failed and no retry was set")
+				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Printf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
+		log.Info().Msgf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
 		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
 	}
-	log.Println("Initialize users")
+	log.Info().Msg("Initialize users")
 	apiUsers = users.CreateUserManager(db.Conn, &jwtConfig)
-	log.Println("Initialize tags")
+	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
-	log.Println("Initialize environment")
+	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 	// Initialize settings
-	log.Println("Initialize settings")
+	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
-	log.Println("Initialize nodes")
+	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
-	log.Println("Initialize queries")
+	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
-	log.Println("Initialize carves")
+	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, apiConfig.Carver, nil)
-	log.Println("Loading service settings")
+	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatalf("Error loading settings - %v", err)
+		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Println("Loading service metrics")
+	log.Info().Msg("Loading service metrics")
 	apiMetrics, err = loadingMetrics(settingsmgr)
 	if err != nil {
-		log.Fatalf("Error loading metrics - %v", err)
+		log.Fatal().Msgf("Error loading metrics - %v", err)
 	}
 	// Ticker to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Environments ticker")
+		log.Debug().Msg("DebugService: Environments ticker")
 	}
 	// Refresh environments as soon as service starts
 	go func() {
@@ -501,7 +507,7 @@ func osctrlAPIService() {
 	// FIXME Implement Redis cache
 	// FIXME splay this?
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Settings ticker")
+		log.Debug().Msg("DebugService: Settings ticker")
 	}
 	// Refresh settings as soon as the service starts
 	go func() {
@@ -533,7 +539,7 @@ func osctrlAPIService() {
 
 	// ///////////////////////// API
 	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Creating router")
+		log.Debug().Msg("DebugService: Creating router")
 	}
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
@@ -608,11 +614,15 @@ func osctrlAPIService() {
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
-		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
+		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		if err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	} else {
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, muxAPI))
+		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		if err := http.ListenAndServe(serviceListener, muxAPI); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	}
 }
 
@@ -676,9 +686,8 @@ func main() {
 		},
 	}
 	app.Action = cliAction
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal().Msgf("app.Run error: %v", err)
 	}
 	// Service starts!
 	osctrlAPIService()
