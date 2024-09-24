@@ -104,7 +104,7 @@ func CreateLoggerDB(backend *backend.DBManager) (*LoggerDB, error) {
 
 // Settings - Function to prepare settings for the logger
 func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
-	log.Printf("Setting DB logging settings\n")
+	//log.Printf("Setting DB logging settings\n")
 }
 
 // Log - Function that sends JSON result/status/query logs to the configured DB

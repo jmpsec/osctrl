@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessCarveWrite - Function to process the scheduling of file carves from a node
@@ -14,7 +13,7 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 	node, err := h.Nodes.GetByKey(nodeKey)
 	if err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error retrieving node %s", err)
+		log.Err(err).Msg("error retrieving node")
 		return err
 	}
 	// Prepare carve to be scheduled
@@ -40,7 +39,7 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 	err = h.Carves.CreateCarve(carve)
 	if err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error creating  CarvedFile %v", err)
+		log.Err(err).Msg("error creating CarvedFile")
 		return err
 	}
 	return nil
@@ -51,7 +50,7 @@ func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, en
 	// Create File Carve
 	if err := h.Carves.InitCarve(req, sessionid); err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error creating CarvedFile %v", err)
+		log.Err(err).Msg("error creating CarvedFile")
 		return err
 	}
 	return nil
@@ -65,12 +64,12 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 	// Create Block
 	if err := h.Carves.CreateBlock(block, uuid, req.Data); err != nil {
 		h.Inc(metricBlockErr)
-		log.Printf("error creating CarvedBlock %v", err)
+		log.Err(err).Msg("error creating CarvedBlock")
 	}
 	// Bump block completion
 	if err := h.Carves.CompleteBlock(req.SessionID); err != nil {
 		h.Inc(metricBlockErr)
-		log.Printf("error completing block %v", err)
+		log.Err(err).Msg("error completing block")
 	}
 	// If it is completed, set status
 	if h.Carves.Completed(req.SessionID) {
@@ -79,27 +78,27 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 			archived, err := h.Carves.Archive(req.SessionID, "")
 			if err != nil {
 				h.Inc(metricBlockErr)
-				log.Printf("error archiving results %v", err)
+				log.Err(err).Msg("error archiving results")
 				return
 			}
 			if archived == nil {
 				h.Inc(metricBlockErr)
-				log.Printf("empty archive %v", err)
+				log.Error().Msg("empty archive")
 				return
 			}
 			if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
 				h.Inc(metricBlockErr)
-				log.Printf("error archiving carve %v", err)
+				log.Err(err).Msg("error archiving carve")
 			}
 		}
 		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
 			h.Inc(metricBlockErr)
-			log.Printf("error completing carve %v", err)
+			log.Err(err).Msg("error completing carve")
 		}
 	} else {
 		if err := h.Carves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
 			h.Inc(metricBlockErr)
-			log.Printf("error progressing carve %v", err)
+			log.Err(err).Msg("error progressing carve")
 		}
 	}
 }
