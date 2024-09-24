@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/rs/zerolog/log"
 )
 
 // EnrollHandler - Function to handle the enroll requests from osquery nodes
@@ -34,7 +34,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricEnrollErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -51,13 +51,13 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricEnrollErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricEnrollErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -73,37 +73,37 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
 			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
 				h.Inc(metricEnrollErr)
-				log.Printf("error archiving node %v", err)
+				log.Err(err).Msg("error archiving node")
 			}
 			// Update existing with new enroll data
 			if err := h.Nodes.UpdateByUUID(newNode, t.HostIdentifier); err != nil {
 				h.Inc(metricEnrollErr)
-				log.Printf("error updating existing node %v", err)
+				log.Err(err).Msg("error updating existing node")
 			} else {
 				nodeInvalid = false
 			}
 		} else { // New node, persist it
 			if err := h.Nodes.Create(&newNode); err != nil {
 				h.Inc(metricEnrollErr)
-				log.Printf("error creating node %v", err)
+				log.Err(err).Msg("error creating node")
 			} else {
 				nodeInvalid = false
 				if err := h.Tags.AutoTagNode(env.Name, newNode, "osctrl-tls"); err != nil {
 					h.Inc(metricEnrollErr)
-					log.Printf("error tagging node %v", err)
+					log.Err(err).Msg("error tagging node")
 				}
 			}
 		}
 	} else {
 		h.Inc(metricEnrollErr)
-		log.Printf("error invalid enrolling secret %s", t.EnrollSecret)
+		log.Err(err).Msg("error invalid enrolling secret")
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -125,7 +125,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricConfigErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Debug HTTP for environment
@@ -135,13 +135,13 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricConfigErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricConfigErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -150,17 +150,17 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricConfigErr)
-			log.Printf("error recording IP address %v", err)
+			log.Err(err).Msg("error recording IP address")
 		}
 		// Refresh last config for node
 		if err := h.Nodes.ConfigRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricConfigErr)
-			log.Printf("error refreshing last config %v", err)
+			log.Err(err).Msg("error refreshing last config")
 		}
 		// Record ingested data
 		if err := h.Ingested.IngestConfig(env.ID, node.ID, len(body)); err != nil {
 			h.Inc(metricConfigErr)
-			log.Printf("error with ingested config %v", err)
+			log.Err(err).Msg("error with ingested config")
 		}
 		response = []byte(env.Configuration)
 	} else {
@@ -169,9 +169,9 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
 		if x, ok := response.([]byte); ok {
-			log.Printf("Configuration: %s", string(x))
+			log.Debug().Msgf("Configuration: %s", string(x))
 		} else {
-			log.Printf("Configuration: %+v", response)
+			log.Debug().Msgf("Configuration: %+v", response)
 		}
 	}
 	// Send response
@@ -193,7 +193,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricLogErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -202,14 +202,14 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		r.Body, err = gzip.NewReader(r.Body)
 		if err != nil {
 			h.Inc(metricLogErr)
-			log.Printf("error decoding gzip body %v", err)
+			log.Err(err).Msg("error decoding gzip body")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
 		defer func() {
 			if err := r.Body.Close(); err != nil {
 				h.Inc(metricLogErr)
-				log.Printf("Failed to close body %v", err)
+				log.Err(err).Msg("Failed to close body")
 				utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 				return
 			}
@@ -222,20 +222,20 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricLogErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricLogErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			h.Inc(metricLogErr)
-			log.Printf("Failed to close body %v", err)
+			log.Err(err).Msg("Failed to close body")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
@@ -248,7 +248,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		if err := h.Ingested.IngestLog(env.ID, node.ID, len(body), t.LogType); err != nil {
 			h.Inc(metricLogErr)
-			log.Printf("error with ingested log %v", err)
+			log.Err(err).Msg("error with ingested log")
 		}
 		// Process logs and update metadata
 		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
@@ -259,7 +259,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	response := types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -280,7 +280,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricReadErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -291,13 +291,13 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricReadErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricReadErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -308,26 +308,26 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		if err := h.Ingested.IngestQueryRead(env.ID, node.ID, len(body)); err != nil {
 			h.Inc(metricReadErr)
-			log.Printf("error with ingested query-read %v", err)
+			log.Err(err).Msg("error with ingested query-read")
 		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricReadErr)
-			log.Printf("error recording IP address %v", err)
+			log.Err(err).Msg("error recording IP address")
 		}
 		nodeInvalid = false
 		qs, accelerate, err = h.Queries.NodeQueries(node)
 		if err != nil {
 			h.Inc(metricReadErr)
-			log.Printf("error getting queries from db %v", err)
+			log.Err(err).Msg("error getting queries from db")
 		}
 		// Refresh last query read request
 		if err := h.Nodes.QueryReadRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricReadErr)
-			log.Printf("error refreshing last query read %v", err)
+			log.Err(err).Msg("error refreshing last query read")
 		}
 	} else {
-		log.Printf("GetByKey %v", err)
+		log.Err(err).Msg("GetByKey")
 		nodeInvalid = true
 		accelerate = false
 	}
@@ -341,7 +341,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -362,7 +362,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricWriteErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -373,13 +373,13 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricWriteErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricWriteErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -389,12 +389,12 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		// Record ingested data
 		if err := h.Ingested.IngestQueryWrite(env.ID, node.ID, len(body)); err != nil {
 			h.Inc(metricWriteErr)
-			log.Printf("error with ingested query-write %v", err)
+			log.Err(err).Msg("error with ingested query-write")
 		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricWriteErr)
-			log.Printf("error recording IP address %v", err)
+			log.Err(err).Msg("error recording IP address")
 		}
 		nodeInvalid = false
 		for name, c := range t.Queries {
@@ -404,7 +404,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 					if cc.Carve == "1" {
 						if err := h.ProcessCarveWrite(cc, name, t.NodeKey, env.Name); err != nil {
 							h.Inc(metricWriteErr)
-							log.Printf("error scheduling carve %v", err)
+							log.Err(err).Msg("error scheduling carve")
 						}
 					}
 				}
@@ -412,7 +412,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricWriteErr)
-			log.Printf("error refreshing last query write %v", err)
+			log.Err(err).Msg("error refreshing last query write")
 		}
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
@@ -423,7 +423,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	response := types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -444,7 +444,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting environment - %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -454,7 +454,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	script := r.PathValue("script")
 	if script == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Script is missing")
+		log.Warn().Msg("Script is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -462,7 +462,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	secretPath := r.PathValue("secretpath")
 	if secretPath == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Path is missing")
+		log.Warn().Msg("Path is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -470,26 +470,26 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	if strings.HasPrefix(script, settings.ScriptEnroll) {
 		if !h.checkValidEnrollSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid secret path for enrolling")
+			log.Warn().Msg("Invalid secret path for enrolling")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
 		}
 		if !h.checkExpiredEnrollSecretPath(env) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Expired enrolling path")
+			log.Warn().Msg("Expired enrolling path")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
 	} else if strings.HasPrefix(script, settings.ScriptRemove) {
 		if !h.checkValidRemoveSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid secret path for removing")
+			log.Warn().Msg("Invalid secret path for removing")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
 		}
 		if !h.checkExpiredRemoveSecretPath(env) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Expired removing path")
+			log.Warn().Msg("Expired removing path")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
@@ -498,7 +498,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting script - %v", err)
+		log.Err(err).Msg("error getting script")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
 		return
 	}
@@ -521,7 +521,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting environment - %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -531,7 +531,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	script := r.PathValue("script")
 	if script == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Script is missing")
+		log.Warn().Msg("Script is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -539,7 +539,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	secretPath := r.PathValue("secretpath")
 	if secretPath == "" {
 		h.Inc(metricOnelinerErr)
-		log.Println("Path is missing")
+		log.Warn().Msg("Path is missing")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -547,26 +547,26 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	if strings.HasPrefix(script, settings.ScriptEnroll) {
 		if !h.checkValidEnrollSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid secret path for enrolling")
+			log.Debug().Msg("Invalid secret path for enrolling")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
 		}
 		if !h.checkExpiredEnrollSecretPath(env) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Expired enrolling path")
+			log.Debug().Msg("Expired enrolling path")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
 	} else if strings.HasPrefix(script, settings.ScriptRemove) {
 		if !h.checkValidRemoveSecretPath(env, secretPath) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Invalid secret path for removing")
+			log.Debug().Msg("Invalid secret path for removing")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
 		}
 		if !h.checkExpiredRemoveSecretPath(env) {
 			h.Inc(metricOnelinerErr)
-			log.Println("Expired removing path")
+			log.Debug().Msg("Expired removing path")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Expired"})
 			return
 		}
@@ -575,7 +575,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		h.Inc(metricOnelinerErr)
-		log.Printf("error getting script - %v", err)
+		log.Err(err).Msg("error getting script")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
 		return
 	}
@@ -600,7 +600,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -611,13 +611,13 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricInitErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -628,32 +628,32 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		if err := h.Ingested.IngestCarveInit(env.ID, node.ID, len(body)); err != nil {
 			h.Inc(metricInitErr)
-			log.Printf("error with ingested carve-init %v", err)
+			log.Err(err).Msg("error with ingested carve-init")
 		}
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricInitErr)
-			log.Printf("error recording IP address %v", err)
+			log.Err(err).Msg("error recording IP address")
 		}
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
 		if err := h.ProcessCarveInit(t, carveSessionID, env.Name); err != nil {
 			h.Inc(metricInitErr)
-			log.Printf("error procesing carve init %v", err)
+			log.Err(err).Msg("error procesing carve init")
 			initCarve = false
 		}
 		// Refresh last carve request
 		if err := h.Nodes.CarveRefresh(node, ip, len(body)); err != nil {
 			h.Inc(metricInitErr)
-			log.Printf("error refreshing last carve init %v", err)
+			log.Err(err).Msg("error refreshing last carve init")
 		}
 	}
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -674,7 +674,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricBlockErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -685,13 +685,13 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricBlockErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricBlockErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -701,7 +701,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		// Record ingested data
 		if err := h.Ingested.IngestCarveBlock(env.ID, carve.NodeID, len(body)); err != nil {
 			h.Inc(metricInitErr)
-			log.Printf("error with ingested carve-block %v", err)
+			log.Err(err).Msg("error with ingested carve-block")
 		}
 		blockCarve = true
 		// Process received block
@@ -709,13 +709,13 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		// Refresh last carve request
 		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
 			h.Inc(metricBlockErr)
-			log.Printf("error refreshing last carve init %v", err)
+			log.Err(err).Msg("error refreshing last carve init")
 		}
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Response: %+v", response)
+		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -737,7 +737,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricFlagsErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -748,13 +748,13 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricFlagsErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricFlagsErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -763,7 +763,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile)
 		if err != nil {
 			h.Inc(metricFlagsErr)
-			log.Printf("error generating flags %v", err)
+			log.Err(err).Msg("error generating flags")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
@@ -775,7 +775,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Flags: %s", string(response))
+		log.Debug().Msgf("Flags: %s", string(response))
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -797,7 +797,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricCertErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -808,13 +808,13 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricCertErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricCertErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -828,7 +828,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Certificate: %s", string(response))
+		log.Debug().Msgf("Certificate: %s", string(response))
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -850,7 +850,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricVerifyErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -861,13 +861,13 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricVerifyErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricVerifyErr)
-		log.Printf("error parsing POST body %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -876,7 +876,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile)
 		if err != nil {
 			h.Inc(metricVerifyErr)
-			log.Printf("error generating flags %v", err)
+			log.Err(err).Msg("error generating flags")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
@@ -892,7 +892,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Certificate: %v", response)
+		log.Debug().Msgf("Certificate: %v", response)
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -914,7 +914,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricScriptErr)
-		log.Printf("error getting environment %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -927,7 +927,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !validAction[actionVar] {
 		h.Inc(metricScriptErr)
-		log.Printf("invalid action: %s", actionVar)
+		log.Error().Msgf("invalid action: %s", actionVar)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
@@ -940,7 +940,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !validPlatform[platformVar] {
 		h.Inc(metricScriptErr)
-		log.Printf("invalid platform: %s", platformVar)
+		log.Error().Msgf("invalid platform: %s", platformVar)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
@@ -956,13 +956,13 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.Inc(metricScriptErr)
-		log.Printf("error reading POST body %v", err)
+		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
 		h.Inc(metricScriptErr)
-		log.Printf("error parsing POST body - %v", err)
+		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -971,7 +971,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		script, err := environments.QuickAddScript("osctrl-"+env.Name, actionVar, env)
 		if err != nil {
 			h.Inc(metricScriptErr)
-			log.Printf("error preparing script - %v", err)
+			log.Err(err).Msg("error preparing script")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
@@ -983,7 +983,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
-		log.Printf("Script: %s", string(response))
+		log.Debug().Msgf("Script: %s", string(response))
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -1004,7 +1004,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		h.Inc(metricPackageErr)
-		log.Printf("error getting environment - %v", err)
+		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1020,7 +1020,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	// Check if requested package is valid
 	if !validEnrollPackage[packageVar] {
 		h.Inc(metricPackageErr)
-		log.Printf("invalid package: %s", packageVar)
+		log.Error().Msgf("invalid package: %s", packageVar)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
@@ -1086,7 +1086,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	fi, err := os.Stat(fPath)
 	if err != nil {
 		h.Inc(metricPackageErr)
-		log.Printf("Error loading file for package %s - %v", fPath, err)
+		log.Err(err).Msgf("Error loading file for package %s", fPath)
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1097,7 +1097,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	_, err = io.Copy(w, fileReader)
 	if err != nil {
 		h.Inc(metricPackageErr)
-		log.Printf("error copying file %v", err)
+		log.Err(err).Msg("error copying file")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
