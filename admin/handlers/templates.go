@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // TemplateFiles for building UI layout
@@ -76,7 +76,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html")
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting login template: %v", err)
+		log.Err(err).Msg("error getting login template")
 		return
 	}
 	// Prepare template data
@@ -86,11 +86,11 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Login template served")
+		log.Debug().Msg("DebugService: Login template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -103,21 +103,21 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
 	}
@@ -126,7 +126,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	target := r.PathValue("target")
 	if target == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting target")
+		log.Info().Msg("error getting target")
 		return
 	}
 	// Prepare template
@@ -134,28 +134,28 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all tags
 	tags, err := h.Tags.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -172,11 +172,11 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Environment table template served")
+		log.Debug().Msg("DebugService: Environment table template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -190,7 +190,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	platform := r.PathValue("platform")
 	if platform == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting platform")
+		log.Info().Msg("error getting platform")
 		return
 	}
 	// Extract target
@@ -198,14 +198,14 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	target := r.PathValue("target")
 	if target == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting target")
+		log.Info().Msg("error getting target")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
 	}
@@ -220,28 +220,28 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all tags
 	tags, err := h.Tags.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -257,11 +257,11 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Platform table template served")
+		log.Debug().Msg("DebugService: Platform table template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -274,21 +274,21 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -303,28 +303,28 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get all nodes
 	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting all nodes: %v", err)
+		log.Err(err).Msg("error getting all nodes")
 		return
 	}
 	// Convert to list of UUIDs and Hosts
@@ -348,11 +348,11 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query run template served")
+		log.Debug().Msg("DebugService: Query run template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -365,21 +365,21 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -388,21 +388,21 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -416,11 +416,11 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query list template served")
+		log.Debug().Msg("DebugService: Query list template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -433,21 +433,21 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -456,21 +456,21 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -484,11 +484,11 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query list template served")
+		log.Debug().Msg("DebugService: Query list template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -501,21 +501,21 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -524,28 +524,28 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get all nodes
 	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting all nodes: %v", err)
+		log.Err(err).Msg("error getting all nodes")
 		return
 	}
 	// Convert to list of UUIDs and Hosts
@@ -569,11 +569,11 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query run template served")
+		log.Debug().Msg("DebugService: Query run template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -586,21 +586,21 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -609,21 +609,21 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -637,11 +637,11 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carve list template served")
+		log.Debug().Msg("DebugService: Carve list template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -654,21 +654,21 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -676,7 +676,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	name := r.PathValue("name")
 	if name == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting name")
+		log.Info().Msg("error getting name")
 		return
 	}
 	// Custom functions to handle formatting
@@ -688,35 +688,35 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get query by name
 	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting query %v", err)
+		log.Err(err).Msg("error getting query")
 		return
 	}
 	// Get query targets
 	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting targets %v", err)
+		log.Err(err).Msg("error getting targets")
 		return
 	}
 	leftMetadata := AsideLeftMetadata{
@@ -738,11 +738,11 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query logs template served")
+		log.Debug().Msg("DebugService: Query logs template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -754,14 +754,14 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -769,7 +769,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -777,7 +777,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	name := r.PathValue("name")
 	if name == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting name")
+		log.Info().Msg("error getting name")
 		return
 	}
 	// Prepare template
@@ -785,42 +785,42 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get query by name
 	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting query %v", err)
+		log.Err(err).Msg("error getting query")
 		return
 	}
 	// Get query targets
 	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting targets %v", err)
+		log.Err(err).Msg("error getting targets")
 		return
 	}
 	// Get carves for this query
 	queryCarves, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting carve %v", err)
+		log.Err(err).Msg("error getting carve")
 		return
 	}
 	// Get carve blocks by carve
@@ -829,7 +829,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		bs, err := h.Carves.GetBlocks(c.SessionID)
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error getting carve blocks %v", err)
+			log.Err(err).Msg("error getting carve blocks")
 			break
 		}
 		blocks[c.SessionID] = bs
@@ -854,11 +854,11 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carve details template served")
+		log.Debug().Msg("DebugService: Carve details template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -871,21 +871,21 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -894,21 +894,21 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting conf template: %v", err)
+		log.Err(err).Msg("error getting conf template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -921,11 +921,11 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Conf template served")
+		log.Debug().Msg("DebugService: Conf template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -938,21 +938,21 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -961,21 +961,21 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting enroll template: %v", err)
+		log.Err(err).Msg("error getting enroll template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -1014,11 +1014,11 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Enroll template served")
+		log.Debug().Msg("DebugService: Enroll template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1031,34 +1031,34 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get download target
 	targetVar := r.PathValue("target")
 	if targetVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting download target")
+		log.Info().Msg("error getting download target")
 		return
 	}
 	// Check if requested download target is valid
 	if !validTarget[targetVar] {
 		h.Inc(metricAdminErr)
-		log.Printf("invalid download target: %s", targetVar)
+		log.Info().Msgf("invalid download target: %s", targetVar)
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1114,7 +1114,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	uuid := r.PathValue("uuid")
 	if uuid == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting uuid")
+		log.Info().Msg("error getting uuid")
 		return
 	}
 	// Custom functions to handle formatting
@@ -1128,42 +1128,42 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting table template: %v", err)
+		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get node by UUID
 	node, err := h.Nodes.GetByUUID(uuid)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting node %v", err)
+		log.Err(err).Msg("error getting node")
 		return
 	}
 	// Get tags for the node
 	nodeTags, err := h.Tags.GetTags(node)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all tags decorated for this node
 	tags, err := h.Tags.GetNodeTags(nodeTags)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(node.Environment)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1171,14 +1171,14 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments%v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// If dashboard enabled, retrieve packs and schedule
@@ -1189,14 +1189,14 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		packs, err = h.Envs.NodePacksEntries([]byte(env.Packs), node.Platform)
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error getting packs: %v", err)
+			log.Err(err).Msg("error getting packs")
 			return
 		}
 		// Get the schedule for this environment
 		schedule, err = h.Envs.NodeStructSchedule([]byte(env.Schedule), node.Platform)
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error getting schedule: %v", err)
+			log.Err(err).Msg("error getting schedule")
 			return
 		}
 	}
@@ -1224,11 +1224,11 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Node template served")
+		log.Debug().Msg("DebugService: Node template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1241,7 +1241,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1250,21 +1250,21 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments template: %v", err)
+		log.Err(err).Msg("error getting environments template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Prepare template data
@@ -1276,11 +1276,11 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Environments template served")
+		log.Debug().Msg("DebugService: Environments template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1293,7 +1293,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1301,13 +1301,13 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	serviceVar := r.PathValue("service")
 	if serviceVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting service")
+		log.Info().Msg("error getting service")
 		return
 	}
 	// Verify service
 	if !checkTargetService(serviceVar) {
 		h.Inc(metricAdminErr)
-		log.Printf("error unknown service (%s)", serviceVar)
+		log.Info().Msgf("error unknown service (%s)", serviceVar)
 		return
 	}
 	// Prepare template
@@ -1315,34 +1315,34 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting settings template: %v", err)
+		log.Err(err).Msg("error getting settings template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get setting values
 	_settings, err := h.Settings.RetrieveValues(serviceVar, false, settings.NoEnvironmentID)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting settings: %v", err)
+		log.Err(err).Msg("error getting settings")
 		return
 	}
 	// Get JSON values
 	svcJSON, err := h.Settings.RetrieveAllJSON(serviceVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting JSON values: %v", err)
+		log.Err(err).Msg("error getting JSON values")
 	}
 	// Prepare template data
 	templateData := SettingsTemplateData{
@@ -1356,11 +1356,11 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Settings template served")
+		log.Debug().Msg("DebugService: Settings template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1373,7 +1373,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1387,28 +1387,28 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting users template: %v", err)
+		log.Err(err).Msg("error getting users template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current users
 	users, err := h.Users.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting users: %v", err)
+		log.Err(err).Msg("error getting users")
 		return
 	}
 	// Prepare template data
@@ -1421,11 +1421,11 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Users template served")
+		log.Debug().Msg("DebugService: Users template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1438,7 +1438,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1453,28 +1453,28 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.New("tags.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags template: %v", err)
+		log.Err(err).Msg("error getting tags template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current tags
 	tags, err := h.Tags.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags: %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Prepare template data
@@ -1487,11 +1487,11 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Tags template served")
+		log.Debug().Msg("DebugService: Tags template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1504,7 +1504,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1517,28 +1517,28 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	t, err := template.New("profile.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting profile template: %v", err)
+		log.Err(err).Msg("error getting profile template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current user
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting user: %v", err)
+		log.Err(err).Msg("error getting user")
 		return
 	}
 	// Prepare template data
@@ -1551,11 +1551,11 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Profile template served")
+		log.Debug().Msg("DebugService: Profile template served")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1568,7 +1568,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -1581,28 +1581,28 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	t, err := template.New("dashboard.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting dashboard template: %v", err)
+		log.Err(err).Msg("error getting dashboard template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environments %v", err)
+		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting platforms: %v", err)
+		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current user
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting user: %v", err)
+		log.Err(err).Msg("error getting user")
 		return
 	}
 	// Prepare template data
@@ -1615,11 +1615,11 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("template error %v", err)
+		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Dashboard template served")
+		log.Debug().Msg("DebugService: Dashboard template served")
 	}
 	h.Inc(metricAdminOK)
 }

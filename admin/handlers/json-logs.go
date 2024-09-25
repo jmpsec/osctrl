@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // Define log types to be used
@@ -64,27 +64,27 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// Extract type
 	logType := r.PathValue("type")
 	if logType == "" {
-		log.Println("error getting log type")
+		log.Info().Msg("error getting log type")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify log type
 	if !LogTypes[logType] {
-		log.Printf("invalid log type %s", logType)
+		log.Info().Msgf("invalid log type %s", logType)
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -92,7 +92,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -100,7 +100,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// FIXME verify UUID
 	UUID := r.PathValue("uuid")
 	if UUID == "" {
-		log.Println("error getting UUID")
+		log.Info().Msg("error getting UUID")
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -129,7 +129,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	if logType == types.StatusLog && h.AdminConfig.Logger == settings.LoggingDB {
 		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
-			log.Printf("error getting logs %v", err)
+			log.Err(err).Msg("error getting logs")
 			h.Inc(metricJSONErr)
 			return
 		}
@@ -149,7 +149,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	} else if logType == types.ResultLog && h.AdminConfig.Logger == settings.LoggingDB {
 		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
-			log.Printf("error getting logs %v", err)
+			log.Err(err).Msg("error getting logs")
 			h.Inc(metricJSONErr)
 			return
 		}
@@ -182,7 +182,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -190,7 +190,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	// FIXME verify name
 	name := r.PathValue("name")
 	if name == "" {
-		log.Println("error getting name")
+		log.Info().Msg("error getting name")
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -200,7 +200,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	if h.DBLogger != nil {
 		queryLogs, err := h.DBLogger.QueryLogs(name)
 		if err != nil {
-			log.Printf("error getting logs %v", err)
+			log.Err(err).Msg("error getting logs")
 			h.Inc(metricJSONErr)
 			return
 		}
@@ -218,7 +218,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 			}
 			qData, err := json.Marshal(q.Data)
 			if err != nil {
-				log.Printf("error serializing logs %v", err)
+				log.Err(err).Msg("error serializing logs")
 				h.Inc(metricJSONErr)
 				continue
 			}

@@ -33,6 +33,12 @@ require (
 )
 
 require (
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	golang.org/x/sys v0.23.0 // indirect
+)
+
+require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -40,6 +46,7 @@ require (
 	github.com/jmpsec/osctrl/environments v0.0.0-20240904183539-155969b2e259 // indirect
 	github.com/jmpsec/osctrl/settings v0.3.9 // indirect
 	github.com/jmpsec/osctrl/version v0.3.9 // indirect
+	github.com/rs/zerolog v1.33.0
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/text v0.18.0 // indirect

@@ -5,13 +5,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -37,7 +37,7 @@ type samlThings struct {
 // Function to load the configuration file
 func loadSAML(file string) (JSONConfigurationSAML, error) {
 	var cfg JSONConfigurationSAML
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {

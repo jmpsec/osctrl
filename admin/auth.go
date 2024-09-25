@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -40,30 +40,30 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			ctx := context.WithValue(r.Context(), sessions.ContextKey(sessions.CtxSession), s)
 			// Update metadata for the user
 			if err := adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s[sessions.CtxCSRF]); err != nil {
-				log.Printf("error updating metadata for user %s: %v", session.Username, err)
+				log.Err(err).Msgf("error updating metadata for user %s", session.Username)
 			}
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthSAML:
 			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
-				log.Printf("GetSession %v", err)
+				log.Err(err).Msg("GetSession")
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 				return
 			}
 			if samlSession == nil {
-				log.Printf("GetSession %v", err)
+				log.Error().Msg("No SAML session")
 				http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
 				return
 			}
 			jwtSessionClaims, ok := samlSession.(samlsp.JWTSessionClaims)
 			if !ok {
-				log.Printf("JWTSessionClaims %v", err)
+				log.Error().Msg("JWTSessionClaims")
 				return
 			}
 			samlUser := jwtSessionClaims.Subject
 			if samlUser == "" {
-				log.Printf("SAML user is empty")
+				log.Error().Msg("SAML user is empty")
 				return
 			}
 			// Check if user is already authenticated
@@ -73,25 +73,25 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				var u users.AdminUser
 				if !adminUsers.Exists(samlUser) {
 					if !samlConfig.JITProvision {
-						log.Printf("user not found: %s", samlUser)
+						log.Error().Msgf("user not found: %s", samlUser)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
 					u, err = adminUsers.New(samlUser, "", samlUser, "", false)
 					if err != nil {
-						log.Printf("error creating user %s: %v", samlUser, err)
+						log.Err(err).Msgf("error creating user %s", samlUser)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
 					if err := adminUsers.Create(u); err != nil {
-						log.Printf("error creating user %s: %v", samlUser, err)
+						log.Err(err).Msgf("error creating user %s", samlUser)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
 				} else {
 					u, err = adminUsers.Get(samlUser)
 					if err != nil {
-						log.Printf("error getting user %s: %v", samlUser, err)
+						log.Err(err).Msgf("error getting user %s", samlUser)
 						http.Redirect(w, r, forbiddenPath, http.StatusFound)
 						return
 					}
@@ -99,7 +99,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				// Create new session
 				session, err = sessionsmgr.Save(r, w, u)
 				if err != nil {
-					log.Printf("session error: %v", err)
+					log.Err(err).Msgf("session error")
 					http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 					return
 				}
@@ -112,7 +112,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			// Update metadata for the user
 			err = adminUsers.UpdateMetadata(session.IPAddress, session.UserAgent, session.Username, s[sessions.CtxCSRF])
 			if err != nil {
-				log.Printf("error updating metadata for user %s: %v", session.Username, err)
+				log.Err(err).Msgf("error updating metadata for user %s", session.Username)
 			}
 			// Access granted
 			samlMiddleware.RequireAccount(h).ServeHTTP(w, r.WithContext(ctx))

@@ -546,7 +546,7 @@ func osctrlService() {
 			break
 		}
 		if err != nil {
-			log.Fatal().Msgf("Failed to connect to cache - %v", err)
+			log.Err(err).Msg("Failed to connect to cache")
 			if redisConfig.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
