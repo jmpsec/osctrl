@@ -2,9 +2,9 @@ package users
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jmpsec/osctrl/environments"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -124,7 +124,7 @@ func (m *UserManager) GenPermissions(username, granted string, access UserAccess
 func (m *UserManager) CheckPermissions(username string, level AccessLevel, environment string) bool {
 	exist, user := m.ExistsGet(username)
 	if !exist {
-		log.Printf("user %s does not exist", username)
+		log.Info().Msgf("user %s does not exist", username)
 		return false
 	}
 	// If user is an admin, access is yes

@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // Define targets to be used
@@ -45,20 +45,20 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Check if environment is valid
 	if !h.Envs.Exists(envVar) {
-		log.Printf("error unknown environment (%s)", envVar)
+		log.Info().Msgf("error unknown environment (%s)", envVar)
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -66,26 +66,26 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
-		log.Println("error getting target")
+		log.Info().Msg("error getting target")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
-		log.Printf("invalid target %s", target)
+		log.Info().Msgf("invalid target %s", target)
 		h.Inc(metricJSONErr)
 		return
 	}
 	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
-		log.Printf("error getting nodes %v", err)
+		log.Err(err).Msg("error getting nodes")
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -127,33 +127,33 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract platform
 	platform := r.PathValue("platform")
 	if platform == "" {
-		log.Println("error getting platform")
+		log.Info().Msg("error getting platform")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
-		log.Println("error getting target")
+		log.Info().Msg("error getting target")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
-		log.Printf("invalid target %s", target)
+		log.Info().Msgf("invalid target %s", target)
 		h.Inc(metricJSONErr)
 		return
 	}
 	nodes, err := h.Nodes.GetByPlatform(platform, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
-		log.Printf("error getting nodes %v", err)
+		log.Err(err).Msg("error getting nodes")
 		h.Inc(metricJSONErr)
 		return
 	}

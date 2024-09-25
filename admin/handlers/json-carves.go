@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
@@ -10,6 +9,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // Define targets to be used
@@ -58,21 +58,21 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricJSONErr)
 		return
 	}
@@ -80,20 +80,20 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 	target := r.PathValue("target")
 	if target == "" {
 		h.Inc(metricJSONErr)
-		log.Println("error getting target")
+		log.Info().Msg("target is missing")
 		return
 	}
 	// Verify target
 	if !CarvesTargets[target] {
 		h.Inc(metricJSONErr)
-		log.Printf("invalid target %s", target)
+		log.Info().Msgf("invalid target %s", target)
 		return
 	}
 	// Retrieve carves for that target
 	qs, err := h.Queries.GetCarves(target, env.ID)
 	if err != nil {
 		h.Inc(metricJSONErr)
-		log.Printf("error getting query carves %v", err)
+		log.Err(err).Msg("error getting query carves")
 		return
 	}
 	// Prepare data to be returned
@@ -101,7 +101,7 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 	for _, q := range qs {
 		c, err := h.Carves.GetByQuery(q.Name, env.ID)
 		if err != nil {
-			log.Printf("error getting carves %v", err)
+			log.Err(err).Msg("error getting carves")
 			h.Inc(metricJSONErr)
 			continue
 		}

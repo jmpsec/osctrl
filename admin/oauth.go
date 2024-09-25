@@ -1,9 +1,8 @@
 package main
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -19,7 +18,7 @@ type JSONConfigurationOAuth struct {
 // Function to load the configuration file
 func loadOAuth(file string) (JSONConfigurationOAuth, error) {
 	var cfg JSONConfigurationOAuth
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {

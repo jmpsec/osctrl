@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/spf13/viper"
+	"github.com/rs/zerolog/log"
 )
 
 // JSONConfigurationOIDC to keep all OIDC details for auth
@@ -22,7 +22,7 @@ type JSONConfigurationOIDC struct {
 // Function to load the configuration file
 func loadOIDC(file string) (JSONConfigurationOIDC, error) {
 	var cfg JSONConfigurationOIDC
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {

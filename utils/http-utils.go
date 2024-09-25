@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
 )
 
 // JSONApplication for Content-Type headers
@@ -113,7 +114,7 @@ func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]st
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Failed to close body %v", err)
+			log.Err(err).Msg("Failed to close body")
 		}
 	}()
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -130,7 +131,7 @@ func DebugHTTP(r *http.Request, debugCheck bool, showBody bool) string {
 		debug = fmt.Sprintf("%s\n", "---------------- request")
 		requestDump, err := httputil.DumpRequest(r, showBody)
 		if err != nil {
-			log.Printf("error while dumprequest %v", err)
+			log.Err(err).Msg("error while dumprequest")
 		}
 		debug += fmt.Sprintf("%s\n", string(requestDump))
 		if !showBody {
@@ -144,7 +145,7 @@ func DebugHTTP(r *http.Request, debugCheck bool, showBody bool) string {
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
 func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
 	if debugCheck {
-		log.Println(DebugHTTP(r, debugCheck, showBody))
+		log.Debug().Msg(DebugHTTP(r, debugCheck, showBody))
 	}
 }
 
@@ -175,8 +176,9 @@ func HTTPResponse(w http.ResponseWriter, cType string, code int, data interface{
 		content, err = json.Marshal(data)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Printf("error serializing response: %v", err)
-			content = []byte("error serializing response")
+			errStr := "error serializing response"
+			log.Err(err).Msg(errStr)
+			content = []byte(errStr)
 		}
 	}
 	w.WriteHeader(code)

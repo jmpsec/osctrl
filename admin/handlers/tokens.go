@@ -3,13 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // TokenJSON to be used to populate a JSON token
@@ -79,7 +79,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var t TokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -100,7 +100,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Creating token")
+		log.Debug().Msg("DebugService: Creating token")
 	}
 	token, exp, err := h.Users.CreateToken(user.Username, h.AdminConfig.Host)
 	if err != nil {
@@ -109,7 +109,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Updating token")
+		log.Debug().Msg("DebugService: Updating token")
 	}
 	if err := h.Users.UpdateToken(user.Username, token, exp); err != nil {
 		adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)

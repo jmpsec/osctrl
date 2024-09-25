@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/cache"
@@ -16,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -182,7 +181,7 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 			}
 			logger, err := logging.CreateLoggerDBConfig(*config)
 			if err != nil {
-				log.Printf("error creating DB logger %v", err)
+				log.Err(err).Msg("error creating DB logger")
 				logger.Enabled = false
 				logger.Database = nil
 			}
@@ -191,7 +190,7 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 		}
 		logger, err := logging.CreateLoggerDBFile(dbfile)
 		if err != nil {
-			log.Printf("error creating DB logger %v", err)
+			log.Err(err).Msg("error creating DB logger")
 			logger.Enabled = false
 			logger.Database = nil
 		}

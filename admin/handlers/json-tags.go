@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // JSONTagsHandler for platform/environment stats in JSON
@@ -27,7 +27,7 @@ func (h *HandlersAdmin) JSONTagsHandler(w http.ResponseWriter, r *http.Request) 
 	tags, err := h.Tags.All()
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting tags %v", err)
+		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Serve JSON

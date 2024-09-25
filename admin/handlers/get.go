@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // FaviconHandler for the favicon
@@ -56,7 +56,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" || !h.Users.Exists(usernameVar) {
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: error getting username")
+			log.Debug().Msg("DebugService: error getting username")
 		}
 		return
 	}
@@ -64,7 +64,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -72,7 +72,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	permissions, err := h.Users.GetAccess(usernameVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting permissions %v", err)
+		log.Err(err).Msg("error getting permissions")
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, permissions)
@@ -88,20 +88,20 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -109,14 +109,14 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	carveSession := r.PathValue("sessionid")
 	if carveSession == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting carve")
+		log.Info().Msg("empty carve session")
 		return
 	}
 	// Check if carve is archived already
 	carve, err := h.Carves.GetBySession(carveSession)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting carve %v", err)
+		log.Err(err).Msgf("error getting carve")
 		return
 	}
 	var archived *carves.CarveResult
@@ -124,17 +124,17 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		archived, err = h.Carves.Archive(carveSession, h.CarvesFolder)
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error archiving results %v", err)
+			log.Err(err).Msgf("error archiving results")
 			return
 		}
 		if archived == nil {
 			h.Inc(metricAdminErr)
-			log.Printf("empty archive %v", err)
+			log.Info().Msg("empty archive")
 			return
 		}
 		if err := h.Carves.ArchiveCarve(carveSession, archived.File); err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error archiving carve %v", err)
+			log.Err(err).Msgf("error archiving carve")
 		}
 	}
 	archived = &carves.CarveResult{
@@ -142,13 +142,13 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		File: carve.ArchivePath,
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carve download")
+		log.Debug().Msg("DebugService: Carve download")
 	}
 	if h.Carves.Carver == settings.CarverS3 {
 		downloadURL, err := h.Carves.S3.GetDownloadLink(carve)
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error getting carve link - %v", err)
+			log.Err(err).Msg("error getting carve link")
 			return
 		}
 		http.Redirect(w, r, downloadURL, http.StatusFound)
