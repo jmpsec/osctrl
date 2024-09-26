@@ -1,10 +1,9 @@
 package logging
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 )
 
 // LoggerStdout will be used to log data using stdout
@@ -21,7 +20,7 @@ func CreateLoggerStdout() (*LoggerStdout, error) {
 
 // Settings - Function to prepare settings for the logger
 func (logStdout *LoggerStdout) Settings(mgr *settings.Settings) {
-	log.Printf("No stdout logging settings\n")
+	log.Info().Msg("No stdout logging settings")
 }
 
 // Log - Function that sends JSON result/status/query logs to stdout
@@ -36,15 +35,15 @@ func (logStdout *LoggerStdout) Log(logType string, data []byte, environment, uui
 
 // Status - Function that sends JSON status logs to stdout
 func (logStdout *LoggerStdout) Status(data []byte, environment, uuid string, debug bool) {
-	log.Printf("Status: %s:%s - %d bytes [%s]", environment, uuid, len(data), string(data))
+	log.Info().Msgf("Status: %s:%s - %d bytes [%s]", environment, uuid, len(data), string(data))
 }
 
 // Result - Function that sends JSON result logs to stdout
 func (logStdout *LoggerStdout) Result(data []byte, environment, uuid string, debug bool) {
-	log.Printf("Result: %s:%s - %d bytes [%s]", environment, uuid, len(data), string(data))
+	log.Info().Msgf("Result: %s:%s - %d bytes [%s]", environment, uuid, len(data), string(data))
 }
 
 // Query - Function that sends JSON query logs to stdout
 func (logStdout *LoggerStdout) Query(data []byte, environment, uuid, name string, status int, debug bool) {
-	log.Printf("Query: %s:%d - %s:%s - %d bytes [%s]", name, status, environment, uuid, len(data), string(data))
+	log.Info().Msgf("Query: %s:%d - %s:%s - %d bytes [%s]", name, status, environment, uuid, len(data), string(data))
 }

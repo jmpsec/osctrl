@@ -2,13 +2,13 @@ package logging
 
 import (
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -47,7 +47,7 @@ func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
 // LoadSplunk - Function to load the Splunk configuration from JSON file
 func LoadSplunk(file string) (SlunkConfiguration, error) {
 	var _splunkCfg SlunkConfiguration
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -80,13 +80,13 @@ type SplunkMessage struct {
 
 // Settings - Function to prepare settings for the logger
 func (logSP *LoggerSplunk) Settings(mgr *settings.Settings) {
-	log.Printf("Setting Splunk logging settings\n")
+	log.Info().Msg("Setting Splunk logging settings")
 }
 
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Send %s via splunk", logType)
+		log.Debug().Msgf("DebugService: Send %s via splunk", logType)
 	}
 	// Check if this is result/status or query
 	var sourceType string
@@ -96,14 +96,14 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 		// For on-demand queries, just a JSON blob with results and statuses
 		var result interface{}
 		if err := json.Unmarshal(data, &result); err != nil {
-			log.Printf("error parsing data %s %v", string(data), err)
+			log.Err(err).Msgf("error parsing data %s", string(data))
 		}
 		logs = append(logs, result)
 	} else {
 		sourceType = logType + ":" + environment
 		// For scheduled queries, convert the array in an array of multiple events
 		if err := json.Unmarshal(data, &logs); err != nil {
-			log.Printf("error parsing log %s %v", string(data), err)
+			log.Err(err).Msgf("error parsing log %s", string(data))
 		}
 	}
 	// Prepare data according to HTTP Event Collector format
@@ -111,7 +111,7 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 	for _, l := range logs {
 		jsonEvent, err := json.Marshal(l)
 		if err != nil {
-			log.Printf("Error parsing data %s", err)
+			log.Err(err).Msg("Error parsing data")
 			continue
 		}
 		eventData := SplunkMessage{
@@ -127,18 +127,18 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 	// Serialize data for Splunk
 	jsonEvents, err := json.Marshal(events)
 	if err != nil {
-		log.Printf("Error parsing data %s", err)
+		log.Err(err).Msgf("Error parsing data")
 	}
 	jsonParam := strings.NewReader(string(jsonEvents))
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
 	}
 	// Send log with a POST to the Splunk URL
 	resp, body, err := utils.SendRequest(SplunkMethod, logSP.Configuration.URL, jsonParam, logSP.Headers)
 	if err != nil {
-		log.Printf("Error sending request %s", err)
+		log.Err(err).Msgf("Error sending request")
 	}
 	if debug {
-		log.Printf("DebugService: HTTP %d %s", resp, body)
+		log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
 	}
 }

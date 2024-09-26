@@ -2,13 +2,13 @@ package logging
 
 import (
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -24,7 +24,7 @@ type GraylogConfiguration struct {
 // LoadGraylog - Function to load the Graylog configuration from JSON file
 func LoadGraylog(file string) (GraylogConfiguration, error) {
 	var _graylogCfg GraylogConfiguration
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	err := viper.ReadInConfig()
@@ -86,13 +86,13 @@ type GraylogMessage struct {
 
 // Settings - Function to prepare settings for the logger
 func (logGL *LoggerGraylog) Settings(mgr *settings.Settings) {
-	log.Printf("No Graylog logging settings\n")
+	log.Info().Msg("No Graylog logging settings")
 }
 
 // Send - Function that sends JSON logs to Graylog
 func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Send %s via graylog", logType)
+		log.Debug().Msgf("DebugService: Send %s via graylog", logType)
 	}
 	// Convert the array in an array of multiple message
 	var logs []interface{}
@@ -101,20 +101,20 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 		var result interface{}
 		err := json.Unmarshal(data, &result)
 		if err != nil {
-			log.Printf("error parsing data %s %v", string(data), err)
+			log.Err(err).Msgf("error parsing data %s", string(data))
 		}
 		logs = append(logs, result)
 	} else {
 		err := json.Unmarshal(data, &logs)
 		if err != nil {
-			log.Printf("error parsing logs %s %v", string(data), err)
+			log.Err(err).Msgf("error parsing logs %s", string(data))
 		}
 	}
 	// Prepare data to send
 	for _, l := range logs {
 		logMessage, err := json.Marshal(l)
 		if err != nil {
-			log.Printf("error parsing log %s", err)
+			log.Err(err).Msg("error parsing log")
 			continue
 		}
 		messsageData := GraylogMessage{
@@ -130,20 +130,20 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 		// Serialize data using GELF
 		jsonMessage, err := json.Marshal(messsageData)
 		if err != nil {
-			log.Printf("error marshaling data %s", err)
+			log.Err(err).Msg("error marshaling data")
 		}
 		jsonParam := strings.NewReader(string(jsonMessage))
 		if debug {
-			log.Printf("DebugService: Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
+			log.Debug().Msgf("DebugService: Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
 		}
 		// Send log with a POST to the Graylog URL
 		resp, body, err := utils.SendRequest(GraylogMethod, logGL.Configuration.URL, jsonParam, logGL.Headers)
 		if err != nil {
-			log.Printf("error sending request %s", err)
+			log.Err(err).Msg("error sending request")
 			return
 		}
 		if debug {
-			log.Printf("DebugService: HTTP %d %s", resp, body)
+			log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
 		}
 	}
 }

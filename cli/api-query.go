@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmpsec/osctrl/queries"
@@ -51,7 +50,7 @@ func (api *OsctrlAPI) CompleteQuery(env, identifier string) error {
 // RunQuery to initiate a query in osctrl
 func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool) (types.ApiQueriesResponse, error) {
 	q := types.ApiDistributedQueryRequest{
-		UUIDs:   []string{uuid},
+		UUIDs:  []string{uuid},
 		Query:  query,
 		Hidden: hidden,
 	}
@@ -59,7 +58,8 @@ func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool) (types.ApiQ
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)
 	jsonMessage, err := json.Marshal(q)
 	if err != nil {
-		log.Printf("error marshaling data %s", err)
+		return r, fmt.Errorf("error marshaling data - %v", err)
+
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawQ, err := api.PostGeneric(reqURL, jsonParam)

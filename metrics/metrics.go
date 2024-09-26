@@ -3,11 +3,11 @@ package metrics
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -28,7 +28,7 @@ type Configuration struct {
 // LoadConfiguration - Function to load the metrics configuration from JSON file
 func LoadConfiguration() (Configuration, error) {
 	var _metricsCfg Configuration
-	log.Printf("Loading %s", metricsConfigFile)
+	log.Info().Msgf("Loading %s", metricsConfigFile)
 	// Load file and read config
 	viper.SetConfigFile(metricsConfigFile)
 	if err := viper.ReadInConfig(); err != nil {
@@ -119,18 +119,18 @@ func (metrics *Metrics) Disconnect() error {
 // ConnectAndSend to connect and submit a metric via TCP or UDP
 func (metrics *Metrics) ConnectAndSend(name string, value int) {
 	if err := metrics.Connect(); err != nil {
-		log.Printf("error connecting %v", err)
+		log.Err(err).Msg("error connecting")
 	}
 	err := metrics.Send(name, value)
 	i := 0
 	for err != nil {
-		log.Printf("Something happened %v", err)
+		log.Err(err).Msg("Something happened in Send")
 		_ = metrics.Connect()
 		err = metrics.Send(name, value)
 		if i < defaultRetries {
 			i++
 		} else {
-			log.Printf("Too many retries, exiting")
+			log.Debug().Msg("Too many retries, exiting")
 			break
 		}
 	}
