@@ -5,14 +5,14 @@ go 1.23
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
 require (
-	github.com/jmpsec/osctrl/nodes v0.0.0-20240904183539-155969b2e259
-	gorm.io/gorm v1.25.11
+	github.com/jmpsec/osctrl/nodes v0.0.0-20240926152724-6f0cf5eace97
+	gorm.io/gorm v1.25.12
 )
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 )
 
 require (
