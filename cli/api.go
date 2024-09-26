@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/jmpsec/osctrl/version"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -100,14 +100,14 @@ func CreateAPI(config JSONConfigurationAPI, insecure bool) *OsctrlAPI {
 	// Prepare URL
 	u, err := url.Parse(config.URL)
 	if err != nil {
-		log.Fatalf("invalid url: %v", err)
+		log.Fatal().Msgf("invalid url: %v", err)
 	}
 	// Define client with correct TLS settings
 	client := &http.Client{}
 	if u.Scheme == "https" {
 		certPool, err := x509.SystemCertPool()
 		if err != nil {
-			log.Fatalf("error loading x509 certificate pool: %v", err)
+			log.Fatal().Msgf("error loading x509 certificate pool: %v", err)
 		}
 		tlsCfg := &tls.Config{RootCAs: certPool}
 		if insecure {

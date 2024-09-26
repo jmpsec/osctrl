@@ -1,9 +1,8 @@
 package queries
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/nodes"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -102,19 +101,19 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	q = &Queries{DB: backend}
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_queries): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
 	}
 	// table distributed_query_executions
 	if err := backend.AutoMigrate(&DistributedQueryExecution{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
 	}
 	// table distributed_query_targets
 	if err := backend.AutoMigrate(&DistributedQueryTarget{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_query_targets): %v", err)
 	}
 	// table saved_queries
 	if err := backend.AutoMigrate(&SavedQuery{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (saved_queries): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (saved_queries): %v", err)
 	}
 	return q
 }

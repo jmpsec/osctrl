@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 )
 
 // Function to generate a secure CSRF token
@@ -103,7 +103,7 @@ func loadOsqueryTables(file string) ([]types.OsqueryTable, error) {
 	}
 	defer func() {
 		if err := jsonFile.Close(); err != nil {
-			log.Fatalf("Failed to close tables file %v", err)
+			log.Fatal().Msgf("Failed to close tables file %v", err)
 		}
 	}()
 	byteValue, _ := io.ReadAll(jsonFile)
