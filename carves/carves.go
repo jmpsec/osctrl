@@ -3,13 +3,13 @@ package carves
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -70,11 +70,11 @@ func CreateFileCarves(backend *gorm.DB, carverType string, s3 *CarverS3) *Carves
 	c = &Carves{DB: backend, Carver: carverType, S3: s3}
 	// table carved_files
 	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (carved_files): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (carved_files): %v", err)
 	}
 	// table carved_blocks
 	if err := backend.AutoMigrate(&CarvedBlock{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (carved_blocks): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (carved_blocks): %v", err)
 	}
 	return c
 }

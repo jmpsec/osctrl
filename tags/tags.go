@@ -2,10 +2,10 @@ package tags
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmpsec/osctrl/nodes"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -57,11 +57,11 @@ func CreateTagManager(backend *gorm.DB) *TagManager {
 	t = &TagManager{DB: backend}
 	// table admin_tags
 	if err := backend.AutoMigrate(&AdminTag{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (admin_tags): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (admin_tags): %v", err)
 	}
 	// table tagged_nodes
 	if err := backend.AutoMigrate(&TaggedNode{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (tagged_nodes): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (tagged_nodes): %v", err)
 	}
 	return t
 }

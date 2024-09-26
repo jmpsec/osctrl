@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmpsec/osctrl/backend"
@@ -15,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/term"
 
 	"github.com/urfave/cli/v2"
@@ -1715,7 +1715,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 func cliAction(c *cli.Context) error {
 	if c.NumFlags() == 0 {
 		if err := cli.ShowAppHelp(c); err != nil {
-			log.Fatalf("❌ Error with CLI help - %s", err)
+			log.Fatal().Msgf("❌ Error with CLI help - %s", err)
 		}
 		return cli.Exit("\nNo flags provided", 2)
 	}
@@ -1734,6 +1734,6 @@ func main() {
 	app.Commands = commands
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatalf("❌ Failed to execute - %v", err)
+		log.Fatal().Msgf("❌ Failed to execute - %v", err)
 	}
 }
