@@ -3,13 +3,13 @@ package logging
 import (
 	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -65,7 +65,7 @@ func CreateLoggerS3File(s3File string) (*LoggerS3, error) {
 // LoadS3 - Function to load the S3 configuration from JSON file
 func LoadS3(file string) (types.S3Configuration, error) {
 	var _s3Cfg types.S3Configuration
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -81,14 +81,14 @@ func LoadS3(file string) (types.S3Configuration, error) {
 
 // Settings - Function to prepare settings for the logger
 func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
-	log.Printf("No s3 logging settings\n")
+	log.Info().Msg("No s3 logging settings")
 }
 
 // Send - Function that sends JSON logs to S3
 func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	ctx := context.Background()
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
 	}
 	ptrContentLength := int64(len(data))
 	result, err := logS3.Uploader.Upload(ctx, &s3.PutObjectInput{
@@ -99,9 +99,9 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 		ContentType:   aws.String(http.DetectContentType(data)),
 	})
 	if err != nil {
-		log.Printf("Error sending data to s3 %s", err)
+		log.Err(err).Msg("Error sending data to s3")
 	}
 	if debug {
-		log.Printf("DebugService: S3 Upload %+v", result)
+		log.Debug().Msgf("DebugService: S3 Upload %+v", result)
 	}
 }

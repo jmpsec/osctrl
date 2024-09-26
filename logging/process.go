@@ -1,11 +1,11 @@
 package logging
 
 import (
-	"log"
+	"encoding/json"
 
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/types"
-	"encoding/json"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessLogs - Helper to process logs
@@ -14,10 +14,10 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 	var logs []types.LogGenericData
 	if err := json.Unmarshal(data, &logs); err != nil {
 		// FIXME metrics for this
-		log.Printf("error parsing log %s %v", string(data), err)
+		log.Err(err).Msgf("error parsing log %s", string(data))
 	}
 	if debug {
-		log.Printf("parsing logs for metadata in %s:%s", logType, environment)
+		log.Debug().Msgf("parsing logs for metadata in %s:%s", logType, environment)
 	}
 	// Iterate through received messages to extract metadata
 	var uuids, hosts, names, users, osqueryusers, hashes, dhashes, osqueryversions []string
@@ -32,7 +32,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 		osqueryversions = append(osqueryversions, l.Version)
 	}
 	if debug {
-		log.Printf("metadata and dispatch for %s", uniq(uuids)[0])
+		log.Debug().Msgf("metadata and dispatch for %s", uniq(uuids)[0])
 	}
 	// FIXME it only uses the first element from the []string that uniq returns
 	metadata := nodes.NodeMetadata{
@@ -55,11 +55,11 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 	// Retrieve node
 	node, err := l.Nodes.GetByKey(queriesWrite.NodeKey)
 	if err != nil {
-		log.Printf("error retrieving node %s", err)
+		log.Err(err).Msg("error retrieving node")
 	}
 	// Integrity check
 	if envid != node.EnvironmentID {
-		log.Printf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d]", envid, node.EnvironmentID)
+		log.Error().Msgf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d]", envid, node.EnvironmentID)
 	}
 	// Tap into results so we can update internal metrics
 	for q, r := range queriesWrite.Queries {
@@ -79,15 +79,15 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 			err = l.Queries.IncExecution(q, envid)
 		}
 		if err != nil {
-			log.Printf("error updating query %s", err)
+			log.Err(err).Msg("error updating query")
 		}
 		// Add a record for this query
 		if err := l.Queries.TrackExecution(q, node.UUID, queriesWrite.Statuses[q]); err != nil {
-			log.Printf("error adding query execution %s", err)
+			log.Err(err).Msg("error adding query execution")
 		}
 		// Check if query is completed
 		if err := l.Queries.VerifyComplete(q, envid); err != nil {
-			log.Printf("error verifying and completing query %s", err)
+			log.Err(err).Msg("error verifying and completing query")
 		}
 	}
 }

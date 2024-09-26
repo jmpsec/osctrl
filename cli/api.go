@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/jmpsec/osctrl/version"
 	"github.com/spf13/viper"
@@ -88,7 +88,7 @@ func writeAPIConfiguration(file string, apiConf JSONConfigurationAPI) error {
 	if err != nil {
 		return fmt.Errorf("error serializing data %s", err)
 	}
-	if err := ioutil.WriteFile(file, confByte, 0644); err != nil {
+	if err := os.WriteFile(file, confByte, 0644); err != nil {
 		return fmt.Errorf("error writing to file %s", err)
 	}
 	return nil
@@ -154,12 +154,7 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 	if err != nil {
 		return []byte{}, fmt.Errorf("Client.Do - %v", err)
 	}
-	//defer resp.Body.Close()
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("failed to close body %v", err)
-		}
-	}()
+	defer resp.Body.Close()
 	// Read body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

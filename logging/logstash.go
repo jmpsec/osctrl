@@ -2,12 +2,12 @@ package logging
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -54,7 +54,7 @@ func CreateLoggerLogstash(logstashFile string) (*LoggerLogstash, error) {
 // LoadLogstash - Function to load the Logstash configuration from JSON file
 func LoadLogstash(file string) (LogstashConfiguration, error) {
 	var _logstashCfg LogstashConfiguration
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -88,71 +88,71 @@ type LogstashMessage struct {
 
 // Settings - Function to prepare settings for the logger
 func (logLS *LoggerLogstash) Settings(mgr *settings.Settings) {
-	log.Printf("Setting Logstash logging settings\n")
+	log.Info().Msg("Setting Logstash logging settings")
 }
 
 // SendHTTP - Function that sends JSON logs to Logstash via HTTP
 func (logLS *LoggerLogstash) SendHTTP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Send %s via Logstash HTTP", logType)
+		log.Debug().Msgf("DebugService: Send %s via Logstash HTTP", logType)
 	}
 	jsonData := strings.NewReader(string(data))
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to Logstash HTTP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash HTTP for %s - %s", len(data), environment, uuid)
 	}
 	httpURL := fmt.Sprintf("http://%s:%s", logLS.Configuration.Host, logLS.Configuration.Port)
 	// Send log with a POST to the Splunk URL
 	resp, body, err := utils.SendRequest(LogstashMethod, httpURL, jsonData, logLS.Headers)
 	if err != nil {
-		log.Printf("Error sending request %s", err)
+		log.Err(err).Msg("Error sending request")
 	}
 	if debug {
-		log.Printf("DebugService: HTTP %d %s", resp, body)
+		log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
 	}
 }
 
 // SendUDP - Function that sends data to Logstash via UDP
 func (logLS *LoggerLogstash) SendUDP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Send %s via Logstash TCP", logType)
+		log.Debug().Msgf("DebugService: Send %s via Logstash TCP", logType)
 	}
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to Logstash TCP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash TCP for %s - %s", len(data), environment, uuid)
 	}
 	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("udp", connAddr)
 	if err != nil {
-		log.Printf("Error connecting to Logstash %s", err)
+		log.Err(err).Msg("Error connecting to Logstash")
 	}
 	defer conn.Close()
 	_, err = conn.Write(data)
 	if err != nil {
-		log.Printf("Error writing to Logstash %s", err)
+		log.Err(err).Msg("Error writing to Logstash")
 	}
 	if debug {
-		log.Printf("DebugService: Sent data to Logstash TCP")
+		log.Debug().Msg("DebugService: Sent data to Logstash TCP")
 	}
 }
 
 // SendTCP - Function that sends data to Logstash via TCP
 func (logLS *LoggerLogstash) SendTCP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Send %s via Logstash UDP", logType)
+		log.Debug().Msgf("DebugService: Send %s via Logstash UDP", logType)
 	}
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to Logstash UDP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash UDP for %s - %s", len(data), environment, uuid)
 	}
 	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("tcp", connAddr)
 	if err != nil {
-		log.Printf("Error connecting to Logstash %s", err)
+		log.Err(err).Msg("Error connecting to Logstash")
 	}
 	defer conn.Close()
 	_, err = conn.Write(data)
 	if err != nil {
-		log.Printf("Error writing to Logstash %s", err)
+		log.Err(err).Msg("Error writing to Logstash")
 	}
 	if debug {
-		log.Printf("DebugService: Sent data to Logstash UDP")
+		log.Debug().Msg("DebugService: Sent data to Logstash UDP")
 	}
 }

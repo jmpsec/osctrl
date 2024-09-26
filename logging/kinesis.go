@@ -2,9 +2,9 @@ package logging
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -58,7 +58,7 @@ func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
 // LoadKinesis - Function to load the Kinesis configuration from JSON file
 func LoadKinesis(file string) (KinesisConfiguration, error) {
 	var _kinesisCfg KinesisConfiguration
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -74,13 +74,13 @@ func LoadKinesis(file string) (KinesisConfiguration, error) {
 
 // Settings - Function to prepare settings for the logger
 func (logSK *LoggerKinesis) Settings(mgr *settings.Settings) {
-	log.Printf("No kinesis logging settings\n")
+	log.Info().Msg("No kinesis logging settings")
 }
 
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("DebugService: Sending %d bytes to Kinesis for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("DebugService: Sending %d bytes to Kinesis for %s - %s", len(data), environment, uuid)
 	}
 	streamName := aws.String(logSK.Configuration.Stream)
 	putOutput, err := logSK.KinesisClient.PutRecord(&kinesis.PutRecordInput{
@@ -89,9 +89,9 @@ func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid 
 		PartitionKey: aws.String(logType + ":" + environment + ":" + uuid),
 	})
 	if err != nil {
-		log.Printf("Error sending kinesis stream %s", err)
+		log.Err(err).Msg("Error sending kinesis stream")
 	}
 	if debug {
-		log.Printf("DebugService: PutRecordOutput %s", putOutput.String())
+		log.Debug().Msgf("DebugService: PutRecordOutput %s", putOutput.String())
 	}
 }

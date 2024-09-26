@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmpsec/osctrl/nodes"
@@ -47,7 +46,7 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 	reqURL := fmt.Sprintf("%s%s%s/%s/delete", api.Configuration.URL, APIPath, APINodes, env)
 	jsonMessage, err := json.Marshal(n)
 	if err != nil {
-		log.Printf("error marshaling data %s", err)
+		return fmt.Errorf("error marshaling data - %v", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawN, err := api.PostGeneric(reqURL, jsonParam)
