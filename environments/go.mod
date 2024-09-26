@@ -30,8 +30,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.3.9 // indirect
-	github.com/jmpsec/osctrl/queries v0.3.9 // indirect
+	github.com/jmpsec/osctrl/nodes v0.4.0 // indirect
+	github.com/jmpsec/osctrl/queries v0.4.0 // indirect
 	github.com/jmpsec/osctrl/types v0.0.0-20240926152724-6f0cf5eace97 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -43,24 +43,24 @@ replace github.com/jmpsec/osctrl/version => ./version
 require (
 	github.com/crewjam/saml v0.4.14
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/jmpsec/osctrl/admin/handlers v0.3.9
-	github.com/jmpsec/osctrl/admin/sessions v0.3.9
-	github.com/jmpsec/osctrl/api/handlers v0.3.9
-	github.com/jmpsec/osctrl/backend v0.3.9
-	github.com/jmpsec/osctrl/cache v0.3.9
-	github.com/jmpsec/osctrl/carves v0.3.9
-	github.com/jmpsec/osctrl/environments v0.3.9
-	github.com/jmpsec/osctrl/logging v0.3.9
-	github.com/jmpsec/osctrl/metrics v0.3.9
-	github.com/jmpsec/osctrl/nodes v0.3.9
-	github.com/jmpsec/osctrl/queries v0.3.9
-	github.com/jmpsec/osctrl/settings v0.3.9
-	github.com/jmpsec/osctrl/tags v0.3.9
-	github.com/jmpsec/osctrl/tls/handlers v0.3.9
-	github.com/jmpsec/osctrl/types v0.3.9
-	github.com/jmpsec/osctrl/users v0.3.9
-	github.com/jmpsec/osctrl/utils v0.3.9
-	github.com/jmpsec/osctrl/version v0.3.9
+	github.com/jmpsec/osctrl/admin/handlers v0.4.0
+	github.com/jmpsec/osctrl/admin/sessions v0.4.0
+	github.com/jmpsec/osctrl/api/handlers v0.4.0
+	github.com/jmpsec/osctrl/backend v0.4.0
+	github.com/jmpsec/osctrl/cache v0.4.0
+	github.com/jmpsec/osctrl/carves v0.4.0
+	github.com/jmpsec/osctrl/environments v0.4.0
+	github.com/jmpsec/osctrl/logging v0.4.0
+	github.com/jmpsec/osctrl/metrics v0.4.0
+	github.com/jmpsec/osctrl/nodes v0.4.0
+	github.com/jmpsec/osctrl/queries v0.4.0
+	github.com/jmpsec/osctrl/settings v0.4.0
+	github.com/jmpsec/osctrl/tags v0.4.0
+	github.com/jmpsec/osctrl/tls/handlers v0.4.0
+	github.com/jmpsec/osctrl/types v0.4.0
+	github.com/jmpsec/osctrl/users v0.4.0
+	github.com/jmpsec/osctrl/utils v0.4.0
+	github.com/jmpsec/osctrl/version v0.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/viper v1.19.0
 	github.com/urfave/cli/v2 v2.25.7
