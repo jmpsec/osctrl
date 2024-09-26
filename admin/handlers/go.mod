@@ -33,17 +33,17 @@ replace github.com/jmpsec/osctrl/utils => ../../utils
 replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
-	github.com/jmpsec/osctrl/admin/sessions v0.3.9
-	github.com/jmpsec/osctrl/carves v0.3.9
+	github.com/jmpsec/osctrl/admin/sessions v0.4.0
+	github.com/jmpsec/osctrl/carves v0.4.0
 	github.com/jmpsec/osctrl/environments v0.0.0-20240926152724-6f0cf5eace97
 	github.com/jmpsec/osctrl/metrics v0.0.0-20240926152724-6f0cf5eace97
-	github.com/jmpsec/osctrl/nodes v0.3.9
-	github.com/jmpsec/osctrl/queries v0.3.9
-	github.com/jmpsec/osctrl/settings v0.3.9
+	github.com/jmpsec/osctrl/nodes v0.4.0
+	github.com/jmpsec/osctrl/queries v0.4.0
+	github.com/jmpsec/osctrl/settings v0.4.0
 	github.com/jmpsec/osctrl/tags v0.0.0-20240926152724-6f0cf5eace97
-	github.com/jmpsec/osctrl/types v0.3.9
-	github.com/jmpsec/osctrl/users v0.3.9
-	github.com/jmpsec/osctrl/utils v0.3.9
+	github.com/jmpsec/osctrl/types v0.4.0
+	github.com/jmpsec/osctrl/users v0.4.0
+	github.com/jmpsec/osctrl/utils v0.4.0
 )
 
 require (
@@ -56,7 +56,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/jmpsec/osctrl/backend v0.3.9
+	github.com/jmpsec/osctrl/backend v0.4.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/rs/zerolog v1.33.0
@@ -98,7 +98,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmpsec/osctrl/logging v0.0.0-20240926110606-74392bf45499
-	github.com/jmpsec/osctrl/version v0.3.9 // indirect
+	github.com/jmpsec/osctrl/version v0.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
