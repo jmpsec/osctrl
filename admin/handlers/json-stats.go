@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
@@ -9,6 +8,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // Define targets to be used
@@ -29,20 +29,20 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 	target := r.PathValue("target")
 	if target == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting target")
+		log.Info().Msg("error getting target")
 		return
 	}
 	// Verify target
 	if !StatsTargets[target] {
 		h.Inc(metricAdminErr)
-		log.Printf("invalid target %s", target)
+		log.Info().Msgf("invalid target %s", target)
 		return
 	}
 	// Extract identifier
 	identifier := r.PathValue("identifier")
 	if identifier == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting target identifier")
+		log.Info().Msg("error getting target identifier")
 		return
 	}
 	// Get stats
@@ -52,32 +52,32 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		// Verify identifier
 		env, err := h.Envs.Get(identifier)
 		if err != nil {
-			log.Printf("error getting environment %s - %v", identifier, err)
+			log.Err(err).Msgf("error getting environment %s", identifier)
 			h.Inc(metricJSONErr)
 			return
 		}
 		// Check permissions
 		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-			log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return
 		}
 		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			h.Inc(metricAdminErr)
-			log.Printf("error getting stats %v", err)
+			log.Err(err).Msg("error getting stats")
 			return
 		}
 	} else if target == "platform" {
 		// Check permissions
 		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-			log.Printf("%s has insuficient permissions", ctx[sessions.CtxUser])
+			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return
 		}
 		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
-			log.Printf("error getting platform stats for %s - %v", identifier, err)
+			log.Err(err).Msgf("error getting platform stats for %s", identifier)
 			return
 		}
 	}

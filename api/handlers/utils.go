@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -40,7 +40,7 @@ func postgresQueryLogs(db *gorm.DB, name string) (APIQueryData, error) {
 
 // Helper to handle API error responses
 func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
-	log.Printf("apiErrorResponse %s: %v", msg, err)
+	log.Debug().Msgf("apiErrorResponse %s: %v", msg, err)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, types.ApiErrorResponse{Error: msg})
 }
 

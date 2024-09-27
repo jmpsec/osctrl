@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
@@ -15,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // LoginPOSTHandler for login page for POST requests
@@ -24,7 +24,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	var l LoginRequest
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -46,7 +46,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Login response sent")
+		log.Debug().Msg("DebugService: Login response sent")
 	}
 	adminOKResponse(w, "/dashboard")
 	h.Inc(metricAdminOK)
@@ -61,7 +61,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -82,7 +82,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Logout response sent")
+		log.Debug().Msg("DebugService: Logout response sent")
 	}
 	adminOKResponse(w, "OK")
 	h.Inc(metricAdminOK)
@@ -95,14 +95,14 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -116,7 +116,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var q DistributedQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
@@ -234,7 +234,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query run response sent")
+		log.Debug().Msg("DebugService: Query run response sent")
 	}
 	adminOKResponse(w, "OK")
 	h.Inc(metricAdminOK)
@@ -247,14 +247,14 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -268,7 +268,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var c DistributedCarveRequest
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
@@ -390,7 +390,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carve run response sent")
+		log.Debug().Msg("DebugService: Carve run response sent")
 	}
 	adminOKResponse(w, "OK")
 	h.Inc(metricAdminOK)
@@ -403,14 +403,14 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		log.Println("environment is missing")
+		log.Info().Msg("environment is missing")
 		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		log.Printf("error getting environment %s - %v", envVar, err)
+		log.Err(err).Msgf("error getting environment %s", envVar)
 		h.Inc(metricAdminErr)
 		return
 	}
@@ -424,7 +424,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var q DistributedQueryActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
@@ -478,7 +478,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Query run response sent")
+		log.Debug().Msg("DebugService: Query run response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -498,7 +498,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -523,13 +523,13 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 		adminOKResponse(w, "carves delete successfully")
 	case "test":
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Printf("DebugService: testing action")
+			log.Debug().Msg("DebugService: testing action")
 		}
 		adminOKResponse(w, "test successful")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Carves action response sent")
+		log.Debug().Msg("DebugService: Carves action response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -542,14 +542,14 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msgf("error getting environment")
 		return
 	}
 	var c ConfigurationRequest
@@ -563,7 +563,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -606,7 +606,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: Configuration response sent")
+			log.Debug().Msg("DebugService: Configuration response sent")
 		}
 		adminOKResponse(w, "configuration saved successfully")
 		h.Inc(metricAdminOK)
@@ -635,7 +635,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: Options response sent")
+			log.Debug().Msg("DebugService: Options response sent")
 		}
 		adminOKResponse(w, "options saved successfully")
 		h.Inc(metricAdminOK)
@@ -664,7 +664,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: Schedule response sent")
+			log.Debug().Msg("DebugService: Schedule response sent")
 		}
 		adminOKResponse(w, "schedule saved successfully")
 		h.Inc(metricAdminOK)
@@ -693,7 +693,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: Packs response sent")
+			log.Debug().Msg("DebugService: Packs response sent")
 		}
 		adminOKResponse(w, "packs saved successfully")
 		h.Inc(metricAdminOK)
@@ -722,7 +722,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: Decorators response sent")
+			log.Debug().Msg("DebugService: Decorators response sent")
 		}
 		adminOKResponse(w, "decorators saved successfully")
 		h.Inc(metricAdminOK)
@@ -751,7 +751,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Send response
 		if h.Settings.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: ATC response sent")
+			log.Debug().Msg("DebugService: ATC response sent")
 		}
 		adminOKResponse(w, "ATC saved successfully")
 		h.Inc(metricAdminOK)
@@ -761,7 +761,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	responseMessage := "empty configuration"
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, AdminResponse{Message: responseMessage})
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Printf("DebugService: %s", responseMessage)
+		log.Debug().Msgf("DebugService: %s", responseMessage)
 	}
 	h.Inc(metricAdminErr)
 }
@@ -796,7 +796,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -829,7 +829,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Intervals response sent")
+		log.Debug().Msg("DebugService: Intervals response sent")
 	}
 	adminOKResponse(w, "intervals saved successfully")
 	h.Inc(metricAdminOK)
@@ -843,14 +843,14 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msgf("error getting environment")
 		return
 	}
 	var e ExpirationRequest
@@ -864,7 +864,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -943,7 +943,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Expiration response sent")
+		log.Debug().Msg("DebugService: Expiration response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -963,7 +963,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -983,9 +983,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		for _, u := range m.UUIDs {
 			if err := h.Nodes.ArchiveDeleteByUUID(u); err != nil {
 				errCount++
-				if h.Settings.DebugService(settings.ServiceAdmin) {
-					log.Printf("DebugService: error deleting node %s %v", u, err)
-				}
+				log.Err(err).Msgf("error deleting node %s", u)
 			} else {
 				okCount++
 			}
@@ -1000,7 +998,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Multi-node action response sent")
+		log.Debug().Msg("DebugService: Multi-node action response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1020,7 +1018,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1106,7 +1104,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Environments response sent")
+		log.Debug().Msg("DebugService: Environments response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1139,7 +1137,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1205,7 +1203,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Settings response sent")
+		log.Debug().Msg("DebugService: Settings response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1225,7 +1223,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1365,7 +1363,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Users response sent")
+		log.Debug().Msg("DebugService: Users response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1385,7 +1383,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1460,7 +1458,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Tags response sent")
+		log.Debug().Msg("DebugService: Tags response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1480,7 +1478,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1529,7 +1527,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Tags response sent")
+		log.Debug().Msg("DebugService: Tags response sent")
 	}
 	adminOKResponse(w, "tags processed successfully")
 	h.Inc(metricAdminOK)
@@ -1557,7 +1555,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1599,7 +1597,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Users response sent")
+		log.Debug().Msg("DebugService: Users response sent")
 	}
 	adminOKResponse(w, "permissions updated successfully")
 	h.Inc(metricAdminOK)
@@ -1613,14 +1611,14 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		h.Inc(metricAdminErr)
-		log.Println("error getting environment")
+		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		h.Inc(metricAdminErr)
-		log.Printf("error getting environment: %v", err)
+		log.Err(err).Msgf("error getting environment")
 		return
 	}
 	var e EnrollRequest
@@ -1634,7 +1632,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1720,7 +1718,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Configuration response sent")
+		log.Debug().Msg("DebugService: Configuration response sent")
 	}
 	adminOKResponse(w, "enroll data saved")
 	h.Inc(metricAdminOK)
@@ -1735,7 +1733,7 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1800,7 +1798,7 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Edit profile response sent")
+		log.Debug().Msg("DebugService: Edit profile response sent")
 	}
 	h.Inc(metricAdminOK)
 }
@@ -1814,7 +1812,7 @@ func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.R
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Decoding POST body")
+		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -1835,7 +1833,7 @@ func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.R
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Saved query response sent")
+		log.Debug().Msg("DebugService: Saved query response sent")
 	}
 	h.Inc(metricAdminOK)
 }

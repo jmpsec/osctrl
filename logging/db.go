@@ -3,7 +3,6 @@ package logging
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -89,28 +89,28 @@ func CreateLoggerDB(backend *backend.DBManager) (*LoggerDB, error) {
 	}
 	// table osquery_status_data
 	if err := backend.Conn.AutoMigrate(&OsqueryStatusData{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_status_data): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_status_data): %v", err)
 	}
 	// table osquery_result_data
 	if err := backend.Conn.AutoMigrate(&OsqueryResultData{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_result_data): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_result_data): %v", err)
 	}
 	// table osquery_query_data
 	if err := backend.Conn.AutoMigrate(&OsqueryQueryData{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (osquery_query_data): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
 	return l, nil
 }
 
 // Settings - Function to prepare settings for the logger
 func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
-	log.Printf("Setting DB logging settings\n")
+	log.Info().Msg("Setting DB logging settings")
 }
 
 // Log - Function that sends JSON result/status/query logs to the configured DB
 func (logDB *LoggerDB) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("Sending %d bytes to DB for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to DB for %s - %s", len(data), environment, uuid)
 	}
 	switch logType {
 	case types.StatusLog:
@@ -125,7 +125,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	// Parse JSON
 	var logs []types.LogStatusData
 	if err := json.Unmarshal(data, &logs); err != nil {
-		log.Printf("error parsing logs %s %v", string(data), err)
+		log.Err(err).Msgf("error parsing logs %s %v", string(data), err)
 	}
 	// Iterate and insert in DB
 	for _, l := range logs {
@@ -139,7 +139,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 			Severity:    strconv.Itoa(int(l.Severity)),
 		}
 		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
-			log.Printf("Error creating status log entry %s", err)
+			log.Err(err).Msg("Error creating status log entry")
 		}
 	}
 }
@@ -149,7 +149,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 	// Parse JSON
 	var logs []types.LogResultData
 	if err := json.Unmarshal(data, &logs); err != nil {
-		log.Printf("error parsing logs %s %v", string(data), err)
+		log.Err(err).Msgf("error parsing logs %s", string(data))
 	}
 	// Iterate and insert in DB
 	for _, l := range logs {
@@ -163,7 +163,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 			Counter:     l.Counter,
 		}
 		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
-			log.Printf("Error creating result log entry %s", err)
+			log.Err(err).Msg("Error creating result log entry")
 		}
 	}
 }
@@ -180,7 +180,7 @@ func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status
 	}
 	// Insert in DB
 	if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
-		log.Printf("Error creating query log %s", err)
+		log.Err(err).Msg("Error creating query log")
 	}
 }
 

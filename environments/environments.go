@@ -2,11 +2,11 @@ package environments
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -107,7 +107,7 @@ func CreateEnvironment(backend *gorm.DB) *Environment {
 	e = &Environment{DB: backend}
 	// table tls_environments
 	if err := backend.AutoMigrate(&TLSEnvironment{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (tls_environments): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (tls_environments): %v", err)
 	}
 	return e
 }

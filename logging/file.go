@@ -1,11 +1,10 @@
 package logging
 
 import (
-	"log"
-
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -48,13 +47,13 @@ func CreateLoggerFile(filename string, cfg LumberjackConfig) (*LoggerFile, error
 
 // Settings - Function to prepare settings for the logger
 func (logFile *LoggerFile) Settings(mgr *settings.Settings) {
-	log.Printf("No file logging settings\n")
+	log.Info().Msg("No file logging settings")
 }
 
 // Log - Function that sends JSON result/status/query logs to stdout
 func (logFile *LoggerFile) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf("Sending %d bytes to stdout for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to stdout for %s - %s", len(data), environment, uuid)
 	}
 	switch logType {
 	case types.StatusLog:

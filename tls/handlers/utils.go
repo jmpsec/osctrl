@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 	"github.com/segmentio/ksuid"
 )
 
@@ -72,7 +72,7 @@ func nodeFromEnroll(req types.EnrollRequest, env environments.TLSEnvironment, ip
 	// Prepare the enrollment request to be stored as raw JSON
 	enrollRaw, err := json.Marshal(req)
 	if err != nil {
-		log.Printf("error serializing enrollment: %v", err)
+		log.Err(err).Msg("error serializing enrollment:")
 		enrollRaw = []byte("")
 	}
 	// Avoid the error "unsupported Unicode escape sequence" due to \u0000

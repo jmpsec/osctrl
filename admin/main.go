@@ -4,9 +4,10 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/crewjam/saml/samlsp"
@@ -24,6 +25,8 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 )
@@ -191,7 +194,7 @@ var validCarver = map[string]bool{
 // Function to load the configuration file
 func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, error) {
 	var cfg types.JSONConfigurationAdmin
-	log.Printf("Loading %s", file)
+	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -630,82 +633,85 @@ func init() {
 			Destination: &s3CarverConfig.SecretAccessKey,
 		},
 	}
-	// Logging format flags
-	log.SetFlags(log.Lshortfile)
+	// Initialize zerolog logger with our custom parameters
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
 }
 
 // Go go!
 func osctrlAdminService() {
 	// ////////////////////////////// Backend
-	log.Println("Initializing backend...")
+	log.Info().Msg("Initializing backend...")
 	for {
 		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
-			log.Println("Connection to backend successful!")
+			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
-			log.Printf("Failed to connect to backend - %v", err)
+			log.Err(err).Msg("Failed to connect to backend")
 			if dbConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to backend failed and no retry was set")
+				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
+		log.Debug().Msgf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
 		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
-	log.Println("Initializing cache...")
+	log.Info().Msg("Initializing cache...")
 	for {
 		redis, err = cache.CreateRedisManager(redisConfig)
 		if redis != nil {
-			log.Println("Connection to cache successful!")
+			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
-			log.Printf("Failed to connect to cache - %v", err)
+			log.Err(err).Msg("Failed to connect to cache")
 			if redisConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to cache failed and no retry was set")
+				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Printf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
+		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
 		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
 	}
-	log.Println("Initialize users")
+	log.Info().Msg("Initialize users")
 	adminUsers = users.CreateUserManager(db.Conn, &jwtConfig)
-	log.Println("Initialize tags")
+	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
-	log.Println("Initialize environments")
+	log.Info().Msg("Initialize environments")
 	envs = environments.CreateEnvironment(db.Conn)
-	log.Println("Initialize settings")
+	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
-	log.Println("Initialize nodes")
+	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
-	log.Println("Initialize queries")
+	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
-	log.Println("Initialize carves")
+	log.Info().Msg("Initialize carves")
 	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver, carvers3)
-	log.Println("Initialize sessions")
+	log.Info().Msg("Initialize sessions")
 	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, adminConfig.SessionKey)
-	log.Println("Loading service settings")
+	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatalf("Error loading settings - %v", err)
+		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Println("Loading service metrics")
+	log.Info().Msg("Loading service metrics")
 	adminMetrics, err = loadingMetrics(settingsmgr)
 	if err != nil {
-		log.Fatalf("Error loading metrics - %v", err)
+		log.Fatal().Msgf("Error loading metrics - %v", err)
 	}
 
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
 		if settingsmgr.DebugService(settings.ServiceAdmin) {
-			log.Println("DebugService: SAML keypair")
+			log.Debug().Msg("DebugService: SAML keypair")
 		}
 		// Initialize SAML keypair to sign SAML Request.
 		var err error
 		samlData, err = keypairSAML(samlConfig)
 		if err != nil {
-			log.Fatalf("Can not initialize SAML keypair %s", err)
+			log.Fatal().Msgf("Can not initialize SAML keypair %s", err)
 		}
 		samlMiddleware, err = samlsp.New(samlsp.Options{
 			URL:               *samlData.RootURL,
@@ -715,7 +721,7 @@ func osctrlAdminService() {
 			AllowIDPInitiated: true,
 		})
 		if err != nil {
-			log.Fatalf("Can not initialize SAML Middleware %s", err)
+			log.Fatal().Msgf("Can not initialize SAML Middleware %s", err)
 		}
 	}
 
@@ -728,7 +734,7 @@ func osctrlAdminService() {
 		}
 		for {
 			if settingsmgr.DebugService(settings.ServiceAdmin) {
-				log.Println("DebugService: Cleaning up sessions")
+				log.Debug().Msg("DebugService: Cleaning up sessions")
 			}
 			sessionsmgr.Cleanup()
 			time.Sleep(time.Duration(_t) * time.Second)
@@ -769,15 +775,12 @@ func osctrlAdminService() {
 
 	// ////////////////////////// ADMIN
 	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Creating router")
+		log.Debug().Msg("DebugService: Creating router")
 	}
 	// Create router for admin
 	adminMux := http.NewServeMux()
 
 	// ///////////////////////// UNAUTHENTICATED CONTENT
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Unauthenticated content")
-	}
 	// Admin: login only if local auth is enabled
 	if adminConfig.Auth != settings.AuthNone && adminConfig.Auth != settings.AuthSAML {
 		// login
@@ -794,14 +797,11 @@ func osctrlAdminService() {
 	// Admin: forbidden
 	adminMux.HandleFunc("GET "+forbiddenPath, handlersAdmin.ForbiddenHandler)
 	// Admin: favicon
-	adminMux.HandleFunc("GET " + faviconPath, handlersAdmin.FaviconHandler)
+	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
 	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
 
 	// ///////////////////////// AUTHENTICATED CONTENT
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Authenticated content")
-	}
 	// Admin: JSON data for environments
 	adminMux.Handle("GET /json/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler)))
 	// Admin: JSON data for platforms
@@ -895,7 +895,7 @@ func osctrlAdminService() {
 		})
 	}
 	// Launch HTTP server for admin
-	serviceAdmin := adminConfig.Listener + ":" + adminConfig.Port
+	serviceListener := adminConfig.Listener + ":" + adminConfig.Port
 	if tlsServer {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
@@ -909,16 +909,20 @@ func osctrlAdminService() {
 			},
 		}
 		srv := &http.Server{
-			Addr:         serviceAdmin,
+			Addr:         serviceListener,
 			Handler:      adminMux,
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
-		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceAdmin)
-		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
+		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		if err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	} else {
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceAdmin)
-		log.Fatal(http.ListenAndServe(serviceAdmin, adminMux))
+		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		if err := http.ListenAndServe(serviceListener, adminMux); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	}
 }
 
@@ -1005,9 +1009,8 @@ func main() {
 		},
 	}
 	app.Action = cliAction
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal().Msgf("app.Run error: %v", err)
 	}
 	// Service starts!
 	osctrlAdminService()

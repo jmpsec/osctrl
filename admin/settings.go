@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/rs/zerolog/log"
 )
 
 // Function to load the metrics settings
@@ -40,7 +40,7 @@ func loadingMetrics(mgr *settings.Settings) (*metrics.Metrics, error) {
 func loadingSettings(mgr *settings.Settings) error {
 	// Check if service settings for debug service is ready
 	if mgr.DebugService(settings.ServiceAdmin) {
-		log.Println("DebugService: Initializing settings")
+		log.Debug().Msg("DebugService: Initializing settings")
 	}
 	// Check if service settings for debug service is ready
 	if !mgr.IsValue(settings.ServiceAdmin, settings.DebugService, settings.NoEnvironmentID) {

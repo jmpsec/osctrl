@@ -3,9 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/jmpsec/osctrl/backend"
@@ -23,6 +24,8 @@ import (
 	"github.com/jmpsec/osctrl/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/spf13/viper"
@@ -145,7 +148,6 @@ var validCarver = map[string]bool{
 // Function to load the configuration file and assign to variables
 func loadConfiguration(file, service string) (types.JSONConfigurationTLS, error) {
 	var cfg types.JSONConfigurationTLS
-	log.Printf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -516,85 +518,88 @@ func init() {
 			Destination: &s3CarverConfig.SecretAccessKey,
 		},
 	}
-	// Logging format flags
-	log.SetFlags(log.Lshortfile)
+	// Initialize zerolog logger with our custom parameters
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
 }
 
 // Go go!
 func osctrlService() {
 	// ////////////////////////////// Backend
-	log.Println("Initializing backend...")
+	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
 		db, err = backend.CreateDBManager(dbConfig)
 		if db != nil {
-			log.Println("Connection to backend successful!")
+			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
-			log.Printf("Failed to connect to backend - %v", err)
+			log.Err(err).Msg("Failed to connect to backend")
 			if dbConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to backend failed and no retry was set")
+				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Printf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
+		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
 		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
-	log.Println("Initializing cache...")
+	log.Info().Msg("Initializing cache...")
 	// Attempt to connect to cache waiting until is ready
 	for {
 		redis, err = cache.CreateRedisManager(redisConfig)
 		if redis != nil {
-			log.Println("Connection to cache successful!")
+			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
-			log.Fatalf("Failed to connect to cache - %v", err)
+			log.Err(err).Msg("Failed to connect to cache")
 			if redisConfig.ConnRetry == 0 {
-				log.Fatalf("Connection to cache failed and no retry was set")
+				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Printf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
+		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
 		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
 	}
-	log.Println("Initialize environment")
+	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
-	log.Println("Initialize settings")
+	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
-	log.Println("Initialize nodes")
+	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
-	log.Println("Initialize tags")
+	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
-	log.Println("Initialize queries")
+	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
-	log.Println("Initialize carves")
+	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, tlsConfig.Carver, carvers3)
-	log.Println("Loading service settings")
+	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatalf("Error loading settings - %s: %v", tlsConfig.Logger, err)
+		log.Fatal().Msgf("Error loading settings - %s: %v", tlsConfig.Logger, err)
 	}
 	// Initialize service metrics
-	log.Println("Loading service metrics")
+	log.Info().Msg("Loading service metrics")
 	tlsMetrics, err = loadingMetrics(settingsmgr)
 	if err != nil {
-		log.Fatalf("Error loading metrics - %v", err)
+		log.Fatal().Msgf("Error loading metrics - %v", err)
 	}
 
 	// Initialize ingested data metrics
-	log.Println("Initialize ingested")
+	log.Info().Msg("Initialize ingested")
 	ingestedMetrics = metrics.CreateIngested(db.Conn)
 	// Initialize TLS logger
-	log.Println("Loading TLS logger")
+	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(
 		tlsConfig.Logger, loggerFile, s3LogConfig, loggerDbSame, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Fatalf("Error loading logger - %s: %v", tlsConfig.Logger, err)
+		log.Fatal().Msgf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}
 	// Sleep to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	log.Println("Preparing pseudo-cache for environments")
+	log.Info().Msg("Preparing pseudo-cache for environments")
 	go func() {
 		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
 		if _t == 0 {
@@ -602,7 +607,7 @@ func osctrlService() {
 		}
 		for {
 			if settingsmgr.DebugService(settings.ServiceTLS) {
-				log.Println("DebugService: Refreshing environments")
+				log.Info().Msg("DebugService: Refreshing environments")
 			}
 			envsmap = refreshEnvironments()
 			time.Sleep(time.Duration(_t) * time.Second)
@@ -611,7 +616,7 @@ func osctrlService() {
 	// Sleep to reload settings
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	log.Println("Preparing pseudo-cache for settings")
+	log.Info().Msg("Preparing pseudo-cache for settings")
 	go func() {
 		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
 		if _t == 0 {
@@ -619,7 +624,7 @@ func osctrlService() {
 		}
 		for {
 			if settingsmgr.DebugService(settings.ServiceTLS) {
-				log.Println("DebugService: Refreshing settings")
+				log.Info().Msg("DebugService: Refreshing settings")
 			}
 			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
@@ -658,7 +663,7 @@ func osctrlService() {
 
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Println("DebugService: Creating router")
+		log.Info().Msg("DebugService: Creating router")
 	}
 	// Create router for TLS endpoint
 	muxTLS := http.NewServeMux()
@@ -694,7 +699,7 @@ func osctrlService() {
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
 	if tlsServer {
-		log.Println("TLS Termination is enabled")
+		log.Info().Msg("TLS Termination is enabled")
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -712,11 +717,15 @@ func osctrlService() {
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
-		log.Printf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
+		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		if err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	} else {
-		log.Printf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
-		log.Fatal(http.ListenAndServe(serviceListener, muxTLS))
+		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		if err := http.ListenAndServe(serviceListener, muxTLS); err != nil {
+			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		}
 	}
 }
 
@@ -782,9 +791,8 @@ func main() {
 		},
 	}
 	app.Action = cliAction
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal().Msgf("app.Run error: %v", err)
 	}
 	// Service starts!
 	osctrlService()

@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 )
 
 // GetCarves to retrieve carves from osctrl
@@ -58,7 +58,7 @@ func (api *OsctrlAPI) RunCarve(env, uuid, path string) (types.ApiQueriesResponse
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APICarves, env)
 	jsonMessage, err := json.Marshal(c)
 	if err != nil {
-		log.Printf("error marshaling data %s", err)
+		log.Err(err).Msg("error marshaling data")
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawC, err := api.PostGeneric(reqURL, jsonParam)

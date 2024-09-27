@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 
 // Helper to handle admin error responses
 func adminErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
-	log.Printf("%s: %v", msg, err)
+	log.Err(err).Msgf("%d:%s", code, msg)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, AdminResponse{Message: msg})
 }
 

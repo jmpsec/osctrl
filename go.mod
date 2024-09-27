@@ -43,24 +43,24 @@ replace github.com/jmpsec/osctrl/version => ./version
 require (
 	github.com/crewjam/saml v0.4.14
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/jmpsec/osctrl/admin/handlers v0.3.9
-	github.com/jmpsec/osctrl/admin/sessions v0.3.9
-	github.com/jmpsec/osctrl/api/handlers v0.3.9
-	github.com/jmpsec/osctrl/backend v0.3.9
-	github.com/jmpsec/osctrl/cache v0.3.9
-	github.com/jmpsec/osctrl/carves v0.3.9
-	github.com/jmpsec/osctrl/environments v0.3.9
-	github.com/jmpsec/osctrl/logging v0.3.9
-	github.com/jmpsec/osctrl/metrics v0.3.9
-	github.com/jmpsec/osctrl/nodes v0.3.9
-	github.com/jmpsec/osctrl/queries v0.3.9
-	github.com/jmpsec/osctrl/settings v0.3.9
-	github.com/jmpsec/osctrl/tags v0.3.9
-	github.com/jmpsec/osctrl/tls/handlers v0.3.9
-	github.com/jmpsec/osctrl/types v0.3.9
-	github.com/jmpsec/osctrl/users v0.3.9
-	github.com/jmpsec/osctrl/utils v0.3.9
-	github.com/jmpsec/osctrl/version v0.3.9
+	github.com/jmpsec/osctrl/admin/handlers v0.4.0
+	github.com/jmpsec/osctrl/admin/sessions v0.4.0
+	github.com/jmpsec/osctrl/api/handlers v0.4.0
+	github.com/jmpsec/osctrl/backend v0.4.0
+	github.com/jmpsec/osctrl/cache v0.4.0
+	github.com/jmpsec/osctrl/carves v0.4.0
+	github.com/jmpsec/osctrl/environments v0.4.0
+	github.com/jmpsec/osctrl/logging v0.4.0
+	github.com/jmpsec/osctrl/metrics v0.4.0
+	github.com/jmpsec/osctrl/nodes v0.4.0
+	github.com/jmpsec/osctrl/queries v0.4.0
+	github.com/jmpsec/osctrl/settings v0.4.0
+	github.com/jmpsec/osctrl/tags v0.4.0
+	github.com/jmpsec/osctrl/tls/handlers v0.4.0
+	github.com/jmpsec/osctrl/types v0.4.0
+	github.com/jmpsec/osctrl/users v0.4.0
+	github.com/jmpsec/osctrl/utils v0.4.0
+	github.com/jmpsec/osctrl/version v0.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.20.4
 	github.com/spf13/viper v1.19.0
@@ -68,11 +68,9 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.7 // indirect
-	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/jackc/pgx/v5 v5.6.0 // indirect
-	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.27.2 // indirect
+	github.com/jackc/pgx/v5 v5.7.1 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -83,7 +81,7 @@ require (
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
+	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gorm.io/gorm v1.25.12 // indirect
@@ -91,24 +89,24 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.30.5 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.4 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.27.33 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.32 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.13 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.18 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.17 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.31.0 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.5 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.27.38 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.36 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.14 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.24 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.18 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.18 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.22.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.30.7 // indirect
-	github.com/aws/smithy-go v1.20.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.20 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.20 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.63.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.23.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.31.2 // indirect
+	github.com/aws/smithy-go v1.21.0 // indirect
 	github.com/beevik/etree v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
@@ -133,7 +131,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
+	github.com/rs/zerolog v1.33.0
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
@@ -142,9 +140,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/term v0.23.0
+	golang.org/x/term v0.24.0
 	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

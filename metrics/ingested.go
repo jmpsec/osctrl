@@ -2,9 +2,9 @@ package metrics
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jmpsec/osctrl/types"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -48,7 +48,7 @@ func CreateIngested(backend *gorm.DB) *IngestedManager {
 	i = &IngestedManager{DB: backend}
 	// table ingested_data
 	if err := backend.AutoMigrate(&IngestedData{}); err != nil {
-		log.Fatalf("Failed to AutoMigrate table (ingested_data): %v", err)
+		log.Fatal().Msgf("Failed to AutoMigrate table (ingested_data): %v", err)
 	}
 	return i
 }

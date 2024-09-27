@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
+	"github.com/rs/zerolog/log"
 )
 
 // TagsHandler - GET Handler for multiple JSON tags
@@ -30,7 +30,7 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned tags")
+		log.Debug().Msg("DebugService: Returned tags")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
 	h.Inc(metricAPITagsOK)
@@ -74,7 +74,7 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	if h.Settings.DebugService(settings.ServiceAPI) {
-		log.Println("DebugService: Returned tags")
+		log.Debug().Msg("DebugService: Returned tags")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
 	h.Inc(metricAPITagsOK)
