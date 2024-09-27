@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
@@ -12,7 +14,6 @@ import (
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/version"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -203,13 +204,33 @@ func (h *HandlersTLS) Inc(name string) {
 	}
 }
 
-func (h *HandlersTLS) prometheusMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			timer := prometheus.NewTimer(requestDuration.WithLabelValues(r.Method, r.URL.Path, "200"))
-			defer timer.ObserveDuration()
-			next.ServeHTTP(w, r)
+func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
 
-		})
-	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := NewResponseWriter(w)
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start).Seconds()
+
+		path := r.URL.Path
+		method := r.Method
+		statusCode := strconv.Itoa(rw.statusCode)
+		print("Request to %s took %f seconds, status: %s", path, duration, statusCode)
+		requestDuration.WithLabelValues(method, path, statusCode).Observe(duration)
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func NewResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK}
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
