@@ -216,7 +216,6 @@ func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
 		path := r.URL.Path
 		method := r.Method
 		statusCode := strconv.Itoa(rw.statusCode)
-		print("Request to %s took %f seconds, status: %s", path, duration, statusCode)
 		requestDuration.WithLabelValues(method, path, statusCode).Observe(duration)
 	})
 }
