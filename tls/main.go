@@ -668,7 +668,7 @@ func osctrlService() {
 	// Create router for TLS endpoint
 	muxTLS := http.NewServeMux()
 	// TLS: root
-	muxTLS.Handle("GET /", handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.RootHandler)))
+	muxTLS.HandleFunc("GET /", handlersTLS.RootHandler)
 	// TLS: testing
 	muxTLS.HandleFunc("GET "+healthPath, handlersTLS.HealthHandler)
 	// TLS: error
