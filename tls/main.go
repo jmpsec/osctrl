@@ -639,10 +639,10 @@ func osctrlService() {
 	prometheusServer.Handle("/metrics", promhttp.Handler())
 
 	go func() {
-		log.Println("Starting prometheus server")
+		log.Info().Msgf("Starting prometheus server at port %s", tlsConfig.MetricsPort)
 		err := http.ListenAndServe(":"+tlsConfig.MetricsPort, prometheusServer)
 		if err != nil {
-			log.Fatalf("Error starting prometheus server: %v", err)
+			log.Fatal().Msgf("Error starting prometheus server: %v", err)
 		}
 	}()
 
