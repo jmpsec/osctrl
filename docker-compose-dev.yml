@@ -45,7 +45,7 @@ services:
       - SERVICE_PORT=9000
       - SERVICE_HOST=0.0.0.0
       - SERVICE_AUTH=none
-      - SERVICE_LOGGER=db
+      - SERVICE_LOGGER=${OSCTRL_TLS_LOGGER}
       - LOGGER_DB_SAME=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
@@ -54,6 +54,14 @@ services:
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=osctrl-redis
+      #### Kafka settings ####
+      - LOG_KAFKA_BOOTSTRAP_SERVERS=${LOG_KAFKA_BOOTSTRAP_SERVERS}
+      - LOG_KAFKA_SSLCA_LOCATION=${LOG_KAFKA_SSLCA_LOCATION}
+      - LOG_KAFKA_CONNECTION_TIMEOUT=${LOG_KAFKA_CONNECTION_TIMEOUT}
+      - LOG_KAFKA_TOPIC=${LOG_KAFKA_TOPIC}
+      - LOG_KAFKA_SASL_MECHANISM=${LOG_KAFKA_SASL_MECHANISM}
+      - LOG_KAFKA_SASL_USERNAME=${LOG_KAFKA_SASL_USERNAME}
+      - LOG_KAFKA_SASL_PASSWORD=${LOG_KAFKA_SASL_PASSWORD}
     networks:
       - osctrl-dev-backend
     ports:

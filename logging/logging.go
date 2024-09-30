@@ -25,7 +25,7 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, loggerSame, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, kafkaConf types.KafkaConfiguration, loggerSame, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
 		Logging: logging,
 		Nodes:   nodes,
@@ -120,6 +120,13 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		}
 		d.Settings(mgr)
 		l.Logger = d
+	case settings.LoggingKafka:
+		k, err := CreateLoggerKafka(kafkaConf)
+		if err != nil {
+			return nil, err
+		}
+		k.Settings(mgr)
+		l.Logger = k
 	}
 	// Initialize the logger that will always log to DB
 	if alwaysLog {
@@ -199,6 +206,14 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
+		}
+	case settings.LoggingKafka:
+		k, ok := logTLS.Logger.(*LoggerKafka)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingKafka)
+		}
+		if k.Enabled {
+			k.Send(logType, data, environment, uuid, debug)
 		}
 	}
 	// If logs are status, write via always logger
@@ -283,6 +298,14 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
+		}
+	case settings.LoggingKafka:
+		k, ok := logTLS.Logger.(*LoggerKafka)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingKafka)
+		}
+		if k.Enabled {
+			k.Send(logType, data, environment, uuid, debug)
 		}
 	}
 	// Always log results to DB if always logger is enabled
