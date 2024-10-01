@@ -1,0 +1,20 @@
+meta {
+  name: post -environments--env--enroll--target-
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://osctrl.net/api/v1/environments/{env}/enroll/{target}
+  body: none
+  auth: bearer
+}
+
+params:path {
+  env:
+  target:
+}
+
+auth:bearer {
+  token: {{token}}
+}
