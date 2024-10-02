@@ -12,7 +12,7 @@ import (
 
 const (
 	// DBString to format connection string to database for postgres
-	DBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable"
+	DBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=require"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
 )
