@@ -5,6 +5,7 @@
     "name": "_DB_NAME",
     "username": "_DB_USERNAME",
     "password": "_DB_PASSWORD",
+    "sslmode": "disable",
     "maxIdleConns": 20,
     "maxOpenConns": 100,
     "connMaxLifetime": 30,
