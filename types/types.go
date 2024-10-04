@@ -2,13 +2,14 @@ package types
 
 // JSONConfigurationTLS to hold TLS service configuration values
 type JSONConfigurationTLS struct {
-	Listener    string `json:"listener"`
-	Port        string `json:"port"`
-	MetricsPort string `json:"metricsPort"`
-	Host        string `json:"host"`
-	Auth        string `json:"auth"`
-	Logger      string `json:"logger"`
-	Carver      string `json:"carver"`
+	Listener       string `json:"listener"`
+	Port           string `json:"port"`
+	MetricsPort    string `json:"metricsPort"`
+	MetricsEnabled bool   `json:"metricsEnabled"`
+	Host           string `json:"host"`
+	Auth           string `json:"auth"`
+	Logger         string `json:"logger"`
+	Carver         string `json:"carver"`
 }
 
 // JSONConfigurationAdmin to hold admin service configuration values

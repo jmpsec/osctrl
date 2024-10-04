@@ -226,6 +226,13 @@ func init() {
 			EnvVars:     []string{"METRICS_PORT"},
 			Destination: &tlsConfigValues.MetricsPort,
 		},
+		&cli.BoolFlag{
+			Name:        "metrics-enabled",
+			Value:       false,
+			Usage:       "Enable prometheus metrics",
+			EnvVars:     []string{"METRICS_ENABLED"},
+			Destination: &tlsConfigValues.MetricsEnabled,
+		},
 		&cli.StringFlag{
 			Name:        "host",
 			Aliases:     []string{"H"},
@@ -630,21 +637,23 @@ func osctrlService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
+	if tlsConfig.MetricsEnabled {
+		log.Info().Msg("Metrics are enabled")
+		// Register Prometheus metrics
+		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
 
-	// Register Prometheus metrics
-	handlers.RegisterMetrics(prometheus.DefaultRegisterer)
+		// Creating a new prometheus service
+		prometheusServer := http.NewServeMux()
+		prometheusServer.Handle("/metrics", promhttp.Handler())
 
-	// Creating a new prometheus service
-	prometheusServer := http.NewServeMux()
-	prometheusServer.Handle("/metrics", promhttp.Handler())
-
-	go func() {
-		log.Info().Msgf("Starting prometheus server at port %s", tlsConfig.MetricsPort)
-		err := http.ListenAndServe(":"+tlsConfig.MetricsPort, prometheusServer)
-		if err != nil {
-			log.Fatal().Msgf("Error starting prometheus server: %v", err)
-		}
-	}()
+		go func() {
+			log.Info().Msgf("Starting prometheus server at port %s", tlsConfig.MetricsPort)
+			err := http.ListenAndServe(":"+tlsConfig.MetricsPort, prometheusServer)
+			if err != nil {
+				log.Fatal().Msgf("Error starting prometheus server: %v", err)
+			}
+		}()
+	}
 
 	// Initialize TLS handlers before router
 	handlersTLS = handlers.CreateHandlersTLS(
