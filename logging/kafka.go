@@ -3,12 +3,12 @@ package logging
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 
+	"github.com/rs/zerolog/log"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
@@ -83,12 +83,12 @@ func CreateLoggerKafka(config types.KafkaConfiguration) (*LoggerKafka, error) {
 }
 
 func (l *LoggerKafka) Settings(mgr *settings.Settings) {
-	log.Println("No kafka logging settings")
+	log.Warn().Msg("No kafka logging settings")
 }
 
 func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Printf(
+		log.Info().Msgf(
 			"DebugService: Sending %d bytes to Kafka topic %s for %s - %s",
 			len(data), l.config.Topic, environment, uuid)
 	}
@@ -98,11 +98,14 @@ func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string
 	rec := kgo.Record{Topic: l.config.Topic, Key: key, Value: data}
 	l.producer.Produce(ctx, &rec, func(r *kgo.Record, err error) {
 		if err != nil {
-			log.Printf(
-				"failed to produce message to kafka topic '%s'. details: %s", l.config.Topic, err)
+			log.Info().Msgf(
+				"failed to produce message to kafka topic '%s'. details: %s",
+				l.config.Topic, err)
 		}
 		if debug {
-			log.Printf("message with key '%s' was sent to topic '%s' successfully\n%s", key, l.config.Topic, string(data))
+			log.Info().Msgf(
+				"message with key '%s' was sent to topic '%s' successfully\n%s",
+				key, l.config.Topic, string(data))
 		}
 	})
 }

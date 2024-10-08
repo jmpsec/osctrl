@@ -12,7 +12,7 @@ import (
 
 const (
 	// DBString to format connection string to database for postgres
-	DBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=require"
+	DBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=%s"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
 )
@@ -31,6 +31,7 @@ type JSONConfigurationDB struct {
 	Name            string `json:"name"`
 	Username        string `json:"username"`
 	Password        string `json:"password"`
+	SSLMode         string `json:"sslmode"`
 	MaxIdleConns    int    `json:"maxIdleConns"`
 	MaxOpenConns    int    `json:"maxOpenConns"`
 	ConnMaxLifetime int    `json:"connMaxLifetime"`
@@ -57,7 +58,7 @@ func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
 // PrepareDSN to generate DB connection string
 func PrepareDSN(config JSONConfigurationDB) string {
 	return fmt.Sprintf(
-		DBString, config.Host, config.Port, config.Name, config.Username, config.Password)
+		DBString, config.Host, config.Port, config.Name, config.Username, config.Password, config.SSLMode)
 }
 
 // GetDB to get PostgreSQL DB using GORM

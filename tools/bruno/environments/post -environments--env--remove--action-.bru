@@ -1,0 +1,20 @@
+meta {
+  name: post -environments--env--remove--action-
+  type: http
+  seq: 7
+}
+
+post {
+  url: https://osctrl.net/api/v1/environments/{env}/remove/{action}
+  body: json
+  auth: bearer
+}
+
+params:path {
+  env:
+  action:
+}
+
+auth:bearer {
+  token: {{token}}
+}
