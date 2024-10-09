@@ -52,6 +52,14 @@ require (
 )
 
 require (
+	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/pierrec/lz4/v4 v4.1.19 // indirect
+	github.com/twmb/franz-go v1.16.1 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.7.0 // indirect
+	github.com/twmb/tlscfg v1.2.1 // indirect
+)
+
+require (
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
