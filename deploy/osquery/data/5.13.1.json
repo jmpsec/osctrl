@@ -275,7 +275,7 @@
     "columns":[
       {
         "name":"process",
-        "description":"Process name explicitly allowed",
+        "description":"Process name that is explicitly allowed",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -607,6 +607,15 @@
       },
       {
         "name":"sha1",
+        "description":"A unique hash that identifies this policy.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"sha256",
         "description":"A unique hash that identifies this policy.",
         "type":"text",
         "notes":"",
@@ -1843,7 +1852,7 @@
   {
     "name":"battery",
     "description":"Provides information about the internal battery of a laptop. Note: On Windows, columns with Ah or mAh units assume that the battery is 12V.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/darwindows/battery.table",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/macwin/battery.table",
     "platforms":[
       "darwin",
       "windows"
@@ -2007,7 +2016,7 @@
         "description":"One of the following: \"Good\" describes a well-performing battery, \"Fair\" describes a functional battery with limited capacity, or \"Poor\" describes a battery that's not capable of providing power",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -2019,7 +2028,7 @@
         "description":"One of the following: \"Normal\" indicates the condition of the battery is within normal tolerances, \"Service Needed\" indicates that the battery should be checked out by a licensed Mac repair service, \"Permanent Failure\" indicates the battery needs replacement",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -2031,7 +2040,7 @@
         "description":"The date the battery was manufactured UNIX Epoch",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -4232,7 +4241,7 @@
         "description":"The number of efficiency cores of the CPU. Only available on Apple Silicon",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -4244,7 +4253,7 @@
         "description":"The number of performance cores of the CPU. Only available on Apple Silicon",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5672,7 +5681,7 @@
       },
       {
         "name":"label",
-        "description":"",
+        "description":"The partition name as stored in the partition table",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -5681,7 +5690,7 @@
       },
       {
         "name":"type",
-        "description":"",
+        "description":"Filesystem type if recognized, otherwise, 'meta', 'normal', or 'unallocated'",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -5690,7 +5699,7 @@
       },
       {
         "name":"offset",
-        "description":"",
+        "description":"Byte offset from the start of the volume",
         "type":"bigint",
         "notes":"",
         "hidden":false,
@@ -5726,7 +5735,7 @@
       },
       {
         "name":"flags",
-        "description":"",
+        "description":"Value that describes the partition (TSK_VS_PART_FLAG_ENUM)",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -5798,7 +5807,7 @@
         "description":"Currently authenticated user if available",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5810,7 +5819,7 @@
         "description":"UUID of authenticated user if available",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -5822,7 +5831,7 @@
         "description":"FileVault status with one of following values: on | off | unknown",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -7278,7 +7287,7 @@
         "description":"cgroup namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7290,7 +7299,7 @@
         "description":"IPC namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7302,7 +7311,7 @@
         "description":"Mount namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7314,7 +7323,7 @@
         "description":"Network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7326,7 +7335,7 @@
         "description":"PID namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7338,7 +7347,7 @@
         "description":"User namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -7350,7 +7359,7 @@
         "description":"UTS namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -9600,7 +9609,7 @@
         "description":"The BSD file flags (chflags). Possible values: NODUMP, UF_IMMUTABLE, UF_APPEND, OPAQUE, HIDDEN, ARCHIVED, SF_IMMUTABLE, SF_APPEND",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -10130,7 +10139,7 @@
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -10868,7 +10877,7 @@
         "description":"PCI slot number",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -12685,7 +12694,7 @@
         "description":"The inode number of the network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -16042,7 +16051,7 @@
         "description":"Optional extra release specification",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -16904,7 +16913,7 @@
     "cacheable":false,
     "notes":"",
     "examples":[
-      "select * from package_bom where path = '/var/db/receipts/com.apple.pkg.MobileDevice.bom'"
+      "SELECT * FROM package_receipts;"
     ],
     "columns":[
       {
@@ -17193,7 +17202,7 @@
         "description":"PCI Device class ID in hex format",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17205,7 +17214,7 @@
         "description":"PCI Device  subclass in hex format",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17217,7 +17226,7 @@
         "description":"PCI Device subclass",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17229,7 +17238,7 @@
         "description":"Vendor ID of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17241,7 +17250,7 @@
         "description":"Vendor of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17253,7 +17262,7 @@
         "description":"Model ID of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -17265,7 +17274,7 @@
         "description":"Device description of PCI device subsystem",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18637,7 +18646,7 @@
         "description":"OpenBSM Attribute: Status of the process",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -18649,7 +18658,7 @@
         "description":"Filesystem user ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18661,7 +18670,7 @@
         "description":"Saved user ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18673,7 +18682,7 @@
         "description":"Filesystem group ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18685,7 +18694,7 @@
         "description":"Saved group ID at process start",
         "type":"bigint",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -18697,7 +18706,7 @@
         "description":"Syscall name: fork, vfork, clone, execve, execveat",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -19339,7 +19348,7 @@
         "description":"The inode number of the network namespace",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -19510,7 +19519,7 @@
       },
       {
         "name":"total_size",
-        "description":"Total virtual memory size",
+        "description":"Total virtual memory size (Linux, Windows) or 'footprint' (macOS)",
         "type":"bigint",
         "notes":"",
         "hidden":false,
@@ -19701,7 +19710,7 @@
         "description":"A 64bit pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19713,7 +19722,7 @@
         "description":"The 64bit parent pid that is never reused. Returns -1 if we couldn't gather them from the system.",
         "type":"bigint",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19725,7 +19734,7 @@
         "description":"Indicates the specific processor designed for installation.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19737,7 +19746,7 @@
         "description":"Indicates the specific processor on which an entry may be used.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19749,7 +19758,7 @@
         "description":"Indicates whether the process is running under the Rosetta Translation Environment, yes=1, no=0, error=-1.",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -19761,7 +19770,7 @@
         "description":"The full hierarchical path of the process's control group",
         "type":"text",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -21093,7 +21102,7 @@
         "description":"(Intel) Secure mode: 0 disabled, 1 full security, 2 medium security",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -21105,7 +21114,7 @@
         "description":"(Apple Silicon) Human-readable description: 'Full Security', 'Reduced Security', or 'Permissive Security'",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -21117,7 +21126,7 @@
         "description":"(Apple Silicon) Allow user management of kernel extensions from identified developers (1 if allowed)",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -21129,7 +21138,7 @@
         "description":"(Apple Silicon) Allow remote (MDM) management of kernel extensions and automatic software updates (1 if allowed)",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -21141,7 +21150,7 @@
         "description":"Whether setup mode is enabled",
         "type":"integer",
         "notes":"",
-        "hidden":true,
+        "hidden":false,
         "required":false,
         "index":false,
         "platforms":[
@@ -23099,7 +23108,7 @@
         "description":"Specific attribute of opaque type",
         "type":"text",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -23740,7 +23749,7 @@
   },
   {
     "name":"time_machine_backups",
-    "description":"Backups to drives using TimeMachine.",
+    "description":"Backups to drives using TimeMachine. This table requires Full Disk Access (FDA) permission.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/time_machine_backups.table",
     "platforms":[
       "darwin"
@@ -23774,7 +23783,7 @@
   },
   {
     "name":"time_machine_destinations",
-    "description":"Locations backed up to using Time Machine.",
+    "description":"Locations backed up to using Time Machine. This table requires Full Disk Access (FDA) permission.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/time_machine_destinations.table",
     "platforms":[
       "darwin"
@@ -24540,6 +24549,33 @@
         "index":false
       },
       {
+        "name":"key_group_name",
+        "description":"The group of the private key. Supported for a subset of key_types implemented by OpenSSL",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key_length",
+        "description":"The cryptographic length of the cryptosystem to which the private key belongs, in bits. Definition of cryptographic length is specific to cryptosystem. -1 if unavailable",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"key_security_bits",
+        "description":"The number of security bits of the private key, bits of security as defined in NIST SP800-57. -1 if unavailable",
+        "type":"integer",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"pid_with_namespace",
         "description":"Pids that contain a namespace",
         "type":"integer",
@@ -24723,7 +24759,7 @@
         "description":"IsHidden attribute set in OpenDirectory",
         "type":"integer",
         "notes":"",
-        "hidden":false,
+        "hidden":true,
         "required":false,
         "index":false,
         "platforms":[
@@ -24733,6 +24769,18 @@
       {
         "name":"pid_with_namespace",
         "description":"Pids that contain a namespace",
+        "type":"integer",
+        "notes":"",
+        "hidden":true,
+        "required":false,
+        "index":false,
+        "platforms":[
+          "linux"
+        ]
+      },
+      {
+        "name":"include_remote",
+        "description":"1 to include remote (LDAP/AD) accounts (default 0). Warning: without any uid/username filtering it may list whole LDAP directories",
         "type":"integer",
         "notes":"",
         "hidden":true,
@@ -27500,6 +27548,15 @@
         "index":false
       },
       {
+        "name":"source",
+        "description":"Source file",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
         "name":"baseurl",
         "description":"Repository base URL",
         "type":"text",
@@ -27511,6 +27568,15 @@
       {
         "name":"mirrorlist",
         "description":"Mirrorlist URL",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"metalink",
+        "description":"Metalink URL",
         "type":"text",
         "notes":"",
         "hidden":false,
