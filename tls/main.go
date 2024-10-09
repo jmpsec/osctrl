@@ -220,9 +220,16 @@ func init() {
 			Destination: &tlsConfigValues.Auth,
 		},
 		&cli.StringFlag{
+			Name:        "metrics-listener",
+			Value:       "0.0.0.0",
+			Usage:       "Listener for prometheus metrics",
+			EnvVars:     []string{"METRICS_LISTENER"},
+			Destination: &tlsConfigValues.MetricsListener,
+		},
+		&cli.StringFlag{
 			Name:        "metrics-port",
 			Value:       "9090",
-			Usage:       "Port to expose prometheus metrics",
+			Usage:       "Port for exposing prometheus metrics",
 			EnvVars:     []string{"METRICS_PORT"},
 			Destination: &tlsConfigValues.MetricsPort,
 		},
@@ -647,8 +654,8 @@ func osctrlService() {
 		prometheusServer.Handle("/metrics", promhttp.Handler())
 
 		go func() {
-			log.Info().Msgf("Starting prometheus server at port %s", tlsConfig.MetricsPort)
-			err := http.ListenAndServe(":"+tlsConfig.MetricsPort, prometheusServer)
+			log.Info().Msgf("Starting prometheus server at %s:%s", tlsConfig.MetricsListener, tlsConfig.MetricsPort)
+			err := http.ListenAndServe(tlsConfig.MetricsListener+":"+tlsConfig.MetricsPort, prometheusServer)
 			if err != nil {
 				log.Fatal().Msgf("Error starting prometheus server: %v", err)
 			}
