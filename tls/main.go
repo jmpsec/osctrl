@@ -74,32 +74,33 @@ const (
 
 // Global variables
 var (
-	err               error
-	tlsConfigValues   types.JSONConfigurationTLS
-	tlsConfig         types.JSONConfigurationTLS
-	dbConfigValues    backend.JSONConfigurationDB
-	dbConfig          backend.JSONConfigurationDB
-	redisConfigValues cache.JSONConfigurationRedis
-	redisConfig       cache.JSONConfigurationRedis
-	db                *backend.DBManager
-	redis             *cache.RedisManager
-	settingsmgr       *settings.Settings
-	envs              *environments.Environment
-	envsmap           environments.MapEnvironments
-	settingsmap       settings.MapSettings
-	nodesmgr          *nodes.NodeManager
-	queriesmgr        *queries.Queries
-	filecarves        *carves.Carves
-	tlsMetrics        *metrics.Metrics
-	ingestedMetrics   *metrics.IngestedManager
-	loggerTLS         *logging.LoggerTLS
-	handlersTLS       *handlers.HandlersTLS
-	tagsmgr           *tags.TagManager
-	carvers3          *carves.CarverS3
-	s3LogConfig       types.S3Configuration
-	s3CarverConfig    types.S3Configuration
-	app               *cli.App
-	flags             []cli.Flag
+	err                error
+	tlsConfigValues    types.JSONConfigurationTLS
+	tlsConfig          types.JSONConfigurationTLS
+	dbConfigValues     backend.JSONConfigurationDB
+	dbConfig           backend.JSONConfigurationDB
+	redisConfigValues  cache.JSONConfigurationRedis
+	redisConfig        cache.JSONConfigurationRedis
+	db                 *backend.DBManager
+	redis              *cache.RedisManager
+	settingsmgr        *settings.Settings
+	envs               *environments.Environment
+	envsmap            environments.MapEnvironments
+	settingsmap        settings.MapSettings
+	nodesmgr           *nodes.NodeManager
+	queriesmgr         *queries.Queries
+	filecarves         *carves.Carves
+	tlsMetrics         *metrics.Metrics
+	ingestedMetrics    *metrics.IngestedManager
+	loggerTLS          *logging.LoggerTLS
+	handlersTLS        *handlers.HandlersTLS
+	tagsmgr            *tags.TagManager
+	carvers3           *carves.CarverS3
+	s3LogConfig        types.S3Configuration
+	s3CarverConfig     types.S3Configuration
+	kafkaConfiguration types.KafkaConfiguration
+	app                *cli.App
+	flags              []cli.Flag
 )
 
 // Variables for flags
@@ -386,6 +387,13 @@ func init() {
 			EnvVars:     []string{"DB_PASS"},
 			Destination: &dbConfigValues.Password,
 		},
+		&cli.StringFlag{
+			Name:        "db-sslmode",
+			Value:       "disable",
+			Usage:       "SSL native support to encrypt the connection to the backend",
+			EnvVars:     []string{"DB_SSLMODE"},
+			Destination: &dbConfigValues.SSLMode,
+		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
@@ -531,6 +539,55 @@ func init() {
 			EnvVars:     []string{"CARVER_S3_SECRET"},
 			Destination: &s3CarverConfig.SecretAccessKey,
 		},
+		&cli.StringFlag{
+			Name:        "log-kafka-boostrap-servers",
+			Value:       "",
+			Usage:       "Kafka bootstrap servers to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_BOOTSTRAP_SERVERS"},
+			Destination: &kafkaConfiguration.BoostrapServer,
+		},
+		&cli.StringFlag{
+			Name:        "log-kafka-sslca-location",
+			Value:       "",
+			Usage:       "Kafka sslca location to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_SSLCA_LOCATION"},
+			Destination: &kafkaConfiguration.SSLCALocation,
+		},
+		&cli.DurationFlag{
+			Name:        "log-kafka-connection-timeout",
+			Value:       5 * time.Second,
+			Usage:       "Kafka connection timeout to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_CONNECTION_TIMEOUT"},
+			Destination: &kafkaConfiguration.ConnectionTimeout,
+		},
+		&cli.StringFlag{
+			Name:        "log-kafka-topic",
+			Value:       "",
+			Usage:       "Kafka topic to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_TOPIC"},
+			Destination: &kafkaConfiguration.Topic,
+		},
+		&cli.StringFlag{
+			Name:        "log-kafka-sasl-mechanism",
+			Value:       "",
+			Usage:       "Kafka sasl mechanism' to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_SASL_MECHANISM"},
+			Destination: &kafkaConfiguration.SASL.Mechanism,
+		},
+		&cli.StringFlag{
+			Name:        "log-kafka-sasl-username",
+			Value:       "",
+			Usage:       "Kafka sasl username' to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_SASL_USERNAME"},
+			Destination: &kafkaConfiguration.SASL.Username,
+		},
+		&cli.StringFlag{
+			Name:        "log-kafka-sasl-password",
+			Value:       "",
+			Usage:       "Kafka sasl password' to be used as configuration for logging",
+			EnvVars:     []string{"LOG_KAFKA_SASL_PASSWORD"},
+			Destination: &kafkaConfiguration.SASL.Password,
+		},
 	}
 	// Initialize zerolog logger with our custom parameters
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
@@ -606,7 +663,7 @@ func osctrlService() {
 	// Initialize TLS logger
 	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(
-		tlsConfig.Logger, loggerFile, s3LogConfig, loggerDbSame, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
+		tlsConfig.Logger, loggerFile, s3LogConfig, kafkaConfiguration, loggerDbSame, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
 		log.Fatal().Msgf("Error loading logger - %s: %v", tlsConfig.Logger, err)
 	}

@@ -1,0 +1,30 @@
+meta {
+  name: post -environments--env--enroll--action-
+  type: http
+  seq: 5
+}
+
+post {
+  url: https://osctrl.net/api/v1/environments/{env}/enroll/{action}
+  body: json
+  auth: bearer
+}
+
+params:path {
+  env:
+  action:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "Certificate": "",
+    "MacPkgURL": "",
+    "MsiPkgURL": "",
+    "RpmPkgURL": "",
+    "DebPkgURL": ""
+  }
+}

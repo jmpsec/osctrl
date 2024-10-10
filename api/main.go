@@ -337,6 +337,13 @@ func init() {
 			EnvVars:     []string{"DB_PASS"},
 			Destination: &dbConfigValues.Password,
 		},
+		&cli.StringFlag{
+			Name:        "db-sslmode",
+			Value:       "disable",
+			Usage:       "SSL native support to encrypt the connection to the backend",
+			EnvVars:     []string{"DB_SSLMODE"},
+			Destination: &dbConfigValues.SSLMode,
+		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
