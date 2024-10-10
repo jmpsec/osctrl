@@ -214,6 +214,9 @@ make docker_dev:
 docker_dev_up:
 	docker-compose -f docker-compose-dev.yml up
 
+up-backend:
+	docker-compose -f docker-compose-dev.yml up osctrl-postgres osctrl-redis
+
 # Takes down docker containers
 docker_dev_down:
 	docker-compose -f docker-compose-dev.yml down

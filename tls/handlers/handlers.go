@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/logging"
@@ -198,4 +202,34 @@ func (h *HandlersTLS) Inc(name string) {
 	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceTLS) {
 		h.Metrics.Inc(name)
 	}
+}
+
+func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := NewResponseWriter(w)
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start).Seconds()
+
+		path := r.URL.Path
+		method := r.Method
+		statusCode := strconv.Itoa(rw.statusCode)
+		requestDuration.WithLabelValues(method, path, statusCode).Observe(duration)
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func NewResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK}
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }

@@ -22,6 +22,8 @@ import (
 	"github.com/jmpsec/osctrl/tls/handlers"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/version"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
@@ -217,6 +219,27 @@ func init() {
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &tlsConfigValues.Auth,
+		},
+		&cli.StringFlag{
+			Name:        "metrics-listener",
+			Value:       "0.0.0.0",
+			Usage:       "Listener for prometheus metrics",
+			EnvVars:     []string{"METRICS_LISTENER"},
+			Destination: &tlsConfigValues.MetricsListener,
+		},
+		&cli.StringFlag{
+			Name:        "metrics-port",
+			Value:       "9090",
+			Usage:       "Port for exposing prometheus metrics",
+			EnvVars:     []string{"METRICS_PORT"},
+			Destination: &tlsConfigValues.MetricsPort,
+		},
+		&cli.BoolFlag{
+			Name:        "metrics-enabled",
+			Value:       false,
+			Usage:       "Enable prometheus metrics",
+			EnvVars:     []string{"METRICS_ENABLED"},
+			Destination: &tlsConfigValues.MetricsEnabled,
 		},
 		&cli.StringFlag{
 			Name:        "host",
@@ -633,6 +656,7 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("Error loading metrics - %v", err)
 	}
+
 	// Initialize ingested data metrics
 	log.Info().Msg("Initialize ingested")
 	ingestedMetrics = metrics.CreateIngested(db.Conn)
@@ -677,6 +701,24 @@ func osctrlService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
+	if tlsConfig.MetricsEnabled {
+		log.Info().Msg("Metrics are enabled")
+		// Register Prometheus metrics
+		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
+
+		// Creating a new prometheus service
+		prometheusServer := http.NewServeMux()
+		prometheusServer.Handle("/metrics", promhttp.Handler())
+
+		go func() {
+			log.Info().Msgf("Starting prometheus server at %s:%s", tlsConfig.MetricsListener, tlsConfig.MetricsPort)
+			err := http.ListenAndServe(tlsConfig.MetricsListener+":"+tlsConfig.MetricsPort, prometheusServer)
+			if err != nil {
+				log.Fatal().Msgf("Error starting prometheus server: %v", err)
+			}
+		}()
+	}
+
 	// Initialize TLS handlers before router
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
@@ -706,13 +748,14 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET "+errorPath, handlersTLS.ErrorHandler)
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultEnrollPath, handlersTLS.EnrollHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.ConfigHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultLogPath, handlersTLS.LogHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultQueryReadPath, handlersTLS.QueryReadHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultQueryWritePath, handlersTLS.QueryWriteHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCarverInitPath, handlersTLS.CarveInitHandler)
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCarverBlockPath, handlersTLS.CarveBlockHandler)
+
+	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.ConfigHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultLogPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.LogHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultQueryReadPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.QueryReadHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultQueryWritePath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.QueryWriteHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultCarverInitPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.CarveInitHandler)))
+	muxTLS.Handle("POST /{env}/"+environments.DefaultCarverBlockPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.CarveBlockHandler)))
 	// TLS: Quick enroll/remove script
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler)
 	// TLS: Download enrolling package
