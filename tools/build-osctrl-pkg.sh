@@ -13,8 +13,8 @@ function usage() {
   echo "  -c CERT     Path to the osquery certificate file"
   echo "  -s SECRET   Path to the osquery secret file (default: osquery.secret)"
   echo "  -f FLAGS    Path to the osquery flags file (default: osquery.flags)"
-  echo "  -i PKG      Path to the osquery DEB file. Required."
-  echo "  -o PKG      Path to the osctrl DEB file. Required."
+  echo "  -i PKG      Path to the osquery PKG file. Required."
+  echo "  -o PKG      Path to the osctrl PKG file. Required."
   echo "  -x          Clear the temporary directory after the process"
   echo "  -v          Enable verbose mode with 'set -x'"
   echo

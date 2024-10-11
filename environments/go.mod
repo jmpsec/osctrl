@@ -16,9 +16,9 @@ replace github.com/jmpsec/osctrl/version => ../version
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/jmpsec/osctrl/settings v0.0.0-20240926110606-74392bf45499
-	github.com/jmpsec/osctrl/utils v0.0.0-20240926152724-6f0cf5eace97
-	github.com/jmpsec/osctrl/version v0.0.0-20240926152724-6f0cf5eace97
+	github.com/jmpsec/osctrl/settings v0.0.0-20241010131343-5ad3ce74ecb2
+	github.com/jmpsec/osctrl/utils v0.0.0-20241010131343-5ad3ce74ecb2
+	github.com/jmpsec/osctrl/version v0.0.0-20241010131343-5ad3ce74ecb2
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.12
@@ -32,11 +32,11 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.4.0 // indirect
 	github.com/jmpsec/osctrl/queries v0.4.0 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20240926152724-6f0cf5eace97 // indirect
+	github.com/jmpsec/osctrl/types v0.0.0-20241010131343-5ad3ce74ecb2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
