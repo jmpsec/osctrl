@@ -22,7 +22,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jmpsec/osctrl/nodes v0.4.0 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20241010131343-5ad3ce74ecb2 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20241011134857-3e8213ae1a35 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
@@ -46,7 +46,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/queries v0.4.0 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20241010131343-5ad3ce74ecb2
+	github.com/jmpsec/osctrl/types v0.0.0-20241011134857-3e8213ae1a35
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
