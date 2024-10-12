@@ -16,17 +16,17 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jmpsec/osctrl/nodes v0.4.0 // indirect
 	github.com/jmpsec/osctrl/queries v0.4.0 // indirect
-	github.com/jmpsec/osctrl/types v0.0.0-20241010131343-5ad3ce74ecb2
+	github.com/jmpsec/osctrl/types v0.0.0-20241011134857-3e8213ae1a35
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.43
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.31
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.65.2
-	github.com/jmpsec/osctrl/settings v0.0.0-20241010131343-5ad3ce74ecb2
-	github.com/jmpsec/osctrl/utils v0.0.0-20241010131343-5ad3ce74ecb2
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.32
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.65.3
+	github.com/jmpsec/osctrl/settings v0.0.0-20241011134857-3e8213ae1a35
+	github.com/jmpsec/osctrl/utils v0.0.0-20241011134857-3e8213ae1a35
 	github.com/spf13/viper v1.19.0
 	gorm.io/gorm v1.25.12
 )
