@@ -192,7 +192,7 @@ _T_INT_PORT="9000"
 _T_PUB_PORT="443"
 _T_HOST="$ALL_HOST"
 _T_AUTH="none"
-_T_LOGGING="stdout"
+_T_LOGGING="db"
 _T_CARVER="db"
 
 # Admin Service
@@ -208,8 +208,8 @@ _P_INT_PORT="9002"
 _P_PUB_PORT="8444"
 _P_HOST="$ALL_HOST"
 _P_AUTH="jwt"
-_P_LOGGING="none"
-_P_CARVER="none"
+_P_LOGGING="db"
+_P_CARVER="db"
 
 # Default admin credentials with random password
 _ADMIN_USER="admin"

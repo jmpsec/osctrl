@@ -341,18 +341,26 @@ function db_user_postgresql() {
   local __dbpass=$4
   local __psql=$5
 
-  log "Creating user"
-  local _dbstatementuser="CREATE USER $__dbuser;"
-  sudo su - "$__pguser" -c "$__psql -c \"$_dbstatementuser\""
-
+  log "Creating user if it does not exist"
+  local _dbstatementusercheck="SELECT 1 FROM pg_roles WHERE rolname='$__dbuser';"
+  if sudo su - "$__pguser" -c "$__psql -tXAc \"$_dbstatementusercheck\"" | grep -q 1; then
+    log "User $__dbuser already exists"
+  else
+    local _dbstatementuser="CREATE USER $__dbuser;"
+    sudo su - "$__pguser" -c "$__psql -c \"$_dbstatementuser\""
+  fi
   log "Adding password to user"
   local _dbstatementpass="ALTER USER $__dbuser WITH ENCRYPTED PASSWORD '$__dbpass';"
   sudo su - "$__pguser" -c "$__psql -c \"$_dbstatementpass\""
 
-  log "Creating new database"
-  sudo su - "$__pguser" -c "$__psql -c 'ALTER ROLE $__dbuser WITH CREATEDB'"
-  sudo su - "$__pguser" -c "$__psql -c 'CREATE DATABASE $__pgdb'"
-
+  log "Creating new database if it does not exist"
+  local _dbstatementdbcheck="SELECT 1 FROM pg_database WHERE datname='$__pgdb';"
+  if sudo su - "$__pguser" -c "$__psql -tXAc \"$_dbstatementdbcheck\"" | grep -q 1; then
+    log "Database $__pgdb already exists"
+  else
+    sudo su - "$__pguser" -c "$__psql -c 'ALTER ROLE $__dbuser WITH CREATEDB'"
+    sudo su - "$__pguser" -c "$__psql -c 'CREATE DATABASE $__pgdb'"
+  fi
   log "Make user owner of database"
   local _dbstatementowner="ALTER DATABASE $__pgdb OWNER TO $__dbuser;"
   sudo su - "$__pguser" -c "$__psql -c \"$_dbstatementowner\""
