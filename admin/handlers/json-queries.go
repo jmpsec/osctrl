@@ -20,6 +20,7 @@ var (
 		queries.TargetActive:    true,
 		queries.TargetCompleted: true,
 		queries.TargetSaved:     true,
+		queries.TargetExpired:   true,
 	}
 )
 
@@ -82,6 +83,9 @@ func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery, env string) Qu
 	status := queries.StatusActive
 	if q.Completed {
 		status = queries.StatusComplete
+	}
+	if q.Expired {
+		status = queries.StatusExpired
 	}
 	// Preparing query targets
 	ts, _ := h.Queries.GetTargets(q.Name)

@@ -1,6 +1,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -28,6 +30,8 @@ const (
 	StatusActive string = "ACTIVE"
 	// StatusComplete defines complete status constant
 	StatusComplete string = "COMPLETE"
+	// StatusExpired defines expired status constant
+	StatusExpired string = "EXPIRED"
 )
 
 const (
@@ -41,6 +45,8 @@ const (
 	TargetHiddenActive string = "hidden-active"
 	// TargetCompleted for completed queries
 	TargetCompleted string = "completed"
+	// TargetExpired for expired queries
+	TargetExpired string = "expired"
 	// TargetSaved for saved queries
 	TargetSaved string = "saved"
 	// TargetHiddenCompleted for hidden completed queries
@@ -65,10 +71,12 @@ type DistributedQuery struct {
 	Protected     bool
 	Completed     bool
 	Deleted       bool
+	Expired       bool
 	Type          string
 	Path          string
 	EnvironmentID uint
 	ExtraData     string
+	Expiration    time.Time
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -148,14 +156,15 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	return qs, acelerate, nil
 }
 
-// Gets all queries by target (active/completed/all/all-full/deleted/hidden)
+// Gets all queries by target (active/completed/all/all-full/deleted/hidden/expired)
 func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
 	switch target {
 	case TargetActive:
 		if err := q.DB.Where(
-			"active = ? AND completed = ? AND deleted = ? AND type = ? AND environment_id = ?",
+			"active = ? AND completed = ? AND deleted = ? AND expired = ? AND type = ? AND environment_id = ?",
 			true,
+			false,
 			false,
 			false,
 			qtype,
@@ -165,9 +174,10 @@ func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, er
 		}
 	case TargetCompleted:
 		if err := q.DB.Where(
-			"active = ? AND completed = ? AND deleted = ? AND type = ? AND environment_id = ?",
+			"active = ? AND completed = ? AND deleted = ? AND type = ? AND expired = ? AND environment_id = ?",
 			false,
 			true,
+			false,
 			false,
 			qtype,
 			envid,
@@ -217,6 +227,17 @@ func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, er
 			"deleted = ? AND hidden = ? AND type = ? AND environment_id = ?",
 			false,
 			true,
+			qtype,
+			envid,
+		).Find(&queries).Error; err != nil {
+			return queries, err
+		}
+	case TargetExpired:
+		if err := q.DB.Where(
+			"active = ? AND expired = ? AND deleted = ? AND type = ? AND environment_id = ?",
+			false,
+			true,
+			false,
 			qtype,
 			envid,
 		).Find(&queries).Error; err != nil {
@@ -300,6 +321,50 @@ func (q *Queries) Delete(name string, envid uint) error {
 	}
 	if err := q.DB.Model(&query).Updates(map[string]interface{}{"deleted": true, "active": false}).Error; err != nil {
 		return err
+	}
+	return nil
+}
+
+// Expire to mark query/carve as expired
+func (q *Queries) Expire(name string, envid uint) error {
+	query, err := q.Get(name, envid)
+	if err != nil {
+		return err
+	}
+	if err := q.DB.Model(&query).Updates(map[string]interface{}{"expired": true, "active": false}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// CleanupExpiredQueries to set all expired queries as inactive by environment
+func (q *Queries) CleanupExpiredQueries(envid uint) error {
+	qs, err := q.GetQueries(TargetActive, envid)
+	if err != nil {
+		return err
+	}
+	for _, query := range qs {
+		if query.Expiration.Before(time.Now()) {
+			if err := q.Expire(query.Name, envid); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CleanupExpiredCarves to set all expired carves as inactive by environment
+func (q *Queries) CleanupExpiredCarves(envid uint) error {
+	qs, err := q.GetCarves(TargetActive, envid)
+	if err != nil {
+		return err
+	}
+	for _, query := range qs {
+		if query.Expiration.Before(time.Now()) {
+			if err := q.Expire(query.Name, envid); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

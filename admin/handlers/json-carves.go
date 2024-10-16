@@ -112,6 +112,9 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 		if q.Completed {
 			status = queries.StatusComplete
 		}
+		if q.Expired {
+			status = queries.StatusExpired
+		}
 		progress := make(CarveProgress)
 		progress["expected"] = q.Expected
 		progress["executions"] = q.Executions

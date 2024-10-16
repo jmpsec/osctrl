@@ -4,6 +4,7 @@ function sendCarve(_url, _redir) {
   var _platform_list = $("#target_platform").val();
   var _uuid_list = $("#target_uuids").val();
   var _host_list = $("#target_hosts").val();
+  var _exp_hours = parseInt($("#expiration_hours").val());
   var _repeat = $('#target_repeat').prop('checked') ? 1 : 0;
   var _path = $("#carve").val();
 
@@ -45,7 +46,8 @@ function sendCarve(_url, _redir) {
     uuid_list: _uuid_list,
     host_list: _host_list,
     path: _path,
-    repeat: _repeat
+    exp_hours: _exp_hours,
+    repeat: _repeat,
   };
   sendPostRequest(data, _url, _redir, false);
 }

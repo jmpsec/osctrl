@@ -106,6 +106,7 @@ const (
 	RefreshEnvs        string = "refresh_envs"
 	RefreshSettings    string = "refresh_settings"
 	CleanupSessions    string = "cleanup_sessions"
+	CleanupExpired     string = "cleanup_expired"
 	ServiceMetrics     string = "service_metrics"
 	MetricsHost        string = "metrics_host"
 	MetricsPort        string = "metrics_port"
@@ -612,6 +613,15 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 // CleanupSessions gets the interval in seconds to cleanup expired sessions by service
 func (conf *Settings) CleanupSessions() int64 {
 	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions, NoEnvironmentID)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// CleanupExpired gets the interval in seconds to cleanup expired queries and carves
+func (conf *Settings) CleanupExpired() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, CleanupExpired, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}

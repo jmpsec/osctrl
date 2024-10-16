@@ -24,12 +24,16 @@
           {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
-                {{ if .Completed }}
-                  <i class="fas fa-flag-checkered"></i> [ <b>COMPLETED</b> ] - Results for {{ .Name }}
+                {{ if .Expired }}
+                  <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }}
                 {{ else }}
-                  <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
+                  {{ if .Completed }}
+                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }}
+                  {{ else }}
+                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b>
+                  {{ end }}
+                  - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 {{ end }}
-                 - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
@@ -159,7 +163,7 @@
               targets: 2,
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return '<pre>' + JSON.stringify(JSON.parse(data),null,2) + '</pre>';
+                  return '<pre>' + JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) + '</pre>';
                 } else {
                   return data;
                 }

@@ -679,18 +679,6 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Info().Msg("error getting name")
 		return
 	}
-	// Custom functions to handle formatting
-	funcMap := template.FuncMap{
-		"queryResultLink": h.queryResultLink,
-	}
-	// Prepare template
-	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "queries-logs.html").filepaths
-	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
-	if err != nil {
-		h.Inc(metricAdminErr)
-		log.Err(err).Msg("error getting table template")
-		return
-	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
@@ -723,6 +711,19 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		EnvUUID:   env.UUID,
 		Query:     true,
 		QueryName: query.Name,
+	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"queryResultLink": h.queryResultLink,
+		"inFutureTime":    utils.InFutureTime,
+	}
+	// Prepare template
+	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "queries-logs.html").filepaths
+	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
+	if err != nil {
+		h.Inc(metricAdminErr)
+		log.Err(err).Msg("error getting table template")
+		return
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
@@ -780,9 +781,13 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Info().Msg("error getting name")
 		return
 	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"inFutureTime":    utils.InFutureTime,
+	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "carves-details.html").filepaths
-	t, err := template.ParseFiles(tempateFiles...)
+	t, err := template.New("carves-details.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
 		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
