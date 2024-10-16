@@ -122,7 +122,7 @@
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return queryResultLink(data.link, data.name, "/query/{{ .EnvUUID }}/logs/" + data.name);
+                  return queryResultLink(data.link, data.query, "/query/{{ .EnvUUID }}/logs/" + data.name);
                 } else {
                   return data;
                 }
