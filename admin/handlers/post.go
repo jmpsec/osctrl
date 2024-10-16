@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"fmt"
 	"net/http"
@@ -139,7 +140,11 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// FIXME check if query is carve and user has permissions to carve
 	// Prepare and create new query
-	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, h.queryExpiration(q.ExpHours), env.ID)
+	expTime := h.queryExpiration(q.ExpHours)
+	if q.ExpHours == 0 {
+		expTime = time.Time{}
+	}
+	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, expTime, env.ID)
 	if err := h.Queries.Create(newQuery); err != nil {
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)

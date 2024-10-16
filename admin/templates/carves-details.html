@@ -29,9 +29,9 @@
                   <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }}
                 {{ else }}
                   {{ if .Completed }}
-                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - Carved files for {{ .Name }}
+                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }}
                   {{ else }}
-                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - Carved files for {{ .Name }} - {{ inFutureTime .Expiration }}
+                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b>
                   {{ end }}
                 {{ end }}
                 <div class="card-header-actions">
