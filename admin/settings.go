@@ -60,6 +60,12 @@ func loadingSettings(mgr *settings.Settings) error {
 			return fmt.Errorf("Failed to add %s to configuration: %v", settings.CleanupSessions, err)
 		}
 	}
+	// Check if service settings for queries/carves cleanup is ready
+	if !mgr.IsValue(settings.ServiceAdmin, settings.CleanupExpired, settings.NoEnvironmentID) {
+		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.CleanupExpired, int64(defaultExpiration), settings.NoEnvironmentID); err != nil {
+			return fmt.Errorf("Failed to add %s to configuration: %v", settings.CleanupExpired, err)
+		}
+	}
 	// Check if service settings for node inactive hours is ready
 	if !mgr.IsValue(settings.ServiceAdmin, settings.InactiveHours, settings.NoEnvironmentID) {
 		if err := mgr.NewIntegerValue(settings.ServiceAdmin, settings.InactiveHours, int64(defaultInactive), settings.NoEnvironmentID); err != nil {

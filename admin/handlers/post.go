@@ -139,7 +139,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// FIXME check if query is carve and user has permissions to carve
 	// Prepare and create new query
-	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, env.ID)
+	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, h.queryExpiration(q.ExpHours), env.ID)
 	if err := h.Queries.Create(newQuery); err != nil {
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
@@ -301,6 +301,8 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		Active:        true,
 		Completed:     false,
 		Deleted:       false,
+		Expired:       false,
+		Expiration:    h.queryExpiration(c.ExpHours),
 		Type:          queries.CarveQueryType,
 		Path:          c.Path,
 		EnvironmentID: env.ID,

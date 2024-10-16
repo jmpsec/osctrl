@@ -21,6 +21,7 @@ type DistributedQueryRequest struct {
 	Save         bool     `json:"save"`
 	Name         string   `json:"name"`
 	Query        string   `json:"query"`
+	ExpHours     int      `json:"exp_hours"`
 }
 
 // DistributedCarveRequest to receive carve requests
@@ -31,6 +32,7 @@ type DistributedCarveRequest struct {
 	UUIDs        []string `json:"uuid_list"`
 	Hosts        []string `json:"host_list"`
 	Path         string   `json:"path"`
+	ExpHours     int      `json:"exp_hours"`
 }
 
 // DistributedQueryActionRequest to receive query requests

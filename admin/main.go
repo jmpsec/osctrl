@@ -97,6 +97,8 @@ const (
 	defCarvedFolder string = "./carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
+	// Default interval in seconds to expire queries/carves
+	defaultExpiration int = 900
 	// Default hours to classify nodes as inactive
 	defaultInactive int = -72
 )
@@ -744,6 +746,32 @@ func osctrlAdminService() {
 				log.Debug().Msg("DebugService: Cleaning up sessions")
 			}
 			sessionsmgr.Cleanup()
+			time.Sleep(time.Duration(_t) * time.Second)
+		}
+	}()
+
+	// Goroutine to cleanup expired queries and carves
+	go func() {
+		_t := settingsmgr.CleanupExpired()
+		if _t == 0 {
+			_t = int64(defaultExpiration)
+		}
+		for {
+			if settingsmgr.DebugService(settings.ServiceAdmin) {
+				log.Debug().Msg("DebugService: Cleaning up expired queries/carves")
+			}
+			allEnvs, err := envs.All()
+			if err != nil {
+				log.Err(err).Msg("Error getting all environments")
+			}
+			for _, e := range allEnvs {
+				if err:= queriesmgr.CleanupExpiredQueries(e.ID); err != nil {
+					log.Err(err).Msg("Error cleaning up expired queries")
+				}
+				if err:= queriesmgr.CleanupExpiredCarves(e.ID); err != nil {
+					log.Err(err).Msg("Error cleaning up expired carves")
+				}
+			}
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()

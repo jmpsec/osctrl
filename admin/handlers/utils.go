@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/queries"
@@ -79,7 +80,7 @@ func generateCarveQuery(file string, glob bool) string {
 }
 
 // Helper to determine if a query may be a carve
-func newQueryReady(user, query string, envid uint) queries.DistributedQuery {
+func newQueryReady(user, query string, exp time.Time, envid uint) queries.DistributedQuery {
 	if strings.Contains(query, "carve(") || strings.Contains(query, "carve=1") {
 		return queries.DistributedQuery{
 			Query:         query,
@@ -90,6 +91,8 @@ func newQueryReady(user, query string, envid uint) queries.DistributedQuery {
 			Active:        true,
 			Completed:     false,
 			Deleted:       false,
+			Expired:       false,
+			Expiration:    exp,
 			Type:          queries.CarveQueryType,
 			Path:          query,
 			EnvironmentID: envid,
@@ -104,6 +107,8 @@ func newQueryReady(user, query string, envid uint) queries.DistributedQuery {
 		Active:        true,
 		Completed:     false,
 		Deleted:       false,
+		Expired:       false,
+		Expiration:    exp,
 		Type:          queries.StandardQueryType,
 		EnvironmentID: envid,
 	}
@@ -202,4 +207,9 @@ func (h *HandlersAdmin) allowedEnvironments(username string, allEnvs []environme
 func (h *HandlersAdmin) generateFlags(flagsRaw, secretFile, certFile string) string {
 	replaced := strings.Replace(flagsRaw, "__SECRET_FILE__", secretFile, 1)
 	return strings.Replace(replaced, "__CERT_FILE__", certFile, 1)
+}
+
+// Helper to generate the time.Time for the expiration of a query or carve based on hours
+func (h *HandlersAdmin) queryExpiration(exp int) time.Time {
+	return time.Now().Add(time.Duration(exp) * time.Hour)
 }

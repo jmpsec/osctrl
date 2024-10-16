@@ -155,28 +155,24 @@
 
                     <div class="card mt-2">
                       <div class="card-header">
-                        <i class="nav-icon far fa-save"></i> Save query
-                        <div class="card-header-actions">
-                          <div class="card-header-action">
-                            <div class="row">
-                              <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="bottom" title="Save query">
-                                <input id="save_query_check" class="switch-input" type="checkbox" onclick="toggleSaveQuery();">
-                                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
+                        <i class="nav-icon fas fa-stopwatch"></i> Query expiration
                       </div>
-                      <div id="collapseName" class="card-body collapse">
+                      <div class="card-body">
                         <div class="row">
                           <div class="col-md-12">
                             <form>
                               <div class="form-group row">
                                 <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
                                   <fieldset class="form-group">
-                                    <label for="save_query_name">Name for the query to be saved:</label>
+                                    <label for="expiration_hours">Query expiration in hours:</label>
                                     <div class="input-group">
-                                      <input id="save_query_name" class="form-control" type="text" readonly>
+                                      <select id="expiration_hours" class="form-control">
+                                        <option value="6">6 hours</option>
+                                        <option value="12">12 hours</option>
+                                        <option value="24">24 hours</option>
+                                        <option value="48">48 hours</option>
+                                        <option value="72">72 hours</option>
+                                      </select>
                                     </div>
                                   </fieldset>
                                 </div>
@@ -185,7 +181,6 @@
                           </div>
                         </div>
                       </div>
-
                     </div>
 
                     <div class="card mt-2">
@@ -228,7 +223,40 @@
                           </div>
                         </div>
                       </div>
+                    </div>
 
+                    <div class="card mt-2">
+                      <div class="card-header">
+                        <i class="nav-icon far fa-save"></i> Save query
+                        <div class="card-header-actions">
+                          <div class="card-header-action">
+                            <div class="row">
+                              <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="bottom" title="Save query">
+                                <input id="save_query_check" class="switch-input" type="checkbox" onclick="toggleSaveQuery();">
+                                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="collapseName" class="card-body collapse">
+                        <div class="row">
+                          <div class="col-md-12">
+                            <form>
+                              <div class="form-group row">
+                                <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
+                                  <fieldset class="form-group">
+                                    <label for="save_query_name">Name for the query to be saved:</label>
+                                    <div class="input-group">
+                                      <input id="save_query_name" class="form-control" type="text" readonly>
+                                    </div>
+                                  </fieldset>
+                                </div>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                   </div>

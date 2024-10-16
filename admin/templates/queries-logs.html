@@ -24,12 +24,16 @@
           {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
-                {{ if .Completed }}
-                  <i class="fas fa-flag-checkered"></i> [ <b>COMPLETED</b> ] - Results for {{ .Name }}
+                {{ if .Expired }}
+                  <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }}
                 {{ else }}
-                  <i class="fas fa-hourglass-half"></i> [ <b>ACTIVE</b> ] - Results for {{ .Name }}
+                  {{ if .Completed }}
+                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - Results for {{ .Name }}
+                  {{ else }}
+                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - Results for {{ .Name }} - {{ inFutureTime .Expiration }}
+                  {{ end }}
+                  - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 {{ end }}
-                 - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
                     data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
