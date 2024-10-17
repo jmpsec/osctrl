@@ -19,31 +19,35 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 	if debug {
 		log.Debug().Msgf("parsing logs for metadata in %s:%s", logType, environment)
 	}
-	// Iterate through received messages to extract metadata
-	var uuid, hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
-	for _, l := range logs {
-		uuid = metadataVerification(uuid, l.HostIdentifier)
-		hostname = metadataVerification(hostname, l.Decorations.Hostname)
-		localname = metadataVerification(localname, l.Decorations.LocalHostname)
-		username = metadataVerification(username, l.Decorations.Username)
-		osqueryuser = metadataVerification(osqueryuser, l.Decorations.OsqueryUser)
-		confighash = metadataVerification(confighash, l.Decorations.ConfigHash)
-		daemonhash = metadataVerification(daemonhash, l.Decorations.DaemonHash)
-		osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
-	}
-	if debug {
-		log.Debug().Msgf("metadata and dispatch for %s", uuid)
-	}
-	metadata := nodes.NodeMetadata{
-		IPAddress:      metadataNotEmpty(ipaddress),
-		Username:       metadataNotEmpty(username),
-		OsqueryUser:    metadataNotEmpty(osqueryuser),
-		Hostname:       metadataNotEmpty(hostname),
-		Localname:      metadataNotEmpty(localname),
-		ConfigHash:     metadataNotEmpty(confighash),
-		DaemonHash:     metadataNotEmpty(daemonhash),
-		OsqueryVersion: metadataNotEmpty(osqueryversion),
-		BytesReceived:  dataLen,
+	// Iterate through received messages to extract metadata, if the logs are results
+	var metadata nodes.NodeMetadata
+	var uuid string
+	if logType == types.ResultLog {
+		var hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
+		for _, l := range logs {
+			uuid = metadataVerification(uuid, l.HostIdentifier)
+			hostname = metadataVerification(hostname, l.Decorations.Hostname)
+			localname = metadataVerification(localname, l.Decorations.LocalHostname)
+			username = metadataVerification(username, l.Decorations.Username)
+			osqueryuser = metadataVerification(osqueryuser, l.Decorations.OsqueryUser)
+			confighash = metadataVerification(confighash, l.Decorations.ConfigHash)
+			daemonhash = metadataVerification(daemonhash, l.Decorations.DaemonHash)
+			osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
+		}
+		if debug {
+			log.Debug().Msgf("metadata and dispatch for %s", uuid)
+		}
+		metadata = nodes.NodeMetadata{
+			IPAddress:      metadataNotEmpty(ipaddress),
+			Username:       metadataNotEmpty(username),
+			OsqueryUser:    metadataNotEmpty(osqueryuser),
+			Hostname:       metadataNotEmpty(hostname),
+			Localname:      metadataNotEmpty(localname),
+			ConfigHash:     metadataNotEmpty(confighash),
+			DaemonHash:     metadataNotEmpty(daemonhash),
+			OsqueryVersion: metadataNotEmpty(osqueryversion),
+			BytesReceived:  dataLen,
+		}
 	}
 	// Dispatch logs and update metadata
 	l.DispatchLogs(data, uuid, logType, environment, metadata, debug)
