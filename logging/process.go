@@ -20,34 +20,33 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 		log.Debug().Msgf("parsing logs for metadata in %s:%s", logType, environment)
 	}
 	// Iterate through received messages to extract metadata
-	var uuids, hosts, names, users, osqueryusers, hashes, dhashes, osqueryversions []string
+	var uuid, hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
 	for _, l := range logs {
-		uuids = append(uuids, l.HostIdentifier)
-		hosts = append(hosts, l.Decorations.Hostname)
-		names = append(names, l.Decorations.LocalHostname)
-		users = append(users, l.Decorations.Username)
-		osqueryusers = append(osqueryusers, l.Decorations.OsqueryUser)
-		hashes = append(hashes, l.Decorations.ConfigHash)
-		dhashes = append(dhashes, l.Decorations.DaemonHash)
-		osqueryversions = append(osqueryversions, l.Version)
+		uuid = metadataVerification(uuid, l.HostIdentifier)
+		hostname = metadataVerification(hostname, l.Decorations.Hostname)
+		localname = metadataVerification(localname, l.Decorations.LocalHostname)
+		username = metadataVerification(username, l.Decorations.Username)
+		osqueryuser = metadataVerification(osqueryuser, l.Decorations.OsqueryUser)
+		confighash = metadataVerification(confighash, l.Decorations.ConfigHash)
+		daemonhash = metadataVerification(daemonhash, l.Decorations.DaemonHash)
+		osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
 	}
 	if debug {
-		log.Debug().Msgf("metadata and dispatch for %s", uniq(uuids)[0])
+		log.Debug().Msgf("metadata and dispatch for %s", uuid)
 	}
-	// FIXME it only uses the first element from the []string that uniq returns
 	metadata := nodes.NodeMetadata{
-		IPAddress:      ipaddress,
-		Username:       uniq(users)[0],
-		OsqueryUser:    uniq(osqueryusers)[0],
-		Hostname:       uniq(hosts)[0],
-		Localname:      uniq(names)[0],
-		ConfigHash:     uniq(hashes)[0],
-		DaemonHash:     uniq(dhashes)[0],
-		OsqueryVersion: uniq(osqueryversions)[0],
+		IPAddress:      metadataNotEmpty(ipaddress),
+		Username:       metadataNotEmpty(username),
+		OsqueryUser:    metadataNotEmpty(osqueryuser),
+		Hostname:       metadataNotEmpty(hostname),
+		Localname:      metadataNotEmpty(localname),
+		ConfigHash:     metadataNotEmpty(confighash),
+		DaemonHash:     metadataNotEmpty(daemonhash),
+		OsqueryVersion: metadataNotEmpty(osqueryversion),
 		BytesReceived:  dataLen,
 	}
 	// Dispatch logs and update metadata
-	l.DispatchLogs(data, uniq(uuids)[0], logType, environment, metadata, debug)
+	l.DispatchLogs(data, uuid, logType, environment, metadata, debug)
 }
 
 // ProcessLogQueryResult - Helper to process on-demand query result logs

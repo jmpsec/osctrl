@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"fmt"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -36,9 +35,6 @@ func (n *NodeManager) UpdateIPAddress(ipaddress string, node OsqueryNode) error 
 	} else {
 		if err := n.IncHistoryIPAddress(node.UUID, ipaddress); err != nil {
 			return fmt.Errorf("incNodeHistoryIPAddress %v", err)
-		}
-		if err := n.DB.Model(&node).Update("updated_at", time.Now()).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
 		}
 	}
 	return nil
