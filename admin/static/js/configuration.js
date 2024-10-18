@@ -37,6 +37,29 @@ function saveATC() {
   saveB64Blob('atc_conf', 'atc', 'atc_header');
 }
 
+function addQuerySchedule() {
+  $("#addquery_action").click(function () {
+    $("#addQueryModal").modal("hide");
+    confirmAddQuerySchedule();
+  });
+  $("#query_name").val("");
+  $("#query_sql").val("");
+  $("#query_interval").val("");
+  $("#addQueryModal").modal();
+}
+
+function confirmAddQuerySchedule() {
+  var _editor = $("#schedule_conf").data("CodeMirrorInstance");
+  var _schedule = _editor.getValue();
+  var obj = JSON.parse(_schedule);
+  var _query = {
+    "query": $("#query_sql").val(),
+    "interval": parseInt($("#query_interval").val()),
+  };
+  obj[$("#query_name").val()] = _query;
+  _editor.setValue(JSON.stringify(obj, null, "\t"));
+}
+
 function saveIntervals() {
   var _csrftoken = $("#csrftoken").val();
   var _config = $("#conf_range").val();

@@ -116,6 +116,10 @@
                       data-tooltip="true" data-placement="bottom" title="Documentation" onclick="javascript:window.open('https://osquery.readthedocs.io/en/stable/deployment/configuration/#schedule', '_blank');">
                       <i class="far fa-question-circle"></i>
                     </button>
+                    <button id="schedule_add_query" class="btn btn-sm btn-dark"
+                      data-tooltip="true" data-placement="bottom" title="Add Query To Schedule" onclick="addQuerySchedule();">
+                      <i class="fas fa-plus-square"></i>
+                    </button>
                     <button id="schedule_json_save" class="btn btn-sm btn-dark"
                       data-tooltip="true" data-placement="bottom" title="Save Changes" onclick="saveSchedule();">
                       <i class="far fa-save"></i>
@@ -406,8 +410,9 @@
               $(this).addClass("btn-danger");
             });
             _valid = false
-            // Disable button
+            // Disable buttons
             $('#schedule_json_save').prop("disabled", true);
+            $('#schedule_add_query').prop("disabled", true);
             // Position cursor in where the problem is at
           }
           if (_valid) {
@@ -418,6 +423,7 @@
               $(this).addClass("btn-success");
             });
             $('#schedule_json_save').prop("disabled", false);
+            $('#schedule_add_query').prop("disabled", false);
           }
         });
         editorSchedule.setSize("100%", "100%");
