@@ -33,10 +33,13 @@ func sameConfigDB(loggerOne, loggerTwo backend.JSONConfigurationDB) bool {
 // Helper to be used preparing metadata for each decorator
 func metadataVerification(dst, src string) string {
 	if src != dst {
+		log.Warn().Msgf("mismatched metadata: %s != %s", dst, src)
 		if dst == "" {
 			return src
 		}
-		log.Warn().Msgf("mismatched metadata: %s != %s", dst, src)
+		if src == "" {
+			return dst
+		}
 	}
 	return src
 }
