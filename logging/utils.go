@@ -37,7 +37,6 @@ func metadataVerification(dst, src string) string {
 			return src
 		}
 		log.Warn().Msgf("mismatched metadata: %s != %s", dst, src)
-		return Mismatched
 	}
 	return src
 }
