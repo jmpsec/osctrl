@@ -338,27 +338,53 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 	if err != nil {
 		return fmt.Errorf("getNodeByUUID %v", err)
 	}
+	// Prepare metadata updates
+	updates := map[string]interface{}{
+		"bytes_received": node.BytesReceived + metadata.BytesReceived,
+	}
 	// Record username
 	if err := n.RecordUsername(metadata.Username, node); err != nil {
 		return fmt.Errorf("RecordUsername %v", err)
+	}
+	if metadata.Username != node.Username && metadata.Username != "" {
+		updates["username"] =metadata.Username
 	}
 	// Record hostname
 	if err := n.RecordHostname(metadata.Hostname, node); err != nil {
 		return fmt.Errorf("RecordHostname %v", err)
 	}
+	if metadata.Hostname != node.Hostname && metadata.Hostname != "" {
+		updates["hostname"] = metadata.Hostname
+	}
 	// Record localname
 	if err := n.RecordLocalname(metadata.Localname, node); err != nil {
 		return fmt.Errorf("RecordLocalname %v", err)
+	}
+	if metadata.Localname != node.Localname && metadata.Localname != "" {
+		updates["localname"] = metadata.Localname
 	}
 	// Record IP address
 	if err := n.RecordIPAddress(metadata.IPAddress, node); err != nil {
 		return fmt.Errorf("RecordIPAddress %v", err)
 	}
+	if metadata.IPAddress != node.IPAddress && metadata.IPAddress != "" {
+		updates["ip_address"] = metadata.IPAddress
+	}
 	// Configuration and daemon hash and osquery version update, if different
-	if (metadata.ConfigHash != node.ConfigHash) || (metadata.DaemonHash != node.DaemonHash) || (metadata.OsqueryVersion != node.OsqueryVersion) || (metadata.OsqueryUser != node.OsqueryUser) {
-		if err := n.MetadataRefresh(node, metadata); err != nil {
-			return fmt.Errorf("MetadataRefresh %v", err)
-		}
+	if metadata.ConfigHash != node.ConfigHash && metadata.ConfigHash != "" {
+		updates["config_hash"] = metadata.ConfigHash
+	}
+	if metadata.DaemonHash != node.DaemonHash && metadata.DaemonHash != "" {
+		updates["daemon_hash"] = metadata.DaemonHash
+	}
+	if metadata.OsqueryVersion != node.OsqueryVersion && metadata.OsqueryVersion != "" {
+		updates["osquery_version"] = metadata.OsqueryVersion
+	}
+	if metadata.OsqueryUser != node.OsqueryUser && metadata.OsqueryUser != "" {
+		updates["osquery_user"] = metadata.OsqueryUser
+	}
+	if err := n.MetadataRefresh(node, updates); err != nil {
+		return fmt.Errorf("MetadataRefresh %v", err)
 	}
 	return nil
 }
@@ -575,17 +601,7 @@ func (n *NodeManager) ConfigRefresh(node OsqueryNode, lastIp string, incBytes in
 }
 
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
-func (n *NodeManager) MetadataRefresh(node OsqueryNode, metadata NodeMetadata) error {
-	updates := map[string]interface{}{
-		"config_hash":     metadata.ConfigHash,
-		"daemon_hash":     metadata.DaemonHash,
-		"osquery_version": metadata.OsqueryVersion,
-		"osquery_user":    metadata.OsqueryUser,
-		"bytes_received":  node.BytesReceived + metadata.BytesReceived,
-	}
-	if metadata.IPAddress != "" {
-		updates["ip_address"] = metadata.IPAddress
-	}
+func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
 	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}
