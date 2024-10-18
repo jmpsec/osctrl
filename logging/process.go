@@ -29,11 +29,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 		osqueryuser = metadataVerification(osqueryuser, l.Decorations.OsqueryUser)
 		confighash = metadataVerification(confighash, l.Decorations.ConfigHash)
 		daemonhash = metadataVerification(daemonhash, l.Decorations.DaemonHash)
-		if l.Decorations.OsqueryVersion != "" && l.Version != l.Decorations.OsqueryVersion {
-			log.Warn().Msgf("mismatched osquery version: %s != %s", l.Version, l.Decorations.OsqueryVersion)
-		} else {
-			osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
-		}
+		osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
 	}
 	if debug {
 		log.Debug().Msgf("metadata and dispatch for %s", uuid)

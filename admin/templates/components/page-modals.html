@@ -182,4 +182,45 @@
         </div>
         <!-- /.modal -->
 
+        <div class="modal fade" id="addQueryModal" tabindex="-1" role="dialog" aria-labelledby="addQueryModal" aria-hidden="true">
+          <div class="modal-dialog modal-dark modal-lg" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">Add new query to schedule</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div class="form-group row">
+                  <label class="col-md-3 col-form-label" for="query_name">Qury name: </label>
+                  <div class="col-md-9">
+                    <input class="form-control" name="query_name" id="query_name" type="text" autocomplete="off"
+                      autofocus>
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-3 col-form-label" for="query_sql">SQL Query: </label>
+                  <div class="col-md-9">
+                    <input class="form-control" name="query_sql" id="query_sql" type="text" autocomplete="off">
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-3 col-form-label" for="query_interval">Interval in seconds: </label>
+                  <div class="col-md-9">
+                    <input class="form-control" name="query_interval" id="query_interval" type="text" autocomplete="off">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button id="addquery_action" type="button" class="btn btn-dark" data-dismiss="modal">Add</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+              </div>
+            </div>
+            <!-- /.modal-content -->
+          </div>
+          <!-- /.modal-dialog -->
+        </div>
+        <!-- /.modal -->
+
 {{ end }}
