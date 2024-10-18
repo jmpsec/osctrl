@@ -94,11 +94,6 @@ func (n *NodeManager) RecordLocalname(localname string, node OsqueryNode) error 
 			return fmt.Errorf("newNodeHistoryLocalname %v", err)
 		}
 	}
-	if localname != node.Localname {
-		if err := n.DB.Model(&node).Update("localname", localname).Error; err != nil {
-			return fmt.Errorf("Update node %v", err)
-		}
-	}
 	return nil
 }
 
@@ -121,11 +116,6 @@ func (n *NodeManager) RecordHostname(hostname string, node OsqueryNode) error {
 			return fmt.Errorf("newNodeHistoryHostname %v", err)
 		}
 	}
-	if hostname != node.Hostname {
-		if err := n.DB.Model(&node).Update("hostname", hostname).Error; err != nil {
-			return fmt.Errorf("Update node %v", err)
-		}
-	}
 	return nil
 }
 
@@ -146,11 +136,6 @@ func (n *NodeManager) RecordUsername(username string, node OsqueryNode) error {
 	} else {
 		if err := n.IncHistoryUsername(node.UUID, username); err != nil {
 			return fmt.Errorf("newNodeHistoryUsername %v", err)
-		}
-	}
-	if username != node.Username {
-		if err := n.DB.Model(&node).Update("username", username).Error; err != nil {
-			return fmt.Errorf("Update node %v", err)
 		}
 	}
 	return nil
