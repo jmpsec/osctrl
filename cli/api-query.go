@@ -38,21 +38,30 @@ func (api *OsctrlAPI) GetQuery(env, name string) (queries.DistributedQuery, erro
 }
 
 // DeleteQuery to delete query from osctrl
+// TODO: Implement this function
 func (api *OsctrlAPI) DeleteQuery(env, identifier string) error {
 	return nil
 }
 
+// ExpireQuery to expire query from osctrl
+// TODO: Implement this function
+func (api *OsctrlAPI) ExpireQuery(env, identifier string) error {
+	return nil
+}
+
 // CompleteQuery to complete a query from osctrl
+// TODO: Implement this function
 func (api *OsctrlAPI) CompleteQuery(env, identifier string) error {
 	return nil
 }
 
 // RunQuery to initiate a query in osctrl
-func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool) (types.ApiQueriesResponse, error) {
+func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool, exp int) (types.ApiQueriesResponse, error) {
 	q := types.ApiDistributedQueryRequest{
-		UUIDs:  []string{uuid},
-		Query:  query,
-		Hidden: hidden,
+		UUIDs:    []string{uuid},
+		Query:    query,
+		Hidden:   hidden,
+		ExpHours: exp,
 	}
 	var r types.ApiQueriesResponse
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)

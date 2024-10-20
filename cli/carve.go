@@ -169,6 +169,30 @@ func deleteCarve(c *cli.Context) error {
 	return nil
 }
 
+func expireCarve(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("❌ carve name is required")
+		os.Exit(1)
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	if dbFlag {
+		e, err := envs.Get(env)
+		if err != nil {
+			return err
+		}
+		return queriesmgr.Expire(name, e.ID)
+	} else if apiFlag {
+		return osctrlAPI.ExpireQuery(env, name)
+	}
+	return nil
+}
+
 func runCarve(c *cli.Context) error {
 	// Get values from flags
 	path := c.String("path")
@@ -186,6 +210,7 @@ func runCarve(c *cli.Context) error {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
+	expHours := c.Int("expiration")
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -199,6 +224,8 @@ func runCarve(c *cli.Context) error {
 			Expected:      0,
 			Executions:    0,
 			Active:        true,
+			Expired:       false,
+			Expiration:    queries.QueryExpiration(expHours),
 			Completed:     false,
 			Deleted:       false,
 			Type:          queries.CarveQueryType,
@@ -218,7 +245,7 @@ func runCarve(c *cli.Context) error {
 		}
 		return nil
 	} else if apiFlag {
-		c, err := osctrlAPI.RunCarve(env, uuid, path)
+		c, err := osctrlAPI.RunCarve(env, uuid, path, expHours)
 		if err != nil {
 			return err
 		}

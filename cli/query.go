@@ -187,6 +187,37 @@ func deleteQuery(c *cli.Context) error {
 	return nil
 }
 
+func expireQuery(c *cli.Context) error {
+	// Get values from flags
+	name := c.String("name")
+	if name == "" {
+		fmt.Println("❌ query name is required")
+		os.Exit(1)
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	if dbFlag {
+		e, err := envs.Get(env)
+		if err != nil {
+			return err
+		}
+		if err := queriesmgr.Expire(name, e.ID); err != nil {
+			return fmt.Errorf("error %s", err)
+		}
+	} else if apiFlag {
+		if err := osctrlAPI.DeleteQuery(env, name); err != nil {
+			return fmt.Errorf("error %s", err)
+		}
+	}
+	if !silentFlag {
+		fmt.Printf("✅ query %s expired successfully\n", name)
+	}
+	return nil
+}
+
 func runQuery(c *cli.Context) error {
 	// Get values from flags
 	query := c.String("query")
@@ -204,6 +235,7 @@ func runQuery(c *cli.Context) error {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
+	expHours := c.Int("expiration")
 	hidden := c.Bool("hidden")
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -218,6 +250,8 @@ func runQuery(c *cli.Context) error {
 			Expected:      0,
 			Executions:    0,
 			Active:        true,
+			Expired:       false,
+			Expiration:    queries.QueryExpiration(expHours),
 			Completed:     false,
 			Deleted:       false,
 			Hidden:        hidden,
@@ -240,7 +274,7 @@ func runQuery(c *cli.Context) error {
 		}
 		return nil
 	} else if apiFlag {
-		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden)
+		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden, expHours)
 		if err != nil {
 			return fmt.Errorf("error run query - %s", err)
 		}

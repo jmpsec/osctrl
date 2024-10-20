@@ -1255,6 +1255,24 @@ func init() {
 					Action: cliWrapper(deleteQuery),
 				},
 				{
+					Name:    "expire",
+					Aliases: []string{"e"},
+					Usage:   "Mark an on-demand query as expired",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Query name to be expired",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(expireQuery),
+				},
+				{
 					Name:    "run",
 					Aliases: []string{"r"},
 					Usage:   "Start a new on-demand query",
@@ -1279,6 +1297,12 @@ func init() {
 							Aliases: []string{"x"},
 							Hidden:  false,
 							Usage:   "Mark query as hidden",
+						},
+						&cli.IntFlag{
+							Name:    "expiration",
+							Aliases: []string{"E"},
+							Value:   6,
+							Usage:   "Expiration in hours (0 for no expiration)",
 						},
 					},
 					Action: cliWrapper(runQuery),
@@ -1369,6 +1393,24 @@ func init() {
 					Action: cliWrapper(deleteCarve),
 				},
 				{
+					Name:    "expire",
+					Aliases: []string{"e"},
+					Usage:   "Mark a file carve as expired",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Carve name to be expired",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(expireCarve),
+				},
+				{
 					Name:    "run",
 					Aliases: []string{"r"},
 					Usage:   "Start a new carve for a file or a directory",
@@ -1387,6 +1429,12 @@ func init() {
 							Name:    "uuid",
 							Aliases: []string{"u"},
 							Usage:   "Node UUID to be used",
+						},
+						&cli.IntFlag{
+							Name:    "expiration",
+							Aliases: []string{"E"},
+							Value:   6,
+							Usage:   "Expiration in hours (0 for no expiration)",
 						},
 					},
 					Action: cliWrapper(runCarve),
