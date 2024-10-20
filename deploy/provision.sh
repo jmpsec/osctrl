@@ -407,11 +407,17 @@ source "$SOURCE_PATH/deploy/lib.sh"
 if [[ -f "/etc/debian_version" ]]; then
   if [[ $(grep "Debian" /etc/issue) ]]; then
     DISTRO="debian"
+    log "Detected Debian"
   else
     DISTRO="ubuntu"
+    log "Detected Ubuntu"
   fi
 elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
+  log "Detected CentOS"
+elif [[ -f "/etc/os-release" ]]; then
+  DISTRO="amazon"
+  log "Detected Amazon Linux"
 fi
 
 # Git is needed
