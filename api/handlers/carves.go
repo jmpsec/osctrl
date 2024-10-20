@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/queries"
@@ -103,9 +104,14 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		h.Inc(metricAPICarvesErr)
 		return
 	}
+	expTime := queries.QueryExpiration(c.ExpHours)
+	if c.ExpHours == 0 {
+		expTime = time.Time{}
+	}
 	query := carves.GenCarveQuery(c.Path, false)
 	// Prepare and create new carve
 	carveName := carves.GenCarveName()
+
 	newQuery := queries.DistributedQuery{
 		Query:         query,
 		Name:          carveName,
@@ -113,6 +119,8 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Expected:      0,
 		Executions:    0,
 		Active:        true,
+		Expired:       false,
+		Expiration:    expTime,
 		Completed:     false,
 		Deleted:       false,
 		Type:          queries.CarveQueryType,
