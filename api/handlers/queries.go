@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
@@ -103,6 +104,10 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
+	expTime := queries.QueryExpiration(q.ExpHours)
+	if q.ExpHours == 0 {
+		expTime = time.Time{}
+	}
 	// Prepare and create new query
 	queryName := queries.GenQueryName()
 	newQuery := queries.DistributedQuery{
@@ -112,6 +117,8 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		Expected:      0,
 		Executions:    0,
 		Active:        true,
+		Expired:       false,
+		Expiration:    expTime,
 		Completed:     false,
 		Deleted:       false,
 		Hidden:        q.Hidden,

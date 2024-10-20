@@ -140,7 +140,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// FIXME check if query is carve and user has permissions to carve
 	// Prepare and create new query
-	expTime := h.queryExpiration(q.ExpHours)
+	expTime := queries.QueryExpiration(q.ExpHours)
 	if q.ExpHours == 0 {
 		expTime = time.Time{}
 	}
@@ -297,6 +297,11 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	query := generateCarveQuery(c.Path, false)
 	// Prepare and create new carve
 	carveName := generateCarveName()
+	// Set query expiration
+	expTime := queries.QueryExpiration(c.ExpHours)
+	if c.ExpHours == 0 {
+		expTime = time.Time{}
+	}
 	newQuery := queries.DistributedQuery{
 		Query:         query,
 		Name:          carveName,
@@ -307,7 +312,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		Completed:     false,
 		Deleted:       false,
 		Expired:       false,
-		Expiration:    h.queryExpiration(c.ExpHours),
+		Expiration:    expTime,
 		Type:          queries.CarveQueryType,
 		Path:          c.Path,
 		EnvironmentID: env.ID,

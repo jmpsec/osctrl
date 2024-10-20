@@ -208,8 +208,3 @@ func (h *HandlersAdmin) generateFlags(flagsRaw, secretFile, certFile string) str
 	replaced := strings.Replace(flagsRaw, "__SECRET_FILE__", secretFile, 1)
 	return strings.Replace(replaced, "__CERT_FILE__", certFile, 1)
 }
-
-// Helper to generate the time.Time for the expiration of a query or carve based on hours
-func (h *HandlersAdmin) queryExpiration(exp int) time.Time {
-	return time.Now().Add(time.Duration(exp) * time.Hour)
-}
