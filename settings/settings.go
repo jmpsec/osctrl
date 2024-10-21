@@ -73,6 +73,14 @@ const (
 	SetRpmPackage   string = "set_rpm"
 )
 
+// Types of query/carve actions
+const (
+	QueryDelete string = "delete"
+	QueryExpire string = "expire"
+	CarveDelete string = QueryDelete
+	CarveExpire string = QueryExpire
+)
+
 // Types of package
 const (
 	PackageDeb string = "deb"

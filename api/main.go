@@ -574,10 +574,12 @@ func osctrlAPIService() {
 	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiAllQueriesPath+"/{env}"), handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler)))
 	// API: carves by environment
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}/{action}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler)))
 	// API: users
 	muxAPI.Handle("GET "+_apiPath(apiUsersPath)+"/{username}", handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiUsersPath), handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler)))

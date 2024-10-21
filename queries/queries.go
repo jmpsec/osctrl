@@ -247,6 +247,13 @@ func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, er
 	return queries, nil
 }
 
+// Checks if a query exists in an environment, regardless of the status
+func (q *Queries) Exists(name string, envid uint) bool {
+	var count int64
+	q.DB.Model(&DistributedQuery{}).Where("name = ? AND environment_id = ?", name, envid).Count(&count)
+	return (count > 0)
+}
+
 // GetActive all active queries and carves by target
 func (q *Queries) GetActive(envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery

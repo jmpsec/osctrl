@@ -151,6 +151,73 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPICarvesOK)
 }
 
+// CarvesActionHandler - POST Handler to delete/expire a carve
+func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPICarvesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	var msgReturn string
+	// Carve can not be empty
+	nameVar := r.PathValue("name")
+	if nameVar == "" {
+		apiErrorResponse(w, "name can not be empty", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Check if carve exists
+	if !h.Queries.Exists(nameVar, env.ID) {
+		apiErrorResponse(w, "carve not found", http.StatusNotFound, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Extract action
+	actionVar := r.PathValue("action")
+	if actionVar == "" {
+		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	switch actionVar {
+	case settings.CarveDelete:
+		if err := h.Queries.Delete(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error deleting carve", http.StatusInternalServerError, err)
+			h.Inc(metricAPICarvesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("carve %s deleted successfully", nameVar)
+	case settings.CarveExpire:
+		if err := h.Queries.Expire(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error expiring carve", http.StatusInternalServerError, err)
+			h.Inc(metricAPICarvesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("carve %s expired successfully", nameVar)
+	}
+	// Return message as serialized response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+	h.Inc(metricAPICarvesOK)
+}
+
 // GET Handler to return carves in JSON
 func (h *HandlersApi) apiCarvesShowHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPICarvesReq)

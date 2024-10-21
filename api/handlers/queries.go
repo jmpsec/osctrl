@@ -216,6 +216,73 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	h.Inc(metricAPIQueriesOK)
 }
 
+// QueriesActionHandler - POST Handler to delete/expire a query
+func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPIQueriesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	var msgReturn string
+	// Extract action
+	actionVar := r.PathValue("action")
+	if actionVar == "" {
+		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	// Query can not be empty
+	nameVar := r.PathValue("name")
+	if nameVar == "" {
+		apiErrorResponse(w, "name can not be empty", http.StatusBadRequest, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	// Check if query exists
+	if !h.Queries.Exists(nameVar, env.ID) {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	switch actionVar {
+	case settings.QueryDelete:
+		if err := h.Queries.Delete(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
+			h.Inc(metricAPIQueriesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("query %s deleted successfully", nameVar)
+	case settings.QueryExpire:
+		if err := h.Queries.Expire(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error expiring query", http.StatusInternalServerError, err)
+			h.Inc(metricAPIQueriesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("query %s expired successfully", nameVar)
+	}
+	// Return message as serialized response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+	h.Inc(metricAPIQueriesOK)
+}
+
 // AllQueriesShowHandler - GET Handler to return all queries in JSON
 func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPIQueriesReq)
