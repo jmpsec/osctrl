@@ -6,7 +6,7 @@ const (
 	RequestPath   = "path"
 	RequestMethod = "method"
 	StatusCode    = "status_code"
-	Environment   = "env"
+	Environment   = "osctrl_env"
 	RequestType   = "type"
 )
 
