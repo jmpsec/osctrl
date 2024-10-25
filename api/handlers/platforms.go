@@ -15,7 +15,7 @@ func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPIPlatformsReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIPlatformsErr)
@@ -59,7 +59,7 @@ func (h *HandlersApi) PlatformsEnvHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIPlatformsErr)

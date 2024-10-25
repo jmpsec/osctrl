@@ -40,7 +40,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)
@@ -84,7 +84,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)
@@ -235,7 +235,7 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)
@@ -302,7 +302,7 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)
@@ -344,7 +344,7 @@ func (h *HandlersApi) HiddenQueriesShowHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)
@@ -393,7 +393,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Get context data and check access
-	ctx := r.Context().Value(contextKey(contextAPI)).(contextValue)
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		h.Inc(metricAPIQueriesErr)

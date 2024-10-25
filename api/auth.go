@@ -5,16 +5,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jmpsec/osctrl/api/handlers"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/rs/zerolog/log"
 )
-
-// contextValue to hold session data in the context
-type contextValue map[string]string
-
-// contextKey to help with the context key, to pass session data
-type contextKey string
 
 const (
 	// Key to identify request context
@@ -51,9 +46,9 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 		switch apiConfig.Auth {
 		case settings.AuthNone:
 			// Set middleware values
-			s := make(contextValue)
+			s := make(handlers.ContextValue)
 			s["user"] = "admin"
-			ctx := context.WithValue(r.Context(), contextKey(contextAPI), s)
+			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case settings.AuthJWT:
@@ -73,9 +68,9 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				log.Err(err).Msgf("error updating token for user %s", claims.Username)
 			}
 			// Set middleware values
-			s := make(contextValue)
+			s := make(handlers.ContextValue)
 			s["user"] = claims.Username
-			ctx := context.WithValue(r.Context(), contextKey(contextAPI), s)
+			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
