@@ -75,10 +75,12 @@ const (
 
 // Types of query/carve actions
 const (
-	QueryDelete string = "delete"
-	QueryExpire string = "expire"
-	CarveDelete string = QueryDelete
-	CarveExpire string = QueryExpire
+	QueryDelete   string = "delete"
+	QueryExpire   string = "expire"
+	QueryComplete string = "complete"
+	CarveDelete   string = QueryDelete
+	CarveExpire   string = QueryExpire
+	CarveComplete string = QueryComplete
 )
 
 // Types of package
