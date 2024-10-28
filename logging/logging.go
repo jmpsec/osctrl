@@ -126,6 +126,13 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		}
 		k.Settings(mgr)
 		l.Logger = k
+	case settings.LoggingElastic:
+		e, err := CreateLoggerElastic(loggingFile)
+		if err != nil {
+			return nil, err
+		}
+		e.Settings(mgr)
+		l.Logger = e
 	}
 	// Initialize the logger that will always log to DB
 	if alwaysLog {
@@ -210,6 +217,14 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 		k, ok := logTLS.Logger.(*LoggerKafka)
 		if !ok {
 			log.Printf("error casting logger to %s", settings.LoggingKafka)
+		}
+		if k.Enabled {
+			k.Send(logType, data, environment, uuid, debug)
+		}
+	case settings.LoggingElastic:
+		k, ok := logTLS.Logger.(*LoggerElastic)
+		if !ok {
+			log.Printf("error casting logger to %s", settings.LoggingElastic)
 		}
 		if k.Enabled {
 			k.Send(logType, data, environment, uuid, debug)
