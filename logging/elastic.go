@@ -76,7 +76,7 @@ func (logE *LoggerElastic) IndexName() string {
 
 // Settings - Function to prepare settings for the logger
 func (logE *LoggerElastic) Settings(mgr *settings.Settings) {
-	log.Info().Msg("Setting Logstash logging settings")
+	log.Info().Msg("Setting Elastic logging settings")
 }
 
 // Send - Function that sends JSON logs to Elastic
