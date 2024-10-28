@@ -10,11 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// contextValue to hold session data in the context
-type contextValue map[string]string
+// ContextValue to hold session data in the context
+type ContextValue map[string]string
 
-// contextKey to help with the context key, to pass session data
-type contextKey string
+// ContextKey to help with the context key, to pass session data
+type ContextKey string
 
 // APIQueryData to hold query result data
 type APIQueryData map[string]string
