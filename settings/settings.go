@@ -46,6 +46,7 @@ const (
 	LoggingKinesis  string = "kinesis"
 	LoggingS3       string = "s3"
 	LoggingKafka    string = "kafka"
+	LoggingElastic  string = "elastic"
 )
 
 // Types of carver

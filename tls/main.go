@@ -137,6 +137,7 @@ var validLogging = map[string]bool{
 	settings.LoggingLogstash: true,
 	settings.LoggingKinesis:  true,
 	settings.LoggingS3:       true,
+	settings.LoggingElastic:  true,
 }
 
 // Valid values for carver in configuration
