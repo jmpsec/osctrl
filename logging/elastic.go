@@ -42,6 +42,15 @@ func CreateLoggerElastic(elasticFile string) (*LoggerElastic, error) {
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		return nil, err
+	} else {
+		log.Info().Msg("Elasticsearch client created")
+		infoRes, err := es.Info()
+		if err != nil {
+			log.Err(err).Msg("Error getting Elasticsearch info")
+		} else {
+			defer infoRes.Body.Close()
+			log.Info().Msgf("Elasticsearch info: %s", infoRes)
+		}
 	}
 	l := &LoggerElastic{
 		Configuration: config,
