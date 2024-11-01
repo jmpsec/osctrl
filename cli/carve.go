@@ -47,19 +47,6 @@ func carveToData(c carves.CarvedFile, header []string) [][]string {
 
 func listCarves(c *cli.Context) error {
 	// Get values from flags
-	target := "all"
-	if c.Bool("all") {
-		target = "all"
-	}
-	if c.Bool("active") {
-		target = "active"
-	}
-	if c.Bool("completed") {
-		target = "completed"
-	}
-	if c.Bool("deleted") {
-		target = "deleted"
-	}
 	env := c.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
@@ -110,8 +97,93 @@ func listCarves(c *cli.Context) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(cs) > 0 {
-			fmt.Printf("Existing %s queries (%d):\n", target, len(cs))
+			fmt.Printf("Existing carves (%d):\n", len(cs))
 			data := carvesToData(cs, nil)
+			table.AppendBulk(data)
+		} else {
+			fmt.Println("No carves")
+		}
+		table.Render()
+	}
+	return nil
+}
+
+func listCarveQueries(c *cli.Context) error {
+	// Get values from flags
+	target := "all"
+	if c.Bool("all") {
+		target = "all"
+	}
+	if c.Bool("active") {
+		target = "active"
+	}
+	if c.Bool("completed") {
+		target = "completed"
+	}
+	if c.Bool("deleted") {
+		target = "deleted"
+	}
+	if c.Bool("hidden") {
+		target = "hidden"
+	}
+	if c.Bool("expired") {
+		target = "expired"
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	// Retrieve data
+	var qs []queries.DistributedQuery
+	if dbFlag {
+		e, err := envs.Get(env)
+		if err != nil {
+			return fmt.Errorf("❌ error env get - %s", err)
+		}
+		qs, err = queriesmgr.GetQueries(target, e.ID)
+		if err != nil {
+			return fmt.Errorf("❌ error get queries - %s", err)
+		}
+	} else if apiFlag {
+		qs, err = osctrlAPI.GetQueries(target, env)
+		if err != nil {
+			return fmt.Errorf("❌ error get queries - %s", err)
+		}
+	}
+	header := []string{
+		"Name",
+		"Creator",
+		"Query",
+		"Type",
+		"Executions",
+		"Errors",
+		"Active",
+		"Hidden",
+		"Completed",
+		"Deleted",
+		"Expired",
+		"Expiration",
+	}
+	// Prepare output
+	if formatFlag == jsonFormat {
+		jsonRaw, err := json.Marshal(qs)
+		if err != nil {
+			return fmt.Errorf("❌ error json marshal - %s", err)
+		}
+		fmt.Println(string(jsonRaw))
+	} else if formatFlag == csvFormat {
+		data := queriesToData(qs, header)
+		w := csv.NewWriter(os.Stdout)
+		if err := w.WriteAll(data); err != nil {
+			return fmt.Errorf("❌ error csv writeall - %s", err)
+		}
+	} else if formatFlag == prettyFormat {
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader(header)
+		if len(qs) > 0 {
+			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
+			data := queriesToData(qs, nil)
 			table.AppendBulk(data)
 		} else {
 			fmt.Printf("No %s nodes\n", target)

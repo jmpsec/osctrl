@@ -1342,6 +1342,12 @@ func init() {
 							Hidden:  false,
 							Usage:   "Show hidden queries",
 						},
+						&cli.BoolFlag{
+							Name:    "expired",
+							Aliases: []string{"E"},
+							Hidden:  false,
+							Usage:   "Show expired queries",
+						},
 						&cli.StringFlag{
 							Name:    "env",
 							Aliases: []string{"e"},
@@ -1359,7 +1365,7 @@ func init() {
 				{
 					Name:    "complete",
 					Aliases: []string{"c"},
-					Usage:   "Mark an file carve as completed",
+					Usage:   "Mark an file carve query as completed",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
@@ -1377,7 +1383,7 @@ func init() {
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
-					Usage:   "Mark a file carve as deleted",
+					Usage:   "Mark a file carve query as deleted",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
@@ -1395,7 +1401,7 @@ func init() {
 				{
 					Name:    "expire",
 					Aliases: []string{"e"},
-					Usage:   "Mark a file carve as expired",
+					Usage:   "Mark a file carve query as expired",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
@@ -1444,30 +1450,6 @@ func init() {
 					Aliases: []string{"l"},
 					Usage:   "List file carves",
 					Flags: []cli.Flag{
-						&cli.BoolFlag{
-							Name:    "all",
-							Aliases: []string{"v"},
-							Hidden:  true,
-							Usage:   "Show all carves",
-						},
-						&cli.BoolFlag{
-							Name:    "active",
-							Aliases: []string{"a"},
-							Hidden:  false,
-							Usage:   "Show active carves",
-						},
-						&cli.BoolFlag{
-							Name:    "completed, c",
-							Aliases: []string{"c"},
-							Hidden:  false,
-							Usage:   "Show completed carves",
-						},
-						&cli.BoolFlag{
-							Name:    "deleted",
-							Aliases: []string{"d"},
-							Hidden:  false,
-							Usage:   "Show deleted carves",
-						},
 						&cli.StringFlag{
 							Name:    "env",
 							Aliases: []string{"e"},
@@ -1475,6 +1457,49 @@ func init() {
 						},
 					},
 					Action: cliWrapper(listCarves),
+				},
+				{
+					Name:    "list-queries",
+					Aliases: []string{"l"},
+					Usage:   "List file carves queries",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:    "all",
+							Aliases: []string{"v"},
+							Hidden:  true,
+							Usage:   "Show all file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "active",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Show active file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "completed",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Show completed file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "expired",
+							Aliases: []string{"E"},
+							Hidden:  false,
+							Usage:   "Show expired file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "deleted",
+							Aliases: []string{"d"},
+							Hidden:  false,
+							Usage:   "Show deleted file carves queries",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(listCarveQueries),
 				},
 			},
 		},

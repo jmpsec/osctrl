@@ -399,6 +399,62 @@ paths:
       security:
         - Authorization:
             - query
+  /queries/{env}/{target}/list:
+    get:
+      tags:
+        - queries
+      summary: Get on-demand queries
+      description: Returns all on-demand queries by target and environment
+      operationId: QueryListHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+        - name: target
+          in: path
+          description: Query target to retrieve (all, all-full, active, hidden-active, completed, expired, saved, hidden-completed, deleted, hidden)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributedQuery"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - query
   /queries/{env}/{name}:
     get:
       tags:
@@ -654,7 +710,7 @@ paths:
         - queries
       summary: Run new file carve
       description: Creates a new file carve to run
-      operationId: CarvesRunHandler
+      operationId: CarveListHandler
       requestBody:
         content:
           application/json:
@@ -667,6 +723,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiQueriesResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - carve
+  /carves/{env}/{target}/list:
+    get:
+      tags:
+        - carves
+      summary: Get file carves
+      description: Returns all file carves by target and environment
+      operationId: CarveListHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+        - name: target
+          in: path
+          description: Carve target to retrieve (all, all-full, active, hidden-active, completed, expired, saved, hidden-completed, deleted, hidden)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributedQuery"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         403:
           description: no access
           content:

@@ -11,9 +11,9 @@ import (
 )
 
 // GetQueries to retrieve queries from osctrl
-func (api *OsctrlAPI) GetQueries(env string) ([]queries.DistributedQuery, error) {
+func (api *OsctrlAPI) GetQueries(target, env string) ([]queries.DistributedQuery, error) {
 	var qs []queries.DistributedQuery
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)
+	reqURL := fmt.Sprintf("%s%s%s/%s/%s/list", api.Configuration.URL, APIPath, APIQueries, env, target)
 	rawQs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return qs, fmt.Errorf("error api request - %v - %s", err, string(rawQs))

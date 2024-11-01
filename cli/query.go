@@ -40,6 +40,8 @@ func queryToData(q queries.DistributedQuery, header []string) [][]string {
 		stringifyBool(q.Hidden),
 		stringifyBool(q.Completed),
 		stringifyBool(q.Deleted),
+		stringifyBool(q.Expired),
+		q.Expiration.String(),
 	}
 	data = append(data, _q)
 	return data
@@ -63,6 +65,9 @@ func listQueries(c *cli.Context) error {
 	if c.Bool("hidden") {
 		target = "hidden"
 	}
+	if c.Bool("expired") {
+		target = "expired"
+	}
 	env := c.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
@@ -80,7 +85,7 @@ func listQueries(c *cli.Context) error {
 			return fmt.Errorf("❌ error get queries - %s", err)
 		}
 	} else if apiFlag {
-		qs, err = osctrlAPI.GetQueries(env)
+		qs, err = osctrlAPI.GetQueries(target, env)
 		if err != nil {
 			return fmt.Errorf("❌ error get queries - %s", err)
 		}
@@ -96,6 +101,8 @@ func listQueries(c *cli.Context) error {
 		"Hidden",
 		"Completed",
 		"Deleted",
+		"Expired",
+		"Expiration",
 	}
 	// Prepare output
 	if formatFlag == jsonFormat {

@@ -11,10 +11,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// GetCarveQueries to retrieve carves from osctrl
+func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]carves.CarvedFile, error) {
+	var cs []carves.CarvedFile
+	reqURL := fmt.Sprintf("%s%s%s/%s/%s/list", api.Configuration.URL, APIPath, APICarves, env, target)
+	rawCs, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return cs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))
+	}
+	if err := json.Unmarshal(rawCs, &cs); err != nil {
+		return cs, fmt.Errorf("can not parse body - %v", err)
+	}
+	return cs, nil
+}
+
 // GetCarves to retrieve carves from osctrl
 func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
 	var cs []carves.CarvedFile
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APICarves, env)
+	reqURL := fmt.Sprintf("%s%s%s/%s/list", api.Configuration.URL, APIPath, APICarves, env)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return cs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))
