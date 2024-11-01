@@ -5,7 +5,7 @@ go 1.23
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
 require (
-	github.com/jmpsec/osctrl/nodes v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/nodes v0.0.0-20241030113721-8e7065db6643
 	gorm.io/gorm v1.25.12
 )
 
