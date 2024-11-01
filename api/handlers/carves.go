@@ -107,12 +107,12 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 	// Get carves
 	carves, err := h.Queries.GetCarves(targetVar, env.ID)
 	if err != nil {
-		apiErrorResponse(w, "error getting carves", http.StatusInternalServerError, err)
+		apiErrorResponse(w, "error getting carve queries", http.StatusInternalServerError, err)
 		h.Inc(metricAPICarvesErr)
 		return
 	}
 	if len(carves) == 0 {
-		apiErrorResponse(w, "no carves", http.StatusNotFound, nil)
+		apiErrorResponse(w, "no carve queries", http.StatusNotFound, nil)
 		h.Inc(metricAPICarvesErr)
 		return
 	}

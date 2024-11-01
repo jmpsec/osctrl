@@ -1314,8 +1314,8 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
 							Name:    "all",
-							Aliases: []string{"v"},
-							Hidden:  true,
+							Aliases: []string{"A"},
+							Hidden:  false,
 							Usage:   "Show all queries",
 						},
 						&cli.BoolFlag{
@@ -1465,8 +1465,8 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
 							Name:    "all",
-							Aliases: []string{"v"},
-							Hidden:  true,
+							Aliases: []string{"A"},
+							Hidden:  false,
 							Usage:   "Show all file carves queries",
 						},
 						&cli.BoolFlag{

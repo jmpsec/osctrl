@@ -146,7 +146,7 @@ func listCarveQueries(c *cli.Context) error {
 			return fmt.Errorf("❌ error get carve queries - %s", err)
 		}
 	} else if apiFlag {
-		qs, err = osctrlAPI.GetQueries(target, env)
+		qs, err = osctrlAPI.GetCarveQueries(target, env)
 		if err != nil {
 			return fmt.Errorf("❌ error get carve queries - %s", err)
 		}
