@@ -14,7 +14,7 @@ import (
 // GetCarveQueries to retrieve carves from osctrl
 func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]carves.CarvedFile, error) {
 	var cs []carves.CarvedFile
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s/list", api.Configuration.URL, APIPath, APICarves, env, target)
+	reqURL := fmt.Sprintf("%s%s%s/%s/queries/%s", api.Configuration.URL, APIPath, APICarves, env, target)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return cs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))

@@ -141,14 +141,14 @@ func listCarveQueries(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("❌ error env get - %s", err)
 		}
-		qs, err = queriesmgr.GetQueries(target, e.ID)
+		qs, err = queriesmgr.GetCarves(target, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %s", err)
+			return fmt.Errorf("❌ error get carve queries - %s", err)
 		}
 	} else if apiFlag {
 		qs, err = osctrlAPI.GetQueries(target, env)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %s", err)
+			return fmt.Errorf("❌ error get carve queries - %s", err)
 		}
 	}
 	header := []string{
@@ -182,11 +182,11 @@ func listCarveQueries(c *cli.Context) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(qs) > 0 {
-			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
+			fmt.Printf("Existing %s carve queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
 			table.AppendBulk(data)
 		} else {
-			fmt.Printf("No %s nodes\n", target)
+			fmt.Printf("No %s carve queries\n", target)
 		}
 		table.Render()
 	}

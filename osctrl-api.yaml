@@ -399,7 +399,7 @@ paths:
       security:
         - Authorization:
             - query
-  /queries/{env}/{target}/list:
+  /queries/{env}/list/{target}:
     get:
       tags:
         - queries
@@ -744,13 +744,63 @@ paths:
       security:
         - Authorization:
             - carve
-  /carves/{env}/{target}/list:
+  /carves/{env}/list:
     get:
       tags:
         - carves
       summary: Get file carves
       description: Returns all file carves by target and environment
       operationId: CarveListHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CarvedFile"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting queries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - carve
+  /carves/{env}/queries/{target}:
+    get:
+      tags:
+        - carves
+      summary: Get file carves queries
+      description: Returns all file carves queries by target and environment
+      operationId: CarveQueriesHandler
       parameters:
         - name: env
           in: path

@@ -570,7 +570,7 @@ func osctrlAPIService() {
 	muxAPI.Handle("POST "+_apiPath(apiNodesPath)+"/{env}/delete", handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler)))
 	// API: queries by environment
 	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{target}/list", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/list/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler)))
@@ -578,7 +578,7 @@ func osctrlAPIService() {
 	muxAPI.Handle("POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler)))
 	// API: carves by environment
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{target}/queries", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/queries/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiCarvesPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/{env}/{name}", handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler)))
