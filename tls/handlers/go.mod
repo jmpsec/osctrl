@@ -32,12 +32,12 @@ replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
 	github.com/jmpsec/osctrl/backend v0.4.0 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20241029165041-29fba715549e
-	github.com/jmpsec/osctrl/metrics v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/environments v0.0.0-20241101192351-fd857b3403fb
+	github.com/jmpsec/osctrl/metrics v0.0.0-20241101192351-fd857b3403fb
 	github.com/jmpsec/osctrl/nodes v0.4.0
 	github.com/jmpsec/osctrl/queries v0.4.0
 	github.com/jmpsec/osctrl/settings v0.4.0
-	github.com/jmpsec/osctrl/tags v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/tags v0.0.0-20241030113721-8e7065db6643
 	github.com/jmpsec/osctrl/types v0.4.0
 	github.com/jmpsec/osctrl/utils v0.4.0
 	github.com/segmentio/ksuid v1.0.4
@@ -45,9 +45,9 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/carves v0.0.0-20241029165041-29fba715549e
-	github.com/jmpsec/osctrl/logging v0.0.0-20241029165041-29fba715549e
-	github.com/jmpsec/osctrl/version v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/carves v0.0.0-20241101192351-fd857b3403fb
+	github.com/jmpsec/osctrl/logging v0.0.0-20241101192351-fd857b3403fb
+	github.com/jmpsec/osctrl/version v0.0.0-20241101192351-fd857b3403fb
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/zerolog v1.33.0
 )
@@ -79,7 +79,7 @@ require (
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
 	github.com/elastic/go-elasticsearch v0.0.0 // indirect
 	github.com/elastic/go-elasticsearch/v8 v8.15.0 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect

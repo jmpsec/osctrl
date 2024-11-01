@@ -63,7 +63,7 @@ require (
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/elastic/go-elasticsearch v0.0.0
 	github.com/elastic/go-elasticsearch/v8 v8.15.0
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

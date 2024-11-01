@@ -35,19 +35,19 @@ replace github.com/jmpsec/osctrl/version => ../../version
 require (
 	github.com/jmpsec/osctrl/admin/sessions v0.4.0
 	github.com/jmpsec/osctrl/carves v0.4.0
-	github.com/jmpsec/osctrl/environments v0.0.0-20241029165041-29fba715549e
-	github.com/jmpsec/osctrl/metrics v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/environments v0.0.0-20241101192351-fd857b3403fb
+	github.com/jmpsec/osctrl/metrics v0.0.0-20241101192351-fd857b3403fb
 	github.com/jmpsec/osctrl/nodes v0.4.0
 	github.com/jmpsec/osctrl/queries v0.4.0
 	github.com/jmpsec/osctrl/settings v0.4.0
-	github.com/jmpsec/osctrl/tags v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/tags v0.0.0-20241030113721-8e7065db6643
 	github.com/jmpsec/osctrl/types v0.4.0
 	github.com/jmpsec/osctrl/users v0.4.0
 	github.com/jmpsec/osctrl/utils v0.4.0
 )
 
 require (
-	github.com/jmpsec/osctrl/cache v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/cache v0.0.0-20241030113721-8e7065db6643
 	gorm.io/gorm v1.25.12
 )
 
@@ -102,7 +102,7 @@ require (
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -113,7 +113,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmpsec/osctrl/logging v0.0.0-20241029165041-29fba715549e
+	github.com/jmpsec/osctrl/logging v0.0.0-20241101192351-fd857b3403fb
 	github.com/jmpsec/osctrl/version v0.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
