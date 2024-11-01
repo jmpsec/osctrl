@@ -174,7 +174,7 @@ func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, er
 		}
 	case TargetCompleted:
 		if err := q.DB.Where(
-			"active = ? AND completed = ? AND deleted = ? AND type = ? AND expired = ? AND environment_id = ?",
+			"active = ? AND completed = ? AND deleted = ? AND expired = ? AND type = ? AND environment_id = ?",
 			false,
 			true,
 			false,

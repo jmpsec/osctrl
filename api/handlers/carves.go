@@ -66,6 +66,103 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPICarvesOK)
 }
 
+// GET Handler to return carve queries in JSON by target and environment
+func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPICarvesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Extract target
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
+		apiErrorResponse(w, "error with target", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Verify target
+	if !QueryTargets[targetVar] {
+		apiErrorResponse(w, "invalid target", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get carves
+	carves, err := h.Queries.GetCarves(targetVar, env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting carve queries", http.StatusInternalServerError, err)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	if len(carves) == 0 {
+		apiErrorResponse(w, "no carve queries", http.StatusNotFound, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
+	h.Inc(metricAPICarvesOK)
+}
+
+// GET Handler to return carves in JSON by environment
+func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPICarvesReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Get carves
+	carves, err := h.Carves.GetByEnv(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting carves", http.StatusInternalServerError, err)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	if len(carves) == 0 {
+		apiErrorResponse(w, "no carves", http.StatusNotFound, nil)
+		h.Inc(metricAPICarvesErr)
+		return
+	}
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
+	h.Inc(metricAPICarvesOK)
+}
+
 // POST Handler to run a carve
 func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPICarvesReq)
@@ -212,6 +309,13 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 		msgReturn = fmt.Sprintf("carve %s expired successfully", nameVar)
+	case settings.CarveComplete:
+		if err := h.Queries.Complete(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error completing carve", http.StatusInternalServerError, err)
+			h.Inc(metricAPICarvesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("carve %s completed successfully", nameVar)
 	}
 	// Return message as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})

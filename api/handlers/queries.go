@@ -14,6 +14,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var QueryTargets = map[string]bool{
+	queries.TargetAll:             true,
+	queries.TargetAllFull:         true,
+	queries.TargetActive:          true,
+	queries.TargetHiddenActive:    true,
+	queries.TargetCompleted:       true,
+	queries.TargetExpired:         true,
+	queries.TargetSaved:           true,
+	queries.TargetHiddenCompleted: true,
+	queries.TargetDeleted:         true,
+	queries.TargetHidden:          true,
+}
+
 // QueryShowHandler - GET Handler to return a single query in JSON
 func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPIQueriesReq)
@@ -277,6 +290,13 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		msgReturn = fmt.Sprintf("query %s expired successfully", nameVar)
+	case settings.QueryComplete:
+		if err := h.Queries.Complete(nameVar, env.ID); err != nil {
+			apiErrorResponse(w, "error completing query", http.StatusInternalServerError, err)
+			h.Inc(metricAPIQueriesErr)
+			return
+		}
+		msgReturn = fmt.Sprintf("query %s completed successfully", nameVar)
 	}
 	// Return message as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
@@ -325,8 +345,8 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 	h.Inc(metricAPIQueriesOK)
 }
 
-// HiddenQueriesShowHandler - GET Handler to return hidden queries in JSON
-func (h *HandlersApi) HiddenQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
+// QueryListHandler - GET Handler to return queries in JSON by target and environment
+func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
@@ -350,8 +370,21 @@ func (h *HandlersApi) HiddenQueriesShowHandler(w http.ResponseWriter, r *http.Re
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
+	// Extract target
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
+		apiErrorResponse(w, "error with target", http.StatusBadRequest, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
+	// Verify target
+	if !QueryTargets[targetVar] {
+		apiErrorResponse(w, "invalid target", http.StatusBadRequest, nil)
+		h.Inc(metricAPIQueriesErr)
+		return
+	}
 	// Get queries
-	queries, err := h.Queries.GetQueries(queries.TargetHiddenCompleted, env.ID)
+	queries, err := h.Queries.GetQueries(targetVar, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		h.Inc(metricAPIQueriesErr)

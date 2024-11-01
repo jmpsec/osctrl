@@ -6,15 +6,30 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"
 )
 
+// GetCarveQueries to retrieve carves from osctrl
+func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]queries.DistributedQuery, error) {
+	var qs []queries.DistributedQuery
+	reqURL := fmt.Sprintf("%s%s%s/%s/queries/%s", api.Configuration.URL, APIPath, APICarves, env, target)
+	rawCs, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return qs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))
+	}
+	if err := json.Unmarshal(rawCs, &qs); err != nil {
+		return qs, fmt.Errorf("can not parse body - %v", err)
+	}
+	return qs, nil
+}
+
 // GetCarves to retrieve carves from osctrl
 func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
 	var cs []carves.CarvedFile
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APICarves, env)
+	reqURL := fmt.Sprintf("%s%s%s/%s/list", api.Configuration.URL, APIPath, APICarves, env)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return cs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))

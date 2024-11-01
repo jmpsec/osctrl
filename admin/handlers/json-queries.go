@@ -11,8 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const ()
-
 // Define targets to be used
 var (
 	QueryTargets = map[string]bool{
