@@ -36,11 +36,11 @@ require (
 	github.com/jmpsec/osctrl/environments v0.0.0-20241101192351-fd857b3403fb
 	github.com/jmpsec/osctrl/logging v0.0.0-20241101192351-fd857b3403fb
 	github.com/jmpsec/osctrl/metrics v0.0.0-20241101192351-fd857b3403fb
-	github.com/jmpsec/osctrl/nodes v0.4.0
-	github.com/jmpsec/osctrl/queries v0.4.0
+	github.com/jmpsec/osctrl/nodes v0.4.1
+	github.com/jmpsec/osctrl/queries v0.4.1
 	github.com/jmpsec/osctrl/tags v0.0.0-20241030113721-8e7065db6643
 	github.com/jmpsec/osctrl/users v0.0.0-20241030113721-8e7065db6643
-	github.com/jmpsec/osctrl/utils v0.4.0
+	github.com/jmpsec/osctrl/utils v0.4.1
 	github.com/rs/zerolog v1.33.0
 	gorm.io/gorm v1.25.12
 )
@@ -83,8 +83,8 @@ require (
 	github.com/jackc/pgx/v5 v5.7.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmpsec/osctrl/backend v0.4.0 // indirect
-	github.com/jmpsec/osctrl/version v0.4.0 // indirect
+	github.com/jmpsec/osctrl/backend v0.4.1 // indirect
+	github.com/jmpsec/osctrl/version v0.4.1 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -121,7 +121,7 @@ require (
 require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/settings v0.4.0
-	github.com/jmpsec/osctrl/types v0.4.0
+	github.com/jmpsec/osctrl/settings v0.4.1
+	github.com/jmpsec/osctrl/types v0.4.1
 	golang.org/x/text v0.19.0 // indirect
 )
