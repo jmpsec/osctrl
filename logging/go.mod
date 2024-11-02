@@ -23,12 +23,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.42
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.35
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.66.2
-	github.com/jmpsec/osctrl/backend v0.4.0
-	github.com/jmpsec/osctrl/nodes v0.4.0
-	github.com/jmpsec/osctrl/queries v0.4.0
-	github.com/jmpsec/osctrl/settings v0.4.0
-	github.com/jmpsec/osctrl/types v0.4.0
-	github.com/jmpsec/osctrl/utils v0.4.0
+	github.com/jmpsec/osctrl/backend v0.4.1
+	github.com/jmpsec/osctrl/nodes v0.4.1
+	github.com/jmpsec/osctrl/queries v0.4.1
+	github.com/jmpsec/osctrl/settings v0.4.1
+	github.com/jmpsec/osctrl/types v0.4.1
+	github.com/jmpsec/osctrl/utils v0.4.1
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/viper v1.19.0
 	github.com/twmb/franz-go v1.18.0
