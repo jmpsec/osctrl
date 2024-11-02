@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/utils v0.0.0-20241101192351-fd857b3403fb
+	github.com/jmpsec/osctrl/utils v0.0.0-20241102121250-bdba30dccee6
 	gorm.io/gorm v1.25.12
 )
 
@@ -43,7 +43,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20241101192351-fd857b3403fb // indirect
+	github.com/jmpsec/osctrl/environments v0.0.0-20241102121250-bdba30dccee6 // indirect
 	github.com/jmpsec/osctrl/settings v0.4.1 // indirect
 	github.com/jmpsec/osctrl/version v0.4.1 // indirect
 	github.com/rs/zerolog v1.33.0
