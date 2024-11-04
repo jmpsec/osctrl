@@ -79,6 +79,16 @@ type DistributedQuery struct {
 	Expiration    time.Time
 }
 
+// NodeQuery links a node to a query
+type NodeQuery struct {
+	NodeQueryID uint      `gorm:"primaryKey;autoIncrement"`
+	NodeID      uint      `gorm:"not null;index"`
+	QueryID     uint      `gorm:"not null;index"`
+	Status      string    `gorm:"type:varchar(50);default:'pending'"` // Indexed for fast lookups
+	AssignedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	CompletedAt time.Time
+}
+
 // DistributedQueryTarget to keep target logic for queries
 type DistributedQueryTarget struct {
 	gorm.Model
@@ -107,6 +117,7 @@ type Queries struct {
 func CreateQueries(backend *gorm.DB) *Queries {
 	var q *Queries
 	q = &Queries{DB: backend}
+
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
