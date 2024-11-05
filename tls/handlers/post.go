@@ -163,7 +163,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error with ingested config")
 		}
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
-		log.Info().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
+		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
 		response = []byte(env.Configuration)
 	} else {
 		response = types.ConfigResponse{NodeInvalid: true}
@@ -253,7 +253,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error with ingested log")
 		}
 		requestSize.WithLabelValues(string(env.UUID), "LogHandler").Observe(float64(len(body)))
-		log.Info().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
+		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
 		// Process logs and update metadata
 		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
@@ -315,7 +315,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error with ingested query-read")
 		}
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
-		log.Info().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
+		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricReadErr)
@@ -398,7 +398,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 			log.Err(err).Msg("error with ingested query-write")
 		}
 		requestSize.WithLabelValues(string(env.UUID), "QueryWrite").Observe(float64(len(body)))
-		log.Info().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
+		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricWriteErr)
@@ -639,7 +639,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error with ingested carve-init")
 		}
 		requestSize.WithLabelValues(string(env.UUID), "CarveInit").Observe(float64(len(body)))
-		log.Info().Msgf("node UUID: %s in %s environment ingested %d bytes for CarveInitHandler endpoint", node.UUID, env.Name, len(body))
+		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for CarveInitHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
 		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
 			h.Inc(metricInitErr)
