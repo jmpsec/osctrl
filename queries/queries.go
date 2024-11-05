@@ -81,12 +81,12 @@ type DistributedQuery struct {
 
 // NodeQuery links a node to a query
 type NodeQuery struct {
-	NodeQueryID uint      `gorm:"primaryKey;autoIncrement"`
-	NodeID      uint      `gorm:"not null;index"`
-	QueryID     uint      `gorm:"not null;index"`
-	Status      string    `gorm:"type:varchar(50);default:'pending'"` // Indexed for fast lookups
-	AssignedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	CompletedAt time.Time
+	ID        uint      `gorm:"primaryKey;autoIncrement"`
+	NodeID    uint      `gorm:"not null;index"`
+	QueryID   uint      `gorm:"not null;index"`
+	Status    string    `gorm:"type:varchar(10);default:'pending'"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -115,9 +115,13 @@ type Queries struct {
 
 // CreateQueries to initialize the queries struct
 func CreateQueries(backend *gorm.DB) *Queries {
-	var q *Queries
-	q = &Queries{DB: backend}
+	//var q *Queries
+	q := &Queries{DB: backend}
 
+	// table node_queries
+	if err := backend.AutoMigrate(&NodeQuery{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (node_queries): %v", err)
+	}
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
@@ -135,6 +139,31 @@ func CreateQueries(backend *gorm.DB) *Queries {
 		log.Fatal().Msgf("Failed to AutoMigrate table (saved_queries): %v", err)
 	}
 	return q
+}
+
+func (q *Queries) NodeQueries_V2(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
+
+	var results []struct {
+		QueryName string
+		Query     string
+	}
+
+	q.DB.Table("distributed_queries dq").
+		Select("dq.name, dq.query").
+		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
+		Where("nq.node_id = ? AND nq.status = ?", node.ID, "pending").
+		Scan(&results)
+
+	if len(results) == 0 {
+		return QueryReadQueries{}, false, nil
+	}
+
+	qs := make(QueryReadQueries)
+	for _, _q := range results {
+		qs[_q.QueryName] = _q.Query
+	}
+
+	return qs, false, nil
 }
 
 // NodeQueries to get all queries that belong to the provided node
@@ -395,6 +424,18 @@ func (q *Queries) Create(query DistributedQuery) error {
 	return nil
 }
 
+// CreateNodeQuery to link a node to a query
+func (q *Queries) CreateNodeQuery(nodeID, queryID uint) error {
+	nodeQuery := NodeQuery{
+		NodeID:  nodeID,
+		QueryID: queryID,
+	}
+	if err := q.DB.Create(&nodeQuery).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // CreateTarget to create target entry for a given query
 func (q *Queries) CreateTarget(name, targetType, targetValue string) error {
 	queryTarget := DistributedQueryTarget{
@@ -455,6 +496,27 @@ func (q *Queries) SetExpected(name string, expected int, envid uint) error {
 		return err
 	}
 	if err := q.DB.Model(&query).Update("expected", expected).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateQueryStatus to update the status of each query
+func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode int) error {
+
+	var result string
+	if statusCode == 0 {
+		result = "completed" // TODO: need be replaced with a constant
+	} else {
+		result = "error"
+	}
+	var nodeQuery NodeQuery
+	// For the current setup, we need a joint query to update the status,
+	// I am wondering if we can put an extra field in the query so that we also get the query id back from the osquery
+	if err := q.DB.Where("node_id = ? AND query_id = ?", nodeID, queryName).Find(&nodeQuery).Error; err != nil {
+		return err
+	}
+	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
 		return err
 	}
 	return nil

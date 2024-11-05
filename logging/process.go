@@ -84,6 +84,10 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 		if err := l.Queries.TrackExecution(q, node.UUID, queriesWrite.Statuses[q]); err != nil {
 			log.Err(err).Msg("error adding query execution")
 		}
+		// Instead of creating a new record in a separate table, we can just update the query status
+		if err := l.Queries.UpdateQueryStatus(q, node.ID, queriesWrite.Statuses[q]); err != nil {
+			log.Err(err).Msg("error updating query status")
+		}
 		// Check if query is completed
 		if err := l.Queries.VerifyComplete(q, envid); err != nil {
 			log.Err(err).Msg("error verifying and completing query")

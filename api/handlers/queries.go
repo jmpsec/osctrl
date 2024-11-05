@@ -218,6 +218,14 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Remove duplicates from expected
 	expectedClear := removeStringDuplicates(expected)
+
+	// Create new record for query list
+	for _, id := range expectedClear {
+		if err := h.Queries.CreateNodeQuery(newQuery.ID, id); err != nil {
+			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, id)
+		}
+	}
+
 	// Update value for expected
 	if err := h.Queries.SetExpected(queryName, len(expectedClear), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
