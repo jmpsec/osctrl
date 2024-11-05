@@ -91,7 +91,6 @@ var (
 	queriesmgr         *queries.Queries
 	filecarves         *carves.Carves
 	tlsMetrics         *metrics.Metrics
-	ingestedMetrics    *metrics.IngestedManager
 	loggerTLS          *logging.LoggerTLS
 	handlersTLS        *handlers.HandlersTLS
 	tagsmgr            *tags.TagManager
@@ -658,9 +657,6 @@ func osctrlService() {
 		log.Fatal().Msgf("Error loading metrics - %v", err)
 	}
 
-	// Initialize ingested data metrics
-	log.Info().Msg("Initialize ingested")
-	ingestedMetrics = metrics.CreateIngested(db.Conn)
 	// Initialize TLS logger
 	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(
@@ -731,7 +727,6 @@ func osctrlService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithMetrics(tlsMetrics),
-		handlers.WithIngested(ingestedMetrics),
 		handlers.WithLogs(loggerTLS),
 	)
 

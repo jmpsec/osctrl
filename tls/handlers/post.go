@@ -158,10 +158,6 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error refreshing last config")
 		}
 		// Record ingested data
-		if err := h.Ingested.IngestConfig(env.ID, node.ID, len(body)); err != nil {
-			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error with ingested config")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
 		response = []byte(env.Configuration)
@@ -248,10 +244,6 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		nodeInvalid = false
 		// Record ingested data
-		if err := h.Ingested.IngestLog(env.ID, node.ID, len(body), t.LogType); err != nil {
-			h.Inc(metricLogErr)
-			log.Err(err).Msg("error with ingested log")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "LogHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
 		// Process logs and update metadata
@@ -310,10 +302,6 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		// Record ingested data
-		if err := h.Ingested.IngestQueryRead(env.ID, node.ID, len(body)); err != nil {
-			h.Inc(metricReadErr)
-			log.Err(err).Msg("error with ingested query-read")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
@@ -393,10 +381,6 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		// Record ingested data
-		if err := h.Ingested.IngestQueryWrite(env.ID, node.ID, len(body)); err != nil {
-			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error with ingested query-write")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "QueryWrite").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
@@ -634,10 +618,6 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if provided node_key is valid and if so, update node
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		// Record ingested data
-		if err := h.Ingested.IngestCarveInit(env.ID, node.ID, len(body)); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error with ingested carve-init")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "CarveInit").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for CarveInitHandler endpoint", node.UUID, env.Name, len(body))
 		ip := utils.GetIP(r)
@@ -709,10 +689,6 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	// Check if provided session_id matches with the request_id (carve query name)
 	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
 		// Record ingested data
-		if err := h.Ingested.IngestCarveBlock(env.ID, carve.NodeID, len(body)); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error with ingested carve-block")
-		}
 		requestSize.WithLabelValues(string(env.UUID), "CarveBlock").Observe(float64(len(body)))
 		log.Info().Msgf("node %d in %s environment ingested %d bytes for CarveBlockHandler endpoint", carve.NodeID, env.Name, len(body))
 		blockCarve = true
