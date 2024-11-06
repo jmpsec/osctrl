@@ -1,9 +1,9 @@
 package logging
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/esapi"
@@ -98,7 +98,7 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 	}
 	req := esapi.IndexRequest{
 		Index:   logE.IndexName(),
-		Body:    strings.NewReader(string(data)),
+		Body:    bytes.NewReader(data),
 		Refresh: "true",
 	}
 	res, err := req.Do(context.Background(), logE.Client)
