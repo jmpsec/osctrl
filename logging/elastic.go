@@ -20,7 +20,8 @@ type ElasticConfiguration struct {
 	Host           string `json:"host"`
 	Port           string `json:"port"`
 	IndexPrefix    string `json:"indexPrefix"`
-	IndexSeparator string `json:"indexSeparator"` // Expected is . for prefix.YYYY.MM.DD
+	DateSeparator  string `json:"dateSeparator"`  // Expected is . for YYYY.MM.DD
+	IndexSeparator string `json:"indexSeparator"` // Expected is - for prefix-YYYY.MM.DD
 }
 
 // LoggerElastic will be used to log data using Elastic
@@ -82,7 +83,7 @@ func LoadElastic(file string) (ElasticConfiguration, error) {
 // IndexName - Function to return the index name
 func (logE *LoggerElastic) IndexName() string {
 	now := time.Now().UTC()
-	fNow := strings.ReplaceAll(now.Format("2006-01-02"), "-", logE.Configuration.IndexSeparator)
+	fNow := strings.ReplaceAll(now.Format("2006-01-02"), "-", logE.Configuration.DateSeparator)
 	return fmt.Sprintf("%s%s%s", logE.Configuration.IndexPrefix, logE.Configuration.IndexSeparator, fNow)
 }
 
