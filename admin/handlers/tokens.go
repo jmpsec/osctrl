@@ -102,7 +102,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Creating token")
 	}
-	token, exp, err := h.Users.CreateToken(user.Username, h.AdminConfig.Host)
+	token, exp, err := h.Users.CreateToken(user.Username, h.AdminConfig.Host, t.HoursToExpire)
 	if err != nil {
 		adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)

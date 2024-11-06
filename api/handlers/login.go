@@ -52,7 +52,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Do we have a token already?
 	if user.APIToken == "" {
-		token, exp, err := h.Users.CreateToken(l.Username, h.ServiceName)
+		token, exp, err := h.Users.CreateToken(l.Username, h.ServiceName, l.ExpHours)
 		if err != nil {
 			apiErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 			h.Inc(metricAPILoginErr)

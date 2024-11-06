@@ -162,8 +162,9 @@ type AdminResponse struct {
 
 // TokenRequest to receive API token related requests
 type TokenRequest struct {
-	CSRFToken string `json:"csrftoken"`
-	Username  string `json:"username"`
+	CSRFToken     string `json:"csrftoken"`
+	Username      string `json:"username"`
+	HoursToExpire int    `json:"hourstoexpire"`
 }
 
 // TokenResponse to be returned to API token requests
