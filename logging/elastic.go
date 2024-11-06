@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -95,6 +96,10 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 	}
 	if debug {
 		log.Debug().Msgf("DebugService: Sending %d bytes to Elastic for %s - %s", len(data), environment, uuid)
+	}
+	var logs []interface{}
+	if err := json.Unmarshal(data, &logs); err != nil {
+		log.Err(err).Msg("Error unmarshalling data")
 	}
 	req := esapi.IndexRequest{
 		Index:   logE.IndexName(),
