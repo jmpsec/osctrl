@@ -1,15 +1,16 @@
 package logging
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -98,23 +99,40 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 		log.Debug().Msgf("DebugService: Sending %d bytes to Elastic for %s - %s", len(data), environment, uuid)
 	}
 	var logs []interface{}
-	if err := json.Unmarshal(data, &logs); err != nil {
-		log.Err(err).Msg("Error unmarshalling data")
+	if logType == types.QueryLog {
+		// For on-demand queries, just a JSON blob with results and statuses
+		var result interface{}
+		if err := json.Unmarshal(data, &result); err != nil {
+			log.Err(err).Msgf("error parsing data %s", string(data))
+		}
+		logs = append(logs, result)
+	} else {
+		// For scheduled queries, convert the array in an array of multiple events
+		if err := json.Unmarshal(data, &logs); err != nil {
+			log.Err(err).Msgf("error parsing log %s", string(data))
+		}
 	}
-	req := esapi.IndexRequest{
-		Index:   logE.IndexName(),
-		Body:    bytes.NewReader(data),
-		Refresh: "true",
-	}
-	res, err := req.Do(context.Background(), logE.Client)
-	if err != nil {
-		log.Err(err).Msg("Error indexing document")
-	}
-	defer res.Body.Close()
-	if res.IsError() {
-		log.Error().Msgf("Error response from Elasticsearch: %s", res.String())
+	for _, l := range logs {
+		jsonEvent, err := json.Marshal(l)
+		if err != nil {
+			log.Err(err).Msg("Error parsing data")
+			continue
+		}
+		req := esapi.IndexRequest{
+			Index:   logE.IndexName(),
+			Body:    strings.NewReader(string(jsonEvent)),
+			Refresh: "true",
+		}
+		res, err := req.Do(context.Background(), logE.Client)
+		if err != nil {
+			log.Err(err).Msg("Error indexing document")
+		}
+		defer res.Body.Close()
+		if res.IsError() {
+			log.Error().Msgf("Error response from Elasticsearch: %s", res.String())
+		}
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: Sent %s to Elastic from %s:%s", logType, uuid, environment)
+		log.Debug().Msgf("DebugService: Sent %d bytes of %s to Elastic from %s:%s", len(data), logType, uuid, environment)
 	}
 }
