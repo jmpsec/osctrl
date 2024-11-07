@@ -99,7 +99,6 @@ type HandlersTLS struct {
 	Settings    *settings.Settings
 	SettingsMap *settings.MapSettings
 	Metrics     *metrics.Metrics
-	Ingested    *metrics.IngestedManager
 	Logs        *logging.LoggerTLS
 }
 
@@ -171,13 +170,6 @@ func WithCarves(carves *carves.Carves) Option {
 func WithMetrics(metrics *metrics.Metrics) Option {
 	return func(h *HandlersTLS) {
 		h.Metrics = metrics
-	}
-}
-
-// WithIngested to pass value as option
-func WithIngested(ingested *metrics.IngestedManager) Option {
-	return func(h *HandlersTLS) {
-		h.Ingested = ingested
 	}
 }
 
