@@ -78,7 +78,7 @@ const (
 	// Default redis configuration file
 	defRedisConfigurationFile string = "config/redis.json"
 	// Default Logger configuration file
-	defLoggerConfigurationFile string = "config/logger.json"
+	defLoggerConfigurationFile string = "config/logger_admin.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -736,6 +736,7 @@ func osctrlAdminService() {
 
 	// FIXME Redis cache - Ticker to cleanup sessions
 	// FIXME splay this?
+	log.Info().Msg("Initialize cleanup sessions")
 	go func() {
 		_t := settingsmgr.CleanupSessions()
 		if _t == 0 {
@@ -751,6 +752,7 @@ func osctrlAdminService() {
 	}()
 
 	// Goroutine to cleanup expired queries and carves
+	log.Info().Msg("Initialize cleanup queries/carves")
 	go func() {
 		_t := settingsmgr.CleanupExpired()
 		if _t == 0 {
@@ -786,6 +788,7 @@ func osctrlAdminService() {
 	}
 
 	// Initialize Admin handlers before router
+	log.Info().Msg("Initializing handlers")
 	handlersAdmin = handlers.CreateHandlersAdmin(
 		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
@@ -809,9 +812,7 @@ func osctrlAdminService() {
 	)
 
 	// ////////////////////////// ADMIN
-	if settingsmgr.DebugService(settings.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Creating router")
-	}
+	log.Info().Msg("Initializing router")
 	// Create router for admin
 	adminMux := http.NewServeMux()
 
