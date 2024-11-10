@@ -53,9 +53,9 @@ const (
 	// Default redis configuration file
 	defRedisConfigurationFile string = "config/redis.json"
 	// Default Logger configuration file
-	defLoggerConfigurationFile string = "config/logger.json"
+	defLoggerConfigurationFile string = "config/logger_tls.json"
 	// Default carver configuration file
-	defCarverConfigurationFile string = "config/carver.json"
+	defCarverConfigurationFile string = "config/carver_tls.json"
 	// Default TLS certificate file
 	defTLSCertificateFile string = "config/tls.crt"
 	// Default TLS private key file
@@ -715,8 +715,8 @@ func osctrlService() {
 			}
 		}()
 	}
-
 	// Initialize TLS handlers before router
+	log.Info().Msg("Initializing handlers")
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
 		handlers.WithEnvsMap(&envsmap),
@@ -731,9 +731,7 @@ func osctrlService() {
 	)
 
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
-	if settingsmgr.DebugService(settings.ServiceTLS) {
-		log.Info().Msg("DebugService: Creating router")
-	}
+	log.Info().Msg("Initializing router")
 	// Create router for TLS endpoint
 	muxTLS := http.NewServeMux()
 	// TLS: root
