@@ -166,7 +166,7 @@
     "columns":[
       {
         "name":"allow_signed_enabled",
-        "description":"1 If allow signed mode is enabled else 0",
+        "description":"1 If allow signed mode is enabled else 0 (not supported on macOS 15+)",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -175,7 +175,7 @@
       },
       {
         "name":"firewall_unload",
-        "description":"1 If firewall unloading enabled else 0",
+        "description":"1 If firewall unloading enabled else 0 (not supported on macOS 15+)",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -202,7 +202,7 @@
       },
       {
         "name":"logging_option",
-        "description":"Firewall logging option",
+        "description":"Firewall logging option (not supported on macOS 15+)",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -243,7 +243,7 @@
     "columns":[
       {
         "name":"path",
-        "description":"Path to the executable that is excepted",
+        "description":"Path to the executable that is excepted. On macOS 15+ this can also be a bundle identifier",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -252,7 +252,7 @@
       },
       {
         "name":"state",
-        "description":"Firewall exception state",
+        "description":"Firewall exception state. 0 if the application is configured to allow incoming connections, 2 if the application is configured to block incoming connections and 3 if the application is configuted to allow incoming connections but with additional restrictions.",
         "type":"integer",
         "notes":"",
         "hidden":false,
@@ -263,7 +263,7 @@
   },
   {
     "name":"alf_explicit_auths",
-    "description":"ALF services explicitly allowed to perform networking.",
+    "description":"ALF services explicitly allowed to perform networking. Not supported on macOS 15+ (returns no results).",
     "url":"https://github.com/osquery/osquery/blob/master/specs/darwin/alf_explicit_auths.table",
     "platforms":[
       "darwin"
@@ -5745,6 +5745,83 @@
     ]
   },
   {
+    "name":"deviceguard_status",
+    "description":"Retrieve DeviceGuard info of the machine.",
+    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/deviceguard_status.table",
+    "platforms":[
+      "windows"
+    ],
+    "evented":false,
+    "cacheable":false,
+    "notes":"",
+    "examples":[],
+    "columns":[
+      {
+        "name":"version",
+        "description":"The version number of the Device Guard build.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"instance_identifier",
+        "description":"The instance ID of Device Guard.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"vbs_status",
+        "description":"The status of the virtualization based security settings. Returns UNKNOWN if an error is encountered.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"code_integrity_policy_enforcement_status",
+        "description":"The status of the code integrity policy enforcement settings. Returns UNKNOWN if an error is encountered.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"configured_security_services",
+        "description":"The list of configured Device Guard services. Returns UNKNOWN if an error is encountered.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"running_security_services",
+        "description":"The list of running Device Guard services. Returns UNKNOWN if an error is encountered.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"umci_policy_status",
+        "description":"The status of the User Mode Code Integrity security settings. Returns UNKNOWN if an error is encountered.",
+        "type":"text",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      }
+    ]
+  },
+  {
     "name":"disk_encryption",
     "description":"Disk encryption status and information.",
     "url":"https://github.com/osquery/osquery/blob/master/specs/posix/disk_encryption.table",
@@ -10425,65 +10502,6 @@
         "type":"text",
         "notes":"",
         "hidden":true,
-        "required":false,
-        "index":false
-      }
-    ]
-  },
-  {
-    "name":"hvci_status",
-    "description":"Retrieve HVCI info of the machine.",
-    "url":"https://github.com/osquery/osquery/blob/master/specs/windows/hvci_status.table",
-    "platforms":[
-      "windows"
-    ],
-    "evented":false,
-    "cacheable":false,
-    "notes":"",
-    "examples":[],
-    "columns":[
-      {
-        "name":"version",
-        "description":"The version number of the Device Guard build.",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"instance_identifier",
-        "description":"The instance ID of Device Guard.",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"vbs_status",
-        "description":"The status of the virtualization based security settings. Returns UNKNOWN if an error is encountered.",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"code_integrity_policy_enforcement_status",
-        "description":"The status of the code integrity policy enforcement settings. Returns UNKNOWN if an error is encountered.",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"umci_policy_status",
-        "description":"The status of the User Mode Code Integrity security settings. Returns UNKNOWN if an error is encountered.",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
         "required":false,
         "index":false
       }
@@ -20645,33 +20663,6 @@
         "index":false
       },
       {
-        "name":"update_url",
-        "description":"Extension-supplied update URI",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"author",
-        "description":"Optional extension author",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"developer_id",
-        "description":"Optional developer identifier",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
         "name":"description",
         "description":"Optional extension description text",
         "type":"text",
@@ -20682,7 +20673,7 @@
       },
       {
         "name":"path",
-        "description":"Path to extension XAR bundle",
+        "description":"Path to the Info.plist describing the extension",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -20701,15 +20692,6 @@
       {
         "name":"copyright",
         "description":"A human-readable copyright notice for the bundle",
-        "type":"text",
-        "notes":"",
-        "hidden":false,
-        "required":false,
-        "index":false
-      },
-      {
-        "name":"extension_type",
-        "description":"Extension Type: WebOrAppExtension or LegacyExtension",
         "type":"text",
         "notes":"",
         "hidden":false,
@@ -24026,6 +24008,15 @@
         "name":"timestamp",
         "description":"unix timestamp associated with the entry",
         "type":"bigint",
+        "notes":"",
+        "hidden":false,
+        "required":false,
+        "index":false
+      },
+      {
+        "name":"timestamp_double",
+        "description":"floating point timestamp associated with the entry",
+        "type":"text",
         "notes":"",
         "hidden":false,
         "required":false,
