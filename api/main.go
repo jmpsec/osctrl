@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/api/handlers"
@@ -162,7 +163,7 @@ func loadConfiguration(file, service string) (types.JSONConfigurationAPI, error)
 	}
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
-		return cfg, fmt.Errorf("Invalid auth method: '%s'", cfg.Auth)
+		return cfg, fmt.Errorf("invalid auth method: '%s'", cfg.Auth)
 	}
 	// No errors!
 	return cfg, nil
@@ -203,6 +204,20 @@ func init() {
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &apiConfigValues.Port,
+		},
+		&cli.StringFlag{
+			Name:        "log-level",
+			Value:       "info",
+			Usage:       "Log level for the service",
+			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
+			Destination: &apiConfigValues.LogLevel,
+		},
+		&cli.StringFlag{
+			Name:        "log-format",
+			Value:       "json",
+			Usage:       "Log format for the service",
+			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
+			Destination: &apiConfigValues.LogFormat,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -425,11 +440,7 @@ func init() {
 			Destination: &jwtConfigValues.HoursToExpire,
 		},
 	}
-	// Initialize zerolog logger with our custom parameters
-	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return filepath.Base(file) + ":" + strconv.Itoa(line)
-	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+
 }
 
 // Go go!
@@ -638,7 +649,7 @@ func cliAction(c *cli.Context) error {
 	if configFlag {
 		apiConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAPI)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
+			return fmt.Errorf("failed to load service configuration %s - %s", serviceConfigFile, err.Error())
 		}
 	} else {
 		apiConfig = apiConfigValues
@@ -647,7 +658,7 @@ func cliAction(c *cli.Context) error {
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %v", err)
+			return fmt.Errorf("failed to load DB configuration - %s", err.Error())
 		}
 	} else {
 		dbConfig = dbConfigValues
@@ -656,7 +667,7 @@ func cliAction(c *cli.Context) error {
 	if redisFlag {
 		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %v", err)
+			return fmt.Errorf("failed to load redis configuration - %s", err.Error())
 		}
 	} else {
 		redisConfig = redisConfigValues
@@ -665,12 +676,41 @@ func cliAction(c *cli.Context) error {
 	if jwtFlag {
 		jwtConfig, err = loadJWTConfiguration(jwtConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load JWT configuration - %v", err)
+			return fmt.Errorf("failed to load JWT configuration - %s", err.Error())
 		}
 	} else {
 		jwtConfig = jwtConfigValues
 	}
 	return nil
+}
+
+func initializeLogger(logLevel, logFormat string) {
+
+	switch strings.ToLower(logLevel) {
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	switch strings.ToLower(logFormat) {
+	case "json":
+		log.Logger = log.With().Caller().Logger()
+	case "console":
+		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+			return filepath.Base(file) + ":" + strconv.Itoa(line)
+		}
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+	default:
+		log.Logger = log.With().Caller().Logger()
+	}
+
 }
 
 func main() {
@@ -693,8 +733,13 @@ func main() {
 	}
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal().Msgf("app.Run error: %v", err)
+		fmt.Printf("app.Run error: %s", err.Error())
+		os.Exit(1)
 	}
-	// Service starts!
+
+	// Initialize service logger
+	initializeLogger(apiConfig.LogLevel, apiConfig.LogFormat)
+
+	// Run the service
 	osctrlAPIService()
 }

@@ -6,6 +6,8 @@ import "time"
 type JSONConfigurationTLS struct {
 	Listener        string `json:"listener"`
 	Port            string `json:"port"`
+	LogLevel        string `json:"logLevel"`
+	LogFormat       string `json:"logFormat"`
 	MetricsListener string `json:"metricsListener"`
 	MetricsPort     string `json:"metricsPort"`
 	MetricsEnabled  bool   `json:"metricsEnabled"`
@@ -19,6 +21,8 @@ type JSONConfigurationTLS struct {
 type JSONConfigurationAdmin struct {
 	Listener   string `json:"listener"`
 	Port       string `json:"port"`
+	LogLevel   string `json:"logLevel"`
+	LogFormat  string `json:"logFormat"`
 	Host       string `json:"host"`
 	Auth       string `json:"auth"`
 	Logger     string `json:"logger"`
@@ -28,11 +32,13 @@ type JSONConfigurationAdmin struct {
 
 // JSONConfigurationAPI to hold API service configuration values
 type JSONConfigurationAPI struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Carver   string `json:"carver"`
+	Listener  string `json:"listener"`
+	Port      string `json:"port"`
+	LogLevel  string `json:"logLevel"`
+	LogFormat string `json:"logFormat"`
+	Host      string `json:"host"`
+	Auth      string `json:"auth"`
+	Carver    string `json:"carver"`
 }
 
 // JSONConfigurationHeaders to keep all headers details for auth
