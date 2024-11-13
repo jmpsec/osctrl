@@ -1,4 +1,4 @@
-name: Zhuoyuan Push Docker Images
+name: A Push Docker Images
 
 on:
   push:
