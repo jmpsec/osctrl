@@ -495,9 +495,7 @@ func osctrlAPIService() {
 	// Ticker to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Debug().Msg("DebugService: Environments ticker")
-	}
+	log.Info().Msg("Initialize environments refresh")
 	// Refresh environments as soon as service starts
 	go func() {
 		_t := settingsmgr.RefreshEnvs(settings.ServiceAPI)
@@ -513,10 +511,8 @@ func osctrlAPIService() {
 	// Ticker to reload settings
 	// FIXME Implement Redis cache
 	// FIXME splay this?
-	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Debug().Msg("DebugService: Settings ticker")
-	}
 	// Refresh settings as soon as the service starts
+	log.Info().Msg("Initialize settings refresh")
 	go func() {
 		_t := settingsmgr.RefreshSettings(settings.ServiceAPI)
 		if _t == 0 {
@@ -527,8 +523,8 @@ func osctrlAPIService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-
 	// Initialize Admin handlers before router
+	log.Info().Msg("Initializing handlers")
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
@@ -545,9 +541,7 @@ func osctrlAPIService() {
 	)
 
 	// ///////////////////////// API
-	if settingsmgr.DebugService(settings.ServiceAPI) {
-		log.Debug().Msg("DebugService: Creating router")
-	}
+	log.Info().Msg("Initializing router")
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
 	// API: root
