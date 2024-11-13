@@ -1,0 +1,115 @@
+name: "Build Osctrl Docker images"
+description: "Build Osctrl Docker images"
+inputs:
+  go_os:
+    required: true
+    description: Define the OS to compile binary for - https://pkg.go.dev/internal/goos
+  go_arch:
+    required: true
+    description: Define the architecture to compile binary for - https://pkg.go.dev/internal/goarch
+  osctrl_component:
+    required: true
+    description: Define the osctrl component to compile
+  commit_sha:
+    required: true
+    description: Define the SHA1 git commit hash
+  container_registry:
+    required: true
+    description: Define the container registry to push the image to
+  docker_hub_org:
+    required: true
+    description: Pass DockerHub org to action
+  docker_hub_username:
+    required: true
+    description: Pass DockerHub username to action
+  docker_hub_access_token:
+    required: true
+    description: Pass DockerHub access token to action
+
+outputs:
+  docker_image_digest:
+    description: Dockerhub image digest
+    value: ${{ toJson(steps.docker_build.outputs.digest) }}
+
+runs:
+  using: "composite"
+  steps:
+    ########################### Checkout code ###########################
+    - name: Checkout code
+      uses: actions/checkout@v4.1.1
+      with:
+        fetch-depth: 2
+
+    ########################### Download osctrl binary ###########################
+    - name: Download osctrl binary
+      uses: actions/download-artifact@v4.1.2
+      with:
+        name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Copy binary to prepare for Docker ###########################
+    - name: Copy binary to prepare for Docker
+      shell: bash
+      run: |
+        cp \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin \
+        osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
+
+    ########################### Add meta data for containers ###########################
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.container_registry }}/${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}
+        labels: |
+          org.opencontainers.image.title=osctrl-${{ inputs.osctrl_component }}
+        tags: |
+            type=sha,prefix=,format=short
+            type=match,pattern=v(.*),group=1
+
+    ########################### Log into Dockerhub ###########################
+    - name: Login to Container Registry
+      uses: docker/login-action@v3.0.0
+      with:
+        registry: ${{ inputs.container_registry }}
+        username: ${{ inputs.docker_hub_username }}
+        password: ${{ inputs.docker_hub_access_token }}
+    # ########################### Setup QEMU ###########################
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    ########################### Setup Docker ###########################
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3.0.0
+
+    ########################### Build and Push Docker images ###########################
+    - name: Build and push
+      uses: docker/build-push-action@v5.1.0
+      id: docker_build
+      with:
+        context: .
+        file: ./deploy/cicd/docker/Dockerfile-osctrl-${{ inputs.osctrl_component }}
+        push: true
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: "${{ inputs.go_os }}/${{ inputs.go_arch  }}"
+        outputs: type=image,name=${{ inputs.container_registry }}/mop/osctrl-${{ inputs.osctrl_component }},push-by-digest=true,name-canonical=true,push=true
+        build-args: |
+          COMPONENT=${{ inputs.osctrl_component }}
+          GOOS=${{ inputs.go_os }}
+          GOARCH=${{ inputs.go_arch }}
+
+    ########################### Export image digest to tmp ###########################
+    - name: Export digest
+      shell: bash
+      run: |
+        mkdir -p /tmp/digests
+        digest="${{ steps.docker_build.outputs.digest }}"
+        touch "/tmp/digests/${digest#sha256:}"
+
+    ########################### Upload digest ###########################
+    - name: Upload digest
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: digests-osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}
+        path: /tmp/digests/*
+        if-no-files-found: error
+        retention-days: 1
