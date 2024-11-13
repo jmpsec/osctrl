@@ -1,4 +1,4 @@
-name: A Push Docker Images
+name: Build, test and push osctrl images
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 env:
   GOLANG_VERSION: 1.23.1
   OSQUERY_VERSION: 5.14.1
+  OSCTRL_ADMIN_IMAGE: ${{ secrets.CONTAINER_REGISTRY }}/${{ secrets.DOCKER_HUB_ORG }}/osctrl-admin
 
 jobs:
   build-prep:
@@ -127,7 +128,7 @@ jobs:
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       ########################### Build Docker containers ###########################
       - name: Build and deploy osctrl Docker containers
-        uses: ./.github/actions/build/my-docker
+        uses: ./.github/actions/build/docker
         with:
           #### golang env vars ####
           go_os: ${{ matrix.goos }}
