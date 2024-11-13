@@ -143,6 +143,12 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		h.Inc(metricAPIQueriesErr)
 		return
 	}
+	// Get the query id
+	newQuery, err = h.Queries.Get(queryName, env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
 
 	// Temporary list of UUIDs to calculate Expected
 	var expected []string
@@ -220,9 +226,14 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	expectedClear := removeStringDuplicates(expected)
 
 	// Create new record for query list
-	for _, id := range expectedClear {
-		if err := h.Queries.CreateNodeQuery(newQuery.ID, id); err != nil {
-			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, id)
+	for _, nodeUUID := range expectedClear {
+		node, err := h.Nodes.GetByUUID(nodeUUID)
+		if err != nil {
+			log.Err(err).Msgf("error getting node %s and failed to create node query for it", nodeUUID)
+			continue
+		}
+		if err := h.Queries.CreateNodeQuery(newQuery.ID, node.ID); err != nil {
+			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, nodeUUID)
 		}
 	}
 

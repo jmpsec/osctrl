@@ -72,3 +72,6 @@ go.work.sum
 deploy/docker/conf/tls/*
 .env
 !deploy/docker/conf/tls/openssl.cnf.example
+
+# bruno
+tools/bruno/collection.bru
