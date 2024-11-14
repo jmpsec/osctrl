@@ -150,6 +150,12 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Get the query id
+	newQuery, err = h.Queries.Get(newQuery.Name, env.ID)
+	if err != nil {
+		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
 	// Temporary list of UUIDs to calculate Expected
 	var expected []string
 	// Create environment target
