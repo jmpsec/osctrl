@@ -145,8 +145,8 @@ func CreateQueries(backend *gorm.DB) *Queries {
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
 
 	var results []struct {
-		QueryName string
-		Query     string
+		Name  string
+		Query string
 	}
 
 	q.DB.Table("distributed_queries dq").
@@ -161,7 +161,7 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 
 	qs := make(QueryReadQueries)
 	for _, _q := range results {
-		qs[_q.QueryName] = _q.Query
+		qs[_q.Name] = _q.Query
 	}
 
 	return qs, false, nil
