@@ -70,7 +70,17 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 			Message: queriesWrite.Messages[q],
 		}
 		go l.DispatchQueries(d, node, debug)
-
+		// TODO: need be refactored
+		// Update internal metrics per query
+		var err error
+		if queriesWrite.Statuses[q] != 0 {
+			err = l.Queries.IncError(q, envid)
+		} else {
+			err = l.Queries.IncExecution(q, envid)
+		}
+		if err != nil {
+			log.Err(err).Msg("error updating query")
+		}
 		// TODO: This TrackExeuction need be removed
 		// Add a record for this query
 		if err := l.Queries.TrackExecution(q, node.UUID, queriesWrite.Statuses[q]); err != nil {
