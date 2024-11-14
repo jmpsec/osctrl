@@ -131,3 +131,46 @@ func TestUpdateQueryStatus(t *testing.T) {
 
 	assert.Equal(t, "completed", updatedNodeQuery.Status, "Status does not match expected value")
 }
+func TestCreateNodeQuery(t *testing.T) {
+	db, err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to setup test database: %v", err)
+	}
+
+	// Create tables
+	q := queries.CreateQueries(db)
+	nodes.CreateNodes(db)
+
+	// Create test data
+	node := nodes.OsqueryNode{
+		Model: gorm.Model{ID: 1},
+	}
+	distributedQuery := queries.DistributedQuery{
+		Model:         gorm.Model{ID: 1},
+		Name:          "test_query",
+		Query:         "SELECT * FROM osquery_info;",
+		EnvironmentID: 1,
+		Expiration:    time.Now().Add(24 * time.Hour),
+	}
+
+	if err := db.Create(&node).Error; err != nil {
+		t.Fatalf("Failed to create test node: %v", err)
+	}
+	if err := db.Create(&distributedQuery).Error; err != nil {
+		t.Fatalf("Failed to create test distributed query: %v", err)
+	}
+
+	// Test CreateNodeQuery function
+	err = q.CreateNodeQuery(1, 1)
+	if err != nil {
+		t.Fatalf("CreateNodeQuery returned an error: %v", err)
+	}
+
+	var nodeQuery queries.NodeQuery
+	if err := db.Where("node_id = ? AND query_id = ?", 1, 1).Find(&nodeQuery).Error; err != nil {
+		t.Fatalf("Failed to find created node query: %v", err)
+	}
+
+	assert.Equal(t, uint(1), nodeQuery.NodeID, "NodeID does not match expected value")
+	assert.Equal(t, uint(1), nodeQuery.QueryID, "QueryID does not match expected value")
+}
