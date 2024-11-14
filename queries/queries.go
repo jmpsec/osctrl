@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jmpsec/osctrl/nodes"
@@ -141,7 +142,7 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	return q
 }
 
-func (q *Queries) NodeQueries_V2(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
+func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
 
 	var results []struct {
 		QueryName string
@@ -164,36 +165,6 @@ func (q *Queries) NodeQueries_V2(node nodes.OsqueryNode) (QueryReadQueries, bool
 	}
 
 	return qs, false, nil
-}
-
-// NodeQueries to get all queries that belong to the provided node
-// FIXME this will impact the performance of the TLS endpoint due to being CPU and I/O hungry
-// FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
-func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
-	acelerate := false
-	// Get all current active queries and carves
-	queries, err := q.GetActive(node.EnvironmentID)
-	if err != nil {
-		return QueryReadQueries{}, false, err
-	}
-	// Iterate through active queries, see if they target this node and prepare data in the same loop
-	qs := make(QueryReadQueries)
-	for _, _q := range queries {
-		targets, err := q.GetTargets(_q.Name)
-		if err != nil {
-			return QueryReadQueries{}, false, err
-		}
-		// FIXME disable acceleration until figure out edge cases where it would trigger by mistake
-		/*
-			if len(targets) == 1 {
-				acelerate = true
-			}
-		*/
-		if isQueryTarget(node, targets) && q.NotYetExecuted(_q.Name, node.UUID) {
-			qs[_q.Name] = _q.Query
-		}
-	}
-	return qs, acelerate, nil
 }
 
 // Gets all queries by target (active/completed/all/all-full/deleted/hidden/expired)
@@ -510,10 +481,18 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 	} else {
 		result = "error"
 	}
+
+	var query DistributedQuery
+	// TODO: Get the query id
+	// I think we can put an extra field in the query so that we also get the query id back from the osquery
+	// This way we can avoid this query to get the query id
+	if err := q.DB.Where("name = ?", queryName).Find(&query).Error; err != nil {
+		return fmt.Errorf("error getting query id: %v", err)
+	}
+
 	var nodeQuery NodeQuery
-	// For the current setup, we need a joint query to update the status,
-	// I am wondering if we can put an extra field in the query so that we also get the query id back from the osquery
-	if err := q.DB.Where("node_id = ? AND query_id = ?", nodeID, queryName).Find(&nodeQuery).Error; err != nil {
+
+	if err := q.DB.Where("node_id = ? AND query_id = ?", nodeID, query.ID).Find(&nodeQuery).Error; err != nil {
 		return err
 	}
 	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
