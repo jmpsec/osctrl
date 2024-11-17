@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -133,6 +134,57 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 		if res.IsError() {
 			log.Error().Msgf("Error response from Elasticsearch: %s", res.String())
 		}
+	}
+	if debug {
+		log.Debug().Msgf("DebugService: Sent %d bytes of %s to Elastic from %s:%s", len(data), logType, uuid, environment)
+	}
+}
+
+// SendBulk - Function that sends JSON logs to Elastic using the bulk API
+func (logE *LoggerElastic) SendBulk(logType string, data []byte, environment, uuid string, debug bool) {
+	if debug {
+		log.Debug().Msgf("DebugService: Send %s to Elastic", logType)
+	}
+	if debug {
+		log.Debug().Msgf("DebugService: Sending %d bytes to Elastic for %s - %s", len(data), environment, uuid)
+	}
+	var logs []interface{}
+	if logType == types.QueryLog {
+		// For on-demand queries, just a JSON blob with results and statuses
+		var result interface{}
+		if err := json.Unmarshal(data, &result); err != nil {
+			log.Err(err).Msgf("error parsing data %s", string(data))
+		}
+		logs = append(logs, result)
+	} else {
+		// For scheduled queries, convert the array in an array of multiple events
+		if err := json.Unmarshal(data, &logs); err != nil {
+			log.Err(err).Msgf("error parsing log %s", string(data))
+		}
+	}
+	es, err := elasticsearch.NewDefaultClient()
+	if err != nil {
+		log.Err(err).Msg("Error creating the client")
+	}
+	var buf bytes.Buffer
+	for _, l := range logs {
+		meta := map[string]interface{}{
+			"index": map[string]interface{}{
+				"_index":  logE.IndexName(),
+				"_source": l,
+			},
+		}
+		metaJSON, _ := json.Marshal(meta)
+		buf.Write(metaJSON)
+		buf.WriteByte('\n')
+	}
+	res, err := es.Bulk(bytes.NewReader(buf.Bytes()), es.Bulk.WithContext(context.Background()))
+	if err != nil {
+		log.Err(err).Msg("Error sending bulk request")
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		log.Error().Msgf("Error response from Elasticsearch: %s", res.String())
 	}
 	if debug {
 		log.Debug().Msgf("DebugService: Sent %d bytes of %s to Elastic from %s:%s", len(data), logType, uuid, environment)
