@@ -309,27 +309,6 @@ func init() {
 			Destination: &redisConfigValues.DB,
 		},
 		&cli.IntFlag{
-			Name:        "redis-status-exp",
-			Value:       cache.StatusExpiration,
-			Usage:       "Redis expiration in hours for status logs",
-			EnvVars:     []string{"REDIS_STATUS_EXP"},
-			Destination: &redisConfigValues.StatusExpirationHours,
-		},
-		&cli.IntFlag{
-			Name:        "redis-result-exp",
-			Value:       cache.ResultExpiration,
-			Usage:       "Redis expiration in hours for result logs",
-			EnvVars:     []string{"REDIS_RESULT_EXP"},
-			Destination: &redisConfigValues.ResultExpirationHours,
-		},
-		&cli.IntFlag{
-			Name:        "redis-query-exp",
-			Value:       cache.QueryExpiration,
-			Usage:       "Redis expiration in hours for query logs",
-			EnvVars:     []string{"REDIS_QUERY_EXP"},
-			Destination: &redisConfigValues.QueryExpirationHours,
-		},
-		&cli.IntFlag{
 			Name:        "redis-conn-retry",
 			Value:       defaultRedisRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
