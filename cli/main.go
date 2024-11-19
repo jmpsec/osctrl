@@ -1623,6 +1623,12 @@ func init() {
 					Aliases: []string{"e"},
 					Usage:   "Environment to be used in login",
 				},
+				&cli.IntFlag{
+					Name:    "expiration",
+					Aliases: []string{"E"},
+					Value:   6,
+					Usage:   "Expiration in hours (0 for server default)",
+				},
 				&cli.BoolFlag{
 					Name:        "write-api-file",
 					Aliases:     []string{"w"},
@@ -1703,13 +1709,14 @@ func loginAPI(c *cli.Context) error {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
+	expHours := c.Int("expiration")
 	fmt.Printf("\n ->  Please introduce your password: ")
 	passwordByte, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return fmt.Errorf("error reading password %s", err)
 	}
 	fmt.Println()
-	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte))
+	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte), expHours)
 	if err != nil {
 		return fmt.Errorf("error in login %s", err)
 	}

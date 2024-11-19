@@ -141,6 +141,7 @@ type ApiNodeGenericRequest struct {
 type ApiLoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	ExpHours int    `json:"exp_hours"`
 }
 
 // ApiErrorResponse to be returned to API requests with the error message
