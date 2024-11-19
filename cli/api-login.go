@@ -9,11 +9,12 @@ import (
 )
 
 // PostLogin to login into API to retrieve a token
-func (api *OsctrlAPI) PostLogin(env, username, password string) (types.ApiLoginResponse, error) {
+func (api *OsctrlAPI) PostLogin(env, username, password string, expHours int) (types.ApiLoginResponse, error) {
 	var res types.ApiLoginResponse
 	l := types.ApiLoginRequest{
 		Username: username,
 		Password: password,
+		ExpHours: expHours,
 	}
 	jsonMessage, err := json.Marshal(l)
 	if err != nil {

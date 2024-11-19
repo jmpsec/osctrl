@@ -164,6 +164,7 @@ type AdminResponse struct {
 type TokenRequest struct {
 	CSRFToken string `json:"csrftoken"`
 	Username  string `json:"username"`
+	ExpHours  int    `json:"exp_hours"`
 }
 
 // TokenResponse to be returned to API token requests

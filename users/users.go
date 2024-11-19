@@ -100,8 +100,12 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 }
 
 // CreateToken to create a new JWT token for a given user
-func (m *UserManager) CreateToken(username, issuer string) (string, time.Time, error) {
-	expirationTime := time.Now().Add(time.Hour * time.Duration(m.JWTConfig.HoursToExpire))
+func (m *UserManager) CreateToken(username, issuer string, expHours int) (string, time.Time, error) {
+	tDuration := time.Duration(expHours)
+	if expHours == 0 {
+		tDuration = time.Duration(m.JWTConfig.HoursToExpire)
+	}
+	expirationTime := time.Now().Add(time.Hour * tDuration)
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,

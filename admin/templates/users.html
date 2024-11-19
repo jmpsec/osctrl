@@ -193,6 +193,23 @@
                       </div>
                       <input type="hidden" id="user_token_username" value="">
                     </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="user_token_hours">Hours to expire: </label>
+                      <div class="col-md-10">
+                        <select id="expiration_hours" class="form-control">
+                          <option value="2">2 hours</option>
+                          <option value="6">6 hours</option>
+                          <option value="12">12 hours</option>
+                          <option value="24">24 hours</option>
+                          <option value="48">48 hours</option>
+                          <option value="72">72 hours</option>
+                          <option value="168">1 week</option>
+                          <option value="730">1 month</option>
+                          <option value="2190">3 months</option>
+                          <option value="4380">6 months</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                   <div class="modal-footer">
                     <button id="refreshTokenButton" type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
