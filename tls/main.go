@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/backend"
@@ -211,6 +212,20 @@ func init() {
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &tlsConfigValues.Port,
+		},
+		&cli.StringFlag{
+			Name:        "log-level",
+			Value:       types.LogLevelInfo,
+			Usage:       "Log level for the service",
+			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
+			Destination: &tlsConfigValues.LogLevel,
+		},
+		&cli.StringFlag{
+			Name:        "log-format",
+			Value:       types.LogFormatJSON,
+			Usage:       "Log format for the service",
+			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
+			Destination: &tlsConfigValues.LogFormat,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -589,11 +604,7 @@ func init() {
 			Destination: &kafkaConfiguration.SASL.Password,
 		},
 	}
-	// Initialize zerolog logger with our custom parameters
-	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return filepath.Base(file) + ":" + strconv.Itoa(line)
-	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+
 }
 
 // Go go!
@@ -839,6 +850,35 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
+func initializeLogger(logLevel, logFormat string) {
+
+	switch strings.ToLower(logLevel) {
+	case types.LogLevelDebug:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case types.LogLevelInfo:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case types.LogLevelWarn:
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case types.LogLevelError:
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	switch strings.ToLower(logFormat) {
+	case types.LogFormatJSON:
+		log.Logger = log.With().Caller().Logger()
+	case types.LogFormatConsole:
+		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+			return filepath.Base(file) + ":" + strconv.Itoa(line)
+		}
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+	default:
+		log.Logger = log.With().Caller().Logger()
+	}
+
+}
+
 func main() {
 	// Initiate CLI and parse arguments
 	app = cli.NewApp()
@@ -859,8 +899,12 @@ func main() {
 	}
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal().Msgf("app.Run error: %v", err)
+		fmt.Printf("app.Run error: %s", err.Error())
+		os.Exit(1)
 	}
+
+	// Initialize service logger
+	initializeLogger(tlsConfig.LogLevel, tlsConfig.LogFormat)
 	// Service starts!
 	osctrlService()
 }
