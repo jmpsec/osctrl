@@ -45,7 +45,7 @@ func TestNodeQueries(t *testing.T) {
 	nodeQuery := queries.NodeQuery{
 		NodeID:  1,
 		QueryID: 1,
-		Status:  "pending",
+		Status:  queries.DistributedQueryStatusPending,
 	}
 
 	// Query sqlite_master to list all tables
@@ -105,7 +105,7 @@ func TestUpdateQueryStatus(t *testing.T) {
 	nodeQuery := queries.NodeQuery{
 		NodeID:  1,
 		QueryID: 1,
-		Status:  "pending",
+		Status:  queries.DistributedQueryStatusPending,
 	}
 
 	if err := db.Create(&node).Error; err != nil {
@@ -129,7 +129,7 @@ func TestUpdateQueryStatus(t *testing.T) {
 		t.Fatalf("Failed to find updated node query: %v", err)
 	}
 
-	assert.Equal(t, "completed", updatedNodeQuery.Status, "Status does not match expected value")
+	assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQuery.Status, "Status does not match expected value")
 }
 func TestCreateNodeQuery(t *testing.T) {
 	db, err := setupTestDB()

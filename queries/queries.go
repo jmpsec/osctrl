@@ -58,6 +58,12 @@ const (
 	TargetHidden string = "hidden"
 )
 
+const (
+	DistributedQueryStatusPending   string = "pending"
+	DistributedQueryStatusCompleted string = "completed"
+	DistributedQueryStatusError     string = "error"
+)
+
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
@@ -82,12 +88,10 @@ type DistributedQuery struct {
 
 // NodeQuery links a node to a query
 type NodeQuery struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	NodeID    uint      `gorm:"not null;index"`
-	QueryID   uint      `gorm:"not null;index"`
-	Status    string    `gorm:"type:varchar(10);default:'pending'"`
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdatedAt time.Time
+	gorm.Model
+	NodeID  uint   `gorm:"not null;index"`
+	QueryID uint   `gorm:"not null;index"`
+	Status  string `gorm:"type:varchar(8);default:'pending'"`
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -152,7 +156,7 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	q.DB.Table("distributed_queries dq").
 		Select("dq.name, dq.query").
 		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
-		Where("nq.node_id = ? AND nq.status = ?", node.ID, "pending").
+		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
 		Scan(&results)
 
 	if len(results) == 0 {
@@ -477,9 +481,9 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 
 	var result string
 	if statusCode == 0 {
-		result = "completed" // TODO: need be replaced with a constant
+		result = DistributedQueryStatusCompleted
 	} else {
-		result = "error"
+		result = DistributedQueryStatusError
 	}
 
 	var query DistributedQuery
