@@ -2,6 +2,18 @@ package types
 
 import "time"
 
+const (
+	// log levels
+	LogLevelDebug string = "debug"
+	LogLevelInfo  string = "info"
+	LogLevelWarn  string = "warn"
+	LogLevelError string = "error"
+
+	// log formats
+	LogFormatConsole string = "console"
+	LogFormatJSON    string = "json"
+)
+
 // JSONConfigurationTLS to hold TLS service configuration values
 type JSONConfigurationTLS struct {
 	Listener        string `json:"listener"`

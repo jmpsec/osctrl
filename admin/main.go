@@ -260,14 +260,14 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "log-level",
-			Value:       "info",
+			Value:       types.LogLevelInfo,
 			Usage:       "Log level for the service",
 			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
 			Destination: &adminConfigValues.LogLevel,
 		},
 		&cli.StringFlag{
 			Name:        "log-format",
-			Value:       "json",
+			Value:       types.LogFormatJSON,
 			Usage:       "Log format for the service",
 			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
 			Destination: &adminConfigValues.LogFormat,
@@ -1039,22 +1039,22 @@ func cliAction(c *cli.Context) error {
 func initializeLogger(logLevel, logFormat string) {
 
 	switch strings.ToLower(logLevel) {
-	case "debug":
+	case types.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case "info":
+	case types.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case "warn":
+	case types.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case "error":
+	case types.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	switch strings.ToLower(logFormat) {
-	case "json":
+	case types.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case "console":
+	case types.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
