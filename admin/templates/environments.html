@@ -53,7 +53,9 @@
                   <tbody>
                   {{range  $i, $e := $.Environments}}
                     <tr>
-                      <td><b>{{ $e.Name }}</b></td>
+                      <td>
+                        <p id="name" data-tooltip="true" data-uuid="{{ $e.UUID }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Name }}</p>
+                      </td>
                       <td>{{ $e.Type }}</td>
                       <td>
                         <p id="hostname" data-tooltip="true" data-uuid="{{ $e.UUID }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Hostname }}</p>
@@ -149,14 +151,17 @@
         $(".editable-field").editable(function(value, settings) {
 			    var data = {
             csrftoken: $("#csrftoken").val(),
-            action: 'edit',
             uuid: $(this).attr('data-uuid'),
           };
           var type_edit = $(this).attr('id');
           if (type_edit === 'hostname') {
             data.hostname = value;
+            data.action = 'edit_hostname';
           }
-          console.log(settings);
+          if (type_edit === 'name') {
+            data.name = value;
+            data.action = 'edit_name';
+          }
           sendPostRequest(data, window.location.pathname, '', false);
           return value;
 		    }, {

@@ -209,7 +209,7 @@ func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error)
 }
 
 // GetBySelector to retrieve target nodes by selector
-func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64) ([]OsqueryNode, error) {
+func (n *NodeManager) GetBySelector(stype string, selector interface{}, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
 	var s string
 	switch stype {
@@ -217,6 +217,8 @@ func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64)
 		s = "environment"
 	case "platform":
 		s = "platform"
+	case "environment_id":
+		s = "environment_id"
 	}
 	switch target {
 	case AllNodes:
@@ -269,6 +271,11 @@ func (n *NodeManager) GetByPlatform(platform, target string, hours int64) ([]Osq
 	return n.GetBySelector("platform", platform, target, hours)
 }
 
+// GetByEnvID to retrieve target nodes by environment ID
+func (n *NodeManager) GetByEnvID(envid uint, target string, hours int64) ([]OsqueryNode, error) {
+	return n.GetBySelector("environment_id", envid, target, hours)
+}
+
 // GetAllPlatforms to get all different platform with nodes in them
 func (n *NodeManager) GetAllPlatforms() ([]string, error) {
 	var platforms []string
@@ -300,16 +307,16 @@ func (n *NodeManager) GetEnvPlatforms(environment string) ([]string, error) {
 }
 
 // GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
-func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
+func (n *NodeManager) GetStatsByEnv(envID uint, hours int64) (StatsData, error) {
 	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Count(&stats.Total).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment_id = ?", envID).Count(&stats.Total).Error; err != nil {
 		return stats, err
 	}
 	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment_id = ?", envID).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment_id = ?", envID).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil
@@ -347,7 +354,7 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 		return fmt.Errorf("RecordUsername %v", err)
 	}
 	if metadata.Username != node.Username && metadata.Username != "" {
-		updates["username"] =metadata.Username
+		updates["username"] = metadata.Username
 	}
 	// Record hostname
 	if err := n.RecordHostname(metadata.Hostname, node); err != nil {

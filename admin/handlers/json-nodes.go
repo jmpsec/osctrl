@@ -65,7 +65,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return
@@ -83,7 +83,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 		h.Inc(metricJSONErr)
 		return
 	}
-	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
+	nodes, err := h.Nodes.GetByEnvID(env.ID, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
 		log.Err(err).Msg("error getting nodes")
 		h.Inc(metricJSONErr)
@@ -126,7 +126,7 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricJSONErr)
 		return

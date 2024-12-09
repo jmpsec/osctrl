@@ -45,7 +45,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if user has access to this environment
-	if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.ID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
 		h.Inc(metricAPILoginErr)
 		return

@@ -57,12 +57,12 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Check permissions
-		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return
 		}
-		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironmentID))
+		stats, err = h.Nodes.GetStatsByEnv(env.ID, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			h.Inc(metricAdminErr)
 			log.Err(err).Msg("error getting stats")
@@ -70,7 +70,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		}
 	} else if target == "platform" {
 		// Check permissions
-		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 			h.Inc(metricJSONErr)
 			return

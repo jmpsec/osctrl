@@ -110,7 +110,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions for query
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -266,7 +266,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -429,7 +429,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions for query
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -503,7 +503,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -568,7 +568,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -801,7 +801,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -869,7 +869,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -968,7 +968,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1023,7 +1023,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1104,7 +1104,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		adminOKResponse(w, "debug changed successfully")
-	case "edit":
+	case "edit_hostname":
 		if h.Envs.Exists(c.UUID) {
 			if err := h.Envs.UpdateHostname(c.UUID, c.Hostname); err != nil {
 				adminErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
@@ -1112,7 +1112,16 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		}
-		adminOKResponse(w, "debug changed successfully")
+		adminOKResponse(w, "hostname changed successfully")
+	case "edit_name":
+		if h.Envs.Exists(c.UUID) {
+			if err := h.Envs.UpdateName(c.UUID, c.Name); err != nil {
+				adminErrorResponse(w, "error updating name", http.StatusInternalServerError, err)
+				h.Inc(metricAdminErr)
+				return
+			}
+		}
+		adminOKResponse(w, "name changed successfully")
 	}
 	// Serialize and send response
 	if h.Settings.DebugService(settings.ServiceAdmin) {
@@ -1142,7 +1151,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1228,7 +1237,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1388,7 +1397,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1483,7 +1492,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1560,7 +1569,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return
@@ -1590,7 +1599,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 	// TODO verify environments and this should reflect the updated struct for permissions
 	perms := users.GenEnvAccess(p.Admin, p.Carve, p.Query, p.Read)
 	// Check if user already have access to this environment
-	existing, err := h.Users.GetEnvAccess(usernameVar, env.UUID)
+	existing, err := h.Users.GetEnvAccess(usernameVar, env.ID)
 	if err != nil && strings.Contains(err.Error(), "record not found") {
 		envAccess := h.Users.GenUserAccess(env, perms)
 		generatedPerms := h.Users.GenPermissions(usernameVar, ctx[sessions.CtxUser], envAccess)
@@ -1601,7 +1610,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 	if existing != (users.EnvAccess{}) && !users.SameAccess(perms, existing) {
-		if err := h.Users.ChangeAccess(usernameVar, env.UUID, perms); err != nil {
+		if err := h.Users.ChangeAccess(usernameVar, env.ID, perms); err != nil {
 			adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
@@ -1637,7 +1646,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, env.ID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		h.Inc(metricAdminErr)
 		return

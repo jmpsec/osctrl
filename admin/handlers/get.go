@@ -63,7 +63,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -100,7 +100,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return

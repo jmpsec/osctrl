@@ -76,22 +76,22 @@ func changePermissions(c *cli.Context) error {
 		}
 		// Reset permissions to regular user access
 		if user {
-			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
+			if err := adminUsers.SetEnvUser(username, env.ID, user); err != nil {
 				return fmt.Errorf("error setting user - %s", err)
 			}
 		}
 		if admin {
-			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
+			if err := adminUsers.SetEnvAdmin(username, env.ID, admin); err != nil {
 				return fmt.Errorf("error setting admin - %s", err)
 			}
 		}
 		if carve {
-			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
+			if err := adminUsers.SetEnvCarve(username, env.ID, carve); err != nil {
 				return fmt.Errorf("error setting carve - %s", err)
 			}
 		}
 		if query {
-			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
+			if err := adminUsers.SetEnvQuery(username, env.ID, query); err != nil {
 				return fmt.Errorf("error setting query - %s", err)
 			}
 		}
@@ -123,7 +123,7 @@ func showPermissions(c *cli.Context) error {
 			return fmt.Errorf("error env get - %s", err)
 		}
 		// Show is just display user existing permissions and return
-		userAccess, err = adminUsers.GetEnvAccess(username, env.UUID)
+		userAccess, err = adminUsers.GetEnvAccess(username, env.ID)
 		if err != nil {
 			return fmt.Errorf("error getting access - %s", err)
 		}
@@ -186,7 +186,7 @@ func resetPermissions(c *cli.Context) error {
 			query = true
 			carve = true
 		}
-		if err := adminUsers.DeleteEnvPermissions(username, env.UUID); err != nil {
+		if err := adminUsers.DeleteEnvPermissions(username, env.ID); err != nil {
 			return err
 		}
 		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, user, query, carve, admin)

@@ -116,7 +116,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
@@ -204,7 +204,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricTokenErr)
 		return
@@ -287,7 +287,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -378,7 +378,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -446,7 +446,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -514,7 +514,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -599,7 +599,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -667,7 +667,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -769,7 +769,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -889,7 +889,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -956,7 +956,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1062,7 +1062,7 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1167,7 +1167,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.ID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1245,7 +1245,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1297,7 +1297,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1377,7 +1377,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1442,7 +1442,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1508,7 +1508,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return
@@ -1572,7 +1572,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, settings.NoEnvironmentID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		h.Inc(metricAdminErr)
 		return

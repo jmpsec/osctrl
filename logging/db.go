@@ -24,35 +24,38 @@ const (
 // OsqueryResultData to log result data to database
 type OsqueryResultData struct {
 	gorm.Model
-	UUID        string `gorm:"index"`
-	Environment string
-	Name        string
-	Action      string
-	Epoch       int64
-	Columns     string
-	Counter     int
+	UUID          string `gorm:"index"`
+	Environment   string
+	EnvironmentID uint
+	Name          string
+	Action        string
+	Epoch         int64
+	Columns       string
+	Counter       int
 }
 
 // OsqueryStatusData to log status data to database
 type OsqueryStatusData struct {
 	gorm.Model
-	UUID        string `gorm:"index"`
-	Environment string
-	Line        string
-	Message     string
-	Version     string
-	Filename    string
-	Severity    string
+	UUID          string `gorm:"index"`
+	Environment   string
+	EnvironmentID uint
+	Line          string
+	Message       string
+	Version       string
+	Filename      string
+	Severity      string
 }
 
 // OsqueryQueryData to log query data to database
 type OsqueryQueryData struct {
 	gorm.Model
-	UUID        string `gorm:"index"`
-	Environment string
-	Name        string
-	Data        string
-	Status      int
+	UUID          string `gorm:"index"`
+	Environment   string
+	EnvironmentID uint
+	Name          string
+	Data          string
+	Status        int
 }
 
 // LoggerDB will be used to log data using a database

@@ -376,6 +376,14 @@ func (environment *Environment) UpdateHostname(idEnv, hostname string) error {
 	return nil
 }
 
+// UpdateName to update name for an environment
+func (environment *Environment) UpdateName(idEnv, name string) error {
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("name", name).Error; err != nil {
+		return fmt.Errorf("Update name %v", err)
+	}
+	return nil
+}
+
 // UpdateIntervals to update intervals for an environment
 func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs int) error {
 	env, err := environment.Get(name)
