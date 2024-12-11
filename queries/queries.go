@@ -102,14 +102,6 @@ type DistributedQueryTarget struct {
 	Value string
 }
 
-// DistributedQueryExecution to keep track of queries executing
-type DistributedQueryExecution struct {
-	gorm.Model
-	Name   string `gorm:"index"`
-	UUID   string `gorm:"index"`
-	Result int
-}
-
 // QueryReadQueries to hold all the on-demand queries
 type QueryReadQueries map[string]string
 
@@ -130,10 +122,6 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
-	}
-	// table distributed_query_executions
-	if err := backend.AutoMigrate(&DistributedQueryExecution{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
 	}
 	// table distributed_query_targets
 	if err := backend.AutoMigrate(&DistributedQueryTarget{}); err != nil {
@@ -500,19 +488,6 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 		return err
 	}
 	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// TrackExecution to keep track of where queries have already ran
-func (q *Queries) TrackExecution(name, uuid string, result int) error {
-	queryExecution := DistributedQueryExecution{
-		Name:   name,
-		UUID:   uuid,
-		Result: result,
-	}
-	if err := q.DB.Create(&queryExecution).Error; err != nil {
 		return err
 	}
 	return nil

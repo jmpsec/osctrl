@@ -81,11 +81,6 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 		if err != nil {
 			log.Err(err).Msg("error updating query")
 		}
-		// TODO: This TrackExeuction need be removed
-		// Add a record for this query
-		if err := l.Queries.TrackExecution(q, node.UUID, queriesWrite.Statuses[q]); err != nil {
-			log.Err(err).Msg("error adding query execution")
-		}
 		// Instead of creating a new record in a separate table, we can just update the query status
 		if err := l.Queries.UpdateQueryStatus(q, node.ID, queriesWrite.Statuses[q]); err != nil {
 			log.Err(err).Msg("error updating query status")
