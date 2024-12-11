@@ -297,20 +297,6 @@ func (q *Queries) Complete(name string, envid uint) error {
 	return nil
 }
 
-// VerifyComplete to mark query as completed if the expected executions are done
-func (q *Queries) VerifyComplete(name string, envid uint) error {
-	query, err := q.Get(name, envid)
-	if err != nil {
-		return err
-	}
-	if (query.Executions + query.Errors) >= query.Expected {
-		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Activate to mark query as active
 func (q *Queries) Activate(name string, envid uint) error {
 	query, err := q.Get(name, envid)
@@ -343,6 +329,23 @@ func (q *Queries) Expire(name string, envid uint) error {
 	}
 	if err := q.DB.Model(&query).Updates(map[string]interface{}{"expired": true, "active": false}).Error; err != nil {
 		return err
+	}
+	return nil
+}
+
+// CleanupCompletedQueries to set all completed queries as inactive by environment
+func (q *Queries) CleanupCompletedQueries(envid uint) error {
+	qs, err := q.GetQueries(TargetActive, envid)
+	if err != nil {
+		return err
+	}
+	for _, query := range qs {
+		executionReached := (query.Executions + query.Errors) >= query.Expected
+		if executionReached {
+			if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
