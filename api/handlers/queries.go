@@ -200,7 +200,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 			if u != "" {
 				node, err := h.Nodes.GetByUUID(u)
 				if err != nil {
-					log.Warn().Msgf("error getting node %s and failed to create node query for it", u)
+					log.Err(err).Msgf("error getting node %s and failed to create node query for it", u)
 					continue
 				}
 				expected = append(expected, node.ID)
@@ -209,15 +209,13 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create hostnames target
-	// Currently we are using the GetByIdentifier function and it need be more clear
-	// about the definition of the identifier
 	if len(q.Hosts) > 0 {
 		expected = []uint{}
 		for _, hostName := range q.Hosts {
 			if hostName != "" {
 				node, err := h.Nodes.GetByIdentifier(hostName)
 				if err != nil {
-					log.Warn().Msgf("error getting node %s and failed to create node query for it", hostName)
+					log.Err(err).Msgf("error getting node %s and failed to create node query for it", hostName)
 					continue
 				}
 				expected = append(expected, node.ID)
