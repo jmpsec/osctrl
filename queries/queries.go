@@ -421,13 +421,6 @@ func (q *Queries) GetTargets(name string) ([]DistributedQueryTarget, error) {
 	return targets, nil
 }
 
-// NotYetExecuted to check if query already executed or it is within the interval
-func (q *Queries) NotYetExecuted(name, uuid string) bool {
-	var results int64
-	q.DB.Model(&DistributedQueryExecution{}).Where("name = ? AND uuid = ?", name, uuid).Count(&results)
-	return (results == 0)
-}
-
 // IncExecution to increase the execution count for this query
 func (q *Queries) IncExecution(name string, envid uint) error {
 	query, err := q.Get(name, envid)
