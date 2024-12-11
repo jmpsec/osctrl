@@ -226,14 +226,21 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	expectedClear := removeStringDuplicates(expected)
 
 	// Create new record for query list
+	nodesID := make([]uint, len(expectedClear))
 	for _, nodeUUID := range expectedClear {
 		node, err := h.Nodes.GetByUUID(nodeUUID)
 		if err != nil {
 			log.Err(err).Msgf("error getting node %s and failed to create node query for it", nodeUUID)
 			continue
 		}
-		if err := h.Queries.CreateNodeQuery(node.ID, newQuery.ID); err != nil {
-			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, nodeUUID)
+		nodesID = append(nodesID, node.ID)
+	}
+	// If the list is empty, we don't need to create node queries
+	if len(nodesID) != 0 {
+		if err := h.Queries.CreateNodeQueries(nodesID, newQuery.ID); err != nil {
+			log.Err(err).Msgf("error creating node queries for query %s", newQuery.Name)
+			apiErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
+			return
 		}
 	}
 

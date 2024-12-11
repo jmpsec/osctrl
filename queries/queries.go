@@ -390,13 +390,19 @@ func (q *Queries) Create(query DistributedQuery) error {
 	return nil
 }
 
-// CreateNodeQuery to link a node to a query
-func (q *Queries) CreateNodeQuery(nodeID, queryID uint) error {
-	nodeQuery := NodeQuery{
-		NodeID:  nodeID,
-		QueryID: queryID,
+// CreateNodeQueries to link multiple nodes to a query
+func (q *Queries) CreateNodeQueries(nodeIDs []uint, queryID uint) error {
+	if len(nodeIDs) == 0 {
+		return fmt.Errorf("no nodes to link to query")
 	}
-	if err := q.DB.Create(&nodeQuery).Error; err != nil {
+	var nodeQueries []NodeQuery
+	for _, nodeID := range nodeIDs {
+		nodeQueries = append(nodeQueries, NodeQuery{
+			NodeID:  nodeID,
+			QueryID: queryID,
+		})
+	}
+	if err := q.DB.Create(&nodeQueries).Error; err != nil {
 		return err
 	}
 	return nil
