@@ -7,8 +7,8 @@ replace github.com/jmpsec/osctrl/nodes => ../nodes
 replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
-	github.com/jmpsec/osctrl/nodes v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/utils v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/nodes v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/utils v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/stretchr/testify v1.9.0
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.12

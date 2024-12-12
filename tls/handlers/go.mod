@@ -32,12 +32,12 @@ replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
 	github.com/jmpsec/osctrl/backend v0.4.1 // indirect
-	github.com/jmpsec/osctrl/environments v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/metrics v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/environments v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/metrics v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/nodes v0.4.1
 	github.com/jmpsec/osctrl/queries v0.4.1
 	github.com/jmpsec/osctrl/settings v0.4.1
-	github.com/jmpsec/osctrl/tags v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/tags v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/types v0.4.1
 	github.com/jmpsec/osctrl/utils v0.4.1
 	github.com/segmentio/ksuid v1.0.4
@@ -45,9 +45,9 @@ require (
 )
 
 require (
-	github.com/jmpsec/osctrl/carves v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/logging v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/version v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/carves v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/logging v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/version v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/zerolog v1.33.0
 )
