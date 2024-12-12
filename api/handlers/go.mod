@@ -31,15 +31,15 @@ replace github.com/jmpsec/osctrl/utils => ../../utils
 replace github.com/jmpsec/osctrl/version => ../../version
 
 require (
-	github.com/jmpsec/osctrl/cache v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/carves v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/environments v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/logging v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/metrics v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/cache v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/carves v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/environments v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/logging v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/metrics v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/nodes v0.4.1
 	github.com/jmpsec/osctrl/queries v0.4.1
-	github.com/jmpsec/osctrl/tags v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/users v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/tags v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/users v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/utils v0.4.1
 	github.com/rs/zerolog v1.33.0
 	gorm.io/gorm v1.25.12

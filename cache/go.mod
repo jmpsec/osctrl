@@ -12,7 +12,7 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/jmpsec/osctrl/types v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/types v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/spf13/viper v1.19.0
 )
 
@@ -26,7 +26,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.4.1 // indirect
 	github.com/jmpsec/osctrl/queries v0.4.1 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20241212110713-e8b9832d253a // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20241212115101-0bcbc42c27cb // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

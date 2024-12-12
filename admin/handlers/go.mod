@@ -35,19 +35,19 @@ replace github.com/jmpsec/osctrl/version => ../../version
 require (
 	github.com/jmpsec/osctrl/admin/sessions v0.4.1
 	github.com/jmpsec/osctrl/carves v0.4.1
-	github.com/jmpsec/osctrl/environments v0.0.0-20241212110713-e8b9832d253a
-	github.com/jmpsec/osctrl/metrics v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/environments v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/metrics v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/nodes v0.4.1
 	github.com/jmpsec/osctrl/queries v0.4.1
 	github.com/jmpsec/osctrl/settings v0.4.1
-	github.com/jmpsec/osctrl/tags v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/tags v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/types v0.4.1
 	github.com/jmpsec/osctrl/users v0.4.1
 	github.com/jmpsec/osctrl/utils v0.4.1
 )
 
 require (
-	github.com/jmpsec/osctrl/cache v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/cache v0.0.0-20241212115101-0bcbc42c27cb
 	gorm.io/gorm v1.25.12
 )
 
@@ -113,7 +113,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmpsec/osctrl/logging v0.0.0-20241212110713-e8b9832d253a
+	github.com/jmpsec/osctrl/logging v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/jmpsec/osctrl/version v0.4.1 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
