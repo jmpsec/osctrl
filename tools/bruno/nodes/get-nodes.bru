@@ -1,0 +1,11 @@
+meta {
+  name: get-nodes
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}} /api/v1/nodes/{{env}}/all
+  body: none
+  auth: none
+}

@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jmpsec/osctrl/nodes"
@@ -57,6 +58,12 @@ const (
 	TargetHidden string = "hidden"
 )
 
+const (
+	DistributedQueryStatusPending   string = "pending"
+	DistributedQueryStatusCompleted string = "completed"
+	DistributedQueryStatusError     string = "error"
+)
+
 // DistributedQuery as abstraction of a distributed query
 type DistributedQuery struct {
 	gorm.Model
@@ -77,6 +84,14 @@ type DistributedQuery struct {
 	EnvironmentID uint
 	ExtraData     string
 	Expiration    time.Time
+}
+
+// NodeQuery links a node to a query
+type NodeQuery struct {
+	gorm.Model
+	NodeID  uint   `gorm:"not null;index"`
+	QueryID uint   `gorm:"not null;index"`
+	Status  string `gorm:"type:varchar(8);default:'pending'"`
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -105,8 +120,13 @@ type Queries struct {
 
 // CreateQueries to initialize the queries struct
 func CreateQueries(backend *gorm.DB) *Queries {
-	var q *Queries
-	q = &Queries{DB: backend}
+	//var q *Queries
+	q := &Queries{DB: backend}
+
+	// table node_queries
+	if err := backend.AutoMigrate(&NodeQuery{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (node_queries): %v", err)
+	}
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
@@ -126,34 +146,29 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	return q
 }
 
-// NodeQueries to get all queries that belong to the provided node
-// FIXME this will impact the performance of the TLS endpoint due to being CPU and I/O hungry
-// FIMXE potential mitigation can be add a cache (Redis?) layer to store queries per node_key
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
-	acelerate := false
-	// Get all current active queries and carves
-	queries, err := q.GetActive(node.EnvironmentID)
-	if err != nil {
-		return QueryReadQueries{}, false, err
+
+	var results []struct {
+		Name  string
+		Query string
 	}
-	// Iterate through active queries, see if they target this node and prepare data in the same loop
+
+	q.DB.Table("distributed_queries dq").
+		Select("dq.name, dq.query").
+		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
+		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
+		Scan(&results)
+
+	if len(results) == 0 {
+		return QueryReadQueries{}, false, nil
+	}
+
 	qs := make(QueryReadQueries)
-	for _, _q := range queries {
-		targets, err := q.GetTargets(_q.Name)
-		if err != nil {
-			return QueryReadQueries{}, false, err
-		}
-		// FIXME disable acceleration until figure out edge cases where it would trigger by mistake
-		/*
-			if len(targets) == 1 {
-				acelerate = true
-			}
-		*/
-		if isQueryTarget(node, targets) && q.NotYetExecuted(_q.Name, node.UUID) {
-			qs[_q.Name] = _q.Query
-		}
+	for _, _q := range results {
+		qs[_q.Name] = _q.Query
 	}
-	return qs, acelerate, nil
+
+	return qs, false, nil
 }
 
 // Gets all queries by target (active/completed/all/all-full/deleted/hidden/expired)
@@ -384,6 +399,18 @@ func (q *Queries) Create(query DistributedQuery) error {
 	return nil
 }
 
+// CreateNodeQuery to link a node to a query
+func (q *Queries) CreateNodeQuery(nodeID, queryID uint) error {
+	nodeQuery := NodeQuery{
+		NodeID:  nodeID,
+		QueryID: queryID,
+	}
+	if err := q.DB.Create(&nodeQuery).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // CreateTarget to create target entry for a given query
 func (q *Queries) CreateTarget(name, targetType, targetValue string) error {
 	queryTarget := DistributedQueryTarget{
@@ -444,6 +471,35 @@ func (q *Queries) SetExpected(name string, expected int, envid uint) error {
 		return err
 	}
 	if err := q.DB.Model(&query).Update("expected", expected).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateQueryStatus to update the status of each query
+func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode int) error {
+
+	var result string
+	if statusCode == 0 {
+		result = DistributedQueryStatusCompleted
+	} else {
+		result = DistributedQueryStatusError
+	}
+
+	var query DistributedQuery
+	// TODO: Get the query id
+	// I think we can put an extra field in the query so that we also get the query id back from the osquery
+	// This way we can avoid this query to get the query id
+	if err := q.DB.Where("name = ?", queryName).Find(&query).Error; err != nil {
+		return fmt.Errorf("error getting query id: %v", err)
+	}
+
+	var nodeQuery NodeQuery
+
+	if err := q.DB.Where("node_id = ? AND query_id = ?", nodeID, query.ID).Find(&nodeQuery).Error; err != nil {
+		return err
+	}
+	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
 		return err
 	}
 	return nil

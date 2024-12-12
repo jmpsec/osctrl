@@ -1,0 +1,19 @@
+meta {
+  name: post - create queries
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/queries/{{env}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "environment_list": ["dev"],
+    "query": "SELECT * FROM system_info;",
+    "exp_hours": 1
+  }
+}
