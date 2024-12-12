@@ -12,7 +12,7 @@ replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/jmpsec/osctrl/types v0.0.0-20241107152746-1f093f5e8faf
+	github.com/jmpsec/osctrl/types v0.0.0-20241212110713-e8b9832d253a
 	github.com/spf13/viper v1.19.0
 )
 
@@ -26,8 +26,8 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/nodes v0.4.1 // indirect
 	github.com/jmpsec/osctrl/queries v0.4.1 // indirect
-	github.com/jmpsec/osctrl/utils v0.0.0-20241107150205-621ec8aafdae // indirect
-	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20241212110713-e8b9832d253a // indirect
+	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -43,9 +43,9 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/exp v0.0.0-20241210194714-1829a127f884 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.25.12 // indirect
