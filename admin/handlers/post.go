@@ -150,6 +150,12 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		h.Inc(metricAdminErr)
 		return
 	}
+	// Get the query id
+	newQuery, err = h.Queries.Get(newQuery.Name, env.ID)
+	if err != nil {
+		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
 	// Temporary list of UUIDs to calculate Expected
 	var expected []string
 	// Create environment target
@@ -223,6 +229,18 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Remove duplicates from expected
 	expectedClear := removeStringDuplicates(expected)
+
+	// Create new record for query list
+	for _, nodeUUID := range expectedClear {
+		node, err := h.Nodes.GetByUUID(nodeUUID)
+		if err != nil {
+			log.Err(err).Msgf("error getting node %s and failed to create node query for it", nodeUUID)
+			continue
+		}
+		if err := h.Queries.CreateNodeQuery(node.ID, newQuery.ID); err != nil {
+			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, nodeUUID)
+		}
+	}
 	// Update value for expected
 	if err := h.Queries.SetExpected(newQuery.Name, len(expectedClear), env.ID); err != nil {
 		adminErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
@@ -1278,7 +1296,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if u.Token {
-			token, exp, err := h.Users.CreateToken(newUser.Username, h.AdminConfig.Host)
+			token, exp, err := h.Users.CreateToken(newUser.Username, h.AdminConfig.Host, h.Users.JWTConfig.HoursToExpire)
 			if err != nil {
 				adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
@@ -1358,7 +1376,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 						return
 					}
 				*/
-				token, exp, err := h.Users.CreateToken(u.Username, h.AdminConfig.Host)
+				token, exp, err := h.Users.CreateToken(u.Username, h.AdminConfig.Host, h.Users.JWTConfig.HoursToExpire)
 				if err != nil {
 					adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 					h.Inc(metricAdminErr)
