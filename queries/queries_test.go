@@ -131,7 +131,8 @@ func TestUpdateQueryStatus(t *testing.T) {
 
 	assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQuery.Status, "Status does not match expected value")
 }
-func TestCreateNodeQuery(t *testing.T) {
+
+func TestCreateNodeQueries(t *testing.T) {
 	db, err := setupTestDB()
 	if err != nil {
 		t.Fatalf("Failed to setup test database: %v", err)
@@ -142,8 +143,11 @@ func TestCreateNodeQuery(t *testing.T) {
 	nodes.CreateNodes(db)
 
 	// Create test data
-	node := nodes.OsqueryNode{
+	node1 := nodes.OsqueryNode{
 		Model: gorm.Model{ID: 1},
+	}
+	node2 := nodes.OsqueryNode{
+		Model: gorm.Model{ID: 2},
 	}
 	distributedQuery := queries.DistributedQuery{
 		Model:         gorm.Model{ID: 1},
@@ -153,24 +157,31 @@ func TestCreateNodeQuery(t *testing.T) {
 		Expiration:    time.Now().Add(24 * time.Hour),
 	}
 
-	if err := db.Create(&node).Error; err != nil {
-		t.Fatalf("Failed to create test node: %v", err)
+	if err := db.Create(&node1).Error; err != nil {
+		t.Fatalf("Failed to create test node1: %v", err)
+	}
+	if err := db.Create(&node2).Error; err != nil {
+		t.Fatalf("Failed to create test node2: %v", err)
 	}
 	if err := db.Create(&distributedQuery).Error; err != nil {
 		t.Fatalf("Failed to create test distributed query: %v", err)
 	}
 
-	// Test CreateNodeQuery function
-	err = q.CreateNodeQuery(1, 1)
+	// Test CreateNodeQueries function
+	nodeIDs := []uint{1, 2}
+	err = q.CreateNodeQueries(nodeIDs, 1)
 	if err != nil {
-		t.Fatalf("CreateNodeQuery returned an error: %v", err)
+		t.Fatalf("CreateNodeQueries returned an error: %v", err)
 	}
 
-	var nodeQuery queries.NodeQuery
-	if err := db.Where("node_id = ? AND query_id = ?", 1, 1).Find(&nodeQuery).Error; err != nil {
-		t.Fatalf("Failed to find created node query: %v", err)
+	var nodeQueries []queries.NodeQuery
+	if err := db.Where("query_id = ?", 1).Find(&nodeQueries).Error; err != nil {
+		t.Fatalf("Failed to find created node queries: %v", err)
 	}
 
-	assert.Equal(t, uint(1), nodeQuery.NodeID, "NodeID does not match expected value")
-	assert.Equal(t, uint(1), nodeQuery.QueryID, "QueryID does not match expected value")
+	assert.Len(t, nodeQueries, 2, "Expected 2 node queries to be created")
+	assert.Equal(t, uint(1), nodeQueries[0].NodeID, "First NodeID does not match expected value")
+	assert.Equal(t, uint(1), nodeQueries[0].QueryID, "First QueryID does not match expected value")
+	assert.Equal(t, uint(2), nodeQueries[1].NodeID, "Second NodeID does not match expected value")
+	assert.Equal(t, uint(1), nodeQueries[1].QueryID, "Second QueryID does not match expected value")
 }

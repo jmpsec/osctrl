@@ -156,17 +156,17 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
-	// Temporary list of UUIDs to calculate Expected
-	var expected []string
+
+	// List all the nodes that match the query
+	var expected []uint
+
+	targetNodesID := []uint{}
+	// TODO: Refactor this to use osctrl-api instead of direct DB queries
 	// Create environment target
 	if len(q.Environments) > 0 {
+		expected = []uint{}
 		for _, e := range q.Environments {
 			if (e != "") && h.Envs.Exists(e) {
-				if err := h.Queries.CreateTarget(newQuery.Name, queries.QueryTargetEnvironment, e); err != nil {
-					adminErrorResponse(w, "error creating query environment target", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
 				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
@@ -174,21 +174,18 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 					return
 				}
 				for _, n := range nodes {
-					expected = append(expected, n.UUID)
+					expected = append(expected, n.ID)
 				}
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create platform target
 	if len(q.Platforms) > 0 {
+		expected = []uint{}
 		platforms, _ := h.Nodes.GetAllPlatforms()
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(platforms, p) {
-				if err := h.Queries.CreateTarget(newQuery.Name, queries.QueryTargetPlatform, p); err != nil {
-					adminErrorResponse(w, "error creating query platform target", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
-				}
 				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
@@ -196,53 +193,53 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 					return
 				}
 				for _, n := range nodes {
-					expected = append(expected, n.UUID)
+					expected = append(expected, n.ID)
 				}
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create UUIDs target
 	if len(q.UUIDs) > 0 {
+		expected = []uint{}
 		for _, u := range q.UUIDs {
-			if (u != "") && h.Nodes.CheckByUUID(u) {
-				if err := h.Queries.CreateTarget(newQuery.Name, queries.QueryTargetUUID, u); err != nil {
-					adminErrorResponse(w, "error creating query UUID target", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
+			if u != "" {
+				node, err := h.Nodes.GetByUUID(u)
+				if err != nil {
+					log.Err(err).Msgf("error getting node %s and failed to create node query for it", u)
+					continue
 				}
-				expected = append(expected, u)
+				expected = append(expected, node.ID)
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create hostnames target
 	if len(q.Hosts) > 0 {
+		expected = []uint{}
 		for _, _h := range q.Hosts {
-			if (_h != "") && h.Nodes.CheckByHost(_h) {
-				if err := h.Queries.CreateTarget(newQuery.Name, queries.QueryTargetLocalname, _h); err != nil {
-					adminErrorResponse(w, "error creating query hostname target", http.StatusInternalServerError, err)
-					h.Inc(metricAdminErr)
-					return
+			if _h != "" {
+				node, err := h.Nodes.GetByIdentifier(_h)
+				if err != nil {
+					log.Err(err).Msgf("error getting node %s and failed to create node query for it", _h)
+					continue
 				}
-				expected = append(expected, _h)
+				expected = append(expected, node.ID)
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
-	// Remove duplicates from expected
-	expectedClear := removeStringDuplicates(expected)
 
-	// Create new record for query list
-	for _, nodeUUID := range expectedClear {
-		node, err := h.Nodes.GetByUUID(nodeUUID)
-		if err != nil {
-			log.Err(err).Msgf("error getting node %s and failed to create node query for it", nodeUUID)
-			continue
-		}
-		if err := h.Queries.CreateNodeQuery(node.ID, newQuery.ID); err != nil {
-			log.Err(err).Msgf("error creating node query for query %s and node %s", newQuery.Name, nodeUUID)
+	// If the list is empty, we don't need to create node queries
+	if len(targetNodesID) != 0 {
+		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
+			log.Err(err).Msgf("error creating node queries for query %s", newQuery.Name)
+			adminErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
+			return
 		}
 	}
 	// Update value for expected
-	if err := h.Queries.SetExpected(newQuery.Name, len(expectedClear), env.ID); err != nil {
+	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
 		adminErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		h.Inc(metricAdminErr)
 		return

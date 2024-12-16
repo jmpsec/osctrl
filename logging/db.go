@@ -273,14 +273,6 @@ func (logDB *LoggerDB) CleanQueryLogs(entries int64) error {
 			if err := logDB.Database.Conn.Unscoped().Delete(&queriesTargets).Error; err != nil {
 				return err
 			}
-			// Get query executions
-			var queriesExecutions []queries.DistributedQueryExecution
-			if err := logDB.Database.Conn.Where("name = ?", q.Name).Find(&queriesExecutions).Error; err != nil {
-				return err
-			}
-			if err := logDB.Database.Conn.Unscoped().Delete(&queriesExecutions).Error; err != nil {
-				return err
-			}
 			// Delete query
 			if err := logDB.Database.Conn.Unscoped().Delete(&q).Error; err != nil {
 				return err

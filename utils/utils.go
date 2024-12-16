@@ -31,3 +31,28 @@ func RandomForNames() string {
 	_, _ = hasher.Write([]byte(fmt.Sprintf("%x", b)))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
+
+func Intersect(slice1, slice2 []uint) []uint {
+	if len(slice1) == 0 {
+		return slice2
+	}
+	// If slice2 is empty, return slice1
+	if len(slice2) == 0 {
+		return slice1
+	}
+
+	set := make(map[uint]struct{})
+	for _, item := range slice1 {
+		set[item] = struct{}{} // Add items from slice1 to the set
+	}
+
+	intersection := []uint{}
+	for _, item := range slice2 {
+		if _, exists := set[item]; exists {
+			intersection = append(intersection, item)
+			delete(set, item) // Ensure uniqueness in the result
+		}
+	}
+
+	return intersection
+}

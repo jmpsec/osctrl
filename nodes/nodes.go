@@ -347,7 +347,7 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 		return fmt.Errorf("RecordUsername %v", err)
 	}
 	if metadata.Username != node.Username && metadata.Username != "" {
-		updates["username"] =metadata.Username
+		updates["username"] = metadata.Username
 	}
 	// Record hostname
 	if err := n.RecordHostname(metadata.Hostname, node); err != nil {
