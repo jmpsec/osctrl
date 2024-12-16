@@ -8,7 +8,7 @@ on:
 env:
   GOLANG_VERSION: 1.23.1
   OSQUERY_VERSION: 5.14.1
-  OSCTRL_ADMIN_IMAGE: ${{ secrets.CONTAINER_REGISTRY }}/${{ secrets.DOCKER_HUB_ORG }}/osctrl-admin
+  OSCTRL_ADMIN_IMAGE: ${{ secrets.CONTAINER_REGISTRY }}/${{ secrets.CR_REPO }}/osctrl-admin
 
 jobs:
   build-prep:
@@ -47,7 +47,7 @@ jobs:
           cr_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           cr_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           cr_name: ${{ secrets.CONTAINER_REGISTRY }}
-          cr_repo: ${{ secrets.DOCKER_HUB_ORG }}
+          cr_repo: ${{ secrets.CR_REPO}}
   build_and_test:
     name: Build binaries for osctrl admin
     runs-on: ubuntu-22.04
@@ -137,7 +137,7 @@ jobs:
           osctrl_component: ${{ matrix.components }}
           commit_sha: ${{ steps.vars.outputs.sha_short }}
           #### Dockerhub creds ####
-          docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
+          docker_hub_org: ${{ secrets.CR_REPO }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           container_registry: ${{ secrets.CONTAINER_REGISTRY }}
