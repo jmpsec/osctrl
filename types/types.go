@@ -2,10 +2,24 @@ package types
 
 import "time"
 
+const (
+	// log levels
+	LogLevelDebug string = "debug"
+	LogLevelInfo  string = "info"
+	LogLevelWarn  string = "warn"
+	LogLevelError string = "error"
+
+	// log formats
+	LogFormatConsole string = "console"
+	LogFormatJSON    string = "json"
+)
+
 // JSONConfigurationTLS to hold TLS service configuration values
 type JSONConfigurationTLS struct {
 	Listener        string `json:"listener"`
 	Port            string `json:"port"`
+	LogLevel        string `json:"logLevel"`
+	LogFormat       string `json:"logFormat"`
 	MetricsListener string `json:"metricsListener"`
 	MetricsPort     string `json:"metricsPort"`
 	MetricsEnabled  bool   `json:"metricsEnabled"`
@@ -19,6 +33,8 @@ type JSONConfigurationTLS struct {
 type JSONConfigurationAdmin struct {
 	Listener   string `json:"listener"`
 	Port       string `json:"port"`
+	LogLevel   string `json:"logLevel"`
+	LogFormat  string `json:"logFormat"`
 	Host       string `json:"host"`
 	Auth       string `json:"auth"`
 	Logger     string `json:"logger"`
@@ -28,11 +44,13 @@ type JSONConfigurationAdmin struct {
 
 // JSONConfigurationAPI to hold API service configuration values
 type JSONConfigurationAPI struct {
-	Listener string `json:"listener"`
-	Port     string `json:"port"`
-	Host     string `json:"host"`
-	Auth     string `json:"auth"`
-	Carver   string `json:"carver"`
+	Listener  string `json:"listener"`
+	Port      string `json:"port"`
+	LogLevel  string `json:"logLevel"`
+	LogFormat string `json:"logFormat"`
+	Host      string `json:"host"`
+	Auth      string `json:"auth"`
+	Carver    string `json:"carver"`
 }
 
 // JSONConfigurationHeaders to keep all headers details for auth
@@ -141,6 +159,7 @@ type ApiNodeGenericRequest struct {
 type ApiLoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	ExpHours int    `json:"exp_hours"`
 }
 
 // ApiErrorResponse to be returned to API requests with the error message

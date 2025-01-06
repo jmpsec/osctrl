@@ -109,11 +109,14 @@ Usage: ./build-osctrl-pkg.sh [-h|--help] [PARAMETER [ARGUMENT]] [PARAMETER [ARGU
 
 Options:
   -h          Show this help message and exit
+  -n NAME     Name to use for the package (default: osctrl)
+  -V VERSION  Version to use for the package (default: 1.0)
   -c CERT     Path to the osquery certificate file
   -s SECRET   Path to the osquery secret file (default: osquery.secret)
   -f FLAGS    Path to the osquery flags file (default: osquery.flags)
-  -i PKG      Path to the osquery DEB file. Required.
-  -o PKG      Path to the osctrl DEB file. Required.
+  -i PKG      Path to the osquery PKG file. Required.
+  -o PKG      Path to the osctrl PKG file. Required.
+  -k          Generate a PKG without osquery. Only osctrl files.
   -x          Clear the temporary directory after the process
   -v          Enable verbose mode with 'set -x'
 

@@ -91,7 +91,7 @@ type NodeQuery struct {
 	gorm.Model
 	NodeID  uint   `gorm:"not null;index"`
 	QueryID uint   `gorm:"not null;index"`
-	Status  string `gorm:"type:varchar(8);default:'pending'"`
+	Status  string `gorm:"type:varchar(10);default:'pending'"`
 }
 
 // DistributedQueryTarget to keep target logic for queries

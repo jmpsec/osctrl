@@ -1,8 +1,8 @@
 function addUser() {
-  $("#user_username").val('');
-  $("#user_email").val('');
-  $("#user_fullname").val('');
-  $("#user_password").val('');
+  $("#user_username").val("");
+  $("#user_email").val("");
+  $("#user_fullname").val("");
+  $("#user_password").val("");
   $("#addUserModal").modal();
 }
 
@@ -15,12 +15,12 @@ function confirmAddUser() {
   var _email = $("#user_email").val();
   var _fullname = $("#user_fullname").val();
   var _password = $("#user_password").val();
-  var _admin = $("#user_admin").is(':checked');
-  var _token = $("#user_token").is(':checked');
+  var _admin = $("#user_admin").is(":checked");
+  var _token = $("#user_token").is(":checked");
 
   var data = {
     csrftoken: _csrftoken,
-    action: 'add',
+    action: "add",
     username: _username,
     email: _email,
     fullname: _fullname,
@@ -32,10 +32,10 @@ function confirmAddUser() {
 }
 
 function confirmDeleteUser(_user) {
-  var modal_message = 'Are you sure you want to delete the user ' + _user + '?';
+  var modal_message = "Are you sure you want to delete the user " + _user + "?";
   $("#confirmModalMessage").text(modal_message);
-  $('#confirm_action').click(function () {
-    $('#confirmModal').modal('hide');
+  $("#confirm_action").click(function () {
+    $("#confirmModal").modal("hide");
     deleteUser(_user);
   });
   $("#confirmModal").modal();
@@ -43,23 +43,23 @@ function confirmDeleteUser(_user) {
 
 function changeAdminUser(_user) {
   var _csrftoken = $("#csrftoken").val();
-  var _value = $("#" + _user).is(':checked');
+  var _value = $("#" + _user).is(":checked");
 
   if (_value) {
-    $('#permissions-button-' + _user).hide();
+    $("#permissions-button-" + _user).hide();
   } else {
-    $('#permissions-button-' + _user).show();
+    $("#permissions-button-" + _user).show();
   }
 
   var _url = window.location.pathname;
 
   var data = {
     csrftoken: _csrftoken,
-    action: 'admin',
+    action: "admin",
     username: _user,
     admin: _value,
   };
-  sendPostRequest(data, _url, '', false);
+  sendPostRequest(data, _url, "", false);
 }
 
 function deleteUser(_user) {
@@ -69,7 +69,7 @@ function deleteUser(_user) {
 
   var data = {
     csrftoken: _csrftoken,
-    action: 'remove',
+    action: "remove",
     username: _user,
   };
   sendPostRequest(data, _url, _url, false);
@@ -84,40 +84,49 @@ function showAPIToken(_token, _exp, _username) {
 
 function refreshUserToken() {
   $("#refreshTokenButton").prop("disabled", true);
-  $("#refreshTokenButton").html('<i class="fa fa-cog fa-spin fa-2x fa-fw"></i>');
+  $("#refreshTokenButton").html(
+    '<i class="fa fa-cog fa-spin fa-2x fa-fw"></i>'
+  );
   var _csrftoken = $("#csrftoken").val();
   var _username = $("#user_token_username").val();
-
+  var _exp_hours = parseInt($("#expiration_hours").val());
   var data = {
     csrftoken: _csrftoken,
     username: _username,
+    exp_hours: _exp_hours,
   };
-  sendPostRequest(data, '/tokens/' + _username + '/refresh', '', false, function (data) {
-    console.log(data);
-    $("#user_api_token").val(data.token);
-    $("#user_token_expiration").val(data.expiration);
-    $("#refreshTokenButton").prop("disabled", false);
-    $("#refreshTokenButton").text('Refresh');
-  });
+  sendPostRequest(
+    data,
+    "/tokens/" + _username + "/refresh",
+    "",
+    false,
+    function (data) {
+      console.log(data);
+      $("#user_api_token").val(data.token);
+      $("#user_token_expiration").val(data.expiration);
+      $("#refreshTokenButton").prop("disabled", false);
+      $("#refreshTokenButton").text("Refresh");
+    }
+  );
 }
 
 function showPermissions(_username) {
   $("#username_permissions").val(_username);
-  sendGetRequest('/users/permissions/' + _username, false, function (data) {
+  sendGetRequest("/users/permissions/" + _username, false, function (data) {
     for (var key in data) {
-      $('.' + key + '-env').each(function() {
-        var element_id = $(this).attr('id');
-        if (element_id.search('permission-read') > 0) {
-          $(this).attr('checked', data[key].user);
+      $("." + key + "-env").each(function () {
+        var element_id = $(this).attr("id");
+        if (element_id.search("permission-read") > 0) {
+          $(this).attr("checked", data[key].user);
         }
-        if (element_id.search('permission-query') > 0) {
-          $(this).attr('checked', data[key].query);
+        if (element_id.search("permission-query") > 0) {
+          $(this).attr("checked", data[key].query);
         }
-        if (element_id.search('permission-carve') > 0) {
-          $(this).attr('checked', data[key].carve);
+        if (element_id.search("permission-carve") > 0) {
+          $(this).attr("checked", data[key].carve);
         }
-        if (element_id.search('permission-admin') > 0) {
-          $(this).attr('checked', data[key].admin);
+        if (element_id.search("permission-admin") > 0) {
+          $(this).attr("checked", data[key].admin);
         }
       });
     }
@@ -129,10 +138,10 @@ function savePermissions(_env_perm) {
   var _csrftoken = $("#csrftoken").val();
   var _username = $("#username_permissions").val();
 
-  var _read = $("#" + _env_perm + "-read").is(':checked');
-  var _query = $("#" + _env_perm + "-query").is(':checked');
-  var _carve = $("#" + _env_perm + "-carve").is(':checked');
-  var _admin = $("#" + _env_perm + "-admin").is(':checked');
+  var _read = $("#" + _env_perm + "-read").is(":checked");
+  var _query = $("#" + _env_perm + "-query").is(":checked");
+  var _carve = $("#" + _env_perm + "-carve").is(":checked");
+  var _admin = $("#" + _env_perm + "-admin").is(":checked");
 
   var _env = $("#" + _env_perm + "-env").val();
   var data = {
@@ -143,16 +152,22 @@ function savePermissions(_env_perm) {
     carve: _carve,
     admin: _admin,
   };
-  sendPostRequest(data, '/users/permissions/' + _username, '', false, function (data) {
-    console.log(data);
-  });
+  sendPostRequest(
+    data,
+    "/users/permissions/" + _username,
+    "",
+    false,
+    function (data) {
+      console.log(data);
+    }
+  );
 }
 
 function changePassword(_username) {
-  $("#new_password").val('');
-  $("#confirm_password").val('');
+  $("#new_password").val("");
+  $("#confirm_password").val("");
   $("#change_password_username").val(_username);
-  $("#change_password_header").text('Change Password for ' + _username);
+  $("#change_password_header").text("Change Password for " + _username);
   $("#changePasswordModal").modal();
 }
 
@@ -166,7 +181,7 @@ function confirmChangePassword() {
 
   var data = {
     csrftoken: _csrftoken,
-    action: 'edit',
+    action: "edit",
     username: _username,
     new_password: _newpassword,
   };

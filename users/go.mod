@@ -21,11 +21,11 @@ replace github.com/jmpsec/osctrl/version => ../version
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.1
-	github.com/jmpsec/osctrl/environments v0.0.0-20241107152746-1f093f5e8faf
-	github.com/jmpsec/osctrl/types v0.0.0-20241107152746-1f093f5e8faf
-	github.com/jmpsec/osctrl/utils v0.0.0-20241107150205-621ec8aafdae
+	github.com/jmpsec/osctrl/environments v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/types v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/utils v0.0.0-20241212115101-0bcbc42c27cb
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/crypto v0.28.0
+	golang.org/x/crypto v0.31.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.25.12
 )
@@ -33,7 +33,7 @@ require (
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 )
 
 require (
@@ -56,6 +56,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/zerolog v1.33.0
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
