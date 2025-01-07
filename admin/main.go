@@ -756,6 +756,12 @@ func osctrlAdminService() {
 				log.Err(err).Msg("Error getting all environments")
 			}
 			for _, e := range allEnvs {
+				// Periotically check if the queries are completed
+				// not sure if we need to complete the Carves
+				if err := queriesmgr.CleanupCompletedQueries(e.ID); err != nil {
+					log.Err(err).Msg("Error completing expired queries")
+				}
+				// Periotically check if the queries are expired
 				if err := queriesmgr.CleanupExpiredQueries(e.ID); err != nil {
 					log.Err(err).Msg("Error cleaning up expired queries")
 				}

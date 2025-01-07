@@ -53,18 +53,3 @@ func checkValidPlatform(platforms []string, platform string) bool {
 	}
 	return false
 }
-
-// Helper to remove duplicates from []string
-func removeStringDuplicates(s []string) []string {
-	seen := make(map[string]struct{}, len(s))
-	i := 0
-	for _, v := range s {
-		if _, ok := seen[v]; ok {
-			continue
-		}
-		seen[v] = struct{}{}
-		s[i] = v
-		i++
-	}
-	return s[:i]
-}
