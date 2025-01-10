@@ -21,10 +21,10 @@ replace github.com/jmpsec/osctrl/version => ../../version
 require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.4.0
-	github.com/jmpsec/osctrl/nodes v0.4.1 // indirect
-	github.com/jmpsec/osctrl/queries v0.4.1 // indirect
-	github.com/jmpsec/osctrl/types v0.4.1 // indirect
-	github.com/jmpsec/osctrl/users v0.4.1
+	github.com/jmpsec/osctrl/nodes v0.4.2 // indirect
+	github.com/jmpsec/osctrl/queries v0.4.2 // indirect
+	github.com/jmpsec/osctrl/types v0.4.2 // indirect
+	github.com/jmpsec/osctrl/users v0.4.2
 )
 
 require (
@@ -44,8 +44,8 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmpsec/osctrl/environments v0.0.0-20250107100834-63b2a2991001 // indirect
-	github.com/jmpsec/osctrl/settings v0.4.1 // indirect
-	github.com/jmpsec/osctrl/version v0.4.1 // indirect
+	github.com/jmpsec/osctrl/settings v0.4.2 // indirect
+	github.com/jmpsec/osctrl/version v0.4.2 // indirect
 	github.com/rs/zerolog v1.33.0
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
