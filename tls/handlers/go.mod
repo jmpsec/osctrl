@@ -31,15 +31,15 @@ replace github.com/jmpsec/osctrl/version => ../../version
 replace github.com/jmpsec/osctrl/tls/handlers => ../handlers
 
 require (
-	github.com/jmpsec/osctrl/backend v0.4.1 // indirect
+	github.com/jmpsec/osctrl/backend v0.4.2 // indirect
 	github.com/jmpsec/osctrl/environments v0.0.0-20250107100834-63b2a2991001
 	github.com/jmpsec/osctrl/metrics v0.0.0-20250107100834-63b2a2991001
-	github.com/jmpsec/osctrl/nodes v0.4.1
-	github.com/jmpsec/osctrl/queries v0.4.1
-	github.com/jmpsec/osctrl/settings v0.4.1
+	github.com/jmpsec/osctrl/nodes v0.4.2
+	github.com/jmpsec/osctrl/queries v0.4.2
+	github.com/jmpsec/osctrl/settings v0.4.2
 	github.com/jmpsec/osctrl/tags v0.0.0-20250107100834-63b2a2991001
-	github.com/jmpsec/osctrl/types v0.4.1
-	github.com/jmpsec/osctrl/utils v0.4.1
+	github.com/jmpsec/osctrl/types v0.4.2
+	github.com/jmpsec/osctrl/utils v0.4.2
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.10.0
 )
