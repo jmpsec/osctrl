@@ -91,7 +91,7 @@ type NodeQuery struct {
 	gorm.Model
 	NodeID  uint   `gorm:"not null;index"`
 	QueryID uint   `gorm:"not null;index"`
-	Status  string `gorm:"type:varchar(8);default:'pending'"`
+	Status  string `gorm:"type:varchar(10);default:'pending'"`
 }
 
 // DistributedQueryTarget to keep target logic for queries
@@ -100,14 +100,6 @@ type DistributedQueryTarget struct {
 	Name  string `gorm:"index"`
 	Type  string
 	Value string
-}
-
-// DistributedQueryExecution to keep track of queries executing
-type DistributedQueryExecution struct {
-	gorm.Model
-	Name   string `gorm:"index"`
-	UUID   string `gorm:"index"`
-	Result int
 }
 
 // QueryReadQueries to hold all the on-demand queries
@@ -130,10 +122,6 @@ func CreateQueries(backend *gorm.DB) *Queries {
 	// table distributed_queries
 	if err := backend.AutoMigrate(&DistributedQuery{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_queries): %v", err)
-	}
-	// table distributed_query_executions
-	if err := backend.AutoMigrate(&DistributedQueryExecution{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (distributed_query_executions): %v", err)
 	}
 	// table distributed_query_targets
 	if err := backend.AutoMigrate(&DistributedQueryTarget{}); err != nil {
@@ -309,20 +297,6 @@ func (q *Queries) Complete(name string, envid uint) error {
 	return nil
 }
 
-// VerifyComplete to mark query as completed if the expected executions are done
-func (q *Queries) VerifyComplete(name string, envid uint) error {
-	query, err := q.Get(name, envid)
-	if err != nil {
-		return err
-	}
-	if (query.Executions + query.Errors) >= query.Expected {
-		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Activate to mark query as active
 func (q *Queries) Activate(name string, envid uint) error {
 	query, err := q.Get(name, envid)
@@ -355,6 +329,23 @@ func (q *Queries) Expire(name string, envid uint) error {
 	}
 	if err := q.DB.Model(&query).Updates(map[string]interface{}{"expired": true, "active": false}).Error; err != nil {
 		return err
+	}
+	return nil
+}
+
+// CleanupCompletedQueries to set all completed queries as inactive by environment
+func (q *Queries) CleanupCompletedQueries(envid uint) error {
+	qs, err := q.GetQueries(TargetActive, envid)
+	if err != nil {
+		return err
+	}
+	for _, query := range qs {
+		executionReached := (query.Executions + query.Errors) >= query.Expected
+		if executionReached {
+			if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -399,13 +390,19 @@ func (q *Queries) Create(query DistributedQuery) error {
 	return nil
 }
 
-// CreateNodeQuery to link a node to a query
-func (q *Queries) CreateNodeQuery(nodeID, queryID uint) error {
-	nodeQuery := NodeQuery{
-		NodeID:  nodeID,
-		QueryID: queryID,
+// CreateNodeQueries to link multiple nodes to a query
+func (q *Queries) CreateNodeQueries(nodeIDs []uint, queryID uint) error {
+	if len(nodeIDs) == 0 {
+		return fmt.Errorf("no nodes to link to query")
 	}
-	if err := q.DB.Create(&nodeQuery).Error; err != nil {
+	var nodeQueries []NodeQuery
+	for _, nodeID := range nodeIDs {
+		nodeQueries = append(nodeQueries, NodeQuery{
+			NodeID:  nodeID,
+			QueryID: queryID,
+		})
+	}
+	if err := q.DB.Create(&nodeQueries).Error; err != nil {
 		return err
 	}
 	return nil
@@ -431,13 +428,6 @@ func (q *Queries) GetTargets(name string) ([]DistributedQueryTarget, error) {
 		return targets, err
 	}
 	return targets, nil
-}
-
-// NotYetExecuted to check if query already executed or it is within the interval
-func (q *Queries) NotYetExecuted(name, uuid string) bool {
-	var results int64
-	q.DB.Model(&DistributedQueryExecution{}).Where("name = ? AND uuid = ?", name, uuid).Count(&results)
-	return (results == 0)
 }
 
 // IncExecution to increase the execution count for this query
@@ -503,40 +493,4 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 		return err
 	}
 	return nil
-}
-
-// TrackExecution to keep track of where queries have already ran
-func (q *Queries) TrackExecution(name, uuid string, result int) error {
-	queryExecution := DistributedQueryExecution{
-		Name:   name,
-		UUID:   uuid,
-		Result: result,
-	}
-	if err := q.DB.Create(&queryExecution).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// Helper to decide whether if the query targets apply to a give node
-func isQueryTarget(node nodes.OsqueryNode, targets []DistributedQueryTarget) bool {
-	for _, t := range targets {
-		// Check for environment match
-		if t.Type == QueryTargetEnvironment && t.Value == node.Environment {
-			return true
-		}
-		// Check for platform match
-		if t.Type == QueryTargetPlatform && node.Platform == t.Value {
-			return true
-		}
-		// Check for UUID match
-		if t.Type == QueryTargetUUID && node.UUID == t.Value {
-			return true
-		}
-		// Check for localname match
-		if t.Type == QueryTargetLocalname && node.Localname == t.Value {
-			return true
-		}
-	}
-	return false
 }

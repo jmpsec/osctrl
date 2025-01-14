@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crewjam/saml/samlsp"
@@ -256,6 +257,20 @@ func init() {
 			Usage:       "TCP port for the service",
 			EnvVars:     []string{"SERVICE_PORT"},
 			Destination: &adminConfigValues.Port,
+		},
+		&cli.StringFlag{
+			Name:        "log-level",
+			Value:       types.LogLevelInfo,
+			Usage:       "Log level for the service",
+			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
+			Destination: &adminConfigValues.LogLevel,
+		},
+		&cli.StringFlag{
+			Name:        "log-format",
+			Value:       types.LogFormatJSON,
+			Usage:       "Log format for the service",
+			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
+			Destination: &adminConfigValues.LogFormat,
 		},
 		&cli.StringFlag{
 			Name:        "auth",
@@ -621,11 +636,6 @@ func init() {
 			Destination: &s3CarverConfig.SecretAccessKey,
 		},
 	}
-	// Initialize zerolog logger with our custom parameters
-	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return filepath.Base(file) + ":" + strconv.Itoa(line)
-	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
 }
 
 // Go go!
@@ -746,10 +756,16 @@ func osctrlAdminService() {
 				log.Err(err).Msg("Error getting all environments")
 			}
 			for _, e := range allEnvs {
-				if err:= queriesmgr.CleanupExpiredQueries(e.ID); err != nil {
+				// Periotically check if the queries are completed
+				// not sure if we need to complete the Carves
+				if err := queriesmgr.CleanupCompletedQueries(e.ID); err != nil {
+					log.Err(err).Msg("Error completing expired queries")
+				}
+				// Periotically check if the queries are expired
+				if err := queriesmgr.CleanupExpiredQueries(e.ID); err != nil {
 					log.Err(err).Msg("Error cleaning up expired queries")
 				}
-				if err:= queriesmgr.CleanupExpiredCarves(e.ID); err != nil {
+				if err := queriesmgr.CleanupExpiredCarves(e.ID); err != nil {
 					log.Err(err).Msg("Error cleaning up expired carves")
 				}
 			}
@@ -1005,6 +1021,35 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
+func initializeLogger(logLevel, logFormat string) {
+
+	switch strings.ToLower(logLevel) {
+	case types.LogLevelDebug:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case types.LogLevelInfo:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case types.LogLevelWarn:
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case types.LogLevelError:
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	switch strings.ToLower(logFormat) {
+	case types.LogFormatJSON:
+		log.Logger = log.With().Caller().Logger()
+	case types.LogFormatConsole:
+		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+			return filepath.Base(file) + ":" + strconv.Itoa(line)
+		}
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+	default:
+		log.Logger = log.With().Caller().Logger()
+	}
+
+}
+
 func main() {
 	// Initiate CLI and parse arguments
 	app = cli.NewApp()
@@ -1025,8 +1070,13 @@ func main() {
 	}
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal().Msgf("app.Run error: %v", err)
+		fmt.Printf("app.Run error: %s", err.Error())
+		os.Exit(1)
 	}
+
+	// Initialize service logger
+	initializeLogger(adminConfig.LogLevel, adminConfig.LogFormat)
+
 	// Service starts!
 	osctrlAdminService()
 }

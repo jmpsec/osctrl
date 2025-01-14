@@ -21,19 +21,19 @@ replace github.com/jmpsec/osctrl/version => ../version
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.1
-	github.com/jmpsec/osctrl/environments v0.0.0-20241212115101-0bcbc42c27cb
-	github.com/jmpsec/osctrl/types v0.0.0-20241212115101-0bcbc42c27cb
-	github.com/jmpsec/osctrl/utils v0.0.0-20241212115101-0bcbc42c27cb
+	github.com/jmpsec/osctrl/environments v0.0.0-20250107100834-63b2a2991001
+	github.com/jmpsec/osctrl/types v0.0.0-20250107100834-63b2a2991001
+	github.com/jmpsec/osctrl/utils v0.0.0-20250107100834-63b2a2991001
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.32.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.25.12
 )
 
 require (
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 )
 
 require (
@@ -49,10 +49,10 @@ require (
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmpsec/osctrl/nodes v0.4.1 // indirect
-	github.com/jmpsec/osctrl/queries v0.4.1 // indirect
-	github.com/jmpsec/osctrl/settings v0.4.1 // indirect
-	github.com/jmpsec/osctrl/version v0.4.1 // indirect
+	github.com/jmpsec/osctrl/nodes v0.4.2 // indirect
+	github.com/jmpsec/osctrl/queries v0.4.2 // indirect
+	github.com/jmpsec/osctrl/settings v0.4.2 // indirect
+	github.com/jmpsec/osctrl/version v0.4.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/zerolog v1.33.0
 	github.com/segmentio/ksuid v1.0.4 // indirect
