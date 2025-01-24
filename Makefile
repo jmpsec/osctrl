@@ -237,6 +237,10 @@ docker_dev_rebuild_admin:
 docker_dev_rebuild_api:
 	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
 
+# Deploy osctrl in a single server using the provision.sh script
+provision_dev:
+	./deploy/provision.sh -m prod -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
+
 # Auto-format and simplify the code
 GOFMT_ARGS = -l -w -s
 gofmt-tls:

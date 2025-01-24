@@ -144,7 +144,8 @@ API_CONF="$API_COMPONENT.json"
 DB_CONF="db.json"
 CACHE_CONF="redis.json"
 JWT_CONF="jwt.json"
-LOGGER_CONF="logger.json"
+LOGGER_CONF_ADMIN="logger_admin.json"
+LOGGER_CONF_TLS="logger_tls.json"
 SERVICE_TEMPLATE="service.json"
 DB_TEMPLATE="db.json"
 CACHE_TEMPLATE="redis.json"
@@ -672,7 +673,8 @@ else
   configuration_cache "$SOURCE_PATH/deploy/config/$CACHE_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
 
   # Prepare DB logger configuration for services
-  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF"
+  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF_ADMIN"
+  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF_TLS"
 
   # JWT configuration
   cat "$SOURCE_PATH/deploy/config/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
