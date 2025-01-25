@@ -7,7 +7,7 @@ import (
 )
 
 func TestOsqueryVersion(t *testing.T) {
-	assert.Equal(t, "5.14.1", OsqueryVersion)
+	assert.Equal(t, "5.15.0", OsqueryVersion)
 }
 
 func TestOsctrlVersion(t *testing.T) {

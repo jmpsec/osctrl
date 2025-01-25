@@ -19,7 +19,7 @@ function usage() {
   echo "  -v          Enable verbose mode with 'set -x'"
   echo
   echo "Example:"
-  echo "  $0 -i osquery_5.14.1-1.linux.amd64.deb -o osquery-osctrl_5.14.1-1_amd64.deb"
+  echo "  $0 -i osquery_5.15.0-1.linux.amd64.deb -o osquery-osctrl_5.15.0-1_amd64.deb"
 }
 
 # Stop script on error

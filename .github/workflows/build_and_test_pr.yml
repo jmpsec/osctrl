@@ -4,16 +4,16 @@ on: [push, pull_request]
 
 env:
   GOLANG_VERSION: 1.23.0
-  OSQUERY_VERSION: 5.14.1
+  OSQUERY_VERSION: 5.15.0
 
 jobs:
   build_and_test:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux', 'darwin', 'windows']
-        goarch: ['amd64', 'arm64']
+        components: ["tls", "admin", "api", "cli"]
+        goos: ["linux", "darwin", "windows"]
+        goarch: ["amd64", "arm64"]
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
