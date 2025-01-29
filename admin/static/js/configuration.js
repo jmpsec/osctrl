@@ -53,10 +53,43 @@ function confirmAddQuerySchedule() {
   var _schedule = _editor.getValue();
   var obj = JSON.parse(_schedule);
   var _query = {
-    "query": $("#query_sql").val(),
-    "interval": parseInt($("#query_interval").val()),
+    query: $("#query_sql").val(),
+    interval: parseInt($("#query_interval").val()),
   };
   obj[$("#query_name").val()] = _query;
+  _editor.setValue(JSON.stringify(obj, null, "\t"));
+}
+
+function addOsqueryOption() {
+  $("#addoption_action").click(function () {
+    $("#addOptionModal").modal("hide");
+    confirmAddOsqueryOption();
+  });
+  $("#option_name").val("");
+  $("#option_value").val("");
+  $("#addOptionModal").modal();
+}
+
+function confirmAddOsqueryOption() {
+  var _editor = $("#options_conf").data("CodeMirrorInstance");
+  var _options = _editor.getValue();
+  var obj = JSON.parse(_options);
+  if ($("#option_type").val() === "boolean") {
+    if ($("#option_value").val().toLowerCase() === "true") {
+      obj[$("#option_name").val()] = true;
+    } else {
+      obj[$("#option_name").val()] = false;
+    }
+  }
+  if ($("#option_type").val() === "integer") {
+    obj[$("#option_name").val()] = parseInt($("#option_value").val());
+  }
+  if ($("#option_type").val() === "string") {
+    obj[$("#option_name").val()] = $("#option_value").val();
+  }
+  if ($("#option_name").val() === "" || $("#option_value").val() === null) {
+    return;
+  }
   _editor.setValue(JSON.stringify(obj, null, "\t"));
 }
 
