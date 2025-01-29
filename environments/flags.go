@@ -9,10 +9,12 @@ import (
 const (
 	// CarverBlockSizeValue to configure size in bytes for carver blocks
 	CarverBlockSizeValue string = "5120000"
+	// FlagGenericValue to use as generator for generic flags
+	FlagGenericValue string = `--{{ .FlagName }}={{ .FlagValue }}`
 	// FlagTLSServerCerts for the --tls_server_certs flag
-	FlagTLSServerCerts string = `--tls_server_certs={{ .CertFile }}`
+	FlagNameTLSServerCerts string = `tls_server_certs`
 	// FlagCarverBlockSize for the --carver_block_size flag
-	FlagCarverBlockSize string = `--carver_block_size={{ .BlockSize }}`
+	FlagNameCarverBlockSize string = `carver_block_size`
 	// FlagsTemplate to generate flags for enrolling nodes
 	FlagsTemplate string = `
 --host_identifier=uuid
@@ -63,27 +65,32 @@ func GenServerCertsFlag(certificatePath string) string {
 	if certificatePath == "" {
 		return ""
 	}
-	data := struct {
-		CertFile string
-	}{
-		CertFile: certificatePath,
-	}
-	return GenGenericFlag("servercerts", FlagTLSServerCerts, data)
+	return GenSingleFlag("servercerts", FlagNameTLSServerCerts, certificatePath)
 }
 
 // GenCarveBlockSizeFlag to generate the --carver_block_size flag
 func GenCarveBlockSizeFlag(blockSize string) string {
-	data := struct {
-		BlockSize string
-	}{
-		BlockSize: blockSize,
+	if blockSize == "" {
+		return ""
 	}
-	return GenGenericFlag("blocksize", FlagCarverBlockSize, data)
+	return GenSingleFlag("blocksize", FlagNameCarverBlockSize, blockSize)
 }
 
-// GenGenericFlag to generate a generic flag to be used by osquery
-func GenGenericFlag(flagName, flagConst string, data interface{}) string {
-	t, err := template.New(flagName).Parse(flagConst)
+// GenSingleFlag to generate a generic flag to be used by osquery
+func GenSingleFlag(tmplName, flagName, flagValue string) string {
+	data := struct {
+		FlagName  string
+		FlagValue string
+	}{
+		FlagName:  flagName,
+		FlagValue: flagValue,
+	}
+	return ParseFlagTemplate(tmplName, FlagGenericValue, data)
+}
+
+// ParseFlagTemplate to parse a flag template
+func ParseFlagTemplate(tmplName, flagTemplate string, data interface{}) string {
+	t, err := template.New(tmplName).Parse(flagTemplate)
 	if err != nil {
 		return ""
 	}
@@ -114,7 +121,7 @@ func (environment *Environment) GenerateFlags(env TLSEnvironment, secretPath, ce
 		FlagServerCerts: flagServerCerts,
 		FlagCarverBlock: GenCarveBlockSizeFlag(CarverBlockSizeValue),
 	}
-	return GenGenericFlag("flags", FlagsTemplate, data), nil
+	return ParseFlagTemplate("flags", FlagsTemplate, data), nil
 }
 
 // GenerateFlagsEnv to generate flags by environment name
