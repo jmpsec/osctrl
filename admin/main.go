@@ -917,8 +917,7 @@ func osctrlAdminService() {
 	adminMux.Handle("POST "+logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler)))
 	// SAML ACS
 	if adminConfig.Auth == settings.AuthSAML {
-		adminMux.Handle("GET /saml/", samlMiddleware)
-		adminMux.Handle("POST /saml/", samlMiddleware)
+		adminMux.Handle("/saml/", samlMiddleware)
 		adminMux.HandleFunc("GET "+loginPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 		})
