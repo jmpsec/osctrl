@@ -68,7 +68,7 @@ func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
 	// API values
 	apiRaw := viper.Sub(projectName)
 	if apiRaw == nil {
-		return config, fmt.Errorf("could not find key %s", projectName)
+		return config, fmt.Errorf("JSON key %s not found in %s", projectName, file)
 	}
 	if err := apiRaw.Unmarshal(&config); err != nil {
 		return config, err

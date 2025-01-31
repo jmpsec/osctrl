@@ -46,8 +46,11 @@ func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
 		return config, err
 	}
 	// Backend values
-	dbRaw := viper.Sub(key)
-	if err := dbRaw.Unmarshal(&config); err != nil {
+	redisRaw := viper.Sub(key)
+	if redisRaw == nil {
+		return config, fmt.Errorf("JSON key %s not found in %s", key, file)
+	}
+	if err := redisRaw.Unmarshal(&config); err != nil {
 		return config, err
 	}
 	// No errors!

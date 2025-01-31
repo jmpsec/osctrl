@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"
@@ -17,8 +19,11 @@ func loadJWTConfiguration(file string) (types.JSONConfigurationJWT, error) {
 		return cfg, err
 	}
 	// JWT values
-	headersRaw := viper.Sub(settings.AuthJWT)
-	if err := headersRaw.Unmarshal(&cfg); err != nil {
+	jwtRaw := viper.Sub(settings.AuthJWT)
+	if jwtRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", settings.AuthJWT, file)
+	}
+	if err := jwtRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// No errors!

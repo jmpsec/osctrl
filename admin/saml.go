@@ -45,6 +45,9 @@ func loadSAML(file string) (JSONConfigurationSAML, error) {
 	}
 	// SAML values
 	samlRaw := viper.Sub(settings.AuthSAML)
+	if samlRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", settings.AuthSAML, file)
+	}
 	if err := samlRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
