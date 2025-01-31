@@ -182,8 +182,10 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 			logger, err := logging.CreateLoggerDBConfig(*config)
 			if err != nil {
 				log.Err(err).Msg("error creating DB logger (config)")
-				logger.Enabled = false
-				logger.Database = nil
+				logger = &logging.LoggerDB{
+					Enabled:  false,
+					Database: nil,
+				}
 			}
 			h.DBLogger = logger
 			return
@@ -191,8 +193,10 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 		logger, err := logging.CreateLoggerDBFile(dbfile)
 		if err != nil {
 			log.Err(err).Msg("error creating DB logger (file)")
-			logger.Enabled = false
-			logger.Database = nil
+			logger = &logging.LoggerDB{
+				Enabled:  false,
+				Database: nil,
+			}
 		}
 		h.DBLogger = logger
 	}
