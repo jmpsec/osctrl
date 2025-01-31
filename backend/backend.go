@@ -48,6 +48,9 @@ func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
 	}
 	// Backend values
 	dbRaw := viper.Sub(key)
+	if dbRaw == nil {
+		return config, fmt.Errorf("JSON key %s not found in %s", key, file)
+	}
 	if err := dbRaw.Unmarshal(&config); err != nil {
 		return config, err
 	}

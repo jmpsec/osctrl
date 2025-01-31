@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -72,6 +73,9 @@ func LoadS3(file string) (types.S3Configuration, error) {
 		return _s3Cfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingS3)
+	if cfgRaw == nil {
+		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingS3, file)
+	}
 	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
 		return _s3Cfg, err
 	}

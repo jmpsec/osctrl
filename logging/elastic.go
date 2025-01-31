@@ -73,6 +73,9 @@ func LoadElastic(file string) (ElasticConfiguration, error) {
 		return _elasticCfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingElastic)
+	if cfgRaw == nil {
+		return _elasticCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingElastic, file)
+	}
 	if err := cfgRaw.Unmarshal(&_elasticCfg); err != nil {
 		return _elasticCfg, err
 	}
