@@ -195,26 +195,30 @@
                   switch(data) {
                   case "ubuntu":
                     return '<i class="fl-ubuntu-inverse"></i> ubuntu';
-                  case "debian":
-                    return '<i class="fl-debian"></i> debian';
-                  case "arch":
-                    return '<i class="fl-archlinux"></i> arch';
-                  case "unknown":
-                    return '<i class="fa fa-question-circle"></i> unknown';
                   case "darwin":
                     return '<i class="fab fa-apple"></i> darwin';
+                  case "windows":
+                    return '<i class="fab fa-windows"></i> windows';
                   case "centos":
                     return '<i class="fl-centos"></i> centos';
                   case "rhel":
                     return '<i class="fl-redhat"></i> redhat';
+                  case "amzn":
+                    return '<i class="fa fl-redhat"></i> amzn';
                   case "fedora":
                     return '<i class="fl-fedora"></i> fedora';
-                  case "windows":
-                    return '<i class="fab fa-windows"></i> windows';
+                  case "debian":
+                    return '<i class="fl-debian"></i> debian';
                   case "freebsd":
                     return '<i class="fl-freebsd"></i> freebsd';
                   case "opensuse":
                     return '<i class="fl-opensuse"></i> opensuse';
+                  case "arch":
+                    return '<i class="fl-archlinux"></i> arch';
+                  case "unknown":
+                    return '<i class="fa fa-question-circle"></i> unknown';
+                  default:
+                    return '<i class="fa fa-question-circle"></i> unknown';
                   }
                 } else {
                   return data;
