@@ -47,23 +47,19 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 		case settings.AuthSAML:
 			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
-				log.Err(err).Msg("GetSession")
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 				return
 			}
 			if samlSession == nil {
-				log.Error().Msg("No SAML session")
 				http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
 				return
 			}
 			jwtSessionClaims, ok := samlSession.(samlsp.JWTSessionClaims)
 			if !ok {
-				log.Error().Msg("JWTSessionClaims")
 				return
 			}
 			samlUser := jwtSessionClaims.Subject
 			if samlUser == "" {
-				log.Error().Msg("SAML user is empty")
 				return
 			}
 			// Check if user is already authenticated

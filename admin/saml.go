@@ -51,8 +51,35 @@ func loadSAML(file string) (JSONConfigurationSAML, error) {
 	if err := samlRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
+	// Verify SAML configuration
+	if err := verifySAML(cfg); err != nil {
+		return cfg, err
+	}
 	// No errors!
 	return cfg, nil
+}
+
+// Function to verify SAML configuration
+func verifySAML(cfg JSONConfigurationSAML) error {
+	if cfg.CertPath == "" {
+		return fmt.Errorf("Missing CertPath")
+	}
+	if cfg.KeyPath == "" {
+		return fmt.Errorf("Missing KeyPath")
+	}
+	if cfg.MetaDataURL == "" {
+		return fmt.Errorf("Missing MetaDataURL")
+	}
+	if cfg.RootURL == "" {
+		return fmt.Errorf("Missing RootURL")
+	}
+	if cfg.LoginURL == "" {
+		return fmt.Errorf("Missing LoginURL")
+	}
+	if cfg.LogoutURL == "" {
+		return fmt.Errorf("Missing LogoutURL")
+	}
+	return nil
 }
 
 // Function to initialize variables when using SAML for authentication
