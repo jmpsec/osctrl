@@ -16,13 +16,22 @@ function sendGetRequest(req_url, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      var _clientmsg = 'Client: ' + errorThrown;
+      console.log(jqXhr);
+      if (jqXhr.status === 302) {
+        window.location.replace(jqXhr.responseText);
+      }
+      var _clientmsg = "Client: " + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
       var _servermsg = 'Server: ' + _serverJSON.message;
       $("#errorModalMessageClient").text(_clientmsg);
       console.log(_clientmsg);
       $("#errorModalMessageServer").text(_servermsg);
       $("#errorModal").modal();
+    },
+    statusCode: {
+      302: function() {
+        console.log('302');
+      }
     }
   });
 }
@@ -30,13 +39,13 @@ function sendGetRequest(req_url, _modal, _callback) {
 function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
   $.ajax({
     url: req_url,
-    dataType: 'json',
-    type: 'POST',
-    contentType: 'application/json',
+    dataType: "json",
+    type: "POST",
+    contentType: "application/json",
     data: JSON.stringify(req_data),
     processData: false,
     success: function (data, textStatus, jQxhr) {
-      console.log('OK');
+      console.log("OK");
       console.log(data);
       if (_modal) {
         $("#successModalMessage").text(data.message);
@@ -50,13 +59,22 @@ function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      var _clientmsg = 'Client: ' + errorThrown;
+      console.log(jqXhr);
+      if (jqXhr.status === 302) {
+        window.location.replace(jqXhr.responseText);
+      }
+      var _clientmsg = "Client: " + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
-      var _servermsg = 'Server: ' + _serverJSON.message;
+      var _servermsg = "Server: " + _serverJSON.message;
       $("#errorModalMessageClient").text(_clientmsg);
       console.log(_clientmsg);
       $("#errorModalMessageServer").text(_servermsg);
       $("#errorModal").modal();
+    },
+    statusCode: {
+      302: function () {
+        console.log("302");
+      },
     }
   });
 }
