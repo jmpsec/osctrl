@@ -16,7 +16,6 @@ function sendGetRequest(req_url, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      console.log(jqXhr);
       if (jqXhr.status === 302) {
         window.location.replace(jqXhr.responseText);
       }
@@ -59,7 +58,6 @@ function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      console.log(jqXhr);
       if (jqXhr.status === 302) {
         window.location.replace(jqXhr.responseText);
       }

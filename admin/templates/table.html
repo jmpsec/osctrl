@@ -128,11 +128,25 @@
                "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4 text-center'i><'col-sm-12 col-md-4'p>>",
           processing : true,
           order : [[ 8, "desc" ]],
-          ajax : {
-            url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
-            dataSrc: function(json) {
+          ajax : async (data, callback, settings) => {
+            try {
+              const response = await fetch("/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}", {
+                method: 'GET',
+                redirect: 'manual' // Disable automatic redirects
+              });
+              if (response.type === 'opaqueredirect' || response.status === 302) {
+                const redirectUrl = response.headers.get('Location');
+                if (redirectUrl) {
+                  window.location.href = redirectUrl;
+                  return;
+                }
+              }
+              const jsonData = await response.json();
               $('.card-header').removeClass("bg-danger");
-              return json.data;
+              callback(jsonData);
+            } catch (error) {
+              console.error(error);
+              $('.card-header').addClass("bg-danger");
             }
           },
           columns : [
