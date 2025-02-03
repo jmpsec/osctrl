@@ -131,12 +131,17 @@
           ajax : {
             url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
             dataSrc: function (json, status, xhr) {
-              if (xhr.status === 302) {
-                window.location.href = xhr.getResponseHeader("Location");
-                return [];
-              }
               $('.card-header').removeClass("bg-danger");
               return json.data;
+            },
+            error: function (xhr) {
+              if (xhr.status === 302) {
+                var redirectUrl = xhr.getResponseHeader('Location');
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                }
+              }
+              $('.card-header').addClass("bg-danger");
             }
           },
           columns : [
