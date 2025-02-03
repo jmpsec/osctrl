@@ -130,18 +130,14 @@
           order : [[ 8, "desc" ]],
           ajax : {
             url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
-            dataSrc: function (json, status, xhr) {
+            dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
             },
-            error: function (xhr) {
-              if (xhr.status === 302) {
-                var redirectUrl = xhr.getResponseHeader('Location');
-                if (redirectUrl) {
-                    window.location.href = redirectUrl;
-                }
-              }
-              $('.card-header').addClass("bg-danger");
+            error: function(xhr, error, code) {
+              console.log("Error: " + error);
+              console.log("Error code: " + code);
+              console.log("Error response: " + xhr.responseText);
             }
           },
           columns : [

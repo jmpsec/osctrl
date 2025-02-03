@@ -133,6 +133,11 @@
             dataSrc: function(json) {
               $('#status-card-header').removeClass("bg-danger");
               return json.data;
+            },
+            error: function(xhr, error, code) {
+              console.log("Error: " + error);
+              console.log("Error code: " + code);
+              console.log("Error response: " + xhr.responseText);
             }
           },
           columns : [

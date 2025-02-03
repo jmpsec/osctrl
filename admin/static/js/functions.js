@@ -16,9 +16,6 @@ function sendGetRequest(req_url, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      if (jqXhr.status === 302) {
-        window.location.replace(jqXhr.responseText);
-      }
       var _clientmsg = "Client: " + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
       var _servermsg = 'Server: ' + _serverJSON.message;
@@ -26,11 +23,6 @@ function sendGetRequest(req_url, _modal, _callback) {
       console.log(_clientmsg);
       $("#errorModalMessageServer").text(_servermsg);
       $("#errorModal").modal();
-    },
-    statusCode: {
-      302: function() {
-        console.log('302');
-      }
     }
   });
 }
@@ -58,9 +50,6 @@ function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
       }
     },
     error: function (jqXhr, textStatus, errorThrown) {
-      if (jqXhr.status === 302) {
-        window.location.replace(jqXhr.responseText);
-      }
       var _clientmsg = "Client: " + errorThrown;
       var _serverJSON = $.parseJSON(jqXhr.responseText);
       var _servermsg = "Server: " + _serverJSON.message;
@@ -68,11 +57,6 @@ function sendPostRequest(req_data, req_url, _redir, _modal, _callback) {
       console.log(_clientmsg);
       $("#errorModalMessageServer").text(_servermsg);
       $("#errorModal").modal();
-    },
-    statusCode: {
-      302: function () {
-        console.log("302");
-      },
     }
   });
 }
