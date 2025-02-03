@@ -133,6 +133,12 @@
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
+            },
+            error: function(xhr, error, code) {
+              $('.card-header').addClass("bg-danger");
+              console.log("Error: " + error);
+              console.log("Error code: " + code);
+              console.log("Error response: " + xhr.responseText);
             }
           },
           columns : [
