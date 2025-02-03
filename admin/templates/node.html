@@ -562,6 +562,7 @@
               return json.data;
             },
             error: function(xhr, error, code) {
+              $('#status-card-header').addClass("bg-danger");
               console.log("Error: " + error);
               console.log("Error code: " + code);
               console.log("Error response: " + xhr.responseText);
@@ -621,6 +622,7 @@
               return json.data;
             },
             error: function(xhr, error, code) {
+              $('#result-card-header').addClass("bg-danger");
               console.log("Error: " + error);
               console.log("Error code: " + code);
               console.log("Error response: " + xhr.responseText);
