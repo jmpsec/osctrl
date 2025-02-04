@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -26,6 +28,9 @@ func loadOAuth(file string) (JSONConfigurationOAuth, error) {
 	}
 	// OAuth values
 	oauthRaw := viper.Sub(settings.AuthOAuth)
+	if oauthRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", settings.AuthOAuth, file)
+	}
 	if err := oauthRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}

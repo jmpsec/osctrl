@@ -65,6 +65,9 @@ func LoadKinesis(file string) (KinesisConfiguration, error) {
 		return _kinesisCfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	if cfgRaw == nil {
+		return _kinesisCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingSplunk, file)
+	}
 	if err := cfgRaw.Unmarshal(&_kinesisCfg); err != nil {
 		return _kinesisCfg, err
 	}

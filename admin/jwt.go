@@ -3,12 +3,13 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/tls"
+	"fmt"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
-	"github.com/spf13/viper"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // Function to load the configuration file
@@ -22,6 +23,9 @@ func loadJWTConfiguration(file string) (types.JSONConfigurationJWT, error) {
 	}
 	// JWT values
 	jwtRaw := viper.Sub(settings.AuthJWT)
+	if jwtRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in file %s", settings.AuthJWT, file)
+	}
 	if err := jwtRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}

@@ -35,6 +35,9 @@ func LoadConfiguration() (Configuration, error) {
 		return _metricsCfg, err
 	}
 	cfgRaw := viper.Sub(metricsName)
+	if cfgRaw == nil {
+		return _metricsCfg, fmt.Errorf("JSON key %s not found in %s", metricsName, metricsConfigFile)
+	}
 	if err := cfgRaw.Unmarshal(&_metricsCfg); err != nil {
 		return _metricsCfg, err
 	}

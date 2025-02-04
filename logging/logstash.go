@@ -61,6 +61,9 @@ func LoadLogstash(file string) (LogstashConfiguration, error) {
 		return _logstashCfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingLogstash)
+	if cfgRaw == nil {
+		return _logstashCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingLogstash, file)
+	}
 	if err := cfgRaw.Unmarshal(&_logstashCfg); err != nil {
 		return _logstashCfg, err
 	}

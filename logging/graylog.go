@@ -2,6 +2,7 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -32,8 +33,10 @@ func LoadGraylog(file string) (GraylogConfiguration, error) {
 		return _graylogCfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingGraylog)
-	err = cfgRaw.Unmarshal(&_graylogCfg)
-	if err != nil {
+	if cfgRaw == nil {
+		return _graylogCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingGraylog, file)
+	}
+	if err := cfgRaw.Unmarshal(&_graylogCfg); err != nil {
 		return _graylogCfg, err
 	}
 	// No errors!

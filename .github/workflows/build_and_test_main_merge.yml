@@ -7,16 +7,16 @@ on:
 
 env:
   GOLANG_VERSION: 1.23.0
-  OSQUERY_VERSION: 5.14.1
+  OSQUERY_VERSION: 5.15.0
 
 jobs:
   build_and_test:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux', 'darwin', 'windows']
-        goarch: ['amd64', 'arm64']
+        components: ["tls", "admin", "api", "cli"]
+        goos: ["linux", "darwin", "windows"]
+        goarch: ["amd64", "arm64"]
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
@@ -64,9 +64,9 @@ jobs:
   create_deb_packages:
     strategy:
       matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux']
-        goarch: ['amd64']
+        components: ["tls", "admin", "api", "cli"]
+        goos: ["linux"]
+        goarch: ["amd64"]
     needs: [build_and_test]
     runs-on: ubuntu-22.04
     steps:
@@ -101,9 +101,9 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        components: ['tls', 'admin', 'api', 'cli']
-        goos: ['linux']
-        goarch: ['amd64', 'arm64']
+        components: ["tls", "admin", "api", "cli"]
+        goos: ["linux"]
+        goarch: ["amd64", "arm64"]
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
@@ -136,54 +136,52 @@ jobs:
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-
   push_docker_images:
-      needs: [create_docker_images]
-      runs-on: ubuntu-22.04
-      strategy:
-        matrix:
-          components: ['tls', 'admin', 'api', 'cli']
-      steps:
-        ########################### Get digests from build ###########################
-        - name: Download digests
-          uses: actions/download-artifact@v4.1.7
-          with:
-            pattern: digests-osctrl-${{ matrix.components }}-*
-            merge-multiple: true
-            path: /tmp/digests
+    needs: [create_docker_images]
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        components: ["tls", "admin", "api", "cli"]
+    steps:
+      ########################### Get digests from build ###########################
+      - name: Download digests
+        uses: actions/download-artifact@v4.1.7
+        with:
+          pattern: digests-osctrl-${{ matrix.components }}-*
+          merge-multiple: true
+          path: /tmp/digests
 
-        ########################### Setup Docker ###########################
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v3.0.0
+      ########################### Setup Docker ###########################
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.0.0
 
-        ########################### Add meta data for containers ###########################
-        - name: Docker meta
-          id: meta
-          uses: docker/metadata-action@v5
-          with:
-            images: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}
-            labels: |
-              org.opencontainers.image.title=osctrl-${{ matrix.components }}
-            tags: |
-                type=sha,prefix=,format=short
-                type=match,pattern=v(.*),group=1
+      ########################### Add meta data for containers ###########################
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}
+          labels: |
+            org.opencontainers.image.title=osctrl-${{ matrix.components }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=match,pattern=v(.*),group=1
 
+      ########################### Log into Dockerhub ###########################
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3.0.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-        ########################### Log into Dockerhub ###########################
-        - name: Login to Docker Hub
-          uses: docker/login-action@v3.0.0
-          with:
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      ########################### Create and push images ###########################
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}@sha256:%s ' *)
 
-        ########################### Create and push images ###########################
-        - name: Create manifest list and push
-          working-directory: /tmp/digests
-          run: |
-            docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf '${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}@sha256:%s ' *)
-
-        ########################### Inspect new image ###########################
-        - name: Inspect image
-          run: |
-            docker buildx imagetools inspect ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.meta.outputs.version }}
+      ########################### Inspect new image ###########################
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.meta.outputs.version }}

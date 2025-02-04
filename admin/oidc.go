@@ -1,10 +1,11 @@
 package main
 
 import (
+	"fmt"
 
 	"github.com/jmpsec/osctrl/settings"
-	"github.com/spf13/viper"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // JSONConfigurationOIDC to keep all OIDC details for auth
@@ -30,6 +31,9 @@ func loadOIDC(file string) (JSONConfigurationOIDC, error) {
 	}
 	// OAuth values
 	oauthRaw := viper.Sub(settings.AuthOIDC)
+	if oauthRaw == nil {
+		return cfg, fmt.Errorf("JSON key %s not found in %s", settings.AuthOIDC, file)
+	}
 	if err := oauthRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}

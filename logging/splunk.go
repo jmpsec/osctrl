@@ -2,6 +2,7 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -54,6 +55,9 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 		return _splunkCfg, err
 	}
 	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	if cfgRaw == nil {
+		return _splunkCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingSplunk, file)
+	}
 	if err := cfgRaw.Unmarshal(&_splunkCfg); err != nil {
 		return _splunkCfg, err
 	}
