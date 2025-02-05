@@ -307,7 +307,7 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		}
 		tag, err := m.Get(t.Tag, node.EnvironmentID)
 		if err != nil {
-			return tags, err
+			continue
 		}
 		tags = append(tags, tag)
 	}
