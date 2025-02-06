@@ -26,6 +26,7 @@ type AdminTag struct {
 	Color         string
 	Icon          string
 	CreatedBy     string
+	AutoTag       bool
 	EnvironmentID uint
 }
 
@@ -90,7 +91,7 @@ func (m *TagManager) Create(tag *AdminTag) error {
 }
 
 // New empty tag
-func (m *TagManager) New(name, description, color, icon, user string, envID uint) (AdminTag, error) {
+func (m *TagManager) New(name, description, color, icon, user string, envID uint, auto bool) (AdminTag, error) {
 	tagColor := color
 	tagIcon := icon
 	if tagColor == "" {
@@ -107,14 +108,15 @@ func (m *TagManager) New(name, description, color, icon, user string, envID uint
 			Icon:          strings.ToLower(tagIcon),
 			CreatedBy:     user,
 			EnvironmentID: envID,
+			AutoTag:       auto,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
 }
 
 // NewTag to create a tag and creates it without returning it
-func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint) error {
-	tag, err := m.New(name, description, color, icon, user, envID)
+func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint, auto bool) error {
+	tag, err := m.New(name, description, color, icon, user, envID, auto)
 	if err != nil {
 		return err
 	}
@@ -240,6 +242,7 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 			Color:         RandomColor(),
 			Icon:          DefaultTagIcon,
 			CreatedBy:     user,
+			AutoTag:       auto,
 			EnvironmentID: node.EnvironmentID,
 		}
 		if err := m.Create(&newTag); err != nil {
@@ -307,7 +310,7 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		}
 		tag, err := m.Get(t.Tag, node.EnvironmentID)
 		if err != nil {
-			return tags, err
+			continue
 		}
 		tags = append(tags, tag)
 	}
