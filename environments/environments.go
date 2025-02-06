@@ -193,7 +193,7 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 }
 
 // Create new TLS Environment
-func (environment *Environment) Create(env TLSEnvironment) error {
+func (environment *Environment) Create(env *TLSEnvironment) error {
 	if err := environment.DB.Create(&env).Error; err != nil {
 		return fmt.Errorf("Create TLS Environment %v", err)
 	}

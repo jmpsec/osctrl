@@ -49,7 +49,7 @@ func addEnvironment(c *cli.Context) error {
 			newEnv.Certificate = certificate
 			newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
 			newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
-			if err := envs.Create(newEnv); err != nil {
+			if err := envs.Create(&newEnv); err != nil {
 				return err
 			}
 			// Update configuration parts from serialized
@@ -61,7 +61,7 @@ func addEnvironment(c *cli.Context) error {
 				return err
 			}
 			// Create a tag for this new environment
-			if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName, newEnv.ID); err != nil {
+			if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName, newEnv.ID, false); err != nil {
 				return err
 			}
 			// Generate flags
