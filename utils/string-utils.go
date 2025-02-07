@@ -36,6 +36,15 @@ func GenUUID() string {
 	return uuid.New().String()
 }
 
+// CheckUUID - Helper to check if a string is a valid UUID
+func CheckUUID(s string) bool {
+	_, err := uuid.Parse(s)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // StringToInteger - Helper to convert a string into integer
 func StringToInteger(s string) int64 {
 	v, err := strconv.ParseInt(s, 10, 64)

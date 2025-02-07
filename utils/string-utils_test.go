@@ -21,6 +21,10 @@ func TestGenUUID(t *testing.T) {
 	assert.NotEmpty(t, GenUUID())
 }
 
+func TestCheckUUID(t *testing.T) {
+	assert.True(t, CheckUUID(GenUUID()))
+}
+
 func TestStringToInteger(t *testing.T) {
 	assert.Equal(t, int64(123), StringToInteger("123"))
 }

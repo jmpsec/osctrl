@@ -30,6 +30,12 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricEnrollErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -121,6 +127,12 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricConfigErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -183,6 +195,12 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricLogErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricLogErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -272,6 +290,12 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricReadErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -348,6 +372,12 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricWriteErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricWriteErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -432,6 +462,12 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricOnelinerErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -505,6 +541,12 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricOnelinerErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricOnelinerErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -588,6 +630,12 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricInitErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -660,6 +708,12 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricBlockErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -717,6 +771,12 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricFlagsErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricFlagsErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -781,6 +841,12 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		h.Inc(metricCertErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
@@ -830,6 +896,12 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricVerifyErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricVerifyErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -894,6 +966,12 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricScriptErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricScriptErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
@@ -984,6 +1062,12 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
 	if envVar == "" {
+		h.Inc(metricPackageErr)
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
 		h.Inc(metricPackageErr)
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
