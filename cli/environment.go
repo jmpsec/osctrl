@@ -61,7 +61,15 @@ func addEnvironment(c *cli.Context) error {
 				return err
 			}
 			// Create a tag for this new environment
-			if err := tagsmgr.NewTag(newEnv.Name, "Tag for environment "+newEnv.Name, tags.RandomColor(), newEnv.Icon, appName, newEnv.ID, false); err != nil {
+			if err := tagsmgr.NewTag(
+				newEnv.Name,
+				"Tag for environment "+newEnv.Name,
+				tags.RandomColor(),
+				newEnv.Icon,
+				appName,
+				newEnv.ID,
+				false,
+				tags.TagTypeEnv); err != nil {
 				return err
 			}
 			// Generate flags

@@ -16,6 +16,16 @@ const (
 	DefaultAutoTagUser uint = 0
 	// DefaultAutocreated as default username and description for tags
 	DefaultAutocreated = "Autocreated"
+	// TagTypeEnv as tag type for environment name
+	TagTypeEnv uint = 0
+	// TagTypeUUID as tag type for node UUID
+	TagTypeUUID uint = 1
+	// TagTypePlatform as tag type for node platform
+	TagTypePlatform uint = 2
+	// TagTypeLocalname as tag type for node localname
+	TagTypeLocalname uint = 3
+	// TagTypeCustom as tag type for custom tags
+	TagTypeCustom uint = 4
 )
 
 // AdminTag to hold all tags
@@ -28,6 +38,7 @@ type AdminTag struct {
 	CreatedBy     string
 	AutoTag       bool
 	EnvironmentID uint
+	TagType       uint
 }
 
 // AdminTagForNode to check if this tag is used for an specific node
@@ -91,7 +102,7 @@ func (m *TagManager) Create(tag *AdminTag) error {
 }
 
 // New empty tag
-func (m *TagManager) New(name, description, color, icon, user string, envID uint, auto bool) (AdminTag, error) {
+func (m *TagManager) New(name, description, color, icon, user string, envID uint, auto bool, tagType uint) (AdminTag, error) {
 	tagColor := color
 	tagIcon := icon
 	if tagColor == "" {
@@ -109,14 +120,15 @@ func (m *TagManager) New(name, description, color, icon, user string, envID uint
 			CreatedBy:     user,
 			EnvironmentID: envID,
 			AutoTag:       auto,
+			TagType:       tagType,
 		}, nil
 	}
 	return AdminTag{}, fmt.Errorf("%s already exists", name)
 }
 
 // NewTag to create a tag and creates it without returning it
-func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint, auto bool) error {
-	tag, err := m.New(name, description, color, icon, user, envID, auto)
+func (m *TagManager) NewTag(name, description, color, icon, user string, envID uint, auto bool, tagType uint) error {
+	tag, err := m.New(name, description, color, icon, user, envID, auto, tagType)
 	if err != nil {
 		return err
 	}
@@ -220,8 +232,8 @@ func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string
 // TagNodeMulti to tag a node with multiple tags
 // TODO use the correct user_id
 func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user string, auto bool) error {
-	for _, t := range tags {
-		if err := m.TagNode(t, node, user, auto); err != nil {
+	for i, t := range tags {
+		if err := m.TagNode(t, node, user, auto, uint(i)); err != nil {
 			return err
 		}
 	}
@@ -230,7 +242,7 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 
 // TagNode to tag a node
 // TODO use the correct user_id
-func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool) error {
+func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool, tagType uint) error {
 	if len(name) == 0 {
 		return fmt.Errorf("empty tag")
 	}
@@ -244,6 +256,7 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 			CreatedBy:     user,
 			AutoTag:       auto,
 			EnvironmentID: node.EnvironmentID,
+			TagType:       tagType,
 		}
 		if err := m.Create(&newTag); err != nil {
 			return fmt.Errorf("error creating tag %v", err)

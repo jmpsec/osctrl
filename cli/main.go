@@ -1145,7 +1145,7 @@ func init() {
 					Usage:   "Tag an existing node",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
-							Name:    "uuid, u",
+							Name:    "uuid",
 							Aliases: []string{"u"},
 							Usage:   "Node UUID to be tagged",
 						},
@@ -1158,6 +1158,12 @@ func init() {
 							Name:    "tag-value",
 							Aliases: []string{"T"},
 							Usage:   "Tag value to be used. It will be created if does not exist",
+						},
+						&cli.StringFlag{
+							Name:    "tag-type",
+							Aliases: []string{"type"},
+							Value:   "custom",
+							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'localname' and 'custom'",
 						},
 					},
 					Action: cliWrapper(tagNode),
