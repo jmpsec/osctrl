@@ -24,3 +24,21 @@ func GetHex(num int) string {
 	}
 	return hex
 }
+
+// Helper to convert the tag type to a string
+func TagTypeDecorator(tagType uint) string {
+	switch tagType {
+	case 0:
+		return "Environment"
+	case 1:
+		return "UUID"
+	case 2:
+		return "Platform"
+	case 3:
+		return "Localname"
+	case 4:
+		return "Custom"
+	default:
+		return "Unknown"
+	}
+}

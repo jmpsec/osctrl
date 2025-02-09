@@ -135,6 +135,7 @@ type TagsRequest struct {
 	Color       string `json:"color"`
 	Icon        string `json:"icon"`
 	Environment string `json:"environment"`
+	TagType     uint   `json:"tagtype"`
 }
 
 // TagNodesRequest to receive a tag for nodes

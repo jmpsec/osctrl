@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/rs/zerolog/log"
@@ -783,7 +784,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"inFutureTime":    utils.InFutureTime,
+		"inFutureTime": utils.InFutureTime,
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "carves-details.html").filepaths
@@ -1452,6 +1453,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		"pastFutureTimes":   utils.PastFutureTimes,
 		"inFutureTime":      utils.InFutureTime,
 		"environmentFinder": environments.EnvironmentFinder,
+		"tagTypeDecorator":  tags.TagTypeDecorator,
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "tags.html").filepaths

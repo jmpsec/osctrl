@@ -8,6 +8,7 @@ import (
 
 	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -152,6 +153,16 @@ func tagNode(c *cli.Context) error {
 		fmt.Println("❌ tag is required")
 		os.Exit(1)
 	}
+	tagType := c.String("tag-type")
+	tagTypeInt := tags.TagTypeCustom
+	switch tagType {
+	case "env":
+		tagTypeInt = tags.TagTypeEnv
+	case "uuid":
+		tagTypeInt = tags.TagTypeUUID
+	case "localname":
+		tagTypeInt = tags.TagTypeLocalname
+	}
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -162,7 +173,7 @@ func tagNode(c *cli.Context) error {
 			return fmt.Errorf("error get uuid - %s", err)
 		}
 		if tagsmgr.Exists(tag) {
-			if err := tagsmgr.TagNode(tag, n, appName, false); err != nil {
+			if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt); err != nil {
 				return fmt.Errorf("error tagging - %s", err)
 			}
 		}
@@ -172,7 +183,7 @@ func tagNode(c *cli.Context) error {
 		}
 	}
 	if !silentFlag {
-		fmt.Println("✅ node was deleted successfully")
+		fmt.Println("✅ node was tagged successfully")
 	}
 	return nil
 }

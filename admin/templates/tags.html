@@ -43,6 +43,7 @@
                   <thead>
                     <tr>
                       <th>Name</th>
+                      <th>Type</th>
                       <th>Description</th>
                       <th>Color</th>
                       <th>Icon</th>
@@ -54,14 +55,15 @@
                   {{range  $i, $t := $.Tags}}
                     <tr>
                       <td><b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}"></td>
+                      <td>{{ tagTypeDecorator $t.TagType }}<input type="hidden" value="{{ $t.TagType }}" id="tag_type_{{ $t.Name }}">
                       <td>{{ $t.Description }}<input type="hidden" value="{{ $t.Description }}" id="tag_desc_{{ $t.Name }}"></td>
                       <td>{{ $t.Color }}<input type="hidden" value="{{ $t.Color }}" id="tag_color_{{ $t.Name }}">
                         <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
                       </td>
                       <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
                       <td>
-                        <b>{{ environmentFinder $t.EnvironmentID $.Environments }}</b>
-                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments }}" id="tag_env_{{ $t.Name }}"></td>
+                        <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
+                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}"></td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>
@@ -125,6 +127,17 @@
                         {{ end }}
                         </select>
                       </div>
+                      <label class="col-md-2 col-form-label" for="tag_type">Tag Type: </label>
+                      <div class="col-md-4">
+                        <select class="form-control" name="tag_type" id="tag_type">
+                          <option value=""></option>
+                          <option value="0">Environment</option>
+                          <option value="1">UUID</option>
+                          <option value="2">Platform</option>
+                          <option value="3">Localname</option>
+                          <option value="4">Custom</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div class="modal-footer">
@@ -164,6 +177,10 @@
 
         // Select2 initialization
         $('#tag_env').select2({
+          theme: "classic",
+          width: '100%'
+        });
+        $('#tag_type').select2({
           theme: "classic",
           width: '100%'
         });
