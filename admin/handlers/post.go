@@ -1440,55 +1440,59 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	switch t.Action {
-	case "add":
-		// FIXME password complexity?
-		if h.Tags.Exists(t.Name) {
+	case tags.ActionAdd:
+		if h.Tags.ExistsByEnv(t.Name, env.ID) {
 			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
 			h.Inc(metricAdminErr)
 			return
 		}
-		// Prepare user to create
 		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser], env.ID, false, t.TagType); err != nil {
 			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
 			h.Inc(metricAdminErr)
 			return
 		}
 		adminOKResponse(w, "tag added successfully")
-	case "edit":
-		if t.Description != "" {
-			if err := h.Tags.ChangeDescription(t.Name, t.Description, env.ID); err != nil {
+	case tags.ActionEdit:
+		tag, err := h.Tags.Get(t.Name, env.ID)
+		if err != nil {
+			adminErrorResponse(w, "error getting tag", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
+		}
+		if t.Description != "" && t.Description != tag.Description {
+			if err := h.Tags.ChangeDescription(&tag, t.Description); err != nil {
 				adminErrorResponse(w, "error changing description", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
-		if t.Icon != "" {
-			if err := h.Tags.ChangeIcon(t.Name, t.Icon, env.ID); err != nil {
+		if t.Icon != "" && t.Icon != tag.Icon {
+			if err := h.Tags.ChangeIcon(&tag, t.Icon); err != nil {
 				adminErrorResponse(w, "error changing icon", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
-		if t.Color != "" {
-			if err := h.Tags.ChangeColor(t.Name, t.Color, env.ID); err != nil {
+		if t.Color != "" && t.Color != tag.Color {
+			if err := h.Tags.ChangeColor(&tag, t.Color); err != nil {
 				adminErrorResponse(w, "error changing color", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
 		}
-		adminOKResponse(w, "tag updated successfully")
-	case "remove":
-		if t.Name == ctx[sessions.CtxUser] {
-			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to remove tag %s", t.Name))
-			h.Inc(metricAdminErr)
-			return
-		}
-		if h.Tags.Exists(t.Name) {
-			if err := h.Tags.Delete(t.Name, env.ID); err != nil {
-				adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+		if t.TagType != tag.TagType {
+			if err := h.Tags.ChangeTagType(&tag, t.TagType); err != nil {
+				adminErrorResponse(w, "error changing tag type", http.StatusInternalServerError, err)
 				h.Inc(metricAdminErr)
 				return
 			}
+		}
+		adminOKResponse(w, "tag updated successfully")
+	case tags.ActionRemove:
+		if err := h.Tags.DeleteGet(t.Name, env.ID); err != nil {
+			adminErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
+			h.Inc(metricAdminErr)
+			return
 		}
 		adminOKResponse(w, "tag removed successfully")
 	}

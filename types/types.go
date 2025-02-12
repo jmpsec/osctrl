@@ -8,7 +8,6 @@ const (
 	LogLevelInfo  string = "info"
 	LogLevelWarn  string = "warn"
 	LogLevelError string = "error"
-
 	// log formats
 	LogFormatConsole string = "console"
 	LogFormatJSON    string = "json"
@@ -194,4 +193,14 @@ type ApiActionsRequest struct {
 	MsiPkgURL   string `json:"url_msi_pkg"`
 	RpmPkgURL   string `json:"url_rpm_pkg"`
 	DebPkgURL   string `json:"url_deb_pkg"`
+}
+
+// ApiTagsRequest to receive tag requests
+type ApiTagsRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	Icon        string `json:"icon"`
+	EnvUUID     string `json:"env_uuid"`
+	TagType     uint   `json:"tagtype"`
 }

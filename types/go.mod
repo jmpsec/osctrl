@@ -20,7 +20,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gorm.io/gorm v1.25.12 // indirect
 )

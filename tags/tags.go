@@ -26,6 +26,12 @@ const (
 	TagTypeLocalname uint = 3
 	// TagTypeCustom as tag type for custom tags
 	TagTypeCustom uint = 4
+	// ActionAdd as action to add a tag
+	ActionAdd    string = "add"
+	// ActionEdit as action to edit a tag
+	ActionEdit   string = "edit"
+	// ActionRemove as action to remove a tag
+	ActionRemove string = "remove"
 )
 
 // AdminTag to hold all tags
@@ -142,6 +148,13 @@ func (m *TagManager) Exists(name string) bool {
 	return (results > 0)
 }
 
+// ExistsByEnv checks if tag exists by environment
+func (m *TagManager) ExistsByEnv(name string, envID uint) bool {
+	var results int64
+	m.DB.Model(&AdminTag{}).Where("name = ? AND environment_id = ?", name, envID).Count(&results)
+	return (results > 0)
+}
+
 // ExistsGet checks if tag exists and returns the tag
 func (m *TagManager) ExistsGet(name string, envID uint) (bool, AdminTag) {
 	tag, err := m.Get(name, envID)
@@ -169,8 +182,8 @@ func (m *TagManager) GetByEnv(envID uint) ([]AdminTag, error) {
 	return tags, nil
 }
 
-// Delete tag by name
-func (m *TagManager) Delete(name string, envID uint) error {
+// DeleteGet tag by name
+func (m *TagManager) DeleteGet(name string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
@@ -181,8 +194,16 @@ func (m *TagManager) Delete(name string, envID uint) error {
 	return nil
 }
 
-// ChangeDescription to update description for a tag
-func (m *TagManager) ChangeDescription(name, description string, envID uint) error {
+// Delete tag by name
+func (m *TagManager) Delete(tag *AdminTag) error {
+	if err := m.DB.Unscoped().Delete(tag).Error; err != nil {
+		return fmt.Errorf("Delete %v", err)
+	}
+	return nil
+}
+
+// ChangeGetDescription to update description for a tag
+func (m *TagManager) ChangeGetDescription(name, description string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
@@ -195,8 +216,18 @@ func (m *TagManager) ChangeDescription(name, description string, envID uint) err
 	return nil
 }
 
-// ChangeColor to update color for a tag
-func (m *TagManager) ChangeColor(name, color string, envID uint) error {
+// ChangeDescription to update description for a tag
+func (m *TagManager) ChangeDescription(tag *AdminTag, desc string) error {
+	if desc != tag.Description {
+		if err := m.DB.Model(tag).Update("description", desc).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeGetColor to update color for a tag
+func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
@@ -209,14 +240,82 @@ func (m *TagManager) ChangeColor(name, color string, envID uint) error {
 	return nil
 }
 
-// ChangeIcon to update icon for a tag
-func (m *TagManager) ChangeIcon(name, icon string, envID uint) error {
+// ChangeColor to update color for a tag
+func (m *TagManager) ChangeColor(tag *AdminTag, color string) error {
+	if color != tag.Color {
+		if err := m.DB.Model(tag).Update("color", color).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeGetIcon to update icon for a tag
+func (m *TagManager) ChangeGetIcon(name, icon string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
 		return fmt.Errorf("error getting tag %v", err)
 	}
 	if icon != tag.Icon {
 		if err := m.DB.Model(&tag).Update("icon", icon).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeIcon to update icon for a tag
+func (m *TagManager) ChangeIcon(tag *AdminTag, icon string) error {
+	if icon != tag.Icon {
+		if err := m.DB.Model(tag).Update("icon", icon).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeGetTagType to update tag type for a tag
+func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) error {
+	tag, err := m.Get(name, envID)
+	if err != nil {
+		return fmt.Errorf("error getting tag %v", err)
+	}
+	if tagType != tag.TagType {
+		if err := m.DB.Model(&tag).Update("tag_type", tagType).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeTagType to update tag type for a tag
+func (m *TagManager) ChangeTagType(tag *AdminTag, tagType uint) error {
+	if tagType != tag.TagType {
+		if err := m.DB.Model(tag).Update("tag_type", tagType).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeGetEnvironment to update environment for a tag
+func (m *TagManager) ChangeGetEnvironment(name string, envID uint) error {
+	tag, err := m.Get(name, envID)
+	if err != nil {
+		return fmt.Errorf("error getting tag %v", err)
+	}
+	if envID != tag.EnvironmentID {
+		if err := m.DB.Model(&tag).Update("environment_id", envID).Error; err != nil {
+			return fmt.Errorf("Update %v", err)
+		}
+	}
+	return nil
+}
+
+// ChangeEnvironment to update environment for a tag
+func (m *TagManager) ChangeEnvironment(tag *AdminTag, envID uint) error {
+	if envID != tag.EnvironmentID {
+		if err := m.DB.Model(tag).Update("environment_id", envID).Error; err != nil {
 			return fmt.Errorf("Update %v", err)
 		}
 	}
