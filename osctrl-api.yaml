@@ -1189,6 +1189,83 @@ paths:
       security:
         - Authorization:
             - read
+  /environments/map/id:
+    get:
+      tags:
+        - environments
+      summary: Get environment name, UUID and ID in a map by ID
+      description: Returns a reduced map by ID of all environments, containing only the ID, Name and UUID
+      operationId: EnvironmentMapHandler
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapEnvByID"
+        400:
+          description: invalid target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /environments/map/{target}:
+    get:
+      tags:
+        - environments
+      summary: Get environment name, UUID and ID in a map by name or UUID
+      description: Returns a reduced map of all environments, containing only the ID, Name and UUID
+      operationId: EnvironmentMapHandler
+      parameters:
+        - name: target
+          in: path
+          description: Name or UUID for the osctrl environments map
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapEnvByString"
+        400:
+          description: invalid target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /environments/{env}/enroll/{target}:
     get:
       tags:
@@ -1519,7 +1596,7 @@ paths:
       parameters:
         - name: env
           in: path
-          description: Name or UUID of the requested osctrl environment to get platforms
+          description: Name or UUID of the requested osctrl environment to get tags
           required: true
           schema:
             type: string
@@ -1531,7 +1608,62 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/AdminTag"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
+  /tags/{env}/{name}:
+    get:
+      tags:
+        - tags
+      summary: Get tag by name
+      description: Returns the osctrl tag by name and environment
+      operationId: TagEnvHandler
+      parameters:
+        - name: env
+          in: path
+          description: UUID of the requested osctrl environment to get tag by name
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          description: Name of requested osctrl tag to get by environment
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/AdminTag"
         400:
           description: bad request
           content:
@@ -2292,6 +2424,30 @@ components:
         TagType:
           type: integer
           format: uint32
+    MapEnvByID:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        Name:
+          type: string
+        UUID:
+          type: string
+      additionalProperties:
+        type: integer
+    MapEnvByString:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        Name:
+          type: string
+        UUID:
+          type: string
+      additionalProperties:
+        type: string
   securitySchemes:
     Authorization:
       type: http
