@@ -26,10 +26,12 @@ const (
 	TagTypeLocalname uint = 3
 	// TagTypeCustom as tag type for custom tags
 	TagTypeCustom uint = 4
+	// TagTypeUnknown as tag type for unknown tags
+	TagTypeUnknown uint = 5
 	// ActionAdd as action to add a tag
-	ActionAdd    string = "add"
+	ActionAdd string = "add"
 	// ActionEdit as action to edit a tag
-	ActionEdit   string = "edit"
+	ActionEdit string = "edit"
 	// ActionRemove as action to remove a tag
 	ActionRemove string = "remove"
 )

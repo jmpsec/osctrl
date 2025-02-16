@@ -28,6 +28,8 @@ const (
 	APIUSers = "/users"
 	// APIEnvironments for the environments path
 	APIEnvironments = "/environments"
+	// APITags for the tags path
+	APITags = "/tags"
 	// APILogin for the login path
 	APILogin = "/login"
 	// JSONApplication for Content-Type headers

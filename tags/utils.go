@@ -3,7 +3,25 @@ package tags
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
+)
+
+const (
+	// TagTypeEnvironmentStr is the tag type for environment
+	TagTypeEnvironmentStr = "Environment"
+	// TagTypeEnvStr is the tag type for shortened environment
+	TagTypeEnvStr = "Env"
+	// TagTypeUUIDStr is the tag type for UUID
+	TagTypeUUIDStr = "UUID"
+	// TagTypePlatformStr is the tag type for platform
+	TagTypePlatformStr = "Platform"
+	// TagTypeLocalnameStr is the tag type for localname
+	TagTypeLocalnameStr = "Localname"
+	// TagTypeCustomStr is the tag type for custom
+	TagTypeCustomStr = "Custom"
+	// TagTypeUnknownStr is the tag type for unknown
+	TagTypeUnknownStr = "Unknown"
 )
 
 // Helper to generate a random color in hex for HTML
@@ -28,17 +46,35 @@ func GetHex(num int) string {
 // Helper to convert the tag type to a string
 func TagTypeDecorator(tagType uint) string {
 	switch tagType {
-	case 0:
-		return "Environment"
-	case 1:
-		return "UUID"
-	case 2:
-		return "Platform"
-	case 3:
-		return "Localname"
-	case 4:
-		return "Custom"
+	case TagTypeEnv:
+		return TagTypeEnvironmentStr
+	case TagTypeUUID:
+		return TagTypeUUIDStr
+	case TagTypePlatform:
+		return TagTypePlatformStr
+	case TagTypeLocalname:
+		return TagTypeLocalnameStr
+	case TagTypeCustom:
+		return TagTypeCustomStr
 	default:
-		return "Unknown"
+		return TagTypeUnknownStr
+	}
+}
+
+// Helper to convert the tag type string to a uint
+func TagTypeParser(tagType string) uint {
+	switch strings.ToUpper(tagType) {
+	case strings.ToUpper(TagTypeEnvStr):
+		return TagTypeEnv
+	case strings.ToUpper(TagTypeUUIDStr):
+		return TagTypeUUID
+	case strings.ToUpper(TagTypePlatformStr):
+		return TagTypePlatform
+	case strings.ToUpper(TagTypeLocalnameStr):
+		return TagTypeLocalname
+	case strings.ToUpper(TagTypeCustomStr):
+		return TagTypeCustom
+	default:
+		return TagTypeUnknown
 	}
 }

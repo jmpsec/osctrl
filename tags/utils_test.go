@@ -26,3 +26,13 @@ func TestTagTypeDecorator(t *testing.T) {
 	assert.Equal(t, "Custom", TagTypeDecorator(4))
 	assert.Equal(t, "Unknown", TagTypeDecorator(5))
 }
+
+func TestTagTypeParser(t *testing.T) {
+	assert.Equal(t, uint(0), TagTypeParser("Env"))
+	assert.Equal(t, uint(1), TagTypeParser("UUID"))
+	assert.Equal(t, uint(2), TagTypeParser("Platform"))
+	assert.Equal(t, uint(3), TagTypeParser("Localname"))
+	assert.Equal(t, uint(4), TagTypeParser("Custom"))
+	assert.Equal(t, uint(5), TagTypeParser("Unknown"))
+	assert.Equal(t, uint(5), TagTypeParser("Invalid"))
+}
