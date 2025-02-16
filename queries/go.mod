@@ -7,8 +7,8 @@ replace github.com/jmpsec/osctrl/nodes => ../nodes
 replace github.com/jmpsec/osctrl/utils => ../utils
 
 require (
-	github.com/jmpsec/osctrl/nodes v0.0.0-20250203202337-3998cdcbfbca
-	github.com/jmpsec/osctrl/utils v0.0.0-20250203202337-3998cdcbfbca
+	github.com/jmpsec/osctrl/nodes v0.0.0-20250216215132-7ea95f9f4d46
+	github.com/jmpsec/osctrl/utils v0.0.0-20250216215132-7ea95f9f4d46
 	github.com/stretchr/testify v1.9.0
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.12
@@ -30,5 +30,5 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/rs/zerolog v1.33.0
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 )
