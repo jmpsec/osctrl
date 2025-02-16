@@ -39,6 +39,57 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPITagsOK)
 }
 
+// TagEnvHandler - GET Handler to return one tag for one environment as JSON
+func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPITagsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
+		h.Inc(metricAPITagsErr)
+		return
+	}
+	// Extract tag name
+	tagVar := r.PathValue("name")
+	if tagVar == "" {
+		apiErrorResponse(w, "error getting tag name", http.StatusBadRequest, nil)
+		h.Inc(metricAPITagsErr)
+		return
+	}
+	// Get environment by UUID
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		h.Inc(metricAPIEnvsErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPITagsErr)
+		return
+	}
+	// Get tag
+	exist, tag := h.Tags.ExistsGet(tagVar, env.ID)
+	if !exist {
+		apiErrorResponse(w, "error getting tag", http.StatusInternalServerError, err)
+		h.Inc(metricAPITagsErr)
+		return
+	}
+	// Serialize and serve JSON
+	if h.Settings.DebugService(settings.ServiceAPI) {
+		log.Debug().Msg("DebugService: Returned tag")
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tag)
+	h.Inc(metricAPITagsOK)
+}
+
 // TagsEnvHandler - GET Handler to return tags for one environment as JSON
 func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPITagsReq)

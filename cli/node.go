@@ -25,6 +25,7 @@ func nodesToData(nds []nodes.OsqueryNode, header []string) [][]string {
 	return data
 }
 
+// Helper function to convert a node into the data expected for output
 func nodeToData(n nodes.OsqueryNode, header []string) [][]string {
 	var data [][]string
 	if header != nil {
