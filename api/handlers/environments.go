@@ -13,7 +13,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// EnvironmentHandler - GET Handler to return one environment as JSON
+// Define targets to be used to retrieve an environment map
+var (
+	EnvMapTargets = map[string]bool{
+		"id":   true,
+		"uuid": true,
+		"name": true,
+	}
+)
+
+// EnvironmentHandler - GET Handler to return one environment by UUID as JSON
 func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	h.Inc(metricAPIEnvsReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
@@ -24,7 +33,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 		h.Inc(metricAPIEnvsErr)
 		return
 	}
-	// Get environment by name
+	// Get environment by UUID
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
@@ -47,6 +56,54 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 		log.Debug().Msgf("DebugService: Returned environment %s", env.Name)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+	h.Inc(metricAPIEnvsOK)
+}
+
+// EnvironmentMapHandler - GET Handler to return one environment as JSON
+func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Request) {
+	h.Inc(metricAPIEnvsReq)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	// Extract target
+	targetVar := r.PathValue("target")
+	if targetVar == "" {
+		apiErrorResponse(w, "error getting target", http.StatusBadRequest, nil)
+		h.Inc(metricAPIEnvsErr)
+		return
+	}
+	// Check if target is valid
+	if !EnvMapTargets[targetVar] {
+		apiErrorResponse(w, "invalid target", http.StatusBadRequest, fmt.Errorf("invalid target %s", targetVar))
+		h.Inc(metricAPIEnvsErr)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.Inc(metricAPIEnvsErr)
+		return
+	}
+	// Prepare map by target
+	var envMap interface{}
+	var err error
+	switch targetVar {
+	case "id":
+		envMap, err = h.Envs.GetMapByID()
+	case "uuid":
+		envMap, err = h.Envs.GetMapByString()
+	case "name":
+		envMap, err = h.Envs.GetMapByString()
+	}
+	if err != nil {
+		apiErrorResponse(w, "error getting environments map", http.StatusInternalServerError, err)
+		h.Inc(metricAPIEnvsErr)
+		return
+	}
+	// Serialize and serve JSON
+	if h.Settings.DebugService(settings.ServiceAPI) {
+		log.Debug().Msg("DebugService: Returned environments map")
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envMap)
 	h.Inc(metricAPIEnvsOK)
 }
 

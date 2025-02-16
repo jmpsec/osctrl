@@ -595,6 +595,7 @@ func osctrlAPIService() {
 	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath), handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiPlatformsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler)))
 	// API: environments
+	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/map/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentMapHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler)))
 	muxAPI.Handle("GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{action}", handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler)))

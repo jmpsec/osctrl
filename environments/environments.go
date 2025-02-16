@@ -96,6 +96,19 @@ type TLSEnvironment struct {
 // MapEnvironments to hold the TLS environments by name and UUID
 type MapEnvironments map[string]TLSEnvironment
 
+// NameUUID to just hold the environment name and UUID
+type NameUUID struct {
+	Name string
+	UUID string
+	ID   uint
+}
+
+// MapEnvByID to hold the environments name and UUID by ID
+type MapEnvByID map[uint]NameUUID
+
+// MapEnvByString to hold the environments name and UUID by string
+type MapEnvByString map[string]NameUUID
+
 // Environment keeps all TLS Environments
 type Environment struct {
 	DB *gorm.DB
@@ -252,6 +265,43 @@ func (environment *Environment) GetMap() (MapEnvironments, error) {
 	for _, e := range all {
 		_map[e.Name] = e
 		_map[e.UUID] = e
+	}
+	return _map, nil
+}
+
+// GetMapByID returns a smaller map of environments by ID
+func (environment *Environment) GetMapByID() (MapEnvByID, error) {
+	all, err := environment.All()
+	if err != nil {
+		return nil, fmt.Errorf("error getting environments %v", err)
+	}
+	_map := make(MapEnvByID)
+	for _, e := range all {
+		_n := NameUUID{
+			Name: e.Name,
+			UUID: e.UUID,
+			ID:   e.ID,
+		}
+		_map[e.ID] = _n
+	}
+	return _map, nil
+}
+
+// GetMapByString returns a smaller map of environments by string (name and UUID)
+func (environment *Environment) GetMapByString() (MapEnvByString, error) {
+	all, err := environment.All()
+	if err != nil {
+		return nil, fmt.Errorf("error getting environments %v", err)
+	}
+	_map := make(MapEnvByString)
+	for _, e := range all {
+		_n := NameUUID{
+			Name: e.Name,
+			UUID: e.UUID,
+			ID:   e.ID,
+		}
+		_map[e.Name] = _n
+		_map[e.UUID] = _n
 	}
 	return _map, nil
 }
