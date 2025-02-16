@@ -5,7 +5,7 @@ go 1.23
 replace github.com/jmpsec/osctrl/nodes => ../nodes
 
 require (
-	github.com/jmpsec/osctrl/nodes v0.0.0-20250203202337-3998cdcbfbca
+	github.com/jmpsec/osctrl/nodes v0.0.0-20250216215132-7ea95f9f4d46
 	gorm.io/gorm v1.25.12
 )
 
@@ -22,6 +22,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.8.4 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
