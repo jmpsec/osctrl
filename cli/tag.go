@@ -7,25 +7,26 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jmpsec/osctrl/environments"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
 
 // Helper function to convert a slice of tags into the data expected for output
-func tagsToData(tgs []tags.AdminTag, header []string) [][]string {
+func tagsToData(tgs []tags.AdminTag, m environments.MapEnvByID, header []string) [][]string {
 	var data [][]string
 	if header != nil {
 		data = append(data, header)
 	}
 	for _, n := range tgs {
-		data = append(data, tagToData(n, nil)...)
+		data = append(data, tagToData(n, m, nil)...)
 	}
 	return data
 }
 
 // Helper function to convert a tag into the data expected for output
-func tagToData(t tags.AdminTag, header []string) [][]string {
+func tagToData(t tags.AdminTag, m environments.MapEnvByID, header []string) [][]string {
 	var data [][]string
 	if header != nil {
 		data = append(data, header)
@@ -36,7 +37,7 @@ func tagToData(t tags.AdminTag, header []string) [][]string {
 		t.Description,
 		t.Color,
 		t.Icon,
-		//t.EnvironmentID,
+		m[t.EnvironmentID].Name,
 		t.CreatedBy,
 		stringifyBool(t.AutoTag),
 		tags.TagTypeDecorator(t.TagType),
@@ -198,6 +199,7 @@ func showTag(c *cli.Context) error {
 		os.Exit(1)
 	}
 	var t tags.AdminTag
+	var envName string
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -207,11 +209,17 @@ func showTag(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
+		envName = e.Name
 	} else if apiFlag {
 		t, err = osctrlAPI.GetTag(env, name)
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
+		e, err := osctrlAPI.GetEnvironment(env)
+		if err != nil {
+			return fmt.Errorf("❌ %s", err)
+		}
+		envName = e.Name
 	}
 	fmt.Printf("Tag: %s\n", t.Name)
 	fmt.Printf("Description: %s\n", t.Description)
@@ -221,17 +229,19 @@ func showTag(c *cli.Context) error {
 	fmt.Printf("CreatedBy: %s\n", t.CreatedBy)
 	fmt.Printf("AutoTag: %s\n", stringifyBool(t.AutoTag))
 	fmt.Printf("TagType: %s\n", tags.TagTypeDecorator(t.TagType))
+	fmt.Printf("Environment: %s\n", envName)
 	fmt.Println()
 	return nil
 }
 
-func helperListTags(tgs []tags.AdminTag) error {
+func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 	header := []string{
 		"Created",
 		"Name",
 		"Description",
 		"Color",
 		"Icon",
+		"Environment",
 		"CreatedBy",
 		"AutoTag",
 		"TagType",
@@ -244,7 +254,7 @@ func helperListTags(tgs []tags.AdminTag) error {
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
-		data := tagsToData(tgs, header)
+		data := tagsToData(tgs, m, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error writting csv - %s", err)
@@ -254,7 +264,7 @@ func helperListTags(tgs []tags.AdminTag) error {
 		table.SetHeader(header)
 		if len(tgs) > 0 {
 			fmt.Printf("Existing tags (%d):\n", len(tgs))
-			data := tagsToData(tgs, nil)
+			data := tagsToData(tgs, m, nil)
 			table.AppendBulk(data)
 		} else {
 			fmt.Println("No tags")
@@ -273,6 +283,7 @@ func listTagsByEnv(c *cli.Context) error {
 	}
 	// Retrieve data
 	var tgs []tags.AdminTag
+	var m environments.MapEnvByID
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -282,13 +293,21 @@ func listTagsByEnv(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
+		m, err = envs.GetMapByID()
+		if err != nil {
+			return fmt.Errorf("❌ %s", err)
+		}
 	} else if apiFlag {
 		tgs, err = osctrlAPI.GetTags(env)
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
+		m, err = osctrlAPI.GetEnvMap()
+		if err != nil {
+			return fmt.Errorf("❌ %s", err)
+		}
 	}
-	if err := helperListTags(tgs); err != nil {
+	if err := helperListTags(tgs, m); err != nil {
 		return fmt.Errorf("❌ %s", err)
 	}
 	return nil
@@ -296,8 +315,13 @@ func listTagsByEnv(c *cli.Context) error {
 
 func listAllTags(c *cli.Context) error {
 	var tgs []tags.AdminTag
+	var m environments.MapEnvByID
 	if dbFlag {
 		tgs, err = tagsmgr.All()
+		if err != nil {
+			return fmt.Errorf("❌ %s", err)
+		}
+		m, err = envs.GetMapByID()
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
@@ -306,8 +330,12 @@ func listAllTags(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("❌ %s", err)
 		}
+		m, err = osctrlAPI.GetEnvMap()
+		if err != nil {
+			return fmt.Errorf("❌ %s", err)
+		}
 	}
-	if err := helperListTags(tgs); err != nil {
+	if err := helperListTags(tgs, m); err != nil {
 		return fmt.Errorf("❌ %s", err)
 	}
 	return nil
