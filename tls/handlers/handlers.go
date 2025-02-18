@@ -90,16 +90,17 @@ var validPlatform = map[string]bool{
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
-	Envs        *environments.Environment
-	EnvsMap     *environments.MapEnvironments
-	Nodes       *nodes.NodeManager
-	Tags        *tags.TagManager
-	Queries     *queries.Queries
-	Carves      *carves.Carves
-	Settings    *settings.Settings
-	SettingsMap *settings.MapSettings
-	Metrics     *metrics.Metrics
-	Logs        *logging.LoggerTLS
+	Envs         *environments.Environment
+	EnvsMap      *environments.MapEnvironments
+	Nodes        *nodes.NodeManager
+	Tags         *tags.TagManager
+	Queries      *queries.Queries
+	Carves       *carves.Carves
+	Settings     *settings.Settings
+	SettingsMap  *settings.MapSettings
+	Metrics      *metrics.Metrics
+	Logs         *logging.LoggerTLS
+	WriteHandler *batchWriter
 }
 
 // TLSResponse to be returned to requests
@@ -186,6 +187,9 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	for _, opt := range opts {
 		opt(h)
 	}
+	// All these opt function need be refactored to reduce unnecessary complexity
+	// For now, we hardcode the values for testing
+	h.WriteHandler = newBatchWriter(10, time.Minute, *h.Nodes)
 	return h
 }
 

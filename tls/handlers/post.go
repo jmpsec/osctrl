@@ -146,17 +146,11 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if provided node_key is valid and if so, update node
+	// We need to update the node info in another go routine
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error recording IP address")
-		}
-		// Refresh last config for node
-		if err := h.Nodes.ConfigRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error refreshing last config")
-		}
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
