@@ -150,7 +150,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
 		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
-
+		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer", node.UUID, node.ID)
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))

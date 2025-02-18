@@ -95,7 +95,7 @@ func (bw *batchWriter) flush(batch []writeEvent) {
 		// Update the node's IP address.
 		// Since the IP address changes infrequently, no need to update in bulk.
 	}
-
+	log.Info().Int("count", len(batch)).Msg("flushed batch")
 	if err := bw.nodesRepo.RefreshLastSeenBatch(nodeIDs); err != nil {
 		log.Err(err).Msg("refreshing last seen batch failed")
 	}
