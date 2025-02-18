@@ -150,7 +150,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
 		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
-		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer", node.UUID, node.ID)
+		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
@@ -298,22 +298,17 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricReadErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		nodeInvalid = false
 		qs, accelerate, err = h.Queries.NodeQueries(node)
 		if err != nil {
 			h.Inc(metricReadErr)
 			log.Err(err).Msg("error getting queries from db")
 		}
-		// Refresh last query read request
-		if err := h.Nodes.QueryReadRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricReadErr)
-			log.Err(err).Msg("error refreshing last query read")
-		}
+		// Refresh node last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
 	} else {
 		log.Err(err).Msg("GetByKey")
 		nodeInvalid = true

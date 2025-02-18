@@ -189,7 +189,7 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	}
 	// All these opt function need be refactored to reduce unnecessary complexity
 	// For now, we hardcode the values for testing
-	h.WriteHandler = newBatchWriter(10, time.Minute, *h.Nodes)
+	h.WriteHandler = newBatchWriter(50, time.Minute, *h.Nodes)
 	return h
 }
 
