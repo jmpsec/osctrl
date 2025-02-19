@@ -2,12 +2,14 @@ package backend
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/spf13/viper"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const (
@@ -66,7 +68,14 @@ func PrepareDSN(config JSONConfigurationDB) string {
 
 // GetDB to get PostgreSQL DB using GORM
 func (db *DBManager) GetDB() (*gorm.DB, error) {
-	dbConn, err := gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+	newLogger := logger.New(log.New(log.Writer(), "\r\n", log.LstdFlags), logger.Config{
+		SlowThreshold: time.Millisecond,
+		LogLevel:      logger.Info,
+		Colorful:      true,
+	})
+	dbConn, err := gorm.Open(postgres.Open(db.DSN), &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		return nil, err
 	}
