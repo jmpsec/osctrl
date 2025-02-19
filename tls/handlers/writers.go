@@ -49,7 +49,7 @@ func (bw *batchWriter) run() {
 			if !ok {
 				// Channel closed: flush any remaining events.
 				if len(batch) > 0 {
-					bw.flush(mapToSlice(batch))
+					bw.flush(batch)
 				}
 				return
 			}
@@ -61,13 +61,13 @@ func (bw *batchWriter) run() {
 				if !timer.Stop() {
 					<-timer.C // drain the timer channel if necessary
 				}
-				bw.flush(mapToSlice(batch))
+				bw.flush(batch)
 				batch = make(map[uint]writeEvent)
 				timer.Reset(bw.timeout)
 			}
 		case <-timer.C:
 			if len(batch) > 0 {
-				bw.flush(mapToSlice(batch))
+				bw.flush(batch)
 				batch = make(map[uint]writeEvent)
 			}
 			timer.Reset(bw.timeout)
@@ -75,17 +75,8 @@ func (bw *batchWriter) run() {
 	}
 }
 
-// mapToSlice converts the map of events into a slice.
-func mapToSlice(batch map[uint]writeEvent) []writeEvent {
-	events := make([]writeEvent, 0, len(batch))
-	for _, ev := range batch {
-		events = append(events, ev)
-	}
-	return events
-}
-
 // flush performs the bulk update for a batch of events.
-func (bw *batchWriter) flush(batch []writeEvent) {
+func (bw *batchWriter) flush(batch map[uint]writeEvent) {
 
 	nodeIDs := make([]uint, 0, len(batch))
 	for _, ev := range batch {
