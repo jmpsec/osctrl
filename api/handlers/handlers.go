@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"github.com/jmpsec/osctrl/cache"
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/metrics"
+	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
