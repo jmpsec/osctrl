@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"github.com/jmpsec/osctrl/backend"
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
