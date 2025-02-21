@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
