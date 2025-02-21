@@ -10,8 +10,6 @@ replace github.com/jmpsec/osctrl/admin/sessions => ./admin/sessions
 
 replace github.com/jmpsec/osctrl/api/handlers => ./api/handlers
 
-replace github.com/jmpsec/osctrl/tls/handlers => ./tls/handlers
-
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aws/aws-sdk-go v1.55.6
@@ -29,7 +27,6 @@ require (
 	github.com/jmpsec/osctrl/admin/handlers v0.4.2
 	github.com/jmpsec/osctrl/admin/sessions v0.4.2
 	github.com/jmpsec/osctrl/api/handlers v0.4.2
-	github.com/jmpsec/osctrl/tls/handlers v0.4.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.21.0
 	github.com/rs/zerolog v1.33.0
