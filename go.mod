@@ -14,13 +14,8 @@ replace github.com/jmpsec/osctrl/environments => ./environments
 
 replace github.com/jmpsec/osctrl/tls/handlers => ./tls/handlers
 
-replace github.com/jmpsec/osctrl/users => ./users
-
-replace github.com/jmpsec/osctrl/utils => ./utils
-
-replace github.com/jmpsec/osctrl/version => ./version
-
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/crewjam/saml v0.4.14
 	github.com/elastic/go-elasticsearch v0.0.0
 	github.com/elastic/go-elasticsearch/v8 v8.17.1
@@ -30,9 +25,6 @@ require (
 	github.com/jmpsec/osctrl/api/handlers v0.4.2
 	github.com/jmpsec/osctrl/environments v0.4.2
 	github.com/jmpsec/osctrl/tls/handlers v0.4.2
-	github.com/jmpsec/osctrl/users v0.4.2
-	github.com/jmpsec/osctrl/utils v0.4.2
-	github.com/jmpsec/osctrl/version v0.4.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.20.5
 	github.com/spf13/viper v1.19.0
@@ -104,7 +96,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -124,13 +116,13 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/segmentio/ksuid v1.0.4 // indirect
+	github.com/segmentio/ksuid v1.0.4
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.33.0
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0
 	golang.org/x/text v0.22.0 // indirect
