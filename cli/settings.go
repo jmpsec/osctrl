@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )

@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

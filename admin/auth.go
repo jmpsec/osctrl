@@ -6,7 +6,7 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/admin/sessions"
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/rs/zerolog/log"
 )

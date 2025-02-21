@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/queries"
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/types"
 )
 

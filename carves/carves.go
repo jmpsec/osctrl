@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
