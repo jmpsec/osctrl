@@ -10,12 +10,6 @@ replace github.com/jmpsec/osctrl/admin/sessions => ./admin/sessions
 
 replace github.com/jmpsec/osctrl/api/handlers => ./api/handlers
 
-replace github.com/jmpsec/osctrl/backend => ./backend
-
-replace github.com/jmpsec/osctrl/cache => ./cache
-
-replace github.com/jmpsec/osctrl/carves => ./carves
-
 replace github.com/jmpsec/osctrl/environments => ./environments
 
 replace github.com/jmpsec/osctrl/tls/handlers => ./tls/handlers
@@ -34,9 +28,6 @@ require (
 	github.com/jmpsec/osctrl/admin/handlers v0.4.2
 	github.com/jmpsec/osctrl/admin/sessions v0.4.2
 	github.com/jmpsec/osctrl/api/handlers v0.4.2
-	github.com/jmpsec/osctrl/backend v0.4.2
-	github.com/jmpsec/osctrl/cache v0.4.2
-	github.com/jmpsec/osctrl/carves v0.4.2
 	github.com/jmpsec/osctrl/environments v0.4.2
 	github.com/jmpsec/osctrl/tls/handlers v0.4.2
 	github.com/jmpsec/osctrl/users v0.4.2
@@ -112,7 +103,7 @@ require (
 	github.com/crewjam/httperr v0.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
@@ -146,5 +137,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.5.11 // indirect
+	gorm.io/driver/postgres v1.5.11
 )
