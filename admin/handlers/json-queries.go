@@ -6,7 +6,7 @@ import (
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/rs/zerolog/log"
 )

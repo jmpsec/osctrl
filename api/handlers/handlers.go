@@ -10,7 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
-	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"gorm.io/gorm"
 )
 

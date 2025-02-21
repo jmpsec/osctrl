@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )

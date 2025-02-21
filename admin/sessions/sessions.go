@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/utils"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
