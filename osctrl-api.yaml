@@ -16,42 +16,42 @@ tags:
     description: Enrolled nodes in osctrl
     externalDocs:
       description: osctrl nodes
-      url: https://github.com/jmpsec/osctrl/tree/master/nodes
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/nodes
   - name: queries
     description: On-demand queries in osctrl
     externalDocs:
       description: on-demand queries
-      url: https://github.com/jmpsec/osctrl/tree/master/queries
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/queries
   - name: carves
     description: File carves in osctrl
     externalDocs:
       description: osctrl file carves
-      url: https://github.com/jmpsec/osctrl/tree/master/carves
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/carves
   - name: users
     description: Existing users in osctrl
     externalDocs:
       description: osctrl users
-      url: https://github.com/jmpsec/osctrl/tree/master/users
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/users
   - name: platforms
     description: Platforms of enrolled nodes in osctrl
     externalDocs:
       description: osctrl platforms
-      url: https://github.com/jmpsec/osctrl/tree/master/queries
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/queries
   - name: environments
     description: Environments within osctrl
     externalDocs:
       description: osctrl environments
-      url: https://github.com/jmpsec/osctrl/tree/master/environments
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/environments
   - name: tags
     description: Tags for enrolled nodes in osctrl
     externalDocs:
       description: osctrl tags
-      url: https://github.com/jmpsec/osctrl/tree/master/tags
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/tags
   - name: settings
     description: Settings for all osctrl components
     externalDocs:
       description: osctrl settings
-      url: https://github.com/jmpsec/osctrl/tree/master/settings
+      url: https://github.com/jmpsec/osctrl/tree/main/internal/settings
 paths:
   /nodes/{env}/all:
     get:

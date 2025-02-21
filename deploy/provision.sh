@@ -470,8 +470,8 @@ if [[ "$UPGRADE" == true ]]; then
     make admin
 
     # Prepare static files for Admin service
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/templates" "tmpl_admin"
+    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/static" "static"
 
     # Copy osquery tables JSON file
     sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
@@ -718,8 +718,8 @@ else
     sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
 
     # Prepare static files for Admin service
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/templates" "tmpl_admin"
+    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/static" "static"
 
     # Systemd configuration for Admin service
     _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"
