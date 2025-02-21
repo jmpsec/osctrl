@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"

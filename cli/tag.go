@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"

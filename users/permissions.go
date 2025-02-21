@@ -3,7 +3,7 @@ package users
 import (
 	"fmt"
 
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/rs/zerolog/log"
 )

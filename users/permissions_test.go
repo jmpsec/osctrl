@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jmpsec/osctrl/environments"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/types"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
