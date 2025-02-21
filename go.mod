@@ -2,14 +2,6 @@ module github.com/jmpsec/osctrl
 
 go 1.23.0
 
-replace github.com/jmpsec/osctrl/admin/auth => ./admin/auth
-
-replace github.com/jmpsec/osctrl/admin/handlers => ./admin/handlers
-
-replace github.com/jmpsec/osctrl/admin/sessions => ./admin/sessions
-
-replace github.com/jmpsec/osctrl/api/handlers => ./api/handlers
-
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aws/aws-sdk-go v1.55.6
@@ -24,9 +16,8 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
-	github.com/jmpsec/osctrl/admin/handlers v0.4.2
-	github.com/jmpsec/osctrl/admin/sessions v0.4.2
-	github.com/jmpsec/osctrl/api/handlers v0.4.2
+	github.com/gorilla/securecookie v1.1.2
+	github.com/gorilla/sessions v1.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.21.0
 	github.com/rs/zerolog v1.33.0
@@ -70,8 +61,6 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gorilla/securecookie v1.1.2 // indirect
-	github.com/gorilla/sessions v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
