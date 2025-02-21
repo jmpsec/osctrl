@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	redis "github.com/go-redis/redis/v8"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/spf13/viper"
 )
 

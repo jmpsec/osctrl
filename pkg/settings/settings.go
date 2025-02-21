@@ -3,7 +3,7 @@ package settings
 import (
 	"fmt"
 
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"gorm.io/gorm"
 
 	"github.com/rs/zerolog/log"

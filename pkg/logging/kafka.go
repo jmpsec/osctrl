@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 
 	"github.com/rs/zerolog/log"
 	"github.com/twmb/franz-go/pkg/kgo"

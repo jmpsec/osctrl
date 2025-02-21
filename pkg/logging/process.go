@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 

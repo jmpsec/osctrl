@@ -20,7 +20,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/rs/zerolog"

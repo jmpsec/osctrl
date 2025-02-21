@@ -2,7 +2,7 @@ package logging
 
 import (
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 

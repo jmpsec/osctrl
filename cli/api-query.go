@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // GetQueries to retrieve queries from osctrl

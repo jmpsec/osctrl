@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // GetAllTags to retrieve all tags from osctrl
