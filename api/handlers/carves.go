@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/jmpsec/osctrl/users"

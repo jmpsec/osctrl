@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 )
 
 // Types of log types

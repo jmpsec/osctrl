@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )

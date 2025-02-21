@@ -3,7 +3,7 @@ package logging
 import (
 	"github.com/jmpsec/osctrl/backend"
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"

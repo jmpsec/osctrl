@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

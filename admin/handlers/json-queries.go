@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
-	"github.com/jmpsec/osctrl/queries"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
