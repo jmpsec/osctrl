@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/jmpsec/osctrl/version"
+	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )

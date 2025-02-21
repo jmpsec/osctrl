@@ -25,7 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
-	"github.com/jmpsec/osctrl/version"
+	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

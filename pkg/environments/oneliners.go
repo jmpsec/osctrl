@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/version"
+	"github.com/jmpsec/osctrl/pkg/version"
 )
 
 const (
