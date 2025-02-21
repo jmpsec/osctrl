@@ -3,7 +3,7 @@ package queries
 import (
 	"time"
 
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // Helper to generate a random query name

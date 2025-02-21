@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
 

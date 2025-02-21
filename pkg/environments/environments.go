@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )

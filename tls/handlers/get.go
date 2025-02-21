@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // RootHandler to be used as health check

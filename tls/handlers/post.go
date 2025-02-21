@@ -15,7 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/version"
 	"github.com/rs/zerolog/log"
 )

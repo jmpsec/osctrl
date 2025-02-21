@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmpsec/osctrl/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
