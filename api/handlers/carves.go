@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/api/handlers"
-	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/metrics"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
+	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"

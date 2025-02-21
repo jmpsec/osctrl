@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
-	"github.com/jmpsec/osctrl/carves"
+	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
