@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/tags"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
