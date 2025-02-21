@@ -9,8 +9,8 @@ import (
 
 	"github.com/jmpsec/osctrl/admin/sessions"
 	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/jmpsec/osctrl/users"

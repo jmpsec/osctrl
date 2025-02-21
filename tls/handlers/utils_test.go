@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/stretchr/testify/assert"
 )

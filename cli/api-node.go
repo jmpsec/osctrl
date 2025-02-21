@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/types"
 )
 

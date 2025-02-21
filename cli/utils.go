@@ -5,7 +5,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/users"
 	"github.com/jmpsec/osctrl/utils"
 )

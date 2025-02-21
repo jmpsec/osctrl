@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
 	"github.com/olekukonko/tablewriter"

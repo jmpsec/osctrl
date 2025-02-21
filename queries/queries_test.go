@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"

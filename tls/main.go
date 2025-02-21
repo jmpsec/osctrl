@@ -15,8 +15,8 @@ import (
 	"github.com/jmpsec/osctrl/carves"
 	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
-	"github.com/jmpsec/osctrl/nodes"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"
@@ -27,9 +27,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
-
 	"github.com/spf13/viper"
+	"github.com/urfave/cli/v2"
 )
 
 const (

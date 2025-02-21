@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/admin/sessions"
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/queries"
 	"github.com/jmpsec/osctrl/settings"
 	"github.com/jmpsec/osctrl/tags"

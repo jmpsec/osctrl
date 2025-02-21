@@ -3,7 +3,7 @@ package logging
 import (
 	"encoding/json"
 
-	"github.com/jmpsec/osctrl/nodes"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/types"
 	"github.com/rs/zerolog/log"
 )
