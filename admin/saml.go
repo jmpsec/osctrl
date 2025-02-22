@@ -10,7 +10,7 @@ import (
 
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )

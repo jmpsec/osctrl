@@ -5,9 +5,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/jmpsec/osctrl/nodes"
-	"github.com/jmpsec/osctrl/users"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // Helper to truncate a string

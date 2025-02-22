@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // PostLogin to login into API to retrieve a token

@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/jmpsec/osctrl/logging"
-	"github.com/jmpsec/osctrl/types"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )

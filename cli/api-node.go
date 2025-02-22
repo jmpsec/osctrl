@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jmpsec/osctrl/nodes"
-	"github.com/jmpsec/osctrl/types"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/types"
 )
 
 // GetNodes to retrieve nodes from osctrl

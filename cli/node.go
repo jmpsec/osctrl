@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmpsec/osctrl/nodes"
-	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/tags"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )

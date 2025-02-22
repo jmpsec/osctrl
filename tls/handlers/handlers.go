@@ -5,15 +5,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jmpsec/osctrl/carves"
-	"github.com/jmpsec/osctrl/environments"
-	"github.com/jmpsec/osctrl/logging"
 	"github.com/jmpsec/osctrl/metrics"
-	"github.com/jmpsec/osctrl/nodes"
-	"github.com/jmpsec/osctrl/queries"
-	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/tags"
-	"github.com/jmpsec/osctrl/version"
+	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/version"
 )
 
 const (

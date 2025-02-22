@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jmpsec/osctrl/metrics"
-	"github.com/jmpsec/osctrl/settings"
+	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
 // Function to load metrics for the service

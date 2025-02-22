@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jmpsec/osctrl/users"
+	"github.com/jmpsec/osctrl/pkg/users"
 )
 
 // GetUsers to retrieve users from osctrl

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/settings"
-	"github.com/jmpsec/osctrl/types"
-	"github.com/jmpsec/osctrl/users"
-	"github.com/jmpsec/osctrl/utils"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
