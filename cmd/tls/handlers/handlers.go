@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jmpsec/osctrl/metrics"
+	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"

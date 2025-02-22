@@ -7,7 +7,7 @@ tmp_dir = "/tmp"
 
 [build]
   bin = "./bin/osctrl-api"
-  cmd = "go build -o /opt/osctrl/bin/osctrl-api /usr/src/app/api/*.go"
+  cmd = "go build -o /opt/osctrl/bin/osctrl-api /usr/src/app/cmd/api/*.go"
   # It's not necessary to trigger build each time file changes if it's too frequent.
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "deploy", "admin", "tls", "cli"]

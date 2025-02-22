@@ -126,8 +126,8 @@ then
     mkdir -p "${DEB_DIR}/var/osctrl/carves"
 
     #### Copy Osctrl-admin web assets ####
-    cp -r admin/templates "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
-    cp -r admin/static "${DEB_DIR}/usr/share/osctrl/static"
+    cp -r cmd/admin/templates "${DEB_DIR}/usr/share/osctrl/tmpl_admin"
+    cp -r cmd/admin/static "${DEB_DIR}/usr/share/osctrl/static"
 
     # Copy osquery schema
     cp deploy/osquery/data/${OSQUERY_VESION}.json "${DEB_DIR}/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json"
