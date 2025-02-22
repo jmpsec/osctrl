@@ -871,25 +871,21 @@ func init() {
 						},
 						{
 							Name:    "extend-enroll",
-							Aliases: []string{"f"},
 							Usage:   "Extend the existing enroll URL for a TLS environment",
 							Action:  cliWrapper(extendEnrollEnvironment),
 						},
 						{
 							Name:    "rotate-enroll",
-							Aliases: []string{"f"},
 							Usage:   "Rotate to a new enroll URL for a TLS environment",
 							Action:  cliWrapper(rotateEnrollEnvironment),
 						},
 						{
 							Name:    "expire-enroll",
-							Aliases: []string{"f"},
 							Usage:   "Expire the existing enroll URL for a TLS environment",
 							Action:  cliWrapper(expireEnrollEnvironment),
 						},
 						{
 							Name:    "notexpire-enroll",
-							Aliases: []string{"f"},
 							Usage:   "Set the existing enroll URL for a TLS environment to NOT expire",
 							Action:  cliWrapper(notexpireEnrollEnvironment),
 						},
@@ -915,25 +911,21 @@ func init() {
 						},
 						{
 							Name:    "extend-remove",
-							Aliases: []string{"f"},
 							Usage:   "Extend the existing enroll URL for a TLS environment",
 							Action:  cliWrapper(extendRemoveEnvironment),
 						},
 						{
 							Name:    "rotate-remove",
-							Aliases: []string{"f"},
 							Usage:   "Rotate to a new enroll URL for a TLS environment",
 							Action:  cliWrapper(rotateRemoveEnvironment),
 						},
 						{
 							Name:    "expire-remove",
-							Aliases: []string{"f"},
 							Usage:   "Expire the existing remove URL for a TLS environment",
 							Action:  cliWrapper(expireRemoveEnvironment),
 						},
 						{
 							Name:    "notexpire-remove",
-							Aliases: []string{"f"},
 							Usage:   "Set the existing remove URL for a TLS environment to NOT expire",
 							Action:  cliWrapper(notexpireRemoveEnvironment),
 						},
