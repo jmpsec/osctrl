@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/jmpsec/osctrl/admin/sessions"
+	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"

@@ -2,19 +2,19 @@ export GO111MODULE=on
 
 SHELL := /bin/bash
 
-TLS_DIR = tls
+TLS_DIR = cmd/tls
 TLS_NAME = osctrl-tls
 TLS_CODE = ${TLS_DIR:=/*.go}
 
-ADMIN_DIR = admin
+ADMIN_DIR = cmd/admin
 ADMIN_NAME = osctrl-admin
 ADMIN_CODE = ${ADMIN_DIR:=/*.go}
 
-API_DIR = api
+API_DIR = cmd/api
 API_NAME = osctrl-api
 API_CODE = ${API_DIR:=/*.go}
 
-CLI_DIR = cli
+CLI_DIR = cmd/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
@@ -259,9 +259,9 @@ gofmt-cli:
 test:
 	go clean -testcache ./...
 	go test ./utils -v
-	go test ./tls/handlers -v
+	go test ./cmd/tls/handlers -v
 
 # Check test coverage
 test_cover:
 	cd utils && go test -cover .
-	cd tls/handlers && go test -cover .
+	cd cmd/tls/handlers && go test -cover .

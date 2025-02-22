@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/jmpsec/osctrl/admin/sessions"
+	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"

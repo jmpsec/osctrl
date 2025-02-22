@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/jmpsec/osctrl/metrics"
+	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/settings"
 )
 
