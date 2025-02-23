@@ -34,4 +34,4 @@ runs:
       shell: bash
       run: |
         export KO_DOCKER_REPO=${{ inputs.cr_name }}/${{ inputs.cr_repo }}/osctrl-${{ inputs.osctrl_component }}
-        ko build ./${{ inputs.osctrl_component }} -t ${{ inputs.build_id }} --bare --platform=linux/amd64,linux/arm64
+        ko build ./cmd/${{ inputs.osctrl_component }} -t ${{ inputs.build_id }} --bare --platform=linux/amd64,linux/arm64
