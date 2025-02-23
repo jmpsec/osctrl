@@ -21,7 +21,7 @@ RUN go mod verify
 ### Copy osctrl-api bin and configs ###
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
-RUN go build -o /opt/osctrl/bin/osctrl-tls tls/*.go
+RUN go build -o /opt/osctrl/bin/osctrl-tls cmd/tls/*.go
 
 EXPOSE 9000
 ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-tls.toml"]
