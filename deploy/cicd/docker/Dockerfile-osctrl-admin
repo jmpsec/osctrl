@@ -22,8 +22,8 @@ RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 ### Copy osctrl-admin web templates ###
 USER osctrl-${COMPONENT}
-COPY admin/templates/ /opt/osctrl/tmpl_admin
-COPY admin/static/ /opt/osctrl/static
+COPY cmd/admin/templates/ /opt/osctrl/tmpl_admin
+COPY cmd/admin/static/ /opt/osctrl/static
 COPY deploy/osquery/data/*.json /opt/osctrl/data/
 
 WORKDIR /opt/osctrl
