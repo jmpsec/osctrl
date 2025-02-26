@@ -105,18 +105,6 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	if err := backend.AutoMigrate(&ArchiveOsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
-	// table node_history_hostname
-	if err := backend.AutoMigrate(&NodeHistoryHostname{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (node_history_hostname): %v", err)
-	}
-	// table node_history_localname
-	if err := backend.AutoMigrate(&NodeHistoryLocalname{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (node_history_localname): %v", err)
-	}
-	// table node_history_username
-	if err := backend.AutoMigrate(&NodeHistoryUsername{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (node_history_username): %v", err)
-	}
 	return n
 }
 
@@ -339,23 +327,14 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 		"bytes_received": node.BytesReceived + metadata.BytesReceived,
 	}
 	// Record username
-	if err := n.RecordUsername(metadata.Username, node); err != nil {
-		return fmt.Errorf("RecordUsername %v", err)
-	}
 	if metadata.Username != node.Username && metadata.Username != "" {
 		updates["username"] = metadata.Username
 	}
 	// Record hostname
-	if err := n.RecordHostname(metadata.Hostname, node); err != nil {
-		return fmt.Errorf("RecordHostname %v", err)
-	}
 	if metadata.Hostname != node.Hostname && metadata.Hostname != "" {
 		updates["hostname"] = metadata.Hostname
 	}
 	// Record localname
-	if err := n.RecordLocalname(metadata.Localname, node); err != nil {
-		return fmt.Errorf("RecordLocalname %v", err)
-	}
 	if metadata.Localname != node.Localname && metadata.Localname != "" {
 		updates["localname"] = metadata.Localname
 	}
@@ -386,27 +365,6 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 func (n *NodeManager) Create(node *OsqueryNode) error {
 	if err := n.DB.Create(&node).Error; err != nil {
 		return fmt.Errorf("Create %v", err)
-	}
-	h := NodeHistoryHostname{
-		UUID:     node.UUID,
-		Hostname: node.Hostname,
-	}
-	if err := n.NewHistoryHostname(h); err != nil {
-		return fmt.Errorf("newNodeHistoryHostname %v", err)
-	}
-	l := NodeHistoryLocalname{
-		UUID:      node.UUID,
-		Localname: node.Localname,
-	}
-	if err := n.NewHistoryLocalname(l); err != nil {
-		return fmt.Errorf("newNodeHistoryLocalname %v", err)
-	}
-	u := NodeHistoryUsername{
-		UUID:     node.UUID,
-		Username: node.Username,
-	}
-	if err := n.NewHistoryUsername(u); err != nil {
-		return fmt.Errorf("newNodeHistoryUsername %v", err)
 	}
 	return nil
 }
