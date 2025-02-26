@@ -402,11 +402,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "QueryWrite").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		nodeInvalid = false
 		for name, c := range t.Queries {
 			var carves []types.QueryCarveScheduled
@@ -421,10 +417,9 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		}
-		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error refreshing last query write")
-		}
+		// Refresh node last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
@@ -657,11 +652,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "CarveInit").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for CarveInitHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
@@ -670,11 +661,9 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error procesing carve init")
 			initCarve = false
 		}
-		// Refresh last carve request
-		if err := h.Nodes.CarveRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error refreshing last carve init")
-		}
+		// Refresh last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}

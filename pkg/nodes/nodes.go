@@ -105,10 +105,6 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	if err := backend.AutoMigrate(&ArchiveOsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
-	// table node_history_ipaddress
-	if err := backend.AutoMigrate(&NodeHistoryIPAddress{}); err != nil {
-		log.Fatal().Msgf("Failed to AutoMigrate table (node_history_ipaddress): %v", err)
-	}
 	// table node_history_hostname
 	if err := backend.AutoMigrate(&NodeHistoryHostname{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (node_history_hostname): %v", err)
@@ -364,9 +360,6 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 		updates["localname"] = metadata.Localname
 	}
 	// Record IP address
-	if err := n.RecordIPAddress(metadata.IPAddress, node); err != nil {
-		return fmt.Errorf("RecordIPAddress %v", err)
-	}
 	if metadata.IPAddress != node.IPAddress && metadata.IPAddress != "" {
 		updates["ip_address"] = metadata.IPAddress
 	}
@@ -407,14 +400,6 @@ func (n *NodeManager) Create(node *OsqueryNode) error {
 	}
 	if err := n.NewHistoryLocalname(l); err != nil {
 		return fmt.Errorf("newNodeHistoryLocalname %v", err)
-	}
-	i := NodeHistoryIPAddress{
-		UUID:      node.UUID,
-		IPAddress: node.IPAddress,
-		Count:     1,
-	}
-	if err := n.NewHistoryIPAddress(i); err != nil {
-		return fmt.Errorf("newNodeHistoryIPAddress %v", err)
 	}
 	u := NodeHistoryUsername{
 		UUID:     node.UUID,
