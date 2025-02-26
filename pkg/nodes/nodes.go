@@ -460,57 +460,6 @@ func (n *NodeManager) ArchiveDeleteByUUID(uuid string) error {
 	return nil
 }
 
-// RefreshLastEventByUUID to refresh the last status log for this node
-func (n *NodeManager) RefreshLastEventByUUID(uuid, event string) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
-	}
-	return n.RefreshLastEvent(node, event)
-}
-
-// RefreshLastEventByKey to refresh the last status log for this node
-func (n *NodeManager) RefreshLastEventByKey(nodeKey, event string) error {
-	node, err := n.GetByKey(nodeKey)
-	if err != nil {
-		return err
-	}
-	return n.RefreshLastEvent(node, event)
-}
-
-// RefreshLastEvent to refresh the last status log for this node
-func (n *NodeManager) RefreshLastEvent(node OsqueryNode, event string) error {
-	if err := n.DB.Model(&node).Update(event, time.Now()).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
-	}
-	return nil
-}
-
-// RefreshLastStatus to refresh the last status log for this node
-func (n *NodeManager) RefreshLastStatus(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_status")
-}
-
-// RefreshLastResult to refresh the last result log for this node
-func (n *NodeManager) RefreshLastResult(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_result")
-}
-
-// RefreshLastConfig to refresh the last configuration for this node
-func (n *NodeManager) RefreshLastConfig(nodeKey string) error {
-	return n.RefreshLastEventByKey(nodeKey, "last_config")
-}
-
-// RefreshLastQueryRead to refresh the last on-demand query read for this node
-func (n *NodeManager) RefreshLastQueryRead(nodeKey string) error {
-	return n.RefreshLastEventByKey(nodeKey, "last_query_read")
-}
-
-// RefreshLastQueryWrite to refresh the last on-demand query write for this node
-func (n *NodeManager) RefreshLastQueryWrite(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_query_write")
-}
-
 // Helper to convert an enrolled osquery node into an archived osquery node
 func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 	return ArchiveOsqueryNode{
