@@ -600,6 +600,11 @@ func (n *NodeManager) ConfigRefresh(node OsqueryNode, lastIp string, incBytes in
 	return nil
 }
 
+func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
+
+	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_config", time.Now()).Error
+}
+
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
 func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
 	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
