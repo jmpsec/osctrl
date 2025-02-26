@@ -451,43 +451,10 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 	}
 }
 
-// IncreaseBytesByUUID to update received bytes by UUID
-func (n *NodeManager) IncreaseBytesByUUID(uuid string, incBytes int) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
-	}
-	return n.IncreaseBytes(node, incBytes)
-}
-
-// IncreaseBytesByKey to update received bytes by node_key
-func (n *NodeManager) IncreaseBytesByKey(nodekey string, incBytes int) error {
-	node, err := n.GetByKey(nodekey)
-	if err != nil {
-		return fmt.Errorf("getNodeByKey %v", err)
-	}
-	return n.IncreaseBytes(node, incBytes)
-}
-
 // IncreaseBytes to update received bytes per node
 func (n *NodeManager) IncreaseBytes(node OsqueryNode, incBytes int) error {
 	if err := n.DB.Model(&node).Update("bytes_received", node.BytesReceived+incBytes).Error; err != nil {
 		return fmt.Errorf("Update bytes_received - %v", err)
-	}
-	return nil
-}
-
-// ConfigRefresh to perform all needed update operations per node in a config request
-func (n *NodeManager) ConfigRefresh(node OsqueryNode, lastIp string, incBytes int) error {
-	updates := map[string]interface{}{
-		"last_config":    time.Now(),
-		"bytes_received": node.BytesReceived + incBytes,
-	}
-	if lastIp != "" {
-		updates["ip_address"] = lastIp
-	}
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
 	}
 	return nil
 }
@@ -499,68 +466,6 @@ func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
 func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
-	}
-	return nil
-}
-
-// QueryReadRefresh to perform all needed update operations per node in a query read request
-func (n *NodeManager) QueryReadRefresh(node OsqueryNode, lastIp string, incBytes int) error {
-	updates := map[string]interface{}{
-		"last_query_read": time.Now(),
-		"bytes_received":  node.BytesReceived + incBytes,
-	}
-	if lastIp != "" {
-		updates["ip_address"] = lastIp
-	}
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
-	}
-	return nil
-}
-
-// QueryWriteRefresh to perform all needed update operations per node in a query write request
-func (n *NodeManager) QueryWriteRefresh(node OsqueryNode, lastIp string, incBytes int) error {
-	updates := map[string]interface{}{
-		"last_query_write": time.Now(),
-		"bytes_received":   node.BytesReceived + incBytes,
-	}
-	if lastIp != "" {
-		updates["ip_address"] = lastIp
-	}
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
-	}
-	return nil
-}
-
-// CarveRefresh to perform all needed update operations per node in a carve request
-func (n *NodeManager) CarveRefresh(node OsqueryNode, lastIp string, incBytes int) error {
-	updates := map[string]interface{}{
-		"bytes_received": node.BytesReceived + incBytes,
-	}
-	if lastIp != "" {
-		updates["ip_address"] = lastIp
-	}
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
-	}
-	return nil
-}
-
-// CarveRefreshByUUID to perform all needed update operations per node in a carve request
-func (n *NodeManager) CarveRefreshByUUID(uuid, lastIp string, incBytes int) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
-	}
-	updates := map[string]interface{}{
-		"bytes_received": node.BytesReceived + incBytes,
-	}
-	if lastIp != "" {
-		updates["ip_address"] = lastIp
-	}
 	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
 		return fmt.Errorf("Updates %v", err)
 	}

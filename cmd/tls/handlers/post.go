@@ -726,11 +726,9 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		blockCarve = true
 		// Process received block
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
-		// Refresh last carve request
-		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
-			h.Inc(metricBlockErr)
-			log.Err(err).Msg("error refreshing last carve init")
-		}
+		// Refresh last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: carve.NodeID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
