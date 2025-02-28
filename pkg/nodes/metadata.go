@@ -14,20 +14,3 @@ type NodeMetadata struct {
 	PlatformVersion string
 	BytesReceived   int
 }
-
-// GetMetadata to extract the metadata struct from a node
-func (n *NodeManager) GetMetadata(node OsqueryNode) NodeMetadata {
-	return NodeMetadata{
-		IPAddress:       node.IPAddress,
-		Username:        node.Username,
-		OsqueryUser:     node.OsqueryUser,
-		Hostname:        node.Hostname,
-		Localname:       node.Localname,
-		ConfigHash:      node.ConfigHash,
-		DaemonHash:      node.DaemonHash,
-		OsqueryVersion:  node.OsqueryVersion,
-		Platform:        node.Platform,
-		PlatformVersion: node.PlatformVersion,
-		BytesReceived:   node.BytesReceived,
-	}
-}
