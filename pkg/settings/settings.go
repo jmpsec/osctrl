@@ -118,6 +118,7 @@ const (
 	RefreshSettings    string = "refresh_settings"
 	CleanupSessions    string = "cleanup_sessions"
 	CleanupExpired     string = "cleanup_expired"
+	RefreshLastSeen    string = "refresh_last_seen"
 	ServiceMetrics     string = "service_metrics"
 	MetricsHost        string = "metrics_host"
 	MetricsPort        string = "metrics_port"
@@ -633,6 +634,15 @@ func (conf *Settings) CleanupSessions() int64 {
 // CleanupExpired gets the interval in seconds to cleanup expired queries and carves
 func (conf *Settings) CleanupExpired() int64 {
 	value, err := conf.RetrieveValue(ServiceAdmin, CleanupExpired, NoEnvironmentID)
+	if err != nil {
+		return 0
+	}
+	return value.Integer
+}
+
+// RefreshLastSeen gets the interval in seconds to refresh all the last_ columns in the database for nodes
+func (conf *Settings) RefreshLastSeen() int64 {
+	value, err := conf.RetrieveValue(ServiceAdmin, RefreshLastSeen, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}

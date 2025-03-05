@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -16,6 +17,14 @@ const (
 	InactiveNodes = "inactive"
 	// AllNodes to represent all nodes
 	AllNodes = "all"
+)
+
+const (
+	LastConfig     = "last_config"
+	LastQueryRead  = "last_query_read"
+	LastQueryWrite = "last_query_write"
+	LastResult     = "last_result"
+	LastStatus     = "last_status"
 )
 
 // OsqueryNode as abstraction of a node
@@ -90,13 +99,17 @@ type StatsData struct {
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Cache *redis.Client
 }
 
 // CreateNodes to initialize the nodes struct and its tables
-func CreateNodes(backend *gorm.DB) *NodeManager {
+func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
 	var n *NodeManager
-	n = &NodeManager{DB: backend}
+	n = &NodeManager{
+		DB:    backend,
+		Cache: cache,
+	}
 	// table osquery_nodes
 	if err := backend.AutoMigrate(&OsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_nodes): %v", err)
@@ -262,6 +275,12 @@ func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 // GetByEnv to retrieve target nodes by environment
 func (n *NodeManager) GetByEnv(environment, target string, hours int64) ([]OsqueryNode, error) {
 	return n.GetBySelector("environment", environment, target, hours)
+}
+
+// GetByEnvID to retrieve target nodes by environment ID
+func (n *NodeManager) GetByEnvID(environmentID uint, target string, hours int64) ([]OsqueryNode, error) {
+	var nodes []OsqueryNode
+	return nodes, nil
 }
 
 // GetByPlatform to retrieve target nodes by platform
@@ -503,27 +522,27 @@ func (n *NodeManager) RefreshLastEvent(node OsqueryNode, event string) error {
 
 // RefreshLastStatus to refresh the last status log for this node
 func (n *NodeManager) RefreshLastStatus(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_status")
+	return n.RefreshLastEventByUUID(uuid, LastStatus)
 }
 
 // RefreshLastResult to refresh the last result log for this node
 func (n *NodeManager) RefreshLastResult(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_result")
+	return n.RefreshLastEventByUUID(uuid, LastResult)
 }
 
 // RefreshLastConfig to refresh the last configuration for this node
 func (n *NodeManager) RefreshLastConfig(nodeKey string) error {
-	return n.RefreshLastEventByKey(nodeKey, "last_config")
+	return n.RefreshLastEventByKey(nodeKey, LastConfig)
 }
 
 // RefreshLastQueryRead to refresh the last on-demand query read for this node
 func (n *NodeManager) RefreshLastQueryRead(nodeKey string) error {
-	return n.RefreshLastEventByKey(nodeKey, "last_query_read")
+	return n.RefreshLastEventByKey(nodeKey, LastQueryRead)
 }
 
 // RefreshLastQueryWrite to refresh the last on-demand query write for this node
 func (n *NodeManager) RefreshLastQueryWrite(uuid string) error {
-	return n.RefreshLastEventByUUID(uuid, "last_query_write")
+	return n.RefreshLastEventByUUID(uuid, LastQueryWrite)
 }
 
 // Helper to convert an enrolled osquery node into an archived osquery node

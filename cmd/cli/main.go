@@ -1800,7 +1800,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			// Initialize settings
 			settingsmgr = settings.NewSettings(db.Conn)
 			// Initialize nodes
-			nodesmgr = nodes.CreateNodes(db.Conn)
+			nodesmgr = nodes.CreateNodes(db.Conn, nil)
 			// Initialize queries
 			queriesmgr = queries.CreateQueries(db.Conn)
 			// Initialize carves

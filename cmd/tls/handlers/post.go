@@ -164,10 +164,10 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricConfigErr)
 			log.Err(err).Msg("error recording IP address")
 		}
-		// Refresh last config for node
-		if err := h.Nodes.ConfigRefresh(node, ip, len(body)); err != nil {
+		// Write to cache the last seen fields
+		if err := h.Nodes.SetLastConfig(node, r.Context()); err != nil {
 			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error refreshing last config")
+			log.Err(err).Msg("error setting last config in cache")
 		}
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
@@ -266,6 +266,17 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
 		// Process logs and update metadata
 		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
+		if t.LogType == types.StatusLog {
+			if err := h.Nodes.SetLastStatus(node, r.Context()); err != nil {
+				h.Inc(metricLogErr)
+				log.Err(err).Msg("error setting last status in cache")
+			}
+		} else if t.LogType == types.ResultLog {
+			if err := h.Nodes.SetLastResult(node, r.Context()); err != nil {
+				h.Inc(metricLogErr)
+				log.Err(err).Msg("error setting last result in cache")
+			}
+		}
 	} else {
 		nodeInvalid = true
 	}
@@ -339,10 +350,10 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 			h.Inc(metricReadErr)
 			log.Err(err).Msg("error getting queries from db")
 		}
-		// Refresh last query read request
-		if err := h.Nodes.QueryReadRefresh(node, ip, len(body)); err != nil {
+		// Write to cache the last seen fields
+		if err := h.Nodes.SetLastQueryRead(node, r.Context()); err != nil {
 			h.Inc(metricReadErr)
-			log.Err(err).Msg("error refreshing last query read")
+			log.Err(err).Msg("error setting last query read in cache")
 		}
 	} else {
 		log.Err(err).Msg("GetByKey")
@@ -432,9 +443,10 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		}
-		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
+		// Write to cache the last seen fields
+		if err := h.Nodes.SetLastQueryWrite(node, r.Context()); err != nil {
 			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error refreshing last query write")
+			log.Err(err).Msg("error setting last query write in cache")
 		}
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)

@@ -102,6 +102,8 @@ const (
 	defaultExpiration int = 900
 	// Default hours to classify nodes as inactive
 	defaultInactive int = -72
+	// Default interval in seconds to refresh last seen fields in nodes
+	defaultRefreshLastSeen int = 3600
 )
 
 // osquery
@@ -683,7 +685,7 @@ func osctrlAdminService() {
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db.Conn)
+	nodesmgr = nodes.CreateNodes(db.Conn, redis.Client)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
@@ -761,7 +763,7 @@ func osctrlAdminService() {
 				if err := queriesmgr.CleanupCompletedQueries(e.ID); err != nil {
 					log.Err(err).Msg("Error completing expired queries")
 				}
-				// Periotically check if the queries are expired
+				// Periodically check if the queries are expired
 				if err := queriesmgr.CleanupExpiredQueries(e.ID); err != nil {
 					log.Err(err).Msg("Error cleaning up expired queries")
 				}
