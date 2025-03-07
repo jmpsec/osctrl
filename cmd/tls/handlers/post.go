@@ -157,18 +157,12 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Check if provided node_key is valid and if so, update node
+	// We need to update the node info in another go routine
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error recording IP address")
-		}
-		// Refresh last config for node
-		if err := h.Nodes.ConfigRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricConfigErr)
-			log.Err(err).Msg("error refreshing last config")
-		}
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
+
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
@@ -328,22 +322,17 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricReadErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		nodeInvalid = false
 		qs, accelerate, err = h.Queries.NodeQueries(node)
 		if err != nil {
 			h.Inc(metricReadErr)
 			log.Err(err).Msg("error getting queries from db")
 		}
-		// Refresh last query read request
-		if err := h.Nodes.QueryReadRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricReadErr)
-			log.Err(err).Msg("error refreshing last query read")
-		}
+		// Refresh node last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
 	} else {
 		log.Err(err).Msg("GetByKey")
 		nodeInvalid = true
@@ -413,11 +402,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "QueryWrite").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		nodeInvalid = false
 		for name, c := range t.Queries {
 			var carves []types.QueryCarveScheduled
@@ -432,10 +417,9 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		}
-		if err := h.Nodes.QueryWriteRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricWriteErr)
-			log.Err(err).Msg("error refreshing last query write")
-		}
+		// Refresh node last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
@@ -668,11 +652,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "CarveInit").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for CarveInitHandler endpoint", node.UUID, env.Name, len(body))
-		ip := utils.GetIP(r)
-		if err := h.Nodes.RecordIPAddress(ip, node); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error recording IP address")
-		}
+
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
@@ -681,11 +661,9 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 			log.Err(err).Msg("error procesing carve init")
 			initCarve = false
 		}
-		// Refresh last carve request
-		if err := h.Nodes.CarveRefresh(node, ip, len(body)); err != nil {
-			h.Inc(metricInitErr)
-			log.Err(err).Msg("error refreshing last carve init")
-		}
+		// Refresh last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
@@ -748,11 +726,9 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		blockCarve = true
 		// Process received block
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
-		// Refresh last carve request
-		if err := h.Nodes.CarveRefreshByUUID(carve.UUID, utils.GetIP(r), len(body)); err != nil {
-			h.Inc(metricBlockErr)
-			log.Err(err).Msg("error refreshing last carve init")
-		}
+		// Refresh last seen
+		ip := utils.GetIP(r)
+		h.WriteHandler.addEvent(writeEvent{NodeID: carve.NodeID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
