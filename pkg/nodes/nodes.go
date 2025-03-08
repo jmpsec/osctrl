@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -94,7 +95,7 @@ type NodeManager struct {
 }
 
 // CreateNodes to initialize the nodes struct and its tables
-func CreateNodes(backend *gorm.DB) *NodeManager {
+func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
 	var n *NodeManager
 	n = &NodeManager{DB: backend}
 	// table osquery_nodes
