@@ -1,5 +1,5 @@
 ######################################## osctrl-dev-base ########################################
-ARG GOLANG_VERSION=${GOLANG_VERSION:-1.23.0-bookworm}
+ARG GOLANG_VERSION=${GOLANG_VERSION:-1.24.1}
 FROM golang:${GOLANG_VERSION} AS osctrl-admin-dev
 
 WORKDIR /usr/src/app

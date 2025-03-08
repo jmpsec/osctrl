@@ -1,6 +1,6 @@
 module github.com/jmpsec/osctrl
 
-go 1.23.0
+go 1.24.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
