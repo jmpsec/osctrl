@@ -3,30 +3,68 @@ package nodes
 import (
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIsActive(t *testing.T) {
+	// Setup current time for reference
 	now := time.Now()
-	node := OsqueryNode{
-		LastStatus:     now.Add(-time.Minute * 50),
-		LastResult:     now.Add(-time.Minute * 50),
-		LastConfig:     now.Add(-time.Minute * 50),
-		LastQueryRead:  now.Add(-time.Minute * 50),
-		LastQueryWrite: now.Add(-time.Minute * 50),
-	}
-	assert.True(t, IsActive(node, -1))
-}
 
-func TestIsActiveNegative(t *testing.T) {
-	now := time.Now()
-	node := OsqueryNode{
-		LastStatus:     now.Add(-time.Hour * 6),
-		LastResult:     now.Add(-time.Hour * 12),
-		LastConfig:     now.Add(-time.Hour * 8),
-		LastQueryRead:  now.Add(-time.Hour * 6),
-		LastQueryWrite: now.Add(-time.Hour * 7),
+	// Test cases
+	tests := []struct {
+		name       string
+		node       OsqueryNode
+		inactivity int64
+		expected   bool
+	}{
+		{
+			name: "Active node - recently seen",
+			node: OsqueryNode{
+				LastSeen: now.Add(-1 * time.Hour), // 1 hour ago
+			},
+			inactivity: 24, // 24 hours
+			expected:   true,
+		},
+		{
+			name: "Inactive node - seen too long ago",
+			node: OsqueryNode{
+				LastSeen: now.Add(-48 * time.Hour), // 48 hours ago
+			},
+			inactivity: 24, // 24 hours
+			expected:   false,
+		},
+		{
+			name: "Node with zero time - should be inactive",
+			node: OsqueryNode{
+				LastSeen: time.Time{}, // Zero time
+			},
+			inactivity: 24,
+			expected:   false,
+		},
+		{
+			name: "Edge case - seen exactly at inactivity threshold",
+			node: OsqueryNode{
+				LastSeen: now.Add(time.Duration(-24) * time.Hour), // 24 hours ago
+			},
+			inactivity: 24,    // 24 hours
+			expected:   false, // Expected false due to the implementation checking for "less than" not "less than or equal"
+		},
+		{
+			name: "Negative inactivity parameter",
+			node: OsqueryNode{
+				LastSeen: now.Add(-12 * time.Hour), // 12 hours ago
+			},
+			inactivity: -24, // -24 hours
+			expected:   true,
+		},
 	}
-	assert.False(t, IsActive(node, -5))
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsActive(tt.node, tt.inactivity)
+			if result != tt.expected {
+				t.Errorf("IsActive() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
 }

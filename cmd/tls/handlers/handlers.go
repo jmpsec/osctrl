@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -90,16 +90,17 @@ var validPlatform = map[string]bool{
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
-	Envs        *environments.Environment
-	EnvsMap     *environments.MapEnvironments
-	Nodes       *nodes.NodeManager
-	Tags        *tags.TagManager
-	Queries     *queries.Queries
-	Carves      *carves.Carves
-	Settings    *settings.Settings
-	SettingsMap *settings.MapSettings
-	Metrics     *metrics.Metrics
-	Logs        *logging.LoggerTLS
+	Envs         *environments.Environment
+	EnvsMap      *environments.MapEnvironments
+	Nodes        *nodes.NodeManager
+	Tags         *tags.TagManager
+	Queries      *queries.Queries
+	Carves       *carves.Carves
+	Settings     *settings.Settings
+	SettingsMap  *settings.MapSettings
+	Metrics      *metrics.Metrics
+	Logs         *logging.LoggerTLS
+	WriteHandler *batchWriter
 }
 
 // TLSResponse to be returned to requests
@@ -180,12 +181,21 @@ func WithLogs(logs *logging.LoggerTLS) Option {
 	}
 }
 
+// WithWriteHandler to pass value as option
+func WithWriteHandler(writeHandler *batchWriter) Option {
+	return func(h *HandlersTLS) {
+		h.WriteHandler = writeHandler
+	}
+}
+
 // CreateHandlersTLS to initialize the TLS handlers struct
 func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	h := &HandlersTLS{}
 	for _, opt := range opts {
 		opt(h)
 	}
+	// All these opt function need be refactored to reduce unnecessary complexity
+
 	return h
 }
 
