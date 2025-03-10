@@ -21,10 +21,10 @@ type batchWriter struct {
 	nodesRepo nodes.NodeManager
 }
 
-// newBatchWriter creates and starts a new batch writer.
-func newBatchWriter(batchSize int, timeout time.Duration, repo nodes.NodeManager) *batchWriter {
+// NewBatchWriter creates and starts a new batch writer.
+func NewBatchWriter(batchSize int, timeout time.Duration, bufferSize int, repo nodes.NodeManager) *batchWriter {
 	bw := &batchWriter{
-		events:    make(chan writeEvent, 2000), // buffer size as needed
+		events:    make(chan writeEvent, bufferSize), // buffer size as needed
 		batchSize: batchSize,
 		timeout:   timeout,
 		nodesRepo: repo,

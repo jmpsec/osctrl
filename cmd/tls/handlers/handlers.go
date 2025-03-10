@@ -181,6 +181,13 @@ func WithLogs(logs *logging.LoggerTLS) Option {
 	}
 }
 
+// WithWriteHandler to pass value as option
+func WithWriteHandler(writeHandler *batchWriter) Option {
+	return func(h *HandlersTLS) {
+		h.WriteHandler = writeHandler
+	}
+}
+
 // CreateHandlersTLS to initialize the TLS handlers struct
 func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	h := &HandlersTLS{}
@@ -188,8 +195,7 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 		opt(h)
 	}
 	// All these opt function need be refactored to reduce unnecessary complexity
-	// For now, we hardcode the values for testing
-	h.WriteHandler = newBatchWriter(50, time.Minute, *h.Nodes)
+
 	return h
 }
 

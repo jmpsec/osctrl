@@ -28,6 +28,13 @@ type JSONConfigurationTLS struct {
 	Carver          string `json:"carver"`
 }
 
+type JSONConfigurationTLSWriter struct {
+	// BatchWriter configuration: it need be refactored to a separate struct
+	WriterBatchSize  int           `json:"writerBatchSize"`
+	WriterTimeout    time.Duration `json:"writerTimeout"`
+	WriterBufferSize int           `json:"writerBufferSize"`
+}
+
 // JSONConfigurationAdmin to hold admin service configuration values
 type JSONConfigurationAdmin struct {
 	Listener   string `json:"listener"`
