@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Helper to get what is the last seen time for a node
+// Helper to get what is the last seen time for a node, inactive should be negative to check for past activity
 func IsActive(n OsqueryNode, inactive int64) bool {
 	now := time.Now()
 	// Check config if not empty/zero

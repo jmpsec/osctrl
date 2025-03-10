@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -82,13 +83,17 @@ type StatsData struct {
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Cache *redis.Client
 }
 
 // CreateNodes to initialize the nodes struct and its tables
-func CreateNodes(backend *gorm.DB) *NodeManager {
+func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
 	var n *NodeManager
-	n = &NodeManager{DB: backend}
+	n = &NodeManager{
+		DB:    backend,
+		Cache: cache,
+	}
 	// table osquery_nodes
 	if err := backend.AutoMigrate(&OsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_nodes): %v", err)

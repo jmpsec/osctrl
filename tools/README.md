@@ -94,7 +94,7 @@ Options:
   -v          Enable verbose mode with 'set -x'
 
 Example:
-  ./tools/build-osctrl-deb.sh -i osquery_5.15.0-1.linux.amd64.deb -o osquery-osctrl_5.15.0-1_amd64.deb"
+  ./tools/build-osctrl-deb.sh -i osquery_5.16.0-1.linux.amd64.deb -o osquery-osctrl_5.16.0-1_amd64.deb"
 
 ```
 
@@ -121,6 +121,5 @@ Options:
   -v          Enable verbose mode with 'set -x'
 
 Example:
-  ./build-osctrl-pkg.sh -i osquery_5.15.0.pkg -o osquery-osctrl_5.15.0.pkg
-
+  ./build-osctrl-pkg.sh -i osquery_5.16.0.pkg -o osquery-osctrl_5.16.0.pkg
 ```

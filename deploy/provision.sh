@@ -173,7 +173,7 @@ BRANCH="main"
 SOURCE_PATH=~/osctrl
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
-OSQUERY_VERSION="5.15.0"
+OSQUERY_VERSION="5.16.0"
 
 # Backend values
 _DB_HOST="localhost"
@@ -438,7 +438,7 @@ package rsync
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_23
+  install_go_24
 fi
 
 # Upgrade service
