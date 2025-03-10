@@ -39,11 +39,7 @@ type OsqueryNode struct {
 	ConfigHash      string
 	BytesReceived   int
 	RawEnrollment   string
-	LastStatus      time.Time
-	LastResult      time.Time
-	LastConfig      time.Time
-	LastQueryRead   time.Time
-	LastQueryWrite  time.Time
+	LastSeen        time.Time
 	UserID          uint
 	EnvironmentID   uint
 	ExtraData       string
@@ -71,11 +67,7 @@ type ArchiveOsqueryNode struct {
 	DaemonHash      string
 	BytesReceived   int
 	RawEnrollment   string
-	LastStatus      time.Time
-	LastResult      time.Time
-	LastConfig      time.Time
-	LastQueryRead   time.Time
-	LastQueryWrite  time.Time
+	LastSeen        time.Time
 	UserID          uint
 	EnvironmentID   uint
 	ExtraData       string
@@ -440,11 +432,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 		ConfigHash:      node.ConfigHash,
 		BytesReceived:   node.BytesReceived,
 		RawEnrollment:   node.RawEnrollment,
-		LastStatus:      node.LastStatus,
-		LastResult:      node.LastResult,
-		LastConfig:      node.LastConfig,
-		LastQueryRead:   node.LastQueryRead,
-		LastQueryWrite:  node.LastQueryWrite,
+		LastSeen:        node.LastSeen,
 		UserID:          node.UserID,
 		EnvironmentID:   node.EnvironmentID,
 		ExtraData:       node.ExtraData,
@@ -461,7 +449,7 @@ func (n *NodeManager) IncreaseBytes(node OsqueryNode, incBytes int) error {
 
 func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 
-	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_config", time.Now()).Error
+	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_seen", time.Now()).Error
 }
 
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
