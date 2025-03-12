@@ -160,7 +160,10 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	// We need to update the node info in another go routine
 	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		if ip == node.IPAddress {
+			ip = ""
+		}
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
 
 		// Record ingested data
@@ -331,7 +334,10 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Refresh node last seen
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		if ip == node.IPAddress {
+			ip = ""
+		}
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
 	} else {
 		log.Err(err).Msg("GetByKey")
@@ -419,7 +425,10 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Refresh node last seen
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		if ip == node.IPAddress {
+			ip = ""
+		}
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		// Process submitted results and mark query as processed
 		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
 	} else {
@@ -663,7 +672,10 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Refresh last seen
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(writeEvent{NodeID: node.ID, IP: ip})
+		if ip == node.IPAddress {
+			ip = ""
+		}
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
@@ -728,7 +740,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
 		// Refresh last seen
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(writeEvent{NodeID: carve.NodeID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: carve.NodeID, IP: ip})
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}

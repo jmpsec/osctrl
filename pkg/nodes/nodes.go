@@ -457,10 +457,11 @@ func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_seen", time.Now()).Error
 }
 
+func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
+	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("ip_address", ip).Error
+}
+
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
 func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
-	if err := n.DB.Model(&node).Updates(updates).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
-	}
-	return nil
+	return n.DB.Model(&node).Updates(updates).Error
 }
