@@ -594,15 +594,6 @@ func (conf *Settings) DebugService(service string) bool {
 	return value.Boolean
 }
 
-// ServiceMetrics checks if metrics are enabled by service
-func (conf *Settings) ServiceMetrics(service string) bool {
-	value, err := conf.RetrieveValue(service, ServiceMetrics, NoEnvironmentID)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
-}
-
 // RefreshEnvs gets the interval in seconds to refresh environments by service
 func (conf *Settings) RefreshEnvs(service string) int64 {
 	value, err := conf.RetrieveValue(service, RefreshEnvs, NoEnvironmentID)

@@ -40,26 +40,22 @@ type NodeJSON struct {
 
 // JSONEnvironmentHandler - Handler for JSON endpoints by environment
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("error getting environment")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Check if environment is valid
 	if !h.Envs.Exists(envVar) {
 		log.Info().Msgf("error unknown environment (%s)", envVar)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get context data
@@ -67,26 +63,22 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
 		log.Info().Msg("error getting target")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
 		log.Info().Msgf("invalid target %s", target)
-		h.Inc(metricJSONErr)
 		return
 	}
 	nodes, err := h.Nodes.GetByEnv(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
 		log.Err(err).Msg("error getting nodes")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -116,45 +108,38 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }
 
 // JSONPlatformHandler - Handler for JSON endpoints by platform
 func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract platform
 	platform := r.PathValue("platform")
 	if platform == "" {
 		log.Info().Msg("error getting platform")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
 		log.Info().Msg("error getting target")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !NodeTargets[target] {
 		log.Info().Msgf("invalid target %s", target)
-		h.Inc(metricJSONErr)
 		return
 	}
 	nodes, err := h.Nodes.GetByPlatform(platform, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
 		log.Err(err).Msg("error getting nodes")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -184,5 +169,4 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -54,7 +53,6 @@ type HandlersTLS struct {
 	Carves       *carves.Carves
 	Settings     *settings.Settings
 	SettingsMap  *settings.MapSettings
-	Metrics      *metrics.Metrics
 	Logs         *logging.LoggerTLS
 	WriteHandler *batchWriter
 }

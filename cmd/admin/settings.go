@@ -3,38 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
 )
-
-// Function to load the metrics settings
-func loadingMetrics(mgr *settings.Settings) (*metrics.Metrics, error) {
-	// Check if service settings for metrics is ready, initialize if so
-	if !mgr.IsValue(settings.ServiceAdmin, settings.ServiceMetrics, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(settings.ServiceAdmin, settings.ServiceMetrics, false, settings.NoEnvironmentID); err != nil {
-			return nil, fmt.Errorf("Failed to add %s to configuration: %v", settings.ServiceMetrics, err)
-		}
-	}
-	if mgr.ServiceMetrics(settings.ServiceAdmin) {
-		_mCfg, err := metrics.LoadConfiguration()
-		if err != nil {
-			if err := mgr.SetBoolean(false, settings.ServiceAdmin, settings.ServiceMetrics, settings.NoEnvironmentID); err != nil {
-				return nil, fmt.Errorf("Failed to disable metrics: %v", err)
-			}
-			return nil, fmt.Errorf("Failed to initialize metrics: %v", err)
-		}
-		_m, err := metrics.CreateMetrics(_mCfg.Protocol, _mCfg.Host, _mCfg.Port, serviceName)
-		if err != nil {
-			if err := mgr.SetBoolean(false, settings.ServiceAdmin, settings.ServiceMetrics, settings.NoEnvironmentID); err != nil {
-				return nil, fmt.Errorf("Failed to disable metrics: %v", err)
-			}
-			return nil, fmt.Errorf("Failed to initialize metrics: %v", err)
-		}
-		return _m, nil
-	}
-	return nil, nil
-}
 
 // Function to load all settings for the service
 func loadingSettings(mgr *settings.Settings) error {

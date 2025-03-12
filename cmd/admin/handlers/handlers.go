@@ -7,7 +7,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -16,20 +15,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
-)
-
-const (
-	metricJSONReq   = "admin-json-req"
-	metricJSONErr   = "admin-json-err"
-	metricJSONOK    = "admin-json-ok"
-	metricHealthReq = "health-req"
-	metricHealthOK  = "health-ok"
-	metricAdminReq  = "admin-req"
-	metricAdminErr  = "admin-err"
-	metricAdminOK   = "admin-ok"
-	metricTokenReq  = "admin-token-req"
-	metricTokenErr  = "admin-token-err"
-	metricTokenOK   = "admin-token-ok"
 )
 
 // Default content
@@ -46,7 +31,6 @@ type HandlersAdmin struct {
 	Queries         *queries.Queries
 	Carves          *carves.Carves
 	Settings        *settings.Settings
-	Metrics         *metrics.Metrics
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceVersion  string
@@ -112,12 +96,6 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 func WithCarvesFolder(carves string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.CarvesFolder = carves
-	}
-}
-
-func WithMetrics(metrics *metrics.Metrics) HandlersOption {
-	return func(h *HandlersAdmin) {
-		h.Metrics = metrics
 	}
 }
 
@@ -209,11 +187,4 @@ func CreateHandlersAdmin(opts ...HandlersOption) *HandlersAdmin {
 		opt(h)
 	}
 	return h
-}
-
-// Inc - Helper to send metrics if it is enabled
-func (h *HandlersAdmin) Inc(name string) {
-	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceAdmin) {
-		h.Metrics.Inc(name)
-	}
 }

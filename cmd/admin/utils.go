@@ -64,13 +64,6 @@ func toJSONConfigurationAdmin(values []settings.SettingValue) types.JSONConfigur
 	return cfg
 }
 
-// Helper to send metrics if it is enabled
-func incMetric(name string) {
-	if adminMetrics != nil && settingsmgr.ServiceMetrics(settings.ServiceAdmin) {
-		adminMetrics.Inc(name)
-	}
-}
-
 // Helper to convert string into indented string
 func jsonRawIndent(raw string) string {
 	var out bytes.Buffer

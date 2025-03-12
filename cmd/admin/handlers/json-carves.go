@@ -52,47 +52,40 @@ type CarveTarget struct {
 
 // JSONCarvesHandler for JSON carves by target
 func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("environment is missing")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
-		h.Inc(metricJSONErr)
 		log.Info().Msg("target is missing")
 		return
 	}
 	// Verify target
 	if !CarvesTargets[target] {
-		h.Inc(metricJSONErr)
 		log.Info().Msgf("invalid target %s", target)
 		return
 	}
 	// Retrieve carves for that target
 	qs, err := h.Queries.GetCarves(target, env.ID)
 	if err != nil {
-		h.Inc(metricJSONErr)
 		log.Err(err).Msg("error getting query carves")
 		return
 	}
@@ -102,7 +95,6 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 		c, err := h.Carves.GetByQuery(q.Name, env.ID)
 		if err != nil {
 			log.Err(err).Msg("error getting carves")
-			h.Inc(metricJSONErr)
 			continue
 		}
 		status := queries.StatusActive
@@ -152,5 +144,4 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }

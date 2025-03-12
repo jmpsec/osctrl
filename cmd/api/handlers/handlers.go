@@ -4,7 +4,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -26,7 +25,6 @@ type HandlersApi struct {
 	Queries        *queries.Queries
 	Carves         *carves.Carves
 	Settings       *settings.Settings
-	Metrics        *metrics.Metrics
 	RedisCache     *cache.RedisManager
 	ServiceVersion string
 	ServiceName    string
