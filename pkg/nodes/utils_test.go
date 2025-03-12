@@ -68,3 +68,15 @@ func TestIsActive(t *testing.T) {
 		})
 	}
 }
+
+func TestCacheKey(t *testing.T) {
+	node := OsqueryNode{
+		EnvironmentID: 123,
+		UUID:          "uuid",
+	}
+	assert.Equal(t, CacheKey(node), "node:123:uuid")
+}
+
+func TestCacheKeyRaw(t *testing.T) {
+	assert.Equal(t, CacheKeyRaw("uuid", 123), "node:123:uuid")
+}

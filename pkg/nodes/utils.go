@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"fmt"
 	"math"
 	"time"
 )
@@ -15,4 +16,14 @@ func IsActive(n OsqueryNode, inactive int64) bool {
 		}
 	}
 	return false
+}
+
+// Helper to generate the key to identify a node in the cache
+func CacheKey(n OsqueryNode) string {
+	return CacheKeyRaw(n.UUID, n.EnvironmentID)
+}
+
+// Helper to generate the key to identify a node in the cache
+func CacheKeyRaw(uuid string, envID uint) string {
+	return fmt.Sprintf("node:%d:%s", envID, uuid)
 }
