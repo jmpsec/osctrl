@@ -20,19 +20,6 @@ func (l *LoggerTLS) DispatchLogs(data []byte, uuid, logType, environment string,
 		log.Debug().Msgf("dispatching logs to %s", l.Logging)
 	}
 	l.Log(logType, data, environment, uuid, debug)
-	// Refresh last logging request
-	if logType == types.StatusLog {
-		// Update metadata for node
-		if err := l.Nodes.RefreshLastStatus(uuid); err != nil {
-			log.Err(err).Msg("error refreshing last status")
-		}
-	}
-	if logType == types.ResultLog {
-		// Update metadata for node
-		if err := l.Nodes.RefreshLastResult(uuid); err != nil {
-			log.Err(err).Msg("error refreshing last result")
-		}
-	}
 }
 
 // DispatchQueries - Helper to dispatch queries
@@ -41,10 +28,6 @@ func (l *LoggerTLS) DispatchQueries(queryData types.QueryWriteData, node nodes.O
 	data, err := json.Marshal(queryData)
 	if err != nil {
 		log.Err(err).Msg("error preparing data")
-	}
-	// Refresh last query write request
-	if err := l.Nodes.RefreshLastQueryWrite(node.UUID); err != nil {
-		log.Err(err).Msg("error refreshing last query write")
 	}
 	// Send data to storage
 	// FIXME allow multiple types of logging
