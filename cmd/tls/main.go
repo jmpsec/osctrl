@@ -16,7 +16,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -91,7 +90,6 @@ var (
 	nodesmgr           *nodes.NodeManager
 	queriesmgr         *queries.Queries
 	filecarves         *carves.Carves
-	tlsMetrics         *metrics.Metrics
 	loggerTLS          *logging.LoggerTLS
 	handlersTLS        *handlers.HandlersTLS
 	tagsmgr            *tags.TagManager
@@ -671,11 +669,6 @@ func osctrlService() {
 	)
 	// Initialize service metrics
 	log.Info().Msg("Loading service metrics")
-	tlsMetrics, err = loadingMetrics(settingsmgr)
-	if err != nil {
-		log.Fatal().Msgf("Error loading metrics - %v", err)
-	}
-
 	// Initialize TLS logger
 	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(
@@ -745,7 +738,6 @@ func osctrlService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithSettingsMap(&settingsmap),
-		handlers.WithMetrics(tlsMetrics),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 	)

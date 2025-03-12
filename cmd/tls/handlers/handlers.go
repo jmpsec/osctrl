@@ -17,50 +17,6 @@ import (
 )
 
 const (
-	metricEnrollReq   = "enroll-req"
-	metricEnrollErr   = "enroll-err"
-	metricEnrollOK    = "enroll-ok"
-	metricLogReq      = "log-req"
-	metricLogErr      = "log-err"
-	metricLogOK       = "log-ok"
-	metricConfigReq   = "config-req"
-	metricConfigErr   = "config-err"
-	metricConfigOK    = "config-ok"
-	metricReadReq     = "read-req"
-	metricReadErr     = "read-err"
-	metricReadOK      = "read-ok"
-	metricWriteReq    = "write-req"
-	metricWriteErr    = "write-err"
-	metricWriteOK     = "write-ok"
-	metricInitReq     = "init-req"
-	metricInitErr     = "init-err"
-	metricInitOK      = "init-ok"
-	metricBlockReq    = "block-req"
-	metricBlockErr    = "block-err"
-	metricBlockOK     = "block-ok"
-	metricHealthReq   = "health-req"
-	metricHealthOK    = "health-ok"
-	metricOnelinerReq = "oneliner-req"
-	metricOnelinerErr = "oneliner-err"
-	metricOnelinerOk  = "oneliner-ok"
-	metricPackageReq  = "package-req"
-	metricPackageErr  = "package-err"
-	metricPackageOk   = "package-ok"
-	metricFlagsReq    = "flags-req"
-	metricFlagsErr    = "flags-err"
-	metricFlagsOk     = "flags-ok"
-	metricCertReq     = "cert-req"
-	metricCertErr     = "cert-err"
-	metricCertOk      = "cert-ok"
-	metricScriptReq   = "script-req"
-	metricScriptErr   = "script-err"
-	metricScriptOk    = "script-ok"
-	metricVerifyReq   = "verify-req"
-	metricVerifyErr   = "verify-err"
-	metricVerifyOk    = "verify-ok"
-)
-
-const (
 	// osquery version
 	defOsqueryVersion = version.OsqueryVersion
 	// path for enroll packages
@@ -167,13 +123,6 @@ func WithCarves(carves *carves.Carves) Option {
 	}
 }
 
-// WithMetrics to pass value as option
-func WithMetrics(metrics *metrics.Metrics) Option {
-	return func(h *HandlersTLS) {
-		h.Metrics = metrics
-	}
-}
-
 // WithLogs to pass value as option
 func WithLogs(logs *logging.LoggerTLS) Option {
 	return func(h *HandlersTLS) {
@@ -197,13 +146,6 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	// All these opt function need be refactored to reduce unnecessary complexity
 
 	return h
-}
-
-// Inc - Helper to send metrics if it is enabled
-func (h *HandlersTLS) Inc(name string) {
-	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceTLS) {
-		h.Metrics.Inc(name)
-	}
 }
 
 func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
