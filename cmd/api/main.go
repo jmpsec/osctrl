@@ -15,7 +15,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -116,7 +115,6 @@ var (
 	nodesmgr          *nodes.NodeManager
 	queriesmgr        *queries.Queries
 	filecarves        *carves.Carves
-	apiMetrics        *metrics.Metrics
 	handlersApi       *handlers.HandlersApi
 	app               *cli.App
 	flags             []cli.Flag
@@ -499,10 +497,6 @@ func osctrlAPIService() {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
 	log.Info().Msg("Loading service metrics")
-	apiMetrics, err = loadingMetrics(settingsmgr)
-	if err != nil {
-		log.Fatal().Msgf("Error loading metrics - %v", err)
-	}
 	// Ticker to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
@@ -545,7 +539,6 @@ func osctrlAPIService() {
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithMetrics(apiMetrics),
 		handlers.WithCache(redis),
 		handlers.WithVersion(serviceVersion),
 		handlers.WithName(serviceName),

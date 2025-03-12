@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -12,41 +12,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"gorm.io/gorm"
-)
-
-const (
-	metricAPIReq          = "api-req"
-	metricAPIErr          = "api-err"
-	metricAPIOK           = "api-ok"
-	metricHealthReq       = "health-req"
-	metricHealthOK        = "health-ok"
-	metricAPICarvesReq    = "carves-req"
-	metricAPICarvesErr    = "carves-err"
-	metricAPICarvesOK     = "carves-ok"
-	metricAPIEnvsReq      = "envs-req"
-	metricAPIEnvsErr      = "envs-err"
-	metricAPIEnvsOK       = "envs-ok"
-	metricAPILoginReq     = "login-req"
-	metricAPILoginErr     = "login-err"
-	metricAPILoginOK      = "login-ok"
-	metricAPINodesReq     = "nodes-req"
-	metricAPINodesErr     = "nodes-err"
-	metricAPINodesOK      = "nodes-ok"
-	metricAPITagsReq      = "tags-req"
-	metricAPITagsErr      = "tags-err"
-	metricAPITagsOK       = "tags-ok"
-	metricAPIUsersReq     = "users-req"
-	metricAPIUsersErr     = "users-err"
-	metricAPIUsersOK      = "users-ok"
-	metricAPISettingsReq  = "settings-req"
-	metricAPISettingsErr  = "settings-err"
-	metricAPISettingsOK   = "settings-ok"
-	metricAPIQueriesReq   = "queries-req"
-	metricAPIQueriesErr   = "queries-err"
-	metricAPIQueriesOK    = "queries-ok"
-	metricAPIPlatformsReq = "platforms-req"
-	metricAPIPlatformsErr = "platforms-err"
-	metricAPIPlatformsOK  = "platforms-ok"
 )
 
 const errorContent = "❌"
@@ -118,12 +83,6 @@ func WithSettings(settings *settings.Settings) HandlersOption {
 	}
 }
 
-func WithMetrics(metrics *metrics.Metrics) HandlersOption {
-	return func(h *HandlersApi) {
-		h.Metrics = metrics
-	}
-}
-
 func WithCache(rds *cache.RedisManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.RedisCache = rds
@@ -149,11 +108,4 @@ func CreateHandlersApi(opts ...HandlersOption) *HandlersApi {
 		opt(h)
 	}
 	return h
-}
-
-// Inc - Helper to send metrics if it is enabled
-func (h *HandlersApi) Inc(name string) {
-	if h.Metrics != nil && h.Settings.ServiceMetrics(settings.ServiceAPI) {
-		h.Metrics.Inc(name)
-	}
 }
