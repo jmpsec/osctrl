@@ -29,7 +29,7 @@ func TestNodeQueries(t *testing.T) {
 
 	// Create tables
 	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db)
+	nodes.CreateNodes(db, nil)
 
 	// Create test data
 	node := nodes.OsqueryNode{
@@ -89,7 +89,7 @@ func TestUpdateQueryStatus(t *testing.T) {
 
 	// Create tables
 	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db)
+	nodes.CreateNodes(db, nil)
 
 	// Create test data
 	node := nodes.OsqueryNode{
@@ -140,7 +140,7 @@ func TestCreateNodeQueries(t *testing.T) {
 
 	// Create tables
 	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db)
+	nodes.CreateNodes(db, nil)
 
 	// Create test data
 	node1 := nodes.OsqueryNode{
