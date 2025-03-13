@@ -16,10 +16,10 @@ func (api *OsctrlAPI) GetQueries(target, env string) ([]queries.DistributedQuery
 	reqURL := fmt.Sprintf("%s%s%s/%s/list/%s", api.Configuration.URL, APIPath, APIQueries, env, target)
 	rawQs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return qs, fmt.Errorf("error api request - %v - %s", err, string(rawQs))
+		return qs, fmt.Errorf("error api request - %w - %s", err, string(rawQs))
 	}
 	if err := json.Unmarshal(rawQs, &qs); err != nil {
-		return qs, fmt.Errorf("can not parse body - %v", err)
+		return qs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return qs, nil
 }
@@ -30,10 +30,10 @@ func (api *OsctrlAPI) GetQuery(env, name string) (queries.DistributedQuery, erro
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APIQueries, env, name)
 	rawQ, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return q, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return q, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &q); err != nil {
-		return q, fmt.Errorf("can not parse body - %v", err)
+		return q, fmt.Errorf("can not parse body - %w", err)
 	}
 	return q, nil
 }
@@ -44,10 +44,10 @@ func (api *OsctrlAPI) DeleteQuery(env, name string) (types.ApiGenericResponse, e
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APIQueries, env, settings.QueryDelete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -58,10 +58,10 @@ func (api *OsctrlAPI) ExpireQuery(env, name string) (types.ApiGenericResponse, e
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APIQueries, env, settings.QueryExpire, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -72,10 +72,10 @@ func (api *OsctrlAPI) CompleteQuery(env, name string) (types.ApiGenericResponse,
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APIQueries, env, settings.QueryComplete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -92,16 +92,16 @@ func (api *OsctrlAPI) RunQuery(env, uuid, query string, hidden bool, exp int) (t
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIQueries, env)
 	jsonMessage, err := json.Marshal(q)
 	if err != nil {
-		return r, fmt.Errorf("error marshaling data - %v", err)
+		return r, fmt.Errorf("error marshaling data - %w", err)
 
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawQ, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }

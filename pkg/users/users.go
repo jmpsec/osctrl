@@ -53,8 +53,7 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) 
 	if jwtconfig.JWTSecret == "" {
 		log.Fatal().Msgf("JWT Secret can not be empty")
 	}
-	var u *UserManager
-	u = &UserManager{DB: backend, JWTConfig: jwtconfig}
+	var u *UserManager = &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
 	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (admin_users): %v", err)
@@ -153,7 +152,7 @@ func (m *UserManager) Get(username string) (AdminUser, error) {
 // Create new user
 func (m *UserManager) Create(user AdminUser) error {
 	if err := m.DB.Create(&user).Error; err != nil {
-		return fmt.Errorf("Create AdminUser %v", err)
+		return fmt.Errorf("Create AdminUser %w", err)
 	}
 	return nil
 }
@@ -204,7 +203,7 @@ func (m *UserManager) IsAdmin(username string) bool {
 func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if admin != user.Admin {
 		if err := m.DB.Model(&user).Updates(map[string]interface{}{"admin": admin}).Error; err != nil {
@@ -227,10 +226,10 @@ func (m *UserManager) All() ([]AdminUser, error) {
 func (m *UserManager) Delete(username string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if err := m.DB.Unscoped().Delete(&user).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -239,7 +238,7 @@ func (m *UserManager) Delete(username string) error {
 func (m *UserManager) ChangePassword(username, password string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	passhash, err := m.HashPasswordWithSalt(password)
 	if err != nil {
@@ -247,7 +246,7 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	}
 	if passhash != user.PassHash {
 		if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -257,7 +256,7 @@ func (m *UserManager) ChangePassword(username, password string) error {
 func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if token != user.APIToken {
 		if err := m.DB.Model(&user).Updates(
@@ -265,7 +264,7 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 				APIToken:    token,
 				TokenExpire: exp,
 			}).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -275,11 +274,11 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 func (m *UserManager) ChangeEmail(username, email string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if email != user.Email {
 		if err := m.DB.Model(&user).Update("email", email).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -289,11 +288,11 @@ func (m *UserManager) ChangeEmail(username, email string) error {
 func (m *UserManager) ChangeFullname(username, fullname string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if fullname != user.Fullname {
 		if err := m.DB.Model(&user).Update("fullname", fullname).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -303,7 +302,7 @@ func (m *UserManager) ChangeFullname(username, fullname string) error {
 func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if err := m.DB.Model(&user).Updates(
 		AdminUser{
@@ -312,7 +311,7 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken s
 			CSRFToken:     csrftoken,
 			LastAccess:    time.Now(),
 		}).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("Update %w", err)
 	}
 	return nil
 }
@@ -321,14 +320,14 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken s
 func (m *UserManager) UpdateTokenIPAddress(ipaddress, username string) error {
 	user, err := m.Get(username)
 	if err != nil {
-		return fmt.Errorf("error getting user %v", err)
+		return fmt.Errorf("error getting user %w", err)
 	}
 	if err := m.DB.Model(&user).Updates(
 		AdminUser{
 			LastIPAddress: ipaddress,
 			LastTokenUse:  time.Now(),
 		}).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("Update %w", err)
 	}
 	return nil
 }

@@ -15,10 +15,10 @@ func (api *OsctrlAPI) GetAllTags() ([]tags.AdminTag, error) {
 	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APITags)
 	rawTgs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return tgs, fmt.Errorf("error api request - %v - %s", err, string(rawTgs))
+		return tgs, fmt.Errorf("error api request - %w - %s", err, string(rawTgs))
 	}
 	if err := json.Unmarshal(rawTgs, &tgs); err != nil {
-		return tgs, fmt.Errorf("can not parse body - %v", err)
+		return tgs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return tgs, nil
 }
@@ -29,10 +29,10 @@ func (api *OsctrlAPI) GetTags(env string) ([]tags.AdminTag, error) {
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APITags, env)
 	rawTgs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return tgs, fmt.Errorf("error api request - %v - %s", err, string(rawTgs))
+		return tgs, fmt.Errorf("error api request - %w - %s", err, string(rawTgs))
 	}
 	if err := json.Unmarshal(rawTgs, &tgs); err != nil {
-		return tgs, fmt.Errorf("can not parse body - %v", err)
+		return tgs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return tgs, nil
 }
@@ -43,10 +43,10 @@ func (api *OsctrlAPI) GetTag(env, name string) (tags.AdminTag, error) {
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, env, name)
 	rawT, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return t, fmt.Errorf("error api request - %v - %s", err, string(rawT))
+		return t, fmt.Errorf("error api request - %w - %s", err, string(rawT))
 	}
 	if err := json.Unmarshal(rawT, &t); err != nil {
-		return t, fmt.Errorf("can not parse body - %v", err)
+		return t, fmt.Errorf("can not parse body - %w", err)
 	}
 	return t, nil
 }
@@ -65,15 +65,15 @@ func (api *OsctrlAPI) AddTag(envUUID, name, color, icon, description string, tag
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionAdd)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
-		return r, fmt.Errorf("error marshaling data - %v", err)
+		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v", err)
+		return r, fmt.Errorf("error api request - %w", err)
 	}
 	if err := json.Unmarshal(rawT, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -88,15 +88,15 @@ func (api *OsctrlAPI) DeleteTag(envUUID, name string) (types.ApiGenericResponse,
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionRemove)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
-		return r, fmt.Errorf("error marshaling data - %v", err)
+		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v", err)
+		return r, fmt.Errorf("error api request - %w", err)
 	}
 	if err := json.Unmarshal(rawT, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -115,15 +115,15 @@ func (api *OsctrlAPI) EditTag(envUUID, name, color, icon, description string, ta
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionEdit)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
-		return r, fmt.Errorf("error marshaling data - %v", err)
+		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v", err)
+		return r, fmt.Errorf("error api request - %w", err)
 	}
 	if err := json.Unmarshal(rawT, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }

@@ -15,10 +15,10 @@ func (api *OsctrlAPI) GetNodes(env, target string) ([]nodes.OsqueryNode, error) 
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APINodes, env, target)
 	rawNodes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return nds, fmt.Errorf("error api request - %v - %s", err, string(rawNodes))
+		return nds, fmt.Errorf("error api request - %w - %s", err, string(rawNodes))
 	}
 	if err := json.Unmarshal(rawNodes, &nds); err != nil {
-		return nds, fmt.Errorf("can not parse body - %v", err)
+		return nds, fmt.Errorf("can not parse body - %w", err)
 	}
 	return nds, nil
 }
@@ -29,10 +29,10 @@ func (api *OsctrlAPI) GetNode(env, identifier string) (nodes.OsqueryNode, error)
 	reqURL := fmt.Sprintf("%s%s%s/%s/node/%s", api.Configuration.URL, APIPath, APINodes, env, identifier)
 	rawNode, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return node, fmt.Errorf("error api request - %v - %s", err, string(rawNode))
+		return node, fmt.Errorf("error api request - %w - %s", err, string(rawNode))
 	}
 	if err := json.Unmarshal(rawNode, &node); err != nil {
-		return node, fmt.Errorf("can not parse body - %v", err)
+		return node, fmt.Errorf("can not parse body - %w", err)
 	}
 	return node, nil
 }
@@ -46,15 +46,15 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 	reqURL := fmt.Sprintf("%s%s%s/%s/delete", api.Configuration.URL, APIPath, APINodes, env)
 	jsonMessage, err := json.Marshal(n)
 	if err != nil {
-		return fmt.Errorf("error marshaling data - %v", err)
+		return fmt.Errorf("error marshaling data - %w", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawN, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return fmt.Errorf("error api request - %v - %s", err, string(rawN))
+		return fmt.Errorf("error api request - %w - %s", err, string(rawN))
 	}
 	if err := json.Unmarshal(rawN, &r); err != nil {
-		return fmt.Errorf("can not parse body - %v", err)
+		return fmt.Errorf("can not parse body - %w", err)
 	}
 	return nil
 }

@@ -116,8 +116,7 @@ type Environment struct {
 
 // CreateEnvironment to initialize the environment struct and tables
 func CreateEnvironment(backend *gorm.DB) *Environment {
-	var e *Environment
-	e = &Environment{DB: backend}
+	var e *Environment = &Environment{DB: backend}
 	// table tls_environments
 	if err := backend.AutoMigrate(&TLSEnvironment{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (tls_environments): %v", err)
@@ -208,7 +207,7 @@ func (environment *Environment) Empty(name, hostname string) TLSEnvironment {
 // Create new TLS Environment
 func (environment *Environment) Create(env *TLSEnvironment) error {
 	if err := environment.DB.Create(&env).Error; err != nil {
-		return fmt.Errorf("Create TLS Environment %v", err)
+		return fmt.Errorf("Create TLS Environment %w", err)
 	}
 	return nil
 }
@@ -259,7 +258,7 @@ func (environment *Environment) UUIDs() ([]string, error) {
 func (environment *Environment) GetMap() (MapEnvironments, error) {
 	all, err := environment.All()
 	if err != nil {
-		return nil, fmt.Errorf("error getting environments %v", err)
+		return nil, fmt.Errorf("error getting environments %w", err)
 	}
 	_map := make(MapEnvironments)
 	for _, e := range all {
@@ -273,7 +272,7 @@ func (environment *Environment) GetMap() (MapEnvironments, error) {
 func (environment *Environment) GetMapByID() (MapEnvByID, error) {
 	all, err := environment.All()
 	if err != nil {
-		return nil, fmt.Errorf("error getting environments %v", err)
+		return nil, fmt.Errorf("error getting environments %w", err)
 	}
 	_map := make(MapEnvByID)
 	for _, e := range all {
@@ -291,7 +290,7 @@ func (environment *Environment) GetMapByID() (MapEnvByID, error) {
 func (environment *Environment) GetMapByString() (MapEnvByString, error) {
 	all, err := environment.All()
 	if err != nil {
-		return nil, fmt.Errorf("error getting environments %v", err)
+		return nil, fmt.Errorf("error getting environments %w", err)
 	}
 	_map := make(MapEnvByString)
 	for _, e := range all {
@@ -310,10 +309,10 @@ func (environment *Environment) GetMapByString() (MapEnvByString, error) {
 func (environment *Environment) Delete(identifier string) error {
 	env, err := environment.Get(identifier)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	if err := environment.DB.Unscoped().Delete(&env).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -322,10 +321,10 @@ func (environment *Environment) Delete(identifier string) error {
 func (environment *Environment) Update(e TLSEnvironment) error {
 	env, err := environment.Get(e.Name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	if err := environment.DB.Model(&env).Updates(e).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	return nil
 }
@@ -333,7 +332,7 @@ func (environment *Environment) Update(e TLSEnvironment) error {
 // UpdateOptions to update options for an environment
 func (environment *Environment) UpdateOptions(idEnv, options string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("options", options).Error; err != nil {
-		return fmt.Errorf("Update options %v", err)
+		return fmt.Errorf("Update options %w", err)
 	}
 	return nil
 }
@@ -341,7 +340,7 @@ func (environment *Environment) UpdateOptions(idEnv, options string) error {
 // UpdateSchedule to update schedule for an environment
 func (environment *Environment) UpdateSchedule(idEnv, schedule string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("schedule", schedule).Error; err != nil {
-		return fmt.Errorf("Update schedule %v", err)
+		return fmt.Errorf("Update schedule %w", err)
 	}
 	return nil
 }
@@ -349,7 +348,7 @@ func (environment *Environment) UpdateSchedule(idEnv, schedule string) error {
 // UpdatePacks to update packs for an environment
 func (environment *Environment) UpdatePacks(idEnv, packs string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("packs", packs).Error; err != nil {
-		return fmt.Errorf("Update packs %v", err)
+		return fmt.Errorf("Update packs %w", err)
 	}
 	return nil
 }
@@ -357,7 +356,7 @@ func (environment *Environment) UpdatePacks(idEnv, packs string) error {
 // UpdateDecorators to update decorators for an environment
 func (environment *Environment) UpdateDecorators(idEnv, decorators string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("decorators", decorators).Error; err != nil {
-		return fmt.Errorf("Update decorators %v", err)
+		return fmt.Errorf("Update decorators %w", err)
 	}
 	return nil
 }
@@ -365,7 +364,7 @@ func (environment *Environment) UpdateDecorators(idEnv, decorators string) error
 // UpdateATC to update ATC for an environment
 func (environment *Environment) UpdateATC(idEnv, atc string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("atc", atc).Error; err != nil {
-		return fmt.Errorf("Update ATC %v", err)
+		return fmt.Errorf("Update ATC %w", err)
 	}
 	return nil
 }
@@ -373,7 +372,7 @@ func (environment *Environment) UpdateATC(idEnv, atc string) error {
 // UpdateCertificate to update decorators for an environment
 func (environment *Environment) UpdateCertificate(idEnv, certificate string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("certificate", certificate).Error; err != nil {
-		return fmt.Errorf("UpdateUpdateCertificate %v", err)
+		return fmt.Errorf("UpdateUpdateCertificate %w", err)
 	}
 	return nil
 }
@@ -381,7 +380,7 @@ func (environment *Environment) UpdateCertificate(idEnv, certificate string) err
 // UpdateDebPackage to update DEB package for an environment
 func (environment *Environment) UpdateDebPackage(idEnv, debpackage string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("deb_package", debpackage).Error; err != nil {
-		return fmt.Errorf("UpdateDebPackage %v", err)
+		return fmt.Errorf("UpdateDebPackage %w", err)
 	}
 	return nil
 }
@@ -389,7 +388,7 @@ func (environment *Environment) UpdateDebPackage(idEnv, debpackage string) error
 // UpdateRpmPackage to update RPM package for an environment
 func (environment *Environment) UpdateRpmPackage(idEnv, rpmpackage string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("rpm_package", rpmpackage).Error; err != nil {
-		return fmt.Errorf("UpdateRpmPackage %v", err)
+		return fmt.Errorf("UpdateRpmPackage %w", err)
 	}
 	return nil
 }
@@ -397,7 +396,7 @@ func (environment *Environment) UpdateRpmPackage(idEnv, rpmpackage string) error
 // UpdateMsiPackage to update MSI package for an environment
 func (environment *Environment) UpdateMsiPackage(idEnv, msipackage string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("msi_package", msipackage).Error; err != nil {
-		return fmt.Errorf("UpdateMsiPackage %v", err)
+		return fmt.Errorf("UpdateMsiPackage %w", err)
 	}
 	return nil
 }
@@ -405,7 +404,7 @@ func (environment *Environment) UpdateMsiPackage(idEnv, msipackage string) error
 // UpdatePkgPackage to update PKG package for an environment
 func (environment *Environment) UpdatePkgPackage(idEnv, pkgpackage string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("pkg_package", pkgpackage).Error; err != nil {
-		return fmt.Errorf("UpdatePkgPackage %v", err)
+		return fmt.Errorf("UpdatePkgPackage %w", err)
 	}
 	return nil
 }
@@ -413,7 +412,7 @@ func (environment *Environment) UpdatePkgPackage(idEnv, pkgpackage string) error
 // UpdateFlags to update flags for an environment
 func (environment *Environment) UpdateFlags(idEnv, flags string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("flags", flags).Error; err != nil {
-		return fmt.Errorf("Update flags %v", err)
+		return fmt.Errorf("Update flags %w", err)
 	}
 	return nil
 }
@@ -421,7 +420,7 @@ func (environment *Environment) UpdateFlags(idEnv, flags string) error {
 // UpdateHostname to update hostname for an environment
 func (environment *Environment) UpdateHostname(idEnv, hostname string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("hostname", hostname).Error; err != nil {
-		return fmt.Errorf("Update hostname %v", err)
+		return fmt.Errorf("Update hostname %w", err)
 	}
 	return nil
 }
@@ -430,14 +429,14 @@ func (environment *Environment) UpdateHostname(idEnv, hostname string) error {
 func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs int) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	updated := env
 	updated.ConfigInterval = csecs
 	updated.LogInterval = lsecs
 	updated.QueryInterval = qsecs
 	if err := environment.DB.Model(&env).Updates(updated).Error; err != nil {
-		return fmt.Errorf("UpdatesUpdateIntervals %v", err)
+		return fmt.Errorf("UpdatesUpdateIntervals %w", err)
 	}
 	return nil
 }
@@ -446,7 +445,7 @@ func (environment *Environment) UpdateIntervals(name string, csecs, lsecs, qsecs
 func (environment *Environment) RotateSecrets(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	rotated := env
 	rotated.Secret = utils.GenRandomString(DefaultSecretLength)
@@ -455,7 +454,7 @@ func (environment *Environment) RotateSecrets(name string) error {
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("UpdatesRotateSecrets %v", err)
+		return fmt.Errorf("UpdatesRotateSecrets %w", err)
 	}
 	return nil
 }
@@ -464,13 +463,13 @@ func (environment *Environment) RotateSecrets(name string) error {
 func (environment *Environment) RotateEnroll(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	rotated := env
 	rotated.EnrollSecretPath = utils.GenKSUID()
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("UpdatesRotateEnrollPath %v", err)
+		return fmt.Errorf("UpdatesRotateEnrollPath %w", err)
 	}
 	return nil
 }
@@ -479,13 +478,13 @@ func (environment *Environment) RotateEnroll(name string) error {
 func (environment *Environment) RotateSecret(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	rotated := env
 	rotated.Secret = utils.GenRandomString(DefaultSecretLength)
 	rotated.EnrollExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("UpdatesRotateSecret %v", err)
+		return fmt.Errorf("UpdatesRotateSecret %w", err)
 	}
 	return nil
 }
@@ -493,7 +492,7 @@ func (environment *Environment) RotateSecret(name string) error {
 // ExpireEnroll to expire the enroll in an environment
 func (environment *Environment) ExpireEnroll(idEnv string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", time.Now()).Error; err != nil {
-		return fmt.Errorf("UpdateExpireEnroll %v", err)
+		return fmt.Errorf("UpdateExpireEnroll %w", err)
 	}
 	return nil
 }
@@ -502,7 +501,7 @@ func (environment *Environment) ExpireEnroll(idEnv string) error {
 func (environment *Environment) ExtendEnroll(idEnv string) error {
 	extended := time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", extended).Error; err != nil {
-		return fmt.Errorf("UpdateExtendEnroll %v", err)
+		return fmt.Errorf("UpdateExtendEnroll %w", err)
 	}
 	return nil
 }
@@ -510,7 +509,7 @@ func (environment *Environment) ExtendEnroll(idEnv string) error {
 // NotExpireEnroll to mark the enroll in an environment as not expiring
 func (environment *Environment) NotExpireEnroll(idEnv string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("enroll_expire", time.Time{}).Error; err != nil {
-		return fmt.Errorf("NotExpireEnroll %v", err)
+		return fmt.Errorf("NotExpireEnroll %w", err)
 	}
 	return nil
 }
@@ -519,13 +518,13 @@ func (environment *Environment) NotExpireEnroll(idEnv string) error {
 func (environment *Environment) RotateRemove(name string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	rotated := env
 	rotated.RemoveSecretPath = utils.GenKSUID()
 	rotated.RemoveExpire = time.Now().Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Updates(rotated).Error; err != nil {
-		return fmt.Errorf("UpdatesRotateRemove %v", err)
+		return fmt.Errorf("UpdatesRotateRemove %w", err)
 	}
 	return nil
 }
@@ -533,7 +532,7 @@ func (environment *Environment) RotateRemove(name string) error {
 // ExpireRemove to expire the remove in an environment
 func (environment *Environment) ExpireRemove(idEnv string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("remove_expire", time.Now()).Error; err != nil {
-		return fmt.Errorf("UpdateExpireRemove %v", err)
+		return fmt.Errorf("UpdateExpireRemove %w", err)
 	}
 	return nil
 }
@@ -542,11 +541,11 @@ func (environment *Environment) ExpireRemove(idEnv string) error {
 func (environment *Environment) ExtendRemove(idEnv string) error {
 	env, err := environment.Get(idEnv)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	extended := env.RemoveExpire.Add(time.Duration(DefaultLinkExpire) * time.Hour)
 	if err := environment.DB.Model(&env).Update("remove_expire", extended).Error; err != nil {
-		return fmt.Errorf("UpdateExtendRemove %v", err)
+		return fmt.Errorf("UpdateExtendRemove %w", err)
 	}
 	return nil
 }
@@ -554,7 +553,7 @@ func (environment *Environment) ExtendRemove(idEnv string) error {
 // NotExpireRemove to mark the remove in an environment as not expiring
 func (environment *Environment) NotExpireRemove(idEnv string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("remove_expire", time.Time{}).Error; err != nil {
-		return fmt.Errorf("NotExpireRemove %v", err)
+		return fmt.Errorf("NotExpireRemove %w", err)
 	}
 	return nil
 }
@@ -571,7 +570,7 @@ func (environment *Environment) DebugHTTP(name string) bool {
 // ChangeDebugHTTP to change the value of DebugHTTP for an environment
 func (environment *Environment) ChangeDebugHTTP(idEnv string, value bool) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
-		return fmt.Errorf("UpdatesChangeDebugHTTP %v", err)
+		return fmt.Errorf("UpdatesChangeDebugHTTP %w", err)
 	}
 	return nil
 }

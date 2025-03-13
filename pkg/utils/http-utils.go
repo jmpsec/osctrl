@@ -86,13 +86,13 @@ const OsctrlUserAgent string = "osctrl-http-client/1.1"
 func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]string) (int, []byte, error) {
 	u, err := url.Parse(reqURL)
 	if err != nil {
-		return 0, nil, fmt.Errorf("invalid url: %v", err)
+		return 0, nil, fmt.Errorf("invalid url: %w", err)
 	}
 	client := &http.Client{}
 	if u.Scheme == "https" {
 		certPool, err := x509.SystemCertPool()
 		if err != nil {
-			return 0, nil, fmt.Errorf("error loading x509 certificate pool: %v", err)
+			return 0, nil, fmt.Errorf("error loading x509 certificate pool: %w", err)
 		}
 		tlsCfg := &tls.Config{RootCAs: certPool}
 		client.Transport = &http.Transport{TLSClientConfig: tlsCfg}

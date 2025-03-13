@@ -71,16 +71,16 @@ func addTag(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		// TODO - Use the correct user
 		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tags.TagTypeParser(tagType)); err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
 		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tags.TagTypeParser(tagType))
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if !silentFlag {
@@ -104,15 +104,15 @@ func deleteTag(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		if err := tagsmgr.DeleteGet(name, e.ID); err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteTag(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if !silentFlag {
@@ -140,44 +140,44 @@ func editTag(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		t, err := tagsmgr.Get(name, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		if description != "" && description != t.Description {
 			if err := tagsmgr.ChangeDescription(&t, description); err != nil {
-				return fmt.Errorf("❌ %s", err)
+				return fmt.Errorf("❌ %w", err)
 			}
 		}
 		if color != "" && color != t.Color {
 			if err := tagsmgr.ChangeColor(&t, color); err != nil {
-				return fmt.Errorf("❌ %s", err)
+				return fmt.Errorf("❌ %w", err)
 			}
 		}
 		if icon != "" && icon != t.Icon {
 			if err := tagsmgr.ChangeIcon(&t, icon); err != nil {
-				return fmt.Errorf("❌ %s", err)
+				return fmt.Errorf("❌ %w", err)
 			}
 		}
 		if tagType != "" && tagType != tags.TagTypeDecorator(t.TagType) {
 			if err := tagsmgr.ChangeTagType(&t, tags.TagTypeParser(tagType)); err != nil {
-				return fmt.Errorf("❌ %s", err)
+				return fmt.Errorf("❌ %w", err)
 			}
 		}
 	} else if apiFlag {
 		t, err := osctrlAPI.GetTag(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		tt := t.TagType
-		if tagType != "" && strings.ToUpper(tagType) != strings.ToUpper(tags.TagTypeDecorator(t.TagType)) {
+		if tagType != "" && !strings.EqualFold(tagType, tags.TagTypeDecorator(t.TagType)) {
 			tt = tags.TagTypeParser(tagType)
 		}
 		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tt)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if !silentFlag {
@@ -203,21 +203,21 @@ func showTag(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		t, err = tagsmgr.Get(name, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		envName = e.Name
 	} else if apiFlag {
 		t, err = osctrlAPI.GetTag(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		e, err := osctrlAPI.GetEnvironment(env)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		envName = e.Name
 	}
@@ -250,14 +250,14 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(tgs)
 		if err != nil {
-			return fmt.Errorf("error marshaling - %s", err)
+			return fmt.Errorf("error marshaling - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := tagsToData(tgs, m, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("error writting csv - %s", err)
+			return fmt.Errorf("error writing csv - %w", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
@@ -287,28 +287,28 @@ func listTagsByEnv(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		tgs, err = tagsmgr.GetByEnv(e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		m, err = envs.GetMapByID()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
 		tgs, err = osctrlAPI.GetTags(env)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		m, err = osctrlAPI.GetEnvMap()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if err := helperListTags(tgs, m); err != nil {
-		return fmt.Errorf("❌ %s", err)
+		return fmt.Errorf("❌ %w", err)
 	}
 	return nil
 }
@@ -319,24 +319,24 @@ func listAllTags(c *cli.Context) error {
 	if dbFlag {
 		tgs, err = tagsmgr.All()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		m, err = envs.GetMapByID()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
 		tgs, err = osctrlAPI.GetAllTags()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 		m, err = osctrlAPI.GetEnvMap()
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if err := helperListTags(tgs, m); err != nil {
-		return fmt.Errorf("❌ %s", err)
+		return fmt.Errorf("❌ %w", err)
 	}
 	return nil
 }

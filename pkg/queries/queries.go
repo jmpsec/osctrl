@@ -112,7 +112,7 @@ type Queries struct {
 
 // CreateQueries to initialize the queries struct
 func CreateQueries(backend *gorm.DB) *Queries {
-	//var q *Queries
+	// var q *Queries
 	q := &Queries{DB: backend}
 
 	// table node_queries
@@ -481,7 +481,7 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 	// I think we can put an extra field in the query so that we also get the query id back from the osquery
 	// This way we can avoid this query to get the query id
 	if err := q.DB.Where("name = ?", queryName).Find(&query).Error; err != nil {
-		return fmt.Errorf("error getting query id: %v", err)
+		return fmt.Errorf("error getting query id: %w", err)
 	}
 
 	var nodeQuery NodeQuery

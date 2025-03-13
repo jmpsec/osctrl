@@ -56,7 +56,7 @@ func GenerateArchiveName(carve CarvedFile) string {
 // Function to check if data is compressed using zstd
 // https://github.com/facebook/zstd
 func CheckCompressionRaw(data []byte) bool {
-	if bytes.Compare(data[:4], CompressionHeader) == 0 {
+	if bytes.Equal(data[:4], CompressionHeader) {
 		return true
 	}
 	return false
@@ -71,7 +71,7 @@ func CheckCompressionBlock(block CarvedBlock) (bool, error) {
 	}
 	compressionCheck, err := base64.StdEncoding.DecodeString(block.Data)
 	if err != nil {
-		return false, fmt.Errorf("error decoding block %v", err)
+		return false, fmt.Errorf("error decoding block %w", err)
 	}
 	return CheckCompressionRaw(compressionCheck), nil
 }

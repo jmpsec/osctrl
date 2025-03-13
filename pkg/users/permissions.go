@@ -49,7 +49,7 @@ const (
 // CreatePermission new permission
 func (m *UserManager) CreatePermission(permission UserPermission) error {
 	if err := m.DB.Create(&permission).Error; err != nil {
-		return fmt.Errorf("Create UserPermission %v", err)
+		return fmt.Errorf("Create UserPermission %w", err)
 	}
 	return nil
 }
@@ -184,16 +184,16 @@ func (m *UserManager) ChangeAccess(username, environment string, access EnvAcces
 		return fmt.Errorf("user %s does not exist", username)
 	}
 	if err := m.SetEnvUser(username, environment, access.User); err != nil {
-		return fmt.Errorf("error setting user access - %s", err)
+		return fmt.Errorf("error setting user access - %w", err)
 	}
 	if err := m.SetEnvQuery(username, environment, access.Query); err != nil {
-		return fmt.Errorf("error setting query access - %s", err)
+		return fmt.Errorf("error setting query access - %w", err)
 	}
 	if err := m.SetEnvCarve(username, environment, access.Carve); err != nil {
-		return fmt.Errorf("error setting carve access - %s", err)
+		return fmt.Errorf("error setting carve access - %w", err)
 	}
 	if err := m.SetEnvAdmin(username, environment, access.Admin); err != nil {
-		return fmt.Errorf("error setting admin access - %s", err)
+		return fmt.Errorf("error setting admin access - %w", err)
 	}
 	return nil
 }
@@ -222,7 +222,7 @@ func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) erro
 func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
 	perm, err := m.GetPermission(username, environment, level)
 	if err != nil {
-		return fmt.Errorf("error getting permissions for %s/%s - %s", username, environment, err)
+		return fmt.Errorf("error getting permissions for %s/%s - %w", username, environment, err)
 	}
 	m.DB.Model(&perm).Updates(map[string]interface{}{
 		"access_type":  level,
@@ -267,7 +267,7 @@ func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
 		return envAccess, fmt.Errorf("record not found")
 	}
 	if err != nil {
-		return envAccess, fmt.Errorf("error getting permissions - %s", err)
+		return envAccess, fmt.Errorf("error getting permissions - %w", err)
 	}
 	for _, p := range perms {
 		switch p.AccessType {
@@ -331,7 +331,7 @@ func (m *UserManager) DeleteEnvPermissions(username, environment string) error {
 	}
 	for _, p := range perms {
 		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {
-			return fmt.Errorf("error deleting permission %v", err)
+			return fmt.Errorf("error deleting permission %w", err)
 		}
 	}
 	return nil
@@ -348,7 +348,7 @@ func (m *UserManager) DeleteAllPermissions(username string) error {
 	}
 	for _, p := range perms {
 		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {
-			return fmt.Errorf("error deleting permission %v", err)
+			return fmt.Errorf("error deleting permission %w", err)
 		}
 	}
 	return nil

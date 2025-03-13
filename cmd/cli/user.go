@@ -57,11 +57,11 @@ func addUser(c *cli.Context) error {
 	admin := c.Bool("admin")
 	user, err := adminUsers.New(username, password, email, fullname, admin)
 	if err != nil {
-		return fmt.Errorf("error with new user - %s", err)
+		return fmt.Errorf("error with new user - %w", err)
 	}
 	// Create user
 	if err := adminUsers.Create(user); err != nil {
-		return fmt.Errorf("error creating user - %s", err)
+		return fmt.Errorf("error creating user - %w", err)
 	}
 	if !silentFlag {
 		fmt.Printf("✅ created user %s successfully\n", username)
@@ -79,31 +79,31 @@ func editUser(c *cli.Context) error {
 	password := c.String("password")
 	if password != "" {
 		if err := adminUsers.ChangePassword(username, password); err != nil {
-			return fmt.Errorf("error changing password - %s", err)
+			return fmt.Errorf("error changing password - %w", err)
 		}
 	}
 	email := c.String("email")
 	if email != "" {
 		if err := adminUsers.ChangeEmail(username, email); err != nil {
-			return fmt.Errorf("error changing email - %s", err)
+			return fmt.Errorf("error changing email - %w", err)
 		}
 	}
 	fullname := c.String("fullname")
 	if fullname != "" {
 		if err := adminUsers.ChangeFullname(username, fullname); err != nil {
-			return fmt.Errorf("error changing name - %s", err)
+			return fmt.Errorf("error changing name - %w", err)
 		}
 	}
 	admin := c.Bool("admin")
 	if admin {
 		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
-			return fmt.Errorf("error changing admin - %s", err)
+			return fmt.Errorf("error changing admin - %w", err)
 		}
 	}
 	notAdmin := c.Bool("non-admin")
 	if notAdmin {
 		if err := adminUsers.ChangeAdmin(username, false); err != nil {
-			return fmt.Errorf("error changing non-admin - %s", err)
+			return fmt.Errorf("error changing non-admin - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -121,11 +121,11 @@ func deleteUser(c *cli.Context) error {
 	}
 	if dbFlag {
 		if err := adminUsers.Delete(username); err != nil {
-			return fmt.Errorf("error deleting - %s", err)
+			return fmt.Errorf("error deleting - %w", err)
 		}
 	} else if apiFlag {
 		if err := osctrlAPI.DeleteUser(username); err != nil {
-			return fmt.Errorf("error deleting user - %s", err)
+			return fmt.Errorf("error deleting user - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -140,12 +140,12 @@ func listUsers(c *cli.Context) error {
 	if dbFlag {
 		usrs, err = adminUsers.All()
 		if err != nil {
-			return fmt.Errorf("error getting users - %s", err)
+			return fmt.Errorf("error getting users - %w", err)
 		}
 	} else if apiFlag {
 		usrs, err = osctrlAPI.GetUsers()
 		if err != nil {
-			return fmt.Errorf("error getting users - %s", err)
+			return fmt.Errorf("error getting users - %w", err)
 		}
 	}
 	header := []string{
@@ -159,14 +159,14 @@ func listUsers(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(usrs)
 		if err != nil {
-			return fmt.Errorf("error serializing - %s", err)
+			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := usersToData(usrs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("error WriteAll - %s", err)
+			return fmt.Errorf("error WriteAll - %w", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)
@@ -195,12 +195,12 @@ func showUser(c *cli.Context) error {
 	if dbFlag {
 		usr, err = adminUsers.Get(username)
 		if err != nil {
-			return fmt.Errorf("error getting user - %s", err)
+			return fmt.Errorf("error getting user - %w", err)
 		}
 	} else if apiFlag {
 		usr, err = osctrlAPI.GetUser(username)
 		if err != nil {
-			return fmt.Errorf("error getting user - %s", err)
+			return fmt.Errorf("error getting user - %w", err)
 		}
 	}
 	header := []string{
@@ -214,14 +214,14 @@ func showUser(c *cli.Context) error {
 	if formatFlag == jsonFormat {
 		jsonRaw, err := json.Marshal(usr)
 		if err != nil {
-			return fmt.Errorf("error serializing - %s", err)
+			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	} else if formatFlag == csvFormat {
 		data := userToData(usr, nil)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("error WriteAll - %s", err)
+			return fmt.Errorf("error WriteAll - %w", err)
 		}
 	} else if formatFlag == prettyFormat {
 		table := tablewriter.NewWriter(os.Stdout)

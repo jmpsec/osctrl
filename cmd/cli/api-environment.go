@@ -16,10 +16,10 @@ func (api *OsctrlAPI) GetEnvironments() ([]environments.TLSEnvironment, error) {
 	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APIEnvironments)
 	rawEnvs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return envs, fmt.Errorf("error api request - %v - %s", err, string(rawEnvs))
+		return envs, fmt.Errorf("error api request - %w - %s", err, string(rawEnvs))
 	}
 	if err := json.Unmarshal(rawEnvs, &envs); err != nil {
-		return envs, fmt.Errorf("can not parse body - %v", err)
+		return envs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return envs, nil
 }
@@ -30,10 +30,10 @@ func (api *OsctrlAPI) GetEnvironment(identifier string) (environments.TLSEnviron
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier)
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return e, fmt.Errorf("error api request - %v - %s", err, string(rawE))
+		return e, fmt.Errorf("error api request - %w - %s", err, string(rawE))
 	}
 	if err := json.Unmarshal(rawE, &e); err != nil {
-		return e, fmt.Errorf("can not parse body - %v", err)
+		return e, fmt.Errorf("can not parse body - %w", err)
 	}
 	return e, nil
 }
@@ -44,10 +44,10 @@ func (api *OsctrlAPI) GetEnvMap() (environments.MapEnvByID, error) {
 	reqURL := fmt.Sprintf("%s%s%s/map/id", api.Configuration.URL, APIPath, APIEnvironments)
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return envMap, fmt.Errorf("error api request - %v - %s", err, string(rawE))
+		return envMap, fmt.Errorf("error api request - %w - %s", err, string(rawE))
 	}
 	if err := json.Unmarshal(rawE, &envMap); err != nil {
-		return envMap, fmt.Errorf("can not parse body - %v", err)
+		return envMap, fmt.Errorf("can not parse body - %w", err)
 	}
 	return envMap, nil
 }
@@ -98,10 +98,10 @@ func (api *OsctrlAPI) ActionEnrollmentRemove(identifier, action, target string, 
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier, target, action)
 	rawE, err := api.PostGeneric(reqURL, data)
 	if err != nil {
-		return "", fmt.Errorf("error api request - %v - %s", err, string(rawE))
+		return "", fmt.Errorf("error api request - %w - %s", err, string(rawE))
 	}
 	if err := json.Unmarshal(rawE, &res); err != nil {
-		return "", fmt.Errorf("can not parse body - %v", err)
+		return "", fmt.Errorf("can not parse body - %w", err)
 	}
 	return res.Message, nil
 }

@@ -73,8 +73,7 @@ type TagManager struct {
 
 // CreateTagManager to initialize the tags struct and tables
 func CreateTagManager(backend *gorm.DB) *TagManager {
-	var t *TagManager
-	t = &TagManager{DB: backend}
+	var t *TagManager = &TagManager{DB: backend}
 	// table admin_tags
 	if err := backend.AutoMigrate(&AdminTag{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (admin_tags): %v", err)
@@ -104,7 +103,7 @@ func (m *TagManager) Get(name string, envID uint) (AdminTag, error) {
 // Create new tag
 func (m *TagManager) Create(tag *AdminTag) error {
 	if err := m.DB.Create(&tag).Error; err != nil {
-		return fmt.Errorf("Create AdminTag %v", err)
+		return fmt.Errorf("Create AdminTag %w", err)
 	}
 	return nil
 }
@@ -188,10 +187,10 @@ func (m *TagManager) GetByEnv(envID uint) ([]AdminTag, error) {
 func (m *TagManager) DeleteGet(name string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if err := m.DB.Unscoped().Delete(&tag).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -199,7 +198,7 @@ func (m *TagManager) DeleteGet(name string, envID uint) error {
 // Delete tag by name
 func (m *TagManager) Delete(tag *AdminTag) error {
 	if err := m.DB.Unscoped().Delete(tag).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -208,11 +207,11 @@ func (m *TagManager) Delete(tag *AdminTag) error {
 func (m *TagManager) ChangeGetDescription(name, description string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if description != tag.Description {
 		if err := m.DB.Model(&tag).Update("description", description).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -222,7 +221,7 @@ func (m *TagManager) ChangeGetDescription(name, description string, envID uint) 
 func (m *TagManager) ChangeDescription(tag *AdminTag, desc string) error {
 	if desc != tag.Description {
 		if err := m.DB.Model(tag).Update("description", desc).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -232,11 +231,11 @@ func (m *TagManager) ChangeDescription(tag *AdminTag, desc string) error {
 func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if color != tag.Color {
 		if err := m.DB.Model(&tag).Update("color", color).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -246,7 +245,7 @@ func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 func (m *TagManager) ChangeColor(tag *AdminTag, color string) error {
 	if color != tag.Color {
 		if err := m.DB.Model(tag).Update("color", color).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -256,11 +255,11 @@ func (m *TagManager) ChangeColor(tag *AdminTag, color string) error {
 func (m *TagManager) ChangeGetIcon(name, icon string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if icon != tag.Icon {
 		if err := m.DB.Model(&tag).Update("icon", icon).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -270,7 +269,7 @@ func (m *TagManager) ChangeGetIcon(name, icon string, envID uint) error {
 func (m *TagManager) ChangeIcon(tag *AdminTag, icon string) error {
 	if icon != tag.Icon {
 		if err := m.DB.Model(tag).Update("icon", icon).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -280,11 +279,11 @@ func (m *TagManager) ChangeIcon(tag *AdminTag, icon string) error {
 func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if tagType != tag.TagType {
 		if err := m.DB.Model(&tag).Update("tag_type", tagType).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -294,7 +293,7 @@ func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) err
 func (m *TagManager) ChangeTagType(tag *AdminTag, tagType uint) error {
 	if tagType != tag.TagType {
 		if err := m.DB.Model(tag).Update("tag_type", tagType).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -304,11 +303,11 @@ func (m *TagManager) ChangeTagType(tag *AdminTag, tagType uint) error {
 func (m *TagManager) ChangeGetEnvironment(name string, envID uint) error {
 	tag, err := m.Get(name, envID)
 	if err != nil {
-		return fmt.Errorf("error getting tag %v", err)
+		return fmt.Errorf("error getting tag %w", err)
 	}
 	if envID != tag.EnvironmentID {
 		if err := m.DB.Model(&tag).Update("environment_id", envID).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -318,7 +317,7 @@ func (m *TagManager) ChangeGetEnvironment(name string, envID uint) error {
 func (m *TagManager) ChangeEnvironment(tag *AdminTag, envID uint) error {
 	if envID != tag.EnvironmentID {
 		if err := m.DB.Model(tag).Update("environment_id", envID).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -360,7 +359,7 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 			TagType:       tagType,
 		}
 		if err := m.Create(&newTag); err != nil {
-			return fmt.Errorf("error creating tag %v", err)
+			return fmt.Errorf("error creating tag %w", err)
 		}
 		tag = newTag
 	}
@@ -376,7 +375,7 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 		TaggedBy:   user,
 	}
 	if err := m.DB.Create(&tagged).Error; err != nil {
-		return fmt.Errorf("error tagging node %v", err)
+		return fmt.Errorf("error tagging node %w", err)
 	}
 	return nil
 }
@@ -403,10 +402,10 @@ func (m *TagManager) UntagNode(name string, node nodes.OsqueryNode) error {
 	}
 	var tagged TaggedNode
 	if err := m.DB.Where("tag = ? AND node_id = ?", name, node.ID).First(&tagged).Error; err != nil {
-		return fmt.Errorf("TaggedNode %v", err)
+		return fmt.Errorf("TaggedNode %w", err)
 	}
 	if err := m.DB.Unscoped().Delete(&tagged).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }

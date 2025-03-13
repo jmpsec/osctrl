@@ -943,7 +943,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			env := h.Envs.Empty(c.Name, c.Hostname)
 			env.Icon = c.Icon
 			env.Type = c.Type
-			// Emtpy configuration
+			// Empty configuration
 			env.Configuration = h.Envs.GenEmptyConfiguration(true)
 			// Generate flags
 			flags, err := h.Envs.GenerateFlags(env, "", "")
@@ -1143,7 +1143,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// TODO verify environments
-		access := h.Users.GenEnvUserAccess(u.Environments, true, (u.Admin == true), (u.Admin == true), (u.Admin == true))
+		access := h.Users.GenEnvUserAccess(u.Environments, true, (u.Admin), (u.Admin), (u.Admin))
 		perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)

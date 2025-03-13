@@ -814,7 +814,7 @@ func cliAction(c *cli.Context) error {
 	if configFlag {
 		tlsConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceTLS)
 		if err != nil {
-			return fmt.Errorf("Error loading %s - %s", serviceConfigFile, err)
+			return fmt.Errorf("Error loading %s - %w", serviceConfigFile, err)
 		}
 	} else {
 		tlsConfig = tlsConfigValues
@@ -823,7 +823,7 @@ func cliAction(c *cli.Context) error {
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %v", err)
+			return fmt.Errorf("Failed to load DB configuration - %w", err)
 		}
 	} else {
 		dbConfig = dbConfigValues
@@ -832,7 +832,7 @@ func cliAction(c *cli.Context) error {
 	if redisFlag {
 		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %v", err)
+			return fmt.Errorf("Failed to load redis configuration - %w", err)
 		}
 	} else {
 		redisConfig = redisConfigValues
@@ -845,7 +845,7 @@ func cliAction(c *cli.Context) error {
 			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
+			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
 		}
 	}
 	return nil

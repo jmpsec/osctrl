@@ -61,7 +61,7 @@ func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
 func (rm *RedisManager) GetRedis() *redis.Client {
 	opt, err := redis.ParseURL(rm.Config.ConnectionString)
 	if err != nil {
-		//use current behavior
+		// use current behavior
 		return redis.NewClient(&redis.Options{
 			Addr:     PrepareAddr(*rm.Config),
 			Password: rm.Config.Password,
@@ -84,7 +84,7 @@ func (rm *RedisManager) Check() error {
 func CreateRedisManagerFile(file string) (*RedisManager, error) {
 	redisConfig, err := LoadConfiguration(file, RedisKey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load redis configuration - %v", err)
+		return nil, fmt.Errorf("Failed to load redis configuration - %w", err)
 	}
 	return CreateRedisManager(redisConfig)
 }

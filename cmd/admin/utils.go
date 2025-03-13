@@ -70,7 +70,7 @@ func jsonRawIndent(raw string) string {
 	if err := json.Indent(&out, []byte(raw), "", "    "); err != nil {
 		return string(raw)
 	}
-	return string(out.Bytes())
+	return out.String()
 }
 
 // Helper to verify the service is valid

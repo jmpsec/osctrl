@@ -68,27 +68,27 @@ type ATCConf map[string]interface{}
 func (environment *Environment) RefreshConfiguration(idEnv string) error {
 	env, err := environment.Get(idEnv)
 	if err != nil {
-		return fmt.Errorf("error structuring environment %v", err)
+		return fmt.Errorf("error structuring environment %w", err)
 	}
 	_options, err := environment.GenStructOptions([]byte(env.Options))
 	if err != nil {
-		return fmt.Errorf("error structuring options %v", err)
+		return fmt.Errorf("error structuring options %w", err)
 	}
 	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
 	if err != nil {
-		return fmt.Errorf("error structuring schedule %v", err)
+		return fmt.Errorf("error structuring schedule %w", err)
 	}
 	_packs, err := environment.GenStructPacks([]byte(env.Packs))
 	if err != nil {
-		return fmt.Errorf("error structuring packs %v", err)
+		return fmt.Errorf("error structuring packs %w", err)
 	}
 	_decorators, err := environment.GenStructDecorators([]byte(env.Decorators))
 	if err != nil {
-		return fmt.Errorf("error structuring decorators %v", err)
+		return fmt.Errorf("error structuring decorators %w", err)
 	}
 	_ATC, err := environment.GenStructATC([]byte(env.ATC))
 	if err != nil {
-		return fmt.Errorf("error structuring ATC %v", err)
+		return fmt.Errorf("error structuring ATC %w", err)
 	}
 	conf := OsqueryConf{
 		Options:    _options,
@@ -99,10 +99,10 @@ func (environment *Environment) RefreshConfiguration(idEnv string) error {
 	}
 	indentedConf, err := environment.GenSerializedConf(conf, true)
 	if err != nil {
-		return fmt.Errorf("error serializing configuration %v", err)
+		return fmt.Errorf("error serializing configuration %w", err)
 	}
 	if err := environment.DB.Model(&env).Update("configuration", indentedConf).Error; err != nil {
-		return fmt.Errorf("Update configuration %v", err)
+		return fmt.Errorf("Update configuration %w", err)
 	}
 	return nil
 }
@@ -111,10 +111,10 @@ func (environment *Environment) RefreshConfiguration(idEnv string) error {
 func (environment *Environment) UpdateConfiguration(idEnv string, cnf OsqueryConf) error {
 	indentedConf, err := environment.GenSerializedConf(cnf, true)
 	if err != nil {
-		return fmt.Errorf("error serializing configuration %v", err)
+		return fmt.Errorf("error serializing configuration %w", err)
 	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("configuration", indentedConf).Error; err != nil {
-		return fmt.Errorf("Update configuration %v", err)
+		return fmt.Errorf("Update configuration %w", err)
 	}
 	return nil
 }
@@ -123,23 +123,23 @@ func (environment *Environment) UpdateConfiguration(idEnv string, cnf OsqueryCon
 func (environment *Environment) UpdateConfigurationParts(idEnv string, cnf OsqueryConf) error {
 	indentedOptions, err := environment.GenSerializedConf(cnf.Options, true)
 	if err != nil {
-		return fmt.Errorf("error serializing options %v", err)
+		return fmt.Errorf("error serializing options %w", err)
 	}
 	indentedSchedule, err := environment.GenSerializedConf(cnf.Schedule, true)
 	if err != nil {
-		return fmt.Errorf("error serializing schedule %v", err)
+		return fmt.Errorf("error serializing schedule %w", err)
 	}
 	indentedPacks, err := environment.GenSerializedConf(cnf.Packs, true)
 	if err != nil {
-		return fmt.Errorf("error serializing packs %v", err)
+		return fmt.Errorf("error serializing packs %w", err)
 	}
 	indentedDecorators, err := environment.GenSerializedConf(cnf.Decorators, true)
 	if err != nil {
-		return fmt.Errorf("error serializing decorators %v", err)
+		return fmt.Errorf("error serializing decorators %w", err)
 	}
 	indentedATC, err := environment.GenSerializedConf(cnf.ATC, true)
 	if err != nil {
-		return fmt.Errorf("error serializing ATC %v", err)
+		return fmt.Errorf("error serializing ATC %w", err)
 	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(TLSEnvironment{
 		Options:    indentedOptions,
@@ -147,7 +147,7 @@ func (environment *Environment) UpdateConfigurationParts(idEnv string, cnf Osque
 		Packs:      indentedPacks,
 		Decorators: indentedDecorators,
 		ATC:        indentedATC}).Error; err != nil {
-		return fmt.Errorf("Update parts %v", err)
+		return fmt.Errorf("Update parts %w", err)
 	}
 	return nil
 }
@@ -196,7 +196,7 @@ func (environment *Environment) GenStructSchedule(configuration []byte) (Schedul
 func (environment *Environment) NodeStructSchedule(configuration []byte, platform string) (ScheduleConf, error) {
 	schedule, err := environment.GenStructSchedule(configuration)
 	if err != nil {
-		return ScheduleConf{}, fmt.Errorf("GenStructSchedule %v", err)
+		return ScheduleConf{}, fmt.Errorf("GenStructSchedule %w", err)
 	}
 	for k, s := range schedule {
 		if !IsPlatformQuery(strings.ToLower(s.Platform), strings.ToLower(platform)) {
@@ -219,7 +219,7 @@ func (environment *Environment) GenStructPacks(configuration []byte) (PacksConf,
 func (environment *Environment) NodePacksEntries(configuration []byte, platform string) (PacksEntries, error) {
 	packs, err := environment.GenPacksEntries(configuration)
 	if err != nil {
-		return PacksEntries{}, fmt.Errorf("GenPacksEntries %v", err)
+		return PacksEntries{}, fmt.Errorf("GenPacksEntries %w", err)
 	}
 	for k, p := range packs {
 		if !IsPlatformQuery(strings.ToLower(p.Platform), platform) {
@@ -233,7 +233,7 @@ func (environment *Environment) NodePacksEntries(configuration []byte, platform 
 func (environment *Environment) GenPacksEntries(configuration []byte) (PacksEntries, error) {
 	packsConf, err := environment.GenStructPacks(configuration)
 	if err != nil {
-		return PacksEntries{}, fmt.Errorf("GenStructPacks %v", err)
+		return PacksEntries{}, fmt.Errorf("GenStructPacks %w", err)
 	}
 	packsEntries := make(PacksEntries)
 	for k, p := range packsConf {
@@ -243,11 +243,11 @@ func (environment *Environment) GenPacksEntries(configuration []byte) (PacksEntr
 		default:
 			rawdata, err := json.Marshal(v)
 			if err != nil {
-				return PacksEntries{}, fmt.Errorf("Marshal %v", err)
+				return PacksEntries{}, fmt.Errorf("Marshal %w", err)
 			}
 			var parsed PackEntry
 			if err := json.Unmarshal(rawdata, &parsed); err != nil {
-				return PacksEntries{}, fmt.Errorf("Unmarshal %v", err)
+				return PacksEntries{}, fmt.Errorf("Unmarshal %w", err)
 			}
 			packsEntries[k] = parsed
 		}
@@ -301,27 +301,27 @@ func (environment *Environment) GenEmptyConfiguration(indent bool) string {
 func (environment *Environment) AddOptionsConf(name, option string, value interface{}) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse options into struct
 	_options, err := environment.GenStructOptions([]byte(env.Options))
 	if err != nil {
-		return fmt.Errorf("error structuring options %v", err)
+		return fmt.Errorf("error structuring options %w", err)
 	}
 	// Add new option
 	_options[option] = value
 	// Generate serialized indented options
 	indentedOptions, err := environment.GenSerializedConf(_options, true)
 	if err != nil {
-		return fmt.Errorf("error serializing options %v", err)
+		return fmt.Errorf("error serializing options %w", err)
 	}
 	// Update options in environment
 	if err := environment.UpdateOptions(name, indentedOptions); err != nil {
-		return fmt.Errorf("error updating options %v", err)
+		return fmt.Errorf("error updating options %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -330,27 +330,27 @@ func (environment *Environment) AddOptionsConf(name, option string, value interf
 func (environment *Environment) RemoveOptionsConf(name, option string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse options into struct
 	_options, err := environment.GenStructOptions([]byte(env.Options))
 	if err != nil {
-		return fmt.Errorf("error structuring options %v", err)
+		return fmt.Errorf("error structuring options %w", err)
 	}
 	// Remove option
 	delete(_options, option)
 	// Generate serialized indented options
 	indentedOptions, err := environment.GenSerializedConf(_options, true)
 	if err != nil {
-		return fmt.Errorf("error serializing options %v", err)
+		return fmt.Errorf("error serializing options %w", err)
 	}
 	// Update options in environment
 	if err := environment.UpdateOptions(name, indentedOptions); err != nil {
-		return fmt.Errorf("error updating options %v", err)
+		return fmt.Errorf("error updating options %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -359,27 +359,27 @@ func (environment *Environment) RemoveOptionsConf(name, option string) error {
 func (environment *Environment) AddScheduleConfQuery(name, qName string, query ScheduleQuery) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse schedule into struct
 	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
 	if err != nil {
-		return fmt.Errorf("error structuring schedule %v", err)
+		return fmt.Errorf("error structuring schedule %w", err)
 	}
 	// Add new query
 	_schedule[qName] = query
 	// Generate serialized indented schedule
 	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
 	if err != nil {
-		return fmt.Errorf("error serializing schedule %v", err)
+		return fmt.Errorf("error serializing schedule %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
-		return fmt.Errorf("error updating schedule %v", err)
+		return fmt.Errorf("error updating schedule %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -388,27 +388,27 @@ func (environment *Environment) AddScheduleConfQuery(name, qName string, query S
 func (environment *Environment) RemoveScheduleConfQuery(name, qName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse schedule into struct
 	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
 	if err != nil {
-		return fmt.Errorf("error structuring schedule %v", err)
+		return fmt.Errorf("error structuring schedule %w", err)
 	}
 	// Remove query
 	delete(_schedule, qName)
 	// Generate serialized indented schedule
 	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
 	if err != nil {
-		return fmt.Errorf("error serializing schedule %v", err)
+		return fmt.Errorf("error serializing schedule %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
-		return fmt.Errorf("error updating schedule %v", err)
+		return fmt.Errorf("error updating schedule %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -417,27 +417,27 @@ func (environment *Environment) RemoveScheduleConfQuery(name, qName string) erro
 func (environment *Environment) AddQueryPackConf(name, pName string, pack interface{}) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse packs into struct
 	_packs, err := environment.GenStructPacks([]byte(env.Packs))
 	if err != nil {
-		return fmt.Errorf("error structuring packs %v", err)
+		return fmt.Errorf("error structuring packs %w", err)
 	}
 	// Add new local pack
 	_packs[pName] = pack
 	// Generate serialized indented packs
 	indentedPacks, err := environment.GenSerializedConf(_packs, true)
 	if err != nil {
-		return fmt.Errorf("error serializing packs %v", err)
+		return fmt.Errorf("error serializing packs %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %v", err)
+		return fmt.Errorf("error updating packs %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -446,27 +446,27 @@ func (environment *Environment) AddQueryPackConf(name, pName string, pack interf
 func (environment *Environment) RemoveQueryPackConf(name, pName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse packs into struct
 	_packs, err := environment.GenStructPacks([]byte(env.Packs))
 	if err != nil {
-		return fmt.Errorf("error structuring packs %v", err)
+		return fmt.Errorf("error structuring packs %w", err)
 	}
 	// Remove pack
 	delete(_packs, pName)
 	// Generate serialized indented packs
 	indentedPacks, err := environment.GenSerializedConf(_packs, true)
 	if err != nil {
-		return fmt.Errorf("error serializing packs %v", err)
+		return fmt.Errorf("error serializing packs %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %v", err)
+		return fmt.Errorf("error updating packs %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -475,12 +475,12 @@ func (environment *Environment) RemoveQueryPackConf(name, pName string) error {
 func (environment *Environment) AddQueryToPackConf(name, pName, qName string, query ScheduleQuery) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse packs into struct
 	_packs, err := environment.GenStructPacks([]byte(env.Packs))
 	if err != nil {
-		return fmt.Errorf("error structuring packs %v", err)
+		return fmt.Errorf("error structuring packs %w", err)
 	}
 	// Get pack to add the query
 	pack := _packs[pName].(PackEntry)
@@ -489,15 +489,15 @@ func (environment *Environment) AddQueryToPackConf(name, pName, qName string, qu
 	// Generate serialized indented packs
 	indentedPacks, err := environment.GenSerializedConf(_packs, true)
 	if err != nil {
-		return fmt.Errorf("error serializing packs %v", err)
+		return fmt.Errorf("error serializing packs %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %v", err)
+		return fmt.Errorf("error updating packs %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
@@ -506,12 +506,12 @@ func (environment *Environment) AddQueryToPackConf(name, pName, qName string, qu
 func (environment *Environment) RemoveQueryFromPackConf(name, pName, qName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
-		return fmt.Errorf("error getting environment %v", err)
+		return fmt.Errorf("error getting environment %w", err)
 	}
 	// Parse packs into struct
 	_packs, err := environment.GenStructPacks([]byte(env.Packs))
 	if err != nil {
-		return fmt.Errorf("error structuring packs %v", err)
+		return fmt.Errorf("error structuring packs %w", err)
 	}
 	// Get pack to remove the query
 	pack := _packs[pName].(PackEntry)
@@ -520,15 +520,15 @@ func (environment *Environment) RemoveQueryFromPackConf(name, pName, qName strin
 	// Generate serialized indented packs
 	indentedPacks, err := environment.GenSerializedConf(_packs, true)
 	if err != nil {
-		return fmt.Errorf("error serializing packs %v", err)
+		return fmt.Errorf("error serializing packs %w", err)
 	}
 	// Update schedule in environment
 	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %v", err)
+		return fmt.Errorf("error updating packs %w", err)
 	}
 	// Refresh all configuration
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %v", err)
+		return fmt.Errorf("error refreshing configuration %w", err)
 	}
 	return nil
 }
