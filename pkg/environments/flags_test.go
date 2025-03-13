@@ -4,8 +4,6 @@ import (
 	"testing"
 )
 
-var testEnv = TLSEnvironment{}
-
 func TestGenServerCertsFlag(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		flag := GenServerCertsFlag("")

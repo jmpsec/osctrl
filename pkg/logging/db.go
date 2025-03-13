@@ -16,11 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	// Default interval in seconds for cleanup old logs
-	defaultCleanupInterval = 86400
-)
-
 // OsqueryResultData to log result data to database
 type OsqueryResultData struct {
 	gorm.Model

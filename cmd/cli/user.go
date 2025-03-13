@@ -11,11 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	// Length to truncate strings
-	lengthToTruncate = 10
-)
-
 // Helper function to convert a slice of users into the data expected for output
 func usersToData(usrs []users.AdminUser, header []string) [][]string {
 	var data [][]string

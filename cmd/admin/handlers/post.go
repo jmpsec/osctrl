@@ -1188,8 +1188,6 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		}
 		exist, user := h.Users.ExistsGet(u.Username)
 		if exist {
-			if err := h.Users.DeleteAllPermissions(user.Username); err != nil {
-			}
 			if err := h.Users.Delete(user.Username); err != nil {
 				adminErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
 				return

@@ -95,7 +95,6 @@ func changePermissions(c *cli.Context) error {
 				return fmt.Errorf("error setting query - %w", err)
 			}
 		}
-	} else if apiFlag {
 	}
 	if !silentFlag {
 		fmt.Printf("✅ permissions changed for user %s successfully\n", username)
@@ -127,7 +126,6 @@ func showPermissions(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("error getting access - %w", err)
 		}
-	} else if apiFlag {
 	}
 	header := []string{
 		"Environment",
@@ -194,7 +192,6 @@ func resetPermissions(c *cli.Context) error {
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return err
 		}
-	} else if apiFlag {
 	}
 	if !silentFlag {
 		fmt.Printf("✅ permissions reset for user %s successfully\n", username)
@@ -216,7 +213,6 @@ func allPermissions(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("error getting access - %w", err)
 		}
-	} else if apiFlag {
 	}
 	header := []string{
 		"Environment",

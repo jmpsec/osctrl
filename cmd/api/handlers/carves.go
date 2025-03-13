@@ -277,38 +277,3 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 	// Return message as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
-
-// GET Handler to return carves in JSON
-func (h *HandlersApi) apiCarvesShowHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
-	// Extract environment
-	envVar := r.PathValue("env")
-	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		return
-	}
-	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
-	if err != nil {
-		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		return
-	}
-	// Get context data and check access
-	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		return
-	}
-	// Get carves
-	carves, err := h.Carves.GetByEnv(env.ID)
-	if err != nil {
-		apiErrorResponse(w, "error getting carves", http.StatusInternalServerError, err)
-		return
-	}
-	if len(carves) == 0 {
-		apiErrorResponse(w, "no carves", http.StatusNotFound, nil)
-		return
-	}
-	// Serialize and serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
-}

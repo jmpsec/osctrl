@@ -108,8 +108,3 @@ func keypairSAML(config JSONConfigurationSAML) (samlThings, error) {
 	}
 	return data, nil
 }
-
-// Function to serve as login redirect
-func loginSAML(w http.ResponseWriter, r *http.Request, samlConfig JSONConfigurationSAML) {
-	http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
-}

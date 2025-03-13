@@ -112,7 +112,6 @@ var (
 	tlsServer         bool
 	tlsCertFile       string
 	tlsKeyFile        string
-	loggerFlag        bool
 	loggerFile        string
 	loggerDbSame      bool
 	alwaysLog         bool
