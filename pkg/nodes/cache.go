@@ -24,10 +24,12 @@ const (
 	kHardwareSerial  = "hardware_serial"
 	kCPU             = "cpu"
 	kMemory          = "memory"
+	kLastSeen        = "last_seen"
+	kBytesReceived   = "bytes_received"
 )
 
-// SetCached sets the provided node in the cache, default expiration is 3 hours
-func (n *NodeManager) SetCached(node OsqueryNode, ctx context.Context) error {
+// SetFullCached sets the provided full node in the cache, default expiration is 3 hours
+func (n *NodeManager) SetFullCached(node OsqueryNode, ctx context.Context) error {
 	k := CacheKey(node)
 	if err := n.Cache.HSet(ctx, k, map[string]interface{}{
 		kCreated:         node.CreatedAt.Format(time.RFC3339),
@@ -46,14 +48,16 @@ func (n *NodeManager) SetCached(node OsqueryNode, ctx context.Context) error {
 		kHardwareSerial:  node.HardwareSerial,
 		kCPU:             node.CPU,
 		kMemory:          node.Memory,
+		kLastSeen:        time.Now().Format(time.RFC3339),
+		kBytesReceived:   node.BytesReceived,
 	}).Err(); err != nil {
 		return err
 	}
 	return n.Cache.ExpireAt(ctx, k, time.Now().Add(1*time.Hour)).Err()
 }
 
-// GetFromCache returns the node from the cache by node UUID and environment ID
-func (n *NodeManager) GetFromCache(uuid string, envID uint, ctx context.Context) (OsqueryNode, error) {
+// GetFullFromCache returns the full node from the cache by node UUID and environment ID
+func (n *NodeManager) GetFullFromCache(uuid string, envID uint, ctx context.Context) (OsqueryNode, error) {
 	var node OsqueryNode
 	res, err := n.Cache.HGetAll(ctx, CacheKeyRaw(uuid, envID)).Result()
 	if err != nil {
@@ -62,6 +66,10 @@ func (n *NodeManager) GetFromCache(uuid string, envID uint, ctx context.Context)
 	node.CreatedAt, err = time.Parse(time.RFC3339, res[kCreated])
 	if err != nil {
 		node.CreatedAt = time.Time{}
+	}
+	node.LastSeen, err = time.Parse(time.RFC3339, res[kLastSeen])
+	if err != nil {
+		node.LastSeen = time.Time{}
 	}
 	node.NodeKey = res[kNodeKey]
 	node.UUID = res[kUUID]
@@ -82,6 +90,10 @@ func (n *NodeManager) GetFromCache(uuid string, envID uint, ctx context.Context)
 	node.HardwareSerial = res[kHardwareSerial]
 	node.CPU = res[kCPU]
 	node.Memory = res[kMemory]
-
+	resBytes, err := strconv.ParseUint(res[kBytesReceived], 10, 32)
+	if err != nil {
+		resBytes = 0
+	}
+	node.BytesReceived = int(resBytes)
 	return node, nil
 }
