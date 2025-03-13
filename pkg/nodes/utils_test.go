@@ -3,6 +3,8 @@ package nodes
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsActive(t *testing.T) {
