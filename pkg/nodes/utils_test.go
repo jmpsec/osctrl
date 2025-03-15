@@ -71,14 +71,30 @@ func TestIsActive(t *testing.T) {
 	}
 }
 
-func TestCacheKey(t *testing.T) {
+func TestCacheFullKey(t *testing.T) {
 	node := OsqueryNode{
 		EnvironmentID: 123,
 		UUID:          "uuid",
+		NodeKey:       "node_key",
 	}
-	assert.Equal(t, CacheKey(node), "node:123:uuid")
+	assert.Equal(t, CacheFullKeyByUUID(node), "fullnode:123:uuid")
+	assert.Equal(t, CacheFullKeyByNodeKey(node), "fullnode:123:node_key")
 }
 
-func TestCacheKeyRaw(t *testing.T) {
-	assert.Equal(t, CacheKeyRaw("uuid", 123), "node:123:uuid")
+func TestCacheFullKeyRaw(t *testing.T) {
+	assert.Equal(t, CacheFullKeyRaw("uuid", 123), "fullnode:123:uuid")
+}
+
+func TestCachePartialKey(t *testing.T) {
+	node := OsqueryNode{
+		EnvironmentID: 123,
+		UUID:          "uuid",
+		NodeKey:       "node_key",
+	}
+	assert.Equal(t, CachePartialKeyByUUID(node), "partialnode:123:uuid")
+	assert.Equal(t, CachePartialKeyByNodeKey(node), "partialnode:123:node_key")
+}
+
+func TestCachePartialKeyRaw(t *testing.T) {
+	assert.Equal(t, CachePartialKeyRaw("uuid", 123), "partialnode:123:uuid")
 }
