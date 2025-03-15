@@ -52,7 +52,7 @@ func (q *Queries) CreateSaved(name, query, creator string, envid uint) error {
 func (q *Queries) UpdateSaved(name, query, creator string, envid uint) error {
 	saved, err := q.GetSaved(name, creator, envid)
 	if err != nil {
-		return fmt.Errorf("error getting saved query %v", err)
+		return fmt.Errorf("error getting saved query %w", err)
 	}
 	data := SavedQuery{
 		Name:          name,
@@ -60,7 +60,7 @@ func (q *Queries) UpdateSaved(name, query, creator string, envid uint) error {
 		EnvironmentID: envid,
 	}
 	if err := q.DB.Model(&saved).Updates(data).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	return nil
 }
@@ -69,10 +69,10 @@ func (q *Queries) UpdateSaved(name, query, creator string, envid uint) error {
 func (q *Queries) DeleteSaved(name, creator string, envid uint) error {
 	saved, err := q.GetSaved(name, creator, envid)
 	if err != nil {
-		return fmt.Errorf("error getting saved query %v", err)
+		return fmt.Errorf("error getting saved query %w", err)
 	}
 	if err := q.DB.Unscoped().Delete(&saved).Error; err != nil {
-		return fmt.Errorf("DeleteSaved %v", err)
+		return fmt.Errorf("DeleteSaved %w", err)
 	}
 	return nil
 }

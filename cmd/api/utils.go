@@ -1,10 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"os"
-
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
@@ -30,23 +26,6 @@ func refreshSettings() settings.MapSettings {
 		return settings.MapSettings{}
 	}
 	return _settingsmap
-}
-
-// Usage for service binary
-func apiUsage() {
-	fmt.Printf("NAME:\n   %s - %s\n\n", serviceName, serviceDescription)
-	fmt.Printf("USAGE: %s [global options] [arguments...]\n\n", serviceName)
-	fmt.Printf("VERSION:\n   %s\n\n", serviceVersion)
-	fmt.Printf("DESCRIPTION:\n   %s\n\n", appDescription)
-	fmt.Printf("GLOBAL OPTIONS:\n")
-	flag.PrintDefaults()
-	fmt.Printf("\n")
-}
-
-// Display binary version
-func apiVersion() {
-	fmt.Printf("%s v%s\n", serviceName, serviceVersion)
-	os.Exit(0)
 }
 
 // Helper to compose paths for API

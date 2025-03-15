@@ -168,22 +168,21 @@ type Settings struct {
 
 // ValidTypes to check validity of settings type
 var ValidTypes = map[string]struct{}{
-	TypeString:  struct{}{},
-	TypeBoolean: struct{}{},
-	TypeInteger: struct{}{},
+	TypeString:  {},
+	TypeBoolean: {},
+	TypeInteger: {},
 }
 
 // ValidServices to check validity of settings service
 var ValidServices = map[string]struct{}{
-	ServiceTLS:   struct{}{},
-	ServiceAdmin: struct{}{},
-	ServiceAPI:   struct{}{},
+	ServiceTLS:   {},
+	ServiceAdmin: {},
+	ServiceAPI:   {},
 }
 
 // NewSettings to initialize the access to settings and table
 func NewSettings(backend *gorm.DB) *Settings {
-	var s *Settings
-	s = &Settings{DB: backend}
+	var s *Settings = &Settings{DB: backend}
 	// table setting_values
 	if err := backend.AutoMigrate(&SettingValue{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (setting_values): %v", err)
@@ -220,7 +219,7 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 	}
 	// Create record in database
 	if err := conf.DB.Create(&entry).Error; err != nil {
-		return fmt.Errorf("Create NewValue %v", err)
+		return fmt.Errorf("Create NewValue %w", err)
 	}
 	return nil
 }
@@ -233,7 +232,7 @@ func (conf *Settings) NewJSON(service, name, value string, envID uint) error {
 	entry.String = value
 	// Create record in database
 	if err := conf.DB.Create(&entry).Error; err != nil {
-		return fmt.Errorf("Create NewJSON %v", err)
+		return fmt.Errorf("Create NewJSON %w", err)
 	}
 	return nil
 }
@@ -269,10 +268,10 @@ func (conf *Settings) VerifyService(sType string) bool {
 func (conf *Settings) DeleteValue(service, name string, envID uint) error {
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("DeleteValue %v", err)
+		return fmt.Errorf("DeleteValue %w", err)
 	}
 	if err := conf.DB.Unscoped().Delete(&value).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -439,7 +438,7 @@ func (conf *Settings) RetrieveJSON(service, name string, envID uint) (SettingVal
 func (conf *Settings) GetMap(service string, envID uint) (MapSettings, error) {
 	all, err := conf.RetrieveValues(service, false, envID)
 	if err != nil {
-		return MapSettings{}, fmt.Errorf("error getting values %v", err)
+		return MapSettings{}, fmt.Errorf("error getting values %w", err)
 	}
 	_map := make(MapSettings)
 	for _, c := range all {
@@ -458,11 +457,11 @@ func (conf *Settings) SetInteger(intValue int64, service, name string, envID uin
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetInteger %d %v", intValue, err)
+		return fmt.Errorf("SetInteger %d %w", intValue, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Update(TypeInteger, intValue).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	log.Debug().Msgf("SetInteger %d %s %s", intValue, service, name)
 	return nil
@@ -482,11 +481,11 @@ func (conf *Settings) SetBoolean(boolValue bool, service, name string, envID uin
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetBoolean %v %v", boolValue, err)
+		return fmt.Errorf("SetBoolean %v %w", boolValue, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Updates(map[string]interface{}{TypeBoolean: boolValue}).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	log.Debug().Msgf("SetBoolean %v %s %s", boolValue, service, name)
 	return nil
@@ -518,17 +517,17 @@ func (conf *Settings) SetString(strValue string, service, name string, _json boo
 	if _json {
 		val, err = conf.RetrieveJSON(service, name, envID)
 		if err != nil {
-			return fmt.Errorf("SetString %s %v", strValue, err)
+			return fmt.Errorf("SetString %s %w", strValue, err)
 		}
 	} else {
 		val, err = conf.RetrieveValue(service, name, envID)
 		if err != nil {
-			return fmt.Errorf("SetString %s %v", strValue, err)
+			return fmt.Errorf("SetString %s %w", strValue, err)
 		}
 	}
 	// Update
 	if err := conf.DB.Model(&val).Update(TypeString, strValue).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	log.Debug().Msgf("SetString %s %s %s", strValue, service, name)
 	return nil
@@ -548,11 +547,11 @@ func (conf *Settings) SetInfo(info string, service, name string, envID uint) err
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetInfo %s %v", info, err)
+		return fmt.Errorf("SetInfo %s %w", info, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Update("info", info).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	log.Debug().Msgf("SetInfo %s %s %s", info, service, name)
 	return nil

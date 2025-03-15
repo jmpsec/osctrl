@@ -18,16 +18,16 @@ func (api *OsctrlAPI) PostLogin(env, username, password string, expHours int) (t
 	}
 	jsonMessage, err := json.Marshal(l)
 	if err != nil {
-		return res, fmt.Errorf("error marshaling data %s", err)
+		return res, fmt.Errorf("error marshaling data %w", err)
 	}
 	jsonParam := strings.NewReader(string(jsonMessage))
 	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APILogin, env)
 	rawRes, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return res, fmt.Errorf("error api request - %v - %s", err, string(rawRes))
+		return res, fmt.Errorf("error api request - %w - %s", err, string(rawRes))
 	}
 	if err := json.Unmarshal(rawRes, &res); err != nil {
-		return res, fmt.Errorf("can not parse body - %v", err)
+		return res, fmt.Errorf("can not parse body - %w", err)
 	}
 	return res, nil
 }

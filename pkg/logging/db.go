@@ -16,11 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	// Default interval in seconds for cleanup old logs
-	defaultCleanupInterval = 86400
-)
-
 // OsqueryResultData to log result data to database
 type OsqueryResultData struct {
 	gorm.Model
@@ -66,7 +61,7 @@ func CreateLoggerDBFile(dbfile string) (*LoggerDB, error) {
 	// Initialize backend
 	backend, err := backend.CreateDBManagerFile(dbfile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create backend - %v", err)
+		return nil, fmt.Errorf("Failed to create backend - %w", err)
 	}
 	return CreateLoggerDB(backend)
 }
@@ -76,7 +71,7 @@ func CreateLoggerDBConfig(dbConfig backend.JSONConfigurationDB) (*LoggerDB, erro
 	// Initialize backend
 	backend, err := backend.CreateDBManager(dbConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create backend - %v", err)
+		return nil, fmt.Errorf("Failed to create backend - %w", err)
 	}
 	return CreateLoggerDB(backend)
 }
@@ -235,7 +230,7 @@ func (logDB *LoggerDB) ResultLogsLimit(uuid, environment string, limit int) ([]O
 func (logDB *LoggerDB) CleanStatusLogs(environment string, seconds int64) error {
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
 	if err := logDB.Database.Conn.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryStatusData{}).Error; err != nil {
-		return fmt.Errorf("CleanStatusLogs %v", err)
+		return fmt.Errorf("CleanStatusLogs %w", err)
 	}
 	return nil
 }
@@ -244,7 +239,7 @@ func (logDB *LoggerDB) CleanStatusLogs(environment string, seconds int64) error 
 func (logDB *LoggerDB) CleanResultLogs(environment string, seconds int64) error {
 	minusSeconds := time.Now().Add(time.Duration(-seconds) * time.Second)
 	if err := logDB.Database.Conn.Unscoped().Where("environment = ?", environment).Where("created_at < ?", minusSeconds).Delete(&OsqueryResultData{}).Error; err != nil {
-		return fmt.Errorf("CleanResultLogs %v", err)
+		return fmt.Errorf("CleanResultLogs %w", err)
 	}
 	return nil
 }

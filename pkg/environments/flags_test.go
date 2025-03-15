@@ -4,8 +4,6 @@ import (
 	"testing"
 )
 
-var testEnv = TLSEnvironment{}
-
 func TestGenServerCertsFlag(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		flag := GenServerCertsFlag("")
@@ -60,10 +58,10 @@ func TestParseFlagTemplate(t *testing.T) {
 	})
 	t.Run("not empty data", func(t *testing.T) {
 		flag := ParseFlagTemplate("tmplName", "--{{ .Name }}={{ .Value }}", struct {
-			Name string
+			Name  string
 			Value string
 		}{
-			Name: "flagName",
+			Name:  "flagName",
 			Value: "flagValue",
 		})
 		if flag != "--flagName=flagValue" {

@@ -128,7 +128,7 @@ func (environment *Environment) GenerateFlags(env TLSEnvironment, secretPath, ce
 func (environment *Environment) GenerateFlagsEnv(idEnv string, secretPath, certPath string) (string, error) {
 	env, err := environment.Get(idEnv)
 	if err != nil {
-		return "", fmt.Errorf("error getting environment %v", err)
+		return "", fmt.Errorf("error getting environment %w", err)
 	}
 	return environment.GenerateFlags(env, secretPath, certPath)
 }

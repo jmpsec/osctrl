@@ -45,7 +45,7 @@ func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
 	streamName := aws.String(config.Stream)
 	_, err = kc.DescribeStream(&kinesis.DescribeStreamInput{StreamName: streamName})
 	if err != nil {
-		return nil, fmt.Errorf("DescribeStream: %v", err)
+		return nil, fmt.Errorf("DescribeStream: %w", err)
 	}
 	l := &LoggerKinesis{
 		Configuration: config,

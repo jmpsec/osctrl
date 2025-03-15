@@ -94,7 +94,7 @@ func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string
 	}
 
 	ctx := context.Background()
-	key := []byte(uuid) //uuid is the unique id of the os-query agent host that sent this data
+	key := []byte(uuid) // uuid is the unique id of the os-query agent host that sent this data
 	rec := kgo.Record{Topic: l.config.Topic, Key: key, Value: data}
 	l.producer.Produce(ctx, &rec, func(r *kgo.Record, err error) {
 		if err != nil {

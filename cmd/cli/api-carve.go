@@ -18,10 +18,10 @@ func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]queries.Distributed
 	reqURL := fmt.Sprintf("%s%s%s/%s/queries/%s", api.Configuration.URL, APIPath, APICarves, env, target)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return qs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))
+		return qs, fmt.Errorf("error api request - %w - %s", err, string(rawCs))
 	}
 	if err := json.Unmarshal(rawCs, &qs); err != nil {
-		return qs, fmt.Errorf("can not parse body - %v", err)
+		return qs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return qs, nil
 }
@@ -32,10 +32,10 @@ func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
 	reqURL := fmt.Sprintf("%s%s%s/%s/list", api.Configuration.URL, APIPath, APICarves, env)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return cs, fmt.Errorf("error api request - %v - %s", err, string(rawCs))
+		return cs, fmt.Errorf("error api request - %w - %s", err, string(rawCs))
 	}
 	if err := json.Unmarshal(rawCs, &cs); err != nil {
-		return cs, fmt.Errorf("can not parse body - %v", err)
+		return cs, fmt.Errorf("can not parse body - %w", err)
 	}
 	return cs, nil
 }
@@ -46,10 +46,10 @@ func (api *OsctrlAPI) GetCarve(env, name string) (carves.CarvedFile, error) {
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, name)
 	rawC, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return c, fmt.Errorf("error api request - %v - %s", err, string(rawC))
+		return c, fmt.Errorf("error api request - %w - %s", err, string(rawC))
 	}
 	if err := json.Unmarshal(rawC, &c); err != nil {
-		return c, fmt.Errorf("can not parse body - %v", err)
+		return c, fmt.Errorf("can not parse body - %w", err)
 	}
 	return c, nil
 }
@@ -60,10 +60,10 @@ func (api *OsctrlAPI) DeleteCarve(env, name string) (types.ApiGenericResponse, e
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.CarveDelete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -74,10 +74,10 @@ func (api *OsctrlAPI) ExpireCarve(env, name string) (types.ApiGenericResponse, e
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.QueryExpire, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -88,10 +88,10 @@ func (api *OsctrlAPI) CompleteCarve(env, name string) (types.ApiGenericResponse,
 	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.CarveComplete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawQ))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
@@ -112,10 +112,10 @@ func (api *OsctrlAPI) RunCarve(env, uuid, path string, exp int) (types.ApiQuerie
 	jsonParam := strings.NewReader(string(jsonMessage))
 	rawC, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
-		return r, fmt.Errorf("error api request - %v - %s", err, string(rawC))
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawC))
 	}
 	if err := json.Unmarshal(rawC, &r); err != nil {
-		return r, fmt.Errorf("can not parse body - %v", err)
+		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
 }
