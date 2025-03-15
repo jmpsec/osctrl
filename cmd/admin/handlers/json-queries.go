@@ -124,41 +124,35 @@ func (h *HandlersAdmin) JSONSavedJSON(q queries.SavedQuery) SavedJSON {
 
 // JSONQueryHandler - Handler for JSON queries by target
 func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("environment is missing")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract target
 	target := r.PathValue("target")
 	if target == "" {
 		log.Info().Msg("error getting target")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify target
 	if !QueryTargets[target] {
 		log.Info().Msgf("invalid target %s", target)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// If the target is saved queries, get them
@@ -166,7 +160,6 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		qs, err := h.Queries.GetSavedByCreator(ctx[sessions.CtxUser], env.ID)
 		if err != nil {
 			log.Err(err).Msg("error getting queries")
-			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -180,14 +173,12 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 		}
 		// Serve JSON
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-		h.Inc(metricJSONOK)
 		return
 	}
 	// If we are here, retrieve distributed queries for that target
 	qs, err := h.Queries.GetQueries(target, env.ID)
 	if err != nil {
 		log.Err(err).Msg("error getting queries")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Prepare data to be returned
@@ -201,5 +192,4 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }

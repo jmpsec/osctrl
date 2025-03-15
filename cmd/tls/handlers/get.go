@@ -14,10 +14,8 @@ func (h *HandlersTLS) RootHandler(w http.ResponseWriter, r *http.Request) {
 
 // HealthHandler for health requests
 func (h *HandlersTLS) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricHealthReq)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte("✅"))
-	h.Inc(metricHealthOK)
 }
 
 // ErrorHandler for error requests

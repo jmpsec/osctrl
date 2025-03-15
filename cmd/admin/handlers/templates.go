@@ -68,7 +68,6 @@ func (h *HandlersAdmin) NewTemplateFiles(base string, layoutFilename string) *Te
 
 // LoginHandler for login page for GET requests
 func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Prepare template
 	t, err := template.ParseFiles(
@@ -76,7 +75,6 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
 		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html")
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting login template")
 		return
 	}
@@ -86,31 +84,26 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Project: "osctrl",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Login template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // EnvironmentHandler for environment view of the table
 func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -119,14 +112,12 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricTokenErr)
 		return
 	}
 	// Extract target
 	// FIXME verify target
 	target := r.PathValue("target")
 	if target == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting target")
 		return
 	}
@@ -134,28 +125,24 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "table.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all tags
 	tags, err := h.Tags.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -172,25 +159,21 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Environment table template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // PlatformHandler for platform view of the table
 func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract platform
 	// FIXME verify platform
 	platform := r.PathValue("platform")
 	if platform == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting platform")
 		return
 	}
@@ -198,7 +181,6 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	// FIXME verify target
 	target := r.PathValue("target")
 	if target == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting target")
 		return
 	}
@@ -207,7 +189,6 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricTokenErr)
 		return
 	}
 	// Prepare template
@@ -220,28 +201,24 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		h.TemplatesFolder+"/components/page-header.html",
 		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all tags
 	tags, err := h.Tags.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -257,31 +234,26 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Platform table template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // QueryRunGETHandler for GET requests to run queries
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -290,7 +262,6 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
@@ -303,28 +274,24 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		h.TemplatesFolder+"/components/page-header.html",
 		h.TemplatesFolder+"/components/page-modals.html")
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get all nodes
 	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting all nodes")
 		return
 	}
@@ -348,31 +315,26 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		TablesVersion: h.OsqueryVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // QueryListGETHandler for GET requests to queries
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -381,28 +343,24 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "queries.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -416,31 +374,26 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query list template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // SavedQueriesGETHandler for GET requests to queries
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -449,28 +402,24 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "saved.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -484,31 +433,26 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		Target:       "saved",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query list template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // CarvesRunGETHandler for GET requests to run file carves
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -517,35 +461,30 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "carves-run.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get all nodes
 	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting all nodes")
 		return
 	}
@@ -569,31 +508,26 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		TablesVersion: h.OsqueryVersion,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // CarvesListGETHandler for GET requests to carves
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -602,28 +536,24 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "carves.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -637,31 +567,26 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		Target:       "all",
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carve list template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // QueryLogsHandler for GET requests to see query results by name
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -670,41 +595,35 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting name")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get query by name
 	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting query")
 		return
 	}
 	// Get query targets
 	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting targets")
 		return
 	}
@@ -722,7 +641,6 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "queries-logs.html").filepaths
 	t, err := template.New("queries-logs.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
@@ -739,32 +657,27 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		ServiceConfig: *h.AdminConfig,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query logs template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // CarvesDetailsHandler for GET requests to see carves details by name
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("environment is missing")
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Get context data
@@ -772,13 +685,11 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting name")
 		return
 	}
@@ -790,42 +701,36 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "carves-details.html").filepaths
 	t, err := template.New("carves-details.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get query by name
 	query, err := h.Queries.Get(name, env.ID)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting query")
 		return
 	}
 	// Get query targets
 	targets, err := h.Queries.GetTargets(name)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting targets")
 		return
 	}
 	// Get carves for this query
 	queryCarves, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting carve")
 		return
 	}
@@ -834,7 +739,6 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	for _, c := range queryCarves {
 		bs, err := h.Carves.GetBlocks(c.SessionID)
 		if err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msg("error getting carve blocks")
 			break
 		}
@@ -859,31 +763,26 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		CarveBlocks:  blocks,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carve details template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // ConfGETHandler for GET requests for /conf
 func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -892,28 +791,24 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "conf.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting conf template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -926,31 +821,26 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Conf template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -959,28 +849,24 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "enroll.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting enroll template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -1019,44 +905,37 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		Platforms:             platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Enroll template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting environment")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
 	// Get download target
 	targetVar := r.PathValue("target")
 	if targetVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting download target")
 		return
 	}
 	// Check if requested download target is valid
 	if !validTarget[targetVar] {
-		h.Inc(metricAdminErr)
 		log.Info().Msgf("invalid download target: %s", targetVar)
 		return
 	}
@@ -1065,7 +944,6 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare download
@@ -1107,19 +985,15 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	}
 	utils.HTTPDownload(w, description, fName, int64(len(toDownload)))
 	w.WriteHeader(http.StatusOK)
-	h.Inc(metricAdminOK)
 	_, _ = io.Copy(w, bytes.NewReader(toDownload))
-	h.Inc(metricAdminOK)
 }
 
 // NodeHandler for node view
 func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract uuid
 	uuid := r.PathValue("uuid")
 	if uuid == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting uuid")
 		return
 	}
@@ -1133,35 +1007,30 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "node.html").filepaths
 	t, err := template.New("node.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
 	// Get node by UUID
 	node, err := h.Nodes.GetByUUID(uuid)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting node")
 		return
 	}
 	// Get tags for the node
 	nodeTags, err := h.Tags.GetTags(node)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get all tags decorated for this node
 	tags, err := h.Tags.GetNodeTags(nodeTags)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags")
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(node.Environment)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environment")
 		return
 	}
@@ -1170,20 +1039,17 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Get all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -1194,14 +1060,12 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	if dashboardEnabled {
 		packs, err = h.Envs.NodePacksEntries([]byte(env.Packs), node.Platform)
 		if err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msg("error getting packs")
 			return
 		}
 		// Get the schedule for this environment
 		schedule, err = h.Envs.NodeStructSchedule([]byte(env.Schedule), node.Platform)
 		if err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msg("error getting schedule")
 			return
 		}
@@ -1229,47 +1093,40 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		ServiceConfig: *h.AdminConfig,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Node template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // EnvsGETHandler for GET requests for /env
 func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "environments.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
@@ -1281,38 +1138,32 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Environments template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // SettingsGETHandler for GET requests for /settings
 func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Extract service
 	serviceVar := r.PathValue("service")
 	if serviceVar == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("error getting service")
 		return
 	}
 	// Verify service
 	if !checkTargetService(serviceVar) {
-		h.Inc(metricAdminErr)
 		log.Info().Msgf("error unknown service (%s)", serviceVar)
 		return
 	}
@@ -1320,7 +1171,6 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "settings.html").filepaths
 	t, err := template.ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting settings template")
 		return
 	}
@@ -1333,21 +1183,18 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get setting values
 	_settings, err := h.Settings.RetrieveValues(serviceVar, false, settings.NoEnvironmentID)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting settings")
 		return
 	}
 	// Get JSON values
 	svcJSON, err := h.Settings.RetrieveAllJSON(serviceVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting JSON values")
 	}
 	// Prepare template data
@@ -1361,26 +1208,22 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Settings template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // UsersGETHandler for GET requests for /users
 func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Custom functions to handle formatting
@@ -1392,28 +1235,24 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "users.html").filepaths
 	t, err := template.New("users.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting users template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current users
 	users, err := h.Users.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting users")
 		return
 	}
@@ -1426,26 +1265,22 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		CurrentUsers: users,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Users template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // TagsGETHandler for GET requests for /tags
 func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Custom functions to handle formatting
@@ -1459,28 +1294,24 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "tags.html").filepaths
 	t, err := template.New("tags.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current tags
 	tags, err := h.Tags.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting tags")
 		return
 	}
@@ -1493,26 +1324,22 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Tags:         tags,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Tags template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // EditProfileGETHandler for user profile edit
 func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Custom functions to handle formatting
@@ -1523,28 +1350,24 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "profile.html").filepaths
 	t, err := template.New("profile.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting profile template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current user
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting user")
 		return
 	}
@@ -1557,26 +1380,22 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		CurrentUser:  user,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Profile template served")
 	}
-	h.Inc(metricAdminOK)
 }
 
 // DashboardGETHandler for dashboard page
 func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Custom functions to handle formatting
@@ -1587,28 +1406,24 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "dashboard.html").filepaths
 	t, err := template.New("dashboard.html").Funcs(funcMap).ParseFiles(tempateFiles...)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting dashboard template")
 		return
 	}
 	// Get stats for all environments
 	envAll, err := h.Envs.All()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting environments")
 		return
 	}
 	// Get stats for all platforms
 	platforms, err := h.Nodes.GetAllPlatforms()
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
 	// Get current user
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting user")
 		return
 	}
@@ -1621,12 +1436,10 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 		CurrentUser:  user,
 	}
 	if err := t.Execute(w, templateData); err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("template error")
 		return
 	}
 	if h.Settings.DebugService(settings.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Dashboard template served")
 	}
-	h.Inc(metricAdminOK)
 }
