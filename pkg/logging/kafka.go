@@ -51,7 +51,7 @@ func CreateLoggerKafka(config types.KafkaConfiguration) (*LoggerKafka, error) {
 		case "SCRAM-SHA-256":
 			mechanism = auth.AsSha256Mechanism()
 		default:
-			return nil, fmt.Errorf("unknow SASL mechanism '%s'", config.SASL.Mechanism)
+			return nil, fmt.Errorf("unknown SASL mechanism '%s'", config.SASL.Mechanism)
 		}
 
 		opts = append(opts, kgo.SASL(mechanism))
