@@ -40,18 +40,17 @@ func CreateLoggerKafka(config types.KafkaConfiguration) (*LoggerKafka, error) {
 		if config.SASL.Password == "" {
 			return nil, fmt.Errorf("SASL mechanism requires a password")
 		}
-
 		auth := scram.Auth{
 			User: config.SASL.Username,
 			Pass: config.SASL.Password,
 		}
-
 		var mechanism sasl.Mechanism
-		if config.SASL.Mechanism == "SCRAM-SHA-512" {
+		switch config.SASL.Mechanism {
+		case "SCRAM-SHA-512":
 			mechanism = auth.AsSha512Mechanism()
-		} else if config.SASL.Mechanism == "SCRAM-SHA-256" {
+		case "SCRAM-SHA-256":
 			mechanism = auth.AsSha256Mechanism()
-		} else {
+		default:
 			return nil, fmt.Errorf("unknow SASL mechanism '%s'", config.SASL.Mechanism)
 		}
 

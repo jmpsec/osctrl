@@ -247,19 +247,20 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 		"TagType",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(tgs)
 		if err != nil {
 			return fmt.Errorf("error marshaling - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case csvFormat:
 		data := tagsToData(tgs, m, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error writing csv - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(tgs) > 0 {
