@@ -135,19 +135,20 @@ func showPermissions(c *cli.Context) error {
 		"Carve access",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(userAccess)
 		if err != nil {
 			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case csvFormat:
 		data := accessToData(userAccess, envName, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error WriteAll - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		data := accessToData(userAccess, envName, nil)
@@ -222,19 +223,20 @@ func allPermissions(c *cli.Context) error {
 		"Carve access",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(existingAccess)
 		if err != nil {
 			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case csvFormat:
 		data := permissionsToData(existingAccess, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error WriteAll - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		data := permissionsToData(existingAccess, nil)

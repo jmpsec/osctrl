@@ -560,19 +560,13 @@ func (conf *Settings) SetInfo(info string, service, name string, envID uint) err
 // IsValue checks if a settings value exists by service and name
 func (conf *Settings) IsValue(service, name string, envID uint) bool {
 	_, err := conf.RetrieveValue(service, name, envID)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // IsJSON checks if a JSON value exists by service and name
 func (conf *Settings) IsJSON(service, name string, envID uint) bool {
 	_, err := conf.RetrieveJSON(service, name, envID)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // DebugHTTP checks if http debugging is enabled by service
