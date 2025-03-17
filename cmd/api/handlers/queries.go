@@ -29,34 +29,29 @@ var QueryTargets = map[string]bool{
 
 // QueryShowHandler - GET Handler to return a single query in JSON
 func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
 		apiErrorResponse(w, "error getting name", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get query by name
@@ -67,7 +62,6 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
 		}
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
@@ -75,46 +69,39 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("DebugService: Returned query %s", name)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, query)
-	h.Inc(metricAPIQueriesOK)
 }
 
 // QueriesRunHandler - POST Handler to run a query
 func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	var q types.ApiDistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// FIXME check validity of query
 	// Query can not be empty
 	if q.Query == "" {
 		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	expTime := queries.QueryExpiration(q.ExpHours)
@@ -140,7 +127,6 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := h.Queries.Create(newQuery); err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get the query id
@@ -164,7 +150,6 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
-					h.Inc(metricAPIQueriesErr)
 					return
 				}
 				for _, n := range nodes {
@@ -183,7 +168,6 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
-					h.Inc(metricAPIQueriesErr)
 					return
 				}
 				for _, n := range nodes {
@@ -238,37 +222,31 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	// Update value for expected
 	if err := h.Queries.SetExpected(queryName, len(targetNodesID), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
-		h.Inc(metricAPICarvesErr)
 		return
 	}
 	// Return query name as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
-	h.Inc(metricAPIQueriesOK)
 }
 
 // QueriesActionHandler - POST Handler to delete/expire a query
 func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	var msgReturn string
@@ -276,177 +254,149 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 	actionVar := r.PathValue("action")
 	if actionVar == "" {
 		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Query can not be empty
 	nameVar := r.PathValue("name")
 	if nameVar == "" {
 		apiErrorResponse(w, "name can not be empty", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Check if query exists
 	if !h.Queries.Exists(nameVar, env.ID) {
 		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	switch actionVar {
 	case settings.QueryDelete:
 		if err := h.Queries.Delete(nameVar, env.ID); err != nil {
 			apiErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
-			h.Inc(metricAPIQueriesErr)
 			return
 		}
 		msgReturn = fmt.Sprintf("query %s deleted successfully", nameVar)
 	case settings.QueryExpire:
 		if err := h.Queries.Expire(nameVar, env.ID); err != nil {
 			apiErrorResponse(w, "error expiring query", http.StatusInternalServerError, err)
-			h.Inc(metricAPIQueriesErr)
 			return
 		}
 		msgReturn = fmt.Sprintf("query %s expired successfully", nameVar)
 	case settings.QueryComplete:
 		if err := h.Queries.Complete(nameVar, env.ID); err != nil {
 			apiErrorResponse(w, "error completing query", http.StatusInternalServerError, err)
-			h.Inc(metricAPIQueriesErr)
 			return
 		}
 		msgReturn = fmt.Sprintf("query %s completed successfully", nameVar)
 	}
 	// Return message as serialized response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
-	h.Inc(metricAPIQueriesOK)
 }
 
 // AllQueriesShowHandler - GET Handler to return all queries in JSON
 func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get queries
 	queries, err := h.Queries.GetQueries(queries.TargetCompleted, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	if len(queries) == 0 {
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
-	h.Inc(metricAPIQueriesOK)
 }
 
 // QueryListHandler - GET Handler to return queries in JSON by target and environment
 func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Extract target
 	targetVar := r.PathValue("target")
 	if targetVar == "" {
 		apiErrorResponse(w, "error with target", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Verify target
 	if !QueryTargets[targetVar] {
 		apiErrorResponse(w, "invalid target", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get queries
 	queries, err := h.Queries.GetQueries(targetVar, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	if len(queries) == 0 {
 		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
-	h.Inc(metricAPIQueriesOK)
 }
 
 // QueryResultsHandler - GET Handler to return a single query results in JSON
 func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAPIQueriesReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
 		apiErrorResponse(w, "error getting name", http.StatusBadRequest, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.GetByUUID(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Get query by name
@@ -459,10 +409,8 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		} else {
 			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
 		}
-		h.Inc(metricAPIQueriesErr)
 		return
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queryLogs)
-	h.Inc(metricAPIQueriesOK)
 }

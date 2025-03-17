@@ -241,19 +241,9 @@ docker_dev_rebuild_api:
 provision_dev:
 	./deploy/provision.sh -m prod -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
 
-# Auto-format and simplify the code
-GOFMT_ARGS = -l -w -s
-gofmt-tls:
-	gofmt $(GOFMT_ARGS) ./$(TLS_CODE)
-
-gofmt-admin:
-	gofmt $(GOFMT_ARGS) ./$(ADMIN_CODE)
-
-gofmt-api:
-	gofmt $(GOFMT_ARGS) ./$(API_CODE)
-
-gofmt-cli:
-	gofmt $(GOFMT_ARGS) ./$(CLI_CODE)
+# Run linter
+lint:
+	golangci-lint run
 
 # Run all tests
 test:

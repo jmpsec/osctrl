@@ -16,7 +16,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -91,7 +90,6 @@ var (
 	nodesmgr           *nodes.NodeManager
 	queriesmgr         *queries.Queries
 	filecarves         *carves.Carves
-	tlsMetrics         *metrics.Metrics
 	loggerTLS          *logging.LoggerTLS
 	handlersTLS        *handlers.HandlersTLS
 	tagsmgr            *tags.TagManager
@@ -114,7 +112,6 @@ var (
 	tlsServer         bool
 	tlsCertFile       string
 	tlsKeyFile        string
-	loggerFlag        bool
 	loggerFile        string
 	loggerDbSame      bool
 	alwaysLog         bool
@@ -671,11 +668,6 @@ func osctrlService() {
 	)
 	// Initialize service metrics
 	log.Info().Msg("Loading service metrics")
-	tlsMetrics, err = loadingMetrics(settingsmgr)
-	if err != nil {
-		log.Fatal().Msgf("Error loading metrics - %v", err)
-	}
-
 	// Initialize TLS logger
 	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(
@@ -745,7 +737,6 @@ func osctrlService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithSettingsMap(&settingsmap),
-		handlers.WithMetrics(tlsMetrics),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 	)
@@ -822,7 +813,7 @@ func cliAction(c *cli.Context) error {
 	if configFlag {
 		tlsConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceTLS)
 		if err != nil {
-			return fmt.Errorf("Error loading %s - %s", serviceConfigFile, err)
+			return fmt.Errorf("Error loading %s - %w", serviceConfigFile, err)
 		}
 	} else {
 		tlsConfig = tlsConfigValues
@@ -831,7 +822,7 @@ func cliAction(c *cli.Context) error {
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %v", err)
+			return fmt.Errorf("Failed to load DB configuration - %w", err)
 		}
 	} else {
 		dbConfig = dbConfigValues
@@ -840,7 +831,7 @@ func cliAction(c *cli.Context) error {
 	if redisFlag {
 		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %v", err)
+			return fmt.Errorf("Failed to load redis configuration - %w", err)
 		}
 	} else {
 		redisConfig = redisConfigValues
@@ -853,7 +844,7 @@ func cliAction(c *cli.Context) error {
 			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
+			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
 		}
 	}
 	return nil

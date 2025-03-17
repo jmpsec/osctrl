@@ -12,7 +12,6 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 	// Retrieve node
 	node, err := h.Nodes.GetByKey(nodeKey)
 	if err != nil {
-		h.Inc(metricInitErr)
 		log.Err(err).Msg("error retrieving node")
 		return err
 	}
@@ -38,7 +37,6 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 	// Create File Carve
 	err = h.Carves.CreateCarve(carve)
 	if err != nil {
-		h.Inc(metricInitErr)
 		log.Err(err).Msg("error creating CarvedFile")
 		return err
 	}
@@ -49,7 +47,6 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
 	// Create File Carve
 	if err := h.Carves.InitCarve(req, sessionid); err != nil {
-		h.Inc(metricInitErr)
 		log.Err(err).Msg("error creating CarvedFile")
 		return err
 	}
@@ -63,12 +60,10 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 	block := h.Carves.InitateBlock(environment, uuid, req.RequestID, req.SessionID, req.Data, req.BlockID, envid)
 	// Create Block
 	if err := h.Carves.CreateBlock(block, uuid, req.Data); err != nil {
-		h.Inc(metricBlockErr)
 		log.Err(err).Msg("error creating CarvedBlock")
 	}
 	// Bump block completion
 	if err := h.Carves.CompleteBlock(req.SessionID); err != nil {
-		h.Inc(metricBlockErr)
 		log.Err(err).Msg("error completing block")
 	}
 	// If it is completed, set status
@@ -77,27 +72,22 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 		if h.Carves.Carver == settings.CarverS3 {
 			archived, err := h.Carves.Archive(req.SessionID, "")
 			if err != nil {
-				h.Inc(metricBlockErr)
 				log.Err(err).Msg("error archiving results")
 				return
 			}
 			if archived == nil {
-				h.Inc(metricBlockErr)
 				log.Error().Msg("empty archive")
 				return
 			}
 			if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
-				h.Inc(metricBlockErr)
 				log.Err(err).Msg("error archiving carve")
 			}
 		}
 		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
-			h.Inc(metricBlockErr)
 			log.Err(err).Msg("error completing carve")
 		}
 	} else {
 		if err := h.Carves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
-			h.Inc(metricBlockErr)
 			log.Err(err).Msg("error progressing carve")
 		}
 	}

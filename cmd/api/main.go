@@ -15,7 +15,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -111,12 +110,9 @@ var (
 	tagsmgr           *tags.TagManager
 	settingsmgr       *settings.Settings
 	envs              *environments.Environment
-	envsmap           environments.MapEnvironments
-	settingsmap       settings.MapSettings
 	nodesmgr          *nodes.NodeManager
 	queriesmgr        *queries.Queries
 	filecarves        *carves.Carves
-	apiMetrics        *metrics.Metrics
 	handlersApi       *handlers.HandlersApi
 	app               *cli.App
 	flags             []cli.Flag
@@ -498,42 +494,6 @@ func osctrlAPIService() {
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Info().Msg("Loading service metrics")
-	apiMetrics, err = loadingMetrics(settingsmgr)
-	if err != nil {
-		log.Fatal().Msgf("Error loading metrics - %v", err)
-	}
-	// Ticker to reload environments
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	log.Info().Msg("Initialize environments refresh")
-	// Refresh environments as soon as service starts
-	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			envsmap = refreshEnvironments()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
-
-	// Ticker to reload settings
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	// Refresh settings as soon as the service starts
-	log.Info().Msg("Initialize settings refresh")
-	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			settingsmap = refreshSettings()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersApi = handlers.CreateHandlersApi(
@@ -545,7 +505,6 @@ func osctrlAPIService() {
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithMetrics(apiMetrics),
 		handlers.WithCache(redis),
 		handlers.WithVersion(serviceVersion),
 		handlers.WithName(serviceName),

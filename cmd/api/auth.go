@@ -16,20 +16,6 @@ const (
 	contextAPI string = "osctrl-api-context"
 )
 
-const (
-	ctxUser = "user"
-)
-
-const (
-	adminLevel string = "admin"
-	userLevel  string = "user"
-)
-
-// Helper to verify if user is an admin
-func checkAdminLevel(level string) bool {
-	return (level == adminLevel)
-}
-
 // Helper to extract token from header
 func extractHeaderToken(r *http.Request) string {
 	reqToken := r.Header.Get("Authorization")

@@ -49,17 +49,14 @@ func S3URLtoKey(s3url, bucket string) string {
 
 // Function to generate a local file for carve archives
 func GenerateArchiveName(carve CarvedFile) string {
-	cPath := strings.Replace(strings.Replace(carve.Path, "/", "-", -1), "\\", "-", -1)
+	cPath := strings.ReplaceAll(strings.ReplaceAll(carve.Path, "/", "-"), "\\", "-")
 	return fmt.Sprintf(LocalFile, carve.UUID, carve.SessionID, cPath)
 }
 
 // Function to check if data is compressed using zstd
 // https://github.com/facebook/zstd
 func CheckCompressionRaw(data []byte) bool {
-	if bytes.Compare(data[:4], CompressionHeader) == 0 {
-		return true
-	}
-	return false
+	return bytes.Equal(data[:4], CompressionHeader)
 }
 
 // Function to check if a block data is compressed using zstd
@@ -71,7 +68,7 @@ func CheckCompressionBlock(block CarvedBlock) (bool, error) {
 	}
 	compressionCheck, err := base64.StdEncoding.DecodeString(block.Data)
 	if err != nil {
-		return false, fmt.Errorf("error decoding block %v", err)
+		return false, fmt.Errorf("error decoding block %w", err)
 	}
 	return CheckCompressionRaw(compressionCheck), nil
 }

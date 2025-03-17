@@ -12,13 +12,6 @@ import (
 )
 
 const (
-	adminLevel string = "admin"
-	userLevel  string = "user"
-	queryLevel string = "query"
-	carveLevel string = "carve"
-)
-
-const (
 	authCookieName = "osctrl-admin-session"
 )
 

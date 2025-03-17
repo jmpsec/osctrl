@@ -109,7 +109,7 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 	// Decode before upload
 	toUpload, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
-		return fmt.Errorf("error decoding data - %v", err)
+		return fmt.Errorf("error decoding data - %w", err)
 	}
 	ptrContentLength := int64(len(toUpload))
 	uploadOutput, err := carveS3.Uploader.Upload(ctx, &s3.PutObjectInput{
@@ -120,7 +120,7 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 		ContentType:   aws.String(http.DetectContentType(toUpload)),
 	})
 	if err != nil {
-		return fmt.Errorf("error sending data to s3 - %s", err)
+		return fmt.Errorf("error sending data to s3 - %w", err)
 	}
 	if carveS3.Debug {
 		log.Debug().Msgf("DebugService: S3 Upload %+v", uploadOutput)
@@ -140,7 +140,7 @@ func (carveS3 *CarverS3) Concatenate(key string, destKey string, part int, uploa
 		UploadId:   uploadid,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("UploadPartCopy - %s - %s", key, err)
+		return nil, fmt.Errorf("UploadPartCopy - %s - %w", key, err)
 	}
 	return partOutput.CopyPartResult.ETag, nil
 }
@@ -159,7 +159,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		Key:    aws.String(fkey),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("CreateMultipartUpload - %s", err)
+		return nil, fmt.Errorf("CreateMultipartUpload - %w", err)
 	}
 	if uploadOutput != nil && uploadOutput.UploadId != nil {
 		if *uploadOutput.UploadId == "" {
@@ -170,7 +170,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 	for _, b := range blocks {
 		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.S3Config.Bucket), fkey, b.BlockID+1, uploadOutput.UploadId)
 		if err != nil {
-			return nil, fmt.Errorf("error concatenating - %s", err)
+			return nil, fmt.Errorf("error concatenating - %w", err)
 		}
 		ptrPartNumber := int32(b.BlockID + 1)
 		p := awsTypes.CompletedPart{
@@ -180,7 +180,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		parts = append(parts, p)
 	}
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("error concatenating - %s", err)
+		return nil, fmt.Errorf("error concatenating - %w", err)
 	}
 	// We finally complete the multipart upload.
 	multiOutput, err := carveS3.Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
@@ -192,7 +192,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("CompleteMultipartUpload - %s", err)
+		return nil, fmt.Errorf("CompleteMultipartUpload - %w", err)
 	}
 	if carveS3.Debug {
 		log.Debug().Msgf("DebugService: S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
@@ -215,7 +215,7 @@ func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 	// Forcing sequential downloads so we can skip the offset from io.WriterAt
 	downloader.Concurrency = 1
 	if err != nil {
-		return nil, fmt.Errorf("Download - %s", err)
+		return nil, fmt.Errorf("Download - %w", err)
 	}
 	if carveS3.Debug {
 		log.Debug().Msgf("DebugService: S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
@@ -235,7 +235,7 @@ func (carveS3 *CarverS3) GetDownloadLink(carve CarvedFile) (string, error) {
 		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
 	}, s3.WithPresignExpires(DownloadLinkExpiration*time.Minute))
 	if err != nil {
-		return "", fmt.Errorf("PresignGetObject - %s", err)
+		return "", fmt.Errorf("PresignGetObject - %w", err)
 	}
 	return lnk.URL, nil
 }

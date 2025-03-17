@@ -76,7 +76,7 @@ func nodeFromEnroll(req types.EnrollRequest, env environments.TLSEnvironment, ip
 		enrollRaw = []byte("")
 	}
 	// Avoid the error "unsupported Unicode escape sequence" due to \u0000
-	enrollRaw = bytes.Replace(enrollRaw, []byte("\\u0000"), []byte(""), -1)
+	enrollRaw = bytes.ReplaceAll(enrollRaw, []byte("\\u0000"), []byte(""))
 	return nodes.OsqueryNode{
 		NodeKey:         nodekey,
 		UUID:            strings.ToUpper(req.HostIdentifier),

@@ -100,7 +100,7 @@ func (db *DBManager) Check() error {
 func CreateDBManagerFile(file string) (*DBManager, error) {
 	dbConfig, err := LoadConfiguration(file, DBKey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load DB configuration - %v", err)
+		return nil, fmt.Errorf("Failed to load DB configuration - %w", err)
 	}
 	return CreateDBManager(dbConfig)
 }
@@ -112,7 +112,7 @@ func CreateDBManager(dbConfig JSONConfigurationDB) (*DBManager, error) {
 	db.DSN = PrepareDSN(dbConfig)
 	dbConn, err := db.GetDB()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get DB - %v", err)
+		return nil, fmt.Errorf("Failed to get DB - %w", err)
 	}
 	db.Conn = dbConn
 	return db, nil

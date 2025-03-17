@@ -149,7 +149,7 @@ func (sm *SessionManager) New(r *http.Request, username string) (UserSession, er
 	}
 	session.Cookie = cookie
 	if err := sm.db.Create(&session).Error; err != nil {
-		return UserSession{}, fmt.Errorf("Create UserSession %v", err)
+		return UserSession{}, fmt.Errorf("Create UserSession %w", err)
 	}
 	return session, nil
 }
@@ -162,7 +162,7 @@ func (sm *SessionManager) Destroy(r *http.Request) error {
 			return err
 		}
 		if err := sm.db.Model(&s).Update("expires_at", time.Now().Add(-1*time.Second)).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil

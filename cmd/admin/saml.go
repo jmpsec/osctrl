@@ -88,28 +88,23 @@ func keypairSAML(config JSONConfigurationSAML) (samlThings, error) {
 	var err error
 	data.KeyPair, err = tls.LoadX509KeyPair(config.CertPath, config.KeyPath)
 	if err != nil {
-		return data, fmt.Errorf("LoadX509KeyPair %v", err)
+		return data, fmt.Errorf("LoadX509KeyPair %w", err)
 	}
 	data.KeyPair.Leaf, err = x509.ParseCertificate(data.KeyPair.Certificate[0])
 	if err != nil {
-		return data, fmt.Errorf("ParseCertificate %v", err)
+		return data, fmt.Errorf("ParseCertificate %w", err)
 	}
 	data.IdpMetadataURL, err = url.Parse(config.MetaDataURL)
 	if err != nil {
-		return data, fmt.Errorf("Parse MetadataURL %v", err)
+		return data, fmt.Errorf("Parse MetadataURL %w", err)
 	}
 	data.IdpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *data.IdpMetadataURL)
 	if err != nil {
-		return data, fmt.Errorf("Fetch Metadata %v", err)
+		return data, fmt.Errorf("Fetch Metadata %w", err)
 	}
 	data.RootURL, err = url.Parse(config.RootURL)
 	if err != nil {
-		return data, fmt.Errorf("Parse RootURL %v", err)
+		return data, fmt.Errorf("Parse RootURL %w", err)
 	}
 	return data, nil
-}
-
-// Function to serve as login redirect
-func loginSAML(w http.ResponseWriter, r *http.Request, samlConfig JSONConfigurationSAML) {
-	http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 }

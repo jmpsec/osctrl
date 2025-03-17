@@ -40,19 +40,18 @@ func CreateLoggerKafka(config types.KafkaConfiguration) (*LoggerKafka, error) {
 		if config.SASL.Password == "" {
 			return nil, fmt.Errorf("SASL mechanism requires a password")
 		}
-
 		auth := scram.Auth{
 			User: config.SASL.Username,
 			Pass: config.SASL.Password,
 		}
-
 		var mechanism sasl.Mechanism
-		if config.SASL.Mechanism == "SCRAM-SHA-512" {
+		switch config.SASL.Mechanism {
+		case "SCRAM-SHA-512":
 			mechanism = auth.AsSha512Mechanism()
-		} else if config.SASL.Mechanism == "SCRAM-SHA-256" {
+		case "SCRAM-SHA-256":
 			mechanism = auth.AsSha256Mechanism()
-		} else {
-			return nil, fmt.Errorf("unknow SASL mechanism '%s'", config.SASL.Mechanism)
+		default:
+			return nil, fmt.Errorf("unknown SASL mechanism '%s'", config.SASL.Mechanism)
 		}
 
 		opts = append(opts, kgo.SASL(mechanism))
@@ -94,7 +93,7 @@ func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string
 	}
 
 	ctx := context.Background()
-	key := []byte(uuid) //uuid is the unique id of the os-query agent host that sent this data
+	key := []byte(uuid) // uuid is the unique id of the os-query agent host that sent this data
 	rec := kgo.Record{Topic: l.config.Topic, Key: key, Value: data}
 	l.producer.Produce(ctx, &rec, func(r *kgo.Record, err error) {
 		if err != nil {

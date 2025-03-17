@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-const (
-	errorRandomString string = "SomethingRandomWentWrong"
-)
-
 // ReadExternalFile to read an external file and return contents
 func ReadExternalFile(path string) string {
 	content, err := os.ReadFile(path)

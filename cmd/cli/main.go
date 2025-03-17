@@ -870,24 +870,24 @@ func init() {
 							Action: cliWrapper(quickAddEnvironment),
 						},
 						{
-							Name:    "extend-enroll",
-							Usage:   "Extend the existing enroll URL for a TLS environment",
-							Action:  cliWrapper(extendEnrollEnvironment),
+							Name:   "extend-enroll",
+							Usage:  "Extend the existing enroll URL for a TLS environment",
+							Action: cliWrapper(extendEnrollEnvironment),
 						},
 						{
-							Name:    "rotate-enroll",
-							Usage:   "Rotate to a new enroll URL for a TLS environment",
-							Action:  cliWrapper(rotateEnrollEnvironment),
+							Name:   "rotate-enroll",
+							Usage:  "Rotate to a new enroll URL for a TLS environment",
+							Action: cliWrapper(rotateEnrollEnvironment),
 						},
 						{
-							Name:    "expire-enroll",
-							Usage:   "Expire the existing enroll URL for a TLS environment",
-							Action:  cliWrapper(expireEnrollEnvironment),
+							Name:   "expire-enroll",
+							Usage:  "Expire the existing enroll URL for a TLS environment",
+							Action: cliWrapper(expireEnrollEnvironment),
 						},
 						{
-							Name:    "notexpire-enroll",
-							Usage:   "Set the existing enroll URL for a TLS environment to NOT expire",
-							Action:  cliWrapper(notexpireEnrollEnvironment),
+							Name:   "notexpire-enroll",
+							Usage:  "Set the existing enroll URL for a TLS environment to NOT expire",
+							Action: cliWrapper(notexpireEnrollEnvironment),
 						},
 						{
 							Name:    "quick-remove",
@@ -910,24 +910,24 @@ func init() {
 							Action: cliWrapper(quickRemoveEnvironment),
 						},
 						{
-							Name:    "extend-remove",
-							Usage:   "Extend the existing enroll URL for a TLS environment",
-							Action:  cliWrapper(extendRemoveEnvironment),
+							Name:   "extend-remove",
+							Usage:  "Extend the existing enroll URL for a TLS environment",
+							Action: cliWrapper(extendRemoveEnvironment),
 						},
 						{
-							Name:    "rotate-remove",
-							Usage:   "Rotate to a new enroll URL for a TLS environment",
-							Action:  cliWrapper(rotateRemoveEnvironment),
+							Name:   "rotate-remove",
+							Usage:  "Rotate to a new enroll URL for a TLS environment",
+							Action: cliWrapper(rotateRemoveEnvironment),
 						},
 						{
-							Name:    "expire-remove",
-							Usage:   "Expire the existing remove URL for a TLS environment",
-							Action:  cliWrapper(expireRemoveEnvironment),
+							Name:   "expire-remove",
+							Usage:  "Expire the existing remove URL for a TLS environment",
+							Action: cliWrapper(expireRemoveEnvironment),
 						},
 						{
-							Name:    "notexpire-remove",
-							Usage:   "Set the existing remove URL for a TLS environment to NOT expire",
-							Action:  cliWrapper(notexpireRemoveEnvironment),
+							Name:   "notexpire-remove",
+							Usage:  "Set the existing remove URL for a TLS environment to NOT expire",
+							Action: cliWrapper(notexpireRemoveEnvironment),
 						},
 						{
 							Name:    "secret",
@@ -1688,12 +1688,12 @@ func checkDB(c *cli.Context) error {
 		// Initialize backend
 		db, err = backend.CreateDBManagerFile(dbConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to create backend - %v", err)
+			return fmt.Errorf("Failed to create backend - %w", err)
 		}
 	} else {
 		db, err = backend.CreateDBManager(dbConfig)
 		if err != nil {
-			return fmt.Errorf("Failed to create backend - %v", err)
+			return fmt.Errorf("Failed to create backend - %w", err)
 		}
 	}
 	if err := db.Check(); err != nil {
@@ -1712,7 +1712,7 @@ func checkAPI(c *cli.Context) error {
 		if apiConfigFile != "" {
 			apiConfig, err = loadAPIConfiguration(apiConfigFile)
 			if err != nil {
-				return fmt.Errorf("loadAPIConfiguration - %v", err)
+				return fmt.Errorf("loadAPIConfiguration - %w", err)
 			}
 		}
 		// Initialize API
@@ -1749,12 +1749,12 @@ func loginAPI(c *cli.Context) error {
 	fmt.Printf("\n ->  Please introduce your password: ")
 	passwordByte, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
-		return fmt.Errorf("error reading password %s", err)
+		return fmt.Errorf("error reading password %w", err)
 	}
 	fmt.Println()
 	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte), expHours)
 	if err != nil {
-		return fmt.Errorf("error in login %s", err)
+		return fmt.Errorf("error in login %w", err)
 	}
 	apiConfig.Token = apiResponse.Token
 	if !silentFlag {
@@ -1762,7 +1762,7 @@ func loginAPI(c *cli.Context) error {
 	}
 	if writeApiFileFlag {
 		if err := writeAPIConfiguration(apiConfigFile, apiConfig); err != nil {
-			return fmt.Errorf("error writing to file %s, %s", apiConfigFile, err)
+			return fmt.Errorf("error writing to file %s, %w", apiConfigFile, err)
 		}
 		if !silentFlag {
 			fmt.Printf("\n✅ API config file written: %s\n", apiConfigFile)
@@ -1785,12 +1785,12 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			if dbConfigFile != "" {
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
-					return fmt.Errorf("CreateDBManagerFile - %v", err)
+					return fmt.Errorf("CreateDBManagerFile - %w", err)
 				}
 			} else {
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
-					return fmt.Errorf("CreateDBManager - %v", err)
+					return fmt.Errorf("CreateDBManager - %w", err)
 				}
 			}
 			// Initialize users
@@ -1814,7 +1814,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			if apiConfigFile != "" {
 				apiConfig, err = loadAPIConfiguration(apiConfigFile)
 				if err != nil {
-					return fmt.Errorf("loadAPIConfiguration - %v", err)
+					return fmt.Errorf("loadAPIConfiguration - %w", err)
 				}
 			}
 			// Initialize API

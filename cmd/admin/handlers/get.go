@@ -22,10 +22,8 @@ func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
 
 // HealthHandler for health requests
 func (h *HandlersAdmin) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricHealthReq)
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
-	h.Inc(metricHealthOK)
 }
 
 // ErrorHandler for error requests
@@ -50,7 +48,6 @@ func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
@@ -65,23 +62,19 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Get permissions
 	permissions, err := h.Users.GetAccess(usernameVar)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msg("error getting permissions")
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, permissions)
-	h.Inc(metricJSONOK)
 }
 
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricAdminReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -89,33 +82,28 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("environment is missing")
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricAdminErr)
 		return
 	}
 	// Extract id to download
 	carveSession := r.PathValue("sessionid")
 	if carveSession == "" {
-		h.Inc(metricAdminErr)
 		log.Info().Msg("empty carve session")
 		return
 	}
 	// Check if carve is archived already
 	carve, err := h.Carves.GetBySession(carveSession)
 	if err != nil {
-		h.Inc(metricAdminErr)
 		log.Err(err).Msgf("error getting carve")
 		return
 	}
@@ -123,17 +111,14 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	if !carve.Archived {
 		archived, err = h.Carves.Archive(carveSession, h.CarvesFolder)
 		if err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msgf("error archiving results")
 			return
 		}
 		if archived == nil {
-			h.Inc(metricAdminErr)
 			log.Info().Msg("empty archive")
 			return
 		}
 		if err := h.Carves.ArchiveCarve(carveSession, archived.File); err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msgf("error archiving carve")
 		}
 	}
@@ -147,7 +132,6 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	if h.Carves.Carver == settings.CarverS3 {
 		downloadURL, err := h.Carves.S3.GetDownloadLink(carve)
 		if err != nil {
-			h.Inc(metricAdminErr)
 			log.Err(err).Msg("error getting carve link")
 			return
 		}
@@ -156,10 +140,8 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		// Send response
 		utils.HTTPDownload(w, "File Carve Download", archived.File, archived.Size)
 		w.WriteHeader(http.StatusOK)
-		h.Inc(metricAdminOK)
 		var fileReader io.Reader
 		fileReader, _ = os.Open(archived.File)
 		_, _ = io.Copy(w, fileReader)
 	}
-	h.Inc(metricAdminOK)
 }

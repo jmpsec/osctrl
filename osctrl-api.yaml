@@ -2019,19 +2019,7 @@ components:
           format: int32
         RawEnrollment:
           type: string
-        LastStatus:
-          type: string
-          format: date-time
-        LastResult:
-          type: string
-          format: date-time
-        LastConfig:
-          type: string
-          format: date-time
-        LastQueryRead:
-          type: string
-          format: date-time
-        LastQueryWrite:
+        LastSeen:
           type: string
           format: date-time
         UserID:

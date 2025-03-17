@@ -18,7 +18,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/pkg/metrics"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -138,7 +137,6 @@ var (
 	flags             []cli.Flag
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
-	adminMetrics  *metrics.Metrics
 	handlersAdmin *handlers.HandlersAdmin
 )
 
@@ -695,10 +693,6 @@ func osctrlAdminService() {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
 	log.Info().Msg("Loading service metrics")
-	adminMetrics, err = loadingMetrics(settingsmgr)
-	if err != nil {
-		log.Fatal().Msgf("Error loading metrics - %v", err)
-	}
 
 	// Start SAML Middleware if we are using SAML
 	if adminConfig.Auth == settings.AuthSAML {
@@ -793,7 +787,6 @@ func osctrlAdminService() {
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(carvesmgr),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithMetrics(adminMetrics),
 		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
 		handlers.WithVersion(serviceVersion),
@@ -966,7 +959,7 @@ func cliAction(c *cli.Context) error {
 	if configFlag {
 		adminConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAdmin)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %s", serviceConfigFile, err)
+			return fmt.Errorf("Failed to load service configuration %s - %w", serviceConfigFile, err)
 		}
 	} else {
 		adminConfig = adminConfigValues
@@ -975,7 +968,7 @@ func cliAction(c *cli.Context) error {
 	if redisFlag {
 		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %v", err)
+			return fmt.Errorf("Failed to load redis configuration - %w", err)
 		}
 	} else {
 		redisConfig = redisConfigValues
@@ -984,7 +977,7 @@ func cliAction(c *cli.Context) error {
 	if dbFlag {
 		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %v", err)
+			return fmt.Errorf("Failed to load DB configuration - %w", err)
 		}
 	} else {
 		dbConfig = dbConfigValues
@@ -993,14 +986,14 @@ func cliAction(c *cli.Context) error {
 	if adminConfig.Auth == settings.AuthSAML {
 		samlConfig, err = loadSAML(samlConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load SAML configuration - %v", err)
+			return fmt.Errorf("Failed to load SAML configuration - %w", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used
 	if jwtFlag {
 		jwtConfig, err = loadJWTConfiguration(jwtConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load JWT configuration - %v", err)
+			return fmt.Errorf("Failed to load JWT configuration - %w", err)
 		}
 	} else {
 		jwtConfig = jwtConfigValues
@@ -1008,7 +1001,7 @@ func cliAction(c *cli.Context) error {
 	// Load osquery tables JSON file
 	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
 	if err != nil {
-		return fmt.Errorf("Failed to load osquery tables - %v", err)
+		return fmt.Errorf("Failed to load osquery tables - %w", err)
 	}
 	// Load carver configuration if external JSON config file is used
 	if adminConfig.Carver == settings.CarverS3 {
@@ -1018,7 +1011,7 @@ func cliAction(c *cli.Context) error {
 			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to initiate s3 carver - %v", err)
+			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
 		}
 	}
 	return nil

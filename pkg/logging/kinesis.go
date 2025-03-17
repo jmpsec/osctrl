@@ -36,16 +36,19 @@ func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := session.New(&aws.Config{
+	s, err := session.NewSession(&aws.Config{
 		Region:      aws.String(config.Region),
 		Endpoint:    aws.String(config.Endpoint),
 		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, config.SessionToken),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("NewSession: %w", err)
+	}
 	kc := kinesis.New(s)
 	streamName := aws.String(config.Stream)
 	_, err = kc.DescribeStream(&kinesis.DescribeStreamInput{StreamName: streamName})
 	if err != nil {
-		return nil, fmt.Errorf("DescribeStream: %v", err)
+		return nil, fmt.Errorf("DescribeStream: %w", err)
 	}
 	l := &LoggerKinesis{
 		Configuration: config,

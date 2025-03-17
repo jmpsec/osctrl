@@ -88,10 +88,10 @@ func writeAPIConfiguration(file string, apiConf JSONConfigurationAPI) error {
 	fileData[projectName] = apiConf
 	confByte, err := json.MarshalIndent(fileData, "", " ")
 	if err != nil {
-		return fmt.Errorf("error serializing data %s", err)
+		return fmt.Errorf("error serializing data %w", err)
 	}
 	if err := os.WriteFile(file, confByte, 0644); err != nil {
-		return fmt.Errorf("error writing to file %s", err)
+		return fmt.Errorf("error writing to file %w", err)
 	}
 	return nil
 }
@@ -143,7 +143,7 @@ func (api *OsctrlAPI) PostGeneric(url string, body io.Reader) ([]byte, error) {
 func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(reqType, url, body)
 	if err != nil {
-		return []byte{}, fmt.Errorf("NewRequest - %v", err)
+		return []byte{}, fmt.Errorf("NewRequest - %w", err)
 	}
 	// Set custom User-Agent
 	req.Header.Set(UserAgent, osctrlUserAgent)
@@ -154,13 +154,13 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 	// Send request
 	resp, err := api.Client.Do(req)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Client.Do - %v", err)
+		return []byte{}, fmt.Errorf("Client.Do - %w", err)
 	}
 	defer resp.Body.Close()
 	// Read body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return []byte{}, fmt.Errorf("can not read response - %v", err)
+		return []byte{}, fmt.Errorf("can not read response - %w", err)
 	}
 	// Check response code
 	if resp.StatusCode != http.StatusOK {

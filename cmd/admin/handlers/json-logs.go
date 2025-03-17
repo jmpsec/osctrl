@@ -59,33 +59,28 @@ type QueryLogJSON struct {
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract type
 	logType := r.PathValue("type")
 	if logType == "" {
 		log.Info().Msg("error getting log type")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Verify log type
 	if !LogTypes[logType] {
 		log.Info().Msgf("invalid log type %s", logType)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		log.Info().Msg("environment is missing")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get environment
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Get context data
@@ -93,7 +88,6 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract UUID
@@ -101,7 +95,6 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	UUID := r.PathValue("uuid")
 	if UUID == "" {
 		log.Info().Msg("error getting UUID")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract parameter for seconds
@@ -130,7 +123,6 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
-			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -150,7 +142,6 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
-			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -171,19 +162,16 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }
 
 // JSONQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	h.Inc(metricJSONReq)
 	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Extract query name
@@ -191,7 +179,6 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	name := r.PathValue("name")
 	if name == "" {
 		log.Info().Msg("error getting name")
-		h.Inc(metricJSONErr)
 		return
 	}
 	// Iterate through targets to get logs
@@ -201,7 +188,6 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 		queryLogs, err := h.DBLogger.QueryLogs(name)
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
-			h.Inc(metricJSONErr)
 			return
 		}
 		// Prepare data to be returned
@@ -219,7 +205,6 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 			qData, err := json.Marshal(q.Data)
 			if err != nil {
 				log.Err(err).Msg("error serializing logs")
-				h.Inc(metricJSONErr)
 				continue
 			}
 			_l := QueryLogJSON{
@@ -238,5 +223,4 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
-	h.Inc(metricJSONOK)
 }

@@ -66,8 +66,7 @@ type Carves struct {
 
 // CreateFileCarves to initialize the carves struct and tables
 func CreateFileCarves(backend *gorm.DB, carverType string, s3 *CarverS3) *Carves {
-	var c *Carves
-	c = &Carves{DB: backend, Carver: carverType, S3: s3}
+	var c *Carves = &Carves{DB: backend, Carver: carverType, S3: s3}
 	// table carved_files
 	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (carved_files): %v", err)
@@ -88,7 +87,7 @@ func (c *Carves) CreateCarve(carve CarvedFile) error {
 func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string) error {
 	carves, err := c.GetByRequest(req.RequestID)
 	if err != nil {
-		return fmt.Errorf("getCarveByRequest %v", err)
+		return fmt.Errorf("getCarveByRequest %w", err)
 	}
 	for _, carve := range carves {
 		toUpdate := map[string]interface{}{
@@ -119,7 +118,7 @@ func (c *Carves) CheckCarve(sessionid, requestid string) bool {
 func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) {
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
-		return carve, fmt.Errorf("GetBySession %v", err)
+		return carve, fmt.Errorf("GetBySession %w", err)
 	}
 	if carve.RequestID != strings.TrimSpace(requestid) {
 		return CarvedFile{}, fmt.Errorf("RequestID does not match carve %s != %s", carve.RequestID, requestid)
@@ -169,10 +168,10 @@ func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 func (c *Carves) Delete(carveid string) error {
 	carve, err := c.GetByCarve(carveid)
 	if err != nil {
-		return fmt.Errorf("getCarveByID %v", err)
+		return fmt.Errorf("getCarveByID %w", err)
 	}
 	if err := c.DB.Unscoped().Delete(&carve).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -181,11 +180,11 @@ func (c *Carves) Delete(carveid string) error {
 func (c *Carves) DeleteBlocks(sessionid string) error {
 	blocks, err := c.GetBlocks(sessionid)
 	if err != nil {
-		return fmt.Errorf("getBlocksBySessionID %v", err)
+		return fmt.Errorf("getBlocksBySessionID %w", err)
 	}
 	for _, b := range blocks {
 		if err := c.DB.Unscoped().Delete(&b).Error; err != nil {
-			return fmt.Errorf("Delete %v", err)
+			return fmt.Errorf("Delete %w", err)
 		}
 	}
 	return nil
@@ -258,14 +257,14 @@ func (c *Carves) GetNodeCarves(uuid string) ([]CarvedFile, error) {
 func (c *Carves) ChangeStatus(status, sessionid string) error {
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
-		return fmt.Errorf("getCarveBySessionID %v", err)
+		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
 	if err := c.DB.Model(&carve).Update("status", status).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("Update %w", err)
 	}
 	if status == StatusCompleted {
 		if err := c.DB.Model(&carve).Update("completed_at", time.Now()).Error; err != nil {
-			return fmt.Errorf("Update %v", err)
+			return fmt.Errorf("Update %w", err)
 		}
 	}
 	return nil
@@ -275,10 +274,10 @@ func (c *Carves) ChangeStatus(status, sessionid string) error {
 func (c *Carves) CompleteBlock(sessionid string) error {
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
-		return fmt.Errorf("getCarveBySessionID %v", err)
+		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
 	if err := c.DB.Model(&carve).Update("completed_blocks", carve.CompletedBlocks+1).Error; err != nil {
-		return fmt.Errorf("Update %v", err)
+		return fmt.Errorf("Update %w", err)
 	}
 	return nil
 }
@@ -287,14 +286,14 @@ func (c *Carves) CompleteBlock(sessionid string) error {
 func (c *Carves) ArchiveCarve(sessionid, archive string) error {
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
-		return fmt.Errorf("getCarveBySessionID %v", err)
+		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
 	toUpdate := map[string]interface{}{
 		"archived":     true,
 		"archive_path": archive,
 	}
 	if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	return nil
 }
@@ -314,7 +313,7 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 	// Get carve
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
-		return nil, fmt.Errorf("error getting carve - %v", err)
+		return nil, fmt.Errorf("error getting carve - %w", err)
 	}
 	if carve.Archived {
 		return &CarveResult{
@@ -325,7 +324,7 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 	// Get all blocks
 	blocks, err := c.GetBlocks(carve.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("error getting blocks - %v", err)
+		return nil, fmt.Errorf("error getting blocks - %w", err)
 	}
 	switch c.Carver {
 	case settings.CarverLocal:
@@ -366,24 +365,24 @@ func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []Carved
 	// Check if data is compressed
 	zstd, err := CheckCompressionBlock(blocks[0])
 	if err != nil {
-		return res, fmt.Errorf("compression check - %v", err)
+		return res, fmt.Errorf("compression check - %w", err)
 	}
 	if zstd {
 		res.File += ZstFileExtension
 	}
 	f, err := os.OpenFile(res.File, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return res, fmt.Errorf("file creation - %v", err)
+		return res, fmt.Errorf("file creation - %w", err)
 	}
 	defer f.Close()
 	// Iterate through blocks and write decoded content to file
 	for _, b := range blocks {
 		toFile, err := base64.StdEncoding.DecodeString(b.Data)
 		if err != nil {
-			return res, fmt.Errorf("decoding data - %v", err)
+			return res, fmt.Errorf("decoding data - %w", err)
 		}
 		if _, err := f.Write(toFile); err != nil {
-			return res, fmt.Errorf("writing to file - %v", err)
+			return res, fmt.Errorf("writing to file - %w", err)
 		}
 		res.Size += int64(len(toFile))
 	}

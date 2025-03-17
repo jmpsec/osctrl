@@ -22,7 +22,7 @@ type APIQueryData map[string]string
 const (
 	// Key to identify request context
 	contextAPI string = "osctrl-api-context"
-	ctxUser           = "user"
+	ctxUser    string = "user"
 )
 
 // Function to retrieve the query log by name

@@ -8,13 +8,13 @@ import (
 
 func TestSameAccessTrue(t *testing.T) {
 	acc1 := EnvAccess{
-		User: true,
+		User:  true,
 		Query: true,
 		Carve: false,
 		Admin: false,
 	}
 	acc2 := EnvAccess{
-		User: true,
+		User:  true,
 		Query: true,
 		Carve: false,
 		Admin: false,
@@ -24,13 +24,13 @@ func TestSameAccessTrue(t *testing.T) {
 
 func TestSameAccessFalse(t *testing.T) {
 	acc1 := EnvAccess{
-		User: true,
+		User:  true,
 		Query: true,
 		Carve: false,
 		Admin: false,
 	}
 	acc2 := EnvAccess{
-		User: true,
+		User:  true,
 		Query: false,
 		Carve: false,
 		Admin: false,
@@ -40,7 +40,7 @@ func TestSameAccessFalse(t *testing.T) {
 
 func TestGenEnvAccessAdmin(t *testing.T) {
 	acc := EnvAccess{
-		User: true,
+		User:  true,
 		Query: true,
 		Carve: true,
 		Admin: true,
@@ -50,7 +50,7 @@ func TestGenEnvAccessAdmin(t *testing.T) {
 
 func TestGenEnvAccessQueryUser(t *testing.T) {
 	acc := EnvAccess{
-		User: true,
+		User:  true,
 		Query: true,
 		Carve: false,
 		Admin: false,

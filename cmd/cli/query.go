@@ -78,16 +78,16 @@ func listQueries(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		qs, err = queriesmgr.GetQueries(target, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %s", err)
+			return fmt.Errorf("❌ error get queries - %w", err)
 		}
 	} else if apiFlag {
 		qs, err = osctrlAPI.GetQueries(target, env)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %s", err)
+			return fmt.Errorf("❌ error get queries - %w", err)
 		}
 	}
 	header := []string{
@@ -105,19 +105,20 @@ func listQueries(c *cli.Context) error {
 		"Expiration",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch {
+	case formatFlag == jsonFormat:
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
-			return fmt.Errorf("❌ error json marshal - %s", err)
+			return fmt.Errorf("❌ error json marshal - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case formatFlag == csvFormat:
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error csv writeall - %s", err)
+			return fmt.Errorf("❌ error csv writeall - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case formatFlag == prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(qs) > 0 {
@@ -125,7 +126,7 @@ func listQueries(c *cli.Context) error {
 			data := queriesToData(qs, nil)
 			table.AppendBulk(data)
 		} else {
-			fmt.Printf("No %s nodes\n", target)
+			fmt.Printf("No %s queries\n", target)
 		}
 		table.Render()
 	}
@@ -147,15 +148,15 @@ func completeQuery(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		if err := queriesmgr.Complete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error completing query - %s", err)
+			return fmt.Errorf("❌ error completing query - %w", err)
 		}
 	} else if apiFlag {
 		_, err := osctrlAPI.CompleteQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error completing query - %s", err)
+			return fmt.Errorf("❌ error completing query - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -179,15 +180,15 @@ func deleteQuery(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		if err := queriesmgr.Delete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %s", err)
+			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if !silentFlag {
@@ -211,15 +212,15 @@ func expireQuery(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		if err := queriesmgr.Expire(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error expiring query - %s", err)
+			return fmt.Errorf("❌ error expiring query - %w", err)
 		}
 	} else if apiFlag {
 		_, err := osctrlAPI.ExpireQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error expiring query - %s", err)
+			return fmt.Errorf("❌ error expiring query - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -251,7 +252,7 @@ func runQuery(c *cli.Context) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %s", err)
+			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		queryName = queries.GenQueryName()
 		newQuery := queries.DistributedQuery{
@@ -270,20 +271,20 @@ func runQuery(c *cli.Context) error {
 			EnvironmentID: e.ID,
 		}
 		if err := queriesmgr.Create(newQuery); err != nil {
-			return fmt.Errorf("❌ error query create - %s", err)
+			return fmt.Errorf("❌ error query create - %w", err)
 		}
 		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
 			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, uuid); err != nil {
-				return fmt.Errorf("❌ error create target - %s", err)
+				return fmt.Errorf("❌ error create target - %w", err)
 			}
 		}
 		if err := queriesmgr.SetExpected(queryName, 1, e.ID); err != nil {
-			return fmt.Errorf("❌ error set expected - %s", err)
+			return fmt.Errorf("❌ error set expected - %w", err)
 		}
 	} else if apiFlag {
 		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden, expHours)
 		if err != nil {
-			return fmt.Errorf("❌ error run query - %s", err)
+			return fmt.Errorf("❌ error run query - %w", err)
 		}
 		queryName = q.Name
 	}

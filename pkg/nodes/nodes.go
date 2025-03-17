@@ -89,8 +89,7 @@ type NodeManager struct {
 
 // CreateNodes to initialize the nodes struct and its tables
 func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
-	var n *NodeManager
-	n = &NodeManager{
+	var n *NodeManager = &NodeManager{
 		DB:    backend,
 		Cache: cache,
 	}
@@ -205,12 +204,12 @@ func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64)
 			return nodes, err
 		}
 	case ActiveNodes:
-		//if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
 		if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case InactiveNodes:
-		//if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
 		if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
@@ -227,12 +226,12 @@ func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 			return nodes, err
 		}
 	case ActiveNodes:
-		//if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		// if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
 		if err := n.DB.Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case InactiveNodes:
-		//if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
+		// if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
 		if err := n.DB.Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
@@ -317,7 +316,7 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 	// Retrieve node
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
+		return fmt.Errorf("getNodeByUUID %w", err)
 	}
 	// Prepare metadata updates
 	updates := map[string]interface{}{
@@ -353,7 +352,7 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 		updates["osquery_user"] = metadata.OsqueryUser
 	}
 	if err := n.MetadataRefresh(node, updates); err != nil {
-		return fmt.Errorf("MetadataRefresh %v", err)
+		return fmt.Errorf("MetadataRefresh %w", err)
 	}
 	return nil
 }
@@ -361,7 +360,7 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) e
 // Create to insert new osquery node generating new node_key
 func (n *NodeManager) Create(node *OsqueryNode) error {
 	if err := n.DB.Create(&node).Error; err != nil {
-		return fmt.Errorf("Create %v", err)
+		return fmt.Errorf("Create %w", err)
 	}
 	return nil
 }
@@ -369,7 +368,7 @@ func (n *NodeManager) Create(node *OsqueryNode) error {
 // NewHistoryEntry to insert new entry for the history of Hostnames
 func (n *NodeManager) NewHistoryEntry(entry interface{}) error {
 	if err := n.DB.Create(&entry).Error; err != nil {
-		return fmt.Errorf("Create newNodeHistoryEntry %v", err)
+		return fmt.Errorf("Create newNodeHistoryEntry %w", err)
 	}
 	return nil
 }
@@ -378,11 +377,11 @@ func (n *NodeManager) NewHistoryEntry(entry interface{}) error {
 func (n *NodeManager) Archive(uuid, trigger string) error {
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
+		return fmt.Errorf("getNodeByUUID %w", err)
 	}
 	archivedNode := nodeArchiveFromNode(node, trigger)
 	if err := n.DB.Create(&archivedNode).Error; err != nil {
-		return fmt.Errorf("Create %v", err)
+		return fmt.Errorf("Create %w", err)
 	}
 	return nil
 }
@@ -391,10 +390,10 @@ func (n *NodeManager) Archive(uuid, trigger string) error {
 func (n *NodeManager) UpdateByUUID(data OsqueryNode, uuid string) error {
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
+		return fmt.Errorf("getNodeByUUID %w", err)
 	}
 	if err := n.DB.Model(&node).Updates(data).Error; err != nil {
-		return fmt.Errorf("Updates %v", err)
+		return fmt.Errorf("Updates %w", err)
 	}
 	return nil
 }
@@ -403,14 +402,14 @@ func (n *NodeManager) UpdateByUUID(data OsqueryNode, uuid string) error {
 func (n *NodeManager) ArchiveDeleteByUUID(uuid string) error {
 	node, err := n.GetByUUID(uuid)
 	if err != nil {
-		return fmt.Errorf("getNodeByUUID %v", err)
+		return fmt.Errorf("getNodeByUUID %w", err)
 	}
 	archivedNode := nodeArchiveFromNode(node, "delete")
 	if err := n.DB.Create(&archivedNode).Error; err != nil {
-		return fmt.Errorf("Create %v", err)
+		return fmt.Errorf("Create %w", err)
 	}
 	if err := n.DB.Unscoped().Delete(&node).Error; err != nil {
-		return fmt.Errorf("Delete %v", err)
+		return fmt.Errorf("Delete %w", err)
 	}
 	return nil
 }
@@ -447,7 +446,7 @@ func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 // IncreaseBytes to update received bytes per node
 func (n *NodeManager) IncreaseBytes(node OsqueryNode, incBytes int) error {
 	if err := n.DB.Model(&node).Update("bytes_received", node.BytesReceived+incBytes).Error; err != nil {
-		return fmt.Errorf("Update bytes_received - %v", err)
+		return fmt.Errorf("Update bytes_received - %w", err)
 	}
 	return nil
 }
