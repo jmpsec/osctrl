@@ -105,19 +105,20 @@ func listQueries(c *cli.Context) error {
 		"Expiration",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch {
+	case formatFlag == jsonFormat:
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
 			return fmt.Errorf("❌ error json marshal - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case formatFlag == csvFormat:
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("❌ error csv writeall - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case formatFlag == prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(qs) > 0 {
@@ -125,7 +126,7 @@ func listQueries(c *cli.Context) error {
 			data := queriesToData(qs, nil)
 			table.AppendBulk(data)
 		} else {
-			fmt.Printf("No %s nodes\n", target)
+			fmt.Printf("No %s queries\n", target)
 		}
 		table.Render()
 	}

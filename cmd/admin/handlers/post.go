@@ -887,8 +887,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
 		return
 	}
-	switch m.Action {
-	case "delete":
+	if m.Action == "delete" {
 		okCount := 0
 		errCount := 0
 		for _, u := range m.UUIDs {

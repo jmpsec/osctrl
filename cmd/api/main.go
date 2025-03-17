@@ -110,8 +110,6 @@ var (
 	tagsmgr           *tags.TagManager
 	settingsmgr       *settings.Settings
 	envs              *environments.Environment
-	envsmap           environments.MapEnvironments
-	settingsmap       settings.MapSettings
 	nodesmgr          *nodes.NodeManager
 	queriesmgr        *queries.Queries
 	filecarves        *carves.Carves
@@ -496,38 +494,6 @@ func osctrlAPIService() {
 	if err := loadingSettings(settingsmgr); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Info().Msg("Loading service metrics")
-	// Ticker to reload environments
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	log.Info().Msg("Initialize environments refresh")
-	// Refresh environments as soon as service starts
-	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			envsmap = refreshEnvironments()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
-
-	// Ticker to reload settings
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	// Refresh settings as soon as the service starts
-	log.Info().Msg("Initialize settings refresh")
-	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceAPI)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			settingsmap = refreshSettings()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersApi = handlers.CreateHandlersApi(

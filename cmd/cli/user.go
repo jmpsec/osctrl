@@ -151,19 +151,20 @@ func listUsers(c *cli.Context) error {
 		"Last UserAgent",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(usrs)
 		if err != nil {
 			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
+	case csvFormat:
 		data := usersToData(usrs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error WriteAll - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		if len(usrs) > 0 {
@@ -206,19 +207,20 @@ func showUser(c *cli.Context) error {
 		"Last UserAgent",
 	}
 	// Prepare output
-	if formatFlag == jsonFormat {
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(usr)
 		if err != nil {
 			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	} else if formatFlag == csvFormat {
-		data := userToData(usr, nil)
+	case csvFormat:
+		data := userToData(usr, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error WriteAll - %w", err)
 		}
-	} else if formatFlag == prettyFormat {
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader(header)
 		data := userToData(usr, nil)
