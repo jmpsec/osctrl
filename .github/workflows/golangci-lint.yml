@@ -1,0 +1,39 @@
+name: Go linting on PRs pushed to osctrl
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+      - '.github/workflows/golangci-lint.yml'
+
+env:
+  GOLANG_VERSION: 1.24.1
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-22.04
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      ########################### Set up Go ###############################
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "${{ env.GOLANG_VERSION }}"
+          cache: true
+
+      ########################### Run golangci-lint #######################
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ./
+          args: --timeout=5m
+          only-new-issues: true
