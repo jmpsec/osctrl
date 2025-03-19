@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -131,13 +131,13 @@ func removeStringDuplicates(s []string) []string {
 
 // Helper to verify the service is valid
 func checkTargetService(service string) bool {
-	if service == settings.ServiceTLS {
+	if service == config.ServiceTLS {
 		return true
 	}
-	if service == settings.ServiceAdmin {
+	if service == config.ServiceAdmin {
 		return true
 	}
-	if service == settings.ServiceAPI {
+	if service == config.ServiceAPI {
 		return true
 	}
 	return false
@@ -158,8 +158,8 @@ func jsonRawIndent(raw string) string {
 }
 
 // Helper to convert from settings values to JSON configuration
-func toJSONConfigurationService(values []settings.SettingValue) types.JSONConfigurationAdmin {
-	var cfg types.JSONConfigurationAdmin
+func toJSONConfigurationService(values []settings.SettingValue) config.JSONConfigurationAdmin {
+	var cfg config.JSONConfigurationAdmin
 	for _, v := range values {
 		if v.Name == settings.JSONListener {
 			cfg.Listener = v.String

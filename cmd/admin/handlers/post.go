@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -21,10 +22,10 @@ import (
 
 // LoginPOSTHandler for login page for POST requests
 func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	var l LoginRequest
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
@@ -43,7 +44,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Login response sent")
 	}
 	adminOKResponse(w, "/dashboard")
@@ -51,12 +52,12 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 
 // LogoutPOSTHandler for POST requests to logout
 func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	var l LogoutRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
@@ -74,7 +75,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Logout response sent")
 	}
 	adminOKResponse(w, "OK")
@@ -82,7 +83,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 
 // QueryRunPOSTHandler for POST requests to run queries
 func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -103,7 +104,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var q DistributedQueryRequest
@@ -232,7 +233,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run response sent")
 	}
 	adminOKResponse(w, "OK")
@@ -240,7 +241,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 
 // CarvesRunPOSTHandler for POST requests to run file carves
 func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -261,7 +262,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var c DistributedCarveRequest
@@ -379,7 +380,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carve run response sent")
 	}
 	adminOKResponse(w, "OK")
@@ -387,7 +388,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 
 // QueryActionsPOSTHandler for POST requests to queries
 func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -408,7 +409,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	var q DistributedQueryActionRequest
@@ -456,14 +457,14 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		adminOKResponse(w, "queries delete successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run response sent")
 	}
 }
 
 // CarvesActionsPOSTHandler - Handler for POST requests to carves
 func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var q DistributedCarvesActionRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -473,7 +474,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
@@ -495,20 +496,20 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 		}
 		adminOKResponse(w, "carves delete successfully")
 	case "test":
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: testing action")
 		}
 		adminOKResponse(w, "test successful")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carves action response sent")
 	}
 }
 
 // ConfPOSTHandler for POST requests for saving configuration
 func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -530,7 +531,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
@@ -567,7 +568,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: Configuration response sent")
 		}
 		adminOKResponse(w, "configuration saved successfully")
@@ -592,7 +593,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: Options response sent")
 		}
 		adminOKResponse(w, "options saved successfully")
@@ -617,7 +618,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: Schedule response sent")
 		}
 		adminOKResponse(w, "schedule saved successfully")
@@ -642,7 +643,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: Packs response sent")
 		}
 		adminOKResponse(w, "packs saved successfully")
@@ -667,7 +668,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: Decorators response sent")
 		}
 		adminOKResponse(w, "decorators saved successfully")
@@ -692,7 +693,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Send response
-		if h.Settings.DebugService(settings.ServiceAdmin) {
+		if h.Settings.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: ATC response sent")
 		}
 		adminOKResponse(w, "ATC saved successfully")
@@ -701,14 +702,14 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	// If we are here, means that the request received was empty
 	responseMessage := "empty configuration"
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, AdminResponse{Message: responseMessage})
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msgf("DebugService: %s", responseMessage)
 	}
 }
 
 // IntervalsPOSTHandler for POST requests for saving intervals
 func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment and verify
 	envVar := r.PathValue("env")
 	if envVar == "" || !h.Envs.Exists(envVar) {
@@ -731,7 +732,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
@@ -759,7 +760,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Intervals response sent")
 	}
 	adminOKResponse(w, "intervals saved successfully")
@@ -767,7 +768,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 
 // ExpirationPOSTHandler for POST requests for expiring enroll links
 func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -789,7 +790,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
@@ -858,14 +859,14 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Expiration response sent")
 	}
 }
 
 // NodeActionsPOSTHandler for POST requests for multi node action
 func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var m NodeMultiActionRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -875,7 +876,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
@@ -906,14 +907,14 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Multi-node action response sent")
 	}
 }
 
 // EnvsPOSTHandler for POST request for /environments
 func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var c EnvironmentsRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -923,7 +924,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
@@ -1007,14 +1008,14 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "debug changed successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Environments response sent")
 	}
 }
 
 // SettingsPOSTHandler for POST request for /settings
 func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract service
 	serviceVar := r.PathValue("service")
 	if serviceVar == "" {
@@ -1035,7 +1036,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
@@ -1094,14 +1095,14 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		adminOKResponse(w, "setting deleted successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Settings response sent")
 	}
 }
 
 // UsersPOSTHandler for POST request for /users
 func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1111,7 +1112,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -1230,14 +1231,14 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Users response sent")
 	}
 }
 
 // TagsPOSTHandler for POST request for /tags
 func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var t TagsRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1247,7 +1248,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -1315,14 +1316,14 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminOKResponse(w, "tag removed successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Tags response sent")
 	}
 }
 
 // TagNodesPOSTHandler for POST request for /tags/nodes
 func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	var t TagNodesRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -1332,7 +1333,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -1375,7 +1376,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Tags response sent")
 	}
 	adminOKResponse(w, "tags processed successfully")
@@ -1383,7 +1384,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 
 // PermissionsPOSTHandler for POST request for /users/permissions
 func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" || !h.Users.Exists(usernameVar) {
@@ -1399,7 +1400,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
@@ -1436,7 +1437,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Users response sent")
 	}
 	adminOKResponse(w, "permissions updated successfully")
@@ -1444,7 +1445,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 
 // EnrollPOSTHandler for POST requests enroll data
 func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), true)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -1466,7 +1467,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
@@ -1539,7 +1540,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Configuration response sent")
 	}
 	adminOKResponse(w, "enroll data saved")
@@ -1547,12 +1548,12 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 
 // EditProfilePOSTHandler for POST requests to edit profile
 func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	var u UsersRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -1609,19 +1610,19 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 		adminOKResponse(w, "profiled updated successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Edit profile response sent")
 	}
 }
 
 // SavedQueriesPOSTHandler for POST requests to save queries
 func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	var s SavedQueryRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Parse request JSON body
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Decoding POST body")
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
@@ -1640,7 +1641,7 @@ func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.R
 		adminOKResponse(w, "query saved successfully")
 	}
 	// Serialize and send response
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Saved query response sent")
 	}
 }

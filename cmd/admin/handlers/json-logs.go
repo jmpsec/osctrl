@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -59,7 +60,7 @@ type QueryLogJSON struct {
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract type
 	logType := r.PathValue("type")
 	if logType == "" {
@@ -119,7 +120,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == types.StatusLog && h.AdminConfig.Logger == settings.LoggingDB {
+	if logType == types.StatusLog && h.AdminConfig.Logger == config.LoggingDB {
 		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
@@ -138,7 +139,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == types.ResultLog && h.AdminConfig.Logger == settings.LoggingDB {
+	} else if logType == types.ResultLog && h.AdminConfig.Logger == config.LoggingDB {
 		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
@@ -166,7 +167,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 
 // JSONQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

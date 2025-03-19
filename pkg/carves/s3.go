@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
+	osctrl_config "github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -34,7 +34,7 @@ const (
 
 // CarverS3 will be used to carve files using S3 as destination
 type CarverS3 struct {
-	S3Config  types.S3Configuration
+	S3Config  osctrl_config.S3Configuration
 	AWSConfig aws.Config
 	Client    *s3.Client
 	Uploader  *manager.Uploader
@@ -44,15 +44,15 @@ type CarverS3 struct {
 
 // CreateCarverS3File to initialize the carver
 func CreateCarverS3File(s3File string) (*CarverS3, error) {
-	config, err := LoadS3(s3File)
+	cfg, err := LoadS3(s3File)
 	if err != nil {
 		return nil, err
 	}
-	return CreateCarverS3(config)
+	return CreateCarverS3(cfg)
 }
 
 // CreateCarverS3 to initialize the carver
-func CreateCarverS3(s3Config types.S3Configuration) (*CarverS3, error) {
+func CreateCarverS3(s3Config osctrl_config.S3Configuration) (*CarverS3, error) {
 	ctx := context.Background()
 	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
 	cfg, err := config.LoadDefaultConfig(
@@ -76,17 +76,17 @@ func CreateCarverS3(s3Config types.S3Configuration) (*CarverS3, error) {
 }
 
 // LoadS3 - Function to load the S3 configuration from JSON file
-func LoadS3(file string) (types.S3Configuration, error) {
-	var _s3Cfg types.S3Configuration
+func LoadS3(file string) (osctrl_config.S3Configuration, error) {
+	var _s3Cfg osctrl_config.S3Configuration
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
 		return _s3Cfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingS3)
+	cfgRaw := viper.Sub(osctrl_config.LoggingS3)
 	if cfgRaw == nil {
-		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingS3, file)
+		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", osctrl_config.LoggingS3, file)
 	}
 	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
 		return _s3Cfg, err

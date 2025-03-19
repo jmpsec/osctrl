@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -54,9 +55,9 @@ func LoadSplunk(file string) (SlunkConfiguration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _splunkCfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	cfgRaw := viper.Sub(config.LoggingSplunk)
 	if cfgRaw == nil {
-		return _splunkCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingSplunk, file)
+		return _splunkCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingSplunk, file)
 	}
 	if err := cfgRaw.Unmarshal(&_splunkCfg); err != nil {
 		return _splunkCfg, err

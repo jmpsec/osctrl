@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -12,7 +13,7 @@ import (
 
 // UserHandler - GET Handler for single JSON nodes
 func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract username
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" {
@@ -32,7 +33,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msgf("DebugService: Returned user %s", usernameVar)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, user)
@@ -40,7 +41,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 
 // UsersHandler - GET Handler for multiple JSON nodes
 func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
@@ -58,7 +59,7 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned users")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, users)

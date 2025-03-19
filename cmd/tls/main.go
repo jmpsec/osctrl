@@ -21,7 +21,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,7 +34,7 @@ const (
 	// Project name
 	projectName string = "osctrl"
 	// Service name
-	serviceName string = projectName + "-" + settings.ServiceTLS
+	serviceName string = projectName + "-" + config.ServiceTLS
 	// Service version
 	serviceVersion string = version.OsctrlVersion
 	// Service description
@@ -47,7 +46,7 @@ const (
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
 	// Default service configuration file
-	defConfigurationFile string = "config/" + settings.ServiceTLS + ".json"
+	defConfigurationFile string = "config/" + config.ServiceTLS + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
 	// Default redis configuration file
@@ -75,9 +74,9 @@ const (
 // Global variables
 var (
 	err                error
-	tlsConfigValues    types.JSONConfigurationTLS
-	tlsWriterConfig    types.JSONConfigurationTLSWriter
-	tlsConfig          types.JSONConfigurationTLS
+	tlsConfigValues    config.JSONConfigurationTLS
+	tlsWriterConfig    config.JSONConfigurationTLSWriter
+	tlsConfig          config.JSONConfigurationTLS
 	dbConfigValues     backend.JSONConfigurationDB
 	dbConfig           backend.JSONConfigurationDB
 	redisConfigValues  cache.JSONConfigurationRedis
@@ -95,9 +94,9 @@ var (
 	handlersTLS        *handlers.HandlersTLS
 	tagsmgr            *tags.TagManager
 	carvers3           *carves.CarverS3
-	s3LogConfig        types.S3Configuration
-	s3CarverConfig     types.S3Configuration
-	kafkaConfiguration types.KafkaConfiguration
+	s3LogConfig        config.S3Configuration
+	s3CarverConfig     config.S3Configuration
+	kafkaConfiguration config.KafkaConfiguration
 	app                *cli.App
 	flags              []cli.Flag
 	flagParams         config.TLSFlagParams
@@ -122,33 +121,33 @@ var (
 
 // Valid values for authentication in configuration
 var validAuth = map[string]bool{
-	settings.AuthNone: true,
+	config.AuthNone: true,
 }
 
 // Valid values for logging in configuration
 var validLogging = map[string]bool{
-	settings.LoggingNone:     true,
-	settings.LoggingStdout:   true,
-	settings.LoggingFile:     true,
-	settings.LoggingDB:       true,
-	settings.LoggingGraylog:  true,
-	settings.LoggingSplunk:   true,
-	settings.LoggingLogstash: true,
-	settings.LoggingKinesis:  true,
-	settings.LoggingS3:       true,
-	settings.LoggingElastic:  true,
+	config.LoggingNone:     true,
+	config.LoggingStdout:   true,
+	config.LoggingFile:     true,
+	config.LoggingDB:       true,
+	config.LoggingGraylog:  true,
+	config.LoggingSplunk:   true,
+	config.LoggingLogstash: true,
+	config.LoggingKinesis:  true,
+	config.LoggingS3:       true,
+	config.LoggingElastic:  true,
 }
 
 // Valid values for carver in configuration
 var validCarver = map[string]bool{
-	settings.CarverDB:    true,
-	settings.CarverLocal: true,
-	settings.CarverS3:    true,
+	config.CarverDB:    true,
+	config.CarverLocal: true,
+	config.CarverS3:    true,
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (types.JSONConfigurationTLS, error) {
-	var cfg types.JSONConfigurationTLS
+func loadConfiguration(file, service string) (config.JSONConfigurationTLS, error) {
+	var cfg config.JSONConfigurationTLS
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -267,12 +266,12 @@ func osctrlService() {
 	// FIXME splay this?
 	log.Info().Msg("Preparing pseudo-cache for environments")
 	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
+		_t := settingsmgr.RefreshEnvs(config.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceTLS) {
+			if settingsmgr.DebugService(config.ServiceTLS) {
 				log.Info().Msg("DebugService: Refreshing environments")
 			}
 			envsmap = refreshEnvironments()
@@ -284,12 +283,12 @@ func osctrlService() {
 	// FIXME splay this?
 	log.Info().Msg("Preparing pseudo-cache for settings")
 	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
+		_t := settingsmgr.RefreshSettings(config.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceTLS) {
+			if settingsmgr.DebugService(config.ServiceTLS) {
 				log.Info().Msg("DebugService: Refreshing settings")
 			}
 			settingsmap = refreshSettings()
@@ -398,7 +397,7 @@ func osctrlService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if flagParams.ConfigFlag {
-		tlsConfig, err = loadConfiguration(flagParams.ServiceConfigFile, settings.ServiceTLS)
+		tlsConfig, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
@@ -424,7 +423,7 @@ func cliAction(c *cli.Context) error {
 		redisConfig = flagParams.RedisConfigValues
 	}
 	// Load carver configuration if external JSON config file is used
-	if tlsConfig.Carver == settings.CarverS3 {
+	if tlsConfig.Carver == config.CarverS3 {
 		if flagParams.S3CarverConfig.Bucket != "" {
 			carvers3, err = carves.CreateCarverS3(flagParams.S3CarverConfig)
 		} else {
@@ -440,22 +439,22 @@ func cliAction(c *cli.Context) error {
 func initializeLogger(logLevel, logFormat string) {
 
 	switch strings.ToLower(logLevel) {
-	case types.LogLevelDebug:
+	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case types.LogLevelInfo:
+	case config.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case types.LogLevelWarn:
+	case config.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case types.LogLevelError:
+	case config.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	switch strings.ToLower(logFormat) {
-	case types.LogFormatJSON:
+	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case types.LogFormatConsole:
+	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}

@@ -36,6 +36,12 @@ require (
 )
 
 require (
+	github.com/jmpsec/osctrl/nodes v0.0.0-20250216215132-7ea95f9f4d46 // indirect
+	github.com/jmpsec/osctrl/queries v0.0.0-20250216215132-7ea95f9f4d46 // indirect
+	github.com/jmpsec/osctrl/utils v0.0.0-20250216215132-7ea95f9f4d46 // indirect
+)
+
+require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.29 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.33 // indirect
@@ -69,6 +75,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/jmpsec/osctrl/types v0.0.0-20250216225221-94ec48a2c3fe
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -12,7 +13,7 @@ import (
 
 // SettingsHandler - GET Handler for all settings including JSON
 func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
@@ -26,7 +27,7 @@ func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
@@ -34,7 +35,7 @@ func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 // SettingsServiceHandler - GET Handler for service specific settings excluding JSON
 func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
@@ -59,7 +60,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
@@ -67,7 +68,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 
 // SettingsServiceEnvHandler - GET Handler for service and environment specific settings excluding JSON
 func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract service
 	service := r.PathValue("service")
 	if service == "" {
@@ -108,7 +109,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
@@ -116,7 +117,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 
 // SettingsServiceJSONHandler - GET Handler for service specific settings including JSON
 func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
@@ -141,7 +142,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
@@ -149,7 +150,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 
 // GET Handler for service and environment specific settings including JSON
 func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	service := r.PathValue("service")
 	if service == "" {
@@ -190,7 +191,7 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned settings")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)

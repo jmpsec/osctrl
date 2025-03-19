@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -32,9 +33,9 @@ func LoadGraylog(file string) (GraylogConfiguration, error) {
 	if err != nil {
 		return _graylogCfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingGraylog)
+	cfgRaw := viper.Sub(config.LoggingGraylog)
 	if cfgRaw == nil {
-		return _graylogCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingGraylog, file)
+		return _graylogCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingGraylog, file)
 	}
 	if err := cfgRaw.Unmarshal(&_graylogCfg); err != nil {
 		return _graylogCfg, err

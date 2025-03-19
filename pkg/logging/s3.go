@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	osctrl_config "github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -22,7 +22,7 @@ import (
 
 // LoggerS3 will be used to log data using S3
 type LoggerS3 struct {
-	S3Config  types.S3Configuration
+	S3Config  osctrl_config.S3Configuration
 	AWSConfig aws.Config
 	Client    *s3.Client
 	Uploader  *manager.Uploader
@@ -31,7 +31,7 @@ type LoggerS3 struct {
 }
 
 // CreateLoggerS3 to initialize the logger
-func CreateLoggerS3(s3Config types.S3Configuration) (*LoggerS3, error) {
+func CreateLoggerS3(s3Config osctrl_config.S3Configuration) (*LoggerS3, error) {
 	ctx := context.Background()
 	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
 	cfg, err := config.LoadDefaultConfig(
@@ -64,17 +64,17 @@ func CreateLoggerS3File(s3File string) (*LoggerS3, error) {
 }
 
 // LoadS3 - Function to load the S3 configuration from JSON file
-func LoadS3(file string) (types.S3Configuration, error) {
-	var _s3Cfg types.S3Configuration
+func LoadS3(file string) (osctrl_config.S3Configuration, error) {
+	var _s3Cfg osctrl_config.S3Configuration
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
 		return _s3Cfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingS3)
+	cfgRaw := viper.Sub(osctrl_config.LoggingS3)
 	if cfgRaw == nil {
-		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingS3, file)
+		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", osctrl_config.LoggingS3, file)
 	}
 	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
 		return _s3Cfg, err

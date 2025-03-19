@@ -6,7 +6,7 @@ import (
 
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/rs/zerolog/log"
 )
@@ -19,7 +19,7 @@ const (
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch adminConfig.Auth {
-		case settings.AuthDB:
+		case config.AuthDB:
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)
 			if !authenticated {
@@ -37,7 +37,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 			}
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
-		case settings.AuthSAML:
+		case config.AuthSAML:
 			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)

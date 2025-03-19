@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -15,7 +15,7 @@ import (
 )
 
 func TestPermissions(t *testing.T) {
-	conf := types.JSONConfigurationJWT{
+	conf := config.JSONConfigurationJWT{
 		JWTSecret:     "test",
 		HoursToExpire: 1,
 	}

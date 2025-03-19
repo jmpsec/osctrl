@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -69,7 +69,7 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 	// If it is completed, set status
 	if h.Carves.Completed(req.SessionID) {
 		// Archive carve if the carver is s3
-		if h.Carves.Carver == settings.CarverS3 {
+		if h.Carves.Carver == config.CarverS3 {
 			archived, err := h.Carves.Archive(req.SessionID, "")
 			if err != nil {
 				log.Err(err).Msg("error archiving results")
