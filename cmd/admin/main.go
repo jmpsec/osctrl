@@ -17,6 +17,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -36,7 +37,7 @@ const (
 	// Project name
 	projectName string = "osctrl"
 	// Service name
-	serviceName string = projectName + "-" + settings.ServiceAdmin
+	serviceName string = projectName + "-" + config.ServiceAdmin
 	// Service version
 	serviceVersion string = version.OsctrlVersion
 	// Service description
@@ -72,7 +73,7 @@ const (
 	// Default JWT configuration file
 	defJWTConfigurationFile string = "config/jwt.json"
 	// Default service configuration file
-	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
+	defConfigurationFile string = "config/" + config.ServiceAdmin + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
 	// Default redis configuration file
@@ -114,10 +115,10 @@ const (
 // Global general variables
 var (
 	err               error
-	adminConfigValues types.JSONConfigurationAdmin
-	adminConfig       types.JSONConfigurationAdmin
-	s3LogConfig       types.S3Configuration
-	s3CarverConfig    types.S3Configuration
+	adminConfigValues config.JSONConfigurationAdmin
+	adminConfig       config.JSONConfigurationAdmin
+	s3LogConfig       config.S3Configuration
+	s3CarverConfig    config.S3Configuration
 	dbConfigValues    backend.JSONConfigurationDB
 	dbConfig          backend.JSONConfigurationDB
 	redisConfigValues cache.JSONConfigurationRedis
@@ -174,27 +175,27 @@ var (
 
 // JWT variables
 var (
-	jwtConfigValues types.JSONConfigurationJWT
-	jwtConfig       types.JSONConfigurationJWT
+	jwtConfigValues config.JSONConfigurationJWT
+	jwtConfig       config.JSONConfigurationJWT
 )
 
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
-	settings.AuthDB:   true,
-	settings.AuthSAML: true,
-	settings.AuthJSON: true,
+	config.AuthDB:   true,
+	config.AuthSAML: true,
+	config.AuthJSON: true,
 }
 
 // Valid values for carver in configuration
 var validCarver = map[string]bool{
-	settings.CarverDB:    true,
-	settings.CarverLocal: true,
-	settings.CarverS3:    true,
+	config.CarverDB:    true,
+	config.CarverLocal: true,
+	config.CarverS3:    true,
 }
 
 // Function to load the configuration file
-func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, error) {
-	var cfg types.JSONConfigurationAdmin
+func loadConfiguration(file, service string) (config.JSONConfigurationAdmin, error) {
+	var cfg config.JSONConfigurationAdmin
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -258,14 +259,14 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "log-level",
-			Value:       types.LogLevelInfo,
+			Value:       config.LogLevelInfo,
 			Usage:       "Log level for the service",
 			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
 			Destination: &adminConfigValues.LogLevel,
 		},
 		&cli.StringFlag{
 			Name:        "log-format",
-			Value:       types.LogFormatJSON,
+			Value:       config.LogFormatJSON,
 			Usage:       "Log format for the service",
 			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
 			Destination: &adminConfigValues.LogFormat,
@@ -273,7 +274,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthDB,
+			Value:       config.AuthDB,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &adminConfigValues.Auth,
@@ -296,7 +297,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       settings.LoggingDB,
+			Value:       config.LoggingDB,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &adminConfigValues.Logger,
@@ -565,7 +566,7 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "carver-type",
-			Value:       settings.CarverDB,
+			Value:       config.CarverDB,
 			Usage:       "Carver to be used to receive files extracted from nodes",
 			EnvVars:     []string{"CARVER_TYPE"},
 			Destination: &adminConfig.Carver,
@@ -695,8 +696,8 @@ func osctrlAdminService() {
 	log.Info().Msg("Loading service metrics")
 
 	// Start SAML Middleware if we are using SAML
-	if adminConfig.Auth == settings.AuthSAML {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if adminConfig.Auth == config.AuthSAML {
+		if settingsmgr.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: SAML keypair")
 		}
 		// Initialize SAML keypair to sign SAML Request.
@@ -726,7 +727,7 @@ func osctrlAdminService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceAdmin) {
+			if settingsmgr.DebugService(config.ServiceAdmin) {
 				log.Debug().Msg("DebugService: Cleaning up sessions")
 			}
 			sessionsmgr.Cleanup()
@@ -742,7 +743,7 @@ func osctrlAdminService() {
 			_t = int64(defaultExpiration)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceAdmin) {
+			if settingsmgr.DebugService(config.ServiceAdmin) {
 				log.Debug().Msg("DebugService: Cleaning up expired queries/carves")
 			}
 			allEnvs, err := envs.All()
@@ -769,7 +770,7 @@ func osctrlAdminService() {
 
 	var loggerDBConfig *backend.JSONConfigurationDB
 	// Set the logger configuration file if we have a DB logger
-	if adminConfig.Logger == settings.LoggingDB {
+	if adminConfig.Logger == config.LoggingDB {
 		if loggerDbSame {
 			loggerFile = ""
 			loggerDBConfig = &dbConfig
@@ -806,7 +807,7 @@ func osctrlAdminService() {
 
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
-	if adminConfig.Auth != settings.AuthNone && adminConfig.Auth != settings.AuthSAML {
+	if adminConfig.Auth != config.AuthNone && adminConfig.Auth != config.AuthSAML {
 		// login
 		adminMux.HandleFunc("GET "+loginPath, handlersAdmin.LoginHandler)
 		adminMux.HandleFunc("POST "+loginPath, handlersAdmin.LoginPOSTHandler)
@@ -909,7 +910,7 @@ func osctrlAdminService() {
 	// Admin: logout
 	adminMux.Handle("POST "+logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler)))
 	// SAML ACS
-	if adminConfig.Auth == settings.AuthSAML {
+	if adminConfig.Auth == config.AuthSAML {
 		adminMux.Handle("GET /saml/acs", samlMiddleware)
 		adminMux.Handle("POST /saml/acs", samlMiddleware)
 		adminMux.Handle("GET /saml/metadata", samlMiddleware)
@@ -957,7 +958,7 @@ func osctrlAdminService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if configFlag {
-		adminConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAdmin)
+		adminConfig, err = loadConfiguration(serviceConfigFile, config.ServiceAdmin)
 		if err != nil {
 			return fmt.Errorf("Failed to load service configuration %s - %w", serviceConfigFile, err)
 		}
@@ -983,7 +984,7 @@ func cliAction(c *cli.Context) error {
 		dbConfig = dbConfigValues
 	}
 	// Load SAML configuration if this authentication is used in the service config
-	if adminConfig.Auth == settings.AuthSAML {
+	if adminConfig.Auth == config.AuthSAML {
 		samlConfig, err = loadSAML(samlConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to load SAML configuration - %w", err)
@@ -1004,7 +1005,7 @@ func cliAction(c *cli.Context) error {
 		return fmt.Errorf("Failed to load osquery tables - %w", err)
 	}
 	// Load carver configuration if external JSON config file is used
-	if adminConfig.Carver == settings.CarverS3 {
+	if adminConfig.Carver == config.CarverS3 {
 		if s3CarverConfig.Bucket != "" {
 			carvers3, err = carves.CreateCarverS3(s3CarverConfig)
 		} else {
@@ -1020,22 +1021,22 @@ func cliAction(c *cli.Context) error {
 func initializeLogger(logLevel, logFormat string) {
 
 	switch strings.ToLower(logLevel) {
-	case types.LogLevelDebug:
+	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case types.LogLevelInfo:
+	case config.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case types.LogLevelWarn:
+	case config.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case types.LogLevelError:
+	case config.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	switch strings.ToLower(logFormat) {
-	case types.LogFormatJSON:
+	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case types.LogFormatConsole:
+	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}

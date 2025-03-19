@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
@@ -44,11 +44,11 @@ type TokenClaims struct {
 // UserManager have all users of the system
 type UserManager struct {
 	DB        *gorm.DB
-	JWTConfig *types.JSONConfigurationJWT
+	JWTConfig *config.JSONConfigurationJWT
 }
 
 // CreateUserManager to initialize the users struct and tables
-func CreateUserManager(backend *gorm.DB, jwtconfig *types.JSONConfigurationJWT) *UserManager {
+func CreateUserManager(backend *gorm.DB, jwtconfig *config.JSONConfigurationJWT) *UserManager {
 	// Check if JWT is not empty
 	if jwtconfig.JWTSecret == "" {
 		log.Fatal().Msgf("JWT Secret can not be empty")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -14,7 +15,7 @@ import (
 
 // LoginHandler - POST Handler for API login request
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -58,7 +59,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		user.APIToken = token
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msgf("DebugService: Returning token for %s", user.Username)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiLoginResponse{Token: user.APIToken})

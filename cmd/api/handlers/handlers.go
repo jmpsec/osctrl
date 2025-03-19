@@ -3,12 +3,12 @@ package handlers
 import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"gorm.io/gorm"
 )
@@ -28,7 +28,7 @@ type HandlersApi struct {
 	RedisCache     *cache.RedisManager
 	ServiceVersion string
 	ServiceName    string
-	ApiConfig      *types.JSONConfigurationAPI
+	ApiConfig      *config.JSONConfigurationAPI
 }
 
 type HandlersOption func(*HandlersApi)

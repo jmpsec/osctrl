@@ -14,12 +14,12 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog"
@@ -33,7 +33,7 @@ const (
 	// Project name
 	projectName = "osctrl"
 	// Service name
-	serviceName = projectName + "-" + settings.ServiceAPI
+	serviceName = projectName + "-" + config.ServiceAPI
 	// Service version
 	serviceVersion = version.OsctrlVersion
 	// Service description
@@ -41,7 +41,7 @@ const (
 	// Application description
 	appDescription = serviceDescription + ", a fast and efficient osquery management"
 	// Default service configuration file
-	defConfigurationFile = "config/" + settings.ServiceAPI + ".json"
+	defConfigurationFile = "config/" + config.ServiceAPI + ".json"
 	// Default DB configuration file
 	defDBConfigurationFile = "config/db.json"
 	// Default redis configuration file
@@ -96,14 +96,14 @@ const (
 // Global variables
 var (
 	err               error
-	apiConfigValues   types.JSONConfigurationAPI
-	apiConfig         types.JSONConfigurationAPI
+	apiConfigValues   config.JSONConfigurationAPI
+	apiConfig         config.JSONConfigurationAPI
 	dbConfigValues    backend.JSONConfigurationDB
 	dbConfig          backend.JSONConfigurationDB
 	redisConfigValues cache.JSONConfigurationRedis
 	redisConfig       cache.JSONConfigurationRedis
-	jwtConfigValues   types.JSONConfigurationJWT
-	jwtConfig         types.JSONConfigurationJWT
+	jwtConfigValues   config.JSONConfigurationJWT
+	jwtConfig         config.JSONConfigurationJWT
 	db                *backend.DBManager
 	redis             *cache.RedisManager
 	apiUsers          *users.UserManager
@@ -136,13 +136,13 @@ var (
 
 // Valid values for auth and logging in configuration
 var validAuth = map[string]bool{
-	settings.AuthNone: true,
-	settings.AuthJWT:  true,
+	config.AuthNone: true,
+	config.AuthJWT:  true,
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (types.JSONConfigurationAPI, error) {
-	var cfg types.JSONConfigurationAPI
+func loadConfiguration(file, service string) (config.JSONConfigurationAPI, error) {
+	var cfg config.JSONConfigurationAPI
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -203,14 +203,14 @@ func init() {
 		},
 		&cli.StringFlag{
 			Name:        "log-level",
-			Value:       types.LogLevelInfo,
+			Value:       config.LogLevelInfo,
 			Usage:       "Log level for the service",
 			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
 			Destination: &apiConfigValues.LogLevel,
 		},
 		&cli.StringFlag{
 			Name:        "log-format",
-			Value:       types.LogFormatJSON,
+			Value:       config.LogFormatJSON,
 			Usage:       "Log format for the service",
 			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
 			Destination: &apiConfigValues.LogFormat,
@@ -218,7 +218,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
+			Value:       config.AuthNone,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &apiConfigValues.Auth,
@@ -234,7 +234,7 @@ func init() {
 		&cli.StringFlag{
 			Name:        "logging",
 			Aliases:     []string{"L"},
-			Value:       settings.LoggingNone,
+			Value:       config.LoggingNone,
 			Usage:       "Logging mechanism to handle logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &loggerValue,
@@ -609,7 +609,7 @@ func osctrlAPIService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if configFlag {
-		apiConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAPI)
+		apiConfig, err = loadConfiguration(serviceConfigFile, config.ServiceAPI)
 		if err != nil {
 			return fmt.Errorf("failed to load service configuration %s - %s", serviceConfigFile, err.Error())
 		}
@@ -649,22 +649,22 @@ func cliAction(c *cli.Context) error {
 func initializeLogger(logLevel, logFormat string) {
 
 	switch strings.ToLower(logLevel) {
-	case types.LogLevelDebug:
+	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case types.LogLevelInfo:
+	case config.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case types.LogLevelWarn:
+	case config.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case types.LogLevelError:
+	case config.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	switch strings.ToLower(logFormat) {
-	case types.LogFormatJSON:
+	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case types.LogFormatConsole:
+	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}

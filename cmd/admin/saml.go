@@ -10,7 +10,7 @@ import (
 
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -44,9 +44,9 @@ func loadSAML(file string) (JSONConfigurationSAML, error) {
 		return cfg, err
 	}
 	// SAML values
-	samlRaw := viper.Sub(settings.AuthSAML)
+	samlRaw := viper.Sub(config.AuthSAML)
 	if samlRaw == nil {
-		return cfg, fmt.Errorf("JSON key %s not found in %s", settings.AuthSAML, file)
+		return cfg, fmt.Errorf("JSON key %s not found in %s", config.AuthSAML, file)
 	}
 	if err := samlRaw.Unmarshal(&cfg); err != nil {
 		return cfg, err

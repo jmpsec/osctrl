@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -43,11 +44,11 @@ func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version stri
 		CSRFToken:      ctx[sessions.CtxCSRF],
 		Service:        "osctrl-admin",
 		Version:        version,
-		TLSDebug:       h.Settings.DebugService(settings.ServiceTLS),
-		AdminDebug:     h.Settings.DebugService(settings.ServiceAdmin),
-		APIDebug:       h.Settings.DebugService(settings.ServiceAPI),
-		AdminDebugHTTP: h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID),
-		APIDebugHTTP:   h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID),
+		TLSDebug:       h.Settings.DebugService(config.ServiceTLS),
+		AdminDebug:     h.Settings.DebugService(config.ServiceAdmin),
+		APIDebug:       h.Settings.DebugService(config.ServiceAPI),
+		AdminDebugHTTP: h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID),
+		APIDebugHTTP:   h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID),
 	}
 }
 
@@ -68,7 +69,7 @@ func (h *HandlersAdmin) NewTemplateFiles(base string, layoutFilename string) *Te
 
 // LoginHandler for login page for GET requests
 func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Prepare template
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/login.html",
@@ -87,14 +88,14 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Login template served")
 	}
 }
 
 // EnvironmentHandler for environment view of the table
 func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -162,14 +163,14 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Environment table template served")
 	}
 }
 
 // PlatformHandler for platform view of the table
 func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract platform
 	// FIXME verify platform
 	platform := r.PathValue("platform")
@@ -237,14 +238,14 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Platform table template served")
 	}
 }
 
 // QueryRunGETHandler for GET requests to run queries
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -318,14 +319,14 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run template served")
 	}
 }
 
 // QueryListGETHandler for GET requests to queries
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -377,14 +378,14 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query list template served")
 	}
 }
 
 // SavedQueriesGETHandler for GET requests to queries
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -436,14 +437,14 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query list template served")
 	}
 }
 
 // CarvesRunGETHandler for GET requests to run file carves
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -511,14 +512,14 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query run template served")
 	}
 }
 
 // CarvesListGETHandler for GET requests to carves
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -570,14 +571,14 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carve list template served")
 	}
 }
 
 // QueryLogsHandler for GET requests to see query results by name
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -660,14 +661,14 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Query logs template served")
 	}
 }
 
 // CarvesDetailsHandler for GET requests to see carves details by name
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -766,14 +767,14 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Carve details template served")
 	}
 }
 
 // ConfGETHandler for GET requests for /conf
 func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -824,14 +825,14 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Conf template served")
 	}
 }
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -908,14 +909,14 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Enroll template served")
 	}
 }
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -990,7 +991,7 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 
 // NodeHandler for node view
 func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Extract uuid
 	uuid := r.PathValue("uuid")
 	if uuid == "" {
@@ -1096,14 +1097,14 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Node template served")
 	}
 }
 
 // EnvsGETHandler for GET requests for /env
 func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1141,14 +1142,14 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Environments template served")
 	}
 }
 
 // SettingsGETHandler for GET requests for /settings
 func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1211,14 +1212,14 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Settings template served")
 	}
 }
 
 // UsersGETHandler for GET requests for /users
 func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1268,14 +1269,14 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Users template served")
 	}
 }
 
 // TagsGETHandler for GET requests for /tags
 func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1327,14 +1328,14 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Tags template served")
 	}
 }
 
 // EditProfileGETHandler for user profile edit
 func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1383,14 +1384,14 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Profile template served")
 	}
 }
 
 // DashboardGETHandler for dashboard page
 func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -1439,7 +1440,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(settings.ServiceAdmin) {
+	if h.Settings.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Dashboard template served")
 	}
 }

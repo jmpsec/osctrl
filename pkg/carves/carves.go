@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -129,7 +129,7 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 // InitateBlock to initiate a block based on the configured carver
 func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, blockid int, envid uint) CarvedBlock {
 	var cData string
-	if c.Carver != settings.CarverS3 {
+	if c.Carver != config.CarverS3 {
 		cData = data
 	} else {
 		cData = GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid)
@@ -150,9 +150,9 @@ func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, bloc
 // CreateBlock to create a new block for a carve
 func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 	switch c.Carver {
-	case settings.CarverDB:
+	case config.CarverDB:
 		return c.DB.Create(&block).Error // can be nil or err
-	case settings.CarverS3:
+	case config.CarverS3:
 		if c.S3 != nil {
 			if err := c.DB.Create(&block).Error; err != nil {
 				return err
@@ -327,11 +327,11 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 		return nil, fmt.Errorf("error getting blocks - %w", err)
 	}
 	switch c.Carver {
-	case settings.CarverLocal:
+	case config.CarverLocal:
 		return c.ArchiveLocal(destPath, carve, blocks)
-	case settings.CarverDB:
+	case config.CarverDB:
 		return c.ArchiveLocal(destPath, carve, blocks)
-	case settings.CarverS3:
+	case config.CarverS3:
 		return c.S3.Archive(carve, blocks)
 	}
 	return nil, fmt.Errorf("unknown carver - %s", c.Carver)

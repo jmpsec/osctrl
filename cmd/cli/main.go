@@ -6,12 +6,12 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog/log"
@@ -1794,7 +1794,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 				}
 			}
 			// Initialize users
-			adminUsers = users.CreateUserManager(db.Conn, &types.JSONConfigurationJWT{JWTSecret: appName})
+			adminUsers = users.CreateUserManager(db.Conn, &config.JSONConfigurationJWT{JWTSecret: appName})
 			// Initialize environment
 			envs = environments.CreateEnvironment(db.Conn)
 			// Initialize settings
@@ -1804,7 +1804,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			// Initialize queries
 			queriesmgr = queries.CreateQueries(db.Conn)
 			// Initialize carves
-			filecarves = carves.CreateFileCarves(db.Conn, settings.CarverDB, nil)
+			filecarves = carves.CreateFileCarves(db.Conn, config.CarverDB, nil)
 			// Initialize tags
 			tagsmgr = tags.CreateTagManager(db.Conn)
 			// Execute action

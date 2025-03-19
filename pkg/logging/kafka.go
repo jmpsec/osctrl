@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 
 	"github.com/rs/zerolog/log"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -16,12 +16,12 @@ import (
 )
 
 type LoggerKafka struct {
-	config   types.KafkaConfiguration
+	config   config.KafkaConfiguration
 	Enabled  bool
 	producer *kgo.Client
 }
 
-func CreateLoggerKafka(config types.KafkaConfiguration) (*LoggerKafka, error) {
+func CreateLoggerKafka(config config.KafkaConfiguration) (*LoggerKafka, error) {
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(config.BoostrapServer),
 		kgo.ConsumeTopics(config.Topic),

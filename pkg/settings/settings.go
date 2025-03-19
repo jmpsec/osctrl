@@ -3,17 +3,10 @@ package settings
 import (
 	"fmt"
 
-	"github.com/jmpsec/osctrl/pkg/types"
 	"gorm.io/gorm"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/rs/zerolog/log"
-)
-
-// Types of services
-const (
-	ServiceTLS   string = "tls"
-	ServiceAdmin string = "admin"
-	ServiceAPI   string = "api"
 )
 
 // Types of settings values
@@ -21,39 +14,6 @@ const (
 	TypeString  string = "string"
 	TypeBoolean string = "boolean"
 	TypeInteger string = "integer"
-)
-
-// Types of authentication
-const (
-	AuthNone  string = "none"
-	AuthJSON  string = "json"
-	AuthDB    string = "db"
-	AuthSAML  string = "saml"
-	AuthJWT   string = "jwt"
-	AuthOAuth string = "oauth"
-	AuthOIDC  string = "oidc"
-)
-
-// Types of logging
-const (
-	LoggingNone     string = "none"
-	LoggingStdout   string = "stdout"
-	LoggingFile     string = "file"
-	LoggingDB       string = "db"
-	LoggingGraylog  string = "graylog"
-	LoggingSplunk   string = "splunk"
-	LoggingLogstash string = "logstash"
-	LoggingKinesis  string = "kinesis"
-	LoggingS3       string = "s3"
-	LoggingKafka    string = "kafka"
-	LoggingElastic  string = "elastic"
-)
-
-// Types of carver
-const (
-	CarverLocal string = "local"
-	CarverDB    string = "db"
-	CarverS3    string = "s3"
 )
 
 // Types of script
@@ -175,9 +135,9 @@ var ValidTypes = map[string]struct{}{
 
 // ValidServices to check validity of settings service
 var ValidServices = map[string]struct{}{
-	ServiceTLS:   {},
-	ServiceAdmin: {},
-	ServiceAPI:   {},
+	config.ServiceTLS:   {},
+	config.ServiceAdmin: {},
+	config.ServiceAPI:   {},
 }
 
 // NewSettings to initialize the access to settings and table
@@ -345,63 +305,63 @@ func (conf *Settings) SetJSON(service, name, value string, envID uint) error {
 }
 
 // SetTLSJSON sets all the JSON configuration values for TLS service
-func (conf *Settings) SetTLSJSON(cfg types.JSONConfigurationTLS, envID uint) error {
-	if err := conf.SetJSON(ServiceTLS, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetTLSJSON(cfg config.JSONConfigurationTLS, envID uint) error {
+	if err := conf.SetJSON(config.ServiceTLS, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceTLS, JSONCarver, cfg.Carver, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONCarver, cfg.Carver, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAdminJSON sets all the JSON configuration values for admin service
-func (conf *Settings) SetAdminJSON(cfg types.JSONConfigurationAdmin, envID uint) error {
-	if err := conf.SetJSON(ServiceAdmin, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetAdminJSON(cfg config.JSONConfigurationAdmin, envID uint) error {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONLogger, cfg.Logger, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONLogger, cfg.Logger, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAdmin, JSONSessionKey, cfg.SessionKey, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONSessionKey, cfg.SessionKey, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAPIJSON sets all the JSON configuration values for API service
-func (conf *Settings) SetAPIJSON(cfg types.JSONConfigurationAPI, envID uint) error {
-	if err := conf.SetJSON(ServiceAPI, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetAPIJSON(cfg config.JSONConfigurationAPI, envID uint) error {
+	if err := conf.SetJSON(config.ServiceAPI, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONPort, cfg.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONHost, cfg.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(ServiceAPI, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONAuth, cfg.Auth, envID); err != nil {
 		return err
 	}
 	return nil
@@ -607,7 +567,7 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 
 // CleanupSessions gets the interval in seconds to cleanup expired sessions by service
 func (conf *Settings) CleanupSessions() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanupSessions, NoEnvironmentID)
+	value, err := conf.RetrieveValue(config.ServiceAdmin, CleanupSessions, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}
@@ -616,7 +576,7 @@ func (conf *Settings) CleanupSessions() int64 {
 
 // CleanupExpired gets the interval in seconds to cleanup expired queries and carves
 func (conf *Settings) CleanupExpired() int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, CleanupExpired, NoEnvironmentID)
+	value, err := conf.RetrieveValue(config.ServiceAdmin, CleanupExpired, NoEnvironmentID)
 	if err != nil {
 		return 0
 	}
@@ -625,7 +585,7 @@ func (conf *Settings) CleanupExpired() int64 {
 
 // InactiveHours gets the value in hours for a node to be inactive by service
 func (conf *Settings) InactiveHours(envID uint) int64 {
-	value, err := conf.RetrieveValue(ServiceAdmin, InactiveHours, envID)
+	value, err := conf.RetrieveValue(config.ServiceAdmin, InactiveHours, envID)
 	if err != nil {
 		return 0
 	}
@@ -634,7 +594,7 @@ func (conf *Settings) InactiveHours(envID uint) int64 {
 
 // NodeDashboard checks if display dashboard per node is enabled
 func (conf *Settings) NodeDashboard(envID uint) bool {
-	value, err := conf.RetrieveValue(ServiceAdmin, NodeDashboard, envID)
+	value, err := conf.RetrieveValue(config.ServiceAdmin, NodeDashboard, envID)
 	if err != nil {
 		return false
 	}
@@ -643,7 +603,7 @@ func (conf *Settings) NodeDashboard(envID uint) bool {
 
 // OnelinerExpiration checks if enrolling links will expire
 func (conf *Settings) OnelinerExpiration(envID uint) bool {
-	value, err := conf.RetrieveValue(ServiceTLS, OnelinerExpiration, envID)
+	value, err := conf.RetrieveValue(config.ServiceTLS, OnelinerExpiration, envID)
 	if err != nil {
 		return false
 	}

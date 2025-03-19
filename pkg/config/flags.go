@@ -5,8 +5,6 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
-	"github.com/jmpsec/osctrl/pkg/settings"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/urfave/cli/v2"
 )
 
@@ -34,13 +32,13 @@ type TLSFlagParams struct {
 	CarverConfigFile string
 
 	// Configuration values
-	TLSConfigValues    types.JSONConfigurationTLS
-	TLSWriterConfig    types.JSONConfigurationTLSWriter
+	TLSConfigValues    JSONConfigurationTLS
+	TLSWriterConfig    JSONConfigurationTLSWriter
 	DBConfigValues     backend.JSONConfigurationDB
 	RedisConfigValues  cache.JSONConfigurationRedis
-	S3LogConfig        types.S3Configuration
-	S3CarverConfig     types.S3Configuration
-	KafkaConfiguration types.KafkaConfiguration
+	S3LogConfig        S3Configuration
+	S3CarverConfig     S3Configuration
+	KafkaConfiguration KafkaConfiguration
 }
 
 // InitTLSFlags initializes all the flags needed for the TLS service
@@ -77,7 +75,7 @@ func initConfigFlags(params *TLSFlagParams) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       "config/" + settings.ServiceTLS + ".json",
+			Value:       "config/" + ServiceTLS + ".json",
 			Usage:       "Load service configuration from `FILE`",
 			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
 			Destination: &params.ServiceConfigFile,
@@ -115,7 +113,7 @@ func initTLSServiceFlags(params *TLSFlagParams) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       settings.AuthNone,
+			Value:       AuthNone,
 			Usage:       "Authentication mechanism for the service",
 			EnvVars:     []string{"SERVICE_AUTH"},
 			Destination: &params.TLSConfigValues.Auth,
@@ -128,14 +126,14 @@ func initLoggingFlags(params *TLSFlagParams) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:        "log-level",
-			Value:       types.LogLevelInfo,
+			Value:       LogLevelInfo,
 			Usage:       "Log level for the service",
 			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
 			Destination: &params.TLSConfigValues.LogLevel,
 		},
 		&cli.StringFlag{
 			Name:        "log-format",
-			Value:       types.LogFormatJSON,
+			Value:       LogFormatJSON,
 			Usage:       "Log format for the service",
 			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
 			Destination: &params.TLSConfigValues.LogFormat,
@@ -143,7 +141,7 @@ func initLoggingFlags(params *TLSFlagParams) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "logger",
 			Aliases:     []string{"L"},
-			Value:       settings.LoggingDB,
+			Value:       LoggingDB,
 			Usage:       "Logger mechanism to handle status/result logs from nodes",
 			EnvVars:     []string{"SERVICE_LOGGER"},
 			Destination: &params.TLSConfigValues.Logger,
@@ -419,7 +417,7 @@ func initCarverFlags(params *TLSFlagParams) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:        "carver-type",
-			Value:       settings.CarverDB,
+			Value:       CarverDB,
 			Usage:       "Carver to be used to receive files extracted from nodes",
 			EnvVars:     []string{"CARVER_TYPE"},
 			Destination: &params.TLSConfigValues.Carver,

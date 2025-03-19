@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -72,9 +73,9 @@ func LoadElastic(file string) (ElasticConfiguration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _elasticCfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingElastic)
+	cfgRaw := viper.Sub(config.LoggingElastic)
 	if cfgRaw == nil {
-		return _elasticCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingElastic, file)
+		return _elasticCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingElastic, file)
 	}
 	if err := cfgRaw.Unmarshal(&_elasticCfg); err != nil {
 		return _elasticCfg, err

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -30,14 +30,14 @@ func extractHeaderToken(r *http.Request) string {
 func handlerAuthCheck(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch apiConfig.Auth {
-		case settings.AuthNone:
+		case config.AuthNone:
 			// Set middleware values
 			s := make(handlers.ContextValue)
 			s["user"] = "admin"
 			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
-		case settings.AuthJWT:
+		case config.AuthJWT:
 			// Set middleware values
 			token := extractHeaderToken(r)
 			if token == "" {

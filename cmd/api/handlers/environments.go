@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -24,7 +25,7 @@ var (
 
 // EnvironmentHandler - GET Handler to return one environment by UUID as JSON
 func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -48,7 +49,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msgf("DebugService: Returned environment %s", env.Name)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
@@ -56,7 +57,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 
 // EnvironmentMapHandler - GET Handler to return one environment as JSON
 func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract target
 	targetVar := r.PathValue("target")
 	if targetVar == "" {
@@ -90,7 +91,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned environments map")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envMap)
@@ -98,7 +99,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 
 // EnvironmentsHandler - GET Handler to return all environments as JSON
 func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
@@ -112,7 +113,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msg("DebugService: Returned environments")
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envAll)
@@ -120,7 +121,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 
 // EnvEnrollHandler - GET Handler to return node enrollment values (secret, certificate, one-liner) for an environment as JSON
 func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -174,7 +175,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msgf("DebugService: Returned environment %s", returnData)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
@@ -182,7 +183,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 
 // EnvRemoveHandler - GET Handler to return node removal values for an environment as JSON
 func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -230,7 +231,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(settings.ServiceAPI) {
+	if h.Settings.DebugService(config.ServiceAPI) {
 		log.Debug().Msgf("DebugService: Returned environment %s", types.ApiDataResponse{Data: returnData})
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
@@ -238,7 +239,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // EnvEnrollActionsHandler - POST Handler to perform actions (extend, expire) in enroll values
 func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -333,7 +334,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 
 // EnvRemoveActionsHandler - POST Handler to perform actions (extend, expire) in remove values
 func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(settings.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
