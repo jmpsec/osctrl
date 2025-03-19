@@ -233,7 +233,12 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		requestSize.WithLabelValues(string(env.UUID), "LogHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
 		// Process logs and update metadata
-		go h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
+		go func() {
+			start := time.Now()
+			h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
+			duration := time.Since(start).Seconds()
+			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
+		}()
 	} else {
 		nodeInvalid = true
 	}
@@ -385,7 +390,12 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		// Process submitted results and mark query as processed
-		go h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
+		go func() {
+			start := time.Now()
+			h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
+			duration := time.Since(start).Seconds()
+			distributedQueryProcessingDuration.WithLabelValues(string(env.UUID)).Observe(duration)
+		}()
 	} else {
 		nodeInvalid = true
 	}
