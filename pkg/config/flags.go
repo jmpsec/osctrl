@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// Deault values
+// Default values
 const (
 	// Default timeout to attempt backend reconnect
 	defaultBackendRetryTimeout int = 7
