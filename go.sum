@@ -109,14 +109,6 @@ github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9Y
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGwWFoC7ycTf1rcQZHOlsJ6N8=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
-github.com/jmpsec/osctrl/nodes v0.0.0-20250216215132-7ea95f9f4d46 h1:d22LePQO8gMBglii6RDdw0Gvt2MwTcCPGe0Z7qbOSlg=
-github.com/jmpsec/osctrl/nodes v0.0.0-20250216215132-7ea95f9f4d46/go.mod h1:58jOmE9WanfBcAQhoDyEVx79Intx63H475ENr/60ReI=
-github.com/jmpsec/osctrl/queries v0.0.0-20250216215132-7ea95f9f4d46 h1:1trs7MofjfJcaYWMVQz2Uvp2jfirWbJIBUjdDtQAE1g=
-github.com/jmpsec/osctrl/queries v0.0.0-20250216215132-7ea95f9f4d46/go.mod h1:wzJOBKclyZBZQISVRHl85s0QThyRQv/bu8IHKVfhDh8=
-github.com/jmpsec/osctrl/types v0.0.0-20250216225221-94ec48a2c3fe h1:E0P4+hbZHG0hee/oRSYw3rdejhTZpQ0EPxt3gVImyPk=
-github.com/jmpsec/osctrl/types v0.0.0-20250216225221-94ec48a2c3fe/go.mod h1:y7LoBtSGU/WXIyCQiosNRgUCGiSZB+JR9WjAqy7xGr4=
-github.com/jmpsec/osctrl/utils v0.0.0-20250216215132-7ea95f9f4d46 h1:snISbEXC2YO/5IMpe1TnSjtGlNwmKnkYWRu3D/dlbRM=
-github.com/jmpsec/osctrl/utils v0.0.0-20250216215132-7ea95f9f4d46/go.mod h1:okh8MJc4Vaq5q4M4rgq0UvPcHjoxa6C8DwLAX7Ip20Q=
 github.com/jonboulle/clockwork v0.2.2/go.mod h1:Pkfl5aHPm1nk2H9h0bjmnJD/BcgbGXUBGnn1kMkgxc8=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
 github.com/jonboulle/clockwork v0.5.0/go.mod h1:3mZlmanh0g2NDKO5TWZVJAfofYk64M7XN3SzBPjZF60=
