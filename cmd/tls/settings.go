@@ -8,7 +8,7 @@ import (
 )
 
 // Function to load all settings for the service
-func loadingSettings(mgr *settings.Settings) error {
+func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationTLS) error {
 	// Check if service settings for debug service is ready
 	if !mgr.IsValue(config.ServiceTLS, settings.DebugService, settings.NoEnvironmentID) {
 		if err := mgr.NewBooleanValue(config.ServiceTLS, settings.DebugService, false, settings.NoEnvironmentID); err != nil {
@@ -34,7 +34,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		}
 	}
 	// Write JSON config to settings
-	if err := mgr.SetTLSJSON(tlsConfig, settings.NoEnvironmentID); err != nil {
+	if err := mgr.SetTLSJSON(cfg, settings.NoEnvironmentID); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %w", err)
 	}
 	return nil

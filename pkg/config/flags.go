@@ -8,6 +8,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// Deault values
+const (
+	// Default timeout to attempt backend reconnect
+	defaultBackendRetryTimeout int = 7
+	// Default timeout to attempt redis reconnect
+	defaultRedisRetryTimeout int = 7
+)
+
 // TLSFlagParams stores flag values for the TLS service
 type TLSFlagParams struct {
 	// Config flags
@@ -25,7 +33,7 @@ type TLSFlagParams struct {
 
 	// Logger flags
 	LoggerFile   string
-	LoggerDbSame bool
+	LoggerDBSame bool
 	AlwaysLog    bool
 
 	// Carver flags
@@ -44,7 +52,6 @@ type TLSFlagParams struct {
 // InitTLSFlags initializes all the flags needed for the TLS service
 func InitTLSFlags(params *TLSFlagParams) []cli.Flag {
 	var allFlags []cli.Flag
-
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params)...)
 	allFlags = append(allFlags, initTLSServiceFlags(params)...)
@@ -57,7 +64,6 @@ func InitTLSFlags(params *TLSFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initCarverFlags(params)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
-
 	return allFlags
 }
 
@@ -159,7 +165,7 @@ func initLoggingFlags(params *TLSFlagParams) []cli.Flag {
 			Value:       false,
 			Usage:       "Use the same DB configuration for the logger",
 			EnvVars:     []string{"LOGGER_DB_SAME"},
-			Destination: &params.LoggerDbSame,
+			Destination: &params.LoggerDBSame,
 		},
 		&cli.BoolFlag{
 			Name:        "always-log",
@@ -282,7 +288,7 @@ func initRedisFlags(params *TLSFlagParams) []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:        "redis-conn-retry",
-			Value:       7,
+			Value:       defaultRedisRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"REDIS_CONN_RETRY"},
 			Destination: &params.RedisConfigValues.ConnRetry,
@@ -374,7 +380,7 @@ func initDBFlags(params *TLSFlagParams) []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-retry",
-			Value:       7,
+			Value:       defaultBackendRetryTimeout,
 			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"DB_CONN_RETRY"},
 			Destination: &params.DBConfigValues.ConnRetry,
