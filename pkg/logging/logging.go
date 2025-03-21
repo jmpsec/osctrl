@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -25,37 +24,37 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, s3Conf config.S3Configuration, kafkaConf config.KafkaConfiguration, loggerSame, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(cfg config.TLSFlagParams, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging: logging,
+		Logging: cfg.TLSConfigValues.Logger,
 		Nodes:   nodes,
 		Queries: queries,
 	}
-	switch logging {
+	switch cfg.TLSConfigValues.Logger {
 	case config.LoggingSplunk:
-		s, err := CreateLoggerSplunk(loggingFile)
+		s, err := CreateLoggerSplunk(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		s.Settings(mgr)
 		l.Logger = s
 	case config.LoggingGraylog:
-		g, err := CreateLoggerGraylog(loggingFile)
+		g, err := CreateLoggerGraylog(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		g.Settings(mgr)
 		l.Logger = g
 	case config.LoggingDB:
-		if loggerSame {
-			d, err := CreateLoggerDBConfig(dbConf)
+		if cfg.LoggerDBSame {
+			d, err := CreateLoggerDBConfig(cfg.DBConfigValues)
 			if err != nil {
 				return nil, err
 			}
 			d.Settings(mgr)
 			l.Logger = d
 		} else {
-			d, err := CreateLoggerDBFile(loggingFile)
+			d, err := CreateLoggerDBFile(cfg.LoggerFile)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +90,7 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf config.S3Configuration,
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingKinesis:
-		d, err := CreateLoggerKinesis(loggingFile)
+		d, err := CreateLoggerKinesis(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
@@ -100,13 +99,13 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf config.S3Configuration,
 	case config.LoggingS3:
 		var d *LoggerS3
 		var err error
-		if s3Conf.Bucket != "" {
-			d, err = CreateLoggerS3(s3Conf)
+		if cfg.S3LogConfig.Bucket != "" {
+			d, err = CreateLoggerS3(cfg.S3LogConfig)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			d, err = CreateLoggerS3File(loggingFile)
+			d, err = CreateLoggerS3File(cfg.LoggerFile)
 			if err != nil {
 				return nil, err
 			}
@@ -114,21 +113,21 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf config.S3Configuration,
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingLogstash:
-		d, err := CreateLoggerLogstash(loggingFile)
+		d, err := CreateLoggerLogstash(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingKafka:
-		k, err := CreateLoggerKafka(kafkaConf)
+		k, err := CreateLoggerKafka(cfg.KafkaConfiguration)
 		if err != nil {
 			return nil, err
 		}
 		k.Settings(mgr)
 		l.Logger = k
 	case config.LoggingElastic:
-		e, err := CreateLoggerElastic(loggingFile)
+		e, err := CreateLoggerElastic(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
@@ -136,8 +135,8 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf config.S3Configuration,
 		l.Logger = e
 	}
 	// Initialize the logger that will always log to DB
-	if alwaysLog {
-		always, err := CreateLoggerDBConfig(dbConf)
+	if cfg.AlwaysLog {
+		always, err := CreateLoggerDBConfig(cfg.DBConfigValues)
 		if err != nil {
 			return nil, err
 		}
