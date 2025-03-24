@@ -16,9 +16,9 @@ const (
 )
 
 // Handler to check access to a resource based on the authentication enabled
-func handlerAuthCheck(h http.Handler) http.Handler {
+func handlerAuthCheck(h http.Handler, auth string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch adminConfig.Auth {
+		switch auth {
 		case config.AuthDB:
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)

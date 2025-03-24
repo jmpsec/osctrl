@@ -53,8 +53,8 @@ const (
 	CarverS3    string = "s3"
 )
 
-// JSONConfigurationTLS to hold TLS service configuration values
-type JSONConfigurationTLS struct {
+// JSONConfigurationService to hold the service configuration values
+type JSONConfigurationService struct {
 	Listener        string `json:"listener"`
 	Port            string `json:"port"`
 	LogLevel        string `json:"logLevel"`
@@ -66,26 +66,15 @@ type JSONConfigurationTLS struct {
 	Auth            string `json:"auth"`
 	Logger          string `json:"logger"`
 	Carver          string `json:"carver"`
+	SessionKey      string `json:"sessionKey"`
 }
 
-type JSONConfigurationTLSWriter struct {
+// JSONConfigurationWriter to hold writer service configuration values
+type JSONConfigurationWriter struct {
 	// BatchWriter configuration: it need be refactored to a separate struct
 	WriterBatchSize  int           `json:"writerBatchSize"`
 	WriterTimeout    time.Duration `json:"writerTimeout"`
 	WriterBufferSize int           `json:"writerBufferSize"`
-}
-
-// JSONConfigurationAdmin to hold admin service configuration values
-type JSONConfigurationAdmin struct {
-	Listener   string `json:"listener"`
-	Port       string `json:"port"`
-	LogLevel   string `json:"logLevel"`
-	LogFormat  string `json:"logFormat"`
-	Host       string `json:"host"`
-	Auth       string `json:"auth"`
-	Logger     string `json:"logger"`
-	Carver     string `json:"carver"`
-	SessionKey string `json:"sessionKey"`
 }
 
 // JSONConfigurationAPI to hold API service configuration values
@@ -97,21 +86,6 @@ type JSONConfigurationAPI struct {
 	Host      string `json:"host"`
 	Auth      string `json:"auth"`
 	Carver    string `json:"carver"`
-}
-
-// JSONConfigurationHeaders to keep all headers details for auth
-type JSONConfigurationHeaders struct {
-	TrustedPrefix     string `json:"trustedPrefix"`
-	AdminGroup        string `json:"adminGroup"`
-	UserGroup         string `json:"userGroup"`
-	Email             string `json:"email"`
-	UserName          string `json:"userName"`
-	FirstName         string `json:"firstName"`
-	LastName          string `json:"lastName"`
-	DisplayName       string `json:"displayName"`
-	DistinguishedName string `json:"distinguishedName"`
-	Groups            string `json:"groups"`
-	DefaultEnv        string `json:"defaultEnv"`
 }
 
 // JSONConfigurationJWT to hold all JWT configuration values

@@ -158,8 +158,8 @@ func jsonRawIndent(raw string) string {
 }
 
 // Helper to convert from settings values to JSON configuration
-func toJSONConfigurationService(values []settings.SettingValue) config.JSONConfigurationAdmin {
-	var cfg config.JSONConfigurationAdmin
+func toJSONConfigurationService(values []settings.SettingValue) config.JSONConfigurationService {
+	var cfg config.JSONConfigurationService
 	for _, v := range values {
 		if v.Name == settings.JSONListener {
 			cfg.Listener = v.String

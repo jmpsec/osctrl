@@ -45,20 +45,6 @@ const (
 	healthPath string = "/health"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
-	// Default service configuration file
-	defConfigurationFile string = "config/" + config.ServiceTLS + ".json"
-	// Default DB configuration file
-	defDBConfigurationFile string = "config/db.json"
-	// Default redis configuration file
-	defRedisConfigurationFile string = "config/redis.json"
-	// Default Logger configuration file
-	defLoggerConfigurationFile string = "config/logger_tls.json"
-	// Default carver configuration file
-	defCarverConfigurationFile string = "config/carver_tls.json"
-	// Default TLS certificate file
-	defTLSCertificateFile string = "config/tls.crt"
-	// Default TLS private key file
-	defTLSKeyFile string = "config/tls.key"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
@@ -85,7 +71,7 @@ var (
 	carvers3    *carves.CarverS3
 	app         *cli.App
 	flags       []cli.Flag
-	flagParams  config.TLSFlagParams
+	flagParams  config.ServiceFlagParams
 )
 
 // Valid values for authentication in configuration
@@ -115,8 +101,8 @@ var validCarver = map[string]bool{
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (config.JSONConfigurationTLS, error) {
-	var cfg config.JSONConfigurationTLS
+func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
+	var cfg config.JSONConfigurationService
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -147,15 +133,6 @@ func loadConfiguration(file, service string) (config.JSONConfigurationTLS, error
 // Initialization code
 func init() {
 	// Initialize CLI flags using the config package
-	flagParams = config.TLSFlagParams{
-		ServiceConfigFile: defConfigurationFile,
-		DBConfigFile:      defDBConfigurationFile,
-		RedisConfigFile:   defRedisConfigurationFile,
-		LoggerFile:        defLoggerConfigurationFile,
-		CarverConfigFile:  defCarverConfigurationFile,
-		TLSCertFile:       defTLSCertificateFile,
-		TLSKeyFile:        defTLSKeyFile,
-	}
 	flags = config.InitTLSFlags(&flagParams)
 }
 
@@ -208,17 +185,17 @@ func osctrlService() {
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, flagParams.TLSConfigValues.Carver, carvers3)
+	filecarves = carves.CreateFileCarves(db.Conn, flagParams.ConfigValues.Carver, carvers3)
 	log.Info().Msg("Loading service settings")
-	if err := loadingSettings(settingsmgr, flagParams.TLSConfigValues); err != nil {
-		log.Fatal().Msgf("Error loading settings - %s: %v", flagParams.TLSConfigValues.Logger, err)
+	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
+		log.Fatal().Msgf("Error loading settings - %s: %v", flagParams.ConfigValues.Logger, err)
 	}
 	// Initialize batch writer
 	log.Info().Msg("Initializing batch writer")
 	tlsWriter := handlers.NewBatchWriter(
-		flagParams.TLSWriterConfig.WriterBatchSize,
-		flagParams.TLSWriterConfig.WriterTimeout,
-		flagParams.TLSWriterConfig.WriterBufferSize,
+		flagParams.WriterConfig.WriterBatchSize,
+		flagParams.WriterConfig.WriterTimeout,
+		flagParams.WriterConfig.WriterBufferSize,
 		*nodesmgr,
 	)
 	// Initialize service metrics
@@ -227,7 +204,7 @@ func osctrlService() {
 	log.Info().Msg("Loading TLS logger")
 	loggerTLS, err = logging.CreateLoggerTLS(flagParams, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.TLSConfigValues.Logger, err)
+		log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.ConfigValues.Logger, err)
 	}
 	// Sleep to reload environments
 	// FIXME Implement Redis cache
@@ -263,7 +240,7 @@ func osctrlService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-	if flagParams.TLSConfigValues.MetricsEnabled {
+	if flagParams.ConfigValues.MetricsEnabled {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
@@ -273,8 +250,8 @@ func osctrlService() {
 		prometheusServer.Handle("/metrics", promhttp.Handler())
 
 		go func() {
-			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.TLSConfigValues.MetricsListener, flagParams.TLSConfigValues.MetricsPort)
-			err := http.ListenAndServe(flagParams.TLSConfigValues.MetricsListener+":"+flagParams.TLSConfigValues.MetricsPort, prometheusServer)
+			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.ConfigValues.MetricsListener, flagParams.ConfigValues.MetricsPort)
+			err := http.ListenAndServe(flagParams.ConfigValues.MetricsListener+":"+flagParams.ConfigValues.MetricsPort, prometheusServer)
 			if err != nil {
 				log.Fatal().Msgf("Error starting prometheus server: %v", err)
 			}
@@ -329,7 +306,7 @@ func osctrlService() {
 	muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
 
 	// ////////////////////////////// Everything is ready at this point!
-	serviceListener := flagParams.TLSConfigValues.Listener + ":" + flagParams.TLSConfigValues.Port
+	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
 	if flagParams.TLSServer {
 		log.Info().Msg("TLS Termination is enabled")
 		cfg := &tls.Config{
@@ -365,7 +342,7 @@ func osctrlService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if flagParams.ConfigFlag {
-		flagParams.TLSConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
+		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
@@ -385,7 +362,7 @@ func cliAction(c *cli.Context) error {
 		}
 	}
 	// Load carver configuration if external JSON config file is used
-	if flagParams.TLSConfigValues.Carver == config.CarverS3 {
+	if flagParams.ConfigValues.Carver == config.CarverS3 {
 		if flagParams.S3CarverConfig.Bucket != "" {
 			carvers3, err = carves.CreateCarverS3(flagParams.S3CarverConfig)
 		} else {
@@ -451,7 +428,7 @@ func main() {
 		os.Exit(1)
 	}
 	// Initialize service logger
-	initializeLogger(flagParams.TLSConfigValues.LogLevel, flagParams.TLSConfigValues.LogFormat)
+	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
 	// Service starts!
 	osctrlService()
 }
