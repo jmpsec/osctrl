@@ -305,7 +305,7 @@ func (conf *Settings) SetJSON(service, name, value string, envID uint) error {
 }
 
 // SetTLSJSON sets all the JSON configuration values for TLS service
-func (conf *Settings) SetTLSJSON(cfg config.JSONConfigurationTLS, envID uint) error {
+func (conf *Settings) SetTLSJSON(cfg config.JSONConfigurationService, envID uint) error {
 	if err := conf.SetJSON(config.ServiceTLS, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func (conf *Settings) SetTLSJSON(cfg config.JSONConfigurationTLS, envID uint) er
 }
 
 // SetAdminJSON sets all the JSON configuration values for admin service
-func (conf *Settings) SetAdminJSON(cfg config.JSONConfigurationAdmin, envID uint) error {
+func (conf *Settings) SetAdminJSON(cfg config.JSONConfigurationService, envID uint) error {
 	if err := conf.SetJSON(config.ServiceAdmin, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}

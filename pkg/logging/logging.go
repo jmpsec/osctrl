@@ -24,13 +24,13 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(cfg config.TLSFlagParams, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging: cfg.TLSConfigValues.Logger,
+		Logging: cfg.ConfigValues.Logger,
 		Nodes:   nodes,
 		Queries: queries,
 	}
-	switch cfg.TLSConfigValues.Logger {
+	switch cfg.ConfigValues.Logger {
 	case config.LoggingSplunk:
 		s, err := CreateLoggerSplunk(cfg.LoggerFile)
 		if err != nil {

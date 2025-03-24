@@ -161,7 +161,7 @@ type QueryLogsTemplateData struct {
 	QueryTargets  []queries.DistributedQueryTarget
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
-	ServiceConfig config.JSONConfigurationAdmin
+	ServiceConfig config.JSONConfigurationService
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -180,7 +180,7 @@ type SettingsTemplateData struct {
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
-	ServiceConfig   config.JSONConfigurationAdmin
+	ServiceConfig   config.JSONConfigurationService
 	Metadata        TemplateMetadata
 	LeftMetadata    AsideLeftMetadata
 }
@@ -239,5 +239,5 @@ type NodeTemplateData struct {
 	Dashboard     bool
 	Schedule      environments.ScheduleConf
 	Packs         environments.PacksEntries
-	ServiceConfig config.JSONConfigurationAdmin
+	ServiceConfig config.JSONConfigurationService
 }

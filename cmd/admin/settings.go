@@ -9,7 +9,7 @@ import (
 )
 
 // Function to load all settings for the service
-func loadingSettings(mgr *settings.Settings) error {
+func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
 	// Check if service settings for debug service is ready
 	if mgr.DebugService(config.ServiceAdmin) {
 		log.Debug().Msg("DebugService: Initializing settings")
@@ -51,7 +51,7 @@ func loadingSettings(mgr *settings.Settings) error {
 		}
 	}
 	// Write JSON config to settings
-	if err := mgr.SetAdminJSON(adminConfig, settings.NoEnvironmentID); err != nil {
+	if err := mgr.SetAdminJSON(cfg, settings.NoEnvironmentID); err != nil {
 		return fmt.Errorf("Failed to add JSON values to configuration: %w", err)
 	}
 	return nil

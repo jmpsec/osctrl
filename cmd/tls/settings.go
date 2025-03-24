@@ -8,7 +8,7 @@ import (
 )
 
 // Function to load all settings for the service
-func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationTLS) error {
+func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
 	// Check if service settings for debug service is ready
 	if !mgr.IsValue(config.ServiceTLS, settings.DebugService, settings.NoEnvironmentID) {
 		if err := mgr.NewBooleanValue(config.ServiceTLS, settings.DebugService, false, settings.NoEnvironmentID); err != nil {

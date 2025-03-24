@@ -40,7 +40,7 @@ type HandlersAdmin struct {
 	StaticLocation  string
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
-	AdminConfig     *config.JSONConfigurationAdmin
+	AdminConfig     *config.JSONConfigurationService
 	DBLogger        *logging.LoggerDB
 }
 
@@ -145,7 +145,7 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 	}
 }
 
-func WithAdminConfig(config *config.JSONConfigurationAdmin) HandlersOption {
+func WithAdminConfig(config *config.JSONConfigurationService) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.AdminConfig = config
 	}
