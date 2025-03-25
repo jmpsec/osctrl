@@ -150,6 +150,20 @@ func InitAdminFlags(params *ServiceFlagParams) []cli.Flag {
 	return allFlags
 }
 
+// InitAPIFlags initializes all the flags needed for the API service
+func InitAPIFlags(params *ServiceFlagParams) []cli.Flag {
+	var allFlags []cli.Flag
+	// Add flags by category
+	allFlags = append(allFlags, initConfigFlags(params, ServiceAPI)...)
+	allFlags = append(allFlags, initServiceFlags(params)...)
+	allFlags = append(allFlags, initLoggingFlags(params, ServiceAPI)...)
+	allFlags = append(allFlags, initRedisFlags(params)...)
+	allFlags = append(allFlags, initDBFlags(params)...)
+	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
+	allFlags = append(allFlags, initJWTFlags(params)...)
+	return allFlags
+}
+
 // initConfigFlags initializes configuration-related flags
 func initConfigFlags(params *ServiceFlagParams, service string) []cli.Flag {
 	return []cli.Flag{

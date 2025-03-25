@@ -77,17 +77,6 @@ type JSONConfigurationWriter struct {
 	WriterBufferSize int           `json:"writerBufferSize"`
 }
 
-// JSONConfigurationAPI to hold API service configuration values
-type JSONConfigurationAPI struct {
-	Listener  string `json:"listener"`
-	Port      string `json:"port"`
-	LogLevel  string `json:"logLevel"`
-	LogFormat string `json:"logFormat"`
-	Host      string `json:"host"`
-	Auth      string `json:"auth"`
-	Carver    string `json:"carver"`
-}
-
 // JSONConfigurationJWT to hold all JWT configuration values
 type JSONConfigurationJWT struct {
 	JWTSecret     string `json:"jwtSecret"`

@@ -27,9 +27,9 @@ func extractHeaderToken(r *http.Request) string {
 }
 
 // Handler to check access to a resource based on the authentication enabled
-func handlerAuthCheck(h http.Handler) http.Handler {
+func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch apiConfig.Auth {
+		switch auth {
 		case config.AuthNone:
 			// Set middleware values
 			s := make(handlers.ContextValue)
@@ -44,7 +44,7 @@ func handlerAuthCheck(h http.Handler) http.Handler {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-			claims, valid := apiUsers.CheckToken(jwtConfig.JWTSecret, token)
+			claims, valid := apiUsers.CheckToken(jwtSecret, token)
 			if !valid {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return

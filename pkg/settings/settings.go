@@ -351,7 +351,7 @@ func (conf *Settings) SetAdminJSON(cfg config.JSONConfigurationService, envID ui
 }
 
 // SetAPIJSON sets all the JSON configuration values for API service
-func (conf *Settings) SetAPIJSON(cfg config.JSONConfigurationAPI, envID uint) error {
+func (conf *Settings) SetAPIJSON(cfg config.JSONConfigurationService, envID uint) error {
 	if err := conf.SetJSON(config.ServiceAPI, JSONListener, cfg.Listener, envID); err != nil {
 		return err
 	}
