@@ -28,7 +28,7 @@ type HandlersApi struct {
 	RedisCache     *cache.RedisManager
 	ServiceVersion string
 	ServiceName    string
-	ApiConfig      *config.JSONConfigurationAPI
+	ApiConfig      *config.JSONConfigurationService
 }
 
 type HandlersOption func(*HandlersApi)
