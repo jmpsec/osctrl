@@ -185,3 +185,102 @@ func TestCreateNodeQueries(t *testing.T) {
 	assert.Equal(t, uint(2), nodeQueries[1].NodeID, "Second NodeID does not match expected value")
 	assert.Equal(t, uint(1), nodeQueries[1].QueryID, "Second QueryID does not match expected value")
 }
+
+func TestSetNodeQueriesAsExpired(t *testing.T) {
+	db, err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to setup test database: %v", err)
+	}
+
+	// Create tables
+	q := queries.CreateQueries(db)
+	nodes.CreateNodes(db, nil)
+
+	// Create test data
+	node1 := nodes.OsqueryNode{
+		Model: gorm.Model{ID: 1},
+	}
+	node2 := nodes.OsqueryNode{
+		Model: gorm.Model{ID: 2},
+	}
+	node3 := nodes.OsqueryNode{
+		Model: gorm.Model{ID: 3},
+	}
+
+	distributedQuery := queries.DistributedQuery{
+		Model:         gorm.Model{ID: 1},
+		Name:          "test_query",
+		Query:         "SELECT * FROM osquery_info;",
+		EnvironmentID: 1,
+		Expiration:    time.Now().Add(24 * time.Hour),
+	}
+
+	// Create nodes
+	if err := db.Create(&node1).Error; err != nil {
+		t.Fatalf("Failed to create test node1: %v", err)
+	}
+	if err := db.Create(&node2).Error; err != nil {
+		t.Fatalf("Failed to create test node2: %v", err)
+	}
+	if err := db.Create(&node3).Error; err != nil {
+		t.Fatalf("Failed to create test node3: %v", err)
+	}
+
+	// Create distributed query
+	if err := db.Create(&distributedQuery).Error; err != nil {
+		t.Fatalf("Failed to create test distributed query: %v", err)
+	}
+
+	// Create node queries with different statuses
+	nodeQueries := []queries.NodeQuery{
+		{
+			NodeID:  1,
+			QueryID: 1,
+			Status:  queries.DistributedQueryStatusPending, // This should be updated to expired
+		},
+		{
+			NodeID:  2,
+			QueryID: 1,
+			Status:  queries.DistributedQueryStatusPending, // This should be updated to expired
+		},
+		{
+			NodeID:  3,
+			QueryID: 1,
+			Status:  queries.DistributedQueryStatusCompleted, // This should remain completed
+		},
+	}
+
+	for _, nq := range nodeQueries {
+		if err := db.Create(&nq).Error; err != nil {
+			t.Fatalf("Failed to create test node query: %v", err)
+		}
+	}
+
+	// Call the function being tested
+	err = q.SetNodeQueriesAsExpired(1)
+	if err != nil {
+		t.Fatalf("SetNodeQueriesAsExpired returned an error: %v", err)
+	}
+
+	// Verify the results
+	var updatedNodeQueries []queries.NodeQuery
+	if err := db.Where("query_id = ?", 1).Order("node_id").Find(&updatedNodeQueries).Error; err != nil {
+		t.Fatalf("Failed to find updated node queries: %v", err)
+	}
+
+	assert.Len(t, updatedNodeQueries, 3, "Expected 3 node queries")
+
+	// Check that pending node queries were updated to expired
+	assert.Equal(t, uint(1), updatedNodeQueries[0].NodeID)
+	assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[0].Status,
+		"Node query with pending status should be updated to expired")
+
+	assert.Equal(t, uint(2), updatedNodeQueries[1].NodeID)
+	assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[1].Status,
+		"Node query with pending status should be updated to expired")
+
+	// Check that completed node queries were not updated
+	assert.Equal(t, uint(3), updatedNodeQueries[2].NodeID)
+	assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQueries[2].Status,
+		"Node query with completed status should remain completed")
+}
