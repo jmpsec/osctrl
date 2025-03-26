@@ -1,286 +1,231 @@
 package queries_test
 
 import (
-	"fmt"
-	"log"
 	"testing"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func setupTestDB() (*gorm.DB, error) {
+// testDB creates an in-memory SQLite database for testing
+func testDB(t *testing.T) *gorm.DB {
+	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		return nil, err
+	require.NoError(t, err, "Failed to open in-memory database")
+
+	// Initialize the tables
+	q := queries.CreateQueries(db)
+	require.NotNil(t, q, "Failed to create queries")
+
+	n := nodes.CreateNodes(db, nil)
+	require.NotNil(t, n, "Failed to create nodes")
+
+	return db
+}
+
+// setupTestData creates common test data for tests
+func setupTestData(t *testing.T, db *gorm.DB) (*queries.Queries, []nodes.OsqueryNode, *queries.DistributedQuery) {
+	t.Helper()
+
+	// Create query service
+	q := queries.CreateQueries(db)
+
+	// Create test nodes
+	testNodes := []nodes.OsqueryNode{
+		{Model: gorm.Model{ID: 1}},
+		{Model: gorm.Model{ID: 2}},
+		{Model: gorm.Model{ID: 3}},
 	}
-	return db, nil
+
+	// Create test query
+	testQuery := &queries.DistributedQuery{
+		Model:         gorm.Model{ID: 1},
+		Name:          "test_query",
+		Query:         "SELECT * FROM osquery_info;",
+		EnvironmentID: 1,
+		Expiration:    time.Now().Add(24 * time.Hour),
+	}
+
+	// Save nodes to database
+	for _, node := range testNodes {
+		err := db.Create(&node).Error
+		require.NoError(t, err, "Failed to create test node")
+	}
+
+	// Save query to database
+	err := db.Create(testQuery).Error
+	require.NoError(t, err, "Failed to create test distributed query")
+
+	return q, testNodes, testQuery
 }
 
 func TestNodeQueries(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test database: %v", err)
-	}
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
 
-	// Create tables
-	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db, nil)
-
-	// Create test data
-	node := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 1},
-	}
-	distributedQuery := queries.DistributedQuery{
-		Model:         gorm.Model{ID: 1},
-		Name:          "test_query",
-		Query:         "SELECT * FROM osquery_info;",
-		EnvironmentID: 1,
-		Expiration:    time.Now().Add(24 * time.Hour),
-	}
+	// Create node query relationship
 	nodeQuery := queries.NodeQuery{
-		NodeID:  1,
-		QueryID: 1,
+		NodeID:  nodes[0].ID,
+		QueryID: query.ID,
 		Status:  queries.DistributedQueryStatusPending,
 	}
 
-	// Query sqlite_master to list all tables
-	var tables []string
-	err = db.Raw("SELECT name FROM sqlite_master WHERE type='table'").Scan(&tables).Error
-	if err != nil {
-		log.Fatalf("failed to list tables: %v", err)
-	}
+	err := db.Create(&nodeQuery).Error
+	require.NoError(t, err, "Failed to create test node query")
 
-	fmt.Println("Tables in the database:")
-	for _, table := range tables {
-		fmt.Println(table)
-	}
+	// Test fetching queries for a node
+	t.Run("RetrieveNodeQueries", func(t *testing.T) {
+		result, _, err := q.NodeQueries(nodes[0])
+		require.NoError(t, err, "NodeQueries should not return an error")
 
-	if err := db.Create(&node).Error; err != nil {
-		t.Fatalf("Failed to create test node: %v", err)
-	}
-	if err := db.Create(&distributedQuery).Error; err != nil {
-		t.Fatalf("Failed to create test distributed query: %v", err)
-	}
-	if err := db.Create(&nodeQuery).Error; err != nil {
-		t.Fatalf("Failed to create test node query: %v", err)
-	}
+		assert.NotEmpty(t, result, "Expected non-empty queries")
+		assert.Equal(t, query.Query, result[query.Name], "Query does not match expected value")
+	})
 
-	// Test NodeQueries function
-	queries, _, err := q.NodeQueries(node)
-	if err != nil {
-		t.Fatalf("NodeQueries returned an error: %v", err)
-	}
-	// Print queries
-	fmt.Println(queries)
+	t.Run("NoQueriesForDifferentNode", func(t *testing.T) {
+		result, _, err := q.NodeQueries(nodes[1])
+		require.NoError(t, err, "NodeQueries should not return an error")
 
-	assert.NotEmpty(t, queries, "Expected non-empty queries")
-	assert.Equal(t, "SELECT * FROM osquery_info;", queries["test_query"], "Query does not match expected value")
+		assert.Empty(t, result, "Expected empty queries for node without assigned queries")
+	})
 }
+
 func TestUpdateQueryStatus(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test database: %v", err)
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+
+	// Test case table
+	testCases := []struct {
+		name       string
+		nodeID     uint
+		statusCode int
+		expected   string
+	}{
+		{
+			name:       "Complete with success",
+			nodeID:     nodes[0].ID,
+			statusCode: 0,
+			expected:   queries.DistributedQueryStatusCompleted,
+		},
+		{
+			name:       "Complete with error",
+			nodeID:     nodes[1].ID,
+			statusCode: 1,
+			expected:   queries.DistributedQueryStatusError,
+		},
 	}
 
-	// Create tables
-	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db, nil)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create node query
+			nodeQuery := queries.NodeQuery{
+				NodeID:  tc.nodeID,
+				QueryID: query.ID,
+				Status:  queries.DistributedQueryStatusPending,
+			}
 
-	// Create test data
-	node := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 1},
-	}
-	distributedQuery := queries.DistributedQuery{
-		Model:         gorm.Model{ID: 1},
-		Name:          "test_query",
-		Query:         "SELECT * FROM osquery_info;",
-		EnvironmentID: 1,
-		Expiration:    time.Now().Add(24 * time.Hour),
-	}
-	nodeQuery := queries.NodeQuery{
-		NodeID:  1,
-		QueryID: 1,
-		Status:  queries.DistributedQueryStatusPending,
-	}
+			err := db.Create(&nodeQuery).Error
+			require.NoError(t, err, "Failed to create test node query")
 
-	if err := db.Create(&node).Error; err != nil {
-		t.Fatalf("Failed to create test node: %v", err)
-	}
-	if err := db.Create(&distributedQuery).Error; err != nil {
-		t.Fatalf("Failed to create test distributed query: %v", err)
-	}
-	if err := db.Create(&nodeQuery).Error; err != nil {
-		t.Fatalf("Failed to create test node query: %v", err)
-	}
+			// Update query status
+			err = q.UpdateQueryStatus(query.Name, tc.nodeID, tc.statusCode)
+			require.NoError(t, err, "UpdateQueryStatus should not return an error")
 
-	// Test UpdateQueryStatus function
-	err = q.UpdateQueryStatus("test_query", 1, 0)
-	if err != nil {
-		t.Fatalf("UpdateQueryStatus returned an error: %v", err)
-	}
+			// Verify status was updated
+			var updatedNodeQuery queries.NodeQuery
+			err = db.Where("node_id = ? AND query_id = ?", tc.nodeID, query.ID).Find(&updatedNodeQuery).Error
+			require.NoError(t, err, "Failed to find updated node query")
 
-	var updatedNodeQuery queries.NodeQuery
-	if err := db.Where("node_id = ? AND query_id = ?", 1, 1).Find(&updatedNodeQuery).Error; err != nil {
-		t.Fatalf("Failed to find updated node query: %v", err)
+			assert.Equal(t, tc.expected, updatedNodeQuery.Status, "Status does not match expected value")
+		})
 	}
-
-	assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQuery.Status, "Status does not match expected value")
 }
 
 func TestCreateNodeQueries(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test database: %v", err)
-	}
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
 
-	// Create tables
-	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db, nil)
+	// Create node queries for multiple nodes
+	nodeIDs := []uint{nodes[0].ID, nodes[1].ID}
+	err := q.CreateNodeQueries(nodeIDs, query.ID)
+	require.NoError(t, err, "CreateNodeQueries should not return an error")
 
-	// Create test data
-	node1 := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 1},
-	}
-	node2 := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 2},
-	}
-	distributedQuery := queries.DistributedQuery{
-		Model:         gorm.Model{ID: 1},
-		Name:          "test_query",
-		Query:         "SELECT * FROM osquery_info;",
-		EnvironmentID: 1,
-		Expiration:    time.Now().Add(24 * time.Hour),
-	}
-
-	if err := db.Create(&node1).Error; err != nil {
-		t.Fatalf("Failed to create test node1: %v", err)
-	}
-	if err := db.Create(&node2).Error; err != nil {
-		t.Fatalf("Failed to create test node2: %v", err)
-	}
-	if err := db.Create(&distributedQuery).Error; err != nil {
-		t.Fatalf("Failed to create test distributed query: %v", err)
-	}
-
-	// Test CreateNodeQueries function
-	nodeIDs := []uint{1, 2}
-	err = q.CreateNodeQueries(nodeIDs, 1)
-	if err != nil {
-		t.Fatalf("CreateNodeQueries returned an error: %v", err)
-	}
-
+	// Verify node queries were created
 	var nodeQueries []queries.NodeQuery
-	if err := db.Where("query_id = ?", 1).Find(&nodeQueries).Error; err != nil {
-		t.Fatalf("Failed to find created node queries: %v", err)
-	}
+	err = db.Where("query_id = ?", query.ID).Order("node_id").Find(&nodeQueries).Error
+	require.NoError(t, err, "Failed to find created node queries")
 
 	assert.Len(t, nodeQueries, 2, "Expected 2 node queries to be created")
-	assert.Equal(t, uint(1), nodeQueries[0].NodeID, "First NodeID does not match expected value")
-	assert.Equal(t, uint(1), nodeQueries[0].QueryID, "First QueryID does not match expected value")
-	assert.Equal(t, uint(2), nodeQueries[1].NodeID, "Second NodeID does not match expected value")
-	assert.Equal(t, uint(1), nodeQueries[1].QueryID, "Second QueryID does not match expected value")
+	assert.Equal(t, nodeIDs[0], nodeQueries[0].NodeID, "First NodeID does not match expected value")
+	assert.Equal(t, nodeIDs[1], nodeQueries[1].NodeID, "Second NodeID does not match expected value")
+
+	// Test error handling
+	t.Run("EmptyNodeList", func(t *testing.T) {
+		err := q.CreateNodeQueries([]uint{}, query.ID)
+		assert.Error(t, err, "CreateNodeQueries should return an error with empty node list")
+	})
 }
 
 func TestSetNodeQueriesAsExpired(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test database: %v", err)
-	}
-
-	// Create tables
-	q := queries.CreateQueries(db)
-	nodes.CreateNodes(db, nil)
-
-	// Create test data
-	node1 := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 1},
-	}
-	node2 := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 2},
-	}
-	node3 := nodes.OsqueryNode{
-		Model: gorm.Model{ID: 3},
-	}
-
-	distributedQuery := queries.DistributedQuery{
-		Model:         gorm.Model{ID: 1},
-		Name:          "test_query",
-		Query:         "SELECT * FROM osquery_info;",
-		EnvironmentID: 1,
-		Expiration:    time.Now().Add(24 * time.Hour),
-	}
-
-	// Create nodes
-	if err := db.Create(&node1).Error; err != nil {
-		t.Fatalf("Failed to create test node1: %v", err)
-	}
-	if err := db.Create(&node2).Error; err != nil {
-		t.Fatalf("Failed to create test node2: %v", err)
-	}
-	if err := db.Create(&node3).Error; err != nil {
-		t.Fatalf("Failed to create test node3: %v", err)
-	}
-
-	// Create distributed query
-	if err := db.Create(&distributedQuery).Error; err != nil {
-		t.Fatalf("Failed to create test distributed query: %v", err)
-	}
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
 
 	// Create node queries with different statuses
 	nodeQueries := []queries.NodeQuery{
 		{
-			NodeID:  1,
-			QueryID: 1,
-			Status:  queries.DistributedQueryStatusPending, // This should be updated to expired
+			NodeID:  nodes[0].ID,
+			QueryID: query.ID,
+			Status:  queries.DistributedQueryStatusPending, // Should be updated to expired
 		},
 		{
-			NodeID:  2,
-			QueryID: 1,
-			Status:  queries.DistributedQueryStatusPending, // This should be updated to expired
+			NodeID:  nodes[1].ID,
+			QueryID: query.ID,
+			Status:  queries.DistributedQueryStatusPending, // Should be updated to expired
 		},
 		{
-			NodeID:  3,
-			QueryID: 1,
-			Status:  queries.DistributedQueryStatusCompleted, // This should remain completed
+			NodeID:  nodes[2].ID,
+			QueryID: query.ID,
+			Status:  queries.DistributedQueryStatusCompleted, // Should remain completed
 		},
 	}
 
 	for _, nq := range nodeQueries {
-		if err := db.Create(&nq).Error; err != nil {
-			t.Fatalf("Failed to create test node query: %v", err)
-		}
+		err := db.Create(&nq).Error
+		require.NoError(t, err, "Failed to create test node query")
 	}
 
-	// Call the function being tested
-	err = q.SetNodeQueriesAsExpired(1)
-	if err != nil {
-		t.Fatalf("SetNodeQueriesAsExpired returned an error: %v", err)
-	}
+	// Set pending node queries as expired
+	err := q.SetNodeQueriesAsExpired(query.ID)
+	require.NoError(t, err, "SetNodeQueriesAsExpired should not return an error")
 
-	// Verify the results
+	// Verify results
 	var updatedNodeQueries []queries.NodeQuery
-	if err := db.Where("query_id = ?", 1).Order("node_id").Find(&updatedNodeQueries).Error; err != nil {
-		t.Fatalf("Failed to find updated node queries: %v", err)
-	}
+	err = db.Where("query_id = ?", query.ID).Order("node_id").Find(&updatedNodeQueries).Error
+	require.NoError(t, err, "Failed to find updated node queries")
 
-	assert.Len(t, updatedNodeQueries, 3, "Expected 3 node queries")
+	require.Len(t, updatedNodeQueries, 3, "Expected 3 node queries")
 
-	// Check that pending node queries were updated to expired
-	assert.Equal(t, uint(1), updatedNodeQueries[0].NodeID)
-	assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[0].Status,
-		"Node query with pending status should be updated to expired")
+	// Verify each node query status individually with clear descriptions
+	t.Run("ExpirePendingNode1", func(t *testing.T) {
+		assert.Equal(t, nodes[0].ID, updatedNodeQueries[0].NodeID)
+		assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[0].Status,
+			"Node query with pending status should be updated to expired")
+	})
 
-	assert.Equal(t, uint(2), updatedNodeQueries[1].NodeID)
-	assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[1].Status,
-		"Node query with pending status should be updated to expired")
+	t.Run("ExpirePendingNode2", func(t *testing.T) {
+		assert.Equal(t, nodes[1].ID, updatedNodeQueries[1].NodeID)
+		assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[1].Status,
+			"Node query with pending status should be updated to expired")
+	})
 
-	// Check that completed node queries were not updated
-	assert.Equal(t, uint(3), updatedNodeQueries[2].NodeID)
-	assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQueries[2].Status,
-		"Node query with completed status should remain completed")
+	t.Run("PreserveCompletedNode", func(t *testing.T) {
+		assert.Equal(t, nodes[2].ID, updatedNodeQueries[2].NodeID)
+		assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQueries[2].Status,
+			"Node query with completed status should remain completed")
+	})
 }
