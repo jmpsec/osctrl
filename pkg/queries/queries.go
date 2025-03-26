@@ -62,6 +62,7 @@ const (
 	DistributedQueryStatusPending   string = "pending"
 	DistributedQueryStatusCompleted string = "completed"
 	DistributedQueryStatusError     string = "error"
+	DistributedQueryStatusExpired   string = "expired"
 )
 
 // DistributedQuery as abstraction of a distributed query
@@ -330,6 +331,11 @@ func (q *Queries) Expire(name string, envid uint) error {
 	if err := q.DB.Model(&query).Updates(map[string]interface{}{"expired": true, "active": false}).Error; err != nil {
 		return err
 	}
+
+	// Mark all pending node queries for this distributed query as expired
+	if err := q.SetNodeQueriesAsExpired(query.ID); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -492,5 +498,17 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
 		return err
 	}
+	return nil
+}
+
+// SetNodeQueriesAsExpired marks all pending node queries for a specific distributed query as expired
+func (q *Queries) SetNodeQueriesAsExpired(queryID uint) error {
+
+	if err := q.DB.Model(&NodeQuery{}).
+		Where("query_id = ? AND status = ?", queryID, DistributedQueryStatusPending).
+		Updates(map[string]interface{}{"status": DistributedQueryStatusExpired}).Error; err != nil {
+		return fmt.Errorf("error marking node queries as expired: %w", err)
+	}
+
 	return nil
 }
