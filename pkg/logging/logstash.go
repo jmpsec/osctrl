@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -60,9 +61,9 @@ func LoadLogstash(file string) (LogstashConfiguration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _logstashCfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingLogstash)
+	cfgRaw := viper.Sub(config.LoggingLogstash)
 	if cfgRaw == nil {
-		return _logstashCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingLogstash, file)
+		return _logstashCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingLogstash, file)
 	}
 	if err := cfgRaw.Unmarshal(&_logstashCfg); err != nil {
 		return _logstashCfg, err

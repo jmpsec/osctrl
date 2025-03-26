@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -160,7 +161,7 @@ type QueryLogsTemplateData struct {
 	QueryTargets  []queries.DistributedQueryTarget
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
-	ServiceConfig types.JSONConfigurationAdmin
+	ServiceConfig config.JSONConfigurationService
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -179,7 +180,7 @@ type SettingsTemplateData struct {
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
-	ServiceConfig   types.JSONConfigurationAdmin
+	ServiceConfig   config.JSONConfigurationService
 	Metadata        TemplateMetadata
 	LeftMetadata    AsideLeftMetadata
 }
@@ -238,5 +239,5 @@ type NodeTemplateData struct {
 	Dashboard     bool
 	Schedule      environments.ScheduleConf
 	Packs         environments.PacksEntries
-	ServiceConfig types.JSONConfigurationAdmin
+	ServiceConfig config.JSONConfigurationService
 }

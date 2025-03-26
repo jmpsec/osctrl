@@ -21,7 +21,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,7 +34,7 @@ const (
 	// Project name
 	projectName string = "osctrl"
 	// Service name
-	serviceName string = projectName + "-" + settings.ServiceTLS
+	serviceName string = projectName + "-" + config.ServiceTLS
 	// Service version
 	serviceVersion string = version.OsctrlVersion
 	// Service description
@@ -46,109 +45,64 @@ const (
 	healthPath string = "/health"
 	// Default endpoint to handle HTTP errors
 	errorPath string = "/error"
-	// Default service configuration file
-	defConfigurationFile string = "config/" + settings.ServiceTLS + ".json"
-	// Default DB configuration file
-	defDBConfigurationFile string = "config/db.json"
-	// Default redis configuration file
-	defRedisConfigurationFile string = "config/redis.json"
-	// Default Logger configuration file
-	defLoggerConfigurationFile string = "config/logger_tls.json"
-	// Default carver configuration file
-	defCarverConfigurationFile string = "config/carver_tls.json"
-	// Default TLS certificate file
-	defTLSCertificateFile string = "config/tls.crt"
-	// Default TLS private key file
-	defTLSKeyFile string = "config/tls.key"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default accelerate interval in seconds
 	defaultAccelerate int = 60
 	// Default expiration of oneliners for enroll/expire
 	defaultOnelinerExpiration bool = true
-	// Default timeout to attempt backend reconnect
-	defaultBackendRetryTimeout int = 7
-	// Default timeout to attempt redis reconnect
-	defaultRedisRetryTimeout int = 7
 )
 
 // Global variables
 var (
-	err                error
-	tlsConfigValues    types.JSONConfigurationTLS
-	tlsWriterConfig    types.JSONConfigurationTLSWriter
-	tlsConfig          types.JSONConfigurationTLS
-	dbConfigValues     backend.JSONConfigurationDB
-	dbConfig           backend.JSONConfigurationDB
-	redisConfigValues  cache.JSONConfigurationRedis
-	redisConfig        cache.JSONConfigurationRedis
-	db                 *backend.DBManager
-	redis              *cache.RedisManager
-	settingsmgr        *settings.Settings
-	envs               *environments.Environment
-	envsmap            environments.MapEnvironments
-	settingsmap        settings.MapSettings
-	nodesmgr           *nodes.NodeManager
-	queriesmgr         *queries.Queries
-	filecarves         *carves.Carves
-	loggerTLS          *logging.LoggerTLS
-	handlersTLS        *handlers.HandlersTLS
-	tagsmgr            *tags.TagManager
-	carvers3           *carves.CarverS3
-	s3LogConfig        types.S3Configuration
-	s3CarverConfig     types.S3Configuration
-	kafkaConfiguration types.KafkaConfiguration
-	app                *cli.App
-	flags              []cli.Flag
-	flagParams         config.TLSFlagParams
-)
-
-// Variables for flags
-var (
-	configFlag        bool
-	serviceConfigFile string
-	redisConfigFile   string
-	dbFlag            bool
-	redisFlag         bool
-	dbConfigFile      string
-	tlsServer         bool
-	tlsCertFile       string
-	tlsKeyFile        string
-	loggerFile        string
-	loggerDbSame      bool
-	alwaysLog         bool
-	carverConfigFile  string
+	err         error
+	db          *backend.DBManager
+	redis       *cache.RedisManager
+	settingsmgr *settings.Settings
+	envs        *environments.Environment
+	envsmap     environments.MapEnvironments
+	settingsmap settings.MapSettings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
+	loggerTLS   *logging.LoggerTLS
+	handlersTLS *handlers.HandlersTLS
+	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
+	app         *cli.App
+	flags       []cli.Flag
+	flagParams  config.ServiceFlagParams
 )
 
 // Valid values for authentication in configuration
 var validAuth = map[string]bool{
-	settings.AuthNone: true,
+	config.AuthNone: true,
 }
 
 // Valid values for logging in configuration
 var validLogging = map[string]bool{
-	settings.LoggingNone:     true,
-	settings.LoggingStdout:   true,
-	settings.LoggingFile:     true,
-	settings.LoggingDB:       true,
-	settings.LoggingGraylog:  true,
-	settings.LoggingSplunk:   true,
-	settings.LoggingLogstash: true,
-	settings.LoggingKinesis:  true,
-	settings.LoggingS3:       true,
-	settings.LoggingElastic:  true,
+	config.LoggingNone:     true,
+	config.LoggingStdout:   true,
+	config.LoggingFile:     true,
+	config.LoggingDB:       true,
+	config.LoggingGraylog:  true,
+	config.LoggingSplunk:   true,
+	config.LoggingLogstash: true,
+	config.LoggingKinesis:  true,
+	config.LoggingS3:       true,
+	config.LoggingElastic:  true,
 }
 
 // Valid values for carver in configuration
 var validCarver = map[string]bool{
-	settings.CarverDB:    true,
-	settings.CarverLocal: true,
-	settings.CarverS3:    true,
+	config.CarverDB:    true,
+	config.CarverLocal: true,
+	config.CarverS3:    true,
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (types.JSONConfigurationTLS, error) {
-	var cfg types.JSONConfigurationTLS
+func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
+	var cfg config.JSONConfigurationService
 	// Load file and read config
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
@@ -179,15 +133,6 @@ func loadConfiguration(file, service string) (types.JSONConfigurationTLS, error)
 // Initialization code
 func init() {
 	// Initialize CLI flags using the config package
-	flagParams = config.TLSFlagParams{
-		ServiceConfigFile: defConfigurationFile,
-		DBConfigFile:      defDBConfigurationFile,
-		RedisConfigFile:   defRedisConfigurationFile,
-		LoggerFile:        defLoggerConfigurationFile,
-		CarverConfigFile:  defCarverConfigurationFile,
-		TLSCertFile:       defTLSCertificateFile,
-		TLSKeyFile:        defTLSKeyFile,
-	}
 	flags = config.InitTLSFlags(&flagParams)
 }
 
@@ -197,37 +142,37 @@ func osctrlService() {
 	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
-		db, err = backend.CreateDBManager(dbConfig)
+		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to backend")
-			if dbConfig.ConnRetry == 0 {
+			if flagParams.DBConfigValues.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
-		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
+		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DBConfigValues.ConnRetry)
+		time.Sleep(time.Duration(flagParams.DBConfigValues.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
 	// Attempt to connect to cache waiting until is ready
 	for {
-		redis, err = cache.CreateRedisManager(redisConfig)
+		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to cache")
-			if redisConfig.ConnRetry == 0 {
+			if flagParams.RedisConfigValues.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
-		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
+		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.RedisConfigValues.ConnRetry)
+		time.Sleep(time.Duration(flagParams.RedisConfigValues.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
@@ -240,39 +185,38 @@ func osctrlService() {
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, tlsConfig.Carver, carvers3)
+	filecarves = carves.CreateFileCarves(db.Conn, flagParams.ConfigValues.Carver, carvers3)
 	log.Info().Msg("Loading service settings")
-	if err := loadingSettings(settingsmgr); err != nil {
-		log.Fatal().Msgf("Error loading settings - %s: %v", tlsConfig.Logger, err)
+	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
+		log.Fatal().Msgf("Error loading settings - %s: %v", flagParams.ConfigValues.Logger, err)
 	}
 	// Initialize batch writer
 	log.Info().Msg("Initializing batch writer")
 	tlsWriter := handlers.NewBatchWriter(
-		tlsWriterConfig.WriterBatchSize,
-		tlsWriterConfig.WriterTimeout,
-		tlsWriterConfig.WriterBufferSize,
+		flagParams.WriterConfig.WriterBatchSize,
+		flagParams.WriterConfig.WriterTimeout,
+		flagParams.WriterConfig.WriterBufferSize,
 		*nodesmgr,
 	)
 	// Initialize service metrics
 	log.Info().Msg("Loading service metrics")
 	// Initialize TLS logger
 	log.Info().Msg("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(
-		tlsConfig.Logger, loggerFile, s3LogConfig, kafkaConfiguration, loggerDbSame, alwaysLog, dbConfig, settingsmgr, nodesmgr, queriesmgr)
+	loggerTLS, err = logging.CreateLoggerTLS(flagParams, settingsmgr, nodesmgr, queriesmgr)
 	if err != nil {
-		log.Fatal().Msgf("Error loading logger - %s: %v", tlsConfig.Logger, err)
+		log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.ConfigValues.Logger, err)
 	}
 	// Sleep to reload environments
 	// FIXME Implement Redis cache
 	// FIXME splay this?
 	log.Info().Msg("Preparing pseudo-cache for environments")
 	go func() {
-		_t := settingsmgr.RefreshEnvs(settings.ServiceTLS)
+		_t := settingsmgr.RefreshEnvs(config.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceTLS) {
+			if settingsmgr.DebugService(config.ServiceTLS) {
 				log.Info().Msg("DebugService: Refreshing environments")
 			}
 			envsmap = refreshEnvironments()
@@ -284,19 +228,19 @@ func osctrlService() {
 	// FIXME splay this?
 	log.Info().Msg("Preparing pseudo-cache for settings")
 	go func() {
-		_t := settingsmgr.RefreshSettings(settings.ServiceTLS)
+		_t := settingsmgr.RefreshSettings(config.ServiceTLS)
 		if _t == 0 {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceTLS) {
+			if settingsmgr.DebugService(config.ServiceTLS) {
 				log.Info().Msg("DebugService: Refreshing settings")
 			}
 			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-	if tlsConfig.MetricsEnabled {
+	if flagParams.ConfigValues.MetricsEnabled {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
@@ -306,8 +250,8 @@ func osctrlService() {
 		prometheusServer.Handle("/metrics", promhttp.Handler())
 
 		go func() {
-			log.Info().Msgf("Starting prometheus server at %s:%s", tlsConfig.MetricsListener, tlsConfig.MetricsPort)
-			err := http.ListenAndServe(tlsConfig.MetricsListener+":"+tlsConfig.MetricsPort, prometheusServer)
+			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.ConfigValues.MetricsListener, flagParams.ConfigValues.MetricsPort)
+			err := http.ListenAndServe(flagParams.ConfigValues.MetricsListener+":"+flagParams.ConfigValues.MetricsPort, prometheusServer)
 			if err != nil {
 				log.Fatal().Msgf("Error starting prometheus server: %v", err)
 			}
@@ -362,8 +306,8 @@ func osctrlService() {
 	muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
 
 	// ////////////////////////////// Everything is ready at this point!
-	serviceListener := tlsConfig.Listener + ":" + tlsConfig.Port
-	if tlsServer {
+	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
+	if flagParams.TLSServer {
 		log.Info().Msg("TLS Termination is enabled")
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
@@ -383,7 +327,7 @@ func osctrlService() {
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
 		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
-		if err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile); err != nil {
+		if err := srv.ListenAndServeTLS(flagParams.TLSCertFile, flagParams.TLSKeyFile); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
 	} else {
@@ -398,33 +342,27 @@ func osctrlService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if flagParams.ConfigFlag {
-		tlsConfig, err = loadConfiguration(flagParams.ServiceConfigFile, settings.ServiceTLS)
+		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
 		if err != nil {
 			return fmt.Errorf("Error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
-	} else {
-		tlsConfig = flagParams.TLSConfigValues
 	}
 	// Load db configuration if external JSON config file is used
 	if flagParams.DBFlag {
-		dbConfig, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
+		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load DB configuration - %w", err)
 		}
-	} else {
-		dbConfig = flagParams.DBConfigValues
 	}
 	// Load redis configuration if external JSON config file is used
 	if flagParams.RedisFlag {
-		redisConfig, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
+		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load redis configuration - %w", err)
 		}
-	} else {
-		redisConfig = flagParams.RedisConfigValues
 	}
 	// Load carver configuration if external JSON config file is used
-	if tlsConfig.Carver == settings.CarverS3 {
+	if flagParams.ConfigValues.Carver == config.CarverS3 {
 		if flagParams.S3CarverConfig.Bucket != "" {
 			carvers3, err = carves.CreateCarverS3(flagParams.S3CarverConfig)
 		} else {
@@ -437,25 +375,26 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
+// Initialize service logger, set log level and format
 func initializeLogger(logLevel, logFormat string) {
-
+	// Log level
 	switch strings.ToLower(logLevel) {
-	case types.LogLevelDebug:
+	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case types.LogLevelInfo:
+	case config.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case types.LogLevelWarn:
+	case config.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case types.LogLevelError:
+	case config.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-
+	// Log format
 	switch strings.ToLower(logFormat) {
-	case types.LogFormatJSON:
+	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case types.LogFormatConsole:
+	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
@@ -463,7 +402,6 @@ func initializeLogger(logLevel, logFormat string) {
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-
 }
 
 func main() {
@@ -489,9 +427,8 @@ func main() {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-
 	// Initialize service logger
-	initializeLogger(tlsConfig.LogLevel, tlsConfig.LogFormat)
+	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
 	// Service starts!
 	osctrlService()
 }

@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -67,9 +68,9 @@ func LoadKinesis(file string) (KinesisConfiguration, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return _kinesisCfg, err
 	}
-	cfgRaw := viper.Sub(settings.LoggingSplunk)
+	cfgRaw := viper.Sub(config.LoggingSplunk)
 	if cfgRaw == nil {
-		return _kinesisCfg, fmt.Errorf("JSON key %s not found in %s", settings.LoggingSplunk, file)
+		return _kinesisCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingSplunk, file)
 	}
 	if err := cfgRaw.Unmarshal(&_kinesisCfg); err != nil {
 		return _kinesisCfg, err

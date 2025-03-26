@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -27,24 +27,24 @@ func extractHeaderToken(r *http.Request) string {
 }
 
 // Handler to check access to a resource based on the authentication enabled
-func handlerAuthCheck(h http.Handler) http.Handler {
+func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch apiConfig.Auth {
-		case settings.AuthNone:
+		switch auth {
+		case config.AuthNone:
 			// Set middleware values
 			s := make(handlers.ContextValue)
 			s["user"] = "admin"
 			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
-		case settings.AuthJWT:
+		case config.AuthJWT:
 			// Set middleware values
 			token := extractHeaderToken(r)
 			if token == "" {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return
 			}
-			claims, valid := apiUsers.CheckToken(jwtConfig.JWTSecret, token)
+			claims, valid := apiUsers.CheckToken(jwtSecret, token)
 			if !valid {
 				http.Redirect(w, r, forbiddenPath, http.StatusForbidden)
 				return

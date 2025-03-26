@@ -47,13 +47,14 @@ services:
       - SERVICE_AUTH=none
       - SERVICE_LOGGER=${OSCTRL_TLS_LOGGER}
       - LOGGER_DB_SAME=true
+      - SERVICE_LOG_FORMAT=console
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
       - DB_USER=${POSTGRES_DB_USERNAME}
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
-      - REDIS_HOST=osctrl-redis      
+      - REDIS_HOST=osctrl-redis
     networks:
       - osctrl-dev-backend
     ports:
@@ -84,6 +85,7 @@ services:
       - SERVICE_AUTH=db
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=db
+      - SERVICE_LOG_FORMAT=console
       - LOGGER_DB_SAME=true
       - SESSION_KEY=${SESSION_KEY}
       #### Database settings ####
@@ -123,6 +125,7 @@ services:
       - SERVICE_AUTH=jwt
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=db
+      - SERVICE_LOG_FORMAT=console
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}

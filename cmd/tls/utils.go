@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
@@ -50,7 +51,7 @@ func refreshEnvironments() environments.MapEnvironments {
 // Helper to refresh the settings until cache/Redis support is implemented
 func refreshSettings() settings.MapSettings {
 	log.Debug().Msg("Refreshing settings...")
-	_settingsmap, err := settingsmgr.GetMap(settings.ServiceTLS, settings.NoEnvironmentID)
+	_settingsmap, err := settingsmgr.GetMap(config.ServiceTLS, settings.NoEnvironmentID)
 	if err != nil {
 		log.Err(err).Msg("error refreshing settings")
 		return settings.MapSettings{}

@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"github.com/jmpsec/osctrl/pkg/backend"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -24,51 +24,51 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, kafkaConf types.KafkaConfiguration, loggerSame, alwaysLog bool, dbConf backend.JSONConfigurationDB, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging: logging,
+		Logging: cfg.ConfigValues.Logger,
 		Nodes:   nodes,
 		Queries: queries,
 	}
-	switch logging {
-	case settings.LoggingSplunk:
-		s, err := CreateLoggerSplunk(loggingFile)
+	switch cfg.ConfigValues.Logger {
+	case config.LoggingSplunk:
+		s, err := CreateLoggerSplunk(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		s.Settings(mgr)
 		l.Logger = s
-	case settings.LoggingGraylog:
-		g, err := CreateLoggerGraylog(loggingFile)
+	case config.LoggingGraylog:
+		g, err := CreateLoggerGraylog(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		g.Settings(mgr)
 		l.Logger = g
-	case settings.LoggingDB:
-		if loggerSame {
-			d, err := CreateLoggerDBConfig(dbConf)
+	case config.LoggingDB:
+		if cfg.LoggerDBSame {
+			d, err := CreateLoggerDBConfig(cfg.DBConfigValues)
 			if err != nil {
 				return nil, err
 			}
 			d.Settings(mgr)
 			l.Logger = d
 		} else {
-			d, err := CreateLoggerDBFile(loggingFile)
+			d, err := CreateLoggerDBFile(cfg.LoggerFile)
 			if err != nil {
 				return nil, err
 			}
 			d.Settings(mgr)
 			l.Logger = d
 		}
-	case settings.LoggingStdout:
+	case config.LoggingStdout:
 		d, err := CreateLoggerStdout()
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingFile:
+	case config.LoggingFile:
 		// TODO: All this should be customizable
 		rotateCfg := LumberjackConfig{
 			MaxSize:    25,
@@ -82,52 +82,52 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingNone:
+	case config.LoggingNone:
 		d, err := CreateLoggerNone()
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingKinesis:
-		d, err := CreateLoggerKinesis(loggingFile)
+	case config.LoggingKinesis:
+		d, err := CreateLoggerKinesis(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingS3:
+	case config.LoggingS3:
 		var d *LoggerS3
 		var err error
-		if s3Conf.Bucket != "" {
-			d, err = CreateLoggerS3(s3Conf)
+		if cfg.S3LogConfig.Bucket != "" {
+			d, err = CreateLoggerS3(cfg.S3LogConfig)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			d, err = CreateLoggerS3File(loggingFile)
+			d, err = CreateLoggerS3File(cfg.LoggerFile)
 			if err != nil {
 				return nil, err
 			}
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingLogstash:
-		d, err := CreateLoggerLogstash(loggingFile)
+	case config.LoggingLogstash:
+		d, err := CreateLoggerLogstash(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
-	case settings.LoggingKafka:
-		k, err := CreateLoggerKafka(kafkaConf)
+	case config.LoggingKafka:
+		k, err := CreateLoggerKafka(cfg.KafkaConfiguration)
 		if err != nil {
 			return nil, err
 		}
 		k.Settings(mgr)
 		l.Logger = k
-	case settings.LoggingElastic:
-		e, err := CreateLoggerElastic(loggingFile)
+	case config.LoggingElastic:
+		e, err := CreateLoggerElastic(cfg.LoggerFile)
 		if err != nil {
 			return nil, err
 		}
@@ -135,8 +135,8 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 		l.Logger = e
 	}
 	// Initialize the logger that will always log to DB
-	if alwaysLog {
-		always, err := CreateLoggerDBConfig(dbConf)
+	if cfg.AlwaysLog {
+		always, err := CreateLoggerDBConfig(cfg.DBConfigValues)
 		if err != nil {
 			return nil, err
 		}
@@ -149,82 +149,82 @@ func CreateLoggerTLS(logging, loggingFile string, s3Conf types.S3Configuration, 
 // Log will send status/result logs via the configured method of logging
 func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	switch logTLS.Logging {
-	case settings.LoggingSplunk:
+	case config.LoggingSplunk:
 		l, ok := logTLS.Logger.(*LoggerSplunk)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingSplunk)
+			log.Error().Msgf("error casting logger to %s", config.LoggingSplunk)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingGraylog:
+	case config.LoggingGraylog:
 		l, ok := logTLS.Logger.(*LoggerGraylog)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingGraylog)
+			log.Error().Msgf("error casting logger to %s", config.LoggingGraylog)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingDB:
+	case config.LoggingDB:
 		l, ok := logTLS.Logger.(*LoggerDB)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingDB)
+			log.Error().Msgf("error casting logger to %s", config.LoggingDB)
 		}
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingStdout:
+	case config.LoggingStdout:
 		l, ok := logTLS.Logger.(*LoggerStdout)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingStdout)
+			log.Error().Msgf("error casting logger to %s", config.LoggingStdout)
 		}
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingFile:
+	case config.LoggingFile:
 		l, ok := logTLS.Logger.(*LoggerFile)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingFile)
+			log.Error().Msgf("error casting logger to %s", config.LoggingFile)
 		}
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingNone:
+	case config.LoggingNone:
 		l, ok := logTLS.Logger.(*LoggerNone)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingNone)
+			log.Error().Msgf("error casting logger to %s", config.LoggingNone)
 		}
 		if l.Enabled {
 			l.Log(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingKinesis:
+	case config.LoggingKinesis:
 		l, ok := logTLS.Logger.(*LoggerKinesis)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingKinesis)
+			log.Error().Msgf("error casting logger to %s", config.LoggingKinesis)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingS3:
+	case config.LoggingS3:
 		l, ok := logTLS.Logger.(*LoggerS3)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingS3)
+			log.Error().Msgf("error casting logger to %s", config.LoggingS3)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingKafka:
+	case config.LoggingKafka:
 		k, ok := logTLS.Logger.(*LoggerKafka)
 		if !ok {
-			log.Printf("error casting logger to %s", settings.LoggingKafka)
+			log.Printf("error casting logger to %s", config.LoggingKafka)
 		}
 		if k.Enabled {
 			k.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingElastic:
+	case config.LoggingElastic:
 		k, ok := logTLS.Logger.(*LoggerElastic)
 		if !ok {
-			log.Printf("error casting logger to %s", settings.LoggingElastic)
+			log.Printf("error casting logger to %s", config.LoggingElastic)
 		}
 		if k.Enabled {
 			k.Send(logType, data, environment, uuid, debug)
@@ -234,7 +234,7 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled && logType == types.StatusLog {
 		// Check if configured logger is DB so we skip logging the same data twice
 		logAlways := true
-		if logTLS.Logger == settings.LoggingDB {
+		if logTLS.Logger == config.LoggingDB {
 			l, ok := logTLS.Logger.(*LoggerDB)
 			if ok {
 				logAlways = !sameConfigDB(*l.Database.Config, *logTLS.AlwaysLogger.Database.Config)
@@ -249,74 +249,74 @@ func (logTLS *LoggerTLS) Log(logType string, data []byte, environment, uuid stri
 // QueryLog will send query result logs via the configured method of logging
 func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid, name string, status int, debug bool) {
 	switch logTLS.Logging {
-	case settings.LoggingSplunk:
+	case config.LoggingSplunk:
 		l, ok := logTLS.Logger.(*LoggerSplunk)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingSplunk)
+			log.Error().Msgf("error casting logger to %s", config.LoggingSplunk)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingGraylog:
+	case config.LoggingGraylog:
 		l, ok := logTLS.Logger.(*LoggerGraylog)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingGraylog)
+			log.Error().Msgf("error casting logger to %s", config.LoggingGraylog)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingDB:
+	case config.LoggingDB:
 		l, ok := logTLS.Logger.(*LoggerDB)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingDB)
+			log.Error().Msgf("error casting logger to %s", config.LoggingDB)
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
 		}
-	case settings.LoggingStdout:
+	case config.LoggingStdout:
 		l, ok := logTLS.Logger.(*LoggerStdout)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingStdout)
+			log.Error().Msgf("error casting logger to %s", config.LoggingStdout)
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
 		}
-	case settings.LoggingFile:
+	case config.LoggingFile:
 		l, ok := logTLS.Logger.(*LoggerFile)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingFile)
+			log.Error().Msgf("error casting logger to %s", config.LoggingFile)
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
 		}
-	case settings.LoggingNone:
+	case config.LoggingNone:
 		l, ok := logTLS.Logger.(*LoggerNone)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingNone)
+			log.Error().Msgf("error casting logger to %s", config.LoggingNone)
 		}
 		if l.Enabled {
 			l.Query(data, environment, uuid, name, status, debug)
 		}
-	case settings.LoggingKinesis:
+	case config.LoggingKinesis:
 		l, ok := logTLS.Logger.(*LoggerKinesis)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingKinesis)
+			log.Error().Msgf("error casting logger to %s", config.LoggingKinesis)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingS3:
+	case config.LoggingS3:
 		l, ok := logTLS.Logger.(*LoggerS3)
 		if !ok {
-			log.Error().Msgf("error casting logger to %s", settings.LoggingS3)
+			log.Error().Msgf("error casting logger to %s", config.LoggingS3)
 		}
 		if l.Enabled {
 			l.Send(logType, data, environment, uuid, debug)
 		}
-	case settings.LoggingKafka:
+	case config.LoggingKafka:
 		k, ok := logTLS.Logger.(*LoggerKafka)
 		if !ok {
-			log.Printf("error casting logger to %s", settings.LoggingKafka)
+			log.Printf("error casting logger to %s", config.LoggingKafka)
 		}
 		if k.Enabled {
 			k.Send(logType, data, environment, uuid, debug)
@@ -326,7 +326,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 	if logTLS.AlwaysLogger != nil && logTLS.AlwaysLogger.Enabled {
 		// Check if configured logger is DB so we skip logging the same data twice
 		logAlways := true
-		if logTLS.Logger == settings.LoggingDB {
+		if logTLS.Logger == config.LoggingDB {
 			l, ok := logTLS.Logger.(*LoggerDB)
 			if ok {
 				logAlways = !sameConfigDB(*l.Database.Config, *logTLS.AlwaysLogger.Database.Config)

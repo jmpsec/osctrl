@@ -17,6 +17,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -36,17 +37,13 @@ const (
 	// Project name
 	projectName string = "osctrl"
 	// Service name
-	serviceName string = projectName + "-" + settings.ServiceAdmin
+	serviceName string = projectName + "-" + config.ServiceAdmin
 	// Service version
 	serviceVersion string = version.OsctrlVersion
 	// Service description
 	serviceDescription string = "Admin service for osctrl"
 	// Application description
 	appDescription string = serviceDescription + ", a fast and efficient osquery management"
-	// Default timeout to attempt backend reconnect
-	defaultBackendRetryTimeout int = 7
-	// Default timeout to attempt redis reconnect
-	defaultRedisRetryTimeout int = 7
 )
 
 // Paths
@@ -65,36 +62,8 @@ const (
 	faviconPath string = "/favicon.ico"
 )
 
-// Configuration
-const (
-	// Default SAML configuration file
-	defSAMLConfigurationFile string = "config/saml.json"
-	// Default JWT configuration file
-	defJWTConfigurationFile string = "config/jwt.json"
-	// Default service configuration file
-	defConfigurationFile string = "config/" + settings.ServiceAdmin + ".json"
-	// Default DB configuration file
-	defDBConfigurationFile string = "config/db.json"
-	// Default redis configuration file
-	defRedisConfigurationFile string = "config/redis.json"
-	// Default Logger configuration file
-	defLoggerConfigurationFile string = "config/logger_admin.json"
-	// Default TLS certificate file
-	defTLSCertificateFile string = "config/tls.crt"
-	// Default TLS private key file
-	defTLSKeyFile string = "config/tls.key"
-	// Default carver configuration file
-	defCarverConfigurationFile string = "config/carver.json"
-)
-
 // Random
 const (
-	// Static files folder
-	defStaticFilesFolder string = "./static"
-	// Default templates folder
-	defTemplatesFolder string = "./tmpl_admin"
-	// Default carved files folder
-	defCarvedFolder string = "./carved_files/"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
 	// Default interval in seconds to expire queries/carves
@@ -103,66 +72,26 @@ const (
 	defaultInactive int = -72
 )
 
-// osquery
-const (
-	// osquery version to display tables
-	defOsqueryTablesVersion = version.OsqueryVersion
-	// JSON file with osquery tables data
-	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
-)
-
 // Global general variables
 var (
-	err               error
-	adminConfigValues types.JSONConfigurationAdmin
-	adminConfig       types.JSONConfigurationAdmin
-	s3LogConfig       types.S3Configuration
-	s3CarverConfig    types.S3Configuration
-	dbConfigValues    backend.JSONConfigurationDB
-	dbConfig          backend.JSONConfigurationDB
-	redisConfigValues cache.JSONConfigurationRedis
-	redisConfig       cache.JSONConfigurationRedis
-	db                *backend.DBManager
-	redis             *cache.RedisManager
-	settingsmgr       *settings.Settings
-	nodesmgr          *nodes.NodeManager
-	queriesmgr        *queries.Queries
-	carvesmgr         *carves.Carves
-	sessionsmgr       *sessions.SessionManager
-	envs              *environments.Environment
-	adminUsers        *users.UserManager
-	tagsmgr           *tags.TagManager
-	carvers3          *carves.CarverS3
-	app               *cli.App
-	flags             []cli.Flag
+	err         error
+	db          *backend.DBManager
+	redis       *cache.RedisManager
+	settingsmgr *settings.Settings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	carvesmgr   *carves.Carves
+	sessionsmgr *sessions.SessionManager
+	envs        *environments.Environment
+	adminUsers  *users.UserManager
+	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
+	app         *cli.App
+	flags       []cli.Flag
+	flagParams  config.ServiceFlagParams
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	handlersAdmin *handlers.HandlersAdmin
-)
-
-// Variables for flags
-var (
-	configFlag           bool
-	dbFlag               bool
-	redisFlag            bool
-	serviceConfigFile    string
-	dbConfigFile         string
-	redisConfigFile      string
-	tlsServer            bool
-	tlsCertFile          string
-	tlsKeyFile           string
-	samlConfigFile       string
-	jwtFlag              bool
-	jwtConfigFile        string
-	osqueryTablesFile    string
-	osqueryTablesVersion string
-	loggerFile           string
-	loggerDbSame         bool
-	staticFilesFolder    string
-	staticOffline        bool
-	carvedFilesFolder    string
-	templatesFolder      string
-	carverConfigFile     string
 )
 
 // SAML variables
@@ -172,29 +101,23 @@ var (
 	samlData       samlThings
 )
 
-// JWT variables
-var (
-	jwtConfigValues types.JSONConfigurationJWT
-	jwtConfig       types.JSONConfigurationJWT
-)
-
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
-	settings.AuthDB:   true,
-	settings.AuthSAML: true,
-	settings.AuthJSON: true,
+	config.AuthDB:   true,
+	config.AuthSAML: true,
+	config.AuthJSON: true,
 }
 
 // Valid values for carver in configuration
 var validCarver = map[string]bool{
-	settings.CarverDB:    true,
-	settings.CarverLocal: true,
-	settings.CarverS3:    true,
+	config.CarverDB:    true,
+	config.CarverLocal: true,
+	config.CarverS3:    true,
 }
 
 // Function to load the configuration file
-func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, error) {
-	var cfg types.JSONConfigurationAdmin
+func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
+	var cfg config.JSONConfigurationService
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -222,418 +145,8 @@ func loadConfiguration(file, service string) (types.JSONConfigurationAdmin, erro
 
 // Initialization code
 func init() {
-	// Initialize CLI flags
-	flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "config",
-			Aliases:     []string{"c"},
-			Value:       false,
-			Usage:       "Provide service configuration via JSON file",
-			EnvVars:     []string{"SERVICE_CONFIG"},
-			Destination: &configFlag,
-		},
-		&cli.StringFlag{
-			Name:        "config-file",
-			Aliases:     []string{"C"},
-			Value:       defConfigurationFile,
-			Usage:       "Load service configuration from `FILE`",
-			EnvVars:     []string{"SERVICE_CONFIG_FILE"},
-			Destination: &serviceConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "listener",
-			Aliases:     []string{"l"},
-			Value:       "0.0.0.0",
-			Usage:       "Listener for the service",
-			EnvVars:     []string{"SERVICE_LISTENER"},
-			Destination: &adminConfigValues.Listener,
-		},
-		&cli.StringFlag{
-			Name:        "port",
-			Aliases:     []string{"p"},
-			Value:       "9001",
-			Usage:       "TCP port for the service",
-			EnvVars:     []string{"SERVICE_PORT"},
-			Destination: &adminConfigValues.Port,
-		},
-		&cli.StringFlag{
-			Name:        "log-level",
-			Value:       types.LogLevelInfo,
-			Usage:       "Log level for the service",
-			EnvVars:     []string{"SERVICE_LOG_LEVEL"},
-			Destination: &adminConfigValues.LogLevel,
-		},
-		&cli.StringFlag{
-			Name:        "log-format",
-			Value:       types.LogFormatJSON,
-			Usage:       "Log format for the service",
-			EnvVars:     []string{"SERVICE_LOG_FORMAT"},
-			Destination: &adminConfigValues.LogFormat,
-		},
-		&cli.StringFlag{
-			Name:        "auth",
-			Aliases:     []string{"A"},
-			Value:       settings.AuthDB,
-			Usage:       "Authentication mechanism for the service",
-			EnvVars:     []string{"SERVICE_AUTH"},
-			Destination: &adminConfigValues.Auth,
-		},
-		&cli.StringFlag{
-			Name:        "host",
-			Aliases:     []string{"H"},
-			Value:       "0.0.0.0",
-			Usage:       "Exposed hostname the service uses",
-			EnvVars:     []string{"SERVICE_HOST"},
-			Destination: &adminConfigValues.Host,
-		},
-		&cli.StringFlag{
-			Name:        "session-key",
-			Value:       "",
-			Usage:       "Session key to generate cookies from it",
-			EnvVars:     []string{"SESSION_KEY"},
-			Destination: &adminConfigValues.SessionKey,
-		},
-		&cli.StringFlag{
-			Name:        "logging",
-			Aliases:     []string{"L"},
-			Value:       settings.LoggingDB,
-			Usage:       "Logging mechanism to handle logs from nodes",
-			EnvVars:     []string{"SERVICE_LOGGER"},
-			Destination: &adminConfigValues.Logger,
-		},
-		&cli.BoolFlag{
-			Name:        "redis",
-			Aliases:     []string{"r"},
-			Value:       false,
-			Usage:       "Provide redis configuration via JSON file",
-			EnvVars:     []string{"REDIS_CONFIG"},
-			Destination: &redisFlag,
-		},
-		&cli.StringFlag{
-			Name:        "redis-file",
-			Aliases:     []string{"R"},
-			Value:       defRedisConfigurationFile,
-			Usage:       "Load redis configuration from `FILE`",
-			EnvVars:     []string{"REDIS_CONFIG_FILE"},
-			Destination: &redisConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "redis-connection-string",
-			Value:       "",
-			Usage:       "Redis connection string, must include schema (<redis|rediss|unix>://<user>:<pass>@<host>:<port>/<db>?<options>",
-			EnvVars:     []string{"REDIS_CONNECTION_STRING"},
-			Destination: &redisConfigValues.ConnectionString,
-		},
-		&cli.StringFlag{
-			Name:        "redis-host",
-			Value:       "127.0.0.1",
-			Usage:       "Redis host to be connected to",
-			EnvVars:     []string{"REDIS_HOST"},
-			Destination: &redisConfigValues.Host,
-		},
-		&cli.StringFlag{
-			Name:        "redis-port",
-			Value:       "6379",
-			Usage:       "Redis port to be connected to",
-			EnvVars:     []string{"REDIS_PORT"},
-			Destination: &redisConfigValues.Port,
-		},
-		&cli.StringFlag{
-			Name:        "redis-pass",
-			Value:       "",
-			Usage:       "Password to be used for redis",
-			EnvVars:     []string{"REDIS_PASS"},
-			Destination: &redisConfigValues.Password,
-		},
-		&cli.IntFlag{
-			Name:        "redis-db",
-			Value:       0,
-			Usage:       "Redis database to be selected after connecting",
-			EnvVars:     []string{"REDIS_DB"},
-			Destination: &redisConfigValues.DB,
-		},
-		&cli.IntFlag{
-			Name:        "redis-conn-retry",
-			Value:       defaultRedisRetryTimeout,
-			Usage:       "Time in seconds to retry the connection to the cache, if set to 0 the service will stop if the connection fails",
-			EnvVars:     []string{"REDIS_CONN_RETRY"},
-			Destination: &redisConfigValues.ConnRetry,
-		},
-		&cli.BoolFlag{
-			Name:        "db",
-			Aliases:     []string{"d"},
-			Value:       false,
-			Usage:       "Provide DB configuration via JSON file",
-			EnvVars:     []string{"DB_CONFIG"},
-			Destination: &dbFlag,
-		},
-		&cli.StringFlag{
-			Name:        "db-file",
-			Aliases:     []string{"D"},
-			Value:       defDBConfigurationFile,
-			Usage:       "Load DB configuration from `FILE`",
-			EnvVars:     []string{"DB_CONFIG_FILE"},
-			Destination: &dbConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "db-host",
-			Value:       "127.0.0.1",
-			Usage:       "Backend host to be connected to",
-			EnvVars:     []string{"DB_HOST"},
-			Destination: &dbConfigValues.Host,
-		},
-		&cli.StringFlag{
-			Name:        "db-port",
-			Value:       "5432",
-			Usage:       "Backend port to be connected to",
-			EnvVars:     []string{"DB_PORT"},
-			Destination: &dbConfigValues.Port,
-		},
-		&cli.StringFlag{
-			Name:        "db-name",
-			Value:       "osctrl",
-			Usage:       "Database name to be used in the backend",
-			EnvVars:     []string{"DB_NAME"},
-			Destination: &dbConfigValues.Name,
-		},
-		&cli.StringFlag{
-			Name:        "db-user",
-			Value:       "postgres",
-			Usage:       "Username to be used for the backend",
-			EnvVars:     []string{"DB_USER"},
-			Destination: &dbConfigValues.Username,
-		},
-		&cli.StringFlag{
-			Name:        "db-pass",
-			Value:       "postgres",
-			Usage:       "Password to be used for the backend",
-			EnvVars:     []string{"DB_PASS"},
-			Destination: &dbConfigValues.Password,
-		},
-		&cli.StringFlag{
-			Name:        "db-sslmode",
-			Value:       "disable",
-			Usage:       "SSL native support to encrypt the connection to the backend",
-			EnvVars:     []string{"DB_SSLMODE"},
-			Destination: &dbConfigValues.SSLMode,
-		},
-		&cli.IntFlag{
-			Name:        "db-max-idle-conns",
-			Value:       20,
-			Usage:       "Maximum number of connections in the idle connection pool",
-			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
-			Destination: &dbConfigValues.MaxIdleConns,
-		},
-		&cli.IntFlag{
-			Name:        "db-max-open-conns",
-			Value:       100,
-			Usage:       "Maximum number of open connections to the database",
-			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
-			Destination: &dbConfigValues.MaxOpenConns,
-		},
-		&cli.IntFlag{
-			Name:        "db-conn-max-lifetime",
-			Value:       30,
-			Usage:       "Maximum amount of time a connection may be reused",
-			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
-			Destination: &dbConfigValues.ConnMaxLifetime,
-		},
-		&cli.IntFlag{
-			Name:        "db-conn-retry",
-			Value:       defaultBackendRetryTimeout,
-			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
-			EnvVars:     []string{"DB_CONN_RETRY"},
-			Destination: &dbConfigValues.ConnRetry,
-		},
-		&cli.BoolFlag{
-			Name:        "tls",
-			Aliases:     []string{"t"},
-			Value:       false,
-			Usage:       "Enable TLS termination. It requires certificate and key",
-			EnvVars:     []string{"TLS_SERVER"},
-			Destination: &tlsServer,
-		},
-		&cli.StringFlag{
-			Name:        "cert",
-			Aliases:     []string{"T"},
-			Value:       defTLSCertificateFile,
-			Usage:       "TLS termination certificate from `FILE`",
-			EnvVars:     []string{"TLS_CERTIFICATE"},
-			Destination: &tlsCertFile,
-		},
-		&cli.StringFlag{
-			Name:        "key",
-			Aliases:     []string{"K"},
-			Value:       defTLSKeyFile,
-			Usage:       "TLS termination private key from `FILE`",
-			EnvVars:     []string{"TLS_KEY"},
-			Destination: &tlsKeyFile,
-		},
-		&cli.StringFlag{
-			Name:        "saml-file",
-			Value:       defSAMLConfigurationFile,
-			Usage:       "Load SAML configuration from `FILE`",
-			EnvVars:     []string{"SAML_CONFIG_FILE"},
-			Destination: &samlConfigFile,
-		},
-		&cli.BoolFlag{
-			Name:        "jwt",
-			Aliases:     []string{"j"},
-			Value:       false,
-			Usage:       "Provide JWT configuration via JSON file",
-			EnvVars:     []string{"JWT_CONFIG"},
-			Destination: &jwtFlag,
-		},
-		&cli.StringFlag{
-			Name:        "jwt-file",
-			Value:       defJWTConfigurationFile,
-			Usage:       "Load JWT configuration from `FILE`",
-			EnvVars:     []string{"JWT_CONFIG_FILE"},
-			Destination: &jwtConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "jwt-secret",
-			Usage:       "Password to be used for the backend",
-			EnvVars:     []string{"JWT_SECRET"},
-			Destination: &jwtConfigValues.JWTSecret,
-		},
-		&cli.IntFlag{
-			Name:        "jwt-expire",
-			Value:       3,
-			Usage:       "Maximum amount of hours for the tokens to expire",
-			EnvVars:     []string{"JWT_EXPIRE"},
-			Destination: &jwtConfigValues.HoursToExpire,
-		},
-		&cli.StringFlag{
-			Name:        "osquery-version",
-			Value:       defOsqueryTablesVersion,
-			Usage:       "Set osquery version as default to be used",
-			EnvVars:     []string{"OSQUERY_VERSION"},
-			Destination: &osqueryTablesVersion,
-		},
-		&cli.StringFlag{
-			Name:        "osquery-tables",
-			Value:       defOsqueryTablesFile,
-			Usage:       "Load osquery tables schema from `FILE`",
-			EnvVars:     []string{"OSQUERY_TABLES"},
-			Destination: &osqueryTablesFile,
-		},
-		&cli.StringFlag{
-			Name:        "logger-file",
-			Aliases:     []string{"F"},
-			Value:       defLoggerConfigurationFile,
-			Usage:       "Logger configuration to handle status/results logs from nodes",
-			EnvVars:     []string{"LOGGER_FILE"},
-			Destination: &loggerFile,
-		},
-		&cli.BoolFlag{
-			Name:        "logger-db-same",
-			Value:       false,
-			Usage:       "Use the same DB configuration for the logger",
-			EnvVars:     []string{"LOGGER_DB_SAME"},
-			Destination: &loggerDbSame,
-		},
-		&cli.StringFlag{
-			Name:        "static",
-			Aliases:     []string{"s"},
-			Value:       defStaticFilesFolder,
-			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
-			EnvVars:     []string{"STATIC_FILES"},
-			Destination: &staticFilesFolder,
-		},
-		&cli.BoolFlag{
-			Name:        "static-offline",
-			Aliases:     []string{"S"},
-			Value:       false,
-			Usage:       "Use offline static files (js and css). Default is online files.",
-			EnvVars:     []string{"STATIC_ONLINE"},
-			Destination: &staticOffline,
-		},
-		&cli.StringFlag{
-			Name:        "templates",
-			Value:       defTemplatesFolder,
-			Usage:       "Directory with all the templates needed for the osctrl-admin UI",
-			EnvVars:     []string{"STATIC_FILES"},
-			Destination: &templatesFolder,
-		},
-		&cli.StringFlag{
-			Name:        "carved",
-			Value:       defCarvedFolder,
-			Usage:       "Directory for all the received carved files from osquery",
-			EnvVars:     []string{"CARVED_FILES"},
-			Destination: &carvedFilesFolder,
-		},
-		&cli.StringFlag{
-			Name:        "carver-type",
-			Value:       settings.CarverDB,
-			Usage:       "Carver to be used to receive files extracted from nodes",
-			EnvVars:     []string{"CARVER_TYPE"},
-			Destination: &adminConfig.Carver,
-		},
-		&cli.StringFlag{
-			Name:        "carver-file",
-			Value:       defCarverConfigurationFile,
-			Usage:       "Carver configuration file to receive files extracted from nodes",
-			EnvVars:     []string{"CARVER_FILE"},
-			Destination: &carverConfigFile,
-		},
-		&cli.StringFlag{
-			Name:        "log-s3-bucket",
-			Value:       "",
-			Usage:       "S3 bucket to be used as configuration for logging",
-			EnvVars:     []string{"LOG_S3_BUCKET"},
-			Destination: &s3LogConfig.Bucket,
-		},
-		&cli.StringFlag{
-			Name:        "log-s3-region",
-			Value:       "",
-			Usage:       "S3 region to be used as configuration for logging",
-			EnvVars:     []string{"LOG_S3_REGION"},
-			Destination: &s3LogConfig.Region,
-		},
-		&cli.StringFlag{
-			Name:        "log-s3-key-id",
-			Value:       "",
-			Usage:       "S3 access key id to be used as configuration for logging",
-			EnvVars:     []string{"LOG_S3_KEY_ID"},
-			Destination: &s3LogConfig.AccessKey,
-		},
-		&cli.StringFlag{
-			Name:        "log-s3-secret",
-			Value:       "",
-			Usage:       "S3 access key secret to be used as configuration for logging",
-			EnvVars:     []string{"LOG_S3_SECRET"},
-			Destination: &s3LogConfig.SecretAccessKey,
-		},
-		&cli.StringFlag{
-			Name:        "carver-s3-bucket",
-			Value:       "",
-			Usage:       "S3 bucket to be used as configuration for carves",
-			EnvVars:     []string{"CARVER_S3_BUCKET"},
-			Destination: &s3CarverConfig.Bucket,
-		},
-		&cli.StringFlag{
-			Name:        "carver-s3-region",
-			Value:       "",
-			Usage:       "S3 region to be used as configuration for carves",
-			EnvVars:     []string{"CARVER_S3_REGION"},
-			Destination: &s3CarverConfig.Region,
-		},
-		&cli.StringFlag{
-			Name:        "carve-s3-key-id",
-			Value:       "",
-			Usage:       "S3 access key id to be used as configuration for carves",
-			EnvVars:     []string{"CARVER_S3_KEY_ID"},
-			Destination: &s3CarverConfig.AccessKey,
-		},
-		&cli.StringFlag{
-			Name:        "carve-s3-secret",
-			Value:       "",
-			Usage:       "S3 access key secret to be used as configuration for carves",
-			EnvVars:     []string{"CARVER_S3_SECRET"},
-			Destination: &s3CarverConfig.SecretAccessKey,
-		},
-	}
+	// Initialize CLI flags using the config package
+	flags = config.InitAdminFlags(&flagParams)
 }
 
 // Go go!
@@ -641,39 +154,39 @@ func osctrlAdminService() {
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
-		db, err = backend.CreateDBManager(dbConfig)
+		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to backend")
-			if dbConfig.ConnRetry == 0 {
+			if flagParams.DBConfigValues.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Debug().Msgf("Backend NOT ready! Retrying in %d seconds...\n", dbConfig.ConnRetry)
-		time.Sleep(time.Duration(dbConfig.ConnRetry) * time.Second)
+		log.Debug().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DBConfigValues.ConnRetry)
+		time.Sleep(time.Duration(flagParams.DBConfigValues.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
 	for {
-		redis, err = cache.CreateRedisManager(redisConfig)
+		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to cache")
-			if redisConfig.ConnRetry == 0 {
+			if flagParams.RedisConfigValues.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", redisConfig.ConnRetry)
-		time.Sleep(time.Duration(redisConfig.ConnRetry) * time.Second)
+		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.RedisConfigValues.ConnRetry)
+		time.Sleep(time.Duration(flagParams.RedisConfigValues.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize users")
-	adminUsers = users.CreateUserManager(db.Conn, &jwtConfig)
+	adminUsers = users.CreateUserManager(db.Conn, &flagParams.JWTConfigValues)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize environments")
@@ -685,18 +198,18 @@ func osctrlAdminService() {
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db.Conn, adminConfig.Carver, carvers3)
+	carvesmgr = carves.CreateFileCarves(db.Conn, flagParams.ConfigValues.Carver, carvers3)
 	log.Info().Msg("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, adminConfig.SessionKey)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, flagParams.ConfigValues.SessionKey)
 	log.Info().Msg("Loading service settings")
-	if err := loadingSettings(settingsmgr); err != nil {
+	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
 	log.Info().Msg("Loading service metrics")
 
 	// Start SAML Middleware if we are using SAML
-	if adminConfig.Auth == settings.AuthSAML {
-		if settingsmgr.DebugService(settings.ServiceAdmin) {
+	if flagParams.ConfigValues.Auth == config.AuthSAML {
+		if settingsmgr.DebugService(config.ServiceAdmin) {
 			log.Debug().Msg("DebugService: SAML keypair")
 		}
 		// Initialize SAML keypair to sign SAML Request.
@@ -726,7 +239,7 @@ func osctrlAdminService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceAdmin) {
+			if settingsmgr.DebugService(config.ServiceAdmin) {
 				log.Debug().Msg("DebugService: Cleaning up sessions")
 			}
 			sessionsmgr.Cleanup()
@@ -742,7 +255,7 @@ func osctrlAdminService() {
 			_t = int64(defaultExpiration)
 		}
 		for {
-			if settingsmgr.DebugService(settings.ServiceAdmin) {
+			if settingsmgr.DebugService(config.ServiceAdmin) {
 				log.Debug().Msg("DebugService: Cleaning up expired queries/carves")
 			}
 			allEnvs, err := envs.All()
@@ -769,10 +282,10 @@ func osctrlAdminService() {
 
 	var loggerDBConfig *backend.JSONConfigurationDB
 	// Set the logger configuration file if we have a DB logger
-	if adminConfig.Logger == settings.LoggingDB {
-		if loggerDbSame {
-			loggerFile = ""
-			loggerDBConfig = &dbConfig
+	if flagParams.ConfigValues.Logger == config.LoggingDB {
+		if flagParams.LoggerDBSame {
+			flagParams.LoggerFile = ""
+			loggerDBConfig = &flagParams.DBConfigValues
 		}
 	}
 
@@ -790,13 +303,13 @@ func osctrlAdminService() {
 		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
 		handlers.WithVersion(serviceVersion),
-		handlers.WithOsqueryVersion(osqueryTablesVersion),
-		handlers.WithTemplates(templatesFolder),
-		handlers.WithStaticLocation(staticOffline),
+		handlers.WithOsqueryVersion(flagParams.OsqueryVersion),
+		handlers.WithTemplates(flagParams.TemplatesDir),
+		handlers.WithStaticLocation(flagParams.StaticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
-		handlers.WithCarvesFolder(carvedFilesFolder),
-		handlers.WithAdminConfig(&adminConfig),
-		handlers.WithDBLogger(loggerFile, loggerDBConfig),
+		handlers.WithCarvesFolder(flagParams.CarvedDir),
+		handlers.WithAdminConfig(&flagParams.ConfigValues),
+		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
 	)
 
 	// ////////////////////////// ADMIN
@@ -806,7 +319,7 @@ func osctrlAdminService() {
 
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
-	if adminConfig.Auth != settings.AuthNone && adminConfig.Auth != settings.AuthSAML {
+	if flagParams.ConfigValues.Auth != config.AuthNone && flagParams.ConfigValues.Auth != config.AuthSAML {
 		// login
 		adminMux.HandleFunc("GET "+loginPath, handlersAdmin.LoginHandler)
 		adminMux.HandleFunc("POST "+loginPath, handlersAdmin.LoginPOSTHandler)
@@ -823,93 +336,191 @@ func osctrlAdminService() {
 	// Admin: favicon
 	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
-	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(staticFilesFolder))))
+	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.StaticFiles))))
 
 	// ///////////////////////// AUTHENTICATED CONTENT
 	// Admin: JSON data for environments
-	adminMux.Handle("GET /json/environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler)))
+	adminMux.Handle(
+		"GET /json/environment/{env}/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for platforms
-	adminMux.Handle("GET /json/platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler)))
+	adminMux.Handle(
+		"GET /json/platform/{platform}/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for logs
-	adminMux.Handle("GET /json/logs/{type}/{env}/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler)))
+	adminMux.Handle(
+		"GET /json/logs/{type}/{env}/{uuid}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for query logs
-	adminMux.Handle("GET /json/query/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler)))
+	adminMux.Handle(
+		"GET /json/query/{name}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for sidebar stats
-	adminMux.Handle("GET /json/stats/{target}/{identifier}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler)))
+	adminMux.Handle(
+		"GET /json/stats/{target}/{identifier}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for tags
-	adminMux.Handle("GET /json/tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler)))
+	adminMux.Handle(
+		"GET /json/tags",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.ConfigValues.Auth))
 	// Admin: table for environments
-	adminMux.Handle("GET /environment/{env}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler)))
+	adminMux.Handle(
+		"GET /environment/{env}/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler), flagParams.ConfigValues.Auth))
 	// Admin: table for platforms
-	adminMux.Handle("GET /platform/{platform}/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler)))
+	adminMux.Handle(
+		"GET /platform/{platform}/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler), flagParams.ConfigValues.Auth))
 	// Admin: root
-	adminMux.Handle("GET /", handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler)))
+	adminMux.Handle(
+		"GET /",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler), flagParams.ConfigValues.Auth))
 	// Admin: node view
-	adminMux.Handle("GET /node/{uuid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler)))
+	adminMux.Handle(
+		"GET /node/{uuid}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler), flagParams.ConfigValues.Auth))
 	// Admin: multi node action
-	adminMux.Handle("POST /node/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler)))
+	adminMux.Handle(
+		"POST /node/actions",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: run queries
-	adminMux.Handle("GET /query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler)))
-	adminMux.Handle("POST /query/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler)))
+	adminMux.Handle(
+		"GET /query/{env}/run",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /query/{env}/run",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: list queries
-	adminMux.Handle("GET /query/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler)))
+	adminMux.Handle(
+		"GET /query/{env}/list",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler), flagParams.ConfigValues.Auth))
 	// Admin: saved queries
-	adminMux.Handle("GET /query/{env}/saved", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler)))
+	adminMux.Handle(
+		"GET /query/{env}/saved",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler), flagParams.ConfigValues.Auth))
 	// Admin: query actions
-	adminMux.Handle("POST /query/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler)))
+	adminMux.Handle(
+		"POST /query/{env}/actions",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: query JSON
-	adminMux.Handle("GET /query/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler)))
+	adminMux.Handle(
+		"GET /query/{env}/json/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler), flagParams.ConfigValues.Auth))
 	// Admin: query logs
-	adminMux.Handle("GET /query/{env}/logs/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler)))
+	adminMux.Handle(
+		"GET /query/{env}/logs/{name}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: carve files
-	adminMux.Handle("GET /carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler)))
-	adminMux.Handle("POST /carves/{env}/run", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler)))
+	adminMux.Handle(
+		"GET /carves/{env}/run",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /carves/{env}/run",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: list carves
-	adminMux.Handle("GET /carves/{env}/list", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler)))
+	adminMux.Handle(
+		"GET /carves/{env}/list",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler), flagParams.ConfigValues.Auth))
 	// Admin: carves actions
-	adminMux.Handle("POST /carves/{env}/actions", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler)))
+	adminMux.Handle(
+		"POST /carves/{env}/actions",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: carves JSON
-	adminMux.Handle("GET /carves/{env}/json/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler)))
+	adminMux.Handle(
+		"GET /carves/{env}/json/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler), flagParams.ConfigValues.Auth))
 	// Admin: carves details
-	adminMux.Handle("GET /carves/{env}/details/{name}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler)))
+	adminMux.Handle(
+		"GET /carves/{env}/details/{name}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler), flagParams.ConfigValues.Auth))
 	// Admin: carves download
-	adminMux.Handle("GET /carves/{env}/download/{sessionid}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler)))
+	adminMux.Handle(
+		"GET /carves/{env}/download/{sessionid}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler), flagParams.ConfigValues.Auth))
 	// Admin: nodes configuration
-	adminMux.Handle("GET /conf/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler)))
-	adminMux.Handle("POST /conf/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler)))
-	adminMux.Handle("POST /intervals/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler)))
+	adminMux.Handle(
+		"GET /conf/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /conf/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /intervals/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: nodes enroll
-	adminMux.Handle("GET /enroll/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler)))
-	adminMux.Handle("POST /enroll/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler)))
-	adminMux.Handle("GET /enroll/{env}/download/{target}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler)))
-	adminMux.Handle("POST /expiration/{env}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler)))
+	adminMux.Handle(
+		"GET /enroll/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /enroll/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"GET /enroll/{env}/download/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /expiration/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: server settings
-	adminMux.Handle("GET /settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler)))
-	adminMux.Handle("POST /settings/{service}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler)))
+	adminMux.Handle(
+		"GET /settings/{service}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /settings/{service}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: manage environments
-	adminMux.Handle("GET /environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler)))
-	adminMux.Handle("POST /environments", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler)))
+	adminMux.Handle(
+		"GET /environments",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /environments",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: manage users
-	adminMux.Handle("GET /users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler)))
-	adminMux.Handle("POST /users", handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler)))
-	adminMux.Handle("GET /users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler)))
-	adminMux.Handle("POST /users/permissions/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler)))
+	adminMux.Handle(
+		"GET /users",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /users",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"GET /users/permissions/{username}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /users/permissions/{username}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: manage tags
-	adminMux.Handle("GET /tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler)))
-	adminMux.Handle("POST /tags", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler)))
-	adminMux.Handle("POST /tags/nodes", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler)))
+	adminMux.Handle(
+		"GET /tags",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /tags",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /tags/nodes",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: manage tokens
-	adminMux.Handle("GET /tokens/{username}", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler)))
-	adminMux.Handle("POST /tokens/{username}/refresh", handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler)))
+	adminMux.Handle(
+		"GET /tokens/{username}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /tokens/{username}/refresh",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: edit profile
-	adminMux.Handle("GET /profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler)))
-	adminMux.Handle("POST /profile", handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler)))
+	adminMux.Handle(
+		"GET /profile",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler), flagParams.ConfigValues.Auth))
+	adminMux.Handle(
+		"POST /profile",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler), flagParams.ConfigValues.Auth))
 	// Admin: dashboard and search bar
-	adminMux.Handle("GET /dashboard", handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler)))
+	adminMux.Handle(
+		"GET /dashboard",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler), flagParams.ConfigValues.Auth))
 	// Admin: logout
-	adminMux.Handle("POST "+logoutPath, handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler)))
+	adminMux.Handle(
+		"POST "+logoutPath,
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler), flagParams.ConfigValues.Auth))
 	// SAML ACS
-	if adminConfig.Auth == settings.AuthSAML {
+	if flagParams.ConfigValues.Auth == config.AuthSAML {
 		adminMux.Handle("GET /saml/acs", samlMiddleware)
 		adminMux.Handle("POST /saml/acs", samlMiddleware)
 		adminMux.Handle("GET /saml/metadata", samlMiddleware)
@@ -922,8 +533,8 @@ func osctrlAdminService() {
 		})
 	}
 	// Launch HTTP server for admin
-	serviceListener := adminConfig.Listener + ":" + adminConfig.Port
-	if tlsServer {
+	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
+	if flagParams.TLSServer {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -942,7 +553,7 @@ func osctrlAdminService() {
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
 		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
-		if err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile); err != nil {
+		if err := srv.ListenAndServeTLS(flagParams.TLSCertFile, flagParams.TLSKeyFile); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
 	} else {
@@ -956,59 +567,51 @@ func osctrlAdminService() {
 // Action to run when no flags are provided to run checks and prepare data
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
-	if configFlag {
-		adminConfig, err = loadConfiguration(serviceConfigFile, settings.ServiceAdmin)
+	if flagParams.ConfigFlag {
+		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceAdmin)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %w", serviceConfigFile, err)
+			return fmt.Errorf("Failed to load service configuration %s - %w", flagParams.ServiceConfigFile, err)
 		}
-	} else {
-		adminConfig = adminConfigValues
 	}
 	// Load redis configuration if external JSON config file is used
-	if redisFlag {
-		redisConfig, err = cache.LoadConfiguration(redisConfigFile, cache.RedisKey)
+	if flagParams.RedisFlag {
+		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load redis configuration - %w", err)
 		}
-	} else {
-		redisConfig = redisConfigValues
 	}
 	// Load DB configuration if external JSON config file is used
-	if dbFlag {
-		dbConfig, err = backend.LoadConfiguration(dbConfigFile, backend.DBKey)
+	if flagParams.DBFlag {
+		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
 		if err != nil {
 			return fmt.Errorf("Failed to load DB configuration - %w", err)
 		}
-	} else {
-		dbConfig = dbConfigValues
 	}
 	// Load SAML configuration if this authentication is used in the service config
-	if adminConfig.Auth == settings.AuthSAML {
-		samlConfig, err = loadSAML(samlConfigFile)
+	if flagParams.ConfigValues.Auth == config.AuthSAML {
+		samlConfig, err = loadSAML(flagParams.SAMLConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to load SAML configuration - %w", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used
-	if jwtFlag {
-		jwtConfig, err = loadJWTConfiguration(jwtConfigFile)
+	if flagParams.JWTFlag {
+		flagParams.JWTConfigValues, err = loadJWTConfiguration(flagParams.JWTConfigFile)
 		if err != nil {
 			return fmt.Errorf("Failed to load JWT configuration - %w", err)
 		}
-	} else {
-		jwtConfig = jwtConfigValues
 	}
 	// Load osquery tables JSON file
-	osqueryTables, err = loadOsqueryTables(osqueryTablesFile)
+	osqueryTables, err = loadOsqueryTables(flagParams.OsqueryTablesFile)
 	if err != nil {
 		return fmt.Errorf("Failed to load osquery tables - %w", err)
 	}
 	// Load carver configuration if external JSON config file is used
-	if adminConfig.Carver == settings.CarverS3 {
-		if s3CarverConfig.Bucket != "" {
-			carvers3, err = carves.CreateCarverS3(s3CarverConfig)
+	if flagParams.ConfigValues.Carver == config.CarverS3 {
+		if flagParams.S3CarverConfig.Bucket != "" {
+			carvers3, err = carves.CreateCarverS3(flagParams.S3CarverConfig)
 		} else {
-			carvers3, err = carves.CreateCarverS3File(carverConfigFile)
+			carvers3, err = carves.CreateCarverS3File(flagParams.CarverConfigFile)
 		}
 		if err != nil {
 			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
@@ -1020,22 +623,22 @@ func cliAction(c *cli.Context) error {
 func initializeLogger(logLevel, logFormat string) {
 
 	switch strings.ToLower(logLevel) {
-	case types.LogLevelDebug:
+	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case types.LogLevelInfo:
+	case config.LogLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case types.LogLevelWarn:
+	case config.LogLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case types.LogLevelError:
+	case config.LogLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	switch strings.ToLower(logFormat) {
-	case types.LogFormatJSON:
+	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
-	case types.LogFormatConsole:
+	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
@@ -1071,7 +674,7 @@ func main() {
 	}
 
 	// Initialize service logger
-	initializeLogger(adminConfig.LogLevel, adminConfig.LogFormat)
+	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
 
 	// Service starts!
 	osctrlAdminService()

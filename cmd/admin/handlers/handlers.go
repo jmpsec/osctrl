@@ -5,6 +5,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -39,7 +40,7 @@ type HandlersAdmin struct {
 	StaticLocation  string
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
-	AdminConfig     *types.JSONConfigurationAdmin
+	AdminConfig     *config.JSONConfigurationService
 	DBLogger        *logging.LoggerDB
 }
 
@@ -144,7 +145,7 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 	}
 }
 
-func WithAdminConfig(config *types.JSONConfigurationAdmin) HandlersOption {
+func WithAdminConfig(config *config.JSONConfigurationService) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.AdminConfig = config
 	}
