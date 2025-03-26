@@ -199,33 +199,53 @@ func TestSetNodeQueriesAsExpired(t *testing.T) {
 		require.NoError(t, err, "Failed to create test node query")
 	}
 
-	// Set pending node queries as expired
-	err := q.SetNodeQueriesAsExpired(query.ID)
-	require.NoError(t, err, "SetNodeQueriesAsExpired should not return an error")
+	// Test the success case
+	t.Run("SuccessCase", func(t *testing.T) {
+		// Set pending node queries as expired
+		err := q.SetNodeQueriesAsExpired(query.ID)
+		require.NoError(t, err, "SetNodeQueriesAsExpired should not return an error")
 
-	// Verify results
-	var updatedNodeQueries []queries.NodeQuery
-	err = db.Where("query_id = ?", query.ID).Order("node_id").Find(&updatedNodeQueries).Error
-	require.NoError(t, err, "Failed to find updated node queries")
+		// Verify results
+		var updatedNodeQueries []queries.NodeQuery
+		err = db.Where("query_id = ?", query.ID).Order("node_id").Find(&updatedNodeQueries).Error
+		require.NoError(t, err, "Failed to find updated node queries")
 
-	require.Len(t, updatedNodeQueries, 3, "Expected 3 node queries")
+		require.Len(t, updatedNodeQueries, 3, "Expected 3 node queries")
 
-	// Verify each node query status individually with clear descriptions
-	t.Run("ExpirePendingNode1", func(t *testing.T) {
-		assert.Equal(t, nodes[0].ID, updatedNodeQueries[0].NodeID)
-		assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[0].Status,
-			"Node query with pending status should be updated to expired")
+		// Verify each node query status individually with clear descriptions
+		t.Run("ExpirePendingNode1", func(t *testing.T) {
+			assert.Equal(t, nodes[0].ID, updatedNodeQueries[0].NodeID)
+			assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[0].Status,
+				"Node query with pending status should be updated to expired")
+		})
+
+		t.Run("ExpirePendingNode2", func(t *testing.T) {
+			assert.Equal(t, nodes[1].ID, updatedNodeQueries[1].NodeID)
+			assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[1].Status,
+				"Node query with pending status should be updated to expired")
+		})
+
+		t.Run("PreserveCompletedNode", func(t *testing.T) {
+			assert.Equal(t, nodes[2].ID, updatedNodeQueries[2].NodeID)
+			assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQueries[2].Status,
+				"Node query with completed status should remain completed")
+		})
 	})
 
-	t.Run("ExpirePendingNode2", func(t *testing.T) {
-		assert.Equal(t, nodes[1].ID, updatedNodeQueries[1].NodeID)
-		assert.Equal(t, queries.DistributedQueryStatusExpired, updatedNodeQueries[1].Status,
-			"Node query with pending status should be updated to expired")
+	// Test with a non-existent query ID
+	t.Run("NonExistentQueryID", func(t *testing.T) {
+		nonExistentID := uint(999)
+		err := q.SetNodeQueriesAsExpired(nonExistentID)
+
+		// This should not return an error as it's a valid operation
+		// that simply doesn't affect any rows
+		assert.NoError(t, err, "SetNodeQueriesAsExpired should not return an error for non-existent query ID")
+
+		// Verify no records were affected
+		var count int64
+		db.Model(&queries.NodeQuery{}).Where("status = ? AND query_id = ?",
+			queries.DistributedQueryStatusExpired, nonExistentID).Count(&count)
+		assert.Equal(t, int64(0), count, "No node queries should be marked as expired for a non-existent query ID")
 	})
 
-	t.Run("PreserveCompletedNode", func(t *testing.T) {
-		assert.Equal(t, nodes[2].ID, updatedNodeQueries[2].NodeID)
-		assert.Equal(t, queries.DistributedQueryStatusCompleted, updatedNodeQueries[2].Status,
-			"Node query with completed status should remain completed")
-	})
 }
