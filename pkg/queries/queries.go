@@ -408,7 +408,7 @@ func (q *Queries) CreateNodeQueries(nodeIDs []uint, queryID uint) error {
 			QueryID: queryID,
 		})
 	}
-	if err := q.DB.Create(&nodeQueries).Error; err != nil {
+	if err := q.DB.CreateInBatches(&nodeQueries, 1000).Error; err != nil {
 		return err
 	}
 	return nil
