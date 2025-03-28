@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -41,7 +40,7 @@ type NodeJSON struct {
 
 // JSONEnvironmentHandler - Handler for JSON endpoints by environment
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -113,7 +112,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 
 // JSONPlatformHandler - Handler for JSON endpoints by platform
 func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

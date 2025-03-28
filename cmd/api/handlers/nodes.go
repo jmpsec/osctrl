@@ -7,7 +7,6 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -16,7 +15,7 @@ import (
 
 // NodeHandler - GET Handler for single JSON nodes
 func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -61,7 +60,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 
 // ActiveNodesHandler - GET Handler for active JSON nodes
 func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -99,7 +98,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 
 // InactiveNodesHandler - GET Handler for inactive JSON nodes
 func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -137,7 +136,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 
 // AllNodesHandler - GET Handler for all JSON nodes
 func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -175,7 +174,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 
 // DeleteNodeHandler - POST Handler to delete single node
 func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {

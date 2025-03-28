@@ -18,7 +18,7 @@ import (
 
 // GET Handler to return a single carve in JSON
 func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
@@ -62,7 +62,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET Handler to return carve queries in JSON by target and environment
 func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -108,7 +108,7 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 
 // GET Handler to return carves in JSON by environment
 func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -143,7 +143,7 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST Handler to run a carve
 func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -218,7 +218,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 
 // CarvesActionHandler - POST Handler to delete/expire a carve
 func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {

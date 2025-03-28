@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -16,7 +15,7 @@ import (
 
 // AllTagsHandler - GET Handler for all JSON tags
 func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
@@ -38,7 +37,7 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 
 // TagEnvHandler - GET Handler to return one tag for one environment as JSON
 func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -82,7 +81,7 @@ func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 
 // TagsEnvHandler - GET Handler to return tags for one environment as JSON
 func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -120,7 +119,7 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 
 // TagsActionHandler - POST Handler to create, update or delete tags
 func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -15,7 +14,7 @@ import (
 
 // LoginHandler - POST Handler for API login request
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {

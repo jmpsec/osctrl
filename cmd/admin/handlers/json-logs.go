@@ -7,7 +7,6 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -60,7 +59,7 @@ type QueryLogJSON struct {
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Extract type
 	logType := r.PathValue("type")
 	if logType == "" {
@@ -167,7 +166,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 
 // JSONQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

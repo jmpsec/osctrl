@@ -5,9 +5,7 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/queries"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -53,7 +51,7 @@ type CarveTarget struct {
 
 // JSONCarvesHandler for JSON carves by target
 func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	utils.DebugHTTPDump(r, false)
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
