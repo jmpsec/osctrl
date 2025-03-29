@@ -15,7 +15,9 @@ import (
 
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, false)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, false)
+	}
 	w.Header().Set(utils.ContentType, "image/png")
 	http.ServeFile(w, r, "/static/favicon.png")
 }
@@ -35,20 +37,26 @@ func (h *HandlersAdmin) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler for forbidden error requests
 func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, true)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, true)
+	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
 }
 
 // RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, false)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, false)
+	}
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, false)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, false)
+	}
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" || !h.Users.Exists(usernameVar) {
@@ -75,7 +83,9 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, false)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, false)
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Extract environment

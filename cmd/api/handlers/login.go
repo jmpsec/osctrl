@@ -14,7 +14,9 @@ import (
 
 // LoginHandler - POST Handler for API login request
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, false)
+	if log.Debug().Enabled() {
+		utils.DebugHTTPDump(r, false)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
