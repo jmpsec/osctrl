@@ -142,12 +142,10 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 		opt(h)
 	}
 	// All these opt function need be refactored to reduce unnecessary complexity
-
 	return h
 }
 
 func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rw := NewResponseWriter(w)

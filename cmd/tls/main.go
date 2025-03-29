@@ -142,6 +142,7 @@ func osctrlService() {
 	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
+		log.Debug().Msgf("Creating DB manager with %v", flagParams.DBConfigValues)
 		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
@@ -160,6 +161,7 @@ func osctrlService() {
 	log.Info().Msg("Initializing cache...")
 	// Attempt to connect to cache waiting until is ready
 	for {
+		log.Debug().Msgf("Creating Redis manager with %v", flagParams.RedisConfigValues)
 		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
@@ -244,11 +246,9 @@ func osctrlService() {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
-
 		// Creating a new prometheus service
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
-
 		go func() {
 			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.ConfigValues.MetricsListener, flagParams.ConfigValues.MetricsPort)
 			err := http.ListenAndServe(flagParams.ConfigValues.MetricsListener+":"+flagParams.ConfigValues.MetricsPort, prometheusServer)
