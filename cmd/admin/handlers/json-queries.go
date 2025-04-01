@@ -123,8 +123,8 @@ func (h *HandlersAdmin) JSONSavedJSON(q queries.SavedQuery) SavedJSON {
 
 // JSONQueryHandler - Handler for JSON queries by target
 func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

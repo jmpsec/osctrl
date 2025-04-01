@@ -59,8 +59,8 @@ type QueryLogJSON struct {
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract type
 	logType := r.PathValue("type")
@@ -168,8 +168,8 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 
 // JSONQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

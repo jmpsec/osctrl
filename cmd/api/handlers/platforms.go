@@ -12,8 +12,9 @@ import (
 
 // PlatformsHandler - GET Handler for multiple JSON platforms
 func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
@@ -36,8 +37,9 @@ func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
 
 // PlatformsEnvHandler - GET Handler to return platforms for one environment as JSON
 func (h *HandlersApi) PlatformsEnvHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")

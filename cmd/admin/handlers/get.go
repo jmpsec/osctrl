@@ -15,8 +15,8 @@ import (
 
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	w.Header().Set(utils.ContentType, "image/png")
 	http.ServeFile(w, r, "/static/favicon.png")
@@ -37,8 +37,8 @@ func (h *HandlersAdmin) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler for forbidden error requests
 func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
@@ -46,16 +46,16 @@ func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request)
 
 // RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
@@ -83,8 +83,8 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

@@ -21,8 +21,8 @@ type TokenJSON struct {
 
 // TokensGETHandler for GET requests for /tokens/{username}
 func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
@@ -57,8 +57,8 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 
 // TokensPOSTHandler for POST request for /tokens/{username}/refresh
 func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

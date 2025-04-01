@@ -30,8 +30,9 @@ var QueryTargets = map[string]bool{
 
 // QueryShowHandler - GET Handler to return a single query in JSON
 func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract name
 	name := r.PathValue("name")
@@ -76,8 +77,9 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 
 // QueriesRunHandler - POST Handler to run a query
 func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -235,8 +237,9 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 
 // QueriesActionHandler - POST Handler to delete/expire a query
 func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -300,8 +303,9 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 
 // AllQueriesShowHandler - GET Handler to return all queries in JSON
 func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -337,8 +341,9 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 
 // QueryListHandler - GET Handler to return queries in JSON by target and environment
 func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -385,8 +390,9 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 
 // QueryResultsHandler - GET Handler to return a single query results in JSON
 func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract name
 	name := r.PathValue("name")

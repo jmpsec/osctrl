@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/pkg/utils"
-	"github.com/rs/zerolog/log"
 )
 
 // HealthHandler - Handle health requests
 func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
@@ -18,8 +18,9 @@ func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 // RootHandler - Handle root requests
 func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
@@ -27,8 +28,9 @@ func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
 
 // ErrorHandler - Handle error requests
 func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(errorContent))
@@ -36,8 +38,9 @@ func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 // ForbiddenHandler - Handle forbidden error requests
 func (h *HandlersApi) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, []byte(errorContent))

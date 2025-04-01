@@ -18,8 +18,9 @@ import (
 
 // GET Handler to return a single carve in JSON
 func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract name
 	name := r.PathValue("name")
@@ -64,8 +65,9 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET Handler to return carve queries in JSON by target and environment
 func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -112,8 +114,9 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 
 // GET Handler to return carves in JSON by environment
 func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -149,8 +152,9 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST Handler to run a carve
 func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -226,8 +230,9 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 
 // CarvesActionHandler - POST Handler to delete/expire a carve
 func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")

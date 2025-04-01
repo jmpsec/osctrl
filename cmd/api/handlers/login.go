@@ -14,8 +14,9 @@ import (
 
 // LoginHandler - POST Handler for API login request
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled, never log the body for login
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")

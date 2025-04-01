@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -42,6 +43,8 @@ type HandlersAdmin struct {
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *config.JSONConfigurationService
 	DBLogger        *logging.LoggerDB
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -178,6 +181,13 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 			}
 		}
 		h.DBLogger = logger
+	}
+}
+
+func WithDebugHTTP(logger *zerolog.Logger, cfg *config.DebugHTTPConfiguration) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.DebugHTTP = logger
+		h.DebugHTTPConfig = cfg
 	}
 }
 

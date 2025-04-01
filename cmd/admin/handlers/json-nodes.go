@@ -40,8 +40,8 @@ type NodeJSON struct {
 
 // JSONEnvironmentHandler - Handler for JSON endpoints by environment
 func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
 	envVar := r.PathValue("env")
@@ -114,8 +114,8 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 
 // JSONPlatformHandler - Handler for JSON endpoints by platform
 func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)

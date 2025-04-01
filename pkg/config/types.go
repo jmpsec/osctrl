@@ -104,3 +104,10 @@ type KafkaConfiguration struct {
 	SASL              KafkaSASLConfigurations `json:"sasl"`
 	Topic             string                  `json:"topic"`
 }
+
+// DebugHTTPConfiguration to hold all debug configuration values
+type DebugHTTPConfiguration struct {
+	Enabled  bool   `json:"enabled"`
+	File     string `json:"file"`
+	ShowBody bool   `json:"showBody"`
+}

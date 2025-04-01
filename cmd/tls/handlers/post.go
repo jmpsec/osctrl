@@ -46,8 +46,8 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.EnrollRequest
@@ -126,8 +126,8 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.ConfigRequest
@@ -207,8 +207,8 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract POST body and decode JSON
 	var t types.LogRequest
@@ -279,8 +279,8 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.QueryReadRequest
@@ -357,8 +357,8 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.QueryWriteRequest
@@ -440,8 +440,8 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve type of script
 	script := r.PathValue("script")
@@ -513,8 +513,8 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve type of script
 	script := r.PathValue("script")
@@ -588,8 +588,8 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.CarveInitRequest
@@ -657,8 +657,8 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.CarveBlockRequest
@@ -716,9 +716,9 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.FlagsRequest
@@ -775,9 +775,9 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.CertRequest
@@ -828,9 +828,9 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.VerifyRequest
@@ -918,9 +918,9 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		actionVar += environments.PowershellTarget
 	}
-	// Debug HTTP for environment
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
 	var t types.ScriptRequest
@@ -976,9 +976,9 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Debug HTTP
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, true)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve package
 	packageVar := r.PathValue("package")

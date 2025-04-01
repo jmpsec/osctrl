@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -13,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -45,16 +47,18 @@ var validPlatform = map[string]bool{
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
-	Envs         *environments.Environment
-	EnvsMap      *environments.MapEnvironments
-	Nodes        *nodes.NodeManager
-	Tags         *tags.TagManager
-	Queries      *queries.Queries
-	Carves       *carves.Carves
-	Settings     *settings.Settings
-	SettingsMap  *settings.MapSettings
-	Logs         *logging.LoggerTLS
-	WriteHandler *batchWriter
+	Envs            *environments.Environment
+	EnvsMap         *environments.MapEnvironments
+	Nodes           *nodes.NodeManager
+	Tags            *tags.TagManager
+	Queries         *queries.Queries
+	Carves          *carves.Carves
+	Settings        *settings.Settings
+	SettingsMap     *settings.MapSettings
+	Logs            *logging.LoggerTLS
+	WriteHandler    *batchWriter
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
 
 // TLSResponse to be returned to requests
@@ -132,6 +136,13 @@ func WithLogs(logs *logging.LoggerTLS) Option {
 func WithWriteHandler(writeHandler *batchWriter) Option {
 	return func(h *HandlersTLS) {
 		h.WriteHandler = writeHandler
+	}
+}
+
+func WithDebugHTTP(logger *zerolog.Logger, cfg *config.DebugHTTPConfiguration) Option {
+	return func(h *HandlersTLS) {
+		h.DebugHTTP = logger
+		h.DebugHTTPConfig = cfg
 	}
 }
 

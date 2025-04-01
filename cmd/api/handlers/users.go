@@ -12,8 +12,9 @@ import (
 
 // UserHandler - GET Handler for single JSON nodes
 func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username
 	usernameVar := r.PathValue("username")
@@ -42,8 +43,9 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 
 // UsersHandler - GET Handler for multiple JSON nodes
 func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
-	if log.Debug().Enabled() {
-		utils.DebugHTTPDump(r, false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)

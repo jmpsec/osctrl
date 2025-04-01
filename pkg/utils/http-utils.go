@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -141,8 +142,8 @@ func DebugHTTP(r *http.Request, showBody bool) string {
 }
 
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
-func DebugHTTPDump(r *http.Request, showBody bool) {
-	log.Debug().Msg(DebugHTTP(r, showBody))
+func DebugHTTPDump(l *zerolog.Logger, r *http.Request, showBody bool) {
+	l.Debug().Msg(DebugHTTP(r, showBody))
 }
 
 // GetIP - Helper to get the IP address from a HTTP request
