@@ -12,7 +12,6 @@ const (
 
 // CreateDebugHTTP to initialize the debug HTTP logger
 func CreateDebugHTTP(filename string, cfg LumberjackConfig) (*zerolog.Logger, error) {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	z := zerolog.New(&lumberjack.Logger{
 		Filename:   filename,
 		MaxSize:    cfg.MaxSize,
@@ -20,6 +19,6 @@ func CreateDebugHTTP(filename string, cfg LumberjackConfig) (*zerolog.Logger, er
 		MaxAge:     cfg.MaxAge,
 		Compress:   cfg.Compress,
 	})
-	logger := z.With().Caller().Timestamp().Logger()
+	logger := z.Output(zerolog.ConsoleWriter{TimeFormat: LoggerTimeFormat}).With().Caller().Logger()
 	return &logger, nil
 }
