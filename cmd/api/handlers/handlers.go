@@ -5,11 +5,14 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -17,18 +20,20 @@ const errorContent = "❌"
 const okContent = "✅"
 
 type HandlersApi struct {
-	DB             *gorm.DB
-	Users          *users.UserManager
-	Tags           *tags.TagManager
-	Envs           *environments.Environment
-	Nodes          *nodes.NodeManager
-	Queries        *queries.Queries
-	Carves         *carves.Carves
-	Settings       *settings.Settings
-	RedisCache     *cache.RedisManager
-	ServiceVersion string
-	ServiceName    string
-	ApiConfig      *config.JSONConfigurationService
+	DB              *gorm.DB
+	Users           *users.UserManager
+	Tags            *tags.TagManager
+	Envs            *environments.Environment
+	Nodes           *nodes.NodeManager
+	Queries         *queries.Queries
+	Carves          *carves.Carves
+	Settings        *settings.Settings
+	RedisCache      *cache.RedisManager
+	ServiceVersion  string
+	ServiceName     string
+	ApiConfig       *config.JSONConfigurationService
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
 
 type HandlersOption func(*HandlersApi)
@@ -96,6 +101,27 @@ func WithVersion(version string) HandlersOption {
 func WithName(name string) HandlersOption {
 	return func(h *HandlersApi) {
 		h.ServiceName = name
+	}
+}
+
+func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
+	return func(h *HandlersApi) {
+		h.DebugHTTPConfig = cfg
+		h.DebugHTTP = nil
+		if cfg.Enabled {
+			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+				MaxSize:    25,
+				MaxBackups: 5,
+				MaxAge:     10,
+				Compress:   true,
+			})
+			if err != nil {
+				log.Err(err).Msg("error creating debug HTTP logger")
+				l = nil
+				h.DebugHTTPConfig.Enabled = false
+			}
+			h.DebugHTTP = l
+		}
 	}
 }
 

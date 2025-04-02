@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -310,6 +311,7 @@ func osctrlAdminService() {
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ////////////////////////// ADMIN
@@ -620,9 +622,9 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLogger(logLevel, logFormat string) {
-
-	switch strings.ToLower(logLevel) {
+func initializeLoggers(cfg config.JSONConfigurationService) {
+	// Set the log level
+	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case config.LogLevelInfo:
@@ -634,19 +636,18 @@ func initializeLogger(logLevel, logFormat string) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-
-	switch strings.ToLower(logFormat) {
+	// Set the log format
+	switch strings.ToLower(cfg.LogFormat) {
 	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
 	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-
 }
 
 func main() {
@@ -672,10 +673,8 @@ func main() {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-
 	// Initialize service logger
-	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
-
+	initializeLoggers(flagParams.ConfigValues)
 	// Service starts!
 	osctrlAdminService()
 }
