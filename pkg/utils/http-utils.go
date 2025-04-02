@@ -143,7 +143,7 @@ func DebugHTTP(r *http.Request, showBody bool) string {
 
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
 func DebugHTTPDump(l *zerolog.Logger, r *http.Request, showBody bool) {
-	l.Debug().Msg(DebugHTTP(r, showBody))
+	l.Log().Msg(DebugHTTP(r, showBody))
 }
 
 // GetIP - Helper to get the IP address from a HTTP request

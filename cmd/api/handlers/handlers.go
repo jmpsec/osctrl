@@ -5,12 +5,14 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -102,10 +104,24 @@ func WithName(name string) HandlersOption {
 	}
 }
 
-func WithDebugHTTP(logger *zerolog.Logger, cfg *config.DebugHTTPConfiguration) HandlersOption {
+func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
 	return func(h *HandlersApi) {
-		h.DebugHTTP = logger
 		h.DebugHTTPConfig = cfg
+		h.DebugHTTP = nil
+		if cfg.Enabled {
+			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+				MaxSize:    25,
+				MaxBackups: 5,
+				MaxAge:     10,
+				Compress:   true,
+			})
+			if err != nil {
+				log.Err(err).Msg("error creating debug HTTP logger")
+				l = nil
+				h.DebugHTTPConfig.Enabled = false
+			}
+			h.DebugHTTP = l
+		}
 	}
 }
 

@@ -51,30 +51,27 @@ const (
 	defaultAccelerate int = 60
 	// Default expiration of oneliners for enroll/expire
 	defaultOnelinerExpiration bool = true
-	// Default time format for loggers
-	loggerTimeFormat string = "2006-01-02T15:04:05.999Z07:00"
 )
 
 // Global variables
 var (
-	err             error
-	db              *backend.DBManager
-	redis           *cache.RedisManager
-	settingsmgr     *settings.Settings
-	envs            *environments.Environment
-	envsmap         environments.MapEnvironments
-	settingsmap     settings.MapSettings
-	nodesmgr        *nodes.NodeManager
-	queriesmgr      *queries.Queries
-	filecarves      *carves.Carves
-	loggerTLS       *logging.LoggerTLS
-	handlersTLS     *handlers.HandlersTLS
-	tagsmgr         *tags.TagManager
-	carvers3        *carves.CarverS3
-	app             *cli.App
-	flags           []cli.Flag
-	flagParams      config.ServiceFlagParams
-	debugHTTPLogger zerolog.Logger
+	err         error
+	db          *backend.DBManager
+	redis       *cache.RedisManager
+	settingsmgr *settings.Settings
+	envs        *environments.Environment
+	envsmap     environments.MapEnvironments
+	settingsmap settings.MapSettings
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
+	loggerTLS   *logging.LoggerTLS
+	handlersTLS *handlers.HandlersTLS
+	tagsmgr     *tags.TagManager
+	carvers3    *carves.CarverS3
+	app         *cli.App
+	flags       []cli.Flag
+	flagParams  config.ServiceFlagParams
 )
 
 // Valid values for authentication in configuration
@@ -273,7 +270,7 @@ func osctrlService() {
 		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
-		handlers.WithDebugHTTP(&debugHTTPLogger, &flagParams.DebugHTTPValues),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
@@ -379,7 +376,7 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.DebugHTTPConfiguration) error {
+func initializeLoggers(cfg config.JSONConfigurationService) {
 	// Set the log level
 	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
@@ -401,25 +398,10 @@ func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.Deb
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: loggerTimeFormat}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-	// If enabled, prepare debug HTTP logger
-	if debugHTTP.Enabled {
-		// Open or create the debug HTTP log file (append mode)
-		debugFile, err := os.OpenFile(
-			debugHTTP.File,
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-			0664,
-		)
-		if err != nil {
-			return err
-		}
-		defer debugFile.Close()
-		debugHTTPLogger = zerolog.New(debugFile).With().Timestamp().Logger()
-	}
-	return nil
 }
 
 func main() {
@@ -446,10 +428,7 @@ func main() {
 		os.Exit(1)
 	}
 	// Initialize service logger
-	if err := initializeLoggers(flagParams.ConfigValues, flagParams.DebugHTTPValues); err != nil {
-		fmt.Printf("initializeLoggers error: %s", err.Error())
-		os.Exit(1)
-	}
+	initializeLoggers(flagParams.ConfigValues)
 	// Service starts!
 	osctrlService()
 }

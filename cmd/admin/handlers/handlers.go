@@ -184,10 +184,24 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 	}
 }
 
-func WithDebugHTTP(logger *zerolog.Logger, cfg *config.DebugHTTPConfiguration) HandlersOption {
+func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
 	return func(h *HandlersAdmin) {
-		h.DebugHTTP = logger
 		h.DebugHTTPConfig = cfg
+		h.DebugHTTP = nil
+		if cfg.Enabled {
+			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+				MaxSize:    25,
+				MaxBackups: 5,
+				MaxAge:     10,
+				Compress:   true,
+			})
+			if err != nil {
+				log.Err(err).Msg("error creating debug HTTP logger")
+				l = nil
+				h.DebugHTTPConfig.Enabled = false
+			}
+			h.DebugHTTP = l
+		}
 	}
 }
 

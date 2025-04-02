@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -70,8 +71,6 @@ const (
 	defaultExpiration int = 900
 	// Default hours to classify nodes as inactive
 	defaultInactive int = -72
-	// Default time format for loggers
-	loggerTimeFormat string = "2006-01-02T15:04:05.999Z07:00"
 )
 
 // Global general variables
@@ -92,9 +91,8 @@ var (
 	flags       []cli.Flag
 	flagParams  config.ServiceFlagParams
 	// FIXME this is nasty and should not be a global but here we are
-	osqueryTables   []types.OsqueryTable
-	handlersAdmin   *handlers.HandlersAdmin
-	debugHTTPLogger zerolog.Logger
+	osqueryTables []types.OsqueryTable
+	handlersAdmin *handlers.HandlersAdmin
 )
 
 // SAML variables
@@ -313,7 +311,7 @@ func osctrlAdminService() {
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
-		handlers.WithDebugHTTP(&debugHTTPLogger, &flagParams.DebugHTTPValues),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ////////////////////////// ADMIN
@@ -624,7 +622,7 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.DebugHTTPConfiguration) error {
+func initializeLoggers(cfg config.JSONConfigurationService) {
 	// Set the log level
 	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
@@ -646,25 +644,10 @@ func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.Deb
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: loggerTimeFormat}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-	// If enabled, prepare debug HTTP logger
-	if debugHTTP.Enabled {
-		// Open or create the debug HTTP log file (append mode)
-		debugFile, err := os.OpenFile(
-			debugHTTP.File,
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-			0664,
-		)
-		if err != nil {
-			return err
-		}
-		defer debugFile.Close()
-		debugHTTPLogger = zerolog.New(debugFile).With().Timestamp().Logger()
-	}
-	return nil
 }
 
 func main() {
@@ -691,10 +674,7 @@ func main() {
 		os.Exit(1)
 	}
 	// Initialize service logger
-	if err := initializeLoggers(flagParams.ConfigValues, flagParams.DebugHTTPValues); err != nil {
-		fmt.Printf("initializeLoggers error: %s", err.Error())
-		os.Exit(1)
-	}
+	initializeLoggers(flagParams.ConfigValues)
 	// Service starts!
 	osctrlAdminService()
 }

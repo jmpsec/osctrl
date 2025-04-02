@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -42,8 +43,6 @@ const (
 	appDescription = serviceDescription + ", a fast and efficient osquery management"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
-	// Default time format for loggers
-	loggerTimeFormat string = "2006-01-02T15:04:05.999Z07:00"
 )
 
 // Paths
@@ -81,21 +80,20 @@ const (
 
 // Global variables
 var (
-	err             error
-	db              *backend.DBManager
-	redis           *cache.RedisManager
-	apiUsers        *users.UserManager
-	tagsmgr         *tags.TagManager
-	settingsmgr     *settings.Settings
-	envs            *environments.Environment
-	nodesmgr        *nodes.NodeManager
-	queriesmgr      *queries.Queries
-	filecarves      *carves.Carves
-	handlersApi     *handlers.HandlersApi
-	app             *cli.App
-	flags           []cli.Flag
-	flagParams      config.ServiceFlagParams
-	debugHTTPLogger zerolog.Logger
+	err         error
+	db          *backend.DBManager
+	redis       *cache.RedisManager
+	apiUsers    *users.UserManager
+	tagsmgr     *tags.TagManager
+	settingsmgr *settings.Settings
+	envs        *environments.Environment
+	nodesmgr    *nodes.NodeManager
+	queriesmgr  *queries.Queries
+	filecarves  *carves.Carves
+	handlersApi *handlers.HandlersApi
+	app         *cli.App
+	flags       []cli.Flag
+	flagParams  config.ServiceFlagParams
 )
 
 // Valid values for auth and logging in configuration
@@ -204,7 +202,7 @@ func osctrlAPIService() {
 		handlers.WithCache(redis),
 		handlers.WithVersion(serviceVersion),
 		handlers.WithName(serviceName),
-		handlers.WithDebugHTTP(&debugHTTPLogger, &flagParams.DebugHTTPValues),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ///////////////////////// API
@@ -413,7 +411,7 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.DebugHTTPConfiguration) error {
+func initializeLoggers(cfg config.JSONConfigurationService) {
 	// Set the log level
 	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
@@ -435,25 +433,10 @@ func initializeLoggers(cfg config.JSONConfigurationService, debugHTTP config.Deb
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: loggerTimeFormat}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-	// If enabled, prepare debug HTTP logger
-	if debugHTTP.Enabled {
-		// Open or create the debug HTTP log file (append mode)
-		debugFile, err := os.OpenFile(
-			debugHTTP.File,
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-			0664,
-		)
-		if err != nil {
-			return err
-		}
-		defer debugFile.Close()
-		debugHTTPLogger = zerolog.New(debugFile).With().Timestamp().Logger()
-	}
-	return nil
 }
 
 func main() {
@@ -480,10 +463,7 @@ func main() {
 		os.Exit(1)
 	}
 	// Initialize service logger
-	if err := initializeLoggers(flagParams.ConfigValues, flagParams.DebugHTTPValues); err != nil {
-		fmt.Printf("initializeLoggers error: %s", err.Error())
-		os.Exit(1)
-	}
+	initializeLoggers(flagParams.ConfigValues)
 	// Run the service
 	osctrlAPIService()
 }
