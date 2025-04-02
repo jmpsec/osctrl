@@ -111,8 +111,8 @@ install_tls:
 install_admin:
 	sudo systemctl stop $(ADMIN_NAME)
 	sudo cp $(OUTPUT)/$(ADMIN_NAME) $(DEST)
-	sudo rsync -av admin/templates/ $(DEST)/tmpl_admin
-	sudo rsync -av admin/static/ $(DEST)/static
+	sudo rsync -av $(ADMIN_DIR)/templates/ $(DEST)/tmpl_admin
+	sudo rsync -av $(ADMIN_DIR)/static/ $(DEST)/static
 	sudo systemctl start $(ADMIN_NAME)
 
 # Install API server and restart service
