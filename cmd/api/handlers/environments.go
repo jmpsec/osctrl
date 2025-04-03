@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -52,9 +51,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned environment %s", env.Name)
-	}
+	log.Debug().Msgf("Returned environment %s", env.Name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 }
 
@@ -97,9 +94,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned environments map")
-	}
+	log.Debug().Msg("Returned environments map")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envMap)
 }
 
@@ -122,9 +117,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned environments")
-	}
+	log.Debug().Msg("Returned environments")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envAll)
 }
 
@@ -187,9 +180,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned environment %s", returnData)
-	}
+	log.Debug().Msgf("Returned data for environment%s : %s", env.Name, returnData)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
 
@@ -246,10 +237,8 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned environment %s", types.ApiDataResponse{Data: returnData})
-	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, returnData)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
 
 // EnvEnrollActionsHandler - POST Handler to perform actions (extend, expire) in enroll values
@@ -347,6 +336,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Return query name as serialized response
+	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, msgReturn)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 
@@ -420,5 +410,6 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Return query name as serialized response
+	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, msgReturn)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }

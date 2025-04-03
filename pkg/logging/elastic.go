@@ -99,10 +99,10 @@ func (logE *LoggerElastic) Settings(mgr *settings.Settings) {
 // Send - Function that sends JSON logs to Elastic
 func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s to Elastic", logType)
+		log.Debug().Msgf("Send %s to Elastic", logType)
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Elastic for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Elastic for %s - %s", len(data), environment, uuid)
 	}
 	var logs []interface{}
 	if logType == types.QueryLog {
@@ -139,6 +139,6 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 		}
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: Sent %d bytes of %s to Elastic from %s:%s", len(data), logType, uuid, environment)
+		log.Debug().Msgf("Sent %d bytes of %s to Elastic from %s:%s", len(data), logType, uuid, environment)
 	}
 }

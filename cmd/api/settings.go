@@ -10,22 +10,7 @@ import (
 
 // Function to load all settings for the service
 func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
-	// Check if service settings for debug service is ready
-	if mgr.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Initializing settings")
-	}
-	// Check if service settings for debug service is ready
-	if !mgr.IsValue(config.ServiceAPI, settings.DebugService, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(config.ServiceAPI, settings.DebugService, false, settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %w", settings.DebugService, err)
-		}
-	}
-	// Check if service settings for debug HTTP is ready
-	if !mgr.IsValue(config.ServiceAPI, settings.DebugHTTP, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(config.ServiceAPI, settings.DebugHTTP, false, settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %w", settings.DebugHTTP, err)
-		}
-	}
+	log.Debug().Msg("Initializing settings")
 	// Check if service settings for metrics is ready, initialize if so
 	if !mgr.IsValue(config.ServiceAPI, settings.ServiceMetrics, settings.NoEnvironmentID) {
 		if err := mgr.NewBooleanValue(config.ServiceAPI, settings.ServiceMetrics, false, settings.NoEnvironmentID); err != nil {

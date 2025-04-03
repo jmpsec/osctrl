@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -35,9 +34,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned user %s", usernameVar)
-	}
+	log.Debug().Msgf("Returned user %s", usernameVar)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, user)
 }
 
@@ -64,8 +61,6 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned users")
-	}
+	log.Debug().Msgf("Returned %d users", len(users))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, users)
 }

@@ -60,9 +60,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" || !h.Users.Exists(usernameVar) {
-		if h.Settings.DebugService(config.ServiceAdmin) {
-			log.Debug().Msg("DebugService: error getting username")
-		}
+		log.Info().Msgf("error getting username: [%s]", usernameVar)
 		return
 	}
 	// Get context data
@@ -136,9 +134,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		Size: int64(carve.CarveSize),
 		File: carve.ArchivePath,
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Carve download")
-	}
+	log.Debug().Msg("Initiating carve download")
 	if h.Carves.Carver == config.CarverS3 {
 		downloadURL, err := h.Carves.S3.GetDownloadLink(carve)
 		if err != nil {

@@ -104,7 +104,7 @@ func (carveS3 *CarverS3) Settings(mgr *settings.Settings) {
 func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 	ctx := context.Background()
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to S3 for %s - %s", block.Size, block.Environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to S3 for %s - %s", block.Size, block.Environment, uuid)
 	}
 	// Decode before upload
 	toUpload, err := base64.StdEncoding.DecodeString(data)
@@ -123,7 +123,7 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 		return fmt.Errorf("error sending data to s3 - %w", err)
 	}
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: S3 Upload %+v", uploadOutput)
+		log.Debug().Msgf("S3 Upload %+v", uploadOutput)
 	}
 	return nil
 }
@@ -195,7 +195,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 		return nil, fmt.Errorf("CompleteMultipartUpload - %w", err)
 	}
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
+		log.Debug().Msgf("S3 Archived %s [%d bytes] - %s", res.File, res.Size, *multiOutput.Key)
 	}
 	return res, nil
 }
@@ -204,7 +204,7 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 	ctx := context.Background()
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: Downloading %s from S3", carve.ArchivePath)
+		log.Debug().Msgf("Downloading %s from S3", carve.ArchivePath)
 	}
 	downloader := manager.NewDownloader(carveS3.Client)
 	var fileReader io.WriterAt
@@ -218,7 +218,7 @@ func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 		return nil, fmt.Errorf("Download - %w", err)
 	}
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
+		log.Debug().Msgf("S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
 	}
 	return fileReader, nil
 }
@@ -227,7 +227,7 @@ func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 func (carveS3 *CarverS3) GetDownloadLink(carve CarvedFile) (string, error) {
 	ctx := context.Background()
 	if carveS3.Debug {
-		log.Debug().Msgf("DebugService: Downloading link %s from S3", carve.ArchivePath)
+		log.Debug().Msgf("Downloading link %s from S3", carve.ArchivePath)
 	}
 	preClient := s3.NewPresignClient(carveS3.Client)
 	lnk, err := preClient.PresignGetObject(ctx, &s3.GetObjectInput{

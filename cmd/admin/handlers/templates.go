@@ -9,7 +9,6 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -39,16 +38,11 @@ var validTarget = map[string]bool{
 // TODO until a better implementation, all users are admin
 func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version string) TemplateMetadata {
 	return TemplateMetadata{
-		Username:       ctx[sessions.CtxUser],
-		Level:          "admin",
-		CSRFToken:      ctx[sessions.CtxCSRF],
-		Service:        "osctrl-admin",
-		Version:        version,
-		TLSDebug:       h.Settings.DebugService(config.ServiceTLS),
-		AdminDebug:     h.Settings.DebugService(config.ServiceAdmin),
-		APIDebug:       h.Settings.DebugService(config.ServiceAPI),
-		AdminDebugHTTP: h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID),
-		APIDebugHTTP:   h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID),
+		Username:  ctx[sessions.CtxUser],
+		Level:     "admin",
+		CSRFToken: ctx[sessions.CtxCSRF],
+		Service:   "osctrl-admin",
+		Version:   version,
 	}
 }
 
@@ -90,9 +84,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Login template served")
-	}
+	log.Debug().Msg("Login template served")
 }
 
 // EnvironmentHandler for environment view of the table
@@ -167,9 +159,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Environment table template served")
-	}
+	log.Debug().Msg("Environment table template served")
 }
 
 // PlatformHandler for platform view of the table
@@ -244,9 +234,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Platform table template served")
-	}
+	log.Debug().Msg("Platform table template served")
 }
 
 // QueryRunGETHandler for GET requests to run queries
@@ -327,9 +315,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Query run template served")
-	}
+	log.Debug().Msg("Query run template served")
 }
 
 // QueryListGETHandler for GET requests to queries
@@ -388,9 +374,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Query list template served")
-	}
+	log.Debug().Msg("Query list template served")
 }
 
 // SavedQueriesGETHandler for GET requests to queries
@@ -449,9 +433,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Query list template served")
-	}
+	log.Debug().Msg("Query list template served")
 }
 
 // CarvesRunGETHandler for GET requests to run file carves
@@ -526,9 +508,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Query run template served")
-	}
+	log.Debug().Msg("Query run template served")
 }
 
 // CarvesListGETHandler for GET requests to carves
@@ -587,9 +567,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Carve list template served")
-	}
+	log.Debug().Msg("Carve list template served")
 }
 
 // QueryLogsHandler for GET requests to see query results by name
@@ -679,9 +657,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Query logs template served")
-	}
+	log.Debug().Msg("Query logs template served")
 }
 
 // CarvesDetailsHandler for GET requests to see carves details by name
@@ -787,9 +763,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Carve details template served")
-	}
+	log.Debug().Msg("Carve details template served")
 }
 
 // ConfGETHandler for GET requests for /conf
@@ -847,9 +821,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Conf template served")
-	}
+	log.Debug().Msg("Conf template served")
 }
 
 // EnrollGETHandler for GET requests for /enroll
@@ -933,9 +905,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Enroll template served")
-	}
+	log.Debug().Msg("Enroll template served")
 }
 
 // EnrollGETHandler for GET requests for /enroll
@@ -1125,9 +1095,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Node template served")
-	}
+	log.Debug().Msg("Node template served")
 }
 
 // EnvsGETHandler for GET requests for /env
@@ -1172,9 +1140,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Environments template served")
-	}
+	log.Debug().Msg("Environments template served")
 }
 
 // SettingsGETHandler for GET requests for /settings
@@ -1244,9 +1210,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Settings template served")
-	}
+	log.Debug().Msg("Settings template served")
 }
 
 // UsersGETHandler for GET requests for /users
@@ -1303,9 +1267,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Users template served")
-	}
+	log.Debug().Msg("Users template served")
 }
 
 // TagsGETHandler for GET requests for /tags
@@ -1364,9 +1326,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Tags template served")
-	}
+	log.Debug().Msg("Tags template served")
 }
 
 // EditProfileGETHandler for user profile edit
@@ -1422,9 +1382,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Profile template served")
-	}
+	log.Debug().Msg("Profile template served")
 }
 
 // DashboardGETHandler for dashboard page
@@ -1480,7 +1438,5 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Dashboard template served")
-	}
+	log.Debug().Msg("Dashboard template served")
 }

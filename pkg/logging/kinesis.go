@@ -87,7 +87,7 @@ func (logSK *LoggerKinesis) Settings(mgr *settings.Settings) {
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Kinesis for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Kinesis for %s - %s", len(data), environment, uuid)
 	}
 	streamName := aws.String(logSK.Configuration.Stream)
 	putOutput, err := logSK.KinesisClient.PutRecord(&kinesis.PutRecordInput{
@@ -99,6 +99,6 @@ func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid 
 		log.Err(err).Msg("Error sending kinesis stream")
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: PutRecordOutput %s", putOutput.String())
+		log.Debug().Msgf("PutRecordOutput %s", putOutput.String())
 	}
 }

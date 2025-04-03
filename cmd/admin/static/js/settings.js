@@ -62,19 +62,3 @@ function changeBooleanSetting(_name) {
   };
   sendPostRequest(data, _url, '', false);
 }
-
-function changeDebug(_name, service) {
-  var _csrftoken = $("#csrftoken").val();
-  var _value = $("#" + _name + '_' + service).is(':checked');
-
-  var _url = '/settings/' + service;
-
-  var data = {
-    csrftoken: _csrftoken,
-    action: 'change',
-    name: _name,
-    type: 'boolean',
-    boolean: _value,
-  };
-  sendPostRequest(data, _url, '', false);
-}

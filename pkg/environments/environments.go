@@ -557,20 +557,3 @@ func (environment *Environment) NotExpireRemove(idEnv string) error {
 	}
 	return nil
 }
-
-// DebugHTTP to check if the environment has enabled debugging for HTTP
-func (environment *Environment) DebugHTTP(name string) bool {
-	env, err := environment.Get(name)
-	if err != nil {
-		return false
-	}
-	return env.DebugHTTP
-}
-
-// ChangeDebugHTTP to change the value of DebugHTTP for an environment
-func (environment *Environment) ChangeDebugHTTP(idEnv string, value bool) error {
-	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(map[string]interface{}{"debug_http": value}).Error; err != nil {
-		return fmt.Errorf("UpdatesChangeDebugHTTP %w", err)
-	}
-	return nil
-}

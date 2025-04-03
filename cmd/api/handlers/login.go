@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -61,8 +60,6 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		user.APIToken = token
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returning token for %s", user.Username)
-	}
+	log.Debug().Msgf("Returning token for %s", user.Username)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiLoginResponse{Token: user.APIToken})
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -32,9 +31,7 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned tags")
-	}
+	log.Debug().Msgf("Returned %d tags", len(tags))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
 }
 
@@ -79,9 +76,7 @@ func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned tag")
-	}
+	log.Debug().Msg("Returned tag")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tag)
 }
 
@@ -120,9 +115,7 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned tags")
-	}
+	log.Debug().Msgf("Returned %d tags", len(tags))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
 }
 
@@ -217,8 +210,6 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		returnData = "tag removed successfully"
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned %s", returnData)
-	}
+	log.Debug().Msgf("Returned [%s]", returnData)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }

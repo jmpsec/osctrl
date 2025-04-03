@@ -72,8 +72,6 @@ const (
 
 // Names for all possible settings values for services
 const (
-	DebugHTTP          string = "debug_http"
-	DebugService       string = "debug_service"
 	RefreshEnvs        string = "refresh_envs"
 	RefreshSettings    string = "refresh_settings"
 	CleanupSessions    string = "cleanup_sessions"
@@ -527,24 +525,6 @@ func (conf *Settings) IsValue(service, name string, envID uint) bool {
 func (conf *Settings) IsJSON(service, name string, envID uint) bool {
 	_, err := conf.RetrieveJSON(service, name, envID)
 	return err == nil
-}
-
-// DebugHTTP checks if http debugging is enabled by service
-func (conf *Settings) DebugHTTP(service string, envID uint) bool {
-	value, err := conf.RetrieveValue(service, DebugHTTP, envID)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
-}
-
-// DebugService checks if debugging is enabled by service
-func (conf *Settings) DebugService(service string) bool {
-	value, err := conf.RetrieveValue(service, DebugService, NoEnvironmentID)
-	if err != nil {
-		return false
-	}
-	return value.Boolean
 }
 
 // RefreshEnvs gets the interval in seconds to refresh environments by service

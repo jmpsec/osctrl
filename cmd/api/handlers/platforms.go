@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -29,9 +28,7 @@ func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned platforms")
-	}
+	log.Debug().Msg("Returned platforms")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, platforms)
 }
 
@@ -70,8 +67,6 @@ func (h *HandlersApi) PlatformsEnvHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned platforms")
-	}
+	log.Debug().Msg("Returned platforms")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, platforms)
 }

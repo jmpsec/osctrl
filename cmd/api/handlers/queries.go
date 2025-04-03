@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -69,9 +68,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned query %s", name)
-	}
+	log.Debug().Msgf("Returned query %s", name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, query)
 }
 
@@ -232,6 +229,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Return query name as serialized response
+	log.Debug().Msgf("Created query %s", newQuery.Name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
@@ -298,6 +296,7 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 		msgReturn = fmt.Sprintf("query %s completed successfully", nameVar)
 	}
 	// Return message as serialized response
+	log.Debug().Msgf("Returned message %s", msgReturn)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 
@@ -336,6 +335,7 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Serialize and serve JSON
+	log.Debug().Msgf("Returned %d queries", len(queries))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 }
 
@@ -385,6 +385,7 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
+	log.Debug().Msgf("Returned %d queries", len(queries))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 }
 
@@ -431,5 +432,6 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and serve JSON
+	log.Debug().Msgf("Returned query results for %s", name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queryLogs)
 }
