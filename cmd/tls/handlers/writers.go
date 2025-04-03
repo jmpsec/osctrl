@@ -86,15 +86,16 @@ func (bw *batchWriter) flush(batch map[uint]lastSeenUpdate) {
 
 		// Update the node's IP address.
 		// Since the IP address changes infrequently, no need to update in bulk.
-		if ev.IP != "" {
-			ipStart := time.Now()
-			if err := bw.nodesRepo.UpdateIP(ev.NodeID, ev.IP); err != nil {
-				log.Err(err).Uint("node_id", ev.NodeID).Str("ip", ev.IP).Msg("updating IP failed")
-			}
-			ipDuration := time.Since(ipStart).Seconds()
-			// Record IP update duration
-			batchFlushDuration.WithLabelValues("ip_update").Observe(ipDuration)
-		}
+		// Stopping the IP address for now.
+		// if ev.IP != "" {
+		// 	ipStart := time.Now()
+		// 	if err := bw.nodesRepo.UpdateIP(ev.NodeID, ev.IP); err != nil {
+		// 		log.Err(err).Uint("node_id", ev.NodeID).Str("ip", ev.IP).Msg("updating IP failed")
+		// 	}
+		// 	ipDuration := time.Since(ipStart).Seconds()
+		// 	// Record IP update duration
+		// 	batchFlushDuration.WithLabelValues("ip_update").Observe(ipDuration)
+		// }
 	}
 
 	log.Info().Int("count", batchSize).Msg("flushing batch")
