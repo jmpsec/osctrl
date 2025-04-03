@@ -11,21 +11,7 @@ import (
 // Function to load all settings for the service
 func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
 	// Check if service settings for debug service is ready
-	if mgr.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Initializing settings")
-	}
-	// Check if service settings for debug service is ready
-	if !mgr.IsValue(config.ServiceAdmin, settings.DebugService, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(config.ServiceAdmin, settings.DebugService, false, settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %w", settings.DebugService, err)
-		}
-	}
-	// Check if service settings for debug HTTP is ready
-	if !mgr.IsValue(config.ServiceAdmin, settings.DebugHTTP, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(config.ServiceAdmin, settings.DebugHTTP, false, settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("Failed to add %s to settings: %w", settings.DebugHTTP, err)
-		}
-	}
+	log.Debug().Msg("Initializing settings")
 	// Check if service settings for sessions cleanup is ready
 	if !mgr.IsValue(config.ServiceAdmin, settings.CleanupSessions, settings.NoEnvironmentID) {
 		if err := mgr.NewIntegerValue(config.ServiceAdmin, settings.CleanupSessions, int64(defaultRefresh), settings.NoEnvironmentID); err != nil {

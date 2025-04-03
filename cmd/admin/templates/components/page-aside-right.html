@@ -7,30 +7,6 @@
         <div class="tab-pane p-3" role="tablist" style="height: 100%;">
           <h6>Admin Server Settings</h6>
           <div class="aside-options" role="tab">
-            <div class="clearfix mt-3">
-              <small>
-                <b>Admin service debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_service_admin" class="switch-input" type="checkbox" onclick="changeDebug('debug_service', 'admin');" {{ if .AdminDebug }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose service logging for Admin</small>
-            </div>
-            <div class="clearfix mt-3">
-              <small>
-                <b>Admin UI HTTP debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_http_admin" class="switch-input" type="checkbox" onclick="changeDebug('debug_http', 'admin');" {{ if .AdminDebugHTTP }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose HTTP logging for Admin</small>
-            </div>
             <div class="clearfix mt-4">
               <small>
                 <button class="btn btn-block btn-sm btn-info" type="button" onclick="window.location = '/settings/admin';">
@@ -66,18 +42,6 @@
 
           <h6>TLS Server Settings</h6>
           <div class="aside-options">
-            <div class="clearfix mt-3">
-              <small>
-                <b>TLS service debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_service_tls" class="switch-input" type="checkbox" onclick="changeDebug('debug_service', 'tls');" {{ if .TLSDebug }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose service logging for TLS</small>
-            </div>
             <div class="clearfix mt-4">
               <small>
                 <button class="btn btn-block btn-sm btn-secondary" type="button" onclick="window.location = '/environments';">
@@ -103,30 +67,6 @@
 
           <h6>API Server Settings</h6>
           <div class="aside-options">
-            <div class="clearfix mt-3">
-              <small>
-                <b>API service debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_service_api" class="switch-input" type="checkbox" onclick="changeDebug('debug_service', 'api');" {{ if .APIDebug }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose service logging for API</small>
-            </div>
-            <div class="clearfix mt-3">
-              <small>
-                <b>API HTTP debug</b>
-              </small>
-              <label class="switch switch-label switch-pill switch-success switch-sm float-right">
-                <input id="debug_http_api" class="switch-input" type="checkbox" onclick="changeDebug('debug_http', 'api');" {{ if .APIDebugHTTP }} checked {{ end }}>
-                <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
-              </label>
-            </div>
-            <div>
-              <small class="text-muted">Verbose HTTP logging for API</small>
-            </div>
             <div class="clearfix mt-4">
               <small>
                 <button class="btn btn-block btn-sm btn-info" type="button" onclick="window.location = '/settings/api';">

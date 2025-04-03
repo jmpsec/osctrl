@@ -210,9 +210,7 @@ func osctrlAdminService() {
 
 	// Start SAML Middleware if we are using SAML
 	if flagParams.ConfigValues.Auth == config.AuthSAML {
-		if settingsmgr.DebugService(config.ServiceAdmin) {
-			log.Debug().Msg("DebugService: SAML keypair")
-		}
+		log.Debug().Msg("SAML enabled for authentication")
 		// Initialize SAML keypair to sign SAML Request.
 		var err error
 		samlData, err = keypairSAML(samlConfig)
@@ -240,9 +238,7 @@ func osctrlAdminService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceAdmin) {
-				log.Debug().Msg("DebugService: Cleaning up sessions")
-			}
+			log.Debug().Msg("Cleaning up sessions")
 			sessionsmgr.Cleanup()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -256,9 +252,7 @@ func osctrlAdminService() {
 			_t = int64(defaultExpiration)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceAdmin) {
-				log.Debug().Msg("DebugService: Cleaning up expired queries/carves")
-			}
+			log.Debug().Msg("Cleaning up expired queries/carves")
 			allEnvs, err := envs.All()
 			if err != nil {
 				log.Err(err).Msg("Error getting all environments")

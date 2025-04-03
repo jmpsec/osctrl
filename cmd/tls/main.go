@@ -218,9 +218,7 @@ func osctrlService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceTLS) {
-				log.Info().Msg("DebugService: Refreshing environments")
-			}
+			log.Debug().Msg("Refreshing environments")
 			envsmap = refreshEnvironments()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -235,9 +233,7 @@ func osctrlService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceTLS) {
-				log.Info().Msg("DebugService: Refreshing settings")
-			}
+			log.Debug().Msg("Refreshing settings")
 			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}

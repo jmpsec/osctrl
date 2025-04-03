@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -55,9 +54,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned node %s", nodeVar)
-	}
+	log.Debug().Msgf("Returned node %s", nodeVar)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 }
 
@@ -96,9 +93,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -137,9 +132,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -178,9 +171,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -223,8 +214,6 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned node %s", n.UUID)
-	}
+	log.Debug().Msgf("Returned node %s", n.UUID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 }
