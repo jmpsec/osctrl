@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -181,7 +182,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -267,7 +268,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -343,7 +344,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))

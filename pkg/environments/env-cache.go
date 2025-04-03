@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/cache"
-	"github.com/rs/zerolog/log"
 )
 
 // EnvCache provides cached access to TLS environments
@@ -34,8 +33,6 @@ func NewEnvCache(envs EnvironmentManager) *EnvCache {
 func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment, error) {
 	// Try to get from cache first
 	if env, found := ec.cache.Get(ctx, uuid); found {
-		// Add some test logging
-		log.Info().Str("uuid", uuid).Msg("Cache hit")
 		return env, nil
 	}
 
@@ -47,8 +44,6 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 
 	ec.cache.Set(ctx, uuid, env, 2*time.Hour)
 
-	// Add some test logging
-	log.Info().Str("uuid", uuid).Msg("Cache miss")
 	return env, nil
 }
 
