@@ -237,7 +237,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	log.Debug().Msgf("Returned data for environment%s : %s", env.Name, returnData)
+	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, returnData)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
 
