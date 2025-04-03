@@ -85,7 +85,7 @@ var (
 	apiUsers    *users.UserManager
 	tagsmgr     *tags.TagManager
 	settingsmgr *settings.Settings
-	envs        *environments.Environment
+	envs        *environments.EnvironmentManager
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
 	filecarves  *carves.Carves

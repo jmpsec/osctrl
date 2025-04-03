@@ -20,7 +20,7 @@ type HandlersApi struct {
 	DB             *gorm.DB
 	Users          *users.UserManager
 	Tags           *tags.TagManager
-	Envs           *environments.Environment
+	Envs           *environments.EnvironmentManager
 	Nodes          *nodes.NodeManager
 	Queries        *queries.Queries
 	Carves         *carves.Carves
@@ -51,7 +51,7 @@ func WithTags(tags *tags.TagManager) HandlersOption {
 	}
 }
 
-func WithEnvs(envs *environments.Environment) HandlersOption {
+func WithEnvs(envs *environments.EnvironmentManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Envs = envs
 	}

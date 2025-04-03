@@ -59,7 +59,7 @@ var (
 	db          *backend.DBManager
 	redis       *cache.RedisManager
 	settingsmgr *settings.Settings
-	envs        *environments.Environment
+	envs        *environments.EnvironmentManager
 	envsmap     environments.MapEnvironments
 	settingsmap settings.MapSettings
 	nodesmgr    *nodes.NodeManager
@@ -271,7 +271,6 @@ func osctrlService() {
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 	)
-
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
 	// Create router for TLS endpoint
