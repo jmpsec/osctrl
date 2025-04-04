@@ -28,6 +28,9 @@ type Cache[T any] interface {
 
 	// ItemCount returns the number of items in the cache
 	ItemCount() int
+
+	// Stop stops the cleanup goroutine
+	Stop()
 }
 
 // MemoryCacheOption is a function that configures a MemoryCache
@@ -40,12 +43,20 @@ func WithCleanupInterval[T any](interval time.Duration) MemoryCacheOption[T] {
 	}
 }
 
+// WithName sets the name for the cache instance
+func WithName[T any](name string) MemoryCacheOption[T] {
+	return func(mc *MemoryCache[T]) {
+		mc.name = name
+	}
+}
+
 // MemoryCache provides an in-memory implementation of the Cache interface
 type MemoryCache[T any] struct {
 	items           map[string]Item[T]
 	mutex           sync.RWMutex
 	cleanupInterval time.Duration
 	stopCleanup     chan struct{}
+	name            string
 }
 
 // NewMemoryCache creates a new in-memory cache with the provided options
@@ -54,12 +65,15 @@ func NewMemoryCache[T any](opts ...MemoryCacheOption[T]) *MemoryCache[T] {
 		items:           make(map[string]Item[T]),
 		cleanupInterval: 5 * time.Minute,
 		stopCleanup:     make(chan struct{}),
+		name:            "default",
 	}
 
 	// Apply all provided options
 	for _, opt := range opts {
 		opt(cache)
 	}
+
+	CacheItems.WithLabelValues(cache.name).Set(0)
 
 	// Start cleanup routine to remove expired items
 	go cache.cleanupRoutine()
@@ -74,16 +88,19 @@ func (c *MemoryCache[T]) Get(ctx context.Context, key string) (T, bool) {
 
 	item, found := c.items[key]
 	if !found {
+		CacheMisses.WithLabelValues(c.name).Inc()
 		var zero T
 		return zero, false
 	}
 
 	// Check if item has expired
 	if item.Expiration > 0 && item.Expiration < time.Now().UnixNano() {
+		CacheMisses.WithLabelValues(c.name).Inc()
 		var zero T
 		return zero, false
 	}
 
+	CacheHits.WithLabelValues(c.name).Inc()
 	return item.Value, true
 }
 
@@ -102,6 +119,8 @@ func (c *MemoryCache[T]) Set(ctx context.Context, key string, value T, duration 
 		Value:      value,
 		Expiration: expiration,
 	}
+
+	CacheItems.WithLabelValues(c.name).Set(float64(len(c.items)))
 }
 
 // Delete removes an item from the cache
@@ -110,6 +129,8 @@ func (c *MemoryCache[T]) Delete(ctx context.Context, key string) {
 	defer c.mutex.Unlock()
 
 	delete(c.items, key)
+
+	CacheItems.WithLabelValues(c.name).Set(float64(len(c.items)))
 }
 
 // Clear removes all items from the cache
@@ -118,6 +139,8 @@ func (c *MemoryCache[T]) Clear(ctx context.Context) {
 	defer c.mutex.Unlock()
 
 	c.items = make(map[string]Item[T])
+
+	CacheItems.WithLabelValues(c.name).Set(0)
 }
 
 // ItemCount returns the number of items in the cache
@@ -126,6 +149,11 @@ func (c *MemoryCache[T]) ItemCount() int {
 	defer c.mutex.RUnlock()
 
 	return len(c.items)
+}
+
+// Stop stops the cleanup goroutine
+func (c *MemoryCache[T]) Stop() {
+	close(c.stopCleanup)
 }
 
 // cleanupRoutine periodically cleans up expired items
@@ -150,9 +178,17 @@ func (c *MemoryCache[T]) deleteExpired() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	evictionCount := 0
 	for k, v := range c.items {
 		if v.Expiration > 0 && v.Expiration < now {
 			delete(c.items, k)
+			evictionCount++
 		}
+	}
+
+	if evictionCount > 0 {
+		// Update Prometheus metrics for evictions and item count
+		CacheEvictions.WithLabelValues(c.name).Add(float64(evictionCount))
+		CacheItems.WithLabelValues(c.name).Set(float64(len(c.items)))
 	}
 }
