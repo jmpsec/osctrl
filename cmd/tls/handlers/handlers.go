@@ -48,7 +48,7 @@ var validPlatform = map[string]bool{
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
-	Envs            *environments.EnvironmentManager
+	Envs            *environments.EnvManager
 	EnvsMap         *environments.MapEnvironments
 	EnvCache        *environments.EnvCache
 	Nodes           *nodes.NodeManager
@@ -72,7 +72,7 @@ type TLSResponse struct {
 type Option func(*HandlersTLS)
 
 // WithEnvs to pass value as option
-func WithEnvs(envs *environments.EnvironmentManager) Option {
+func WithEnvs(envs *environments.EnvManager) Option {
 	return func(h *HandlersTLS) {
 		h.Envs = envs
 	}

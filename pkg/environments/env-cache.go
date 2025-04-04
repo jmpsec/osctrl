@@ -13,11 +13,11 @@ type EnvCache struct {
 	cache *cache.MemoryCache[TLSEnvironment]
 
 	// Reference to the environment manager for cache misses
-	envs EnvironmentManager
+	envs EnvManager
 }
 
 // NewEnvCache creates a new environment cache
-func NewEnvCache(envs EnvironmentManager) *EnvCache {
+func NewEnvCache(envs EnvManager) *EnvCache {
 	// Create a new cache with a 10-minute cleanup interval
 	envCache := cache.NewMemoryCache(
 		cache.WithCleanupInterval[TLSEnvironment](2 * time.Hour),

@@ -83,7 +83,7 @@ var (
 	queriesmgr  *queries.Queries
 	carvesmgr   *carves.Carves
 	sessionsmgr *sessions.SessionManager
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
 	carvers3    *carves.CarverS3

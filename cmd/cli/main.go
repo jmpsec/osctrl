@@ -56,7 +56,7 @@ var (
 	filecarves  *carves.Carves
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	db          *backend.DBManager
 	osctrlAPI   *OsctrlAPI
 	formats     map[string]bool

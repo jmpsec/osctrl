@@ -59,7 +59,7 @@ var (
 	db          *backend.DBManager
 	redis       *cache.RedisManager
 	settingsmgr *settings.Settings
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	envsmap     environments.MapEnvironments
 	settingsmap settings.MapSettings
 	nodesmgr    *nodes.NodeManager
