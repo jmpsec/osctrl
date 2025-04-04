@@ -59,7 +59,7 @@ var (
 	db          *backend.DBManager
 	redis       *cache.RedisManager
 	settingsmgr *settings.Settings
-	envs        *environments.Environment
+	envs        *environments.EnvManager
 	envsmap     environments.MapEnvironments
 	settingsmap settings.MapSettings
 	nodesmgr    *nodes.NodeManager
@@ -242,6 +242,7 @@ func osctrlService() {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
+		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		// Creating a new prometheus service
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
@@ -268,7 +269,6 @@ func osctrlService() {
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
-
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
 	// Create router for TLS endpoint
