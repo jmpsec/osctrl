@@ -6,8 +6,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -22,7 +20,9 @@ type TokenJSON struct {
 
 // TokensGETHandler for GET requests for /tokens/{username}
 func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -56,7 +56,9 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 
 // TokensPOSTHandler for POST request for /tokens/{username}/refresh
 func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
@@ -71,9 +73,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Parse request JSON body
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Decoding POST body")
-	}
+	log.Debug().Msg("Decoding POST body")
 	var t TokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -89,17 +89,13 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		adminErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Creating token")
-	}
+	log.Debug().Msg("Creating token")
 	token, exp, err := h.Users.CreateToken(user.Username, h.AdminConfig.Host, t.ExpHours)
 	if err != nil {
 		adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 		return
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Updating token")
-	}
+	log.Debug().Msg("Updating token")
 	if err := h.Users.UpdateToken(user.Username, token, exp); err != nil {
 		adminErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
 		return

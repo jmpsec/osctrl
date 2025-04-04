@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -14,7 +12,9 @@ import (
 
 // JSONTagsHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) JSONTagsHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions

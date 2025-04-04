@@ -96,7 +96,7 @@ func (logGL *LoggerGraylog) Settings(mgr *settings.Settings) {
 // Send - Function that sends JSON logs to Graylog
 func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s via graylog", logType)
+		log.Debug().Msgf("Send %s via graylog", logType)
 	}
 	// Convert the array in an array of multiple message
 	var logs []interface{}
@@ -138,7 +138,7 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 		}
 		jsonParam := strings.NewReader(string(jsonMessage))
 		if debug {
-			log.Debug().Msgf("DebugService: Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
+			log.Debug().Msgf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
 		}
 		// Send log with a POST to the Graylog URL
 		resp, body, err := utils.SendRequest(GraylogMethod, logGL.Configuration.URL, jsonParam, logGL.Headers)
@@ -147,7 +147,7 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 			return
 		}
 		if debug {
-			log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
+			log.Debug().Msgf("HTTP %d %s", resp, body)
 		}
 	}
 }

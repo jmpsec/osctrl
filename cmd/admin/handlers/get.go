@@ -8,7 +8,6 @@ import (
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -16,7 +15,9 @@ import (
 
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	w.Header().Set(utils.ContentType, "image/png")
 	http.ServeFile(w, r, "/static/favicon.png")
 }
@@ -36,26 +37,30 @@ func (h *HandlersAdmin) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler for forbidden error requests
 func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), true)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusForbidden, errorContent)
 }
 
 // RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract username and verify
 	usernameVar := r.PathValue("username")
 	if usernameVar == "" || !h.Users.Exists(usernameVar) {
-		if h.Settings.DebugService(config.ServiceAdmin) {
-			log.Debug().Msg("DebugService: error getting username")
-		}
+		log.Info().Msgf("error getting username: [%s]", usernameVar)
 		return
 	}
 	// Get context data
@@ -76,7 +81,9 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAdmin, settings.NoEnvironmentID), false)
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Extract environment
@@ -127,9 +134,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		Size: int64(carve.CarveSize),
 		File: carve.ArchivePath,
 	}
-	if h.Settings.DebugService(config.ServiceAdmin) {
-		log.Debug().Msg("DebugService: Carve download")
-	}
+	log.Debug().Msg("Initiating carve download")
 	if h.Carves.Carver == config.CarverS3 {
 		downloadURL, err := h.Carves.S3.GetDownloadLink(carve)
 		if err != nil {

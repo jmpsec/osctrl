@@ -98,11 +98,11 @@ func (logLS *LoggerLogstash) Settings(mgr *settings.Settings) {
 // SendHTTP - Function that sends JSON logs to Logstash via HTTP
 func (logLS *LoggerLogstash) SendHTTP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s via Logstash HTTP", logType)
+		log.Debug().Msgf("Send %s via Logstash HTTP", logType)
 	}
 	jsonData := strings.NewReader(string(data))
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash HTTP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Logstash HTTP for %s - %s", len(data), environment, uuid)
 	}
 	httpURL := fmt.Sprintf("http://%s:%s", logLS.Configuration.Host, logLS.Configuration.Port)
 	// Send log with a POST to the Splunk URL
@@ -111,17 +111,17 @@ func (logLS *LoggerLogstash) SendHTTP(logType string, data []byte, environment, 
 		log.Err(err).Msg("Error sending request")
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
+		log.Debug().Msgf("HTTP %d %s", resp, body)
 	}
 }
 
 // SendUDP - Function that sends data to Logstash via UDP
 func (logLS *LoggerLogstash) SendUDP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s via Logstash TCP", logType)
+		log.Debug().Msgf("Send %s via Logstash TCP", logType)
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash TCP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Logstash TCP for %s - %s", len(data), environment, uuid)
 	}
 	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("udp", connAddr)
@@ -134,17 +134,17 @@ func (logLS *LoggerLogstash) SendUDP(logType string, data []byte, environment, u
 		log.Err(err).Msg("Error writing to Logstash")
 	}
 	if debug {
-		log.Debug().Msg("DebugService: Sent data to Logstash TCP")
+		log.Debug().Msg("Sent data to Logstash TCP")
 	}
 }
 
 // SendTCP - Function that sends data to Logstash via TCP
 func (logLS *LoggerLogstash) SendTCP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s via Logstash UDP", logType)
+		log.Debug().Msgf("Send %s via Logstash UDP", logType)
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Logstash UDP for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Logstash UDP for %s - %s", len(data), environment, uuid)
 	}
 	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("tcp", connAddr)
@@ -157,6 +157,6 @@ func (logLS *LoggerLogstash) SendTCP(logType string, data []byte, environment, u
 		log.Err(err).Msg("Error writing to Logstash")
 	}
 	if debug {
-		log.Debug().Msg("DebugService: Sent data to Logstash UDP")
+		log.Debug().Msg("Sent data to Logstash UDP")
 	}
 }

@@ -88,7 +88,7 @@ func (l *LoggerKafka) Settings(mgr *settings.Settings) {
 func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Info().Msgf(
-			"DebugService: Sending %d bytes to Kafka topic %s for %s - %s",
+			"Sending %d bytes to Kafka topic %s for %s - %s",
 			len(data), l.config.Topic, environment, uuid)
 	}
 

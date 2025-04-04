@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -125,28 +126,24 @@ func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]st
 }
 
 // DebugHTTP - Helper for debugging purposes and dump a full HTTP request
-func DebugHTTP(r *http.Request, debugCheck bool, showBody bool) string {
+func DebugHTTP(r *http.Request, showBody bool) string {
 	var debug string
-	if debugCheck {
-		debug = fmt.Sprintf("%s\n", "---------------- request")
-		requestDump, err := httputil.DumpRequest(r, showBody)
-		if err != nil {
-			log.Err(err).Msg("error while dumprequest")
-		}
-		debug += fmt.Sprintf("%s\n", string(requestDump))
-		if !showBody {
-			debug += fmt.Sprintf("%s\n", "---------------- No Body")
-		}
-		debug += fmt.Sprintf("%s\n", "---------------- end")
+	debug = fmt.Sprintf("%s\n", "---------------- request")
+	requestDump, err := httputil.DumpRequest(r, showBody)
+	if err != nil {
+		log.Err(err).Msg("error while dumprequest")
 	}
+	debug += fmt.Sprintf("%s\n", string(requestDump))
+	if !showBody {
+		debug += fmt.Sprintf("%s\n", "---------------- No Body")
+	}
+	debug += fmt.Sprintf("%s\n", "---------------- end")
 	return debug
 }
 
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
-func DebugHTTPDump(r *http.Request, debugCheck bool, showBody bool) {
-	if debugCheck {
-		log.Debug().Msg(DebugHTTP(r, debugCheck, showBody))
-	}
+func DebugHTTPDump(l *zerolog.Logger, r *http.Request, showBody bool) {
+	l.Log().Msg(DebugHTTP(r, showBody))
 }
 
 // GetIP - Helper to get the IP address from a HTTP request

@@ -92,7 +92,7 @@ func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
 func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	ctx := context.Background()
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
 	}
 	ptrContentLength := int64(len(data))
 	result, err := logS3.Uploader.Upload(ctx, &s3.PutObjectInput{
@@ -106,6 +106,6 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 		log.Err(err).Msg("Error sending data to s3")
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: S3 Upload %+v", result)
+		log.Debug().Msgf("S3 Upload %+v", result)
 	}
 }

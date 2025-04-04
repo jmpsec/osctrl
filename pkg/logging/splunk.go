@@ -91,7 +91,7 @@ func (logSP *LoggerSplunk) Settings(mgr *settings.Settings) {
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("DebugService: Send %s via splunk", logType)
+		log.Debug().Msgf("Send %s via splunk", logType)
 	}
 	// Check if this is result/status or query
 	var sourceType string
@@ -136,7 +136,7 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 	}
 	jsonParam := strings.NewReader(string(jsonEvents))
 	if debug {
-		log.Debug().Msgf("DebugService: Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
 	}
 	// Send log with a POST to the Splunk URL
 	resp, body, err := utils.SendRequest(SplunkMethod, logSP.Configuration.URL, jsonParam, logSP.Headers)
@@ -144,6 +144,6 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 		log.Err(err).Msgf("Error sending request")
 	}
 	if debug {
-		log.Debug().Msgf("DebugService: HTTP %d %s", resp, body)
+		log.Debug().Msgf("HTTP %d %s", resp, body)
 	}
 }

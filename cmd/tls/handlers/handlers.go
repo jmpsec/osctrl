@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -13,6 +14,8 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -45,17 +48,19 @@ var validPlatform = map[string]bool{
 
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
-	Envs         *environments.EnvironmentManager
-	EnvsMap      *environments.MapEnvironments
-	Nodes        *nodes.NodeManager
-	Tags         *tags.TagManager
-	Queries      *queries.Queries
-	Carves       *carves.Carves
-	Settings     *settings.Settings
-	SettingsMap  *settings.MapSettings
-	Logs         *logging.LoggerTLS
-	WriteHandler *batchWriter
-	EnvCache     *environments.EnvCache
+	Envs            *environments.EnvironmentManager
+	EnvsMap         *environments.MapEnvironments
+	EnvCache        *environments.EnvCache
+	Nodes           *nodes.NodeManager
+	Tags            *tags.TagManager
+	Queries         *queries.Queries
+	Carves          *carves.Carves
+	Settings        *settings.Settings
+	SettingsMap     *settings.MapSettings
+	Logs            *logging.LoggerTLS
+	WriteHandler    *batchWriter
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
 
 // TLSResponse to be returned to requests
@@ -136,6 +141,27 @@ func WithWriteHandler(writeHandler *batchWriter) Option {
 	}
 }
 
+func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) Option {
+	return func(h *HandlersTLS) {
+		h.DebugHTTPConfig = cfg
+		h.DebugHTTP = nil
+		if cfg.Enabled {
+			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+				MaxSize:    25,
+				MaxBackups: 5,
+				MaxAge:     10,
+				Compress:   true,
+			})
+			if err != nil {
+				log.Err(err).Msg("error creating debug HTTP logger")
+				l = nil
+				h.DebugHTTPConfig.Enabled = false
+			}
+			h.DebugHTTP = l
+		}
+	}
+}
+
 // CreateHandlersTLS to initialize the TLS handlers struct
 func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	h := &HandlersTLS{}
@@ -147,7 +173,6 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 }
 
 func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rw := NewResponseWriter(w)
