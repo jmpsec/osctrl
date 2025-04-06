@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -107,6 +108,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 
 // ConfigHandler - Function to handle the configuration requests from osquery nodes
 func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var response interface{}
 	// Retrieve environment variable
 	envVar := r.PathValue("env")
@@ -120,7 +122,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(ctx, envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		return
@@ -184,7 +186,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -272,7 +274,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -350,7 +352,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))

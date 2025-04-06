@@ -28,7 +28,7 @@ type HandlersAdmin struct {
 	DB              *gorm.DB
 	Users           *users.UserManager
 	Tags            *tags.TagManager
-	Envs            *environments.Environment
+	Envs            *environments.EnvManager
 	Nodes           *nodes.NodeManager
 	Queries         *queries.Queries
 	Carves          *carves.Carves
@@ -55,7 +55,7 @@ func WithDB(db *gorm.DB) HandlersOption {
 	}
 }
 
-func WithEnvs(envs *environments.Environment) HandlersOption {
+func WithEnvs(envs *environments.EnvManager) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Envs = envs
 	}
