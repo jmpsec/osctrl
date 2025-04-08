@@ -56,7 +56,7 @@ var (
 	filecarves  *carves.Carves
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	db          *backend.DBManager
 	osctrlAPI   *OsctrlAPI
 	formats     map[string]bool
@@ -1800,7 +1800,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			// Initialize settings
 			settingsmgr = settings.NewSettings(db.Conn)
 			// Initialize nodes
-			nodesmgr = nodes.CreateNodes(db.Conn, nil)
+			nodesmgr = nodes.CreateNodes(db.Conn)
 			// Initialize queries
 			queriesmgr = queries.CreateQueries(db.Conn)
 			// Initialize carves

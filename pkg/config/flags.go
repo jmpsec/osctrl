@@ -96,6 +96,9 @@ type ServiceFlagParams struct {
 	// Carved files folder
 	CarvedDir string
 
+	// Debug HTTP configuration values
+	DebugHTTPValues DebugHTTPConfiguration
+
 	// Service configuration values
 	ConfigValues JSONConfigurationService
 	// DB writer configuration values
@@ -129,6 +132,7 @@ func InitTLSFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initCarverFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
+	allFlags = append(allFlags, initDebugFlags(params, ServiceTLS)...)
 	return allFlags
 }
 
@@ -147,6 +151,7 @@ func InitAdminFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initJWTFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initAdminFlags(params)...)
+	allFlags = append(allFlags, initDebugFlags(params, ServiceAdmin)...)
 	return allFlags
 }
 
@@ -161,6 +166,7 @@ func InitAPIFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
+	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	return allFlags
 }
 
@@ -752,6 +758,33 @@ func initAdminFlags(params *ServiceFlagParams) []cli.Flag {
 			Usage:       "Directory for all the received carved files from osquery",
 			EnvVars:     []string{"CARVED_FILES"},
 			Destination: &params.CarvedDir,
+		},
+	}
+}
+
+// initDebugFlags initializes all the debug logging specific flags
+func initDebugFlags(params *ServiceFlagParams, service string) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "enable-http-debug",
+			Value:       false,
+			Usage:       "Enable HTTP Debug mode to dump full HTTP incoming request",
+			EnvVars:     []string{"HTTP_DEBUG"},
+			Destination: &params.DebugHTTPValues.Enabled,
+		},
+		&cli.StringFlag{
+			Name:        "http-debug-file",
+			Value:       "debug-http-" + service + ".log",
+			Usage:       "File to dump the HTTP requests when HTTP Debug mode is enabled",
+			EnvVars:     []string{"HTTP_DEBUG_FILE"},
+			Destination: &params.DebugHTTPValues.File,
+		},
+		&cli.BoolFlag{
+			Name:        "http-debug-show-body",
+			Value:       false,
+			Usage:       "Show body of the HTTP requests when HTTP Debug mode is enabled",
+			EnvVars:     []string{"HTTP_DEBUG_SHOW_BODY"},
+			Destination: &params.DebugHTTPValues.ShowBody,
 		},
 	}
 }

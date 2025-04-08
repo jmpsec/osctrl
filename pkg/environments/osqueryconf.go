@@ -65,7 +65,7 @@ type DecoratorConf struct {
 type ATCConf map[string]interface{}
 
 // RefreshConfiguration to take all parts and put them together in the configuration
-func (environment *EnvironmentManager) RefreshConfiguration(idEnv string) error {
+func (environment *EnvManager) RefreshConfiguration(idEnv string) error {
 	env, err := environment.Get(idEnv)
 	if err != nil {
 		return fmt.Errorf("error structuring environment %w", err)
@@ -108,7 +108,7 @@ func (environment *EnvironmentManager) RefreshConfiguration(idEnv string) error 
 }
 
 // UpdateConfiguration to update configuration for an environment
-func (environment *EnvironmentManager) UpdateConfiguration(idEnv string, cnf OsqueryConf) error {
+func (environment *EnvManager) UpdateConfiguration(idEnv string, cnf OsqueryConf) error {
 	indentedConf, err := environment.GenSerializedConf(cnf, true)
 	if err != nil {
 		return fmt.Errorf("error serializing configuration %w", err)
@@ -120,7 +120,7 @@ func (environment *EnvironmentManager) UpdateConfiguration(idEnv string, cnf Osq
 }
 
 // UpdateConfigurationParts to update all the configuration parts for an environment
-func (environment *EnvironmentManager) UpdateConfigurationParts(idEnv string, cnf OsqueryConf) error {
+func (environment *EnvManager) UpdateConfigurationParts(idEnv string, cnf OsqueryConf) error {
 	indentedOptions, err := environment.GenSerializedConf(cnf.Options, true)
 	if err != nil {
 		return fmt.Errorf("error serializing options %w", err)
@@ -153,7 +153,7 @@ func (environment *EnvironmentManager) UpdateConfigurationParts(idEnv string, cn
 }
 
 // GenSerializedConf to generate a serialized osquery configuration from the structured data
-func (environment *EnvironmentManager) GenSerializedConf(structured interface{}, indent bool) (string, error) {
+func (environment *EnvManager) GenSerializedConf(structured interface{}, indent bool) (string, error) {
 	indentStr := ""
 	if indent {
 		indentStr = "  "
@@ -166,7 +166,7 @@ func (environment *EnvironmentManager) GenSerializedConf(structured interface{},
 }
 
 // GenStructConf to generate the components from the osquery configuration
-func (environment *EnvironmentManager) GenStructConf(configuration []byte) (OsqueryConf, error) {
+func (environment *EnvManager) GenStructConf(configuration []byte) (OsqueryConf, error) {
 	var data OsqueryConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -175,7 +175,7 @@ func (environment *EnvironmentManager) GenStructConf(configuration []byte) (Osqu
 }
 
 // GenStructOptions to generate options from the serialized string
-func (environment *EnvironmentManager) GenStructOptions(configuration []byte) (OptionsConf, error) {
+func (environment *EnvManager) GenStructOptions(configuration []byte) (OptionsConf, error) {
 	var data OptionsConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -184,7 +184,7 @@ func (environment *EnvironmentManager) GenStructOptions(configuration []byte) (O
 }
 
 // GenStructSchedule to generate schedule from the serialized string
-func (environment *EnvironmentManager) GenStructSchedule(configuration []byte) (ScheduleConf, error) {
+func (environment *EnvManager) GenStructSchedule(configuration []byte) (ScheduleConf, error) {
 	var data ScheduleConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -193,7 +193,7 @@ func (environment *EnvironmentManager) GenStructSchedule(configuration []byte) (
 }
 
 // NodeStructSchedule to generate schedule that applies to a platform from the serialized string
-func (environment *EnvironmentManager) NodeStructSchedule(configuration []byte, platform string) (ScheduleConf, error) {
+func (environment *EnvManager) NodeStructSchedule(configuration []byte, platform string) (ScheduleConf, error) {
 	schedule, err := environment.GenStructSchedule(configuration)
 	if err != nil {
 		return ScheduleConf{}, fmt.Errorf("GenStructSchedule %w", err)
@@ -207,7 +207,7 @@ func (environment *EnvironmentManager) NodeStructSchedule(configuration []byte, 
 }
 
 // GenStructPacks to generate packs from the serialized string
-func (environment *EnvironmentManager) GenStructPacks(configuration []byte) (PacksConf, error) {
+func (environment *EnvManager) GenStructPacks(configuration []byte) (PacksConf, error) {
 	var data PacksConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -216,7 +216,7 @@ func (environment *EnvironmentManager) GenStructPacks(configuration []byte) (Pac
 }
 
 // NodePacksEntries to generate packs parsed struct that applies to a platform from the serialized string
-func (environment *EnvironmentManager) NodePacksEntries(configuration []byte, platform string) (PacksEntries, error) {
+func (environment *EnvManager) NodePacksEntries(configuration []byte, platform string) (PacksEntries, error) {
 	packs, err := environment.GenPacksEntries(configuration)
 	if err != nil {
 		return PacksEntries{}, fmt.Errorf("GenPacksEntries %w", err)
@@ -230,7 +230,7 @@ func (environment *EnvironmentManager) NodePacksEntries(configuration []byte, pl
 }
 
 // GenPacksEntries to generate packs parsed struct from the serialized string
-func (environment *EnvironmentManager) GenPacksEntries(configuration []byte) (PacksEntries, error) {
+func (environment *EnvManager) GenPacksEntries(configuration []byte) (PacksEntries, error) {
 	packsConf, err := environment.GenStructPacks(configuration)
 	if err != nil {
 		return PacksEntries{}, fmt.Errorf("GenStructPacks %w", err)
@@ -256,7 +256,7 @@ func (environment *EnvironmentManager) GenPacksEntries(configuration []byte) (Pa
 }
 
 // GenStructDecorators to generate decorators from the serialized string
-func (environment *EnvironmentManager) GenStructDecorators(configuration []byte) (DecoratorConf, error) {
+func (environment *EnvManager) GenStructDecorators(configuration []byte) (DecoratorConf, error) {
 	var data DecoratorConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -265,7 +265,7 @@ func (environment *EnvironmentManager) GenStructDecorators(configuration []byte)
 }
 
 // GenStructATC to generate ATC from the serialized string
-func (environment *EnvironmentManager) GenStructATC(configuration []byte) (ATCConf, error) {
+func (environment *EnvManager) GenStructATC(configuration []byte) (ATCConf, error) {
 	var data ATCConf
 	if err := json.Unmarshal(configuration, &data); err != nil {
 		return data, err
@@ -274,7 +274,7 @@ func (environment *EnvironmentManager) GenStructATC(configuration []byte) (ATCCo
 }
 
 // GenEmptyConfiguration to generate a serialized string with an empty configuration
-func (environment *EnvironmentManager) GenEmptyConfiguration(indent bool) string {
+func (environment *EnvManager) GenEmptyConfiguration(indent bool) string {
 	cnf := OsqueryConf{
 		Options:  OptionsConf{},
 		Schedule: ScheduleConf{},
@@ -298,7 +298,7 @@ func (environment *EnvironmentManager) GenEmptyConfiguration(indent bool) string
 }
 
 // AddOptionsConf to add an osquery option to the configuration
-func (environment *EnvironmentManager) AddOptionsConf(name, option string, value interface{}) error {
+func (environment *EnvManager) AddOptionsConf(name, option string, value interface{}) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -327,7 +327,7 @@ func (environment *EnvironmentManager) AddOptionsConf(name, option string, value
 }
 
 // RemoveOptionsConf to remove an osquery option from the configuration
-func (environment *EnvironmentManager) RemoveOptionsConf(name, option string) error {
+func (environment *EnvManager) RemoveOptionsConf(name, option string) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -356,7 +356,7 @@ func (environment *EnvironmentManager) RemoveOptionsConf(name, option string) er
 }
 
 // AddScheduleConfQuery to add a new query to the osquery schedule
-func (environment *EnvironmentManager) AddScheduleConfQuery(name, qName string, query ScheduleQuery) error {
+func (environment *EnvManager) AddScheduleConfQuery(name, qName string, query ScheduleQuery) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -385,7 +385,7 @@ func (environment *EnvironmentManager) AddScheduleConfQuery(name, qName string, 
 }
 
 // RemoveScheduleConfQuery to remove a query from the osquery schedule
-func (environment *EnvironmentManager) RemoveScheduleConfQuery(name, qName string) error {
+func (environment *EnvManager) RemoveScheduleConfQuery(name, qName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -414,7 +414,7 @@ func (environment *EnvironmentManager) RemoveScheduleConfQuery(name, qName strin
 }
 
 // AddQueryPackConf to add a new query pack to the osquery configuration
-func (environment *EnvironmentManager) AddQueryPackConf(name, pName string, pack interface{}) error {
+func (environment *EnvManager) AddQueryPackConf(name, pName string, pack interface{}) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -443,7 +443,7 @@ func (environment *EnvironmentManager) AddQueryPackConf(name, pName string, pack
 }
 
 // RemoveQueryPackConf to add a new query pack to the osquery configuration
-func (environment *EnvironmentManager) RemoveQueryPackConf(name, pName string) error {
+func (environment *EnvManager) RemoveQueryPackConf(name, pName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -472,7 +472,7 @@ func (environment *EnvironmentManager) RemoveQueryPackConf(name, pName string) e
 }
 
 // AddQueryToPackConf to add a new query to an existing pack in the osquery configuration
-func (environment *EnvironmentManager) AddQueryToPackConf(name, pName, qName string, query ScheduleQuery) error {
+func (environment *EnvManager) AddQueryToPackConf(name, pName, qName string, query ScheduleQuery) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
@@ -503,7 +503,7 @@ func (environment *EnvironmentManager) AddQueryToPackConf(name, pName, qName str
 }
 
 // RemoveQueryFromPackConf to remove a query from an existing query pack in the osquery configuration
-func (environment *EnvironmentManager) RemoveQueryFromPackConf(name, pName, qName string) error {
+func (environment *EnvManager) RemoveQueryFromPackConf(name, pName, qName string) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)

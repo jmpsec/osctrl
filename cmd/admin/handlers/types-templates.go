@@ -24,11 +24,6 @@ type TemplateMetadata struct {
 	Level          string
 	Service        string
 	Version        string
-	TLSDebug       bool
-	AdminDebug     bool
-	APIDebug       bool
-	AdminDebugHTTP bool
-	APIDebugHTTP   bool
 	CSRFToken      string
 }
 

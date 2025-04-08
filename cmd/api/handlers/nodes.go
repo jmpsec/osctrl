@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -16,7 +14,10 @@ import (
 
 // NodeHandler - GET Handler for single JSON nodes
 func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -53,15 +54,16 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned node %s", nodeVar)
-	}
+	log.Debug().Msgf("Returned node %s", nodeVar)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 }
 
 // ActiveNodesHandler - GET Handler for active JSON nodes
 func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -91,15 +93,16 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
 // InactiveNodesHandler - GET Handler for inactive JSON nodes
 func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -129,15 +132,16 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
 // AllNodesHandler - GET Handler for all JSON nodes
 func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -167,15 +171,16 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msg("DebugService: Returned nodes")
-	}
+	log.Debug().Msg("Returned nodes")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
 // DeleteNodeHandler - POST Handler to delete single node
 func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -209,8 +214,6 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned node %s", n.UUID)
-	}
+	log.Debug().Msgf("Returned node %s", n.UUID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 }

@@ -9,12 +9,6 @@ import (
 
 // Function to load all settings for the service
 func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
-	// Check if service settings for debug service is ready
-	if !mgr.IsValue(config.ServiceTLS, settings.DebugService, settings.NoEnvironmentID) {
-		if err := mgr.NewBooleanValue(config.ServiceTLS, settings.DebugService, false, settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("Failed to add %s to configuration: %w", settings.DebugService, err)
-		}
-	}
 	// Check if service settings for accelerated seconds is ready
 	if !mgr.IsValue(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID) {
 		if err := mgr.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, int64(defaultAccelerate), settings.NoEnvironmentID); err != nil {

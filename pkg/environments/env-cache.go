@@ -7,20 +7,25 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 )
 
+const (
+	cacheName = "environments"
+)
+
 // EnvCache provides cached access to TLS environments
 type EnvCache struct {
 	// The cache itself, storing Environment objects
 	cache *cache.MemoryCache[TLSEnvironment]
 
 	// Reference to the environment manager for cache misses
-	envs EnvironmentManager
+	envs EnvManager
 }
 
 // NewEnvCache creates a new environment cache
-func NewEnvCache(envs EnvironmentManager) *EnvCache {
+func NewEnvCache(envs EnvManager) *EnvCache {
 	// Create a new cache with a 10-minute cleanup interval
 	envCache := cache.NewMemoryCache(
-		cache.WithCleanupInterval[TLSEnvironment](2 * time.Hour),
+		cache.WithCleanupInterval[TLSEnvironment](2*time.Hour),
+		cache.WithName[TLSEnvironment](cacheName),
 	)
 
 	return &EnvCache{
@@ -60,4 +65,11 @@ func (ec *EnvCache) InvalidateAll(ctx context.Context) {
 // UpdateEnvInCache updates an environment in the cache
 func (ec *EnvCache) UpdateEnvInCache(ctx context.Context, env TLSEnvironment) {
 	ec.cache.Set(ctx, env.UUID, env, 2*time.Hour)
+}
+
+// Close stops the cleanup goroutine and releases resources
+func (ec *EnvCache) Close() {
+	if ec.cache != nil {
+		ec.cache.Stop()
+	}
 }

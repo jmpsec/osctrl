@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	redis "github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -19,61 +18,6 @@ const (
 	AllNodes = "all"
 )
 
-// OsqueryNode as abstraction of a node
-type OsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Environment     string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	DaemonHash      string
-	ConfigHash      string
-	BytesReceived   int
-	RawEnrollment   string
-	LastSeen        time.Time
-	UserID          uint
-	EnvironmentID   uint
-	ExtraData       string
-}
-
-// ArchiveOsqueryNode as abstraction of an archived node
-type ArchiveOsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Trigger         string
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Environment     string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	ConfigHash      string
-	DaemonHash      string
-	BytesReceived   int
-	RawEnrollment   string
-	LastSeen        time.Time
-	UserID          uint
-	EnvironmentID   uint
-	ExtraData       string
-}
-
 // StatsData to display node stats
 type StatsData struct {
 	Total    int64 `json:"total"`
@@ -83,15 +27,13 @@ type StatsData struct {
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
-	DB    *gorm.DB
-	Cache *redis.Client
+	DB *gorm.DB
 }
 
 // CreateNodes to initialize the nodes struct and its tables
-func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
+func CreateNodes(backend *gorm.DB) *NodeManager {
 	var n *NodeManager = &NodeManager{
-		DB:    backend,
-		Cache: cache,
+		DB: backend,
 	}
 	// table osquery_nodes
 	if err := backend.AutoMigrate(&OsqueryNode{}); err != nil {
@@ -102,14 +44,6 @@ func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
 		log.Fatal().Msgf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
 	return n
-}
-
-// CheckByKey to check if node exists by node_key
-// node_key is expected lowercase
-func (n *NodeManager) CheckByKey(nodeKey string) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", strings.ToLower(nodeKey)).Count(&results)
-	return (results > 0)
 }
 
 // CheckByUUID to check if node exists by UUID
@@ -125,14 +59,6 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
 	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Count(&results)
-	return (results > 0)
-}
-
-// CheckByUUIDEnvID to check if node exists by UUID in a specific environment
-// UUID is expected uppercase
-func (n *NodeManager) CheckByUUIDEnvID(uuid string, envID int) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).Count(&results)
 	return (results > 0)
 }
 
@@ -204,16 +130,16 @@ func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64)
 			return nodes, err
 		}
 	case ActiveNodes:
-		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where(s+" = ?", selector).Where("last_seen > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case InactiveNodes:
-		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where(s+" = ?", selector).Where("last_seen < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	}
+	// TODO: This function fetches all nodes with the same selector, but we should
+	// consider if we need all data or just the UUID and node_key
 	return nodes, nil
 }
 
@@ -226,13 +152,11 @@ func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 			return nodes, err
 		}
 	case ActiveNodes:
-		// if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where("last_seen > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	case InactiveNodes:
-		// if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
+		if err := n.DB.Where("last_seen < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
 			return nodes, err
 		}
 	}
@@ -286,10 +210,10 @@ func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData,
 		return stats, err
 	}
 	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("last_seen > ?", tHours).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("last_seen < ?", tHours).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil
@@ -302,10 +226,10 @@ func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsDat
 		return stats, err
 	}
 	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("last_seen > ?", tHours).Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
+	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("last_seen < ?", tHours).Count(&stats.Inactive).Error; err != nil {
 		return stats, err
 	}
 	return stats, nil

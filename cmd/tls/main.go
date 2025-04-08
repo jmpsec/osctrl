@@ -59,7 +59,7 @@ var (
 	db          *backend.DBManager
 	redis       *cache.RedisManager
 	settingsmgr *settings.Settings
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	envsmap     environments.MapEnvironments
 	settingsmap settings.MapSettings
 	nodesmgr    *nodes.NodeManager
@@ -142,6 +142,7 @@ func osctrlService() {
 	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
 	for {
+		log.Debug().Msgf("Creating DB manager with %v", flagParams.DBConfigValues)
 		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
@@ -160,6 +161,7 @@ func osctrlService() {
 	log.Info().Msg("Initializing cache...")
 	// Attempt to connect to cache waiting until is ready
 	for {
+		log.Debug().Msgf("Creating Redis manager with %v", flagParams.RedisConfigValues)
 		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
@@ -179,7 +181,7 @@ func osctrlService() {
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db.Conn, redis.Client)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
@@ -216,9 +218,7 @@ func osctrlService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceTLS) {
-				log.Info().Msg("DebugService: Refreshing environments")
-			}
+			log.Debug().Msg("Refreshing environments")
 			envsmap = refreshEnvironments()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -233,9 +233,7 @@ func osctrlService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceTLS) {
-				log.Info().Msg("DebugService: Refreshing settings")
-			}
+			log.Debug().Msg("Refreshing settings")
 			settingsmap = refreshSettings()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -244,11 +242,10 @@ func osctrlService() {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
-
+		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		// Creating a new prometheus service
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
-
 		go func() {
 			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.ConfigValues.MetricsListener, flagParams.ConfigValues.MetricsPort)
 			err := http.ListenAndServe(flagParams.ConfigValues.MetricsListener+":"+flagParams.ConfigValues.MetricsPort, prometheusServer)
@@ -270,6 +267,7 @@ func osctrlService() {
 		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
@@ -374,10 +372,9 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-// Initialize service logger, set log level and format
-func initializeLogger(logLevel, logFormat string) {
-	// Log level
-	switch strings.ToLower(logLevel) {
+func initializeLoggers(cfg config.JSONConfigurationService) {
+	// Set the log level
+	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case config.LogLevelInfo:
@@ -389,15 +386,15 @@ func initializeLogger(logLevel, logFormat string) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-	// Log format
-	switch strings.ToLower(logFormat) {
+	// Set the log format
+	switch strings.ToLower(cfg.LogFormat) {
 	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
 	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
@@ -427,7 +424,7 @@ func main() {
 		os.Exit(1)
 	}
 	// Initialize service logger
-	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
+	initializeLoggers(flagParams.ConfigValues)
 	// Service starts!
 	osctrlService()
 }

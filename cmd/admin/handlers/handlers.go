@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -27,7 +28,7 @@ type HandlersAdmin struct {
 	DB              *gorm.DB
 	Users           *users.UserManager
 	Tags            *tags.TagManager
-	Envs            *environments.EnvironmentManager
+	Envs            *environments.EnvManager
 	Nodes           *nodes.NodeManager
 	Queries         *queries.Queries
 	Carves          *carves.Carves
@@ -42,6 +43,8 @@ type HandlersAdmin struct {
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *config.JSONConfigurationService
 	DBLogger        *logging.LoggerDB
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -52,7 +55,7 @@ func WithDB(db *gorm.DB) HandlersOption {
 	}
 }
 
-func WithEnvs(envs *environments.EnvironmentManager) HandlersOption {
+func WithEnvs(envs *environments.EnvManager) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.Envs = envs
 	}
@@ -178,6 +181,27 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 			}
 		}
 		h.DBLogger = logger
+	}
+}
+
+func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.DebugHTTPConfig = cfg
+		h.DebugHTTP = nil
+		if cfg.Enabled {
+			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+				MaxSize:    25,
+				MaxBackups: 5,
+				MaxAge:     10,
+				Compress:   true,
+			})
+			if err != nil {
+				log.Err(err).Msg("error creating debug HTTP logger")
+				l = nil
+				h.DebugHTTPConfig.Enabled = false
+			}
+			h.DebugHTTP = l
+		}
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -82,7 +83,7 @@ var (
 	queriesmgr  *queries.Queries
 	carvesmgr   *carves.Carves
 	sessionsmgr *sessions.SessionManager
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	adminUsers  *users.UserManager
 	tagsmgr     *tags.TagManager
 	carvers3    *carves.CarverS3
@@ -194,7 +195,7 @@ func osctrlAdminService() {
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db.Conn, redis.Client)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
@@ -209,9 +210,7 @@ func osctrlAdminService() {
 
 	// Start SAML Middleware if we are using SAML
 	if flagParams.ConfigValues.Auth == config.AuthSAML {
-		if settingsmgr.DebugService(config.ServiceAdmin) {
-			log.Debug().Msg("DebugService: SAML keypair")
-		}
+		log.Debug().Msg("SAML enabled for authentication")
 		// Initialize SAML keypair to sign SAML Request.
 		var err error
 		samlData, err = keypairSAML(samlConfig)
@@ -239,9 +238,7 @@ func osctrlAdminService() {
 			_t = int64(defaultRefresh)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceAdmin) {
-				log.Debug().Msg("DebugService: Cleaning up sessions")
-			}
+			log.Debug().Msg("Cleaning up sessions")
 			sessionsmgr.Cleanup()
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
@@ -255,9 +252,7 @@ func osctrlAdminService() {
 			_t = int64(defaultExpiration)
 		}
 		for {
-			if settingsmgr.DebugService(config.ServiceAdmin) {
-				log.Debug().Msg("DebugService: Cleaning up expired queries/carves")
-			}
+			log.Debug().Msg("Cleaning up expired queries/carves")
 			allEnvs, err := envs.All()
 			if err != nil {
 				log.Err(err).Msg("Error getting all environments")
@@ -310,6 +305,7 @@ func osctrlAdminService() {
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ////////////////////////// ADMIN
@@ -620,9 +616,9 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLogger(logLevel, logFormat string) {
-
-	switch strings.ToLower(logLevel) {
+func initializeLoggers(cfg config.JSONConfigurationService) {
+	// Set the log level
+	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case config.LogLevelInfo:
@@ -634,19 +630,18 @@ func initializeLogger(logLevel, logFormat string) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-
-	switch strings.ToLower(logFormat) {
+	// Set the log format
+	switch strings.ToLower(cfg.LogFormat) {
 	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
 	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-
 }
 
 func main() {
@@ -672,10 +667,8 @@ func main() {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-
 	// Initialize service logger
-	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
-
+	initializeLoggers(flagParams.ConfigValues)
 	// Service starts!
 	osctrlAdminService()
 }

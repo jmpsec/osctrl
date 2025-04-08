@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -85,7 +86,7 @@ var (
 	apiUsers    *users.UserManager
 	tagsmgr     *tags.TagManager
 	settingsmgr *settings.Settings
-	envs        *environments.EnvironmentManager
+	envs        *environments.EnvManager
 	nodesmgr    *nodes.NodeManager
 	queriesmgr  *queries.Queries
 	filecarves  *carves.Carves
@@ -178,7 +179,7 @@ func osctrlAPIService() {
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db.Conn, redis.Client)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
@@ -201,6 +202,7 @@ func osctrlAPIService() {
 		handlers.WithCache(redis),
 		handlers.WithVersion(serviceVersion),
 		handlers.WithName(serviceName),
+		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
 	// ///////////////////////// API
@@ -409,9 +411,9 @@ func cliAction(c *cli.Context) error {
 	return nil
 }
 
-func initializeLogger(logLevel, logFormat string) {
-
-	switch strings.ToLower(logLevel) {
+func initializeLoggers(cfg config.JSONConfigurationService) {
+	// Set the log level
+	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case config.LogLevelInfo:
@@ -423,19 +425,18 @@ func initializeLogger(logLevel, logFormat string) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-
-	switch strings.ToLower(logFormat) {
+	// Set the log format
+	switch strings.ToLower(cfg.LogFormat) {
 	case config.LogFormatJSON:
 		log.Logger = log.With().Caller().Logger()
 	case config.LogFormatConsole:
 		zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 			return filepath.Base(file) + ":" + strconv.Itoa(line)
 		}
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05.999Z07:00"}).With().Caller().Logger()
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	default:
 		log.Logger = log.With().Caller().Logger()
 	}
-
 }
 
 func main() {
@@ -461,10 +462,8 @@ func main() {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-
 	// Initialize service logger
-	initializeLogger(flagParams.ConfigValues.LogLevel, flagParams.ConfigValues.LogFormat)
-
+	initializeLoggers(flagParams.ConfigValues)
 	// Run the service
 	osctrlAPIService()
 }

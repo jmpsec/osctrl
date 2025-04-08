@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -18,7 +17,10 @@ import (
 
 // GET Handler to return a single carve in JSON
 func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract name
 	name := r.PathValue("name")
 	if name == "" {
@@ -54,15 +56,16 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	if h.Settings.DebugService(config.ServiceAPI) {
-		log.Debug().Msgf("DebugService: Returned carve %s", name)
-	}
+	log.Debug().Msgf("Returned carve %s", name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carve)
 }
 
 // GET Handler to return carve queries in JSON by target and environment
 func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -103,12 +106,16 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and serve JSON
+	log.Debug().Msgf("Returned %d carves", len(carves))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
 }
 
 // GET Handler to return carves in JSON by environment
 func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -138,12 +145,16 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
+	log.Debug().Msgf("Returned %d carves", len(carves))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
 }
 
 // POST Handler to run a carve
 func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -213,12 +224,16 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Return query name as serialized response
+	log.Debug().Msgf("Created query %s", newQuery.Name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
 // CarvesActionHandler - POST Handler to delete/expire a carve
 func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request) {
-	utils.DebugHTTPDump(r, h.Settings.DebugHTTP(config.ServiceAPI, settings.NoEnvironmentID), false)
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -276,5 +291,6 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 		msgReturn = fmt.Sprintf("carve %s completed successfully", nameVar)
 	}
 	// Return message as serialized response
+	log.Debug().Msgf("%s", msgReturn)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }

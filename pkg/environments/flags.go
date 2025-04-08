@@ -102,7 +102,7 @@ func ParseFlagTemplate(tmplName, flagTemplate string, data interface{}) string {
 }
 
 // GenerateFlags to generate flags
-func (environment *EnvironmentManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
+func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
 	flagSecret := secretPath
 	if secretPath == "" {
 		flagSecret = EmptyFlagSecret
@@ -125,7 +125,7 @@ func (environment *EnvironmentManager) GenerateFlags(env TLSEnvironment, secretP
 }
 
 // GenerateFlagsEnv to generate flags by environment name
-func (environment *EnvironmentManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string) (string, error) {
+func (environment *EnvManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string) (string, error) {
 	env, err := environment.Get(idEnv)
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %w", err)
