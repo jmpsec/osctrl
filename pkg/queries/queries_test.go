@@ -22,7 +22,7 @@ func testDB(t *testing.T) *gorm.DB {
 	q := queries.CreateQueries(db)
 	require.NotNil(t, q, "Failed to create queries")
 
-	n := nodes.CreateNodes(db, nil)
+	n := nodes.CreateNodes(db)
 	require.NotNil(t, n, "Failed to create nodes")
 
 	return db
