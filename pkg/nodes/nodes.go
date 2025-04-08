@@ -101,14 +101,6 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	return n
 }
 
-// CheckByKey to check if node exists by node_key
-// node_key is expected lowercase
-func (n *NodeManager) CheckByKey(nodeKey string) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", strings.ToLower(nodeKey)).Count(&results)
-	return (results > 0)
-}
-
 // CheckByUUID to check if node exists by UUID
 // UUID is expected uppercase
 func (n *NodeManager) CheckByUUID(uuid string) bool {
@@ -122,14 +114,6 @@ func (n *NodeManager) CheckByUUID(uuid string) bool {
 func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
 	var results int64
 	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).Count(&results)
-	return (results > 0)
-}
-
-// CheckByUUIDEnvID to check if node exists by UUID in a specific environment
-// UUID is expected uppercase
-func (n *NodeManager) CheckByUUIDEnvID(uuid string, envID int) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).Count(&results)
 	return (results > 0)
 }
 
