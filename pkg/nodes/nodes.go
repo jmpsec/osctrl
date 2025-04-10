@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -27,7 +28,8 @@ type StatsData struct {
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Cache *NodeCache
 }
 
 // CreateNodes to initialize the nodes struct and its tables
@@ -43,6 +45,8 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	if err := backend.AutoMigrate(&ArchiveOsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
+	// Create and initialize the cache
+	n.Cache = NewNodeCache(n)
 	return n
 }
 
@@ -69,14 +73,23 @@ func (n *NodeManager) CheckByHost(host string) bool {
 	return (results > 0)
 }
 
-// GetByKey to retrieve full node object from DB, by node_key
+// getByKeyFromDB to retrieve full node object directly from DB, by node_key
+// This is used by the cache system on cache misses
 // node_key is expected lowercase
-func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
+func (n *NodeManager) getByKeyFromDB(nodekey string) (OsqueryNode, error) {
 	var node OsqueryNode
 	if err := n.DB.Where("node_key = ?", strings.ToLower(nodekey)).First(&node).Error; err != nil {
 		return node, err
 	}
 	return node, nil
+}
+
+// GetByKey to retrieve full node object from DB or cache, by node_key
+// node_key is expected lowercase
+func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
+	// Currently, the the cache would not be updated frequently
+	// It should only be used for fetching the node object that is rarely updated
+	return n.Cache.GetByKey(context.Background(), strings.ToLower(nodekey))
 }
 
 // GetByIdentifier to retrieve full node object from DB, by uuid or hostname or localname
@@ -356,7 +369,9 @@ func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 }
 
 func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
+	// Update the IP address in the database
 	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("ip_address", ip).Error
+
 }
 
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
