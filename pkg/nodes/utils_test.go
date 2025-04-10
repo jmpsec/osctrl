@@ -12,6 +12,7 @@ import (
 
 // setupTestDB creates an in-memory SQLite database for testing
 func setupTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	require.NoError(t, err, "Failed to open in-memory database")
 
@@ -36,15 +37,14 @@ type testNodeParams struct {
 
 // createMockNode creates a test node with the given parameters
 // It accepts optional parameters to customize the node
-func createMockNode(db *gorm.DB, params testNodeParams) OsqueryNode {
+func createMockNode(t *testing.T, db *gorm.DB, params testNodeParams) OsqueryNode {
+	t.Helper()
 	if params.UUID == "" {
 		params.UUID = "TEST-UUID"
 	}
-
 	if params.Hostname == "" {
 		params.Hostname = "test-host"
 	}
-
 	if params.Platform == "" {
 		params.Platform = "darwin"
 	}
@@ -60,7 +60,10 @@ func createMockNode(db *gorm.DB, params testNodeParams) OsqueryNode {
 		PlatformVersion: params.Version,
 	}
 
-	db.Create(&node)
+	// Create the node in the database and check for errors
+	err := db.Create(&node).Error
+	require.NoError(t, err, "Failed to create mock node with UUID %s", params.UUID)
+
 	return node
 }
 
@@ -187,10 +190,10 @@ func TestApplyNodeTarget(t *testing.T) {
 	defer func() { timeNow = originalTimeNow }() // restore the original function
 
 	// Create sample nodes with different last seen times
-	activeNode := createMockNode(db, testNodeParams{
+	activeNode := createMockNode(t, db, testNodeParams{
 		LastSeen: refTime.Add(-1 * time.Hour), // 1 hour ago
 	})
-	inactiveNode := createMockNode(db, testNodeParams{
+	inactiveNode := createMockNode(t, db, testNodeParams{
 		UUID:     "INACTIVE-UUID",
 		LastSeen: refTime.Add(-48 * time.Hour), // 48 hours ago
 	})
@@ -268,20 +271,20 @@ func TestGetStats(t *testing.T) {
 	// Create test nodes with different environments and platforms using the enhanced createMockNode
 
 	// Platform: darwin - 2 active, 1 inactive
-	createMockNode(db, testNodeParams{
+	createMockNode(t, db, testNodeParams{
 		UUID:     "ACTIVE-DARWIN-1",
 		Platform: "darwin",
 		LastSeen: refTime.Add(-1 * time.Hour), // 1 hour ago (active)
 	})
 
-	createMockNode(db, testNodeParams{
+	createMockNode(t, db, testNodeParams{
 		UUID:        "ACTIVE-DARWIN-2",
 		Platform:    "darwin",
 		Environment: "prod",
 		LastSeen:    refTime.Add(-2 * time.Hour), // 2 hours ago (active)
 	})
 
-	createMockNode(db, testNodeParams{
+	createMockNode(t, db, testNodeParams{
 		UUID:        "INACTIVE-DARWIN-1",
 		Platform:    "darwin",
 		Environment: "prod",
@@ -289,21 +292,21 @@ func TestGetStats(t *testing.T) {
 	})
 
 	// Platform: windows - 1 active, 2 inactive
-	createMockNode(db, testNodeParams{
+	createMockNode(t, db, testNodeParams{
 		UUID:        "ACTIVE-WINDOWS-1",
 		Platform:    "windows",
 		Environment: "dev",
 		LastSeen:    refTime.Add(-6 * time.Hour), // 6 hours ago (active)
 	})
 
-	createMockNode(db, testNodeParams{
-		UUID:        "INACTIVE-WINDOWS-1",
+	createMockNode(t, db, testNodeParams{
+		UUID:        "INACTIVE-WINDOWs-1",
 		Platform:    "windows",
 		Environment: "dev",
 		LastSeen:    refTime.Add(-48 * time.Hour), // 48 hours ago (inactive)
 	})
 
-	createMockNode(db, testNodeParams{
+	createMockNode(t, db, testNodeParams{
 		UUID:        "INACTIVE-WINDOWS-2",
 		Platform:    "windows",
 		Environment: "dev",
