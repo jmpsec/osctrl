@@ -117,49 +117,46 @@ func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error)
 // GetBySelector to retrieve target nodes by selector
 func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
-	var s string
+	var column string
+
 	switch stype {
 	case "environment":
-		s = "environment"
+		column = "environment"
 	case "platform":
-		s = "platform"
+		column = "platform"
+	default:
+		return nodes, fmt.Errorf("invalid selector type: %s", stype)
 	}
-	switch target {
-	case AllNodes:
-		if err := n.DB.Where(s+" = ?", selector).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case ActiveNodes:
-		if err := n.DB.Where(s+" = ?", selector).Where("last_seen > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case InactiveNodes:
-		if err := n.DB.Where(s+" = ?", selector).Where("last_seen < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
+
+	// Build query with base condition
+	query := n.DB.Where(column+" = ?", selector)
+
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
 	}
-	// TODO: This function fetches all nodes with the same selector, but we should
-	// consider if we need all data or just the UUID and node_key
+
 	return nodes, nil
 }
 
 // Gets to retrieve all/active/inactive nodes
 func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
-	switch target {
-	case AllNodes:
-		if err := n.DB.Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case ActiveNodes:
-		if err := n.DB.Where("last_seen > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case InactiveNodes:
-		if err := n.DB.Where("last_seen < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
+
+	// Start with base query
+	query := n.DB
+
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
 	}
+
 	return nodes, nil
 }
 
@@ -203,36 +200,14 @@ func (n *NodeManager) GetEnvPlatforms(environment string) ([]string, error) {
 	return platforms, nil
 }
 
-// GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
+// GetStatsByEnv to populate table stats about nodes by environment
 func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
-	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Count(&stats.Total).Error; err != nil {
-		return stats, err
-	}
-	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("last_seen > ?", tHours).Count(&stats.Active).Error; err != nil {
-		return stats, err
-	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("last_seen < ?", tHours).Count(&stats.Inactive).Error; err != nil {
-		return stats, err
-	}
-	return stats, nil
+	return GetStats(n.DB, "environment", environment, hours)
 }
 
-// GetStatsByPlatform to populate table stats about nodes by platform. Active machine is < 3 days
+// GetStatsByPlatform to populate table stats about nodes by platform
 func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsData, error) {
-	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Count(&stats.Total).Error; err != nil {
-		return stats, err
-	}
-	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("last_seen > ?", tHours).Count(&stats.Active).Error; err != nil {
-		return stats, err
-	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("last_seen < ?", tHours).Count(&stats.Inactive).Error; err != nil {
-		return stats, err
-	}
-	return stats, nil
+	return GetStats(n.DB, "platform", platform, hours)
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
