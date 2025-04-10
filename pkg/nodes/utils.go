@@ -6,6 +6,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// For testing - allows us to mock time.Now()
+var timeNow = time.Now
+
 // IsActive determines if a node is active based on when it was last seen.
 // The inactive parameter specifies the number of hours a node can be without
 // checking in before it's considered inactive.
@@ -24,7 +27,7 @@ func IsActive(n OsqueryNode, inactive int64) bool {
 // ActiveTimeCutoff returns the cutoff time for active nodes
 // based on the specified number of hours
 func ActiveTimeCutoff(hours int64) time.Time {
-	return time.Now().Add(-time.Duration(hours) * time.Hour)
+	return timeNow().Add(-time.Duration(hours) * time.Hour)
 }
 
 // ApplyNodeTarget adds the appropriate query constraints for the target node status
@@ -38,7 +41,7 @@ func ApplyNodeTarget(query *gorm.DB, target string, hours int64) *gorm.DB {
 		return query.Where("last_seen > ?", cutoff)
 	case InactiveNodes:
 		cutoff := ActiveTimeCutoff(hours)
-		return query.Where("last_seen < ?", cutoff)
+		return query.Where("last_seen <= ?", cutoff)
 	default:
 		return query
 	}
@@ -63,9 +66,8 @@ func GetStats(db *gorm.DB, column, value string, hours int64) (StatsData, error)
 	}
 
 	// Get inactive count
-	if err := baseQuery.Where("last_seen < ?", cutoff).Count(&stats.Inactive).Error; err != nil {
-		return stats, err
-	}
+	// Calculate inactive count as total - active to be consistent
+	stats.Inactive = stats.Total - stats.Active
 
 	return stats, nil
 }
