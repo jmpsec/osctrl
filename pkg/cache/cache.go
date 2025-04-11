@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	redis "github.com/go-redis/redis/v8"
-	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/spf13/viper"
 )
 
@@ -28,13 +27,6 @@ type JSONConfigurationRedis struct {
 	ConnectionString string `json:"connectionstring"`
 	DB               int    `json:"db"`
 	ConnRetry        int    `json:"connRetry"`
-}
-
-// CachedQueryWriteData to store in cache query logs
-type CachedQueryWriteData struct {
-	UnixTime       int    `json:"unixTime"`
-	HostIdentifier string `json:"hostIdentifier"`
-	QueryData      types.QueryWriteData
 }
 
 // LoadConfiguration to load the redis configuration file and assign to variables
