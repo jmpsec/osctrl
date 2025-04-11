@@ -300,7 +300,7 @@ func TestGetStats(t *testing.T) {
 	})
 
 	createMockNode(t, db, testNodeParams{
-		UUID:        "INACTIVE-WINDOWs-1",
+		UUID:        "INACTIVE-WINDOWS-1",
 		Platform:    "windows",
 		Environment: "dev",
 		LastSeen:    refTime.Add(-48 * time.Hour), // 48 hours ago (inactive)
