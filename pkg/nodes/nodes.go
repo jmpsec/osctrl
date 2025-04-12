@@ -1,11 +1,11 @@
 package nodes
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	redis "github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -19,61 +19,6 @@ const (
 	AllNodes = "all"
 )
 
-// OsqueryNode as abstraction of a node
-type OsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Environment     string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	DaemonHash      string
-	ConfigHash      string
-	BytesReceived   int
-	RawEnrollment   string
-	LastSeen        time.Time
-	UserID          uint
-	EnvironmentID   uint
-	ExtraData       string
-}
-
-// ArchiveOsqueryNode as abstraction of an archived node
-type ArchiveOsqueryNode struct {
-	gorm.Model
-	NodeKey         string `gorm:"index"`
-	UUID            string `gorm:"index"`
-	Trigger         string
-	Platform        string
-	PlatformVersion string
-	OsqueryVersion  string
-	Hostname        string
-	Localname       string
-	IPAddress       string
-	Username        string
-	OsqueryUser     string
-	Environment     string
-	CPU             string
-	Memory          string
-	HardwareSerial  string
-	ConfigHash      string
-	DaemonHash      string
-	BytesReceived   int
-	RawEnrollment   string
-	LastSeen        time.Time
-	UserID          uint
-	EnvironmentID   uint
-	ExtraData       string
-}
-
 // StatsData to display node stats
 type StatsData struct {
 	Total    int64 `json:"total"`
@@ -84,14 +29,13 @@ type StatsData struct {
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
 	DB    *gorm.DB
-	Cache *redis.Client
+	Cache *NodeCache
 }
 
 // CreateNodes to initialize the nodes struct and its tables
-func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
+func CreateNodes(backend *gorm.DB) *NodeManager {
 	var n *NodeManager = &NodeManager{
-		DB:    backend,
-		Cache: cache,
+		DB: backend,
 	}
 	// table osquery_nodes
 	if err := backend.AutoMigrate(&OsqueryNode{}); err != nil {
@@ -101,15 +45,9 @@ func CreateNodes(backend *gorm.DB, cache *redis.Client) *NodeManager {
 	if err := backend.AutoMigrate(&ArchiveOsqueryNode{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (archive_osquery_nodes): %v", err)
 	}
+	// Create and initialize the cache
+	n.Cache = NewNodeCache(n)
 	return n
-}
-
-// CheckByKey to check if node exists by node_key
-// node_key is expected lowercase
-func (n *NodeManager) CheckByKey(nodeKey string) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("node_key = ?", strings.ToLower(nodeKey)).Count(&results)
-	return (results > 0)
 }
 
 // CheckByUUID to check if node exists by UUID
@@ -128,14 +66,6 @@ func (n *NodeManager) CheckByUUIDEnv(uuid, environment string) bool {
 	return (results > 0)
 }
 
-// CheckByUUIDEnvID to check if node exists by UUID in a specific environment
-// UUID is expected uppercase
-func (n *NodeManager) CheckByUUIDEnvID(uuid string, envID int) bool {
-	var results int64
-	n.DB.Model(&OsqueryNode{}).Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).Count(&results)
-	return (results > 0)
-}
-
 // CheckByHost to check if node exists by Hostname
 func (n *NodeManager) CheckByHost(host string) bool {
 	var results int64
@@ -143,14 +73,23 @@ func (n *NodeManager) CheckByHost(host string) bool {
 	return (results > 0)
 }
 
-// GetByKey to retrieve full node object from DB, by node_key
+// getByKeyFromDB to retrieve full node object directly from DB, by node_key
+// This is used by the cache system on cache misses
 // node_key is expected lowercase
-func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
+func (n *NodeManager) getByKeyFromDB(nodekey string) (OsqueryNode, error) {
 	var node OsqueryNode
 	if err := n.DB.Where("node_key = ?", strings.ToLower(nodekey)).First(&node).Error; err != nil {
 		return node, err
 	}
 	return node, nil
+}
+
+// GetByKey to retrieve full node object from DB or cache, by node_key
+// node_key is expected lowercase
+func (n *NodeManager) GetByKey(nodekey string) (OsqueryNode, error) {
+	// Currently, the the cache would not be updated frequently
+	// It should only be used for fetching the node object that is rarely updated
+	return n.Cache.GetByKey(context.Background(), strings.ToLower(nodekey))
 }
 
 // GetByIdentifier to retrieve full node object from DB, by uuid or hostname or localname
@@ -191,51 +130,46 @@ func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error)
 // GetBySelector to retrieve target nodes by selector
 func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
-	var s string
+	var column string
+
 	switch stype {
 	case "environment":
-		s = "environment"
+		column = "environment"
 	case "platform":
-		s = "platform"
+		column = "platform"
+	default:
+		return nodes, fmt.Errorf("invalid selector type: %s", stype)
 	}
-	switch target {
-	case AllNodes:
-		if err := n.DB.Where(s+" = ?", selector).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case ActiveNodes:
-		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case InactiveNodes:
-		// if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where(s+" = ?", selector).Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
+
+	// Build query with base condition
+	query := n.DB.Where(column+" = ?", selector)
+
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
 	}
+
 	return nodes, nil
 }
 
 // Gets to retrieve all/active/inactive nodes
 func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
-	switch target {
-	case AllNodes:
-		if err := n.DB.Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case ActiveNodes:
-		// if err := n.DB.Where("updated_at > ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where("updated_at > ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
-	case InactiveNodes:
-		// if err := n.DB.Where("updated_at < ?", time.Now().AddDate(0, 0, -3)).Find(&nodes).Error; err != nil {
-		if err := n.DB.Where("updated_at < ?", time.Now().Add(time.Duration(hours)*time.Hour)).Find(&nodes).Error; err != nil {
-			return nodes, err
-		}
+
+	// Start with base query
+	query := n.DB
+
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
 	}
+
 	return nodes, nil
 }
 
@@ -279,36 +213,14 @@ func (n *NodeManager) GetEnvPlatforms(environment string) ([]string, error) {
 	return platforms, nil
 }
 
-// GetStatsByEnv to populate table stats about nodes by environment. Active machine is < 3 days
+// GetStatsByEnv to populate table stats about nodes by environment
 func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
-	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Count(&stats.Total).Error; err != nil {
-		return stats, err
-	}
-	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
-		return stats, err
-	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("environment = ?", environment).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
-		return stats, err
-	}
-	return stats, nil
+	return GetStats(n.DB, "environment", environment, hours)
 }
 
-// GetStatsByPlatform to populate table stats about nodes by platform. Active machine is < 3 days
+// GetStatsByPlatform to populate table stats about nodes by platform
 func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsData, error) {
-	var stats StatsData
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Count(&stats.Total).Error; err != nil {
-		return stats, err
-	}
-	tHours := time.Now().Add(time.Duration(hours) * time.Hour)
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at > ?", tHours).Count(&stats.Active).Error; err != nil {
-		return stats, err
-	}
-	if err := n.DB.Model(&OsqueryNode{}).Where("platform = ?", platform).Where("updated_at < ?", tHours).Count(&stats.Inactive).Error; err != nil {
-		return stats, err
-	}
-	return stats, nil
+	return GetStats(n.DB, "platform", platform, hours)
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
@@ -457,7 +369,9 @@ func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 }
 
 func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
+	// Update the IP address in the database
 	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("ip_address", ip).Error
+
 }
 
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed

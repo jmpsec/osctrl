@@ -3,8 +3,6 @@ package types
 import (
 	"encoding/json"
 	"strconv"
-
-	"github.com/jmpsec/osctrl/pkg/queries"
 )
 
 // Types of log types
@@ -187,16 +185,16 @@ type QueryReadRequest GenericRequest
 
 // QueryReadResponse for on-demand queries from nodes
 type QueryReadResponse struct {
-	Queries     queries.QueryReadQueries `json:"queries"`
-	NodeInvalid bool                     `json:"node_invalid"`
+	Queries     map[string]string `json:"queries"`
+	NodeInvalid bool              `json:"node_invalid"`
 }
 
 // AcceleratedQueryReadResponse for accelerated on-demand queries from nodes
 // https://github.com/osquery/osquery/blob/master/osquery/distributed/distributed.cpp#L219-L231
 type AcceleratedQueryReadResponse struct {
-	Queries     queries.QueryReadQueries `json:"queries"`
-	NodeInvalid bool                     `json:"node_invalid"`
-	Accelerate  int                      `json:"accelerate"`
+	Queries     map[string]string `json:"queries"`
+	NodeInvalid bool              `json:"node_invalid"`
+	Accelerate  int               `json:"accelerate"`
 }
 
 // QueryWriteQueries to hold the on-demand queries results

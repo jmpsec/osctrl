@@ -181,7 +181,7 @@ func osctrlService() {
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
-	nodesmgr = nodes.CreateNodes(db.Conn, redis.Client)
+	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")

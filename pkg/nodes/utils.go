@@ -1,49 +1,73 @@
 package nodes
 
 import (
-	"fmt"
-	"math"
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// Helper to get what is the last seen time for a node, inactive should be negative to check for past activity
+// For testing - allows us to mock time.Now()
+var timeNow = time.Now
+
+// IsActive determines if a node is active based on when it was last seen.
+// The inactive parameter specifies the number of hours a node can be without
+// checking in before it's considered inactive.
+// Returns true if the node has checked in within the specified timeframe.
 func IsActive(n OsqueryNode, inactive int64) bool {
-	now := time.Now()
-	// Check config if not empty/zero
-	if !n.LastSeen.IsZero() {
-		if math.Abs(n.LastSeen.Sub(now).Hours()) < math.Abs(float64(inactive)) {
-			return true
-		}
+	// If LastSeen is zero (never seen), node is not active
+	if n.LastSeen.IsZero() {
+		return false
 	}
-	return false
+
+	// A node is active if it was seen more recently than the inactive threshold
+	cutoffTime := ActiveTimeCutoff(inactive)
+	return n.LastSeen.After(cutoffTime)
 }
 
-// Helper to generate the key to identify a full node in the cache, by UUID
-func CacheFullKeyByUUID(n OsqueryNode) string {
-	return CacheFullKeyRaw(n.UUID, n.EnvironmentID)
+// ActiveTimeCutoff returns the cutoff time for active nodes
+// based on the specified number of hours
+func ActiveTimeCutoff(hours int64) time.Time {
+	return timeNow().Add(-time.Duration(hours) * time.Hour)
 }
 
-// Helper to generate the key to identify a full node in the cache, by node_key
-func CacheFullKeyByNodeKey(n OsqueryNode) string {
-	return CacheFullKeyRaw(n.NodeKey, n.EnvironmentID)
+// ApplyNodeTarget adds the appropriate query constraints for the target node status
+// (active, inactive, all) to the provided gorm query
+func ApplyNodeTarget(query *gorm.DB, target string, hours int64) *gorm.DB {
+	switch target {
+	case AllNodes:
+		return query
+	case ActiveNodes:
+		cutoff := ActiveTimeCutoff(hours)
+		return query.Where("last_seen > ?", cutoff)
+	case InactiveNodes:
+		cutoff := ActiveTimeCutoff(hours)
+		return query.Where("last_seen <= ?", cutoff)
+	default:
+		return query
+	}
 }
 
-// Helper to generate the key to identify a full node in the cache
-func CacheFullKeyRaw(identifier string, envID uint) string {
-	return fmt.Sprintf("fullnode:%d:%s", envID, identifier)
-}
+// GetStats retrieves node statistics (total, active, inactive) for the given filter condition
+func GetStats(db *gorm.DB, column, value string, hours int64) (StatsData, error) {
+	var stats StatsData
 
-// Helper to generate the key to identify partially node in the cache, by UUID
-func CachePartialKeyByUUID(n OsqueryNode) string {
-	return CachePartialKeyRaw(n.UUID, n.EnvironmentID)
-}
+	// Base query with the filter condition
+	baseQuery := db.Model(&OsqueryNode{}).Where(column+" = ?", value)
 
-// Helper to generate the key to identify partially node in the cache, by node_key
-func CachePartialKeyByNodeKey(n OsqueryNode) string {
-	return CachePartialKeyRaw(n.NodeKey, n.EnvironmentID)
-}
+	// Get total count
+	if err := baseQuery.Count(&stats.Total).Error; err != nil {
+		return stats, err
+	}
 
-// Helper to generate the key to identify partially node in the cache
-func CachePartialKeyRaw(identifier string, envID uint) string {
-	return fmt.Sprintf("partialnode:%d:%s", envID, identifier)
+	// Get active count
+	cutoff := ActiveTimeCutoff(hours)
+	if err := baseQuery.Where("last_seen > ?", cutoff).Count(&stats.Active).Error; err != nil {
+		return stats, err
+	}
+
+	// Get inactive count
+	// Calculate inactive count as total - active to be consistent
+	stats.Inactive = stats.Total - stats.Active
+
+	return stats, nil
 }
