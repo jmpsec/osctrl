@@ -11,14 +11,13 @@ var timeNow = time.Now
 
 // IsActive determines if a node is active based on when it was last seen.
 // The inactive parameter specifies the number of hours a node can be without
-// checking in before it's considered inactive.
+// checking in before it's considered inactive. This number is expected positive.
 // Returns true if the node has checked in within the specified timeframe.
 func IsActive(n OsqueryNode, inactive int64) bool {
 	// If LastSeen is zero (never seen), node is not active
 	if n.LastSeen.IsZero() {
 		return false
 	}
-
 	// A node is active if it was seen more recently than the inactive threshold
 	cutoffTime := ActiveTimeCutoff(inactive)
 	return n.LastSeen.After(cutoffTime)

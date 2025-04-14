@@ -17,6 +17,10 @@ const (
 	InactiveNodes = "inactive"
 	// AllNodes to represent all nodes
 	AllNodes = "all"
+	// EnvSelector to represent environment selector
+	EnvironmentSelector = "environment"
+	// PlatformSelector to represent platform selector
+	PlatformSelector = "platform"
 )
 
 // StatsData to display node stats
@@ -133,10 +137,10 @@ func (n *NodeManager) GetBySelector(stype, selector, target string, hours int64)
 	var column string
 
 	switch stype {
-	case "environment":
-		column = "environment"
-	case "platform":
-		column = "platform"
+	case EnvironmentSelector:
+		column = EnvironmentSelector
+	case PlatformSelector:
+		column = PlatformSelector
 	default:
 		return nodes, fmt.Errorf("invalid selector type: %s", stype)
 	}
@@ -175,12 +179,12 @@ func (n *NodeManager) Gets(target string, hours int64) ([]OsqueryNode, error) {
 
 // GetByEnv to retrieve target nodes by environment
 func (n *NodeManager) GetByEnv(environment, target string, hours int64) ([]OsqueryNode, error) {
-	return n.GetBySelector("environment", environment, target, hours)
+	return n.GetBySelector(EnvironmentSelector, environment, target, hours)
 }
 
 // GetByPlatform to retrieve target nodes by platform
 func (n *NodeManager) GetByPlatform(platform, target string, hours int64) ([]OsqueryNode, error) {
-	return n.GetBySelector("platform", platform, target, hours)
+	return n.GetBySelector(PlatformSelector, platform, target, hours)
 }
 
 // GetAllPlatforms to get all different platform with nodes in them
@@ -215,12 +219,12 @@ func (n *NodeManager) GetEnvPlatforms(environment string) ([]string, error) {
 
 // GetStatsByEnv to populate table stats about nodes by environment
 func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
-	return GetStats(n.DB, "environment", environment, hours)
+	return GetStats(n.DB, EnvironmentSelector, environment, hours)
 }
 
 // GetStatsByPlatform to populate table stats about nodes by platform
 func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsData, error) {
-	return GetStats(n.DB, "platform", platform, hours)
+	return GetStats(n.DB, PlatformSelector, platform, hours)
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
