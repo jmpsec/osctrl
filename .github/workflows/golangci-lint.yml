@@ -11,7 +11,7 @@ on:
       - '.github/workflows/golangci-lint.yml'
 
 env:
-  GOLANG_VERSION: 1.24.1
+  GOLANG_VERSION: 1.24.2
 
 jobs:
   golangci:

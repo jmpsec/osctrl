@@ -1,5 +1,5 @@
 #################################################### osctrl-cli-dev ####################################################
-ARG GOLANG_VERSION=${GOLANG_VERSION:-1.24.1}
+ARG GOLANG_VERSION=${GOLANG_VERSION:-1.24.2}
 FROM golang:${GOLANG_VERSION} AS osctrl-cli-dev
 
 WORKDIR /usr/src/app

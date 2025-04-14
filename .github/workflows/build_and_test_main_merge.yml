@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  GOLANG_VERSION: 1.24.1
+  GOLANG_VERSION: 1.24.2
   OSQUERY_VERSION: 5.16.0
 
 jobs:
