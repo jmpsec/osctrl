@@ -70,7 +70,7 @@ const (
 	// Default interval in seconds to expire queries/carves
 	defaultExpiration int = 900
 	// Default hours to classify nodes as inactive
-	defaultInactive int = -72
+	defaultInactive int = 72
 )
 
 // Global general variables
