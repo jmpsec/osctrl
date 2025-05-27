@@ -799,7 +799,7 @@ func initOsctrldFlags(params *ServiceFlagParams) []cli.Flag {
 		&cli.BoolFlag{
 			Name:        "enable-osctrld",
 			Value:       false,
-			Usage:       "Enable osctrld service to handle nodes",
+			Usage:       "Enable osctrld endpoints.",
 			EnvVars:     []string{"OSCTRLD"},
 			Destination: &params.Osctrld,
 		},
