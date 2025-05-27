@@ -65,6 +65,9 @@ type ServiceFlagParams struct {
 	// TLS private key file
 	TLSKeyFile string
 
+	// Enable osctrld service
+	Osctrld bool
+
 	// Logger configuration file
 	LoggerFile string
 	// Logger DB configuration will be the same as the main DB
@@ -129,6 +132,7 @@ func InitTLSFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
+	allFlags = append(allFlags, initOsctrldFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
@@ -785,6 +789,19 @@ func initDebugFlags(params *ServiceFlagParams, service string) []cli.Flag {
 			Usage:       "Show body of the HTTP requests when HTTP Debug mode is enabled",
 			EnvVars:     []string{"HTTP_DEBUG_SHOW_BODY"},
 			Destination: &params.DebugHTTPValues.ShowBody,
+		},
+	}
+}
+
+// initOsctrldFlags initializes all the flags needed for the osctrld service
+func initOsctrldFlags(params *ServiceFlagParams) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "enable-osctrld",
+			Value:       false,
+			Usage:       "Enable osctrld service to handle nodes",
+			EnvVars:     []string{"OSCTRLD"},
+			Destination: &params.Osctrld,
 		},
 	}
 }
