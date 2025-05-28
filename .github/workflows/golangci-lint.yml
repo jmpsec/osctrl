@@ -10,6 +10,9 @@ on:
       - '.golangci.yml'
       - '.github/workflows/golangci-lint.yml'
 
+permissions:
+  contents: read
+
 env:
   GOLANG_VERSION: 1.24.2
 
