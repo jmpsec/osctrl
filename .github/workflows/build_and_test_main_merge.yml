@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 env:
   GOLANG_VERSION: 1.24.2
   OSQUERY_VERSION: 5.16.0
@@ -139,6 +142,9 @@ jobs:
   push_docker_images:
     needs: [create_docker_images]
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
