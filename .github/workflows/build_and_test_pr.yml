@@ -1,4 +1,6 @@
 name: Build and test PRs pushed to osctrl
+permissions:
+  contents: read
 
 on: [push, pull_request]
 
