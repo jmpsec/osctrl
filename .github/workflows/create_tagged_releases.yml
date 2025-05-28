@@ -6,6 +6,9 @@ on:
     # Publish semver tags as releases.
     tags: ["v*.*.*"]
 
+permissions:
+  contents: read
+
 env:
   GOLANG_VERSION: 1.24.2
   OSQUERY_VERSION: 5.16.0
@@ -223,6 +226,8 @@ jobs:
   create_release:
     needs: [build_and_test, create_deb_packages, push_docker_images]
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
