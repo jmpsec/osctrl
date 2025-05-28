@@ -27,4 +27,4 @@ repos:
       - id: go-static-check # install https://staticcheck.io/docs/
       - id: golangci-lint # requires github.com/golangci/golangci-lint
         args: [--config=.golangci.yml] # optional
-      - id: golangci-lint # requires github.com/golangci/golangci-lint
+      - id: go-unit-tests
