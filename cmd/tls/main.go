@@ -281,7 +281,6 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET "+errorPath, handlersTLS.ErrorHandler)
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-
 	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler)))
 	muxTLS.Handle("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.ConfigHandler)))
 	muxTLS.Handle("POST /{env}/"+environments.DefaultLogPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.LogHandler)))
@@ -293,14 +292,19 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler)
 	// TLS: Download enrolling package
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler)
-	// TLS: osctrld retrieve flags
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler)
-	// TLS: osctrld retrieve certificate
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCertPath, handlersTLS.CertHandler)
-	// TLS: osctrld verification
-	muxTLS.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler)
-	// TLS: osctrld retrieve script to install/remove osquery
-	muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
+
+	// Enable osctrld endpoints
+	if flagParams.OsctrldConfigValues.Enabled {
+		log.Info().Msg("Enabling osctrld endpoints")
+		// TLS: osctrld retrieve flags
+		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler)
+		// TLS: osctrld retrieve certificate
+		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCertPath, handlersTLS.CertHandler)
+		// TLS: osctrld verification
+		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler)
+		// TLS: osctrld retrieve script to install/remove osquery
+		muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
+	}
 
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
