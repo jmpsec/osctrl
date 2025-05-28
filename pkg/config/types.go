@@ -111,3 +111,8 @@ type DebugHTTPConfiguration struct {
 	File     string `json:"file"`
 	ShowBody bool   `json:"showBody"`
 }
+
+// OsctrldConfiguration to hold osctrld configuration values
+type OsctrldConfiguration struct {
+	Enabled bool `json:"enabled"`
+}

@@ -65,9 +65,6 @@ type ServiceFlagParams struct {
 	// TLS private key file
 	TLSKeyFile string
 
-	// Enable osctrld service
-	Osctrld bool
-
 	// Logger configuration file
 	LoggerFile string
 	// Logger DB configuration will be the same as the main DB
@@ -101,6 +98,9 @@ type ServiceFlagParams struct {
 
 	// Debug HTTP configuration values
 	DebugHTTPValues DebugHTTPConfiguration
+
+	// osctrld configuration values
+	OsctrldConfigValues OsctrldConfiguration
 
 	// Service configuration values
 	ConfigValues JSONConfigurationService
@@ -801,7 +801,7 @@ func initOsctrldFlags(params *ServiceFlagParams) []cli.Flag {
 			Value:       false,
 			Usage:       "Enable osctrld endpoints.",
 			EnvVars:     []string{"OSCTRLD"},
-			Destination: &params.Osctrld,
+			Destination: &params.OsctrldConfigValues.Enabled,
 		},
 	}
 }

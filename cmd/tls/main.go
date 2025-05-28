@@ -294,7 +294,7 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler)
 
 	// Enable osctrld endpoints
-	if flagParams.Osctrld {
+	if flagParams.OsctrldConfigValues.Enabled {
 		log.Info().Msg("Enabling osctrld endpoints")
 		// TLS: osctrld retrieve flags
 		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler)
