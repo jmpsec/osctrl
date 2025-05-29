@@ -5,7 +5,7 @@ set -e
 OSCTRL_USER="${VARIABLE:-osctrl}"
 OSCTRL_GROUP="${VARIABLE:-osctrl}"
 WORKING_DIR="${VARIABLE:-/etc/osctrl}"
-OSQUERY_VESION="${VARIABLE:-5.16.0}"
+OSQUERY_VERSION="${VARIABLE:-5.17.0}"
 OSCTRL_VERSION="${VARIABLE:-0.0.0}"
 
 ###################################### Init DEB contents ######################################
@@ -74,7 +74,7 @@ then
     --carved /var/osctrl/carves \\
     --templates /usr/share/osctrl/tmpl_admin \\
     --static /usr/share/osctrl/static \\
-    --osquery-tables /etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json"
+    --osquery-tables /etc/osctrl/osctrl-admin/osquery-${OSQUERY_VERSION}.json"
     EXECSTART+=${ADMIN_ARGS}
 fi
 
@@ -130,11 +130,11 @@ then
     cp -r cmd/admin/static "${DEB_DIR}/usr/share/osctrl/static"
 
     # Copy osquery schema
-    cp deploy/osquery/data/${OSQUERY_VESION}.json "${DEB_DIR}/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json"
+    cp deploy/osquery/data/${OSQUERY_VERSION}.json "${DEB_DIR}/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VERSION}.json"
 
     # Define conffiles
     echo "/etc/osctrl/osctrl-admin/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
-    echo "/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VESION}.json" >> "${DEB_DIR}/DEBIAN/conffiles"
+    echo "/etc/osctrl/osctrl-admin/osquery-${OSQUERY_VERSION}.json" >> "${DEB_DIR}/DEBIAN/conffiles"
 
 fi
 

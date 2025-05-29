@@ -11,7 +11,7 @@ permissions:
 
 env:
   GOLANG_VERSION: 1.24.3
-  OSQUERY_VERSION: 5.16.0
+  OSQUERY_VERSION: 5.17.0
 
 jobs:
   build_and_test:

@@ -44,7 +44,7 @@ runs:
         GOOS: ${{ inputs.go_os }}
         GOARCH: ${{ inputs.go_arch }}
         COMMIT_SHA: ${{ inputs.commit_sha }}
-        OSQUERY_VESION: ${{ inputs.osquery_version }}
+        OSQUERY_VERSION: ${{ inputs.osquery_version }}
         OSCTRL_VERSION: ${{ inputs.commit_sha }}
 
     - name: Create DEB package contents for tagged version
