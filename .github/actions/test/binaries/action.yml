@@ -19,7 +19,7 @@ inputs:
   golang_version:
     required: false
     description: Define the version of golang to compile with
-    default: 1.24.2
+    default: 1.24.3
 
 runs:
   using: "composite"
