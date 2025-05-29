@@ -405,9 +405,9 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
-# Install go 1.24.2 from tgz
+# Install go 1.24.3 from tgz
 function install_go_24() {
-  local __version="1.24.2"
+  local __version="1.24.3"
   local __arch="$(uname -i)"
   if [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"

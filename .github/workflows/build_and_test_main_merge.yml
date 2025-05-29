@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  GOLANG_VERSION: 1.24.2
+  GOLANG_VERSION: 1.24.3
   OSQUERY_VERSION: 5.16.0
 
 jobs:
