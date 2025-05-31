@@ -217,3 +217,37 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msgf("Returned node %s", n.UUID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 }
+
+// LookupNodeHandler - POST Handler to lookup a node by identifier
+func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) {
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	var l types.ApiLookupRequest
+	// Parse request JSON body
+	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		return
+	}
+	if l.Identifier == "" {
+		apiErrorResponse(w, "error with identifier", http.StatusBadRequest, nil)
+		return
+	}
+	n, err := h.Nodes.GetByIdentifier(l.Identifier)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		}
+	}
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, _nodeToApiLookupResponse(n))
+}

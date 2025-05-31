@@ -109,3 +109,25 @@ type ApiTagsRequest struct {
 	EnvUUID     string `json:"env_uuid"`
 	TagType     uint   `json:"tagtype"`
 }
+
+// ApiLookupRequest to receive lookup requests
+type ApiLookupRequest struct {
+	Identifier string `json:"identifier"`
+}
+
+// ApiLookupResponse to be returned to API lookup requests
+type ApiLookupResponse struct {
+	ID              uint   `json:"id"`
+	UUID            string `json:"uuid"`
+	Hostname        string `json:"hostname"`
+	Localname       string `json:"localname"`
+	IPAddress       string `json:"ip_address"`
+	Username        string `json:"username"`
+	HardwareSerial  string `json:"hardware_serial"`
+	Platform        string `json:"platform"`
+	PlatformVersion string `json:"platform_version"`
+	OsqueryVersion  string `json:"osquery_version"`
+	Environment     string `json:"environment"`
+	EnvironmentUUID string `json:"environment_uuid"`
+	LastSeen        string `json:"last_seen"`
+}

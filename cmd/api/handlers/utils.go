@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -52,4 +53,21 @@ func checkValidPlatform(platforms []string, platform string) bool {
 		}
 	}
 	return false
+}
+
+// Helper to convert a node into a ApiLookupResponse
+func _nodeToApiLookupResponse(node nodes.OsqueryNode) types.ApiLookupResponse {
+	return types.ApiLookupResponse{
+		UUID:            node.UUID,
+		Platform:        node.Platform,
+		PlatformVersion: node.PlatformVersion,
+		OsqueryVersion:  node.OsqueryVersion,
+		Hostname:        node.Hostname,
+		Localname:       node.Localname,
+		IPAddress:       node.IPAddress,
+		Username:        node.Username,
+		Environment:     node.Environment,
+		HardwareSerial:  node.HardwareSerial,
+		LastSeen:        node.LastSeen.String(),
+	}
 }
