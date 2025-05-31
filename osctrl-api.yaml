@@ -304,6 +304,52 @@ paths:
       security:
         - Authorization:
             - admin
+  /nodes/lookup:
+    post:
+      tags:
+        - nodes
+      summary: Lookup node by identifier
+      description: Looks up an enrolled node by identifier (UUID, hostname or localname)
+      operationId: LookupNodeHandler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiLookupRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiLookupResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error deleting node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /queries/{env}:
     get:
       tags:
@@ -2412,6 +2458,41 @@ components:
         TagType:
           type: integer
           format: uint32
+    ApiLookupRequest:
+      type: object
+      properties:
+        Identifier:
+          type: string
+    ApiLookupResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int32
+        UUID:
+          type: string
+        Hostname:
+          type: string
+        Localname:
+          type: string
+        IPAddress:
+          type: string
+        Username:
+          type: string
+        HardwareSerial:
+          type: string
+        Platform:
+          type: string
+        PlatformVersion:
+          type: string
+        OsqueryVersion:
+          type: string
+        Environment:
+          type: string
+        EnvironmentUUID:
+          type: string
+        LastSeen:
+          type: string
     MapEnvByID:
       type: object
       properties:
