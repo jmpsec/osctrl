@@ -1,9 +1,9 @@
 package logging
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -134,7 +134,7 @@ func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid s
 	if err != nil {
 		log.Err(err).Msgf("Error parsing data")
 	}
-	jsonParam := strings.NewReader(string(jsonEvents))
+	jsonParam := bytes.NewReader(jsonEvents)
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to Splunk for %s - %s", len(data), environment, uuid)
 	}

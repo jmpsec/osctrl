@@ -61,7 +61,7 @@ func CreateLoggerDBFile(dbfile string) (*LoggerDB, error) {
 	// Initialize backend
 	backend, err := backend.CreateDBManagerFile(dbfile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create backend - %w", err)
+		return nil, fmt.Errorf("failed to create backend - %w", err)
 	}
 	return CreateLoggerDB(backend)
 }
@@ -71,7 +71,7 @@ func CreateLoggerDBConfig(dbConfig backend.JSONConfigurationDB) (*LoggerDB, erro
 	// Initialize backend
 	backend, err := backend.CreateDBManager(dbConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create backend - %w", err)
+		return nil, fmt.Errorf("failed to create backend - %w", err)
 	}
 	return CreateLoggerDB(backend)
 }

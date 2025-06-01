@@ -1,9 +1,9 @@
 package logging
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -136,7 +136,7 @@ func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid 
 		if err != nil {
 			log.Err(err).Msg("error marshaling data")
 		}
-		jsonParam := strings.NewReader(string(jsonMessage))
+		jsonParam := bytes.NewReader(jsonMessage)
 		if debug {
 			log.Debug().Msgf("Sending %d bytes to Graylog for %s - %s", len(data), environment, uuid)
 		}

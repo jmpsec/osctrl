@@ -1,9 +1,9 @@
 package logging
 
 import (
+	"bytes"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -100,7 +100,7 @@ func (logLS *LoggerLogstash) SendHTTP(logType string, data []byte, environment, 
 	if debug {
 		log.Debug().Msgf("Send %s via Logstash HTTP", logType)
 	}
-	jsonData := strings.NewReader(string(data))
+	jsonData := bytes.NewReader(data)
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to Logstash HTTP for %s - %s", len(data), environment, uuid)
 	}

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -126,7 +127,7 @@ func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid s
 		}
 		req := esapi.IndexRequest{
 			Index:   logE.IndexName(),
-			Body:    strings.NewReader(string(jsonEvent)),
+			Body:    bytes.NewReader(jsonEvent),
 			Refresh: "true",
 		}
 		res, err := req.Do(context.Background(), logE.Client)
