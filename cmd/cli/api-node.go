@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
