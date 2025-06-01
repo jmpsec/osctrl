@@ -247,7 +247,8 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 		} else {
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
+		return
 	}
 	// Serialize and serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, _nodeToApiLookupResponse(n))
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, n)
 }

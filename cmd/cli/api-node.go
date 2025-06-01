@@ -63,3 +63,25 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 func (api *OsctrlAPI) TagNode(env, identifier, tag string) error {
 	return nil
 }
+
+// LookupNode to look up node from osctrl by identifier (UUID, localname or hostname)
+func (api *OsctrlAPI) LookupNode(identifier string) (nodes.OsqueryNode, error) {
+	var node nodes.OsqueryNode
+	l := types.ApiLookupRequest{
+		Identifier: identifier,
+	}
+	jsonMessage, err := json.Marshal(l)
+	if err != nil {
+		return node, fmt.Errorf("error marshaling data %w", err)
+	}
+	jsonParam := strings.NewReader(string(jsonMessage))
+	reqURL := fmt.Sprintf("%s%s%s/lookup", api.Configuration.URL, APIPath, APINodes)
+	rawNode, err := api.PostGeneric(reqURL, jsonParam)
+	if err != nil {
+		return node, fmt.Errorf("error api request - %w - %s", err, string(rawNode))
+	}
+	if err := json.Unmarshal(rawNode, &node); err != nil {
+		return node, fmt.Errorf("can not parse body - %w", err)
+	}
+	return node, nil
+}
