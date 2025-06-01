@@ -74,7 +74,7 @@ func (api *OsctrlAPI) LookupNode(identifier string) (nodes.OsqueryNode, error) {
 	if err != nil {
 		return node, fmt.Errorf("error marshaling data %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	reqURL := fmt.Sprintf("%s%s%s/lookup", api.Configuration.URL, APIPath, APINodes)
 	rawNode, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
