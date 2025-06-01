@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -13,7 +14,7 @@ import (
 // GetEnvironments to retrieve all environments from osctrl
 func (api *OsctrlAPI) GetEnvironments() ([]environments.TLSEnvironment, error) {
 	var envs []environments.TLSEnvironment
-	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APIEnvironments)
+	reqURL := path.Join("%s%s%s", api.Configuration.URL, APIPath, APIEnvironments)
 	rawEnvs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return envs, fmt.Errorf("error api request - %w - %s", err, string(rawEnvs))
@@ -27,7 +28,7 @@ func (api *OsctrlAPI) GetEnvironments() ([]environments.TLSEnvironment, error) {
 // GetEnvironment to retrieve users from osctrl
 func (api *OsctrlAPI) GetEnvironment(identifier string) (environments.TLSEnvironment, error) {
 	var e environments.TLSEnvironment
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier)
+	reqURL := path.Join("%s%s%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier)
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return e, fmt.Errorf("error api request - %w - %s", err, string(rawE))
@@ -41,7 +42,7 @@ func (api *OsctrlAPI) GetEnvironment(identifier string) (environments.TLSEnviron
 // GetEnvMap to retrieve a map of environments by ID
 func (api *OsctrlAPI) GetEnvMap() (environments.MapEnvByID, error) {
 	var envMap environments.MapEnvByID
-	reqURL := fmt.Sprintf("%s%s%s/map/id", api.Configuration.URL, APIPath, APIEnvironments)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APIEnvironments, "map", "id")
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return envMap, fmt.Errorf("error api request - %w - %s", err, string(rawE))
@@ -95,7 +96,7 @@ func (api *OsctrlAPI) NotexpireRemove(identifier string) (string, error) {
 // ExtendEnrollment to extend in time the enrollment URL of an environment
 func (api *OsctrlAPI) ActionEnrollmentRemove(identifier, action, target string, data io.Reader) (string, error) {
 	var res types.ApiGenericResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier, target, action)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APIEnvironments, identifier, target, action)
 	rawE, err := api.PostGeneric(reqURL, data)
 	if err != nil {
 		return "", fmt.Errorf("error api request - %w - %s", err, string(rawE))

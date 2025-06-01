@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -14,7 +13,7 @@ import (
 // GetNodes to retrieve nodes from osctrl
 func (api *OsctrlAPI) GetNodes(env, target string) ([]nodes.OsqueryNode, error) {
 	var nds []nodes.OsqueryNode
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APINodes, env, target)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, target)
 	rawNodes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return nds, fmt.Errorf("error api request - %w - %s", err, string(rawNodes))
@@ -28,7 +27,7 @@ func (api *OsctrlAPI) GetNodes(env, target string) ([]nodes.OsqueryNode, error) 
 // GetNode to retrieve one node from osctrl
 func (api *OsctrlAPI) GetNode(env, identifier string) (nodes.OsqueryNode, error) {
 	var node nodes.OsqueryNode
-	reqURL := fmt.Sprintf("%s%s%s/%s/node/%s", api.Configuration.URL, APIPath, APINodes, env, identifier)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "node", identifier)
 	rawNode, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return node, fmt.Errorf("error api request - %w - %s", err, string(rawNode))
@@ -45,12 +44,12 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 		UUID: identifier,
 	}
 	var r types.ApiGenericResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s/delete", api.Configuration.URL, APIPath, APINodes, env)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "delete")
 	jsonMessage, err := json.Marshal(n)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	rawN, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return fmt.Errorf("error api request - %w - %s", err, string(rawN))
