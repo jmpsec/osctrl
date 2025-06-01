@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"path"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 )
@@ -20,8 +21,8 @@ func (api *OsctrlAPI) PostLogin(env, username, password string, expHours int) (t
 	if err != nil {
 		return res, fmt.Errorf("error marshaling data %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APILogin, env)
+	jsonParam := bytes.NewReader(jsonMessage)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APILogin, env)
 	rawRes, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return res, fmt.Errorf("error api request - %w - %s", err, string(rawRes))

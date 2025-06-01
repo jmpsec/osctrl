@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"path"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -15,7 +16,7 @@ import (
 // GetCarveQueries to retrieve carves from osctrl
 func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]queries.DistributedQuery, error) {
 	var qs []queries.DistributedQuery
-	reqURL := fmt.Sprintf("%s%s%s/%s/queries/%s", api.Configuration.URL, APIPath, APICarves, env, target)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, "queries", target)
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return qs, fmt.Errorf("error api request - %w - %s", err, string(rawCs))
@@ -29,7 +30,7 @@ func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]queries.Distributed
 // GetCarves to retrieve carves from osctrl
 func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
 	var cs []carves.CarvedFile
-	reqURL := fmt.Sprintf("%s%s%s/%s/list", api.Configuration.URL, APIPath, APICarves, env)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, "list")
 	rawCs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return cs, fmt.Errorf("error api request - %w - %s", err, string(rawCs))
@@ -43,7 +44,7 @@ func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
 // GetCarve to retrieve one carve from osctrl
 func (api *OsctrlAPI) GetCarve(env, name string) (carves.CarvedFile, error) {
 	var c carves.CarvedFile
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, name)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, name)
 	rawC, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return c, fmt.Errorf("error api request - %w - %s", err, string(rawC))
@@ -57,7 +58,7 @@ func (api *OsctrlAPI) GetCarve(env, name string) (carves.CarvedFile, error) {
 // DeleteCarve to delete carve from osctrl
 func (api *OsctrlAPI) DeleteCarve(env, name string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.CarveDelete, name)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, settings.CarveDelete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
@@ -71,7 +72,7 @@ func (api *OsctrlAPI) DeleteCarve(env, name string) (types.ApiGenericResponse, e
 // ExpireCarve to expire carve from osctrl
 func (api *OsctrlAPI) ExpireCarve(env, name string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.QueryExpire, name)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, settings.QueryExpire, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
@@ -85,7 +86,7 @@ func (api *OsctrlAPI) ExpireCarve(env, name string) (types.ApiGenericResponse, e
 // CompleteCarve to complete a carve from osctrl
 func (api *OsctrlAPI) CompleteCarve(env, name string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s/%s", api.Configuration.URL, APIPath, APICarves, env, settings.CarveComplete, name)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env, settings.CarveComplete, name)
 	rawQ, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
@@ -97,19 +98,19 @@ func (api *OsctrlAPI) CompleteCarve(env, name string) (types.ApiGenericResponse,
 }
 
 // RunCarve to initiate a carve in osctrl
-func (api *OsctrlAPI) RunCarve(env, uuid, path string, exp int) (types.ApiQueriesResponse, error) {
+func (api *OsctrlAPI) RunCarve(env, uuid, fPath string, exp int) (types.ApiQueriesResponse, error) {
 	c := types.ApiDistributedCarveRequest{
 		UUID:     uuid,
-		Path:     path,
+		Path:     fPath,
 		ExpHours: exp,
 	}
 	var r types.ApiQueriesResponse
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APICarves, env)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APICarves, env)
 	jsonMessage, err := json.Marshal(c)
 	if err != nil {
 		log.Err(err).Msg("error marshaling data")
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	rawC, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w - %s", err, string(rawC))

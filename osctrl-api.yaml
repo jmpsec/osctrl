@@ -322,7 +322,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiLookupResponse"
+                $ref: "#/components/schemas/OsqueryNode"
         400:
           description: bad request
           content:

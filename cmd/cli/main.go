@@ -1205,6 +1205,19 @@ func init() {
 					},
 					Action: cliWrapper(showNode),
 				},
+				{
+					Name:    "lookup",
+					Aliases: []string{"f"},
+					Usage:   "Lookup existing nodes by identifier (UUID, hostname or localname)",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "identifier",
+							Aliases: []string{"id", "i"},
+							Usage:   "Node identifier to be looked up (UUID, hostname or localname)",
+						},
+					},
+					Action: cliWrapper(lookupNode),
+				},
 			},
 		},
 		{
@@ -1688,12 +1701,12 @@ func checkDB(c *cli.Context) error {
 		// Initialize backend
 		db, err = backend.CreateDBManagerFile(dbConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to create backend - %w", err)
+			return fmt.Errorf("failed to create backend - %w", err)
 		}
 	} else {
 		db, err = backend.CreateDBManager(dbConfig)
 		if err != nil {
-			return fmt.Errorf("Failed to create backend - %w", err)
+			return fmt.Errorf("failed to create backend - %w", err)
 		}
 	}
 	if err := db.Check(); err != nil {

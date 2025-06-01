@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"path"
 
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -12,7 +13,7 @@ import (
 // GetAllTags to retrieve all tags from osctrl
 func (api *OsctrlAPI) GetAllTags() ([]tags.AdminTag, error) {
 	var tgs []tags.AdminTag
-	reqURL := fmt.Sprintf("%s%s%s", api.Configuration.URL, APIPath, APITags)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags)
 	rawTgs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return tgs, fmt.Errorf("error api request - %w - %s", err, string(rawTgs))
@@ -26,7 +27,7 @@ func (api *OsctrlAPI) GetAllTags() ([]tags.AdminTag, error) {
 // GetTags to retrieve tags from osctrl by environment
 func (api *OsctrlAPI) GetTags(env string) ([]tags.AdminTag, error) {
 	var tgs []tags.AdminTag
-	reqURL := fmt.Sprintf("%s%s%s/%s", api.Configuration.URL, APIPath, APITags, env)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags, env)
 	rawTgs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return tgs, fmt.Errorf("error api request - %w - %s", err, string(rawTgs))
@@ -40,7 +41,7 @@ func (api *OsctrlAPI) GetTags(env string) ([]tags.AdminTag, error) {
 // GetTag to retrieve a tag from osctrl by environment and name
 func (api *OsctrlAPI) GetTag(env, name string) (tags.AdminTag, error) {
 	var t tags.AdminTag
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, env, name)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags, env, name)
 	rawT, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return t, fmt.Errorf("error api request - %w - %s", err, string(rawT))
@@ -62,12 +63,12 @@ func (api *OsctrlAPI) AddTag(envUUID, name, color, icon, description string, tag
 		EnvUUID:     envUUID,
 		TagType:     tagType,
 	}
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionAdd)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionAdd)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w", err)
@@ -85,12 +86,12 @@ func (api *OsctrlAPI) DeleteTag(envUUID, name string) (types.ApiGenericResponse,
 		Name:    name,
 		EnvUUID: envUUID,
 	}
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionRemove)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionRemove)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w", err)
@@ -112,12 +113,12 @@ func (api *OsctrlAPI) EditTag(envUUID, name, color, icon, description string, ta
 		EnvUUID:     envUUID,
 		TagType:     tagType,
 	}
-	reqURL := fmt.Sprintf("%s%s%s/%s/%s", api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionEdit)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APITags, envUUID, tags.ActionEdit)
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)
 	}
-	jsonParam := strings.NewReader(string(jsonMessage))
+	jsonParam := bytes.NewReader(jsonMessage)
 	rawT, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return r, fmt.Errorf("error api request - %w", err)

@@ -190,30 +190,7 @@ func tagNode(c *cli.Context) error {
 	return nil
 }
 
-func showNode(c *cli.Context) error {
-	// Get values from flags
-	uuid := c.String("uuid")
-	if uuid == "" {
-		fmt.Println("❌ UUID is required")
-		os.Exit(1)
-	}
-	env := c.String("env")
-	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
-	}
-	var node nodes.OsqueryNode
-	if dbFlag {
-		node, err = nodesmgr.GetByUUID(uuid)
-		if err != nil {
-			return fmt.Errorf("error getting node - %w", err)
-		}
-	} else if apiFlag {
-		node, err = osctrlAPI.GetNode(env, uuid)
-		if err != nil {
-			return fmt.Errorf("error getting node - %w", err)
-		}
-	}
+func _showNode(node nodes.OsqueryNode) error {
 	header := []string{
 		"Hostname",
 		"UUID",
@@ -246,4 +223,53 @@ func showNode(c *cli.Context) error {
 		table.Render()
 	}
 	return nil
+}
+
+func showNode(c *cli.Context) error {
+	// Get values from flags
+	uuid := c.String("uuid")
+	if uuid == "" {
+		fmt.Println("❌ UUID is required")
+		os.Exit(1)
+	}
+	env := c.String("env")
+	if env == "" {
+		fmt.Println("❌ environment is required")
+		os.Exit(1)
+	}
+	var node nodes.OsqueryNode
+	if dbFlag {
+		node, err = nodesmgr.GetByUUID(uuid)
+		if err != nil {
+			return fmt.Errorf("error getting node - %w", err)
+		}
+	} else if apiFlag {
+		node, err = osctrlAPI.GetNode(env, uuid)
+		if err != nil {
+			return fmt.Errorf("error getting node - %w", err)
+		}
+	}
+	return _showNode(node)
+}
+
+func lookupNode(c *cli.Context) error {
+	// Get values from flags
+	identifier := c.String("identifier")
+	if identifier == "" {
+		fmt.Println("❌ identifier is required")
+		os.Exit(1)
+	}
+	var node nodes.OsqueryNode
+	if dbFlag {
+		node, err = nodesmgr.GetByIdentifier(identifier)
+		if err != nil {
+			return fmt.Errorf("error getting node - %w", err)
+		}
+	} else if apiFlag {
+		node, err = osctrlAPI.LookupNode(identifier)
+		if err != nil {
+			return fmt.Errorf("error getting node - %w", err)
+		}
+	}
+	return _showNode(node)
 }
