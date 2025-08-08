@@ -50,7 +50,8 @@ func addUser(c *cli.Context) error {
 	email := c.String("email")
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
-	user, err := adminUsers.New(username, password, email, fullname, admin)
+	service := c.Bool("service")
+	user, err := adminUsers.New(username, password, email, fullname, admin, service)
 	if err != nil {
 		return fmt.Errorf("error with new user - %w", err)
 	}
@@ -99,6 +100,18 @@ func editUser(c *cli.Context) error {
 	if notAdmin {
 		if err := adminUsers.ChangeAdmin(username, false); err != nil {
 			return fmt.Errorf("error changing non-admin - %w", err)
+		}
+	}
+	service := c.Bool("service")
+	if service {
+		if err := adminUsers.ChangeService(username, true); err != nil {
+			return fmt.Errorf("error changing service - %w", err)
+		}
+	}
+	nonService := c.Bool("non-service")
+	if nonService {
+		if err := adminUsers.ChangeService(username, false); err != nil {
+			return fmt.Errorf("error changing service - %w", err)
 		}
 	}
 	if !silentFlag {

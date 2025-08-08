@@ -20,11 +20,11 @@ type LoginTemplateData struct {
 
 // TemplateMetadata to pass some metadata to templates
 type TemplateMetadata struct {
-	Username       string
-	Level          string
-	Service        string
-	Version        string
-	CSRFToken      string
+	Username  string
+	Level     string
+	Service   string
+	Version   string
+	CSRFToken string
 }
 
 // AsideLeftMetadata to pass metadata to the aside left menu
@@ -185,7 +185,8 @@ type UsersTemplateData struct {
 	Title        string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
-	CurrentUsers []users.AdminUser
+	SystemUsers  []users.AdminUser
+	ServiceUsers []users.AdminUser
 	Metadata     TemplateMetadata
 	LeftMetadata AsideLeftMetadata
 }

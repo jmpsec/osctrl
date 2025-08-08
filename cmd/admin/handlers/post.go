@@ -1083,7 +1083,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.Admin)
+		newUser, err := h.Users.New(u.Username, u.NewPassword, u.Email, u.Fullname, u.Admin, u.Service)
 		if err != nil {
 			adminErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
 			return
@@ -1179,6 +1179,18 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				}
 			}
 			adminOKResponse(w, "admin changed successfully")
+		}
+	case "service":
+		if u.Username == ctx[sessions.CtxUser] {
+			adminErrorResponse(w, "not a good idea", http.StatusInternalServerError, fmt.Errorf("attempt to service current user %s", u.Username))
+			return
+		}
+		if h.Users.Exists(u.Username) {
+			if err := h.Users.ChangeService(u.Username, u.Service); err != nil {
+				adminErrorResponse(w, "error changing service", http.StatusInternalServerError, err)
+				return
+			}
+			adminOKResponse(w, "service changed successfully")
 		}
 	}
 	// Serialize and send response

@@ -46,14 +46,15 @@
                       <th width="15%">Email</th>
                       <th width="10%">Fullname</th>
                       <th width="10%">Last IP</th>
-                      <th width="25%">Last UserAgent</th>
+                      <th width="20%">Last UserAgent</th>
                       <th width="5%">Admin</th>
+                      <th width="5%">Service</th>
                       <th width="15%">Last Session</th>
                       <th width="10%"></th>
                     </tr>
                   </thead>
                   <tbody>
-                  {{range  $i, $e := $.CurrentUsers}}
+                  {{range  $i, $e := $.SystemUsers}}
                     <tr>
                       <td>{{ $e.Username }}</td>
                       <td>
@@ -80,7 +81,110 @@
                       </td>
                       <td>
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
-                          <input id="{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
+                          <input id="admin_{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </td>
+                      <td>
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="service_{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeServiceUser('{{ $e.Username }}');" {{ if $e.Service }} checked {{ end }}>
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </td>
+                      <td>{{ pastFutureTimes $e.LastAccess }}</td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-ghost-info" data-tooltip="true" data-placement="top" title="API Token"
+                        onclick="showAPIToken('{{ $e.APIToken }}', '{{ pastFutureTimes $e.TokenExpire }}', '{{ $e.Username }}');">
+                          <i class="fas fa-key"></i>
+                        </button>
+                        <button id="permissions-button-{{ $e.Username }}" type="button" class="btn btn-sm btn-ghost-primary" data-tooltip="true" data-placement="top" title="Permissions"
+                          onclick="showPermissions('{{ $e.Username }}');">
+                          <i class="fas fa-lock"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-danger" data-tooltip="true" data-placement="top" title="Delete User"
+                        onclick="confirmDeleteUser('{{ $e.Username }}');">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-warning" data-tooltip="true" data-placement="top" title="Change Password"
+                        onclick="changePassword('{{ $e.Username }}');">
+                          <i class="fas fa-user-lock"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  {{ end }}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-robot"></i> Service Users
+
+                <div class="card-header-actions">
+                  <div class="row">
+                    <div class="card-header-action mr-3">
+                      <button id="users_add" class="btn btn-sm btn-block btn-dark"
+                        data-tooltip="true" data-placement="bottom" title="Add User" onclick="addUser();">
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="card-body">
+
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                  <thead>
+                    <tr>
+                      <th width="10%">Username</th>
+                      <th width="15%">Email</th>
+                      <th width="10%">Fullname</th>
+                      <th width="10%">Last IP</th>
+                      <th width="20%">Last UserAgent</th>
+                      <th width="5%">Admin</th>
+                      <th width="5%">Service</th>
+                      <th width="15%">Last Session</th>
+                      <th width="10%"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{range  $i, $e := $.ServiceUsers}}
+                    <tr>
+                      <td>{{ $e.Username }}</td>
+                      <td>
+                        <p id="email" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Email }}</p>
+                      </td>
+                      <td>
+                        <p id="fullname" data-tooltip="true" data-user="{{ $e.Username }}" class="editable-field" role="button" tabindex="0" title="Click to edit...">{{ $e.Fullname }}</p>
+                      </td>
+                      <td>
+                        {{ if eq $e.LastIPAddress "" }}
+                          None
+                        {{ else }}
+                          {{ $e.LastIPAddress }}
+                        {{ end }}
+                      </td>
+                      <td>
+                        <code>
+                        {{ if eq $e.LastUserAgent "" }}
+                          None
+                        {{ else }}
+                          {{ $e.LastUserAgent }}
+                        {{ end }}
+                        </code>
+                      </td>
+                      <td>
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="admin_{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeAdminUser('{{ $e.Username }}');" {{ if $e.Admin }} checked {{ end }}>
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </td>
+                      <td>
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="service_{{ $e.Username }}" class="switch-input" type="checkbox" onclick="changeServiceUser('{{ $e.Username }}');" {{ if $e.Service }} checked {{ end }}>
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </td>
@@ -145,6 +249,13 @@
                       <div class="col-md-2">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_admin" class="switch-input" type="checkbox">
+                          <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
+                        </label>
+                      </div>
+                      <label class="col-md-1 col-form-label" for="user_service">Service: </label>
+                      <div class="col-md-2">
+                        <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
+                          <input id="user_service" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
