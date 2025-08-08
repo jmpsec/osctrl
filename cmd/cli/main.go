@@ -234,7 +234,7 @@ func init() {
 							Name:    "service",
 							Aliases: []string{"s"},
 							Hidden:  false,
-							Usage:   "Make this user a service accoiunt",
+							Usage:   "Make this user a service account",
 						},
 						&cli.StringFlag{
 							Name:    "environment",
