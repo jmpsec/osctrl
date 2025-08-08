@@ -120,11 +120,11 @@ func listQueries(c *cli.Context) error {
 		}
 	case formatFlag == prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(stringSliceToAnySlice(header)...)
 		if len(qs) > 0 {
 			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Printf("No %s queries\n", target)
 		}

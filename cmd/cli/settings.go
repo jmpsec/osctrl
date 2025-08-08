@@ -16,15 +16,7 @@ func listConfiguration(c *cli.Context) error {
 		return err
 	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
-		"Name",
-		"Service",
-		"Type",
-		"String",
-		"Integer",
-		"Boolean",
-		"Info",
-	})
+	table.Header("Name", "Service", "Type", "String", "Integer", "Boolean", "Info")
 	if len(values) > 0 {
 		data := [][]string{}
 		for _, v := range values {
@@ -39,7 +31,7 @@ func listConfiguration(c *cli.Context) error {
 			}
 			data = append(data, _v)
 		}
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	} else {
 		fmt.Printf("No configuration values\n")

@@ -262,11 +262,11 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(stringSliceToAnySlice(header)...)
 		if len(tgs) > 0 {
 			fmt.Printf("Existing tags (%d):\n", len(tgs))
 			data := tagsToData(tgs, m, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Println("No tags")
 		}
