@@ -179,13 +179,7 @@ func listUsers(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.Header(func() []any {
-			result := make([]any, len(header))
-			for i, v := range header {
-				result[i] = v
-			}
-			return result
-		}()...)
+		table.Header(stringSliceToAnySlice(header)...)
 		if len(usrs) > 0 {
 			fmt.Printf("Existing users (%d):\n", len(usrs))
 			data := usersToData(usrs, nil)
