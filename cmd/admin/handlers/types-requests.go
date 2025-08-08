@@ -123,6 +123,7 @@ type UsersRequest struct {
 	NewPassword  string   `json:"new_password"`
 	Token        bool     `json:"token"`
 	Admin        bool     `json:"admin"`
+	Service      bool     `json:"service"`
 	Environments []string `json:"environments"`
 }
 

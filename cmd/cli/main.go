@@ -230,6 +230,12 @@ func init() {
 							Hidden:  false,
 							Usage:   "Make this user an admin",
 						},
+						&cli.BoolFlag{
+							Name:    "service",
+							Aliases: []string{"s"},
+							Hidden:  false,
+							Usage:   "Make this user a service accoiunt",
+						},
 						&cli.StringFlag{
 							Name:    "environment",
 							Aliases: []string{"e"},
@@ -285,6 +291,18 @@ func init() {
 							Aliases: []string{"d"},
 							Hidden:  false,
 							Usage:   "Make this user an non-admin",
+						},
+						&cli.BoolFlag{
+							Name:    "service",
+							Aliases: []string{"s"},
+							Hidden:  false,
+							Usage:   "Make this user a service account",
+						},
+						&cli.BoolFlag{
+							Name:    "non-service",
+							Aliases: []string{"S"},
+							Hidden:  false,
+							Usage:   "Make this user a non-service account",
 						},
 						&cli.StringFlag{
 							Name:    "environment",

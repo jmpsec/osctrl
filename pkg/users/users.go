@@ -26,6 +26,7 @@ type AdminUser struct {
 	APIToken      string `json:"-"`
 	TokenExpire   time.Time
 	Admin         bool
+	Service       bool
 	UUID          string
 	CSRFToken     string `json:"-"`
 	LastIPAddress string
@@ -83,7 +84,7 @@ func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
 
 // CheckLoginCredentials to check provided login credentials by matching hashes
 func (m *UserManager) CheckLoginCredentials(username, password string) (bool, AdminUser) {
-	// Retrieve user
+	// Check if we should include service users
 	user, err := m.Get(username)
 	if err != nil {
 		return false, AdminUser{}
@@ -140,10 +141,19 @@ func (m *UserManager) CheckToken(jwtSecret, tokenStr string) (TokenClaims, bool)
 	return *claims, true
 }
 
-// Get user by username
+// Get user by username including service users
 func (m *UserManager) Get(username string) (AdminUser, error) {
 	var user AdminUser
 	if err := m.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+// Get user by username and service
+func (m *UserManager) GetWithService(username string, service bool) (AdminUser, error) {
+	var user AdminUser
+	if err := m.DB.Where("username = ? AND service = ?", username, service).First(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
@@ -158,7 +168,7 @@ func (m *UserManager) Create(user AdminUser) error {
 }
 
 // New empty user
-func (m *UserManager) New(username, password, email, fullname string, admin bool) (AdminUser, error) {
+func (m *UserManager) New(username, password, email, fullname string, admin, service bool) (AdminUser, error) {
 	if !m.Exists(username) {
 		passhash, err := m.HashPasswordWithSalt(password)
 		if err != nil {
@@ -169,6 +179,7 @@ func (m *UserManager) New(username, password, email, fullname string, admin bool
 			PassHash: passhash,
 			UUID:     utils.GenUUID(),
 			Admin:    admin,
+			Service:  service,
 			Email:    email,
 			Fullname: fullname,
 		}, nil
@@ -213,6 +224,20 @@ func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 	return nil
 }
 
+// ChangeService to modify the service setting for a user
+func (m *UserManager) ChangeService(username string, service bool) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %w", err)
+	}
+	if service != user.Service {
+		if err := m.DB.Model(&user).Updates(map[string]interface{}{"service": service}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // All get all users
 func (m *UserManager) All() ([]AdminUser, error) {
 	var users []AdminUser
@@ -220,6 +245,25 @@ func (m *UserManager) All() ([]AdminUser, error) {
 		return users, err
 	}
 	return users, nil
+}
+
+// GenericAllService get all users with a specific service
+func (m *UserManager) GenericAllService(service bool) ([]AdminUser, error) {
+	var users []AdminUser
+	if err := m.DB.Where("service = ?", service).Find(&users).Error; err != nil {
+		return users, err
+	}
+	return users, nil
+}
+
+// AllService get all service users
+func (m *UserManager) AllService() ([]AdminUser, error) {
+	return m.GenericAllService(true)
+}
+
+// AllNonService get all non-service users
+func (m *UserManager) AllNonService() ([]AdminUser, error) {
+	return m.GenericAllService(false)
 }
 
 // Delete user by username
@@ -246,7 +290,7 @@ func (m *UserManager) ChangePassword(username, password string) error {
 	}
 	if passhash != user.PassHash {
 		if err := m.DB.Model(&user).Update("pass_hash", passhash).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -264,7 +308,7 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 				APIToken:    token,
 				TokenExpire: exp,
 			}).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -278,7 +322,7 @@ func (m *UserManager) ChangeEmail(username, email string) error {
 	}
 	if email != user.Email {
 		if err := m.DB.Model(&user).Update("email", email).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -292,7 +336,7 @@ func (m *UserManager) ChangeFullname(username, fullname string) error {
 	}
 	if fullname != user.Fullname {
 		if err := m.DB.Model(&user).Update("fullname", fullname).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -311,7 +355,7 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken s
 			CSRFToken:     csrftoken,
 			LastAccess:    time.Now(),
 		}).Error; err != nil {
-		return fmt.Errorf("Update %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	return nil
 }
@@ -327,7 +371,7 @@ func (m *UserManager) UpdateTokenIPAddress(ipaddress, username string) error {
 			LastIPAddress: ipaddress,
 			LastTokenUse:  time.Now(),
 		}).Error; err != nil {
-		return fmt.Errorf("Update %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	return nil
 }

@@ -1249,10 +1249,16 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
-	// Get current users
-	users, err := h.Users.All()
+	// Get current regular users
+	systemUsers, err := h.Users.AllNonService()
 	if err != nil {
 		log.Err(err).Msg("error getting users")
+		return
+	}
+	// Get current service users
+	serviceUsers, err := h.Users.AllService()
+	if err != nil {
+		log.Err(err).Msg("error getting service users")
 		return
 	}
 	// Prepare template data
@@ -1261,7 +1267,8 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
-		CurrentUsers: users,
+		SystemUsers:  systemUsers,
+		ServiceUsers: serviceUsers,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")

@@ -62,22 +62,22 @@ func loadSAML(file string) (JSONConfigurationSAML, error) {
 // Function to verify SAML configuration
 func verifySAML(cfg JSONConfigurationSAML) error {
 	if cfg.CertPath == "" {
-		return fmt.Errorf("Missing CertPath")
+		return fmt.Errorf("missing CertPath")
 	}
 	if cfg.KeyPath == "" {
-		return fmt.Errorf("Missing KeyPath")
+		return fmt.Errorf("missing KeyPath")
 	}
 	if cfg.MetaDataURL == "" {
-		return fmt.Errorf("Missing MetaDataURL")
+		return fmt.Errorf("missing MetaDataURL")
 	}
 	if cfg.RootURL == "" {
-		return fmt.Errorf("Missing RootURL")
+		return fmt.Errorf("missing RootURL")
 	}
 	if cfg.LoginURL == "" {
-		return fmt.Errorf("Missing LoginURL")
+		return fmt.Errorf("missing LoginURL")
 	}
 	if cfg.LogoutURL == "" {
-		return fmt.Errorf("Missing LogoutURL")
+		return fmt.Errorf("missing LogoutURL")
 	}
 	return nil
 }
@@ -88,23 +88,23 @@ func keypairSAML(config JSONConfigurationSAML) (samlThings, error) {
 	var err error
 	data.KeyPair, err = tls.LoadX509KeyPair(config.CertPath, config.KeyPath)
 	if err != nil {
-		return data, fmt.Errorf("LoadX509KeyPair %w", err)
+		return data, fmt.Errorf("loadX509KeyPair %w", err)
 	}
 	data.KeyPair.Leaf, err = x509.ParseCertificate(data.KeyPair.Certificate[0])
 	if err != nil {
-		return data, fmt.Errorf("ParseCertificate %w", err)
+		return data, fmt.Errorf("parseCertificate %w", err)
 	}
 	data.IdpMetadataURL, err = url.Parse(config.MetaDataURL)
 	if err != nil {
-		return data, fmt.Errorf("Parse MetadataURL %w", err)
+		return data, fmt.Errorf("parse MetadataURL %w", err)
 	}
 	data.IdpMetadata, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *data.IdpMetadataURL)
 	if err != nil {
-		return data, fmt.Errorf("Fetch Metadata %w", err)
+		return data, fmt.Errorf("fetch Metadata %w", err)
 	}
 	data.RootURL, err = url.Parse(config.RootURL)
 	if err != nil {
-		return data, fmt.Errorf("Parse RootURL %w", err)
+		return data, fmt.Errorf("parse RootURL %w", err)
 	}
 	return data, nil
 }

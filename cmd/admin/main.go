@@ -135,10 +135,10 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	}
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
-		return cfg, fmt.Errorf("Invalid auth method")
+		return cfg, fmt.Errorf("invalid auth method")
 	}
 	if !validCarver[cfg.Carver] {
-		return cfg, fmt.Errorf("Invalid carver method")
+		return cfg, fmt.Errorf("invalid carver method")
 	}
 	// No errors!
 	return cfg, nil
@@ -566,41 +566,41 @@ func cliAction(c *cli.Context) error {
 	if flagParams.ConfigFlag {
 		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceAdmin)
 		if err != nil {
-			return fmt.Errorf("Failed to load service configuration %s - %w", flagParams.ServiceConfigFile, err)
+			return fmt.Errorf("failed to load service configuration %s - %w", flagParams.ServiceConfigFile, err)
 		}
 	}
 	// Load redis configuration if external JSON config file is used
 	if flagParams.RedisFlag {
 		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %w", err)
+			return fmt.Errorf("failed to load redis configuration - %w", err)
 		}
 	}
 	// Load DB configuration if external JSON config file is used
 	if flagParams.DBFlag {
 		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %w", err)
+			return fmt.Errorf("failed to load DB configuration - %w", err)
 		}
 	}
 	// Load SAML configuration if this authentication is used in the service config
 	if flagParams.ConfigValues.Auth == config.AuthSAML {
 		samlConfig, err = loadSAML(flagParams.SAMLConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load SAML configuration - %w", err)
+			return fmt.Errorf("failed to load SAML configuration - %w", err)
 		}
 	}
 	// Load JWT configuration if external JWT JSON config file is used
 	if flagParams.JWTFlag {
 		flagParams.JWTConfigValues, err = loadJWTConfiguration(flagParams.JWTConfigFile)
 		if err != nil {
-			return fmt.Errorf("Failed to load JWT configuration - %w", err)
+			return fmt.Errorf("failed to load JWT configuration - %w", err)
 		}
 	}
 	// Load osquery tables JSON file
 	osqueryTables, err = loadOsqueryTables(flagParams.OsqueryTablesFile)
 	if err != nil {
-		return fmt.Errorf("Failed to load osquery tables - %w", err)
+		return fmt.Errorf("failed to load osquery tables - %w", err)
 	}
 	// Load carver configuration if external JSON config file is used
 	if flagParams.ConfigValues.Carver == config.CarverS3 {
@@ -610,7 +610,7 @@ func cliAction(c *cli.Context) error {
 			carvers3, err = carves.CreateCarverS3File(flagParams.CarverConfigFile)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
+			return fmt.Errorf("failed to initiate s3 carver - %w", err)
 		}
 	}
 	return nil
