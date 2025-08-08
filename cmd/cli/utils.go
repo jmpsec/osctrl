@@ -16,5 +16,13 @@ func stringifyBool(b bool) string {
 // Helper to get what is the last seen time for a node
 func nodeLastSeen(n nodes.OsqueryNode) string {
 	return utils.PastFutureTimes(n.LastSeen)
+}
 
+// Helper to prepare the header for output
+func stringSliceToAnySlice(header []string) []any {
+	result := make([]any, len(header))
+	for i, v := range header {
+		result[i] = v
+	}
+	return result
 }
