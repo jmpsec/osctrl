@@ -302,13 +302,7 @@ func listEnvironment(c *cli.Context) error {
 		}
 	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
-		"UUID",
-		"Name",
-		"Type",
-		"Hostname",
-		"DebugHTTP?",
-	})
+	table.Header("UUID", "Name", "Type", "Hostname", "DebugHTTP?")
 	if len(envAll) > 0 {
 		data := [][]string{}
 		for _, env := range envAll {
@@ -321,7 +315,7 @@ func listEnvironment(c *cli.Context) error {
 			}
 			data = append(data, e)
 		}
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	} else {
 		fmt.Printf("No environments\n")

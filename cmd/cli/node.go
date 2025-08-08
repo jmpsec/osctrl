@@ -98,11 +98,17 @@ func listNodes(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		if len(nds) > 0 {
 			fmt.Printf("Existing %s nodes (%d):\n", target, len(nds))
 			data := nodesToData(nds, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Printf("No %s nodes\n", target)
 		}
@@ -217,9 +223,15 @@ func _showNode(node nodes.OsqueryNode) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		data := nodeToData(node, nil)
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	}
 	return nil

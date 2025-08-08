@@ -179,11 +179,17 @@ func listUsers(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		if len(usrs) > 0 {
 			fmt.Printf("Existing users (%d):\n", len(usrs))
 			data := usersToData(usrs, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Println("No users")
 		}
@@ -235,9 +241,15 @@ func showUser(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		data := userToData(usr, nil)
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	}
 	return nil

@@ -96,11 +96,17 @@ func listCarves(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		if len(cs) > 0 {
 			fmt.Printf("Existing carves (%d):\n", len(cs))
 			data := carvesToData(cs, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Println("No carves")
 		}
@@ -182,11 +188,17 @@ func listCarveQueries(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		if len(qs) > 0 {
 			fmt.Printf("Existing %s carve queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
-			table.AppendBulk(data)
+			table.Bulk(data)
 		} else {
 			fmt.Printf("No %s carve queries\n", target)
 		}

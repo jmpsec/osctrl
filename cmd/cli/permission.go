@@ -150,9 +150,15 @@ func showPermissions(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		data := accessToData(userAccess, envName, nil)
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	}
 	return nil
@@ -238,9 +244,15 @@ func allPermissions(c *cli.Context) error {
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
+		table.Header(func() []any {
+			result := make([]any, len(header))
+			for i, v := range header {
+				result[i] = v
+			}
+			return result
+		}()...)
 		data := permissionsToData(existingAccess, nil)
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 	}
 	return nil
