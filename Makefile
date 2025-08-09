@@ -89,6 +89,16 @@ tidy:
 	make clean_go
 	go mod tidy
 
+# Keep dependencies up to date
+deps-update:
+ifeq (,$(wildcard go.mod))
+	$(error Missing go.mod file)
+endif
+ifeq (,$(wildcard go.sum))
+	$(error Missing go.sum file)
+endif
+	go get -u ./...
+
 # Install everything
 # optional DEST=destination_path
 install:
