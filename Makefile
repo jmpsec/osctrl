@@ -94,9 +94,6 @@ deps-update:
 ifeq (,$(wildcard go.mod))
 	$(error Missing go.mod file)
 endif
-ifeq (,$(wildcard go.sum))
-	$(error Missing go.sum file)
-endif
 	go get -u ./...
 
 # Install everything
