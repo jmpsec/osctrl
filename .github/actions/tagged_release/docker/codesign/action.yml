@@ -34,7 +34,7 @@ runs:
     - name: Install cosign
       uses: sigstore/cosign-installer@main
       with:
-        cosign-release: 'v2.4.1'
+        cosign-release: "v2.4.1"
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
