@@ -209,7 +209,7 @@ jobs:
           #### Docker vars ####
           osctrl_component: ${{ matrix.components }}
           docker_tags: ${{ steps.meta.outputs.tags }}
-          docker_image_digests: ${{ steps.docker_vars.outputs.digests }}
+          docker_image_digest: ${{ steps.docker_vars.outputs.digests }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
