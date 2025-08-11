@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   GOLANG_VERSION: 1.24.3
@@ -207,16 +208,12 @@ jobs:
         with:
           #### Docker vars ####
           osctrl_component: ${{ matrix.components }}
-          docker_tags: ${{ steps.docker_vars.outputs.tags }}
-          docker_image_digests: ${{ steps.digests.outputs.digests }}
+          docker_tags: ${{ steps.meta.outputs.tags }}
+          docker_image_digest: ${{ steps.docker_vars.outputs.digests }}
           #### Dockerhub creds ####
           docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
           docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          #### Codesign secrets ####
-          codesign_password: ${{ secrets.COSIGN_PASSWORD }}
-          codesign_private_key: ${{ secrets.COSIGN_PRIVATE }}
-          codesign_public_cert: ${{ secrets.COSIGN_PUBLIC }}
 
       ########################### Inspect new image ###########################
       - name: Inspect image
