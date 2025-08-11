@@ -26,13 +26,13 @@ runs:
   steps:
     ########################### Checkout code ###########################
     - name: Checkout code
-      uses: actions/checkout@08c6903 # v5.0.0
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         fetch-depth: 2
 
     ########################### Install go to env ###########################
     - name: Set up Go
-      uses: actions/setup-go@8e57b58 # v5.5.0
+      uses: actions/setup-go@8e57b58e57be52ac95949151e2777ffda8501267 # v5.5.0
       with:
         go-version: ${{ inputs.golang_version }}
     - run: go version
@@ -53,7 +53,7 @@ runs:
 
     ########################### Upload artifacts ###########################
     - name: Upload osctrl binaries
-      uses: actions/upload-artifact@ea165f8 # v4.6.2
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
         path: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin

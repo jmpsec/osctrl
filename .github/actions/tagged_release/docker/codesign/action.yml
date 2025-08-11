@@ -25,7 +25,7 @@ runs:
   steps:
     ########################### Checkout code ###########################
     - name: Checkout code
-      uses: actions/checkout@08c6903 # v5.0.0
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         fetch-depth: 2
 
@@ -36,7 +36,7 @@ runs:
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
-      uses: docker/login-action@184bdaa # v3.5.0
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
       with:
         username: ${{ inputs.docker_hub_username }}
         password: ${{ inputs.docker_hub_access_token }}

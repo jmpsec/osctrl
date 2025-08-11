@@ -33,13 +33,13 @@ runs:
   steps:
     ########################### Checkout code ###########################
     - name: Checkout code
-      uses: actions/checkout@08c6903 # v5.0.0
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         fetch-depth: 2
 
     ########################### Download osctrl binary ###########################
     - name: Download osctrl binary
-      uses: actions/download-artifact@634f93c # v5.0.0
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
@@ -54,7 +54,7 @@ runs:
     ########################### Add meta data for containers ###########################
     - name: Docker meta
       id: meta
-      uses: docker/metadata-action@c1e5197 # v5.8.0
+      uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
       with:
         images: ${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}
         labels: |
@@ -65,22 +65,22 @@ runs:
 
     ########################### Log into Dockerhub ###########################
     - name: Login to Docker Hub
-      uses: docker/login-action@184bdaa # v3.5.0
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
       with:
         username: ${{ inputs.docker_hub_username }}
         password: ${{ inputs.docker_hub_access_token }}
 
     # ########################### Setup QEMU ###########################
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@05340d1 # v3.6.0
+      uses: docker/setup-qemu-action@05340d1c670183e7caabdb33ae9f1c80fae3b0c2 # v3.6.0
 
     ########################### Setup Docker ###########################
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@af1b253 # v3.11.1
+      uses: docker/setup-buildx-action@af1b253b8dc984466d22633f04ef341c1520ed2f # v3.11.1
 
     ########################### Build and Push Docker images ###########################
     - name: Build and push
-      uses: docker/build-push-action@55146d9 # v6.18.0
+      uses: docker/build-push-action@55146d969b0dff1a5c12630229609757af5b1081 # v6.18.0
       id: docker_build
       with:
         context: .
@@ -104,7 +104,7 @@ runs:
 
     ########################### Upload digest ###########################
     - name: Upload digest
-      uses: actions/upload-artifact@ea165f8 # v4.6.2
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: digests-osctrl-${{ inputs.osctrl_component }}-${{ inputs.go_os }}-${{ inputs.go_arch }}
         path: /tmp/digests/*
