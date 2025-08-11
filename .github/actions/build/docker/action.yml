@@ -24,7 +24,7 @@ inputs:
     description: Pass DockerHub access token to action
 
 outputs:
-  docker_image_digest:
+  docker_image_digests:
     description: Dockerhub image digest
     value: ${{ toJson(steps.docker_build.outputs.digest) }}
 

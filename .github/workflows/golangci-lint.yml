@@ -2,13 +2,13 @@ name: Go linting on PRs pushed to osctrl
 
 on:
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
     paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.github/workflows/golangci-lint.yml'
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".golangci.yml"
+      - ".github/workflows/golangci-lint.yml"
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
 
       ########################### Set up Go ###############################
       - name: Set up Go
