@@ -47,10 +47,10 @@ runs:
     - name: Sign the published Docker image
       shell: bash
       run: |
-        for tag in ${{ inputs.docker_tags }}
+        for tag in "${{ inputs.docker_tags }}"
         do
           IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
-          for digest in ${{ inputs.docker_image_digests }}
+          for digest in "${{ inputs.docker_image_digests }}"
           do
             cosign sign --yes docker.io/$IMAGE_NAME@sha256:$digest
           done
@@ -60,10 +60,10 @@ runs:
     - name: Verify the signed published Docker image
       shell: bash
       run: |
-        for tag in ${{ inputs.docker_tags }}
+        for tag in "${{ inputs.docker_tags }}"
         do
           IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
-          for digest in ${{ inputs.docker_image_digests }}
+          for digest in "${{ inputs.docker_image_digests }}"
           do
             cosign verify \
               --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
