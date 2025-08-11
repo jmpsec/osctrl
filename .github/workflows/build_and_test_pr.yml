@@ -19,7 +19,7 @@ jobs:
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@08c6903 # v5.0.0
         with:
           fetch-depth: 2
 
