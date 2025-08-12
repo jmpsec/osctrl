@@ -100,7 +100,7 @@ jobs:
           osctrl_component: ${{ matrix.components }}
           commit_sha: ${{ steps.vars.outputs.sha_short }}
           osquery_version: ${{ env.OSQUERY_VERSION }}
-          release_version_tag: ${{ steps.vars.outputs.branch }}
+          release_version_tag: ${{ steps.vars.outputs.RELEASE_VERSION }}
 
   create_docker_images:
     needs: [build_and_test]
@@ -223,12 +223,13 @@ jobs:
   create_release:
     needs: [build_and_test, create_deb_packages, push_docker_images]
     runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
-        goos: ["linux"]
+        goos: ["linux", "darwin", "windows"]
         goarch: ["amd64", "arm64"]
     steps:
       ########################### Checkout code ###########################
