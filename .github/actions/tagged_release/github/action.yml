@@ -57,6 +57,7 @@ runs:
       with:
         name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
         fail-on-not-found: false
+        continue-on-error: true
 
     ########################### Release ###########################
     - name: Release

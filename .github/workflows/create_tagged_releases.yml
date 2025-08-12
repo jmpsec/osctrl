@@ -231,6 +231,13 @@ jobs:
         components: ["tls", "admin", "api", "cli"]
         goos: ["linux", "darwin", "windows"]
         goarch: ["amd64", "arm64"]
+        exclude:
+          - goos: "windows"
+            components: "tls"
+          - goos: "windows"
+            components: "admin"
+          - goos: "windows"
+            components: "api"
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
