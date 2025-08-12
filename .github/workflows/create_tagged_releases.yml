@@ -228,64 +228,16 @@ jobs:
       contents: write
     strategy:
       matrix:
-        include:
-          # Linux - all components
-          - components: "tls"
-            goos: "linux"
-            goarch: "amd64"
-          - components: "tls"
-            goos: "linux"
-            goarch: "arm64"
-          - components: "admin"
-            goos: "linux"
-            goarch: "amd64"
-          - components: "admin"
-            goos: "linux"
-            goarch: "arm64"
-          - components: "api"
-            goos: "linux"
-            goarch: "amd64"
-          - components: "api"
-            goos: "linux"
-            goarch: "arm64"
-          - components: "cli"
-            goos: "linux"
-            goarch: "amd64"
-          - components: "cli"
-            goos: "linux"
-            goarch: "arm64"
-          # Darwin - all components
-          - components: "tls"
-            goos: "darwin"
-            goarch: "amd64"
-          - components: "tls"
-            goos: "darwin"
-            goarch: "arm64"
-          - components: "admin"
-            goos: "darwin"
-            goarch: "amd64"
-          - components: "admin"
-            goos: "darwin"
-            goarch: "arm64"
-          - components: "api"
-            goos: "darwin"
-            goarch: "amd64"
-          - components: "api"
-            goos: "darwin"
-            goarch: "arm64"
-          - components: "cli"
-            goos: "darwin"
-            goarch: "amd64"
-          - components: "cli"
-            goos: "darwin"
-            goarch: "arm64"
-          # Windows - only cli component
-          - components: "cli"
-            goos: "windows"
-            goarch: "amd64"
-          - components: "cli"
-            goos: "windows"
-            goarch: "arm64"
+        components: ["tls", "admin", "api", "cli"]
+        goos: ["linux", "darwin", "windows"]
+        goarch: ["amd64", "arm64"]
+        exclude:
+          - goos: "windows"
+            components: "tls"
+          - goos: "windows"
+            components: "admin"
+          - goos: "windows"
+            components: "api"
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
