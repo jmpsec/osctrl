@@ -58,8 +58,7 @@ runs:
     - name: Verify the signed published Docker image
       shell: bash
       run: |
-        # Parse space-separated tags and digests
-        IFS=' ' read -ra TAGS <<< "${{ inputs.docker_tags }}"
+        # Parse space-separated digests
         IFS=' ' read -ra DIGESTS <<< "${{ inputs.docker_image_digests }}"
 
         for digest in "${DIGESTS[@]}"
