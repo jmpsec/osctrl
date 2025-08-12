@@ -45,27 +45,29 @@ runs:
     - name: Sign the published Docker image
       shell: bash
       run: |
-        for tag in "${{ inputs.docker_tags }}"
+        # Parse space-separated tags and digests
+        IFS=' ' read -ra TAGS <<< "${{ inputs.docker_tags }}"
+        IFS=' ' read -ra DIGESTS <<< "${{ inputs.docker_image_digests }}"
+
+        for digest in "${DIGESTS[@]}"
         do
-          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
-          for digest in "${{ inputs.docker_image_digests }}"
-          do
-            cosign sign --yes docker.io/$IMAGE_NAME@sha256:$digest
-          done
+          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}"
+          cosign sign --yes docker.io/$IMAGE_NAME@sha256:$digest
         done
 
     ########################### Verify signed image using keyless cosign ###########################
     - name: Verify the signed published Docker image
       shell: bash
       run: |
-        for tag in "${{ inputs.docker_tags }}"
+        # Parse space-separated tags and digests
+        IFS=' ' read -ra TAGS <<< "${{ inputs.docker_tags }}"
+        IFS=' ' read -ra DIGESTS <<< "${{ inputs.docker_image_digests }}"
+
+        for digest in "${DIGESTS[@]}"
         do
-          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}:$tag"
-          for digest in "${{ inputs.docker_image_digests }}"
-          do
-            cosign verify \
-              --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
-              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-              docker.io/$IMAGE_NAME@sha256:$digest
-          done
+          IMAGE_NAME="${{ inputs.docker_hub_org }}/osctrl-${{ inputs.osctrl_component }}"
+          cosign verify \
+            --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            docker.io/$IMAGE_NAME@sha256:$digest
         done
