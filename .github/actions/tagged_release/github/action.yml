@@ -51,11 +51,12 @@ runs:
         osctrl-${{ inputs.osctrl_component }}-${{ inputs.release_version_tag }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.exe
 
     ########################### Download osctrl DEB package ###########################
-    - name: Download osctrl binaries
+    - name: Download osctrl DEB package
       if: ${{ inputs.go_os }} == 'linux'
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        fail-on-not-found: false
 
     ########################### Release ###########################
     - name: Release
@@ -64,5 +65,5 @@ runs:
       with:
         files: |
           osctrl-*.bin
-          osctrl-*.deb
           osctrl-*.exe
+          osctrl-*.deb
