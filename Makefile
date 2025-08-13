@@ -24,7 +24,7 @@ OUTPUT = bin
 
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
 
-.PHONY: build static clean tls admin cli api
+.PHONY: build static clean tls admin cli api release release-build release-check release-init
 
 # Build code according to caller OS and architecture
 build:
@@ -262,3 +262,30 @@ test:
 test_cover:
 	cd utils && go test -cover .
 	cd cmd/tls/handlers && go test -cover .
+
+# Build snapshot binaries with GoReleaser
+release-build:
+	./tools/gorelease.sh build
+
+# Check GoReleaser configuration
+release-check:
+	./tools/gorelease.sh check
+
+# Initialize GoReleaser configuration
+release-init:
+	./tools/gorelease.sh init
+
+# Create a release (requires tag)
+release:
+	./tools/gorelease.sh release
+
+# Build and test release locally
+release-test:
+	./tools/gorelease.sh build
+	@echo "Testing built binaries..."
+	@for binary in dist/*/osctrl-*; do \
+		if [ -f "$$binary" ] && [ -x "$$binary" ]; then \
+			echo "Testing $$binary"; \
+			$$binary --version || $$binary version || echo "No version flag available"; \
+		fi; \
+	done

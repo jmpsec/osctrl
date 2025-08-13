@@ -1,0 +1,245 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: osctrl-tls
+    main: ./cmd/tls
+    binary: osctrl-tls
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: osctrl-admin
+    main: ./cmd/admin
+    binary: osctrl-admin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: osctrl-api
+    main: ./cmd/api
+    binary: osctrl-api
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: osctrl-cli
+    main: ./cmd/cli
+    binary: osctrl-cli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}-
+      {{- title .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot: {}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+dockers:
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--platform=linux/arm64"
+    extra_files:
+      - osctrl-tls-linux-amd64
+      - osctrl-tls-linux-arm64
+
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--platform=linux/arm64"
+    extra_files:
+      - osctrl-admin-linux-amd64
+      - osctrl-admin-linux-arm64
+
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--platform=linux/arm64"
+    extra_files:
+      - osctrl-api-linux-amd64
+      - osctrl-api-linux-arm64
+
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--platform=linux/arm64"
+    extra_files:
+      - osctrl-cli-linux-amd64
+      - osctrl-cli-linux-arm64
+
+nfpms:
+  - id: osctrl-tls
+    maintainer: jmpsec/osctrl
+    description: osctrl TLS component
+    homepage: https://github.com/jmpsec/osctrl
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: osctrl-tls-linux-amd64
+        dst: /usr/bin/osctrl-tls
+      - src: osctrl-tls-linux-arm64
+        dst: /usr/bin/osctrl-tls
+    overrides:
+      deb:
+        scripts:
+          postinstall: deploy/cicd/deb/post-install.sh
+          preremove: deploy/cicd/deb/pre-remove.sh
+
+  - id: osctrl-admin
+    maintainer: jmpsec/osctrl
+    description: osctrl Admin component
+    homepage: https://github.com/jmpsec/osctrl
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: osctrl-admin-linux-amd64
+        dst: /usr/bin/osctrl-admin
+      - src: osctrl-admin-linux-arm64
+        dst: /usr/bin/osctrl-admin
+    overrides:
+      deb:
+        scripts:
+          postinstall: deploy/cicd/deb/post-install.sh
+          preremove: deploy/cicd/deb/pre-remove.sh
+
+  - id: osctrl-api
+    maintainer: jmpsec/osctrl
+    description: osctrl API component
+    homepage: https://github.com/jmpsec/osctrl
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: osctrl-api-linux-amd64
+        dst: /usr/bin/osctrl-api
+      - src: osctrl-api-linux-arm64
+        dst: /usr/bin/osctrl-api
+    overrides:
+      deb:
+        scripts:
+          postinstall: deploy/cicd/deb/post-install.sh
+          preremove: deploy/cicd/deb/pre-remove.sh
+
+  - id: osctrl-cli
+    maintainer: jmpsec/osctrl
+    description: osctrl CLI component
+    homepage: https://github.com/jmpsec/osctrl
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: osctrl-cli-linux-amd64
+        dst: /usr/bin/osctrl-cli
+      - src: osctrl-cli-linux-arm64
+        dst: /usr/bin/osctrl-cli
+    overrides:
+      deb:
+        scripts:
+          postinstall: deploy/cicd/deb/post-install.sh
+          preremove: deploy/cicd/deb/pre-remove.sh
+
+release:
+  draft: false
+  prerelease: false

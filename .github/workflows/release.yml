@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  GOLANG_VERSION: 1.24.3
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@8e57b58e57be52ac95949151e2777ffda8501267 # v5.5.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@af1b253b8dc984466d22633f04ef341c1520ed2f # v3.11.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5.0.0
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HUB_ORG: ${{ secrets.DOCKER_HUB_ORG }}
+
+  # Optional: Sign Docker images with cosign
+  sign:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.9.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Sign Docker images
+        run: |
+          for component in tls admin api cli; do
+            cosign sign --yes docker.io/${{ secrets.DOCKER_HUB_ORG }}/osctrl-$component:${{ github.ref_name }}
+            cosign verify \
+              --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
+              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+              docker.io/${{ secrets.DOCKER_HUB_ORG }}/osctrl-$component:${{ github.ref_name }}
+          done
