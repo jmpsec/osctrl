@@ -55,7 +55,7 @@ runs:
         package: osctrl-${{ inputs.osctrl_component }}
         package_root: ".debpkg-osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}"
         maintainer: jmpsec/osctrl
-        version: ${{ github.ref }} # refs/tags/v*.*.*
+        version: ${{ inputs.release_version_tag }}
         arch: ${{ inputs.go_arch }}
         desc: "DEB package for osctrl-${OSCTRL_COMPONENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
 
@@ -71,11 +71,21 @@ runs:
         desc: "DEB package for osctrl-${OSCTRL_COMPONENT}-${OSCTRL_VERSION} Commit SHA: ${COMMIT_SHA}"
 
     ########################### Upload DEBs ###########################
+    - name: Debug DEB package creation
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "DEB package file name: ${{ steps.create_deb_tagged_pkgs.outputs.file_name }}"
+        echo "Release version tag: ${{ inputs.release_version_tag }}"
+        echo "Component: ${{ inputs.osctrl_component }}"
+        echo "Arch: ${{ inputs.go_arch }}"
+        ls -la *.deb || echo "No DEB files found"
+      shell: bash
+
     - name: Upload osctrl DEBs for tagged version
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}-${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
+        name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}_${{ inputs.go_arch }}.deb
         path: ${{ steps.create_deb_tagged_pkgs.outputs.file_name }}
         retention-days: 10
 
