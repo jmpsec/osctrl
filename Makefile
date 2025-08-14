@@ -83,7 +83,7 @@ clean:
 	rm -rf $(OUTPUT)/$(ADMIN_NAME)
 	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
-	clean-dist
+	make clean-dist
 
 # Dekete all dependencies go.sum files
 clean_go:
@@ -271,7 +271,7 @@ test_cover:
 
 # Build snapshot binaries with GoReleaser
 release-build:
-	clean-dist
+	make clean-dist
 	./tools/gorelease.sh build
 
 # Check GoReleaser configuration
@@ -284,7 +284,7 @@ release-init:
 
 # Create a release (requires tag)
 release:
-	clean-dist
+	make clean-dist
 	./tools/gorelease.sh release
 
 # Build and test release locally

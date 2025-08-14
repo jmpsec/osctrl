@@ -3,6 +3,8 @@
 
 version: 2
 
+dist: "./dist"
+
 before:
   hooks:
     - go mod tidy
@@ -11,19 +13,16 @@ before:
 builds:
   - id: osctrl-tls
     main: ./cmd/tls
-    binary: osctrl-tls
+    binary: "osctrl-tls-{{ .Os }}-{{ .Arch }}"
+    no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -32,19 +31,16 @@ builds:
 
   - id: osctrl-admin
     main: ./cmd/admin
-    binary: osctrl-admin
+    binary: "osctrl-admin-{{ .Os }}-{{ .Arch }}"
+    no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -53,19 +49,16 @@ builds:
 
   - id: osctrl-api
     main: ./cmd/api
-    binary: osctrl-api
+    binary: "osctrl-api-{{ .Os }}-{{ .Arch }}"
+    no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -74,7 +67,8 @@ builds:
 
   - id: osctrl-cli
     main: ./cmd/cli
-    binary: osctrl-cli
+    binary: "osctrl-cli-{{ .Os }}-{{ .Arch }}"
+    no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     goos:
