@@ -1,5 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Helper script to use GoReleaser for building and releasing osctrl
+#
+# Usage: ./gorelease.sh [-h|--help|help] [COMMAND]
 
+# Stop script on error
 set -e
 
 # Colors for output
@@ -66,7 +71,7 @@ show_usage() {
 # Function to build snapshot
 build_snapshot() {
     print_status "Building snapshot binaries..."
-    goreleaser build --snapshot --clean --rm-dist
+    goreleaser build --snapshot --clean
     print_status "Build completed! Check the dist/ directory."
 }
 
@@ -109,7 +114,7 @@ create_release() {
     fi
 
     # Create release
-    goreleaser release --clean --rm-dist
+    goreleaser release --clean
     print_status "Release created successfully!"
 }
 

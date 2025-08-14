@@ -21,10 +21,11 @@ CLI_CODE = ${CLI_DIR:=/*.go}
 DEST ?= /opt/osctrl
 
 OUTPUT = bin
+DIST = dist
 
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
 
-.PHONY: build static clean tls admin cli api release release-build release-check release-init
+.PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist
 
 # Build code according to caller OS and architecture
 build:
@@ -72,12 +73,17 @@ cli:
 cli-static:
 	go build $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
 
+# Clean the dist directory
+clean-dist:
+	rm -rf $(DIST)
+
 # Delete all compiled binaries
 clean:
 	rm -rf $(OUTPUT)/$(TLS_NAME)
 	rm -rf $(OUTPUT)/$(ADMIN_NAME)
 	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
+	clean-dist
 
 # Dekete all dependencies go.sum files
 clean_go:
@@ -265,6 +271,7 @@ test_cover:
 
 # Build snapshot binaries with GoReleaser
 release-build:
+	clean-dist
 	./tools/gorelease.sh build
 
 # Check GoReleaser configuration
@@ -277,11 +284,12 @@ release-init:
 
 # Create a release (requires tag)
 release:
+	clean-dist
 	./tools/gorelease.sh release
 
 # Build and test release locally
 release-test:
-	./tools/gorelease.sh build
+	release-build
 	@echo "Testing built binaries..."
 	@for binary in dist/*/osctrl-*; do \
 		if [ -f "$$binary" ] && [ -x "$$binary" ]; then \
