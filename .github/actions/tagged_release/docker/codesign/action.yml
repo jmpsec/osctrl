@@ -1,5 +1,5 @@
-name: "Sign Osctrl Docker images"
-description: "Sign Osctrl Docker images"
+name: "Sign osctrl Docker images"
+description: "Sign osctrl Docker images"
 inputs:
   osctrl_component:
     required: true
