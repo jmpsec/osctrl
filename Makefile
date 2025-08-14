@@ -24,6 +24,7 @@ OUTPUT = bin
 DIST = dist
 
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
+BUILD_ARGS = -ldflags "-X 'main.buildCommit=$(shell git rev-parse HEAD)' -X 'main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)'"
 
 .PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist
 
@@ -43,11 +44,11 @@ static:
 
 # Build TLS endpoint
 tls:
-	go build -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
+	go build $(BUILD_ARGS) -o $(OUTPUT)/$(TLS_NAME) $(TLS_CODE)
 
 # Build TLS endpoint statically
 tls-static:
-	go build $(STATIC_ARGS) -o $(OUTPUT)/$(TLS_NAME) -a $(TLS_CODE)
+	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(TLS_NAME) -a $(TLS_CODE)
 
 # Build Admin UI
 admin:
@@ -289,9 +290,9 @@ release:
 
 # Build and test release locally
 release-test:
-	release-build
+	make release-build
 	@echo "Testing built binaries..."
-	@for binary in dist/*/osctrl-*; do \
+	@for binary in dist/osctrl-*; do \
 		if [ -f "$$binary" ] && [ -x "$$binary" ]; then \
 			echo "Testing $$binary"; \
 			$$binary --version || $$binary version || echo "No version flag available"; \

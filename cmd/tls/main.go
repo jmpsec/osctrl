@@ -53,6 +53,13 @@ const (
 	defaultOnelinerExpiration bool = true
 )
 
+// Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
+var (
+	buildVersion = serviceVersion
+	buildCommit  = "unknown"
+	buildDate    = "unknown"
+)
+
 // Global variables
 var (
 	err         error
@@ -118,13 +125,13 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	}
 	// Check if values are valid
 	if !validAuth[cfg.Auth] {
-		return cfg, fmt.Errorf("Invalid auth method")
+		return cfg, fmt.Errorf("invalid auth method")
 	}
 	if !validLogging[cfg.Logger] {
-		return cfg, fmt.Errorf("Invalid logging method")
+		return cfg, fmt.Errorf("invalid logging method")
 	}
 	if !validCarver[cfg.Carver] {
-		return cfg, fmt.Errorf("Invalid carver method")
+		return cfg, fmt.Errorf("invalid carver method")
 	}
 	// No errors!
 	return cfg, nil
@@ -345,21 +352,21 @@ func cliAction(c *cli.Context) error {
 	if flagParams.ConfigFlag {
 		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
 		if err != nil {
-			return fmt.Errorf("Error loading %s - %w", flagParams.ServiceConfigFile, err)
+			return fmt.Errorf("error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
 	}
 	// Load db configuration if external JSON config file is used
 	if flagParams.DBFlag {
 		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load DB configuration - %w", err)
+			return fmt.Errorf("failed to load DB configuration - %w", err)
 		}
 	}
 	// Load redis configuration if external JSON config file is used
 	if flagParams.RedisFlag {
 		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
 		if err != nil {
-			return fmt.Errorf("Failed to load redis configuration - %w", err)
+			return fmt.Errorf("failed to load redis configuration - %w", err)
 		}
 	}
 	// Load carver configuration if external JSON config file is used
@@ -370,7 +377,7 @@ func cliAction(c *cli.Context) error {
 			carvers3, err = carves.CreateCarverS3File(flagParams.CarverConfigFile)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to initiate s3 carver - %w", err)
+			return fmt.Errorf("failed to initiate s3 carver - %w", err)
 		}
 	}
 	return nil
@@ -409,10 +416,22 @@ func main() {
 	app = cli.NewApp()
 	app.Name = serviceName
 	app.Usage = appDescription
-	app.Version = serviceVersion
+	app.Version = buildVersion
 	app.Description = appDescription
 	app.Flags = flags
-	// Define this command for help to exit when help flag is passed
+
+	// Customize version output (supports `--version` and `version` command)
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
+	}
+	// Add -v alias to the global --version flag
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"v"},
+		Usage:   "Print version information",
+	}
+
+	// Define commands
 	app.Commands = []*cli.Command{
 		{
 			Name: "help",
@@ -422,13 +441,19 @@ func main() {
 			},
 		},
 	}
-	app.Action = cliAction
+	// Start service only for default action; version/help won't trigger this
+	app.Action = func(c *cli.Context) error {
+		if err := cliAction(c); err != nil {
+			return err
+		}
+		// Initialize service logger
+		initializeLoggers(flagParams.ConfigValues)
+		// Service starts!
+		osctrlService()
+		return nil
+	}
 	if err := app.Run(os.Args); err != nil {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-	// Initialize service logger
-	initializeLoggers(flagParams.ConfigValues)
-	// Service starts!
-	osctrlService()
 }
