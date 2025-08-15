@@ -656,7 +656,7 @@ func main() {
 	app = cli.NewApp()
 	app.Name = serviceName
 	app.Usage = appDescription
-	app.Version = serviceVersion
+	app.Version = buildVersion
 	app.Description = appDescription
 	app.Flags = flags
 	// Customize version output (supports `--version` and `version` command)
