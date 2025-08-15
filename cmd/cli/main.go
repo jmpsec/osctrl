@@ -35,6 +35,13 @@ const (
 	defaultApiConfigFile = projectName + "-api.json"
 )
 
+// Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
+var (
+	buildVersion = appVersion
+	buildCommit  = "unknown"
+	buildDate    = "unknown"
+)
+
 const (
 	// Values for output format
 	jsonFormat   = "json"
@@ -1875,9 +1882,19 @@ func main() {
 	app = cli.NewApp()
 	app.Name = appName
 	app.Usage = appUsage
-	app.Version = appVersion
+	app.Version = buildVersion
 	app.Description = appDescription
 	app.Flags = flags
+	// Customize version output (supports `--version` and `version` command)
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Printf("%s version=%s commit=%s date=%s\n", appName, buildVersion, buildCommit, buildDate)
+	}
+	// Add -v alias to the global --version flag
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"v"},
+		Usage:   "Print version information",
+	}
 	app.Commands = commands
 	app.Action = cliAction
 	if err := app.Run(os.Args); err != nil {
