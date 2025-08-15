@@ -52,11 +52,11 @@ tls-static:
 
 # Build Admin UI
 admin:
-	go build -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
+	go build $(BUILD_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
 
 # Build Admin UI statically
 admin-static:
-	go build $(STATIC_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) -a $(ADMIN_CODE)
+	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) -a $(ADMIN_CODE)
 
 # Build API
 api:
