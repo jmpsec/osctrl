@@ -60,19 +60,19 @@ admin-static:
 
 # Build API
 api:
-	go build -o $(OUTPUT)/$(API_NAME) $(API_CODE)
+	go build $(BUILD_ARGS) -o $(OUTPUT)/$(API_NAME) $(API_CODE)
 
 # Build API statically
 api-static:
-	go build $(STATIC_ARGS) -o $(OUTPUT)/$(API_NAME) -a $(API_CODE)
+	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(API_NAME) -a $(API_CODE)
 
 # Build the CLI
 cli:
-	go build -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
+	go build $(BUILD_ARGS) -o $(OUTPUT)/$(CLI_NAME) $(CLI_CODE)
 
 # Build the CLI statically
 cli-static:
-	go build $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
+	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
 
 # Clean the dist directory
 clean-dist:
@@ -292,7 +292,7 @@ release:
 release-test:
 	make release-build
 	@echo "Testing built binaries..."
-	@for binary in dist/osctrl-*; do \
+	@for binary in $(DIST)/osctrl-*; do \
 		if [ -f "$$binary" ] && [ -x "$$binary" ]; then \
 			echo "Testing $$binary"; \
 			$$binary --version || $$binary version || echo "No version flag available"; \
