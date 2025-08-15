@@ -419,7 +419,6 @@ func main() {
 	app.Version = buildVersion
 	app.Description = appDescription
 	app.Flags = flags
-
 	// Customize version output (supports `--version` and `version` command)
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
@@ -430,7 +429,6 @@ func main() {
 		Aliases: []string{"v"},
 		Usage:   "Print version information",
 	}
-
 	// Define commands
 	app.Commands = []*cli.Command{
 		{

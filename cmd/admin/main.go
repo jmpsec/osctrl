@@ -73,6 +73,13 @@ const (
 	defaultInactive int = 72
 )
 
+// Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
+var (
+	buildVersion = serviceVersion
+	buildCommit  = "unknown"
+	buildDate    = "unknown"
+)
+
 // Global general variables
 var (
 	err         error
@@ -652,6 +659,16 @@ func main() {
 	app.Version = serviceVersion
 	app.Description = appDescription
 	app.Flags = flags
+	// Customize version output (supports `--version` and `version` command)
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
+	}
+	// Add -v alias to the global --version flag
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"v"},
+		Usage:   "Print version information",
+	}
 	// Define this command for help to exit when help flag is passed
 	app.Commands = []*cli.Command{
 		{
@@ -662,13 +679,19 @@ func main() {
 			},
 		},
 	}
-	app.Action = cliAction
+	// Start service only for default action; version/help won't trigger this
+	app.Action = func(c *cli.Context) error {
+		if err := cliAction(c); err != nil {
+			return err
+		}
+		// Initialize service logger
+		initializeLoggers(flagParams.ConfigValues)
+		// Service starts!
+		osctrlAdminService()
+		return nil
+	}
 	if err := app.Run(os.Args); err != nil {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
-	// Initialize service logger
-	initializeLoggers(flagParams.ConfigValues)
-	// Service starts!
-	osctrlAdminService()
 }
