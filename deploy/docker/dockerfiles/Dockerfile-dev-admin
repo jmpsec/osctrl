@@ -29,7 +29,6 @@ RUN mkdir -p /opt/osctrl/carved_files
 COPY cmd/admin/templates/ /opt/osctrl/tmpl_admin
 COPY cmd/admin/static/ /opt/osctrl/static
 COPY deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
-RUN go build -o /opt/osctrl/bin/osctrl-admin cmd/admin/*.go
 
 EXPOSE 9001
 ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-admin.toml"]

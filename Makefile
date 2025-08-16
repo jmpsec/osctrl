@@ -24,7 +24,7 @@ OUTPUT = bin
 DIST = dist
 
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
-BUILD_ARGS = -ldflags "-X 'main.buildCommit=$(shell git rev-parse HEAD)' -X 'main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)'"
+BUILD_ARGS = -ldflags "-s -w -X main.buildCommit=$(shell git rev-parse HEAD) -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 .PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist
 

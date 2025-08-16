@@ -22,7 +22,7 @@ RUN go mod verify
 ### Copy osctrl-api bin and configs ###
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
-RUN go build -o /opt/osctrl/bin/osctrl-cli cmd/cli/*.go
+RUN go build -ldflags "-s -w -X main.buildCommit=$(git rev-parse HEAD) -X main.buildCommit=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o /opt/osctrl/bin/osctrl-cli cmd/cli/*.go
 
 #### User and env init script ####
 COPY deploy/docker/conf/cli/entrypoint.sh /opt/osctrl/script/init.sh
