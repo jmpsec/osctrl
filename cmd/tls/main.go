@@ -35,8 +35,6 @@ const (
 	projectName string = "osctrl"
 	// Service name
 	serviceName string = projectName + "-" + config.ServiceTLS
-	// Service version
-	serviceVersion string = version.OsctrlVersion
 	// Service description
 	serviceDescription string = "TLS service for osctrl"
 	// Application description
@@ -55,7 +53,7 @@ const (
 
 // Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
 var (
-	buildVersion = serviceVersion
+	buildVersion = version.OsctrlVersion
 	buildCommit  = "unknown"
 	buildDate    = "unknown"
 )
@@ -334,12 +332,14 @@ func osctrlService() {
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}
-		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, serviceVersion, serviceListener)
+		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, buildVersion, serviceListener)
+		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
 		if err := srv.ListenAndServeTLS(flagParams.TLSCertFile, flagParams.TLSKeyFile); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
 	} else {
-		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, serviceVersion, serviceListener)
+		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, buildVersion, serviceListener)
+		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
 		if err := http.ListenAndServe(serviceListener, muxTLS); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
