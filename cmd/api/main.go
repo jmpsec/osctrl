@@ -383,7 +383,7 @@ func osctrlAPIService() {
 		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, buildVersion, serviceListener)
 		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
 		if err := http.ListenAndServe(serviceListener, muxAPI); err != nil {
-			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	}
 }
