@@ -13,6 +13,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -36,13 +37,15 @@ var validTarget = map[string]bool{
 
 // TemplateMetadata - Helper to prepare template metadata
 // TODO until a better implementation, all users are admin
-func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, version string) TemplateMetadata {
+func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, metadata types.BuildMetadata) TemplateMetadata {
 	return TemplateMetadata{
 		Username:  ctx[sessions.CtxUser],
 		Level:     "admin",
 		CSRFToken: ctx[sessions.CtxCSRF],
 		Service:   "osctrl-admin",
-		Version:   version,
+		Version:   metadata.Version,
+		Commit:    metadata.Commit,
+		BuildDate: metadata.Date,
 	}
 }
 
@@ -147,7 +150,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env.Name,
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Selector:     "environment",
 		SelectorName: env.Name,
 		Target:       target,
@@ -222,7 +225,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + platform,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Selector:     "platform",
 		SelectorName: platform,
 		Target:       target,
@@ -303,7 +306,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
@@ -365,7 +368,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	templateData := QueryTableTemplateData{
 		Title:        "All on-demand queries",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
@@ -424,7 +427,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	templateData := SavedQueriesTemplateData{
 		Title:        "Saved queries in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "saved",
@@ -496,7 +499,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	templateData := CarvesRunTemplateData{
 		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
@@ -558,7 +561,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	templateData := CarvesTableTemplateData{
 		Title:        "Carved files in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
@@ -645,7 +648,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	templateData := QueryLogsTemplateData{
 		Title:         "Query logs " + query.Name,
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
 		LeftMetadata:  leftMetadata,
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
@@ -750,7 +753,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		LeftMetadata: leftMetadata,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -812,7 +815,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:        env.Name + " Configuration",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environment:  env,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -874,7 +877,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell((env.Certificate != ""), env)
 	templateData := EnrollTemplateData{
 		Title:                 env.Name + " Enroll",
-		Metadata:              h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:              h.TemplateMetadata(ctx, h.ServiceMetadata),
 		EnvName:               env.Name,
 		EnvUUID:               env.UUID,
 		OnelinerExpiration:    h.Settings.OnelinerExpiration(settings.NoEnvironmentID),
@@ -1079,7 +1082,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := NodeTemplateData{
 		Title:         "Node View " + node.Hostname,
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
 		LeftMetadata:  leftMetadata,
 		Node:          node,
 		NodeTags:      nodeTags,
@@ -1132,7 +1135,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := EnvironmentsTemplateData{
 		Title:        "Manage environments",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 	}
@@ -1199,7 +1202,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
-		Metadata:        h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:        h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Service:         serviceVar,
 		Environments:    h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:       platforms,
@@ -1264,7 +1267,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:        "Manage users",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		SystemUsers:  systemUsers,
@@ -1324,7 +1327,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare template data
 	templateData := TagsTemplateData{
 		Title:        "Manage tags",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Tags:         tags,
@@ -1380,7 +1383,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	// Prepare template data
 	templateData := ProfileTemplateData{
 		Title:        "Edit " + user.Username + " profile",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		CurrentUser:  user,
@@ -1436,7 +1439,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	// Prepare template data
 	templateData := DashboardTemplateData{
 		Title:        "Dashboard for " + user.Username,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceVersion),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		CurrentUser:  user,

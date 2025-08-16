@@ -24,6 +24,8 @@ type TemplateMetadata struct {
 	Level     string
 	Service   string
 	Version   string
+	Commit    string
+	BuildDate string
 	CSRFToken string
 }
 

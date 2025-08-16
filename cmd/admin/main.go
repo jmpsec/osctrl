@@ -302,7 +302,11 @@ func osctrlAdminService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithCache(redis),
 		handlers.WithSessions(sessionsmgr),
-		handlers.WithVersion(buildVersion),
+		handlers.WithMetadata(types.BuildMetadata{
+			Version: buildVersion,
+			Commit:  buildCommit,
+			Date:    buildDate,
+		}),
 		handlers.WithOsqueryVersion(flagParams.OsqueryVersion),
 		handlers.WithTemplates(flagParams.TemplatesDir),
 		handlers.WithStaticLocation(flagParams.StaticOffline),

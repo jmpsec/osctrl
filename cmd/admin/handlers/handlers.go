@@ -35,7 +35,7 @@ type HandlersAdmin struct {
 	Settings        *settings.Settings
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
-	ServiceVersion  string
+	ServiceMetadata types.BuildMetadata
 	OsqueryVersion  string
 	TemplatesFolder string
 	StaticLocation  string
@@ -115,9 +115,9 @@ func WithSessions(sessions *sessions.SessionManager) HandlersOption {
 	}
 }
 
-func WithVersion(version string) HandlersOption {
+func WithMetadata(metadata types.BuildMetadata) HandlersOption {
 	return func(h *HandlersAdmin) {
-		h.ServiceVersion = version
+		h.ServiceMetadata = metadata
 	}
 }
 

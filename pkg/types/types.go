@@ -8,6 +8,13 @@ type OsqueryTable struct {
 	Filter    string
 }
 
+// BuildMetadata to show build metadata
+type BuildMetadata struct {
+	Version string
+	Commit  string
+	Date    string
+}
+
 // FlagsRequest to retrieve flags
 type FlagsRequest struct {
 	Secret     string `json:"secret"`
