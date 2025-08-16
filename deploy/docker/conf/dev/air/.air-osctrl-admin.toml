@@ -8,7 +8,7 @@ tmp_dir = "/tmp"
 [build]
   bin = "./bin/osctrl-admin"
   pre_cmd = ["cp -R /usr/src/app/cmd/admin/templates/ /opt/osctrl/tmpl_admin", "cp -R /usr/src/app/cmd/admin/static/ /opt/osctrl/static"]
-  cmd = "go build -ldflags \"-s -w -X main.buildCommit=$(git rev-parse HEAD) -X main.buildCommit=$(date -u +%Y-%m-%dT%H:%M:%SZ)\" -o /opt/osctrl/bin/osctrl-admin /usr/src/app/cmd/admin/*.go"
+  cmd = "go build -ldflags \"-s -w -X main.buildCommit=$(git rev-parse HEAD) -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)\" -o /opt/osctrl/bin/osctrl-admin /usr/src/app/cmd/admin/*.go"
   # It's not necessary to trigger build each time file changes if it's too frequent.
   delay = 1000
   exclude_dir = ["tmp", "vendor", "testdata", "deploy", "api", "cli", "tls"]
