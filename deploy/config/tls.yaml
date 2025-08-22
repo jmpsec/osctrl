@@ -1,0 +1,65 @@
+# YAML configuration for osctrl-tls
+
+service:
+  listener: "_LISTENER"
+  port: 1234
+  # Valid values: "debug", "info", "warn", "error"
+  logLevel: "info"
+  # Valid values: "json", "console"
+  logFormat: "json"
+  host: "_SERVICE_HOST"
+  # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
+  auth: "_SERVICE_AUTH"
+
+db:
+  host: "_DB_HOST"
+  port: 5432
+  name: "_DB_NAME"
+  username: "_DB_USERNAME"
+  password: "_DB_PASSWORD"
+  sslmode: "disable"
+  maxIdleConns: 20
+  maxOpenConns: 100
+  connMaxLifetime: 30
+  connRetry: 10
+
+batchWriter:
+  writerBatchSize: 50
+  writerTimeout: 60
+  writerBufferSize: 2000
+
+redis:
+  host: "_REDIS_HOST"
+  port: 6379
+  password: "_REDIS_PASSWORD"
+  connectionString: ""
+  db: 0
+  connRetry: 10
+
+metrics:
+  enabled: false
+  listener: "0.0.0.0"
+  port: 9090
+
+osctrld:
+  enabled: false
+
+tls:
+  termination: false
+  certificateFile: ""
+  keyFile: ""
+
+logger:
+  # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
+  type: "_SERVICE_LOGGING"
+  loggerDBSame: false
+  alwaysLog: false
+
+carver:
+  # Valid values: "none", "local", "db", "s3"
+  type: "_SERVICE_CARVER"
+
+debug:
+  enableHttp: false
+  httpFile: "debug-http-tls.log"
+  showBody: false
