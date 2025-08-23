@@ -40,6 +40,10 @@ func handlerAuthCheck(h http.Handler, auth string) http.Handler {
 		case config.AuthSAML:
 			samlSession, err := samlMiddleware.Session.GetSession(r)
 			if err != nil {
+				if samlConfig.SPInitiated {
+					samlMiddleware.HandleStartAuthFlow(w, r)
+					return
+				}
 				http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 				return
 			}
@@ -89,6 +93,10 @@ func handlerAuthCheck(h http.Handler, auth string) http.Handler {
 				session, err = sessionsmgr.Save(r, w, u)
 				if err != nil {
 					log.Err(err).Msgf("session error")
+					if samlConfig.SPInitiated {
+						samlMiddleware.HandleStartAuthFlow(w, r)
+						return
+					}
 					http.Redirect(w, r, samlConfig.LoginURL, http.StatusFound)
 					return
 				}
@@ -103,7 +111,7 @@ func handlerAuthCheck(h http.Handler, auth string) http.Handler {
 			if err != nil {
 				log.Err(err).Msgf("error updating metadata for user %s", session.Username)
 			}
-			// Access granted
+			// Access granted, use SAML middleware to set context
 			samlMiddleware.RequireAccount(h).ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
