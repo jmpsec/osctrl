@@ -38,20 +38,6 @@ type JSONConfigurationDB struct {
 	ConnRetry       int    `json:"connRetry"`
 }
 
-// YAMLConfigurationDB to hold all backend configuration values
-type YAMLConfigurationDB struct {
-	Host            string `yaml:"host"`
-	Port            string `yaml:"port"`
-	Name            string `yaml:"name"`
-	Username        string `yaml:"username"`
-	Password        string `yaml:"password"`
-	SSLMode         string `yaml:"sslmode"`
-	MaxIdleConns    int    `yaml:"maxIdleConns"`
-	MaxOpenConns    int    `yaml:"maxOpenConns"`
-	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
-	ConnRetry       int    `yaml:"connRetry"`
-}
-
 // LoadConfiguration to load the DB configuration file and assign to variables
 func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
 	var config JSONConfigurationDB

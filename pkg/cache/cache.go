@@ -29,16 +29,6 @@ type JSONConfigurationRedis struct {
 	ConnRetry        int    `json:"connRetry"`
 }
 
-// YAMLConfigurationRedis to hold all redis configuration values
-type YAMLConfigurationRedis struct {
-	Host             string `yaml:"host"`
-	Port             string `yaml:"port"`
-	Password         string `yaml:"password"`
-	ConnectionString string `yaml:"connectionString"`
-	DB               int    `yaml:"db"`
-	ConnRetry        int    `yaml:"connRetry"`
-}
-
 // LoadConfiguration to load the redis configuration file and assign to variables
 func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
 	var config JSONConfigurationRedis

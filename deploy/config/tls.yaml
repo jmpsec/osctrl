@@ -1,22 +1,22 @@
 # YAML configuration for osctrl-tls
 
 service:
-  listener: "_LISTENER"
+  listener: "127.0.0.1"
   port: 1234
   # Valid values: "debug", "info", "warn", "error"
   logLevel: "info"
   # Valid values: "json", "console"
   logFormat: "json"
-  host: "_SERVICE_HOST"
+  host: "osctrl-tls-dev"
   # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
-  auth: "_SERVICE_AUTH"
+  auth: "none"
 
 db:
-  host: "_DB_HOST"
+  host: "127.0.0.1"
   port: 5432
-  name: "_DB_NAME"
-  username: "_DB_USERNAME"
-  password: "_DB_PASSWORD"
+  name: "osctrl"
+  username: "osctrl-db-user"
+  password: "osctrl-db-pass"
   sslmode: "disable"
   maxIdleConns: 20
   maxOpenConns: 100
@@ -29,9 +29,9 @@ batchWriter:
   writerBufferSize: 2000
 
 redis:
-  host: "_REDIS_HOST"
+  host: "127.0.0.1"
   port: 6379
-  password: "_REDIS_PASSWORD"
+  password: "osctrl-redis-pass"
   connectionString: ""
   db: 0
   connRetry: 10
@@ -46,18 +46,20 @@ osctrld:
 
 tls:
   termination: false
-  certificateFile: ""
-  keyFile: ""
+  certificateFile: "/path/to/osctrl.pem"
+  keyFile: "/path/to/osctrl.key"
 
 logger:
   # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
-  type: "_SERVICE_LOGGING"
+  type: "db"
   loggerDBSame: false
   alwaysLog: false
 
+
+
 carver:
   # Valid values: "none", "local", "db", "s3"
-  type: "_SERVICE_CARVER"
+  type: "db"
 
 debug:
   enableHttp: false
