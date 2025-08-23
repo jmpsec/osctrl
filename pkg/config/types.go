@@ -2,9 +2,6 @@ package config
 
 import (
 	"time"
-
-	"github.com/jmpsec/osctrl/pkg/backend"
-	"github.com/jmpsec/osctrl/pkg/cache"
 )
 
 // Types of services
@@ -76,16 +73,16 @@ type JSONConfigurationService struct {
 
 // YAMLConfigurationTLS to hold osctrl-tls configuration values
 type TLSConfiguration struct {
-	Service     YAMLConfigurationService     `mapstructure:"service"`
-	DB          backend.YAMLConfigurationDB  `mapstructure:"db"`
-	BatchWriter YAMLConfigurationWriter      `mapstructure:"batchWriter"`
-	Redis       cache.YAMLConfigurationRedis `mapstructure:"redis"`
-	Metrics     YAMLConfigurationMetrics     `mapstructure:"metrics"`
-	Osctrld     YAMLConfigurationOsctrld     `mapstructure:"osctrld"`
-	TLS         YAMLConfigurationTLS         `mapstructure:"tls"`
-	Logger      YAMLConfigurationLogger      `mapstructure:"logger"`
-	Carver      YAMLConfigurationCarver      `mapstructure:"carver"`
-	Debug       YAMLConfigurationDebug       `mapstructure:"debug"`
+	Service     YAMLConfigurationService `mapstructure:"service"`
+	DB          YAMLConfigurationDB      `mapstructure:"db"`
+	BatchWriter YAMLConfigurationWriter  `mapstructure:"batchWriter"`
+	Redis       YAMLConfigurationRedis   `mapstructure:"redis"`
+	Metrics     YAMLConfigurationMetrics `mapstructure:"metrics"`
+	Osctrld     YAMLConfigurationOsctrld `mapstructure:"osctrld"`
+	TLS         YAMLConfigurationTLS     `mapstructure:"tls"`
+	Logger      YAMLConfigurationLogger  `mapstructure:"logger"`
+	Carver      YAMLConfigurationCarver  `mapstructure:"carver"`
+	Debug       YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
 // YAMLConfigurationService to hold the service configuration values
@@ -96,6 +93,30 @@ type YAMLConfigurationService struct {
 	LogFormat string `yaml:"logFormat"`
 	Host      string `yaml:"host"`
 	Auth      string `yaml:"auth"`
+}
+
+// YAMLConfigurationDB to hold all backend configuration values
+type YAMLConfigurationDB struct {
+	Host            string `yaml:"host"`
+	Port            string `yaml:"port"`
+	Name            string `yaml:"name"`
+	Username        string `yaml:"username"`
+	Password        string `yaml:"password"`
+	SSLMode         string `yaml:"sslmode"`
+	MaxIdleConns    int    `yaml:"maxIdleConns"`
+	MaxOpenConns    int    `yaml:"maxOpenConns"`
+	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
+	ConnRetry       int    `yaml:"connRetry"`
+}
+
+// YAMLConfigurationRedis to hold all redis configuration values
+type YAMLConfigurationRedis struct {
+	Host             string `yaml:"host"`
+	Port             string `yaml:"port"`
+	Password         string `yaml:"password"`
+	ConnectionString string `yaml:"connectionString"`
+	DB               int    `yaml:"db"`
+	ConnRetry        int    `yaml:"connRetry"`
 }
 
 // YAMLConfigurationMetrics to hold the metrics configuration values
