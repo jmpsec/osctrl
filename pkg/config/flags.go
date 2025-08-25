@@ -12,9 +12,9 @@ import (
 // Default values
 const (
 	// Default timeout to attempt backend reconnect
-	defaultBackendRetryTimeout int = 7
+	defaultBackendRetryTimeout int = 10
 	// Default timeout to attempt redis reconnect
-	defaultRedisRetryTimeout int = 7
+	defaultRedisRetryTimeout int = 10
 )
 
 // osquery
