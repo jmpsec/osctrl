@@ -24,6 +24,7 @@ type JSONConfigurationSAML struct {
 	LoginURL     string `json:"loginurl"`
 	LogoutURL    string `json:"logouturl"`
 	JITProvision bool   `json:"jitprovision"`
+	SPInitiated  bool   `json:"spinitiated"`
 }
 
 // Structure to keep all SAML related data
