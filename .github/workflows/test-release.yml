@@ -1,4 +1,4 @@
-name: Test Release
+name: Test a new release with GoReleaser
 
 on:
   push:
