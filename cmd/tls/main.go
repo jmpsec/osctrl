@@ -106,7 +106,7 @@ var validCarver = map[string]bool{
 }
 
 // Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
+func loadJSONConfiguration(file, service string) (config.JSONConfigurationService, error) {
 	var cfg config.JSONConfigurationService
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -130,6 +130,19 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	}
 	if !validCarver[cfg.Carver] {
 		return cfg, fmt.Errorf("invalid carver method")
+	}
+	// No errors!
+	return cfg, nil
+}
+
+// Function to load the configuration from a single YAML file
+func loadConfigurationYAML(file string) (config.YAMLConfigurationService, error) {
+	var cfg config.YAMLConfigurationService
+	// Load file and read config
+	viper.SetConfigFile(file)
+	viper.SetConfigType("yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		return cfg, err
 	}
 	// No errors!
 	return cfg, nil
@@ -350,7 +363,7 @@ func osctrlService() {
 func cliAction(c *cli.Context) error {
 	// Load configuration if external JSON config file is used
 	if flagParams.ConfigFlag {
-		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
+		flagParams.ConfigValues, err = loadJSONConfiguration(flagParams.ServiceConfigFile, config.ServiceTLS)
 		if err != nil {
 			return fmt.Errorf("error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
