@@ -71,7 +71,7 @@ type JSONConfigurationService struct {
 	SessionKey      string `json:"sessionKey"`
 }
 
-// YAMLConfigurationTLS to hold osctrl-tls configuration values
+// TLSConfiguration to hold osctrl-tls configuration values
 type TLSConfiguration struct {
 	Service     YAMLConfigurationService `mapstructure:"service"`
 	DB          YAMLConfigurationDB      `mapstructure:"db"`
@@ -190,6 +190,7 @@ type YAMLConfigurationSAML struct {
 	LoginURL     string `yaml:"loginurl"`
 	LogoutURL    string `yaml:"logouturl"`
 	JITProvision bool   `yaml:"jitprovision"`
+	SPInitiated  bool   `yaml:"spinitiated"`
 }
 
 // S3Configuration to hold all S3 configuration values

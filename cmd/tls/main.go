@@ -144,7 +144,8 @@ func loadConfigurationYAML(file string) (config.YAMLConfigurationService, error)
 	if err := viper.ReadInConfig(); err != nil {
 		return cfg, err
 	}
-	return cfg, fmt.Errorf("YAML configuration loading not implemented yet")
+	// No errors!
+	return cfg, nil
 }
 
 // Initialization code
