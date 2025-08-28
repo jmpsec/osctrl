@@ -247,6 +247,10 @@ docker_dev_rebuild_tls:
 docker_dev_rebuild_admin:
 	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(ADMIN_NAME)
 
+# Rebuild only the CLI
+docker_dev_rebuild_cli:
+	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(CLI_NAME)
+
 # Rebuild only the API server
 docker_dev_rebuild_api:
 	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
