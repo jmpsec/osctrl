@@ -67,7 +67,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Get permissions
@@ -100,7 +100,7 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract id to download

@@ -64,7 +64,7 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract target
@@ -121,7 +121,7 @@ func (h *HandlersAdmin) JSONPlatformHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract platform

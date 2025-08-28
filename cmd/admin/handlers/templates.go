@@ -111,7 +111,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract target
@@ -188,7 +188,7 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -261,7 +261,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -342,7 +342,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -401,7 +401,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -460,7 +460,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -535,7 +535,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -594,7 +594,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract name
@@ -684,7 +684,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract name
@@ -790,7 +790,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -848,7 +848,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -943,7 +943,7 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare download
@@ -1040,7 +1040,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Get all environments
@@ -1110,7 +1110,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Prepare template
@@ -1155,7 +1155,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract service
@@ -1225,7 +1225,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Custom functions to handle formatting
@@ -1289,7 +1289,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Custom functions to handle formatting
@@ -1348,7 +1348,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Custom functions to handle formatting
@@ -1404,7 +1404,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Custom functions to handle formatting

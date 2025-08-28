@@ -27,7 +27,7 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+		adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		return
 	}
 	// Extract username
@@ -63,7 +63,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		adminErrorResponse(w, "insuficient permissions", http.StatusForbidden, nil)
+		adminErrorResponse(w, "insufficient permissions", http.StatusForbidden, nil)
 		return
 	}
 	// Extract username and verify
