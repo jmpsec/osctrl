@@ -187,6 +187,7 @@
             selector: 'td:first-child'
           },
           buttons: [
+          {{ if eq $metadata.Level "admin" }}
             {
               className: 'btn custom-size-btn btn-outline-danger',
               text: '<i class="far fa-trash-alt"></i>',
@@ -217,6 +218,7 @@
                 }
               }
             },
+          {{ end }}
             {
               className: 'btn custom-size-btn btn-outline-dark',
               text: '<i class="fas fa-flag-checkered"></i>',
