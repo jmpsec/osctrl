@@ -55,7 +55,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		}
 		// Check permissions
 		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+			log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 			return
 		}
 		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironmentID))
@@ -66,7 +66,7 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 	} else if target == "platform" {
 		// Check permissions
 		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-			log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+			log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 			return
 		}
 		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours(settings.NoEnvironmentID))

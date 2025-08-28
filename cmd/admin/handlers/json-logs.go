@@ -89,7 +89,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract UUID
@@ -192,7 +192,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
 	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract query name
