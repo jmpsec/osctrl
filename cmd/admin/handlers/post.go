@@ -414,6 +414,11 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 	}
 	switch q.Action {
 	case "delete":
+		// Deleting queries only allowed to full admin users
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions to delete queries", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+			return
+		}
 		for _, n := range q.Names {
 			if err := h.Queries.Delete(n, env.ID); err != nil {
 				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
@@ -438,6 +443,10 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		}
 		adminOKResponse(w, "queries activated successfully")
 	case "saved_delete":
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions to delete saved queries", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+			return
+		}
 		for _, n := range q.Names {
 			if err := h.Queries.DeleteSaved(n, ctx[sessions.CtxUser], env.ID); err != nil {
 				adminErrorResponse(w, "error deleting query", http.StatusInternalServerError, err)
@@ -455,11 +464,23 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		log.Info().Msg("environment is missing")
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Err(err).Msgf("error getting environment %s", envVar)
+		return
+	}
 	var q DistributedCarvesActionRequest
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
 		adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		return
 	}
@@ -476,6 +497,10 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 	}
 	switch q.Action {
 	case "delete":
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insuficient permissions to delete carves", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+			return
+		}
 		for _, n := range q.IDs {
 			if err := h.Carves.Delete(n); err != nil {
 				adminErrorResponse(w, "error deleting carve", http.StatusInternalServerError, err)

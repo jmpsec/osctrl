@@ -129,7 +129,7 @@
           searching : true,
           processing : true,
           ajax : {
-            url: "/json/query/{{ .Name }}",
+            url: "/json/query/{{ $template.EnvUUID }}/{{ .Name }}",
             dataSrc: function(json) {
               $('#status-card-header').removeClass("bg-danger");
               return json.data;
