@@ -358,7 +358,7 @@ func osctrlAdminService() {
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for query logs
 	adminMux.Handle(
-		"GET /json/query/{name}",
+		"GET /json/query/{env}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for sidebar stats
 	adminMux.Handle(

@@ -171,10 +171,27 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		log.Info().Msg("error getting environment")
+		return
+	}
+	// Check if environment is valid
+	if !h.Envs.Exists(envVar) {
+		log.Info().Msgf("error unknown environment (%s)", envVar)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Err(err).Msgf("error getting environment %s", envVar)
+		return
+	}
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
 		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		return
 	}

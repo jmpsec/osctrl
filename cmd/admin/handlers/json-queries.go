@@ -126,13 +126,6 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
-	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
-		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
-		return
-	}
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
@@ -143,6 +136,13 @@ func (h *HandlersAdmin) JSONQueryHandler(w http.ResponseWriter, r *http.Request)
 	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		log.Err(err).Msgf("error getting environment %s", envVar)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+		log.Info().Msgf("%s has insuficient permissions", ctx[sessions.CtxUser])
 		return
 	}
 	// Extract target
