@@ -151,7 +151,7 @@ func tagNode(c *cli.Context) error {
 		os.Exit(1)
 	}
 	tag := c.String("tag-value")
-	if env == "" {
+	if tag == "" {
 		fmt.Println("❌ tag is required")
 		os.Exit(1)
 	}
@@ -174,10 +174,8 @@ func tagNode(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("error get uuid - %w", err)
 		}
-		if tagsmgr.Exists(tag) {
-			if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt); err != nil {
-				return fmt.Errorf("error tagging - %w", err)
-			}
+		if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt); err != nil {
+			return fmt.Errorf("error tagging - %w", err)
 		}
 	} else if apiFlag {
 		if err := osctrlAPI.TagNode(env, uuid, tag); err != nil {

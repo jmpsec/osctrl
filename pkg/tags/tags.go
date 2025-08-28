@@ -190,7 +190,7 @@ func (m *TagManager) DeleteGet(name string, envID uint) error {
 		return fmt.Errorf("error getting tag %w", err)
 	}
 	if err := m.DB.Unscoped().Delete(&tag).Error; err != nil {
-		return fmt.Errorf("Delete %w", err)
+		return fmt.Errorf("delete %w", err)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func (m *TagManager) DeleteGet(name string, envID uint) error {
 // Delete tag by name
 func (m *TagManager) Delete(tag *AdminTag) error {
 	if err := m.DB.Unscoped().Delete(tag).Error; err != nil {
-		return fmt.Errorf("Delete %w", err)
+		return fmt.Errorf("delete %w", err)
 	}
 	return nil
 }
@@ -211,7 +211,7 @@ func (m *TagManager) ChangeGetDescription(name, description string, envID uint) 
 	}
 	if description != tag.Description {
 		if err := m.DB.Model(&tag).Update("description", description).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -221,7 +221,7 @@ func (m *TagManager) ChangeGetDescription(name, description string, envID uint) 
 func (m *TagManager) ChangeDescription(tag *AdminTag, desc string) error {
 	if desc != tag.Description {
 		if err := m.DB.Model(tag).Update("description", desc).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -235,7 +235,7 @@ func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 	}
 	if color != tag.Color {
 		if err := m.DB.Model(&tag).Update("color", color).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -245,7 +245,7 @@ func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 func (m *TagManager) ChangeColor(tag *AdminTag, color string) error {
 	if color != tag.Color {
 		if err := m.DB.Model(tag).Update("color", color).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -259,7 +259,7 @@ func (m *TagManager) ChangeGetIcon(name, icon string, envID uint) error {
 	}
 	if icon != tag.Icon {
 		if err := m.DB.Model(&tag).Update("icon", icon).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -269,7 +269,7 @@ func (m *TagManager) ChangeGetIcon(name, icon string, envID uint) error {
 func (m *TagManager) ChangeIcon(tag *AdminTag, icon string) error {
 	if icon != tag.Icon {
 		if err := m.DB.Model(tag).Update("icon", icon).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -283,7 +283,7 @@ func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) err
 	}
 	if tagType != tag.TagType {
 		if err := m.DB.Model(&tag).Update("tag_type", tagType).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -293,7 +293,7 @@ func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) err
 func (m *TagManager) ChangeTagType(tag *AdminTag, tagType uint) error {
 	if tagType != tag.TagType {
 		if err := m.DB.Model(tag).Update("tag_type", tagType).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -307,7 +307,7 @@ func (m *TagManager) ChangeGetEnvironment(name string, envID uint) error {
 	}
 	if envID != tag.EnvironmentID {
 		if err := m.DB.Model(&tag).Update("environment_id", envID).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -317,7 +317,7 @@ func (m *TagManager) ChangeGetEnvironment(name string, envID uint) error {
 func (m *TagManager) ChangeEnvironment(tag *AdminTag, envID uint) error {
 	if envID != tag.EnvironmentID {
 		if err := m.DB.Model(tag).Update("environment_id", envID).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -340,7 +340,7 @@ func (m *TagManager) TagNodeMulti(tags []string, node nodes.OsqueryNode, user st
 	return nil
 }
 
-// TagNode to tag a node
+// TagNode to tag a node, tag is created if does not exist
 // TODO use the correct user_id
 func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, auto bool, tagType uint) error {
 	if len(name) == 0 {
