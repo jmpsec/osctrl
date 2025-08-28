@@ -1167,8 +1167,13 @@ func init() {
 							Usage:   "Node UUID to be tagged",
 						},
 						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.StringFlag{
 							Name:    "name",
-							Aliases: []string{"n"},
+							Aliases: []string{"n", "tag-value"},
 							Usage:   "Tag name to be used. It will be created if does not exist",
 						},
 						&cli.StringFlag{
