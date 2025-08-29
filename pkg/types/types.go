@@ -66,6 +66,13 @@ type ApiNodeGenericRequest struct {
 	UUID string `json:"uuid"`
 }
 
+// ApiNodeTagRequest to receive tag node requests
+type ApiNodeTagRequest struct {
+	UUID string `json:"uuid"`
+	Tag  string `json:"tag"`
+	Type uint   `json:"type"`
+}
+
 // ApiLoginRequest to receive login requests
 type ApiLoginRequest struct {
 	Username string `json:"username"`

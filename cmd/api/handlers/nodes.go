@@ -218,6 +218,55 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 }
 
+// TagNodeHandler - POST Handler to tag a node
+func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	var t types.ApiNodeTagRequest
+	// Parse request JSON body
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		return
+	}
+	// Get node by UUID
+	n, err := h.Nodes.GetByUUIDEnv(t.UUID, env.ID)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	if err := h.Tags.TagNode(t.Tag, n, ctx[ctxUser], false, t.Type); err != nil {
+		apiErrorResponse(w, "error tagging node", http.StatusInternalServerError, err)
+		return
+	}
+	// Serialize and serve JSON
+	log.Debug().Msgf("Tagged node %s with %s", n.UUID, t.Tag)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node tagged"})
+}
+
 // LookupNodeHandler - POST Handler to lookup a node by identifier
 func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled

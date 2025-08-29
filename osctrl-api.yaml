@@ -304,6 +304,59 @@ paths:
       security:
         - Authorization:
             - admin
+  /nodes/{env}/tag:
+    post:
+      tags:
+        - nodes
+      summary: Tags node
+      description: Tags an existing node by identifier (UUID, hostname or localname)
+      operationId: TagNodeHandler
+      parameters:
+        - name: env
+          in: path
+          description: Name or UUID of the requested osctrl environment
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiNodeTagRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiGenericResponse"
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no nodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error tagging node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /nodes/lookup:
     post:
       tags:
@@ -2081,6 +2134,16 @@ components:
       properties:
         uuid:
           type: string
+    ApiNodeTagRequest:
+      type: object
+      properties:
+        uuid:
+          type: string
+        tag:
+          type: string
+        type:
+          type: integer
+          format: int32
     DistributedQuery:
       type: object
       properties:

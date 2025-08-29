@@ -245,6 +245,9 @@ func osctrlAPIService() {
 		"POST "+_apiPath(apiNodesPath)+"/{env}/delete",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	muxAPI.Handle(
+		"POST "+_apiPath(apiNodesPath)+"/{env}/tag",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.TagNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/lookup",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.LookupNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// API: queries by environment
