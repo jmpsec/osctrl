@@ -178,7 +178,7 @@ func tagNode(c *cli.Context) error {
 			return fmt.Errorf("error tagging - %w", err)
 		}
 	} else if apiFlag {
-		if err := osctrlAPI.TagNode(env, uuid, tag); err != nil {
+		if err := osctrlAPI.TagNode(env, uuid, tag, tagTypeInt); err != nil {
 			return fmt.Errorf("error tagging node - %w", err)
 		}
 	}

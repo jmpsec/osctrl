@@ -61,7 +61,26 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 }
 
 // TagNode to tag node in osctrl
-func (api *OsctrlAPI) TagNode(env, identifier, tag string) error {
+func (api *OsctrlAPI) TagNode(env, identifier, tag string, tagType uint) error {
+	t := types.ApiNodeTagRequest{
+		UUID: identifier,
+		Tag:  tag,
+		Type: tagType,
+	}
+	var r types.ApiGenericResponse
+	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "tag")
+	jsonMessage, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("error marshaling data - %w", err)
+	}
+	jsonParam := bytes.NewReader(jsonMessage)
+	rawN, err := api.PostGeneric(reqURL, jsonParam)
+	if err != nil {
+		return fmt.Errorf("error api request - %w - %s", err, string(rawN))
+	}
+	if err := json.Unmarshal(rawN, &r); err != nil {
+		return fmt.Errorf("can not parse body - %w", err)
+	}
 	return nil
 }
 

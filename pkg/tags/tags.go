@@ -34,6 +34,10 @@ const (
 	ActionEdit string = "edit"
 	// ActionRemove as action to remove a tag
 	ActionRemove string = "remove"
+	// ActionTag as action to tag a node
+	ActionTag string = "tag"
+	// ActionUntag as action to untag a node
+	ActionUntag string = "untag"
 )
 
 // AdminTag to hold all tags
