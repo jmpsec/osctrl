@@ -1,0 +1,159 @@
+name: PR Comment Publish to DockerHub
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  GOLANG_VERSION: 1.24.3
+
+jobs:
+  check-comment:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/publish')
+    runs-on: ubuntu-22.04
+    outputs:
+      should-publish: ${{ steps.check-user.outputs.authorized }}
+      pr-number: ${{ github.event.issue.number }}
+      pr-ref: ${{ steps.get-pr.outputs.ref }}
+      pr-sha: ${{ steps.get-pr.outputs.sha }}
+    steps:
+      - name: Check if user is authorized
+        id: check-user
+        run: |
+          # List of authorized users who can trigger publishing
+          AUTHORIZED_USERS=(
+            "maintainer1"
+            "maintainer2"
+            "admin"
+            "${{ github.repository_owner }}"
+          )
+
+          COMMENT_USER="${{ github.event.comment.user.login }}"
+          echo "Comment by: $COMMENT_USER"
+
+          for user in "${AUTHORIZED_USERS[@]}"; do
+            if [[ "$user" == "$COMMENT_USER" ]]; then
+              echo "User $COMMENT_USER is authorized"
+              echo "authorized=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
+
+          echo "User $COMMENT_USER is not authorized"
+          echo "authorized=false" >> $GITHUB_OUTPUT
+
+      - name: Get PR details
+        id: get-pr
+        if: steps.check-user.outputs.authorized == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+
+  build-and-publish:
+    needs: check-comment
+    if: needs.check-comment.outputs.should-publish == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        component: ["tls", "admin", "api", "cli"]
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check-comment.outputs.pr-sha }}
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.component }}
+          tags: |
+            type=raw,value=pr-${{ needs.check-comment.outputs.pr-number }}
+            type=raw,value=pr-${{ needs.check-comment.outputs.pr-number }}-{{sha}}
+          labels: |
+            org.opencontainers.image.title=osctrl-${{ matrix.component }}
+            org.opencontainers.image.description=PR build for osctrl-${{ matrix.component }}
+
+      - name: Build and publish Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deploy/cicd/docker/Dockerfile-osctrl-${{ matrix.component }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
+            GIT_SHA=${{ needs.check-comment.outputs.pr-sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  comment-success:
+    needs: [check-comment, build-and-publish]
+    if: success() && needs.check-comment.outputs.should-publish == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ needs.check-comment.outputs.pr-number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Docker images published successfully!**
+
+              Images available on DockerHub:
+              - \`${{ secrets.DOCKER_HUB_ORG }}/osctrl-tls:pr-${{ needs.check-comment.outputs.pr-number }}\`
+              - \`${{ secrets.DOCKER_HUB_ORG }}/osctrl-admin:pr-${{ needs.check-comment.outputs.pr-number }}\`
+              - \`${{ secrets.DOCKER_HUB_ORG }}/osctrl-api:pr-${{ needs.check-comment.outputs.pr-number }}\`
+              - \`${{ secrets.DOCKER_HUB_ORG }}/osctrl-cli:pr-${{ needs.check-comment.outputs.pr-number }}\`
+
+              SHA: \`${{ needs.check-comment.outputs.pr-sha }}\`
+
+              Pull with:
+              \`\`\`bash
+              docker pull ${{ secrets.DOCKER_HUB_ORG }}/osctrl-tls:pr-${{ needs.check-comment.outputs.pr-number }}
+              \`\`\``
+            })
+
+  comment-failure:
+    needs: [check-comment, build-and-publish]
+    if: failure() && needs.check-comment.outputs.should-publish == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Comment on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ needs.check-comment.outputs.pr-number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **Docker image publishing failed!**
+
+              Please check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
+            })
