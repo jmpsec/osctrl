@@ -128,3 +128,17 @@ type ApiTagsRequest struct {
 type ApiLookupRequest struct {
 	Identifier string `json:"identifier"`
 }
+
+// ApiUserRequest to receive user requests
+type ApiUserRequest struct {
+	Username     string   `json:"username"`
+	Password     string   `json:"password"`
+	Email        string   `json:"email"`
+	Fullname     string   `json:"fullname"`
+	Admin        bool     `json:"admin"`
+	NotAdmin     bool     `json:"not_admin"`
+	Service      bool     `json:"service"`
+	NotService   bool     `json:"not_service"`
+	API          bool     `json:"api"`
+	Environments []string `json:"environments"`
+}
