@@ -91,7 +91,7 @@ func (api *OsctrlAPI) CreateUser(username, password, email, fullname, environmen
 // EditUserReq to edit a user in osctrl, it takes a ApiUserRequest as input
 func (api *OsctrlAPI) EditUserReq(u types.ApiUserRequest) error {
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers, u.Username, users.ActionAdd)
+	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers, u.Username, users.ActionEdit)
 	jsonMessage, err := json.Marshal(u)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
