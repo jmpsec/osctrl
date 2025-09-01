@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
@@ -32,6 +33,7 @@ func userToData(u users.AdminUser, header []string) [][]string {
 		u.Username,
 		u.Fullname,
 		stringifyBool(u.Admin),
+		stringifyBool(u.Service),
 		u.LastIPAddress,
 		u.LastUserAgent,
 	}
@@ -51,13 +53,38 @@ func addUser(c *cli.Context) error {
 	fullname := c.String("fullname")
 	admin := c.Bool("admin")
 	service := c.Bool("service")
-	user, err := adminUsers.New(username, password, email, fullname, admin, service)
-	if err != nil {
-		return fmt.Errorf("error with new user - %w", err)
-	}
-	// Create user
-	if err := adminUsers.Create(user); err != nil {
-		return fmt.Errorf("error creating user - %w", err)
+	environment := c.String("environment")
+	if dbFlag {
+		// Check if user exists
+		if adminUsers.Exists(username) {
+			return fmt.Errorf("user %s already exists", username)
+		}
+		// Prepare user
+		user, err := adminUsers.New(username, password, email, fullname, admin, service)
+		if err != nil {
+			return fmt.Errorf("error with new user - %w", err)
+		}
+		// Create user
+		if err := adminUsers.Create(user); err != nil {
+			return fmt.Errorf("error creating user - %w", err)
+		}
+		// Prepare permissions
+		accessEnvs := []string{environment}
+		if admin {
+			accessEnvs, err = envs.UUIDs()
+			if err != nil {
+				return fmt.Errorf("error getting environments - %w", err)
+			}
+		}
+		access := adminUsers.GenEnvUserAccess(accessEnvs, true, admin, admin, admin)
+		perms := adminUsers.GenPermissions(username, username, access)
+		if err := adminUsers.CreatePermissions(perms); err != nil {
+			return fmt.Errorf("error creating permissions - %w", err)
+		}
+	} else if apiFlag {
+		if err := osctrlAPI.CreateUser(username, password, email, fullname, environment, admin, service); err != nil {
+			return fmt.Errorf("error creating user - %w", err)
+		}
 	}
 	if !silentFlag {
 		fmt.Printf("✅ created user %s successfully\n", username)
@@ -73,45 +100,74 @@ func editUser(c *cli.Context) error {
 		os.Exit(1)
 	}
 	password := c.String("password")
-	if password != "" {
-		if err := adminUsers.ChangePassword(username, password); err != nil {
-			return fmt.Errorf("error changing password - %w", err)
-		}
-	}
 	email := c.String("email")
-	if email != "" {
-		if err := adminUsers.ChangeEmail(username, email); err != nil {
-			return fmt.Errorf("error changing email - %w", err)
-		}
-	}
 	fullname := c.String("fullname")
-	if fullname != "" {
-		if err := adminUsers.ChangeFullname(username, fullname); err != nil {
-			return fmt.Errorf("error changing name - %w", err)
-		}
-	}
 	admin := c.Bool("admin")
-	if admin {
-		if err := adminUsers.ChangeAdmin(username, admin); err != nil {
-			return fmt.Errorf("error changing admin - %w", err)
-		}
-	}
 	notAdmin := c.Bool("non-admin")
-	if notAdmin {
-		if err := adminUsers.ChangeAdmin(username, false); err != nil {
-			return fmt.Errorf("error changing non-admin - %w", err)
-		}
-	}
 	service := c.Bool("service")
-	if service {
-		if err := adminUsers.ChangeService(username, true); err != nil {
-			return fmt.Errorf("error changing service - %w", err)
+	nonService := c.Bool("non-service")
+	if password != "" {
+		if dbFlag {
+			if err := adminUsers.ChangePassword(username, password); err != nil {
+				return fmt.Errorf("error changing password - %w", err)
+			}
 		}
 	}
-	nonService := c.Bool("non-service")
+	if email != "" {
+		if dbFlag {
+			if err := adminUsers.ChangeEmail(username, email); err != nil {
+				return fmt.Errorf("error changing email - %w", err)
+			}
+		}
+	}
+	if fullname != "" {
+		if dbFlag {
+			if err := adminUsers.ChangeFullname(username, fullname); err != nil {
+				return fmt.Errorf("error changing name - %w", err)
+			}
+		}
+	}
+	if admin {
+		if dbFlag {
+			if err := adminUsers.ChangeAdmin(username, admin); err != nil {
+				return fmt.Errorf("error changing admin - %w", err)
+			}
+		}
+	}
+	if notAdmin {
+		if dbFlag {
+			if err := adminUsers.ChangeAdmin(username, false); err != nil {
+				return fmt.Errorf("error changing non-admin - %w", err)
+			}
+		}
+	}
+	if service {
+		if dbFlag {
+			if err := adminUsers.ChangeService(username, true); err != nil {
+				return fmt.Errorf("error changing service - %w", err)
+			}
+		}
+	}
 	if nonService {
-		if err := adminUsers.ChangeService(username, false); err != nil {
-			return fmt.Errorf("error changing service - %w", err)
+		if dbFlag {
+			if err := adminUsers.ChangeService(username, false); err != nil {
+				return fmt.Errorf("error changing service - %w", err)
+			}
+		}
+	}
+	if apiFlag {
+		u := types.ApiUserRequest{
+			Username:   username,
+			Password:   password,
+			Email:      email,
+			Fullname:   fullname,
+			Admin:      admin,
+			NotAdmin:   notAdmin,
+			Service:    service,
+			NotService: nonService,
+		}
+		if err := osctrlAPI.EditUserReq(u); err != nil {
+			return fmt.Errorf("error editing user - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -130,6 +186,10 @@ func deleteUser(c *cli.Context) error {
 	if dbFlag {
 		if err := adminUsers.Delete(username); err != nil {
 			return fmt.Errorf("error deleting - %w", err)
+		}
+		// Delete permissions
+		if err := adminUsers.DeleteAllPermissions(username); err != nil {
+			return fmt.Errorf("error deleting permissions - %w", err)
 		}
 	} else if apiFlag {
 		if err := osctrlAPI.DeleteUser(username); err != nil {
@@ -160,6 +220,7 @@ func listUsers(c *cli.Context) error {
 		"Username",
 		"Fullname",
 		"Admin?",
+		"Service?",
 		"Last IPAddress",
 		"Last UserAgent",
 	}

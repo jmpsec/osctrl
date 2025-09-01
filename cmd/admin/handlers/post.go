@@ -1118,8 +1118,16 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			adminErrorResponse(w, "error creating user", http.StatusInternalServerError, err)
 			return
 		}
-		// TODO verify environments
-		access := h.Users.GenEnvUserAccess(u.Environments, true, (u.Admin), (u.Admin), (u.Admin))
+		// If user is admin, give access to all environments
+		envs := u.Environments
+		if u.Admin {
+			envs, err = h.Envs.UUIDs()
+			if err != nil {
+				adminErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
+				return
+			}
+		}
+		access := h.Users.GenEnvUserAccess(envs, true, (u.Admin), (u.Admin), (u.Admin))
 		perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
@@ -1168,6 +1176,11 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				adminErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
 				return
 			}
+			// Delete permissions
+			if err := h.Users.DeleteAllPermissions(user.Username); err != nil {
+				adminErrorResponse(w, "error removing user permissions", http.StatusInternalServerError, err)
+				return
+			}
 		}
 		adminOKResponse(w, "user removed successfully")
 	case "admin":
@@ -1181,25 +1194,15 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 				return
 			}
 			if u.Admin {
-				_, err := h.Envs.Names()
+				envUUIDs, err := h.Envs.UUIDs()
 				if err != nil {
 					adminErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 					return
 				}
-				/*
-					perms := h.Users.GenPermissions(namesEnvs, users.AdminLevel)
-					if err := h.Users.ChangePermissions(u.Username, perms); err != nil {
-						adminErrorResponse(w, "error changing permissions", http.StatusInternalServerError, err)
-												return
-					}
-				*/
-				token, exp, err := h.Users.CreateToken(u.Username, h.AdminConfig.Host, h.Users.JWTConfig.HoursToExpire)
-				if err != nil {
-					adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-					return
-				}
-				if err := h.Users.UpdateToken(u.Username, token, exp); err != nil {
-					adminErrorResponse(w, "error saving token", http.StatusInternalServerError, err)
+				access := h.Users.GenEnvUserAccess(envUUIDs, true, (u.Admin), (u.Admin), (u.Admin))
+				perms := h.Users.GenPermissions(u.Username, ctx[sessions.CtxUser], access)
+				if err := h.Users.CreatePermissions(perms); err != nil {
+					adminErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
 					return
 				}
 			}

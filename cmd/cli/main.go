@@ -232,10 +232,10 @@ func init() {
 							Usage:   "Password for the new user",
 						},
 						&cli.BoolFlag{
-							Name:    "admin",
-							Aliases: []string{"a"},
+							Name:    "global-admin",
+							Aliases: []string{"a", "admin"},
 							Hidden:  false,
-							Usage:   "Make this user an admin",
+							Usage:   "Make this user a global admin",
 						},
 						&cli.BoolFlag{
 							Name:    "service",
@@ -247,7 +247,7 @@ func init() {
 							Name:    "environment",
 							Aliases: []string{"e"},
 							Value:   "",
-							Usage:   "Default environment for the new user",
+							Usage:   "Grant read access to this environment",
 						},
 						&cli.StringFlag{
 							Name:    "email",
@@ -288,8 +288,8 @@ func init() {
 							Usage:   "Full name to be used",
 						},
 						&cli.BoolFlag{
-							Name:    "admin",
-							Aliases: []string{"a"},
+							Name:    "global-admin",
+							Aliases: []string{"a", "admin"},
 							Hidden:  false,
 							Usage:   "Make this user an admin",
 						},
@@ -314,7 +314,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "environment",
 							Aliases: []string{"env"},
-							Usage:   "Default environment for this user",
+							Usage:   "Grant read access to this environment",
 						},
 					},
 					Action: cliWrapper(editUser),

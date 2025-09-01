@@ -47,7 +47,7 @@
                       <th width="10%">Fullname</th>
                       <th width="10%">Last IP</th>
                       <th width="20%">Last UserAgent</th>
-                      <th width="5%">Admin</th>
+                      <th width="5%">Global Admin</th>
                       <th width="5%">Service</th>
                       <th width="15%">Last Session</th>
                       <th width="10%"></th>
@@ -144,7 +144,7 @@
                       <th width="10%">Fullname</th>
                       <th width="10%">Last IP</th>
                       <th width="20%">Last UserAgent</th>
-                      <th width="5%">Admin</th>
+                      <th width="5%">Global Admin</th>
                       <th width="5%">Service</th>
                       <th width="15%">Last Session</th>
                       <th width="10%"></th>
@@ -246,25 +246,35 @@
                     </div>
                     <div class="form-group row">
                       <label class="col-md-1 col-form-label" for="user_admin">Admin: </label>
-                      <div class="col-md-2">
+                      <div class="col-md-1">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_admin" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
                       <label class="col-md-1 col-form-label" for="user_service">Service: </label>
-                      <div class="col-md-2">
+                      <div class="col-md-1">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_service" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
                       </div>
                       <label class="col-md-1 col-form-label" for="user_token">API: </label>
-                      <div class="col-md-2">
+                      <div class="col-md-1">
                         <label class="switch switch-label switch-pill switch-success switch-sm" data-tooltip="true" data-placement="top" title="Change">
                           <input id="user_token" class="switch-input" type="checkbox">
                           <span class="switch-slider" data-checked="On" data-unchecked="Off"></span>
                         </label>
+                      </div>
+                      <label class="col-md-2 col-form-label" for="user_environments">Environments: </label>
+                      <div class="col-md-4">
+                        <select class="form-control" name="user_environments" id="user_environments" multiple="multiple" style="width:100%">
+                          <option value=""></option>
+                        {{ range  $i, $e := $.Environments }}
+                          <option value="{{ $e.Name }}">{{ $e.Name }}</option>
+                        {{ end }}
+                          <option value="all_environments_99">all environments</option>
+                         </select>
                       </div>
 
                     </div>
@@ -514,7 +524,7 @@
         $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
 
         // Select2 initialization
-        $('#default_env').select2({
+        $('#user_environments').select2({
           theme: "classic"
         });
 

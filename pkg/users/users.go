@@ -13,7 +13,13 @@ import (
 )
 
 const (
-	DefaultTokeIssuer = "osctrl"
+	DefaultTokenIssuer = "osctrl"
+	// ActionAdd as action to add a user
+	ActionAdd string = "add"
+	// ActionEdit as action to edit a user
+	ActionEdit string = "edit"
+	// ActionRemove as action to remove a user
+	ActionRemove string = "remove"
 )
 
 // AdminUser to hold all users
@@ -150,10 +156,28 @@ func (m *UserManager) Get(username string) (AdminUser, error) {
 	return user, nil
 }
 
+// Get user by username and by environment ID, including service users
+func (m *UserManager) GetByEnvID(username string, envID uint) (AdminUser, error) {
+	var user AdminUser
+	if err := m.DB.Where("username = ? AND environment_id = ?", username, envID).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
 // Get user by username and service
 func (m *UserManager) GetWithService(username string, service bool) (AdminUser, error) {
 	var user AdminUser
 	if err := m.DB.Where("username = ? AND service = ?", username, service).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+// Get user by username, service and environment ID
+func (m *UserManager) GetWithServiceByEnvID(username string, service bool, envID uint) (AdminUser, error) {
+	var user AdminUser
+	if err := m.DB.Where("username = ? AND service = ? AND environment_id = ?", username, service, envID).First(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil

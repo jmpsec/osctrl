@@ -298,6 +298,9 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/{username}/{action}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// API: platforms
 	muxAPI.Handle(
 		"GET "+_apiPath(apiPlatformsPath),
