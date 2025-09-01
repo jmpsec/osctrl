@@ -1140,6 +1140,67 @@ paths:
       security:
         - Authorization:
             - admin
+  /users/{username}/{action}:
+    post:
+      tags:
+        - users
+      summary: Get
+      description: Perform user related actions in users by username
+      operationId: UserActionHandler
+      parameters:
+        - name: username
+          in: path
+          description: Username of the requested user
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: path
+          description: Action to execute (add, edit, remove)
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiUserRequest"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        403:
+          description: no access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        404:
+          description: no users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        500:
+          description: error getting users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+      security:
+        - Authorization:
+            - admin
   /platforms:
     get:
       tags:
@@ -2144,6 +2205,29 @@ components:
         type:
           type: integer
           format: int32
+    ApiUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+        fullname:
+          type: string
+        admin:
+          type: boolean
+        not_admin:
+          type: boolean
+        service:
+          type: boolean
+        not_service:
+          type: boolean
+        environments:
+          type: array
+          items:
+            type: string
     DistributedQuery:
       type: object
       properties:
@@ -2194,15 +2278,6 @@ components:
         ExtraData:
           type: string
     ApiDistributedQueryRequest:
-      type: object
-      properties:
-        uuid:
-          type: string
-        query:
-          type: string
-        hidden:
-          type: boolean
-    DistributedQueryRequest:
       type: object
       properties:
         environment_list:

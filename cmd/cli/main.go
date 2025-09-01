@@ -314,7 +314,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "environment",
 							Aliases: []string{"env"},
-							Usage:   "Default environment for this user",
+							Usage:   "Grant read access to this environment",
 						},
 					},
 					Action: cliWrapper(editUser),

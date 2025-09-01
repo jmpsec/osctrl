@@ -57,7 +57,7 @@ func addUser(c *cli.Context) error {
 	if dbFlag {
 		// Check if user exists
 		if adminUsers.Exists(username) {
-			return fmt.Errorf("user %s already exists\n", username)
+			return fmt.Errorf("user %s already exists", username)
 		}
 		// Prepare user
 		user, err := adminUsers.New(username, password, email, fullname, admin, service)

@@ -18,6 +18,17 @@ function confirmAddUser() {
   var _admin = $("#user_admin").is(":checked");
   var _service = $("#user_service").is(":checked");
   var _token = $("#user_token").is(":checked");
+  var _env_list = $("#user_environments").val();
+
+  // Check if all environments have been selected
+  if (_env_list.includes("all_environments_99")) {
+    _env_list = [];
+    $("#user_environments option").each(function () {
+      if ($(this).val() !== "" && $(this).val() !== "all_environments_99") {
+        _env_list.push($(this).val());
+      }
+    });
+  }
 
   var data = {
     csrftoken: _csrftoken,
@@ -29,6 +40,7 @@ function confirmAddUser() {
     admin: _admin,
     service: _service,
     token: _token,
+    environments: _env_list,
   };
   sendPostRequest(data, _url, _url, false);
 }
