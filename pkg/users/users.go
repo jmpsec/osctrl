@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DefaultTokeIssuer = "osctrl"
+	DefaultTokenIssuer = "osctrl"
 	// ActionAdd as action to add a user
 	ActionAdd string = "add"
 	// ActionEdit as action to edit a user
