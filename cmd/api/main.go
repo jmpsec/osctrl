@@ -57,6 +57,9 @@ const (
 	// HTTP errors path
 	errorPath     = "/error"
 	forbiddenPath = "/forbidden"
+	// API checks path
+	checksNoAuthPath = "/checks-no-auth"
+	checksAuthPath   = "/checks-auth"
 	// API prefix path
 	apiPrefixPath = "/api"
 	// API version path
@@ -222,12 +225,16 @@ func osctrlAPIService() {
 	muxAPI.HandleFunc("GET "+errorPath, handlersApi.ErrorHandler)
 	// API: forbidden
 	muxAPI.HandleFunc("GET "+forbiddenPath, handlersApi.ForbiddenHandler)
+	// API: check status
+	muxAPI.HandleFunc("GET "+_apiPath(checksNoAuthPath), handlersApi.CheckHandlerNoAuth)
 
 	// ///////////////////////// UNAUTHENTICATED
 	muxAPI.Handle(
 		"POST "+_apiPath(apiLoginPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// ///////////////////////// AUTHENTICATED
+	// API: check status
+	muxAPI.HandleFunc("GET "+_apiPath(checksAuthPath), handlersApi.CheckHandlerAuth)
 	// API: nodes by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/all",

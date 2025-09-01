@@ -13,7 +13,7 @@ import (
 // GetNodes to retrieve nodes from osctrl
 func (api *OsctrlAPI) GetNodes(env, target string) ([]nodes.OsqueryNode, error) {
 	var nds []nodes.OsqueryNode
-	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, target)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, env, target))
 	rawNodes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return nds, fmt.Errorf("error api request - %w - %s", err, string(rawNodes))
@@ -27,7 +27,7 @@ func (api *OsctrlAPI) GetNodes(env, target string) ([]nodes.OsqueryNode, error) 
 // GetNode to retrieve one node from osctrl
 func (api *OsctrlAPI) GetNode(env, identifier string) (nodes.OsqueryNode, error) {
 	var node nodes.OsqueryNode
-	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "node", identifier)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, env, "node", identifier))
 	rawNode, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return node, fmt.Errorf("error api request - %w - %s", err, string(rawNode))
@@ -44,7 +44,7 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 		UUID: identifier,
 	}
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "delete")
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, env, "delete"))
 	jsonMessage, err := json.Marshal(n)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
@@ -68,7 +68,7 @@ func (api *OsctrlAPI) TagNode(env, identifier, tag string, tagType uint) error {
 		Type: tagType,
 	}
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, env, "tag")
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, env, "tag"))
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
@@ -95,7 +95,7 @@ func (api *OsctrlAPI) LookupNode(identifier string) (nodes.OsqueryNode, error) {
 		return node, fmt.Errorf("error marshaling data %w", err)
 	}
 	jsonParam := bytes.NewReader(jsonMessage)
-	reqURL := path.Join(api.Configuration.URL, APIPath, APINodes, "lookup")
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, "lookup"))
 	rawNode, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return node, fmt.Errorf("error api request - %w - %s", err, string(rawNode))

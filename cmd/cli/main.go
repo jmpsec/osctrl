@@ -3,17 +3,21 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/term"
 
@@ -76,6 +80,7 @@ var (
 	formatFlag       string
 	silentFlag       bool
 	insecureFlag     bool
+	verboseFlag      bool
 	writeApiFileFlag bool
 	dbConfigFile     string
 	apiConfigFile    string
@@ -193,6 +198,13 @@ func init() {
 			Value:       false,
 			Usage:       "Allow insecure server connections when using SSL",
 			Destination: &insecureFlag,
+		},
+		&cli.BoolFlag{
+			Name:        "verbose",
+			Aliases:     []string{"V"},
+			Value:       false,
+			Usage:       "Increase output verbosity for debugging",
+			Destination: &verboseFlag,
 		},
 		&cli.StringFlag{
 			Name:        "output-format",
@@ -1717,6 +1729,13 @@ func init() {
 			},
 			Action: loginAPI,
 		},
+		{
+			Name: "help",
+			Action: func(c *cli.Context) error {
+				cli.ShowAppHelpAndExit(c, 0)
+				return nil
+			},
+		},
 	}
 	// Initialize formats values
 	formats = make(map[string]bool)
@@ -1760,6 +1779,9 @@ func checkAPI(c *cli.Context) error {
 		}
 		// Initialize API
 		osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+		if err := osctrlAPI.CheckAPI(); err != nil {
+			return fmt.Errorf("error checking API - %w", err)
+		}
 	}
 	if !silentFlag {
 		fmt.Println("✅ API check successful")
@@ -1901,7 +1923,18 @@ func main() {
 		Usage:   "Print version information",
 	}
 	app.Commands = commands
+	if verboseFlag {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
+	// Start service only for default action; version/help won't trigger this
 	app.Action = cliAction
+	// Run the app
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal().Msgf("❌ Failed to execute - %v", err)
 	}

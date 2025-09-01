@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,10 @@ const (
 	APITags = "/tags"
 	// APILogin for the login path
 	APILogin = "/login"
+	// APIChecksNoAuth for the unauthenticated checks path
+	APIChecksNoAuth = "/checks-no-auth"
+	// APIChecksAuth for the authenticated checks path
+	APIChecksAuth = "/checks-auth"
 	// JSONApplication for Content-Type headers
 	JSONApplication = "application/json"
 	// JSONApplicationUTF8 for Content-Type headers, UTF charset
@@ -167,4 +172,25 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 		return bodyBytes, fmt.Errorf("HTTP Code %d", resp.StatusCode)
 	}
 	return bodyBytes, nil
+}
+
+// CheckApiAuth to check if API authentication is working
+func (api *OsctrlAPI) CheckAPI() error {
+	log.Debug().Msg("Preparing request to check unauthenticated API")
+	reqPath := path.Join(APIPath, APIChecksNoAuth)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, reqPath)
+	rawRes, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return fmt.Errorf("error checking API - %w", err)
+	}
+	log.Debug().Msgf("API unauthenticated check response: %s", string(rawRes))
+	log.Debug().Msg("Preparing request to check authenticated API")
+	reqPath = path.Join(APIPath, APIChecksAuth)
+	reqURL = fmt.Sprintf("%s%s", api.Configuration.URL, reqPath)
+	rawRes, err = api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return fmt.Errorf("error checking API - %w", err)
+	}
+	log.Debug().Msgf("API authenticated check response: %s", string(rawRes))
+	return nil
 }
