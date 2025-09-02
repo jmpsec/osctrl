@@ -14,7 +14,7 @@ import (
 // GetEnvironments to retrieve all environments from osctrl
 func (api *OsctrlAPI) GetEnvironments() ([]environments.TLSEnvironment, error) {
 	var envs []environments.TLSEnvironment
-	reqURL := path.Join("%s%s%s", api.Configuration.URL, APIPath, APIEnvironments)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIEnvironments))
 	rawEnvs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return envs, fmt.Errorf("error api request - %w - %s", err, string(rawEnvs))
@@ -28,7 +28,7 @@ func (api *OsctrlAPI) GetEnvironments() ([]environments.TLSEnvironment, error) {
 // GetEnvironment to retrieve users from osctrl
 func (api *OsctrlAPI) GetEnvironment(identifier string) (environments.TLSEnvironment, error) {
 	var e environments.TLSEnvironment
-	reqURL := path.Join("%s%s%s/%s", api.Configuration.URL, APIPath, APIEnvironments, identifier)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIEnvironments, identifier))
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return e, fmt.Errorf("error api request - %w - %s", err, string(rawE))

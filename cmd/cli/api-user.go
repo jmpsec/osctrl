@@ -13,7 +13,7 @@ import (
 // GetUsers to retrieve users from osctrl
 func (api *OsctrlAPI) GetUsers() ([]users.AdminUser, error) {
 	var us []users.AdminUser
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers))
 	rawUs, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return us, fmt.Errorf("error api request - %w - %s", err, string(rawUs))
@@ -27,7 +27,7 @@ func (api *OsctrlAPI) GetUsers() ([]users.AdminUser, error) {
 // GetUser to retrieve one user from osctrl
 func (api *OsctrlAPI) GetUser(username string) (users.AdminUser, error) {
 	var u users.AdminUser
-	reqURL := path.Join("%s%s%s/%s", api.Configuration.URL, APIPath, APIUSers, username)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers, username))
 	rawU, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return u, fmt.Errorf("error api request - %w - %s", err, string(rawU))
@@ -44,7 +44,7 @@ func (api *OsctrlAPI) DeleteUser(username string) error {
 		Username: username,
 	}
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers, username, users.ActionRemove)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers, username, users.ActionRemove))
 	jsonMessage, err := json.Marshal(u)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
@@ -72,7 +72,7 @@ func (api *OsctrlAPI) CreateUser(username, password, email, fullname, environmen
 		Environments: []string{environment},
 	}
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers, username, users.ActionAdd)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers, username, users.ActionAdd))
 	jsonMessage, err := json.Marshal(u)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
@@ -91,7 +91,7 @@ func (api *OsctrlAPI) CreateUser(username, password, email, fullname, environmen
 // EditUserReq to edit a user in osctrl, it takes a ApiUserRequest as input
 func (api *OsctrlAPI) EditUserReq(u types.ApiUserRequest) error {
 	var r types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIUSers, u.Username, users.ActionEdit)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers, u.Username, users.ActionEdit))
 	jsonMessage, err := json.Marshal(u)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)

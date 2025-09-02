@@ -22,7 +22,7 @@ func (api *OsctrlAPI) PostLogin(env, username, password string, expHours int) (t
 		return res, fmt.Errorf("error marshaling data %w", err)
 	}
 	jsonParam := bytes.NewReader(jsonMessage)
-	reqURL := path.Join(api.Configuration.URL, APIPath, APILogin, env)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APILogin, env))
 	rawRes, err := api.PostGeneric(reqURL, jsonParam)
 	if err != nil {
 		return res, fmt.Errorf("error api request - %w - %s", err, string(rawRes))
