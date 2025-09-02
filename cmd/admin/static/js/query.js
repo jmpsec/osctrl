@@ -109,13 +109,13 @@ function actionQueries(_action, _names, _url, _redir) {
   sendPostRequest(data, _url, _redir, false);
 }
 
-function confirmDeleteQueries(_names) {
+function confirmDeleteQueries(_names, _url) {
   var modal_message =
     "Are you sure you want to delete " + _names.length + " query(s)?";
   $("#confirmModalMessage").text(modal_message);
   $("#confirm_action").click(function () {
     $("#confirmModal").modal("hide");
-    deleteQueries(_names);
+    deleteQueries(_names, _url);
   });
   $("#confirmModal").modal();
 }
