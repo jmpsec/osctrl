@@ -177,19 +177,17 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 // CheckApiAuth to check if API authentication is working
 func (api *OsctrlAPI) CheckAPI() error {
 	log.Debug().Msg("Preparing request to check unauthenticated API")
-	reqPath := path.Join(APIPath, APIChecksNoAuth)
-	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, reqPath)
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIChecksNoAuth))
 	rawRes, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return fmt.Errorf("error checking API - %w", err)
+		return fmt.Errorf("error with GET request - %w", err)
 	}
 	log.Debug().Msgf("API unauthenticated check response: %s", string(rawRes))
 	log.Debug().Msg("Preparing request to check authenticated API")
-	reqPath = path.Join(APIPath, APIChecksAuth)
-	reqURL = fmt.Sprintf("%s%s", api.Configuration.URL, reqPath)
+	reqURL = fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIChecksAuth))
 	rawRes, err = api.GetGeneric(reqURL, nil)
 	if err != nil {
-		return fmt.Errorf("error checking API - %w", err)
+		return fmt.Errorf("error with GET request - %w", err)
 	}
 	log.Debug().Msgf("API authenticated check response: %s", string(rawRes))
 	return nil

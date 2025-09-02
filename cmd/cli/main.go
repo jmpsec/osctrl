@@ -88,6 +88,11 @@ var (
 
 // Initialization code
 func init() {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	// Initialize CLI flags
 	flags = []cli.Flag{
 		&cli.BoolFlag{
@@ -1729,13 +1734,6 @@ func init() {
 			},
 			Action: loginAPI,
 		},
-		{
-			Name: "help",
-			Action: func(c *cli.Context) error {
-				cli.ShowAppHelpAndExit(c, 0)
-				return nil
-			},
-		},
 	}
 	// Initialize formats values
 	formats = make(map[string]bool)
@@ -1746,6 +1744,10 @@ func init() {
 
 // Action for the DB check
 func checkDB(c *cli.Context) error {
+	if verboseFlag {
+		showFlags(c)
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 	if dbFlag && dbConfigFile != "" {
 		// Initialize backend
 		db, err = backend.CreateDBManagerFile(dbConfigFile)
@@ -1770,6 +1772,10 @@ func checkDB(c *cli.Context) error {
 
 // Action for the API check
 func checkAPI(c *cli.Context) error {
+	if verboseFlag {
+		showFlags(c)
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 	if apiFlag {
 		if apiConfigFile != "" {
 			apiConfig, err = loadAPIConfiguration(apiConfigFile)
@@ -1792,6 +1798,10 @@ func checkAPI(c *cli.Context) error {
 
 // Action for the API login
 func loginAPI(c *cli.Context) error {
+	if verboseFlag {
+		showFlags(c)
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 	// API URL can is needed
 	if apiConfig.URL == "" {
 		fmt.Println("❌ API URL is required")
@@ -1837,9 +1847,52 @@ func loginAPI(c *cli.Context) error {
 	return nil
 }
 
+func showFlags(c *cli.Context) {
+	fmt.Println("=== Flag Values ===")
+	// Get all defined flags
+	for _, flag := range c.App.Flags {
+		// For each flag type, extract and print its value
+		switch f := flag.(type) {
+		case *cli.StringFlag:
+			fmt.Printf("  %s: %q\n", f.Names()[0], c.String(f.Names()[0]))
+		case *cli.BoolFlag:
+			fmt.Printf("  %s: %t\n", f.Names()[0], c.Bool(f.Names()[0]))
+		case *cli.IntFlag:
+			fmt.Printf("  %s: %d\n", f.Names()[0], c.Int(f.Names()[0]))
+		case *cli.Int64Flag:
+			fmt.Printf("  %s: %d\n", f.Names()[0], c.Int64(f.Names()[0]))
+		case *cli.Float64Flag:
+			fmt.Printf("  %s: %f\n", f.Names()[0], c.Float64(f.Names()[0]))
+		}
+	}
+	// Show command-specific flags if we're in a command
+	if c.Command != nil && len(c.Command.Flags) > 0 {
+		fmt.Printf("=== Command '%s' Flag Values ===\n", c.Command.Name)
+		for _, flag := range c.Command.Flags {
+			switch f := flag.(type) {
+			case *cli.StringFlag:
+				fmt.Printf("  %s: %q\n", f.Names()[0], c.String(f.Names()[0]))
+			case *cli.BoolFlag:
+				fmt.Printf("  %s: %t\n", f.Names()[0], c.Bool(f.Names()[0]))
+			case *cli.IntFlag:
+				fmt.Printf("  %s: %d\n", f.Names()[0], c.Int(f.Names()[0]))
+			case *cli.Int64Flag:
+				fmt.Printf("  %s: %d\n", f.Names()[0], c.Int64(f.Names()[0]))
+			case *cli.Float64Flag:
+				fmt.Printf("  %s: %f\n", f.Names()[0], c.Float64(f.Names()[0]))
+			}
+		}
+	}
+	fmt.Println("==================")
+}
+
 // Function to wrap actions
 func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 	return func(c *cli.Context) error {
+		if verboseFlag {
+			showFlags(c)
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
 		// Verify if format is correct
 		if !formats[formatFlag] {
 			return fmt.Errorf("invalid format %s", formatFlag)
@@ -1848,41 +1901,52 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 		if dbFlag {
 			// Initialize backend
 			if dbConfigFile != "" {
+				log.Debug().Msg("Initializing DB from file")
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
 					return fmt.Errorf("CreateDBManagerFile - %w", err)
 				}
 			} else {
+				log.Debug().Msg("Creating DB manager from config")
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
 					return fmt.Errorf("CreateDBManager - %w", err)
 				}
 			}
 			// Initialize users
+			log.Debug().Msg("Creating user manager")
 			adminUsers = users.CreateUserManager(db.Conn, &config.JSONConfigurationJWT{JWTSecret: appName})
 			// Initialize environment
+			log.Debug().Msg("Creating environment manager")
 			envs = environments.CreateEnvironment(db.Conn)
 			// Initialize settings
+			log.Debug().Msg("Creating settings manager")
 			settingsmgr = settings.NewSettings(db.Conn)
 			// Initialize nodes
+			log.Debug().Msg("Creating nodes manager")
 			nodesmgr = nodes.CreateNodes(db.Conn)
 			// Initialize queries
+			log.Debug().Msg("Creating queries manager")
 			queriesmgr = queries.CreateQueries(db.Conn)
 			// Initialize carves
+			log.Debug().Msg("Creating file carves manager")
 			filecarves = carves.CreateFileCarves(db.Conn, config.CarverDB, nil)
 			// Initialize tags
+			log.Debug().Msg("Creating tags manager")
 			tagsmgr = tags.CreateTagManager(db.Conn)
 			// Execute action
 			return action(c)
 		}
 		if apiFlag {
 			if apiConfigFile != "" {
+				log.Debug().Msg("Loading API configuration from file")
 				apiConfig, err = loadAPIConfiguration(apiConfigFile)
 				if err != nil {
 					return fmt.Errorf("loadAPIConfiguration - %w", err)
 				}
 			}
 			// Initialize API
+			log.Debug().Msg("Creating API client")
 			osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 			// Execute action
 			return action(c)
@@ -1910,6 +1974,11 @@ func main() {
 	app.Name = appName
 	app.Usage = appUsage
 	app.Version = buildVersion
+	cli.HelpFlag = &cli.BoolFlag{
+		Name:    "help",
+		Aliases: []string{"h"},
+		Usage:   "Show help",
+	}
 	app.Description = appDescription
 	app.Flags = flags
 	// Customize version output (supports `--version` and `version` command)
@@ -1922,20 +1991,17 @@ func main() {
 		Aliases: []string{"v"},
 		Usage:   "Print version information",
 	}
+	// Assign commands
 	app.Commands = commands
-	if verboseFlag {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
-	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return filepath.Base(file) + ":" + strconv.Itoa(line)
-	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: logging.LoggerTimeFormat}).With().Caller().Logger()
 	// Start service only for default action; version/help won't trigger this
-	app.Action = cliAction
+	app.Action = func(c *cli.Context) error {
+		if err := cliAction(c); err != nil {
+			return err
+		}
+		return nil
+	}
 	// Run the app
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal().Msgf("❌ Failed to execute - %v", err)
+		log.Fatal().Msgf("❌ %v", err)
 	}
 }
