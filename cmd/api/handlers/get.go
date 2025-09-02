@@ -28,7 +28,7 @@ func (h *HandlersApi) CheckHandlerNoAuth(w http.ResponseWriter, r *http.Request)
 	utils.HTTPResponse(w, "Checked", http.StatusOK, []byte(okContent))
 }
 
-// CheckHanderAuth - Handle authenticated check requests
+// CheckHandlerAuth - Handle authenticated check requests
 func (h *HandlersApi) CheckHandlerAuth(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.Enabled {
