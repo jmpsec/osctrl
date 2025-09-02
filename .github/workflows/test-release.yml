@@ -1,4 +1,4 @@
-name: Test Release
+name: Test a new release with GoReleaser
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
           go-version: ${{ env.GOLANG_VERSION }}
 
       - name: Run GoReleaser build
-        uses: goreleaser/goreleaser-action@v5.0.0
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
           version: latest

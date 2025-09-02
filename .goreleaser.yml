@@ -85,16 +85,25 @@ builds:
       - -X main.buildDate={{.Date}}
 
 archives:
-  - name_template: >-
+  - id: osctrl
+    allow_different_binary_count: true
+    name_template: >-
       {{ .ProjectName }}-
       {{- title .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    builds:
+      - osctrl-tls
+      - osctrl-admin
+      - osctrl-api
+      - osctrl-cli
     files:
       - README.md
       - LICENSE
-      - CHANGELOG.md
 
 checksum:
   name_template: "checksums.txt"
