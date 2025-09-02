@@ -50,7 +50,6 @@ type TableTemplateData struct {
 	Target       string
 	Tags         []tags.AdminTag
 	Environments []environments.TLSEnvironment
-	Platforms    []string
 	Metadata     TemplateMetadata
 	LeftMetadata AsideLeftMetadata
 }

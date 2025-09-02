@@ -140,12 +140,6 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env.Name,
@@ -156,7 +150,6 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		Target:       target,
 		Tags:         tags,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -216,12 +209,6 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + platform,
@@ -231,7 +218,6 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		Target:       target,
 		Tags:         tags,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")

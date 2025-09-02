@@ -21,7 +21,7 @@ function statsRefresh(_target, _identifier) {
 }
 
 function beginStats() {
-  var _stats = ['environment', 'platform'];
+  var _stats = ['environment'];
   for (var i = 0; i < _stats.length; i++) {
     $('input[type="hidden"].stats-' + _stats[i] + '-value').each(function () {
       statsRefresh(_stats[i], $(this).val());

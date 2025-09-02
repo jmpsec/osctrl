@@ -310,9 +310,6 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// API: platforms
 	muxAPI.Handle(
-		"GET "+_apiPath(apiPlatformsPath),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
 		"GET "+_apiPath(apiPlatformsPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// API: environments
