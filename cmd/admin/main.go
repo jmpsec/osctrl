@@ -348,10 +348,6 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/environment/{env}/{target}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler), flagParams.ConfigValues.Auth))
-	// Admin: JSON data for platforms
-	adminMux.Handle(
-		"GET /json/platform/{platform}/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONPlatformHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for logs
 	adminMux.Handle(
 		"GET /json/logs/{type}/{env}/{uuid}",

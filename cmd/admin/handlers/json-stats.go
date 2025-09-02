@@ -45,7 +45,6 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Get stats
 	var stats nodes.StatsData
-	var err error
 	if target == "environment" {
 		// Verify identifier
 		env, err := h.Envs.Get(identifier)
@@ -61,17 +60,6 @@ func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request)
 		stats, err = h.Nodes.GetStatsByEnv(env.Name, h.Settings.InactiveHours(settings.NoEnvironmentID))
 		if err != nil {
 			log.Err(err).Msg("error getting stats")
-			return
-		}
-	} else if target == "platform" {
-		// Check permissions
-		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-			log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
-			return
-		}
-		stats, err = h.Nodes.GetStatsByPlatform(identifier, h.Settings.InactiveHours(settings.NoEnvironmentID))
-		if err != nil {
-			log.Err(err).Msgf("error getting platform stats for %s", identifier)
 			return
 		}
 	}
