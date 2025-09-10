@@ -258,7 +258,7 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if err := h.Tags.TagNode(t.Tag, n, ctx[ctxUser], false, t.Type); err != nil {
+	if err := h.Tags.TagNode(t.Tag, n, ctx[ctxUser], false, t.Type, t.Custom); err != nil {
 		apiErrorResponse(w, "error tagging node", http.StatusInternalServerError, err)
 		return
 	}

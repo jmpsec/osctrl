@@ -137,6 +137,8 @@ type TagsRequest struct {
 	Icon        string `json:"icon"`
 	Environment string `json:"environment"`
 	TagType     uint   `json:"tagtype"`
+	Custom      string `json:"custom"`
+	Cohort      bool   `json:"cohort"`
 }
 
 // TagNodesRequest to receive a tag for nodes

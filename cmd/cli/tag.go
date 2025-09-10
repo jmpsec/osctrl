@@ -48,7 +48,7 @@ func tagToData(t tags.AdminTag, m environments.MapEnvByID, header []string) [][]
 
 func addTag(c *cli.Context) error {
 	// Get values from flags
-	env := c.String("env-uuid")
+	env := c.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -67,18 +67,19 @@ func addTag(c *cli.Context) error {
 		icon = tags.DefaultTagIcon
 	}
 	description := c.String("description")
-	tagType := c.String("tag-type")
+	tagType := tags.TagTypeParser(c.String("tag-type"))
+	custom := c.String("custom")
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		// TODO - Use the correct user
-		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tags.TagTypeParser(tagType)); err != nil {
+		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tagType, custom); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
-		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tags.TagTypeParser(tagType))
+		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, custom)
 		if err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}

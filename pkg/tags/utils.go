@@ -8,20 +8,22 @@ import (
 )
 
 const (
-	// TagTypeEnvironmentStr is the tag type for environment
-	TagTypeEnvironmentStr = "Environment"
 	// TagTypeEnvStr is the tag type for shortened environment
-	TagTypeEnvStr = "Env"
+	TagTypeEnvStr = "env"
 	// TagTypeUUIDStr is the tag type for UUID
-	TagTypeUUIDStr = "UUID"
+	TagTypeUUIDStr = "uuid"
 	// TagTypePlatformStr is the tag type for platform
-	TagTypePlatformStr = "Platform"
+	TagTypePlatformStr = "platform"
 	// TagTypeLocalnameStr is the tag type for localname
-	TagTypeLocalnameStr = "Localname"
+	TagTypeLocalnameStr = "localname"
+	// TagTypeHostnameStr is the tag type for hostname
+	TagTypeHostnameStr = "hostname"
 	// TagTypeCustomStr is the tag type for custom
-	TagTypeCustomStr = "Custom"
+	TagTypeCustomStr = "custom"
 	// TagTypeUnknownStr is the tag type for unknown
-	TagTypeUnknownStr = "Unknown"
+	TagTypeUnknownStr = "unknown"
+	// TagTypeTagStr is the tag type for tag
+	TagTypeTagStr = "tag"
 )
 
 // Helper to generate a random color in hex for HTML
@@ -47,13 +49,15 @@ func GetHex(num int) string {
 func TagTypeDecorator(tagType uint) string {
 	switch tagType {
 	case TagTypeEnv:
-		return TagTypeEnvironmentStr
+		return TagTypeEnvStr
 	case TagTypeUUID:
 		return TagTypeUUIDStr
 	case TagTypePlatform:
 		return TagTypePlatformStr
 	case TagTypeLocalname:
 		return TagTypeLocalnameStr
+	case TagTypeHostname:
+		return TagTypeHostnameStr
 	case TagTypeCustom:
 		return TagTypeCustomStr
 	default:
@@ -77,4 +81,28 @@ func TagTypeParser(tagType string) uint {
 	default:
 		return TagTypeUnknown
 	}
+}
+
+// Helper to define the custom tag value based on the type
+func SetCustomTag(tagType uint, custom string) string {
+	var tagCustom string
+	switch tagType {
+	case TagTypeEnv:
+		tagCustom = TagCustomEnv
+	case TagTypeUUID:
+		tagCustom = TagCustomUUID
+	case TagTypePlatform:
+		tagCustom = TagCustomPlatform
+	case TagTypeLocalname:
+		tagCustom = TagCustomLocalname
+	case TagTypeCustom:
+		tagCustom = custom
+	case TagTypeUnknown:
+		tagCustom = TagCustomUnknown
+	case TagTypeTag:
+		tagCustom = TagCustomTag
+	default:
+		tagCustom = TagCustomTag
+	}
+	return tagCustom
 }

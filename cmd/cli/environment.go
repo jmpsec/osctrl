@@ -69,7 +69,8 @@ func addEnvironment(c *cli.Context) error {
 				appName,
 				newEnv.ID,
 				false,
-				tags.TagTypeEnv); err != nil {
+				tags.TagTypeEnv,
+				tags.TagCustomEnv); err != nil {
 				return err
 			}
 			// Generate flags

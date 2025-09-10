@@ -53,17 +53,17 @@ func (api *OsctrlAPI) GetTag(env, name string) (tags.AdminTag, error) {
 }
 
 // AddTag to add a tag to osctrl
-func (api *OsctrlAPI) AddTag(envUUID, name, color, icon, description string, tagType uint) (types.ApiGenericResponse, error) {
+func (api *OsctrlAPI) AddTag(env, name, color, icon, description string, tagType uint, custom string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
 	t := types.ApiTagsRequest{
 		Name:        name,
 		Description: description,
 		Color:       color,
 		Icon:        icon,
-		EnvUUID:     envUUID,
+		Env:         env,
 		TagType:     tagType,
 	}
-	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, envUUID, tags.ActionAdd))
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, env, tags.ActionAdd))
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)
@@ -80,13 +80,13 @@ func (api *OsctrlAPI) AddTag(envUUID, name, color, icon, description string, tag
 }
 
 // DeleteTag to delete a tag from osctrl
-func (api *OsctrlAPI) DeleteTag(envUUID, name string) (types.ApiGenericResponse, error) {
+func (api *OsctrlAPI) DeleteTag(env, name string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
 	t := types.ApiTagsRequest{
-		Name:    name,
-		EnvUUID: envUUID,
+		Name: name,
+		Env:  env,
 	}
-	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, envUUID, tags.ActionRemove))
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, env, tags.ActionRemove))
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)
@@ -103,17 +103,17 @@ func (api *OsctrlAPI) DeleteTag(envUUID, name string) (types.ApiGenericResponse,
 }
 
 // EditTag to edit a tag from osctrl
-func (api *OsctrlAPI) EditTag(envUUID, name, color, icon, description string, tagType uint) (types.ApiGenericResponse, error) {
+func (api *OsctrlAPI) EditTag(env, name, color, icon, description string, tagType uint) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
 	t := types.ApiTagsRequest{
 		Name:        name,
 		Description: description,
 		Color:       color,
 		Icon:        icon,
-		EnvUUID:     envUUID,
+		Env:         env,
 		TagType:     tagType,
 	}
-	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, envUUID, tags.ActionEdit))
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, env, tags.ActionEdit))
 	jsonMessage, err := json.Marshal(t)
 	if err != nil {
 		return r, fmt.Errorf("error marshaling data - %w", err)

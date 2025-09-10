@@ -156,14 +156,24 @@ func tagNode(c *cli.Context) error {
 		os.Exit(1)
 	}
 	tagType := c.String("tag-type")
-	tagTypeInt := tags.TagTypeCustom
+	tagCustom := c.String("custom")
+	var tagTypeInt uint
 	switch tagType {
-	case "env":
+	case tags.TagTypeEnvStr:
 		tagTypeInt = tags.TagTypeEnv
-	case "uuid":
+	case tags.TagTypeUUIDStr:
 		tagTypeInt = tags.TagTypeUUID
-	case "localname":
+	case tags.TagTypeLocalnameStr:
 		tagTypeInt = tags.TagTypeLocalname
+	case tags.TagTypeHostnameStr:
+		tagTypeInt = tags.TagTypeHostname
+	case tags.TagTypePlatformStr:
+		tagTypeInt = tags.TagTypePlatform
+	case tags.TagTypeTagStr:
+		tagTypeInt = tags.TagTypeTag
+	default:
+		tagTypeInt = tags.TagTypeCustom
+
 	}
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -174,11 +184,11 @@ func tagNode(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("error get uuid - %w", err)
 		}
-		if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt); err != nil {
+		if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt, tagCustom); err != nil {
 			return fmt.Errorf("error tagging - %w", err)
 		}
 	} else if apiFlag {
-		if err := osctrlAPI.TagNode(env, uuid, tag, tagTypeInt); err != nil {
+		if err := osctrlAPI.TagNode(env, uuid, tag, tagTypeInt, tagCustom); err != nil {
 			return fmt.Errorf("error tagging node - %w", err)
 		}
 	}
