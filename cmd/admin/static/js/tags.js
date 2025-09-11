@@ -31,6 +31,9 @@ function editTag(_name) {
   $("#tag_type")
     .val($("#tag_type_" + _name).val())
     .change();
+  $("#tag_custom")
+    .val($("#tag_custom_" + _name).val())
+    .change();
   $("#createEditTagModal").modal();
 }
 

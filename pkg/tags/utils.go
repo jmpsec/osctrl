@@ -95,6 +95,8 @@ func SetCustomTag(tagType uint, custom string) string {
 		tagCustom = TagCustomPlatform
 	case TagTypeLocalname:
 		tagCustom = TagCustomLocalname
+	case TagTypeHostname:
+		tagCustom = TagCustomHostname
 	case TagTypeCustom:
 		tagCustom = custom
 	case TagTypeUnknown:

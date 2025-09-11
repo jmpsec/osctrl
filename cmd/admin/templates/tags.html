@@ -48,6 +48,7 @@
                       <th>Color</th>
                       <th>Icon</th>
                       <th>Environment</th>
+                      <th>Custom</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -60,10 +61,13 @@
                       <td>{{ $t.Color }}<input type="hidden" value="{{ $t.Color }}" id="tag_color_{{ $t.Name }}">
                         <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
                       </td>
-                      <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
+                      <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}">
+                      </td>
                       <td>
                         <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
-                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}"></td>
+                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}">
+                      </td>
+                      <td>{{ $t.CustomTag }}<input type="hidden" value="{{ $t.CustomTag }}" id="tag_custom_{{ $t.Name }}"></td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>

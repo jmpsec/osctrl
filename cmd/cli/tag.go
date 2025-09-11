@@ -138,6 +138,7 @@ func editTag(c *cli.Context) error {
 	icon := c.String("icon")
 	description := c.String("description")
 	tagType := c.String("tag-type")
+	custom := c.String("custom")
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -167,6 +168,11 @@ func editTag(c *cli.Context) error {
 				return fmt.Errorf("❌ %w", err)
 			}
 		}
+		if custom != "" && custom != t.CustomTag {
+			if err := tagsmgr.ChangeCustom(&t, custom); err != nil {
+				return fmt.Errorf("❌ %w", err)
+			}
+		}
 	} else if apiFlag {
 		t, err := osctrlAPI.GetTag(env, name)
 		if err != nil {
@@ -176,7 +182,7 @@ func editTag(c *cli.Context) error {
 		if tagType != "" && !strings.EqualFold(tagType, tags.TagTypeDecorator(t.TagType)) {
 			tt = tags.TagTypeParser(tagType)
 		}
-		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tt)
+		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tt, custom)
 		if err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
@@ -230,6 +236,7 @@ func showTag(c *cli.Context) error {
 	fmt.Printf("CreatedBy: %s\n", t.CreatedBy)
 	fmt.Printf("AutoTag: %s\n", stringifyBool(t.AutoTag))
 	fmt.Printf("TagType: %s\n", tags.TagTypeDecorator(t.TagType))
+	fmt.Printf("Custom: %s\n", t.CustomTag)
 	fmt.Printf("Environment: %s\n", envName)
 	fmt.Println()
 	return nil

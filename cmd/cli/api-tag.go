@@ -103,7 +103,7 @@ func (api *OsctrlAPI) DeleteTag(env, name string) (types.ApiGenericResponse, err
 }
 
 // EditTag to edit a tag from osctrl
-func (api *OsctrlAPI) EditTag(env, name, color, icon, description string, tagType uint) (types.ApiGenericResponse, error) {
+func (api *OsctrlAPI) EditTag(env, name, color, icon, description string, tagType uint, custom string) (types.ApiGenericResponse, error) {
 	var r types.ApiGenericResponse
 	t := types.ApiTagsRequest{
 		Name:        name,
@@ -112,6 +112,7 @@ func (api *OsctrlAPI) EditTag(env, name, color, icon, description string, tagTyp
 		Icon:        icon,
 		Env:         env,
 		TagType:     tagType,
+		Custom: 		 custom,
 	}
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, env, tags.ActionEdit))
 	jsonMessage, err := json.Marshal(t)
