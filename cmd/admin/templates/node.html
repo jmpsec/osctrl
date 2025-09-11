@@ -29,7 +29,7 @@
                 <i class="nav-icon fas fa-tachometer-alt"></i>
                 <strong> Dashboard for node {{ .Hostname }} </strong>
                 {{ range  $i, $t := $template.NodeTags }}
-                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
+                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.CustomTag }}:{{ $t.Name }}</span>
                 {{ end }}
               </div>
               <div class="card-body">
@@ -91,7 +91,11 @@
                 <i class="nav-icon fas fa-info-circle"></i>
                 <strong> Details of node {{ .Hostname }} </strong>
                 {{ range  $i, $t := $template.NodeTags }}
-                  <span style="background-color: {{ $t.Color }};" class="badge"><i class="{{ $t.Icon }}"></i> {{ $t.Name }}</span>
+                  <span style="background-color: {{ $t.Color }};" class="badge">
+                    <i class="{{ $t.Icon }}"></i>
+                    <span class="badge-prefix">{{ $t.CustomTag }}:</span>
+                    <span class="badge-main">{{ $t.Name }}</span>
+                  </span>
                 {{ end }}
               </div>
               <div class="card-body">

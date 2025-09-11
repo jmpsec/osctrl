@@ -42,20 +42,22 @@
                 <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th>Tag</th>
                       <th>Type</th>
                       <th>Description</th>
                       <th>Color</th>
                       <th>Icon</th>
                       <th>Environment</th>
-                      <th>Custom</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
                   {{range  $i, $t := $.Tags}}
                     <tr>
-                      <td><b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}"></td>
+                      <td>
+                        {{ $t.CustomTag }}<input type="hidden" value="{{ $t.CustomTag }}" id="tag_custom_{{ $t.Name }}">:
+                        <b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}">
+                      </td>
                       <td>{{ tagTypeDecorator $t.TagType }}<input type="hidden" value="{{ $t.TagType }}" id="tag_type_{{ $t.Name }}">
                       <td>{{ $t.Description }}<input type="hidden" value="{{ $t.Description }}" id="tag_desc_{{ $t.Name }}"></td>
                       <td>{{ $t.Color }}<input type="hidden" value="{{ $t.Color }}" id="tag_color_{{ $t.Name }}">
@@ -67,7 +69,6 @@
                         <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
                         <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}">
                       </td>
-                      <td>{{ $t.CustomTag }}<input type="hidden" value="{{ $t.CustomTag }}" id="tag_custom_{{ $t.Name }}"></td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>

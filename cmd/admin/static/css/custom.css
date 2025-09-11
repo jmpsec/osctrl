@@ -163,3 +163,17 @@ button {
   font-family: monospace;
   font-size: 1.3em;
 }
+
+.badge-prefix {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: 400;
+  font-style: italic;
+  margin-right: 2px;
+}
+
+.badge-main {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
