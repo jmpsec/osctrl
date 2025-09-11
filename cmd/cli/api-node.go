@@ -61,11 +61,12 @@ func (api *OsctrlAPI) DeleteNode(env, identifier string) error {
 }
 
 // TagNode to tag node in osctrl
-func (api *OsctrlAPI) TagNode(env, identifier, tag string, tagType uint) error {
+func (api *OsctrlAPI) TagNode(env, identifier, tag string, tagType uint, custom string) error {
 	t := types.ApiNodeTagRequest{
-		UUID: identifier,
-		Tag:  tag,
-		Type: tagType,
+		UUID:   identifier,
+		Tag:    tag,
+		Type:   tagType,
+		Custom: custom,
 	}
 	var r types.ApiGenericResponse
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APINodes, env, "tag"))

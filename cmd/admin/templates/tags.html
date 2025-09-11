@@ -22,7 +22,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-tag"></i> All Tags</b>
+                <i class="fas fa-tag"></i><b>All Tags</b>
 
                   <div class="card-header-actions">
                     <div class="row">
@@ -42,7 +42,7 @@
                 <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th>Tag</th>
                       <th>Type</th>
                       <th>Description</th>
                       <th>Color</th>
@@ -54,16 +54,21 @@
                   <tbody>
                   {{range  $i, $t := $.Tags}}
                     <tr>
-                      <td><b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}"></td>
+                      <td>
+                        {{ $t.CustomTag }}<input type="hidden" value="{{ $t.CustomTag }}" id="tag_custom_{{ $t.Name }}">:
+                        <b>{{ $t.Name }}</b><input type="hidden" value="{{ $t.Name }}" id="tag_name_{{ $t.Name }}">
+                      </td>
                       <td>{{ tagTypeDecorator $t.TagType }}<input type="hidden" value="{{ $t.TagType }}" id="tag_type_{{ $t.Name }}">
                       <td>{{ $t.Description }}<input type="hidden" value="{{ $t.Description }}" id="tag_desc_{{ $t.Name }}"></td>
                       <td>{{ $t.Color }}<input type="hidden" value="{{ $t.Color }}" id="tag_color_{{ $t.Name }}">
                         <span style="color: {{ $t.Color }}; background-color: {{ $t.Color }};">##</span>
                       </td>
-                      <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}"></td>
+                      <td>{{ $t.Icon }} <i class="{{ $t.Icon }}"></i><input type="hidden" value="{{ $t.Icon }}" id="tag_icon_{{ $t.Name }}">
+                      </td>
                       <td>
                         <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
-                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}"></td>
+                        <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}">
+                      </td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>
@@ -136,7 +141,16 @@
                           <option value="2">Platform</option>
                           <option value="3">Localname</option>
                           <option value="4">Custom</option>
+                          <option value="5">Unknown</option>
+                          <option value="6">Tag</option>
+                          <option value="7">Hostname</option>
                         </select>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-md-2 col-form-label" for="tag_custom">Custom Tag: </label>
+                      <div class="col-md-4">
+                        <input class="form-control" name="tag_custom" id="tag_custom" type="text" autocomplete="off">
                       </div>
                     </div>
                   </div>

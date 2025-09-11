@@ -10,6 +10,7 @@ function createTag() {
   $("#tag_description").val("");
   $("#tag_icon").val("");
   $("#tag_env").val("");
+  $("#tag_custom").val("");
   $("#createEditTagModal").modal();
 }
 
@@ -30,6 +31,9 @@ function editTag(_name) {
   $("#tag_type")
     .val($("#tag_type_" + _name).val())
     .change();
+  $("#tag_custom")
+    .val($("#tag_custom_" + _name).val())
+    .change();
   $("#createEditTagModal").modal();
 }
 
@@ -41,6 +45,7 @@ function confirmCreateTag() {
   var _color = $("#tag_color").val();
   var _icon = $("#tag_icon").val();
   var _env = $("#tag_env").val();
+  var _custom = $("#tag_custom").val();
   var _tagtype = parseInt($("#tag_type").val());
   var data = {
     csrftoken: _csrftoken,
@@ -51,6 +56,7 @@ function confirmCreateTag() {
     icon: _icon,
     environment: _env,
     tagtype: _tagtype,
+    custom: _custom,
   };
   sendPostRequest(data, _url, _url, false);
 }
@@ -64,6 +70,7 @@ function confirmEditTag() {
   var _icon = $("#tag_icon").val();
   var _env = $("#tag_env").val();
   var _tagtype = parseInt($("#tag_type").val());
+  var _custom = $("#tag_custom").val();
   var data = {
     csrftoken: _csrftoken,
     action: "edit",
@@ -73,6 +80,7 @@ function confirmEditTag() {
     icon: _icon,
     environment: _env,
     tagtype: _tagtype,
+    custom: _custom,
   };
   sendPostRequest(data, _url, _url, false);
 }

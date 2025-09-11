@@ -961,7 +961,8 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				ctx[sessions.CtxUser],
 				env.ID,
 				false,
-				tags.TagTypeEnv); err != nil {
+				tags.TagTypeEnv,
+				""); err != nil {
 				adminErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 				return
 			}
@@ -1261,7 +1262,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
 			return
 		}
-		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser], env.ID, false, t.TagType); err != nil {
+		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[sessions.CtxUser], env.ID, false, t.TagType, t.Custom); err != nil {
 			adminErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
 			return
 		}
@@ -1357,7 +1358,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Processing the list of tags to add and all nodes to tag
 	for _, n := range toBeProcessed {
-		if err := h.Tags.TagNodeMulti(t.TagsAdd, n, ctx[sessions.CtxUser], false); err != nil {
+		if err := h.Tags.TagNodeMulti(t.TagsAdd, n, ctx[sessions.CtxUser], false, ""); err != nil {
 			adminErrorResponse(w, "error with tag", http.StatusInternalServerError, err)
 			return
 		}

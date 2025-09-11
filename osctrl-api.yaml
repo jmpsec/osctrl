@@ -2596,6 +2596,8 @@ components:
         TagType:
           type: integer
           format: uint32
+        Custom:
+          type: string
     ApiLookupRequest:
       type: object
       properties:

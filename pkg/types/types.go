@@ -68,9 +68,10 @@ type ApiNodeGenericRequest struct {
 
 // ApiNodeTagRequest to receive tag node requests
 type ApiNodeTagRequest struct {
-	UUID string `json:"uuid"`
-	Tag  string `json:"tag"`
-	Type uint   `json:"type"`
+	UUID   string `json:"uuid"`
+	Tag    string `json:"tag"`
+	Type   uint   `json:"type"`
+	Custom string `json:"custom"`
 }
 
 // ApiLoginRequest to receive login requests
@@ -120,8 +121,9 @@ type ApiTagsRequest struct {
 	Description string `json:"description"`
 	Color       string `json:"color"`
 	Icon        string `json:"icon"`
-	EnvUUID     string `json:"env_uuid"`
+	Env         string `json:"env"`
 	TagType     uint   `json:"tagtype"`
+	Custom      string `json:"custom"`
 }
 
 // ApiLookupRequest to receive lookup requests
