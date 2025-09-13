@@ -1,48 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  {{ $metadata := .Metadata }}
-  {{ $serviceConfig := .ServiceConfig }}
-
-  {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $serviceConfig := .ServiceConfig }} {{
+  template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
-
       {{ template "page-aside-left" . }}
 
       <main class="main">
-
         <div class="container-fluid">
-
           <div class="animated fadeIn">
-
-          {{ $template := . }}
-          {{ with .Query }}
+            {{ $template := . }} {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
-                  <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }}
-                {{ else }}
-                  {{ if .Completed }}
-                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }}
-                  {{ else }}
-                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b>
-                  {{ end }}
-                  - <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
+                <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{
+                .Name }} {{ else }} {{ if .Completed }}
+                <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ]
+                - {{ .Name }} {{ else }} <i class="fas fa-hourglass-half"></i> [
+                <b>QUERY ACTIVE</b> ] - {{ .Name }} -
+                <b>{{ inFutureTime .Expiration }}</b> {{ end }} -
+                <a
+                  href="{{ queryResultLink .Name $template.EnvUUID }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  ><i class="fas fa-external-link-alt"></i
+                ></a>
                 {{ end }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
-                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    data-tooltip="true"
+                    data-placement="bottom"
+                    title="Refresh table"
+                    onclick="refreshTableNow('tableQueryLogs');"
+                  >
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                <table
+                  class="table table-responsive-sm table-bordered table-striped text-center"
+                >
                   <thead>
                     <tr>
                       <th width="60%">Query</th>
@@ -52,33 +54,57 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td style="font-size: 1.5em; font-family: monospace; text-align: center;vertical-align: middle;"><b>{{ .Query }}</b></td>
+                      <td
+                        style="
+                          font-size: 1.5em;
+                          font-family: monospace;
+                          text-align: center;
+                          vertical-align: middle;
+                        "
+                      >
+                        <b>{{ .Query }}</b>
+                      </td>
                       <td>
-                        <table class="table table-sm table-light" style="width:100%;">
+                        <table
+                          class="table table-sm table-light"
+                          style="width: 100%"
+                        >
                           <tr>
                             <th width="50%">Type</th>
                             <th width="50%">Value</th>
+                          </tr>
+
                           <tr>
-                          {{ range  $i, $e := $.QueryTargets }}
-                            <tr style="background-color: #ffffff;">
-                              <td>{{ $e.Type }}</td>
-                              <td><b>{{ $e.Value }}</b></td>
-                            </tr>
+                            {{ range $i, $e := $.QueryTargets }}
+                          </tr>
+
+                          <tr style="background-color: #ffffff">
+                            <td>{{ $e.Type }}</td>
+                            <td><b>{{ $e.Value }}</b></td>
+                          </tr>
                           {{ end }}
                         </table>
                       </td>
-                      <td style="text-align: center;vertical-align: middle;">
-                        <span style="color:black;">{{ .Expected }}</span>/
-                        <b><span style="color:green;">{{ .Executions }}</span></b>/
-                        <b><span style="color:red;">{{ .Errors }}</span></b>
+                      <td style="text-align: center; vertical-align: middle">
+                        <span style="color: black">{{ .Expected }}</span>/
+                        <b
+                          ><span style="color: green"
+                            >{{ .Executions }}</span
+                          ></b
+                        >/
+                        <b><span style="color: red">{{ .Errors }}</span></b>
                       </td>
                     </tr>
                   </tbody>
                 </table>
-                <br>
-              {{ if eq $serviceConfig.Logger "db" }}
-                <table id="tableQueryLogs" class="table table-bordered table-striped" style="width:100%">
-                  <input type="hidden" id="refresh_value" value="yes">
+                <br />
+                {{ if eq $serviceConfig.Logger "db" }}
+                <table
+                  id="tableQueryLogs"
+                  class="table table-bordered table-striped"
+                  style="width: 100%"
+                >
+                  <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
                     <tr>
                       <th>Created</th>
@@ -87,113 +113,114 @@
                     </tr>
                   </thead>
                 </table>
-              {{ else }}
+                {{ else }}
                 <div class="alert alert-warning" role="alert">
-                  <i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration. No results available.
+                  <i class="fas fa-exclamation-triangle"></i> The logger is set
+                  to <b>{{ $serviceConfig.Logger }}</b> in the service
+                  configuration. No results available.
                 </div>
-              {{ end }}
-
+                {{ end }}
               </div>
             </div>
-          {{ end }}
-
+            {{ end }}
           </div>
-
         </div>
-
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
-        {{ template "page-aside-right" . }}
-      {{ end }}
-
+      {{ if $metadata.Admin }} {{ template "page-aside-right" . }} {{ end }}
     </div>
 
     {{ template "page-js" . }}
 
     <!-- custom JS -->
     <script src="/static/js/tables.js"></script>
-  {{ with .Query }}
+    {{ with .Query }}
     <script type="text/javascript">
-      $(document).ready(function() {
-        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+      $(document).ready(function () {
+        $.fn.dataTable.ext.errMode = function (settings, helpPage, message) {
           console.log(message);
-          $('.card-header').addClass("bg-danger");
+          $(".card-header").addClass("bg-danger");
         };
-        $.fn.dataTable.ext.ajax
-        var tableQueryLogs = $('#tableQueryLogs').DataTable({
-          initComplete : function(settings, json) {
-            $('.card-header').removeClass("bg-danger");
+        $.fn.dataTable.ext.ajax;
+        var tableQueryLogs = $("#tableQueryLogs").DataTable({
+          initComplete: function (settings, json) {
+            $(".card-header").removeClass("bg-danger");
           },
-          pageLength : 25,
-          searching : true,
-          processing : true,
-          ajax : {
+          pageLength: 25,
+          searching: true,
+          processing: true,
+          ajax: {
             url: "/json/query/{{ $template.EnvUUID }}/{{ .Name }}",
-            dataSrc: function(json) {
-              $('#status-card-header').removeClass("bg-danger");
+            dataSrc: function (json) {
+              $("#status-card-header").removeClass("bg-danger");
               return json.data;
             },
-            error: function(xhr, error, code) {
-              $('.card-header').addClass("bg-danger");
+            error: function (xhr, error, code) {
+              $(".card-header").addClass("bg-danger");
               console.log("Error: " + error);
               console.log("Error code: " + code);
               console.log("Error response: " + xhr.responseText);
-            }
-          },
-          columns : [
-            {"data" : {
-                _:    "created.display",
-                sort: "created.timestamp"
-              }
             },
-            {"data" : "target"},
-            {"data" : "data"}
-          ],
-          order: [[ 0, "desc" ]],
-          columnDefs: [
-            { width: '10%', targets: 0 },
+          },
+          columns: [
             {
-              width: '15%',
+              data: {
+                _: "created.display",
+                sort: "created.timestamp",
+              },
+            },
+            { data: "target" },
+            { data: "data" },
+          ],
+          order: [[0, "desc"]],
+          columnDefs: [
+            { width: "10%", targets: 0 },
+            {
+              width: "15%",
               targets: 1,
               render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  return '<a href="/node/'+data.uuid+'">' + data.name + '</a>';
+                if (type === "display") {
+                  return (
+                    '<a href="/node/' + data.uuid + '">' + data.name + "</a>"
+                  );
                 } else {
                   return data;
                 }
-              }
+              },
             },
             {
-              width: '75%',
+              width: "75%",
               targets: 2,
               render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  return '<pre>' + JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) + '</pre>';
+                if (type === "display") {
+                  return (
+                    "<pre>" +
+                    JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) +
+                    "</pre>"
+                  );
                 } else {
                   return data;
                 }
-              }
-            }
-          ]
+              },
+            },
+          ],
         });
 
         // Enable all tooltips
-        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({ trigger: "hover" });
 
         // Auto-refresh table
-        setInterval(function (){
+        setInterval(function () {
           tableQueryLogs.ajax.reload();
-        }, 30000 );
+        }, 30000);
 
         // Refresh sidebar stats
         beginStats();
-        var statsTimer = setInterval(function(){
+        var statsTimer = setInterval(function () {
           beginStats();
-        },60000);
+        }, 60000);
       });
     </script>
-  {{ end }}
-
+    {{ end }}
   </body>
 </html>

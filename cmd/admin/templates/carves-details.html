@@ -1,48 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  {{ $metadata := .Metadata }}
-
-  {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
-
       {{ template "page-aside-left" . }}
 
       <main class="main">
-
         <div class="container-fluid">
-
           <div class="animated fadeIn">
-
-            {{ $carveBlocks := .CarveBlocks }}
-
-          {{ $template := . }}
-          {{ with .Query }}
+            {{ $carveBlocks := .CarveBlocks }} {{ $template := . }} {{ with
+            .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
-                  <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }}
-                {{ else }}
-                  {{ if .Completed }}
-                    <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }}
-                  {{ else }}
-                    <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b>
-                  {{ end }}
-                {{ end }}
+                <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{
+                .Name }} {{ else }} {{ if .Completed }}
+                <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ]
+                - {{ .Name }} {{ else }} <i class="fas fa-hourglass-half"></i> [
+                <b>QUERY ACTIVE</b> ] - {{ .Name }} -
+                <b>{{ inFutureTime .Expiration }}</b>
+                {{ end }} {{ end }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
-                    data-placement="bottom" title="Refresh details" onclick="refreshCarveDetails();">
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    data-tooltip="true"
+                    data-placement="bottom"
+                    title="Refresh details"
+                    onclick="refreshCarveDetails();"
+                  >
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-                <table class="table table-responsive-sm table-bordered table-striped text-center">
+                <table
+                  class="table table-responsive-sm table-bordered table-striped text-center"
+                >
                   <thead>
                     <tr>
                       <th width="45%">Path to Carve</th>
@@ -52,62 +48,99 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td style="font-size: 1.5em; font-family: monospace; text-align: center;vertical-align: middle;"><b>{{ .Path }}</b></td>
+                      <td
+                        style="
+                          font-size: 1.5em;
+                          font-family: monospace;
+                          text-align: center;
+                          vertical-align: middle;
+                        "
+                      >
+                        <b>{{ .Path }}</b>
+                      </td>
                       <td>
-                        <table class="table table-sm table-light" style="width:100%;">
+                        <table
+                          class="table table-sm table-light"
+                          style="width: 100%"
+                        >
                           <tr>
                             <th width="50%">Type</th>
                             <th width="50%">Value</th>
+                          </tr>
+
                           <tr>
-                          {{ range  $i, $e := $.QueryTargets }}
-                            <tr style="background-color: #ffffff;">
-                              <td>{{ $e.Type }}</td>
-                              <td><b>{{ $e.Value }}</b></td>
-                            </tr>
+                            {{ range $i, $e := $.QueryTargets }}
+                          </tr>
+
+                          <tr style="background-color: #ffffff">
+                            <td>{{ $e.Type }}</td>
+                            <td><b>{{ $e.Value }}</b></td>
+                          </tr>
                           {{ end }}
                         </table>
                       </td>
-                      <td style="text-align: center;vertical-align: middle;">
-                        <span style="color:black;">{{ .Expected }}</span>/
-                        <b><span style="color:green;">{{ .Executions }}</span></b>/
-                        <b><span style="color:red;">{{ .Errors }}</span></b>
+                      <td style="text-align: center; vertical-align: middle">
+                        <span style="color: black">{{ .Expected }}</span>/
+                        <b
+                          ><span style="color: green"
+                            >{{ .Executions }}</span
+                          ></b
+                        >/
+                        <b><span style="color: red">{{ .Errors }}</span></b>
                       </td>
                     </tr>
                     <tr>
-                      <td colspan="4" style="font-size: 1.5em; font-family: monospace;">{{ .Query }}</td>
+                      <td
+                        colspan="4"
+                        style="font-size: 1.5em; font-family: monospace"
+                      >
+                        {{ .Query }}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
 
-                <br>
+                <br />
 
-            {{ range  $i, $e := $.Carves }}
+                {{ range $i, $e := $.Carves }}
                 <div class="card mt-2">
                   <div class="card-header">
-                      <b>UUID:</b> <a href="/node/{{ $e.UUID }}">{{ $e.UUID }}</a>
-                      <div class="card-header-actions">
-                        <div class="card-header-action">
-                          <div class="row">
-                            <div class="col-sm-6 mx-auto">
-                              <button id="download_button" type="button" class="btn btn-sm btn-outline-dark"
-                              data-tooltip="true" data-placement="top" title="Download" onclick="downloadCarve('/carves/{{ $template.EnvUUID }}/download/{{ $e.SessionID }}');">
-                                <i class="fas fa-download"></i>
-                              </button>
-                            </div>
-                            <div class="col-sm-6 mx-auto">
-                              <button type="delete_button" class="btn btn-sm btn-outline-danger"
-                              data-tooltip="true" data-placement="top" title="Delete" onclick="confirmDeleteCarve(['{{ $e.CarveID }}'], '/carves/{{ $template.EnvUUID }}/actions');">
-                                <i class="far fa-trash-alt"></i>
-                              </button>
-                            </div>
+                    <b>UUID:</b> <a href="/node/{{ $e.UUID }}">{{ $e.UUID }}</a>
+                    <div class="card-header-actions">
+                      <div class="card-header-action">
+                        <div class="row">
+                          <div class="col-sm-6 mx-auto">
+                            <button
+                              id="download_button"
+                              type="button"
+                              class="btn btn-sm btn-outline-dark"
+                              data-tooltip="true"
+                              data-placement="top"
+                              title="Download"
+                              onclick="downloadCarve('/carves/{{ $template.EnvUUID }}/download/{{ $e.SessionID }}');"
+                            >
+                              <i class="fas fa-download"></i>
+                            </button>
+                          </div>
+                          <div class="col-sm-6 mx-auto">
+                            <button
+                              type="delete_button"
+                              class="btn btn-sm btn-outline-danger"
+                              data-tooltip="true"
+                              data-placement="top"
+                              title="Delete"
+                              onclick="confirmDeleteCarve(['{{ $e.CarveID }}'], '/carves/{{ $template.EnvUUID }}/actions');"
+                            >
+                              <i class="far fa-trash-alt"></i>
+                            </button>
                           </div>
                         </div>
                       </div>
+                    </div>
                   </div>
                   <div class="card-body">
                     <div class="row">
                       <div class="col-md-6 mx-auto">
-
                         <div class="row">
                           <label class="col-md-3 col-form-label">
                             <small><b>Status:</b></small>
@@ -121,7 +154,9 @@
                             <small><b>Total / Block Size (bytes):</b></small>
                           </label>
                           <div class="col-md-9 col-form-label">
-                            <p class="form-control-static">{{ $e.CarveSize }} / {{ $e.BlockSize }}</p>
+                            <p class="form-control-static">
+                              {{ $e.CarveSize }} / {{ $e.BlockSize }}
+                            </p>
                           </div>
                         </div>
                         <div class="row">
@@ -129,14 +164,14 @@
                             <small><b>Total / Completed Blocks:</b></small>
                           </label>
                           <div class="col-md-9 col-form-label">
-                            <p class="form-control-static">{{ $e.TotalBlocks }} / {{ $e.CompletedBlocks }}</p>
+                            <p class="form-control-static">
+                              {{ $e.TotalBlocks }} / {{ $e.CompletedBlocks }}
+                            </p>
                           </div>
                         </div>
-
                       </div>
 
                       <div class="col-md-6 mx-auto">
-
                         <div class="row">
                           <label class="col-md-3 col-form-label">
                             <small><b>Carve ID:</b></small>
@@ -150,7 +185,9 @@
                             <small><b>Request ID:</b></small>
                           </label>
                           <div class="col-md-9 col-form-label">
-                            <p class="form-control-static">{{ $e.RequestID }}</p>
+                            <p class="form-control-static">
+                              {{ $e.RequestID }}
+                            </p>
                           </div>
                         </div>
                         <div class="row">
@@ -158,10 +195,11 @@
                             <small><b>Session ID:</b></small>
                           </label>
                           <div class="col-md-9 col-form-label">
-                            <p class="form-control-static">{{ $e.SessionID }}</p>
+                            <p class="form-control-static">
+                              {{ $e.SessionID }}
+                            </p>
                           </div>
                         </div>
-
                       </div>
 
                       {{ $blocks := index $carveBlocks $e.SessionID }}
@@ -170,7 +208,9 @@
                           <label class="col-md-1 col-form-label">
                             <small><b>Carved Blocks:</b></small>
                           </label>
-                          <table class="col-md-11 table table-responsive-sm table-sm table-bordered table-striped text-center">
+                          <table
+                            class="col-md-11 table table-responsive-sm table-sm table-bordered table-striped text-center"
+                          >
                             <thead>
                               <tr>
                                 <th width="40%">Block ID</th>
@@ -179,39 +219,29 @@
                               </tr>
                             </thead>
                             <tbody>
-                            {{ range $ii, $val := $blocks }}
+                              {{ range $ii, $val := $blocks }}
                               <tr>
                                 <td><b>{{ $val.BlockID }}</b></td>
                                 <td>{{ $val.Size }}</td>
                                 <td>{{ $val.CreatedAt }}</td>
                               </tr>
-                            {{ end }}
+                              {{ end }}
                             </tbody>
                           </table>
                         </div>
-
                       </div>
                     </div>
                   </div>
                 </div>
-            {{ end }}
-
+                {{ end }}
               </div>
             </div>
-          {{ end }}
-
-          {{ template "page-modals" . }}
-
+            {{ end }} {{ template "page-modals" . }}
           </div>
-
         </div>
-
       </main>
 
-    {{ if eq $metadata.Level "admin" }}
-      {{ template "page-aside-right" . }}
-    {{ end }}
-
+      {{ if $metadata.Admin }} {{ template "page-aside-right" . }} {{ end }}
     </div>
 
     {{ template "page-js" . }}
@@ -219,20 +249,19 @@
     <!-- custom JS -->
     <script src="/static/js/carves.js"></script>
     <script src="/static/js/tables.js"></script>
-  {{ with .Query }}
+    {{ with .Query }}
     <script type="text/javascript">
-      $(document).ready(function() {
+      $(document).ready(function () {
         // Enable all tooltips
-        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({ trigger: "hover" });
 
         // Refresh sidebar stats
         beginStats();
-        var statsTimer = setInterval(function(){
+        var statsTimer = setInterval(function () {
           beginStats();
-        },60000);
+        }, 60000);
       });
     </script>
-  {{ end }}
-
+    {{ end }}
   </body>
 </html>

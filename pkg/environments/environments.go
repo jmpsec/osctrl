@@ -312,7 +312,7 @@ func (environment *EnvManager) Delete(identifier string) error {
 		return fmt.Errorf("error getting environment %w", err)
 	}
 	if err := environment.DB.Unscoped().Delete(&env).Error; err != nil {
-		return fmt.Errorf("Delete %w", err)
+		return fmt.Errorf("delete %w", err)
 	}
 	return nil
 }
@@ -324,7 +324,7 @@ func (environment *EnvManager) Update(e TLSEnvironment) error {
 		return fmt.Errorf("error getting environment %w", err)
 	}
 	if err := environment.DB.Model(&env).Updates(e).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("updates %w", err)
 	}
 	return nil
 }

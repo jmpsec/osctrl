@@ -1,69 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  {{ $metadata := .Metadata }}
-
-  {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
-
       {{ template "page-aside-left" . }}
 
       <main class="main">
-
         <div class="container-fluid">
-
           <div class="animated fadeIn">
-
             <div class="card mt-2">
               <div class="card-header">
-                <i class="nav-icon fas fa-file-upload"></i> Carve files in nodes by target
+                <i class="nav-icon fas fa-file-upload"></i> Carve files in nodes
+                by target
               </div>
               <div class="card-body">
-
                 <div class="row">
-
                   <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
-
                     <div class="card mt-2">
                       <div class="card-header">
                         <i class="fas fa-bullseye"></i> Select targets:
                       </div>
                       <div class="card-body">
-
                         <div class="row">
                           <div class="col-md-12">
                             <form>
                               <div class="form-group row">
-                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                <div
+                                  class="col-sm-12 col-md-6 col-lg-6 col-xl-6"
+                                >
                                   <fieldset class="form-group">
-                                    <label for="target_env">By Environment:</label>
+                                    <label for="target_env"
+                                      >By Environment:</label
+                                    >
                                     <div id="selector_env" class="input-group">
-                                      <select class="form-control" name="target_env" id="target_env" multiple="multiple">
+                                      <select
+                                        class="form-control"
+                                        name="target_env"
+                                        id="target_env"
+                                        multiple="multiple"
+                                      >
                                         <option value=""></option>
-                                      {{ range  $i, $e := $.Environments }}
-                                        <option value="{{ $e.Name }}">{{ $e.Name }}</option>
-                                      {{ end }}
-                                        <option value="all_environments_99">all environments</option>
+                                        {{ range $i, $e := $.Environments }}
+                                        <option value="{{ $e.Name }}">
+                                          {{ $e.Name }}
+                                        </option>
+                                        {{ end }}
+                                        <option value="all_environments_99">
+                                          all environments
+                                        </option>
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. dev</small>
                                   </fieldset>
                                 </div>
-                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                <div
+                                  class="col-sm-12 col-md-6 col-lg-6 col-xl-6"
+                                >
                                   <fieldset class="form-group">
-                                    <label for="target_platform">By Platform:</label>
-                                    <div id="selector_platform" class="input-group">
-                                      <select class="form-control" name="target_platform" id="target_platform" multiple="multiple">
+                                    <label for="target_platform"
+                                      >By Platform:</label
+                                    >
+                                    <div
+                                      id="selector_platform"
+                                      class="input-group"
+                                    >
+                                      <select
+                                        class="form-control"
+                                        name="target_platform"
+                                        id="target_platform"
+                                        multiple="multiple"
+                                      >
                                         <option value=""></option>
-                                      {{ range  $i, $e := $.Platforms }}
-                                        <option value="{{ $e }}">{{ $e }}</option>
-                                      {{ end }}
-                                        <option value="all_platforms_99">all platforms</option>
+                                        {{ range $i, $e := $.Platforms }}
+                                        <option value="{{ $e }}">
+                                          {{ $e }}
+                                        </option>
+                                        {{ end }}
+                                        <option value="all_platforms_99">
+                                          all platforms
+                                        </option>
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. ubuntu</small>
@@ -71,56 +89,92 @@
                                 </div>
                               </div>
                               <div class="form-group row">
-                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                <div
+                                  class="col-sm-12 col-md-6 col-lg-6 col-xl-6"
+                                >
                                   <fieldset class="form-group">
                                     <label>By node UUID:</label>
-                                    <div id="selector_uuids" class="input-group">
-                                      <select class="form-control" name="target_uuids[]" id="target_uuids" multiple="multiple">
+                                    <div
+                                      id="selector_uuids"
+                                      class="input-group"
+                                    >
+                                      <select
+                                        class="form-control"
+                                        name="target_uuids[]"
+                                        id="target_uuids"
+                                        multiple="multiple"
+                                      >
                                         <option value=""></option>
-                                      {{ range  $i, $e := $.UUIDs }}
-                                        <option value="{{ $e }}">{{ $e }}</option>
-                                      {{ end }}
+                                        {{ range $i, $e := $.UUIDs }}
+                                        <option value="{{ $e }}">
+                                          {{ $e }}
+                                        </option>
+                                        {{ end }}
                                       </select>
                                     </div>
-                                    <small class="text-muted">ex. 11111111-2222-3333-4444-555555555555</small>
+                                    <small class="text-muted"
+                                      >ex.
+                                      11111111-2222-3333-4444-555555555555</small
+                                    >
                                   </fieldset>
                                 </div>
-                                <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                <div
+                                  class="col-sm-12 col-md-6 col-lg-6 col-xl-6"
+                                >
                                   <fieldset class="form-group">
                                     <label>By node Hostname:</label>
-                                    <div id="selector_hosts" class="input-group">
-                                      <select class="form-control" name="target_hosts[]" id="target_hosts" multiple="multiple">
+                                    <div
+                                      id="selector_hosts"
+                                      class="input-group"
+                                    >
+                                      <select
+                                        class="form-control"
+                                        name="target_hosts[]"
+                                        id="target_hosts"
+                                        multiple="multiple"
+                                      >
                                         <option value=""></option>
-                                      {{ range  $i, $e := $.Hosts }}
-                                        <option value="{{ $e }}">{{ $e }}</option>
-                                      {{ end }}
+                                        {{ range $i, $e := $.Hosts }}
+                                        <option value="{{ $e }}">
+                                          {{ $e }}
+                                        </option>
+                                        {{ end }}
                                       </select>
                                     </div>
-                                    <small class="text-muted">ex. MacBookPro</small>
+                                    <small class="text-muted"
+                                      >ex. MacBookPro</small
+                                    >
                                   </fieldset>
                                 </div>
                               </div>
                             </form>
                           </div>
                         </div>
-
                       </div>
                     </div>
 
                     <div class="card mt-2">
                       <div class="card-header">
-                        <i class="nav-icon fas fa-stopwatch"></i> Carve expiration
+                        <i class="nav-icon fas fa-stopwatch"></i> Carve
+                        expiration
                       </div>
                       <div class="card-body">
                         <div class="row">
                           <div class="col-md-12">
                             <form>
                               <div class="form-group row">
-                                <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
+                                <div
+                                  class="col-sm-12 col-md-12 col-lg-12 col-xl-12"
+                                >
                                   <fieldset class="form-group">
-                                    <label for="expiration_hours">Carve expiration in hours:</label>
+                                    <label for="expiration_hours"
+                                      >Carve expiration in hours:</label
+                                    >
                                     <div class="input-group">
-                                      <select id="expiration_hours" class="form-control">
+                                      <select
+                                        id="expiration_hours"
+                                        class="form-control"
+                                      >
                                         <option value="6">6 hours</option>
                                         <option value="12">12 hours</option>
                                         <option value="24">24 hours</option>
@@ -140,25 +194,39 @@
 
                     <div class="card mt-2">
                       <div class="card-header">
-                         <i class="fas fa-folder-open"></i> Full path for file or directory to be carved:
-                          <div class="card-header-actions">
-                            <div class="card-header-action">
-                              <div class="row">
-                                <div class="col-sm-6 mx-auto">
-                                  <button id="carve_button" type="button" class="btn btn-sm btn-outline-dark"
-                                  data-tooltip="true" data-placement="top" title="Carve file/directory" onclick="sendCarve('/carves/{{ .EnvUUID }}/run', '/carves/{{ .EnvUUID }}/list');">
-                                    <i class="fas fa-file-upload"></i> Carve
-                                  </button>
-                                </div>
-                                <div class="col-sm-6 mx-auto">
-                                  <button type="button" class="btn btn-sm btn-outline-danger"
-                                  data-tooltip="true" data-placement="top" title="Clear file/directory" onclick="clearCarve();">
-                                    <i class="fas fa-eraser"></i> Clear
-                                  </button>
-                                </div>
+                        <i class="fas fa-folder-open"></i> Full path for file or
+                        directory to be carved:
+                        <div class="card-header-actions">
+                          <div class="card-header-action">
+                            <div class="row">
+                              <div class="col-sm-6 mx-auto">
+                                <button
+                                  id="carve_button"
+                                  type="button"
+                                  class="btn btn-sm btn-outline-dark"
+                                  data-tooltip="true"
+                                  data-placement="top"
+                                  title="Carve file/directory"
+                                  onclick="sendCarve('/carves/{{ .EnvUUID }}/run', '/carves/{{ .EnvUUID }}/list');"
+                                >
+                                  <i class="fas fa-file-upload"></i> Carve
+                                </button>
+                              </div>
+                              <div class="col-sm-6 mx-auto">
+                                <button
+                                  type="button"
+                                  class="btn btn-sm btn-outline-danger"
+                                  data-tooltip="true"
+                                  data-placement="top"
+                                  title="Clear file/directory"
+                                  onclick="clearCarve();"
+                                >
+                                  <i class="fas fa-eraser"></i> Clear
+                                </button>
                               </div>
                             </div>
                           </div>
+                        </div>
                       </div>
                       <div class="card-body">
                         <div class="row">
@@ -167,7 +235,12 @@
                               <div class="form-group row">
                                 <div class="col-sm-12">
                                   <fieldset class="form-group">
-                                    <input id="carve" class="form-control" type="text" placeholder="/path/to/file">
+                                    <input
+                                      id="carve"
+                                      class="form-control"
+                                      type="text"
+                                      placeholder="/path/to/file"
+                                    />
                                   </fieldset>
                                 </div>
                               </div>
@@ -175,28 +248,18 @@
                           </div>
                         </div>
                       </div>
-
                     </div>
-
                   </div>
-
                 </div>
-
               </div>
             </div>
 
-          {{ template "page-modals" . }}
-
+            {{ template "page-modals" . }}
           </div>
-
         </div>
-
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
-        {{ template "page-aside-right" . }}
-      {{ end }}
-
+      {{ if $metadata.Admin }} {{ template "page-aside-right" . }} {{ end }}
     </div>
 
     {{ template "page-js" . }}
@@ -204,60 +267,68 @@
     <!-- custom JS -->
     <script src="/static/js/carves.js"></script>
     <script type="text/javascript">
-      $(document).ready(function() {
+      $(document).ready(function () {
         // Codemirror editor for query
-        var editorQuery = CodeMirror.fromTextArea(document.getElementById("query"), {
-          mode: 'text/x-sql',
-          lineNumbers: true,
-          styleActiveLine: true,
-          matchBrackets: true
-        });
+        var editorQuery = CodeMirror.fromTextArea(
+          document.getElementById("query"),
+          {
+            mode: "text/x-sql",
+            lineNumbers: true,
+            styleActiveLine: true,
+            matchBrackets: true,
+          }
+        );
         editorQuery.setSize("100%", "100%");
 
         // Select2 initialization
-        $('#target_platform').select2({
-          theme: "classic"
+        $("#target_platform").select2({
+          theme: "classic",
         });
-        $('#target_env').select2({
-          theme: "classic"
+        $("#target_env").select2({
+          theme: "classic",
         });
-        $('#target_uuids').select2({
-          theme: "classic"
+        $("#target_uuids").select2({
+          theme: "classic",
         });
-        $('#target_hosts').select2({
-          theme: "classic"
+        $("#target_hosts").select2({
+          theme: "classic",
         });
 
         // Enable all tooltips
-        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+        $('[data-tooltip="true"]').tooltip({ trigger: "hover" });
 
         // Filter tables by input
-        $('#filter-tables').keyup(function () {
+        $("#filter-tables").keyup(function () {
           var filterBy = $(this).val();
           //console.log("Filter by " + filterBy);
-          $("a.osquery-table:not(:contains("+ filterBy +"))").parent('div').addClass('d-none');
-          $("a.osquery-table:contains("+ filterBy +")").parent('div').removeClass('d-none');
+          $("a.osquery-table:not(:contains(" + filterBy + "))")
+            .parent("div")
+            .addClass("d-none");
+          $("a.osquery-table:contains(" + filterBy + ")")
+            .parent("div")
+            .removeClass("d-none");
         });
         // Filter tables by select
-        $('#select-tables').change(function () {
+        $("#select-tables").change(function () {
           var optionSelected = $(this).find("option:selected");
-          var valueSelected  = optionSelected.val();
-          if (valueSelected === 'filter-all') {
+          var valueSelected = optionSelected.val();
+          if (valueSelected === "filter-all") {
             //console.log("Showing all");
-            $("div.filter-element").removeClass('d-none');
+            $("div.filter-element").removeClass("d-none");
           } else {
             //console.log("Showing " + valueSelected);
-            $("div.filter-element:not(."+valueSelected+")").addClass('d-none');
+            $("div.filter-element:not(." + valueSelected + ")").addClass(
+              "d-none"
+            );
           }
         });
 
         // Refresh sidebar stats
         beginStats();
-        var statsTimer = setInterval(function(){
+        var statsTimer = setInterval(function () {
           beginStats();
-        },60000);
+        }, 60000);
       });
     </script>
-
   </body>
 </html>

@@ -19,7 +19,7 @@
           </a>
           <div class="dropdown-menu dropdown-menu-right">
             <a class="dropdown-item" href="/profile">
-              <i class="fas fa-user-edit"></i> Edit Profile
+              <i class="fas fa-user-edit"></i> User Profile
             </a>
             <a class="dropdown-item" onclick="sendLogout();">
               <i class="fa fa-lock"></i> Logout
@@ -27,7 +27,7 @@
           </div>
         </li>
       </ul>
-    {{ if eq .Level "admin" }}
+    {{ if .Admin }}
       <button class="navbar-toggler aside-menu-toggler d-md-down-none" type="button" data-toggle="aside-menu-lg-show">
         <span>
           <i class="fas fa-cogs"></i>

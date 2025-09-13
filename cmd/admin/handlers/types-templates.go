@@ -21,7 +21,7 @@ type LoginTemplateData struct {
 // TemplateMetadata to pass some metadata to templates
 type TemplateMetadata struct {
 	Username  string
-	Level     string
+	Admin     bool
 	Service   string
 	Version   string
 	Commit    string
@@ -192,12 +192,22 @@ type UsersTemplateData struct {
 	LeftMetadata AsideLeftMetadata
 }
 
+// TokensTemplateData for passing data to the users template
+type TokensTemplateData struct {
+	Title        string
+	Environments []environments.TLSEnvironment
+	SystemUsers  []users.AdminUser
+	ServiceUsers []users.AdminUser
+	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
+}
+
 // ProfileTemplateData for passing data to the users profile template
 type ProfileTemplateData struct {
 	Title        string
 	Environments []environments.TLSEnvironment
-	Platforms    []string
 	CurrentUser  users.AdminUser
+	Permissions  users.UserAccess
 	Metadata     TemplateMetadata
 	LeftMetadata AsideLeftMetadata
 }

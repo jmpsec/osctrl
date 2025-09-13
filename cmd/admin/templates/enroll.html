@@ -26,7 +26,7 @@
                   <div class="card-header-actions">
                     <div class="row">
                       <span class="align-self-center mr-1"><b>{{ .EnrollExpiry }}</b></span>
-                    {{ if eq $metadata.Level "admin" }}
+                    {{ if $metadata.Admin }}
                       {{ if not .EnrollExpired }}
                       <div class="card-header-action mr-1">
                         <button id="enroll_expire" class="btn btn-sm btn-block btn-danger"
@@ -212,7 +212,7 @@
 
                   <div class="row">
                     <span class="align-self-center mr-1"><b>{{ .RemoveExpiry }}</b></span>
-                  {{ if eq $metadata.Level "admin" }}
+                  {{ if $metadata.Admin }}
                     {{ if not .RemoveExpired }}
                     <div class="card-header-action mr-1">
                       <button id="remove_expire" class="btn btn-sm btn-block btn-danger"
@@ -314,7 +314,7 @@
                     Enrollment secret:
                   </div>
                   <div class="col-md-2">
-                    {{ if eq $metadata.Level "admin" }}
+                    {{ if $metadata.Admin }}
                       <button class="btn btn-sm btn-dark float-right"
                         onclick="window.open('/enroll/{{ .EnvUUID }}/download/secret', '_blank');" data-tooltip="true" data-placement="bottom" title="Download secret" >
                         <i class="fas fa-download"></i>
@@ -342,7 +342,7 @@
                     Enrollment flags for osquery:
                   </div>
                   <div class="col-md-2">
-                    {{ if eq $metadata.Level "admin" }}
+                    {{ if $metadata.Admin }}
                       <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/flagsLinux', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for Linux">
                         <i class="fas fa-download"></i><i class="fab fa-linux"></i>
                       </button>
@@ -381,7 +381,7 @@
                     Enrollment certificate:
                   </div>
                   <div class="col-md-2">
-                  {{ if eq $metadata.Level "admin" }}
+                  {{ if $metadata.Admin }}
                     <button class="btn btn-sm btn-dark float-right" data-tooltip="true" data-placement="bottom" title="Upload new certificate" onclick="confirmUploadCertificate();">
                       <i class="fas fa-upload"></i>
                     </button>
@@ -404,7 +404,7 @@
 
                 <hr>
 
-              {{ if eq $metadata.Level "admin" }}
+              {{ if $metadata.Admin }}
                 <div class="row mb-4">
                   <div class="row col-md-12">
                     <div class="col-md-6">
@@ -479,7 +479,7 @@
 
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
+      {{ if $metadata.Admin }}
         {{ template "page-aside-right" . }}
       {{ end }}
 

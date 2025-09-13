@@ -43,3 +43,46 @@ function profileEditSave() {
   };
   sendPostRequest(data, _url, '', true);
 }
+
+function toggleAPIToken() {
+  var tokenField = document.getElementById("profile_api_token");
+  var tokenValue = document.getElementById("profile_api_token_value").value;
+  if (tokenField.type === "password") {
+    tokenField.type = "text";
+    tokenField.value = tokenValue;
+    $("#button-eye").html('<i class="fas fa-eye-slash"></i>');
+  } else {
+    tokenField.type = "password";
+    tokenField.value = "••••••••••••••••••••••••••••••";
+    $("#button-eye").html('<i class="fas fa-eye"></i>');
+  }
+}
+
+function refreshUserToken() {
+  $("#refreshTokenButton").prop("disabled", true);
+  $("#refreshTokenButton").html(
+    '<i class="fa fa-cog fa-spin fa-2x fa-fw"></i>'
+  );
+  var _csrftoken = $("#csrftoken").val();
+  var _username = $("#profile_token_username").val();
+  var _exp_hours = parseInt($("#profile_exp_hours").val());
+  var data = {
+    csrftoken: _csrftoken,
+    username: _username,
+    exp_hours: _exp_hours,
+  };
+  sendPostRequest(
+    data,
+    "/tokens/" + _username + "/refresh",
+    "",
+    false,
+    function (data) {
+      console.log(data);
+      $("#profile_api_token_value").val(data.token);
+      var expDiv = document.getElementById('profile_token_exp');
+      expDiv.innerText = data.expiration;
+      $("#refreshTokenButton").prop("disabled", false);
+      $("#refreshTokenButton").html('<i class="fas fa-sync-alt"></i>');
+    }
+  );
+}

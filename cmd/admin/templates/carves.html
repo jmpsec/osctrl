@@ -1,68 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  {{ $metadata := .Metadata }}
-
-  {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
-
     {{ template "page-header" . }}
 
     <div class="app-body">
-
       {{ template "page-aside-left" . }}
 
       <main class="main">
-
         <div class="container-fluid">
-
           <div class="animated fadeIn">
-
             <div class="card mt-2">
               <div class="card-header">
                 <i class="nav-icon fas fa-archive"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true"
-                    data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableCarves');">
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    data-tooltip="true"
+                    data-placement="bottom"
+                    title="Refresh table"
+                    onclick="refreshTableNow('tableCarves');"
+                  >
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-
-                  <table id="tableCarves" class="table table-bordered table-striped" style="width:100%">
-                    <input type="hidden" id="refresh_value" value="yes">
-                    <thead>
-                      <tr>
-                        <th>
-                          <input type="checkbox" name="select-all" value="1" id="select-all">
-                        </th>
-                        <th>Carved Path</th>
-                        <th>Creator</th>
-                        <th>Created</th>
-                        <th>Status</th>
-                        <th>Progress</th>
-                        <th>Targets</th>
-                      </tr>
-                    </thead>
-                  </table>
-
+                <table
+                  id="tableCarves"
+                  class="table table-bordered table-striped"
+                  style="width: 100%"
+                >
+                  <input type="hidden" id="refresh_value" value="yes" />
+                  <thead>
+                    <tr>
+                      <th>
+                        <input
+                          type="checkbox"
+                          name="select-all"
+                          value="1"
+                          id="select-all"
+                        />
+                      </th>
+                      <th>Carved Path</th>
+                      <th>Creator</th>
+                      <th>Created</th>
+                      <th>Status</th>
+                      <th>Progress</th>
+                      <th>Targets</th>
+                    </tr>
+                  </thead>
+                </table>
               </div>
             </div>
 
-          {{ template "page-modals" . }}
-
+            {{ template "page-modals" . }}
           </div>
-
         </div>
-
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
-        {{ template "page-aside-right" . }}
-      {{ end }}
-
+      {{ if $metadata.Admin }} {{ template "page-aside-right" . }} {{ end }}
     </div>
 
     {{ template "page-js" . }}
@@ -188,7 +186,7 @@
             selector: 'td:first-child'
           },
           buttons: [
-          {{ if eq $metadata.Level "admin" }}
+          {{ if $metadata.Admin }}
             {
               className: 'btn custom-size-btn btn-outline-danger',
               text: '<i class="far fa-trash-alt"></i>',
@@ -259,6 +257,5 @@
         },60000);
       });
     </script>
-
   </body>
 </html>
