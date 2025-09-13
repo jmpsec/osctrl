@@ -41,6 +41,8 @@ const (
 	defDBConfigurationFile string = "config/db.json"
 	// Default redis configuration file
 	defRedisConfigurationFile string = "config/redis.json"
+	// Default db filepath for sqlite
+	defSQLiteDBFile string = "./osctrl.db"
 )
 
 // ServiceFlagParams stores flag values for the each service
@@ -423,6 +425,13 @@ func initDBFlags(params *ServiceFlagParams) []cli.Flag {
 			Destination: &params.DBConfigFile,
 		},
 		&cli.StringFlag{
+			Name:        "db-type",
+			Value:       "postgres",
+			Usage:       "Type of backend to be used",
+			EnvVars:     []string{"DB_TYPE"},
+			Destination: &params.DBConfigValues.Type,
+		},
+		&cli.StringFlag{
 			Name:        "db-host",
 			Value:       "127.0.0.1",
 			Usage:       "Backend host to be connected to",
@@ -491,6 +500,13 @@ func initDBFlags(params *ServiceFlagParams) []cli.Flag {
 			Usage:       "Time in seconds to retry the connection to the database, if set to 0 the service will stop if the connection fails",
 			EnvVars:     []string{"DB_CONN_RETRY"},
 			Destination: &params.DBConfigValues.ConnRetry,
+		},
+		&cli.StringFlag{
+			Name:        "db-filepath",
+			Value:       defSQLiteDBFile,
+			Usage:       "File path to the SQLite database, only used when type is sqlite",
+			EnvVars:     []string{"DB_SQLITE_FILEPATH"},
+			Destination: &params.DBConfigValues.FilePath,
 		},
 	}
 }
