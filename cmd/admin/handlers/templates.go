@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -37,10 +38,10 @@ var validTarget = map[string]bool{
 
 // TemplateMetadata - Helper to prepare template metadata
 // TODO until a better implementation, all users are admin
-func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, metadata types.BuildMetadata) TemplateMetadata {
+func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, metadata types.BuildMetadata, admin bool) TemplateMetadata {
 	return TemplateMetadata{
 		Username:  ctx[sessions.CtxUser],
-		Level:     "admin",
+		Admin:     admin,
 		CSRFToken: ctx[sessions.CtxCSRF],
 		Service:   "osctrl-admin",
 		Version:   metadata.Version,
@@ -140,11 +141,17 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("error getting environments")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + env.Name,
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Selector:     "environment",
 		SelectorName: env.Name,
 		Target:       target,
@@ -209,10 +216,16 @@ func (h *HandlersAdmin) PlatformHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("error getting environments")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := TableTemplateData{
 		Title:        "Nodes in " + platform,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Selector:     "platform",
 		SelectorName: platform,
 		Target:       target,
@@ -288,11 +301,17 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		uuids = append(uuids, n.UUID)
 		hosts = append(hosts, n.Localname)
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := QueryRunTemplateData{
 		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
@@ -350,11 +369,17 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
 		Title:        "All on-demand queries",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
@@ -403,19 +428,18 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
-		log.Err(err).Msg("error getting platforms")
+		log.Err(err).Msg("error getting user")
 		return
 	}
 	// Prepare template data
 	templateData := SavedQueriesTemplateData{
 		Title:        "Saved queries in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 		Target:       "saved",
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -481,11 +505,17 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		uuids = append(uuids, n.UUID)
 		hosts = append(hosts, n.Localname)
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
 		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
@@ -543,11 +573,17 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
 		Title:        "Carved files in <b>" + env.Name + "</b>",
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Target:       "all",
@@ -630,11 +666,17 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("error getting table template")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
 		Title:         "Query logs " + query.Name,
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		LeftMetadata:  leftMetadata,
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
@@ -735,11 +777,17 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		Carve:     true,
 		CarveName: query.Name,
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := CarvesDetailsTemplateData{
 		Title:        "Carve details " + query.Name,
 		EnvUUID:      env.UUID,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		LeftMetadata: leftMetadata,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -798,10 +846,16 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := ConfTemplateData{
 		Title:        env.Name + " Configuration",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environment:  env,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -856,6 +910,12 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	shellQuickAdd, _ := environments.QuickAddOneLinerShell((env.Certificate != ""), env)
 	powershellQuickAdd, _ := environments.QuickAddOneLinerPowershell((env.Certificate != ""), env)
@@ -863,7 +923,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 	powershellQuickRemove, _ := environments.QuickRemoveOneLinerPowershell((env.Certificate != ""), env)
 	templateData := EnrollTemplateData{
 		Title:                 env.Name + " Enroll",
-		Metadata:              h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:              h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		EnvName:               env.Name,
 		EnvUUID:               env.UUID,
 		OnelinerExpiration:    h.Settings.OnelinerExpiration(settings.NoEnvironmentID),
@@ -1064,11 +1124,17 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		InactiveNode: !nodes.IsActive(node, h.Settings.InactiveHours(settings.NoEnvironmentID)),
 		NodeUUID:     node.UUID,
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := NodeTemplateData{
 		Title:         "Node View " + node.Hostname,
 		EnvUUID:       env.UUID,
-		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		LeftMetadata:  leftMetadata,
 		Node:          node,
 		NodeTags:      nodeTags,
@@ -1112,18 +1178,17 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get stats for all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
-		log.Err(err).Msg("error getting platforms")
+		log.Err(err).Msg("error getting user")
 		return
 	}
 	// Prepare template data
 	templateData := EnvironmentsTemplateData{
 		Title:        "Manage environments",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -1168,12 +1233,6 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get stats for all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Get setting values
 	_settings, err := h.Settings.RetrieveValues(serviceVar, false, settings.NoEnvironmentID)
 	if err != nil {
@@ -1185,13 +1244,18 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.Err(err).Msg("error getting JSON values")
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := SettingsTemplateData{
 		Title:           "Manage settings",
-		Metadata:        h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:        h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Service:         serviceVar,
 		Environments:    h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:       platforms,
 		CurrentSettings: _settings,
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
 	}
@@ -1232,12 +1296,6 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get stats for all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Get current regular users
 	systemUsers, err := h.Users.AllNonService()
 	if err != nil {
@@ -1250,14 +1308,74 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("error getting service users")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := UsersTemplateData{
 		Title:        "Manage users",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 		SystemUsers:  systemUsers,
 		ServiceUsers: serviceUsers,
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Err(err).Msg("template error")
+		return
+	}
+	log.Debug().Msg("Users template served")
+}
+
+// UsersTokensGETHandler for GET requests for /users/tokens
+func (h *HandlersAdmin) UsersTokensGETHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Extract username
+	username := r.PathValue("username")
+	if username == "" {
+		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) && ctx[sessions.CtxUser] != username {
+		adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+		return
+	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"pastFutureTimes": utils.PastFutureTimes,
+		"inFutureTime":    utils.InFutureTime,
+	}
+	// Prepare template
+	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "tokens.html").filepaths
+	t, err := template.New("tokens.html").Funcs(funcMap).ParseFiles(tempateFiles...)
+	if err != nil {
+		log.Err(err).Msg("error getting tokens template")
+		return
+	}
+	// Get stats for all environments
+	envAll, err := h.Envs.All()
+	if err != nil {
+		log.Err(err).Msg("error getting environments")
+		return
+	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
+	// Prepare template data
+	templateData := TokensTemplateData{
+		Title:        "Manage users",
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -1282,7 +1400,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"pastFutureTimes":   utils.PastFutureTimes,
 		"inFutureTime":      utils.InFutureTime,
-		"environmentFinder": environments.EnvironmentFinder,
+		"environmentFinder": environments.EnvironmentFinderID,
 		"tagTypeDecorator":  tags.TagTypeDecorator,
 	}
 	// Prepare template
@@ -1298,24 +1416,23 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get stats for all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Get current tags
 	tags, err := h.Tags.All()
 	if err != nil {
 		log.Err(err).Msg("error getting tags")
 		return
 	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
 	// Prepare template data
 	templateData := TagsTemplateData{
 		Title:        "Manage tags",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
 		Tags:         tags,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -1339,7 +1456,8 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Custom functions to handle formatting
 	funcMap := template.FuncMap{
-		"pastFutureTimes": utils.PastFutureTimes,
+		"pastFutureTimes":   utils.PastFutureTimes,
+		"environmentFinder": environments.EnvironmentFinderUUID,
 	}
 	// Prepare template
 	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "profile.html").filepaths
@@ -1354,24 +1472,23 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		log.Err(err).Msg("error getting environments")
 		return
 	}
-	// Get stats for all platforms
-	platforms, err := h.Nodes.GetAllPlatforms()
-	if err != nil {
-		log.Err(err).Msg("error getting platforms")
-		return
-	}
 	// Get current user
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
 		log.Err(err).Msg("error getting user")
 		return
 	}
+	// Get permissions
+	permissions, err := h.Users.GetAccess(user.Username)
+	if err != nil {
+		log.Err(err).Msg("error getting permissions")
+	}
 	// Prepare template data
 	templateData := ProfileTemplateData{
 		Title:        "Edit " + user.Username + " profile",
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
-		Platforms:    platforms,
+		Permissions:  permissions,
 		CurrentUser:  user,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -1425,7 +1542,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 	// Prepare template data
 	templateData := DashboardTemplateData{
 		Title:        "Dashboard for " + user.Username,
-		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata),
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		CurrentUser:  user,

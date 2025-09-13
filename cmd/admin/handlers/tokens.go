@@ -23,17 +23,17 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
-	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
-		return
-	}
 	// Extract username
 	username := r.PathValue("username")
 	if username == "" {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) && ctx[sessions.CtxUser] != username {
+		adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		return
 	}
 	returned := TokenJSON{}
@@ -59,17 +59,17 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Get context data
-	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
-	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
-		adminErrorResponse(w, "insufficient permissions", http.StatusForbidden, nil)
-		return
-	}
 	// Extract username and verify
 	username := r.PathValue("username")
 	if username == "" || !h.Users.Exists(username) {
 		adminErrorResponse(w, "error getting username", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) && ctx[sessions.CtxUser] != username {
+		adminErrorResponse(w, "insufficient permissions", http.StatusForbidden, nil)
 		return
 	}
 	// Parse request JSON body

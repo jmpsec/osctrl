@@ -106,7 +106,7 @@
 
                     <div class="row float-right">
                       <div class="col-md-12">
-                      {{ if eq $metadata.Level "admin" }}
+                      {{ if $metadata.Admin }}
                         <button type="button" class="btn custom-size-btn btn-outline-danger"
                         data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes(['{{ .UUID }}']);">
                           <i class="far fa-trash-alt"></i>
@@ -484,7 +484,7 @@
 
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
+      {{ if $metadata.Admin }}
         {{ template "page-aside-right" . }}
       {{ end }}
 

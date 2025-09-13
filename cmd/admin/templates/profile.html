@@ -22,7 +22,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-user-edit"></i> Edit Profile for user {{ $metadata.Username }}
+                <i class="fas fa-user-edit"></i> Profile for user <b>{{ $metadata.Username }}</b>
 
                   <div class="card-header-actions">
                     <button id="profile_save" class="btn btn-sm btn-dark"
@@ -55,30 +55,152 @@
                   <div class="col-md-4">
                     <input class="form-control" name="profile_fullname" id="profile_fullname" type="text" autocomplete="off" value="{{ .Fullname }}">
                   </div>
-                </div>
-                <div class="form-group row">
-                  <label class="col-md-2 col-form-label" for="profile_useragent"><b>Last UserAgent:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    <code>{{ .LastUserAgent }}</code>
-                  </div>
                   <label class="col-md-2 col-form-label" for="profile_access"><b>Last Access:</b></label>
                   <div class="col-md-4 col-form-label">
                     {{ pastFutureTimes .LastAccess }}
                   </div>
                 </div>
                 <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_useragent"><b>Last UserAgent:</b></label>
+                  <div class="col-md-4 col-form-label">
+                    <code>{{ .LastUserAgent }}</code>
+                  </div>
                   <label class="col-md-2 col-form-label" for="profile_ip"><b>Last IP Address:</b></label>
                   <div class="col-md-4 col-form-label">
                     <code>{{ .LastIPAddress }}</code>
                   </div>
-                  <label class="col-md-2 col-form-label" for="profile_token"><b>Last Token Access:</b></label>
-                  <div class="col-md-4 col-form-label">
-                    {{ pastFutureTimes .LastTokenUse }}
-                  </div>
                 </div>
               {{ end }}
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-laptop-code"></i> API token for <b>{{ $metadata.Username }}</b>
+                <input type="hidden" id="profile_token_username" value="{{ $metadata.Username }}">
+
+                  <div class="card-header-actions">
+                    <button id="refreshTokenButton" class="btn btn-sm btn-primary"
+                      data-tooltip="true" data-placement="bottom" title="Refresh Token" onclick="refreshUserToken();">
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                  </div>
 
               </div>
+
+              <div class="card-body">
+
+              {{ with .CurrentUser }}
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_api_token"><b>Token:</b></label>
+                  <div class="col-md-10">
+                    <div class="input-group">
+                      <input type="hidden" id="profile_api_token_value" value="{{ .APIToken }}">
+                      <input class="form-control" value="••••••••••••••••••••••••••••••" name="profile_api_token" id="profile_api_token" type="password" autocomplete="off" readonly>
+                      <div class="input-group-append">
+                        <button id="button-clipboard-sh" class="btn btn-outline-secondary" data-clipboard-action="copy" data-clipboard-target="#profile_api_token" data-tooltip="true" title="Copy to clipboard"><i class="fas fa-copy"></i></button>
+                        <button id="button-eye" onclick="toggleAPIToken();" class="btn btn-outline-secondary" data-tooltip="true" title="Show/hide token"><i class="fas fa-eye"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-2 col-form-label" for="profile_token_last"><b>Last Token Access:</b></label>
+                  <div class="col-md-2 col-form-label">
+                    {{ pastFutureTimes .LastTokenUse }}
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_token_exp"><b>Expiration:</b></label>
+                  <div id="profile_token_exp" class="col-md-2 col-form-label">
+                    {{ pastFutureTimes .TokenExpire }}
+                  </div>
+                  <label class="col-md-2 col-form-label" for="profile_token_exp"><b>Set Expiration:</b></label>
+                  <select id="profile_exp_hours" class="col-md-2 form-control">
+                    <option value="2">2 hours</option>
+                    <option value="6">6 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48">48 hours</option>
+                    <option value="72">72 hours</option>
+                    <option value="168">1 week</option>
+                    <option value="730">1 month</option>
+                    <option value="2190">3 months</option>
+                    <option value="4380">6 months</option>
+                  </select>
+                </div>
+              {{ end }}
+              </div>
+            </div>
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-user-lock"></i> Permissions for <b>{{ $metadata.Username }}</b>
+
+                  <div class="card-header-actions">
+                  </div>
+
+              </div>
+
+              <div class="card-body">
+
+              {{if .Permissions}}
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Environment</th>
+                        <th>User</th>
+                        <th>Query</th>
+                        <th>Carve</th>
+                        <th>Admin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{range $i, $e := $.Permissions}}
+                        <tr>
+                          <td>
+                            <b><a href="/environments/{{ $i }}/active">{{ environmentFinder $i $.Environments }}</a></b>
+                          </td>
+                          <td>
+                            {{ if $e.User }}
+                              <span class="badge badge-success">Yes</span>
+                            {{ else }}
+                              <span class="badge badge-secondary">No</span>
+                            {{ end }}
+                          </td>
+                          <td>
+                            {{ if $e.Query }}
+                              <span class="badge badge-success">Yes</span>
+                            {{ else }}
+                              <span class="badge badge-secondary">No</span>
+                            {{ end }}
+                          </td>
+                          <td>
+                            {{ if $e.Carve }}
+                              <span class="badge badge-success">Yes</span>
+                            {{ else }}
+                              <span class="badge badge-secondary">No</span>
+                            {{ end }}
+                          </td>
+                          <td>
+                            {{ if $e.Admin }}
+                              <span class="badge badge-success">Yes</span>
+                            {{ else }}
+                              <span class="badge badge-secondary">No</span>
+                            {{ end }}
+                          </td>
+                        </tr>
+                      {{end}}
+                    </tbody>
+                  </table>
+                </div>
+              {{else}}
+                <div class="alert alert-info">
+                  <i class="fa fa-info-circle"></i> You don't have any specific permissions assigned.
+                </div>
+              {{end}}
+
+              </div>
+
             </div>
 
           <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModal" aria-hidden="true">
@@ -123,13 +245,66 @@
           </div>
           <!-- /.modal -->
 
+          <div class="modal fade" id="apiTokenModal" tabindex="-1" role="dialog" aria-labelledby="apiTokenModal" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dark" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">API Token</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group row">
+                    <label class="col-md-2 col-form-label" for="user_api_token">API Token: </label>
+                    <div class="col-md-10">
+                      <input class="form-control" name="user_api_token" id="user_api_token" type="text" autocomplete="off" readonly>
+                    </div>
+                    <button id="button-clipboard-sh" class="btn-sm btn-clipboard mr-2" data-clipboard-action="copy" data-clipboard-target="#user_api_token">Copy</button>
+                  </div>
+                  <div class="form-group row">
+                    <label class="col-md-2 col-form-label" for="user_token_expiration">Expiration: </label>
+                    <div class="col-md-10">
+                      <input class="form-control" name="user_token_expiration" id="user_token_expiration" type="text" autocomplete="off" readonly>
+                    </div>
+                    <input type="hidden" id="user_token_username" value="">
+                  </div>
+                  <div class="form-group row">
+                    <label class="col-md-2 col-form-label" for="user_token_hours">Hours to expire: </label>
+                    <div class="col-md-10">
+                      <select id="expiration_hours" class="form-control">
+                        <option value="2">2 hours</option>
+                        <option value="6">6 hours</option>
+                        <option value="12">12 hours</option>
+                        <option value="24">24 hours</option>
+                        <option value="48">48 hours</option>
+                        <option value="72">72 hours</option>
+                        <option value="168">1 week</option>
+                        <option value="730">1 month</option>
+                        <option value="2190">3 months</option>
+                        <option value="4380">6 months</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button id="refreshTokenButton" type="button" class="btn btn-primary" onclick="refreshUserToken();">Refresh</button>
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+
           {{ template "page-modals" . }}
 
         </div>
 
       </main>
 
-      {{ if eq $metadata.Level "admin" }}
+      {{ if $metadata.Admin }}
         {{ template "page-aside-right" . }}
       {{ end }}
 
@@ -168,6 +343,23 @@
             $("#confirm_password_label").removeClass('text-danger');
             $("#changePasswordButton").prop("disabled", false);
           }
+        });
+        // Clipboard.js initialization
+        var clipboard_sh = new ClipboardJS('#button-clipboard-sh');
+        clipboard_sh.on('success', function(e) {
+          console.info('Action:', e.action);
+          console.info('Text:', e.text);
+          console.info('Trigger:', e.trigger);
+          $(e.trigger).text('Copied!');
+          e.clearSelection();
+          setTimeout(function() {
+            $(e.trigger).text('Copy');
+          }, 2500);
+        });
+        clipboard_sh.on('error', function(e) {
+          $(e.trigger).text('Error');
+          console.error('Action:', e.action);
+          console.error('Trigger:', e.trigger);
         });
       });
     </script>

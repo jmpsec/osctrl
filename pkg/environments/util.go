@@ -55,13 +55,23 @@ func PackageDownloadURL(env TLSEnvironment, pkg string) string {
 	return fmt.Sprintf("https://%s/%s/%s/package/%s", env.Hostname, env.UUID, env.Secret, pkg)
 }
 
-// EnvironmentFinder to find the environment and return its name based on the environment ID
-func EnvironmentFinder(envID uint, envs []TLSEnvironment, uuid bool) string {
+// EnvironmentFinderID to find the environment and return its name based on the environment ID
+func EnvironmentFinderID(envID uint, envs []TLSEnvironment, uuid bool) string {
 	for _, env := range envs {
 		if env.ID == envID {
 			if uuid {
 				return env.UUID
 			}
+			return env.Name
+		}
+	}
+	return "Unknown"
+}
+
+// EnvironmentFinderUUID to find the environment and return its name based on the environment UUID
+func EnvironmentFinderUUID(envIdentifier string, envs []TLSEnvironment) string {
+	for _, env := range envs {
+		if env.UUID == envIdentifier || env.Name == envIdentifier {
 			return env.Name
 		}
 	}
