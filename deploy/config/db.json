@@ -1,5 +1,6 @@
 {
   "db": {
+    "type": "postgres",
     "host": "_DB_HOST",
     "port": "_DB_PORT",
     "name": "_DB_NAME",

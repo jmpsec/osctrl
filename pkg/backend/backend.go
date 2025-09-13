@@ -6,15 +6,23 @@ import (
 
 	"github.com/spf13/viper"
 
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 const (
 	// DBString to format connection string to database for postgres
-	DBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=%s"
+	PostgresDBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=%s"
+	// MySQLDBString to format connection string for MySQL
+	MySQLDBString = "%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
+	// Database types
+	DBTypePostgres = "postgres"
+	DBTypeMySQL    = "mysql"
+	DBTypeSQLite   = "sqlite"
 )
 
 // DBManager have access to backend
@@ -26,6 +34,7 @@ type DBManager struct {
 
 // JSONConfigurationDB to hold all backend configuration values
 type JSONConfigurationDB struct {
+	Type            string `json:"type"` // Database type: postgres, mysql, sqlite
 	Host            string `json:"host"`
 	Port            string `json:"port"`
 	Name            string `json:"name"`
@@ -36,6 +45,7 @@ type JSONConfigurationDB struct {
 	MaxOpenConns    int    `json:"maxOpenConns"`
 	ConnMaxLifetime int    `json:"connMaxLifetime"`
 	ConnRetry       int    `json:"connRetry"`
+	FilePath        string `json:"filePath"` // Used for SQLite
 }
 
 // LoadConfiguration to load the DB configuration file and assign to variables
@@ -60,13 +70,39 @@ func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
 
 // PrepareDSN to generate DB connection string
 func PrepareDSN(config JSONConfigurationDB) string {
-	return fmt.Sprintf(
-		DBString, config.Host, config.Port, config.Name, config.Username, config.Password, config.SSLMode)
+	switch config.Type {
+	case DBTypePostgres:
+		return fmt.Sprintf(
+			PostgresDBString, config.Host, config.Port, config.Name, config.Username, config.Password, config.SSLMode)
+	case DBTypeMySQL:
+		return fmt.Sprintf(
+			MySQLDBString, config.Username, config.Password, config.Host, config.Port, config.Name)
+	case DBTypeSQLite:
+		return config.FilePath
+	default:
+		// Default to postgres if not specified
+		return fmt.Sprintf(
+			PostgresDBString, config.Host, config.Port, config.Name, config.Username, config.Password, config.SSLMode)
+	}
 }
 
-// GetDB to get PostgreSQL DB using GORM
+// GetDB to get DB using GORM based on the configured driver
 func (db *DBManager) GetDB() (*gorm.DB, error) {
-	dbConn, err := gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+	var dbConn *gorm.DB
+	var err error
+
+	// Select the appropriate driver based on database type
+	switch db.Config.Type {
+	case DBTypePostgres:
+		dbConn, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+	case DBTypeMySQL:
+		dbConn, err = gorm.Open(mysql.Open(db.DSN), &gorm.Config{})
+	case DBTypeSQLite:
+		dbConn, err = gorm.Open(sqlite.Open(db.DSN), &gorm.Config{})
+	default:
+		// Default to postgres if type not specified
+		dbConn, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+	}
 	if err != nil {
 		return nil, err
 	}
