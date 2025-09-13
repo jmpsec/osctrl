@@ -1343,7 +1343,7 @@ func (h *HandlersAdmin) UsersTokensGETHandler(w http.ResponseWriter, r *http.Req
 	// Get context data
 	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
 	// Check permissions
-	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) || (ctx[sessions.CtxUser] != username) {
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) && ctx[sessions.CtxUser] != username {
 		adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
 		return
 	}
