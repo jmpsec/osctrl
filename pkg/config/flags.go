@@ -82,10 +82,8 @@ type ServiceFlagParams struct {
 	// JWT configuration file
 	JWTConfigFile string
 
-	// osquery version to use
-	OsqueryVersion string
-	// JSON file with osquery tables data
-	OsqueryTablesFile string
+	// osquery configuration values
+	OsqueryConfigValues OsqueryConfiguration
 
 	// SAML configuration file
 	SAMLConfigFile string
@@ -152,6 +150,7 @@ func InitAdminFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
+	allFlags = append(allFlags, initOsctrldFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceAdmin)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
@@ -720,14 +719,42 @@ func initOsqueryFlags(params *ServiceFlagParams) []cli.Flag {
 			Value:       defOsqueryTablesVersion,
 			Usage:       "Version of osquery to be used",
 			EnvVars:     []string{"OSQUERY_VERSION"},
-			Destination: &params.OsqueryVersion,
+			Destination: &params.OsqueryConfigValues.Version,
 		},
 		&cli.StringFlag{
 			Name:        "osquery-tables-file",
 			Value:       defOsqueryTablesFile,
 			Usage:       "File with the osquery tables to be used",
 			EnvVars:     []string{"OSQUERY_TABLES"},
-			Destination: &params.OsqueryTablesFile,
+			Destination: &params.OsqueryConfigValues.TablesFile,
+		},
+		&cli.BoolFlag{
+			Name:        "osquery-logger",
+			Value:       true,
+			Usage:       "Enable remote tls logger for osquery",
+			EnvVars:     []string{"OSQUERY_LOGGER"},
+			Destination: &params.OsqueryConfigValues.Logger,
+		},
+		&cli.BoolFlag{
+			Name:        "osquery-config",
+			Value:       true,
+			Usage:       "Enable remote tls config for osquery",
+			EnvVars:     []string{"OSQUERY_CONFIG"},
+			Destination: &params.OsqueryConfigValues.Config,
+		},
+		&cli.BoolFlag{
+			Name:        "osquery-query",
+			Value:       true,
+			Usage:       "Enable remote tls queries for osquery",
+			EnvVars:     []string{"OSQUERY_QUERY"},
+			Destination: &params.OsqueryConfigValues.Query,
+		},
+		&cli.BoolFlag{
+			Name:        "osquery-carve",
+			Value:       true,
+			Usage:       "Enable remote tls carver for osquery",
+			EnvVars:     []string{"OSQUERY_CARVE"},
+			Destination: &params.OsqueryConfigValues.Carve,
 		},
 	}
 }
@@ -815,7 +842,7 @@ func initOsctrldFlags(params *ServiceFlagParams) []cli.Flag {
 		&cli.BoolFlag{
 			Name:        "enable-osctrld",
 			Value:       false,
-			Usage:       "Enable osctrld endpoints.",
+			Usage:       "Enable osctrld endpoints and functionality.",
 			EnvVars:     []string{"OSCTRLD"},
 			Destination: &params.OsctrldConfigValues.Enabled,
 		},

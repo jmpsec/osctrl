@@ -55,6 +55,13 @@ const (
 	CarverS3    string = "s3"
 )
 
+// Types of backend
+const (
+	DBTypePostgres string = "postgres"
+	DBTypeMySQL    string = "mysql"
+	DBTypeSQLite   string = "sqlite"
+)
+
 // JSONConfigurationService to hold the service configuration values
 type JSONConfigurationService struct {
 	Listener        string `json:"listener"`
@@ -77,12 +84,37 @@ type TLSConfiguration struct {
 	DB          YAMLConfigurationDB      `mapstructure:"db"`
 	BatchWriter YAMLConfigurationWriter  `mapstructure:"batchWriter"`
 	Redis       YAMLConfigurationRedis   `mapstructure:"redis"`
-	Metrics     YAMLConfigurationMetrics `mapstructure:"metrics"`
+	Osquery     YAMLConfigurationOsquery `mapstructure:"osquery"`
 	Osctrld     YAMLConfigurationOsctrld `mapstructure:"osctrld"`
+	Metrics     YAMLConfigurationMetrics `mapstructure:"metrics"`
 	TLS         YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger      YAMLConfigurationLogger  `mapstructure:"logger"`
 	Carver      YAMLConfigurationCarver  `mapstructure:"carver"`
 	Debug       YAMLConfigurationDebug   `mapstructure:"debug"`
+}
+
+// AdminConfiguration to hold osctrl-admin configuration values
+type AdminConfiguration struct {
+	Service YAMLConfigurationService `mapstructure:"service"`
+	DB      YAMLConfigurationDB      `mapstructure:"db"`
+	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
+	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
+	Osctrld YAMLConfigurationOsctrld `mapstructure:"osctrld"`
+	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
+	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
+	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
+	Carver  YAMLConfigurationCarver  `mapstructure:"carver"`
+	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
+}
+
+// APIConfiguration to hold osctrl-api configuration values
+type APIConfiguration struct {
+	Service YAMLConfigurationService `mapstructure:"service"`
+	DB      YAMLConfigurationDB      `mapstructure:"db"`
+	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
+	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
+	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
+	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
 // YAMLConfigurationService to hold the service configuration values
@@ -97,16 +129,18 @@ type YAMLConfigurationService struct {
 
 // YAMLConfigurationDB to hold all backend configuration values
 type YAMLConfigurationDB struct {
+	Type            string `yaml:"type"` // Database type: postgres, mysql, sqlite
 	Host            string `yaml:"host"`
 	Port            string `yaml:"port"`
 	Name            string `yaml:"name"`
 	Username        string `yaml:"username"`
 	Password        string `yaml:"password"`
-	SSLMode         string `yaml:"sslmode"`
+	SSLMode         string `yaml:"sslmode"` // For postgres
 	MaxIdleConns    int    `yaml:"maxIdleConns"`
 	MaxOpenConns    int    `yaml:"maxOpenConns"`
 	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
 	ConnRetry       int    `yaml:"connRetry"`
+	FilePath        string `yaml:"filePath"` // Used for SQLite
 }
 
 // YAMLConfigurationRedis to hold all redis configuration values
@@ -117,6 +151,16 @@ type YAMLConfigurationRedis struct {
 	ConnectionString string `yaml:"connectionString"`
 	DB               int    `yaml:"db"`
 	ConnRetry        int    `yaml:"connRetry"`
+}
+
+// YAMLConfigurationOsquery to hold the osquery configuration values
+type YAMLConfigurationOsquery struct {
+	Version    string `yaml:"version"`
+	TablesFile string `yaml:"tablesFile"`
+	Logger     bool   `yaml:"logger"`
+	Config     bool   `yaml:"config"`
+	Query      bool   `yaml:"query"`
+	Carve      bool   `yaml:"carve"`
 }
 
 // YAMLConfigurationMetrics to hold the metrics configuration values
@@ -181,6 +225,12 @@ type JSONConfigurationJWT struct {
 	HoursToExpire int    `json:"hoursToExpire"`
 }
 
+// YAMLConfigurationJWT to hold all JWT configuration values
+type YAMLConfigurationJWT struct {
+	JWTSecret     string `yaml:"jwtSecret"`
+	HoursToExpire int    `yaml:"hoursToExpire"`
+}
+
 // YAMLConfigurationSAML to keep all SAML details for auth
 type YAMLConfigurationSAML struct {
 	CertPath     string `yaml:"certpath"`
@@ -225,4 +275,14 @@ type DebugHTTPConfiguration struct {
 // OsctrldConfiguration to hold osctrld configuration values
 type OsctrldConfiguration struct {
 	Enabled bool `json:"enabled"`
+}
+
+// OsqueryConfiguration to hold osquery configuration values
+type OsqueryConfiguration struct {
+	Version    string `json:"version"`
+	TablesFile string `json:"tablesFile"`
+	Logger     bool   `json:"logger"`
+	Config     bool   `json:"config"`
+	Query      bool   `json:"query"`
+	Carve      bool   `json:"carve"`
 }

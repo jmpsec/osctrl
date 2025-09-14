@@ -136,8 +136,8 @@ func loadJSONConfiguration(file, service string) (config.JSONConfigurationServic
 }
 
 // Function to load the configuration from a single YAML file
-func loadConfigurationYAML(file string) (config.YAMLConfigurationService, error) {
-	var cfg config.YAMLConfigurationService
+func loadConfigurationYAML(file string) (config.TLSConfiguration, error) {
+	var cfg config.TLSConfiguration
 	// Load file and read config
 	viper.SetConfigFile(file)
 	viper.SetConfigType("yaml")
