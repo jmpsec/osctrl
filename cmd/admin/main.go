@@ -149,6 +149,19 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	return cfg, nil
 }
 
+// Function to load the configuration from a single YAML file
+func loadConfigurationYAML(file string) (config.AdminConfiguration, error) {
+	var cfg config.AdminConfiguration
+	// Load file and read config
+	viper.SetConfigFile(file)
+	viper.SetConfigType("yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		return cfg, err
+	}
+	// No errors!
+	return cfg, nil
+}
+
 // Initialization code
 func init() {
 	// Initialize CLI flags using the config package
@@ -307,7 +320,7 @@ func osctrlAdminService() {
 			Commit:  buildCommit,
 			Date:    buildDate,
 		}),
-		handlers.WithOsqueryVersion(flagParams.OsqueryVersion),
+		handlers.WithOsqueryVersion(flagParams.OsqueryConfigValues.Version),
 		handlers.WithTemplates(flagParams.TemplatesDir),
 		handlers.WithStaticLocation(flagParams.StaticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
@@ -605,7 +618,7 @@ func cliAction(c *cli.Context) error {
 		}
 	}
 	// Load osquery tables JSON file
-	osqueryTables, err = loadOsqueryTables(flagParams.OsqueryTablesFile)
+	osqueryTables, err = loadOsqueryTables(flagParams.OsqueryConfigValues.TablesFile)
 	if err != nil {
 		return fmt.Errorf("failed to load osquery tables - %w", err)
 	}
