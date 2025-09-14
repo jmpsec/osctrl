@@ -740,21 +740,21 @@ func initOsqueryFlags(params *ServiceFlagParams) []cli.Flag {
 			Value:       true,
 			Usage:       "Enable remote tls config for osquery",
 			EnvVars:     []string{"OSQUERY_CONFIG"},
-			Destination: &params.OsqueryConfigValues.Logger,
+			Destination: &params.OsqueryConfigValues.Config,
 		},
 		&cli.BoolFlag{
 			Name:        "osquery-query",
 			Value:       true,
 			Usage:       "Enable remote tls queries for osquery",
 			EnvVars:     []string{"OSQUERY_QUERY"},
-			Destination: &params.OsqueryConfigValues.Logger,
+			Destination: &params.OsqueryConfigValues.Query,
 		},
 		&cli.BoolFlag{
 			Name:        "osquery-carve",
 			Value:       true,
 			Usage:       "Enable remote tls carver for osquery",
 			EnvVars:     []string{"OSQUERY_CARVE"},
-			Destination: &params.OsqueryConfigValues.Logger,
+			Destination: &params.OsqueryConfigValues.Carve,
 		},
 	}
 }
