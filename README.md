@@ -24,6 +24,9 @@
 
 With **osctrl** you can monitor all your systems running osquery, distribute its configuration fast, collect all the status and result logs and allow you to run on-demand queries.
 
+> [!WARNING]
+> **osctrl** is a fast evolving project, and while it is already being used in production environments, it is still under active development. Please make sure to read the documentation and understand its current state before deploying it in a critical environment.
+
 ## Running osctrl with docker for development
 
 You can use docker to run **osctrl** and all the components are defined in the `docker-compose-dev.yml` that ties all the components together, to serve a functional deployment.
@@ -42,17 +45,6 @@ Find us in the #osctrl channel in the official osquery Slack community ([Request
 
 **osctrl** is licensed under the [MIT License](https://github.com/jmpsec/osctrl/blob/master/LICENSE).
 
-## Donate
+## Contributing
 
-If you like **osctrl** you can send [BTC](bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5) or [ETH](ethereum:0x99e211251fca06286596498823Fd0a48785B64eB) donations to the following wallets:
-
-<table>
-  <tr align="center">
-    <td><img alt="bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5" src="https://osctrl.net/btc.png" width="175" title="bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5"/></td>
-    <td><img alt="ethereum:0x99e211251fca06286596498823Fd0a48785B64eB" src="https://osctrl.net/eth.png" width="175" title="ethereum:0x99e211251fca06286596498823Fd0a48785B64eB"/></td>
-  </tr>
-  <tr align="center">
-    <td><sub>bitcoin:bc1qvjep6r6j7a00xyhcgp4g2ea2f4pupaprcvllj5</sub></td>
-    <td><sub>ethereum:0x99e211251fca06286596498823Fd0a48785B64eB</sub></td>
-  </tr>
-</table>
+Feel free to fork the repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
