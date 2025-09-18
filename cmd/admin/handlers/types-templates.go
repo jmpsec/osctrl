@@ -45,6 +45,7 @@ type AsideLeftMetadata struct {
 type TableTemplateData struct {
 	Title        string
 	EnvUUID      string
+	EnvName      string
 	Selector     string
 	SelectorName string
 	Target       string
@@ -100,10 +101,12 @@ type EnrollTemplateData struct {
 type QueryRunTemplateData struct {
 	Title         string
 	EnvUUID       string
+	EnvName       string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
 	UUIDs         []string
 	Hosts         []string
+	Tags          []string
 	Tables        []types.OsqueryTable
 	TablesVersion string
 	Metadata      TemplateMetadata
@@ -117,6 +120,7 @@ type CarvesRunTemplateData QueryRunTemplateData
 type GenericTableTemplateData struct {
 	Title        string
 	EnvUUID      string
+	EnvName      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Target       string
@@ -137,10 +141,11 @@ type CarvesTableTemplateData GenericTableTemplateData
 type CarvesDetailsTemplateData struct {
 	Title        string
 	EnvUUID      string
+	EnvName      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
-	QueryTargets []queries.DistributedQueryTarget
+	QueryTargets []CarveTarget
 	Carves       []carves.CarvedFile
 	CarveBlocks  map[string][]carves.CarvedBlock
 	Metadata     TemplateMetadata
@@ -151,10 +156,11 @@ type CarvesDetailsTemplateData struct {
 type QueryLogsTemplateData struct {
 	Title         string
 	EnvUUID       string
+	EnvName       string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
 	Query         queries.DistributedQuery
-	QueryTargets  []queries.DistributedQueryTarget
+	QueryTargets  []QueryTarget
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
 	ServiceConfig config.JSONConfigurationService

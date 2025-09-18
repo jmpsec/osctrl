@@ -79,24 +79,37 @@ func generateCarveQuery(file string, glob bool) string {
 	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
 }
 
+// Helper to generate the file carve query
+func newCarveReady(user, path string, exp time.Time, envid uint, req DistributedCarveRequest) queries.DistributedQuery {
+	return queries.DistributedQuery{
+		Query:         generateCarveQuery(path, false),
+		Name:          generateCarveName(),
+		Creator:       user,
+		Expected:      0,
+		Executions:    0,
+		Active:        true,
+		Completed:     false,
+		Deleted:       false,
+		Expired:       false,
+		Expiration:    exp,
+		Type:          queries.CarveQueryType,
+		Path:          path,
+		EnvironmentID: envid,
+		Target:        genTargetString(req.Environments, req.UUIDs, req.Hosts, req.Tags, req.Platforms),
+	}
+}
+
 // Helper to determine if a query may be a carve
-func newQueryReady(user, query string, exp time.Time, envid uint) queries.DistributedQuery {
-	if strings.Contains(query, "carve(") || strings.Contains(query, "carve=1") {
-		return queries.DistributedQuery{
-			Query:         query,
-			Name:          generateCarveName(),
-			Creator:       user,
-			Expected:      0,
-			Executions:    0,
-			Active:        true,
-			Completed:     false,
-			Deleted:       false,
-			Expired:       false,
-			Expiration:    exp,
-			Type:          queries.CarveQueryType,
-			Path:          query,
-			EnvironmentID: envid,
+func newQueryReady(user, query string, exp time.Time, envid uint, req DistributedQueryRequest) queries.DistributedQuery {
+	if strings.Contains(query, "carve") {
+		cReq := DistributedCarveRequest{
+			Environments: req.Environments,
+			Platforms:    req.Platforms,
+			UUIDs:        req.UUIDs,
+			Hosts:        req.Hosts,
+			Tags:         req.Tags,
 		}
+		return newCarveReady(user, query, exp, envid, cReq)
 	}
 	return queries.DistributedQuery{
 		Query:         query,
@@ -111,22 +124,8 @@ func newQueryReady(user, query string, exp time.Time, envid uint) queries.Distri
 		Expiration:    exp,
 		Type:          queries.StandardQueryType,
 		EnvironmentID: envid,
+		Target:        genTargetString(req.Environments, req.UUIDs, req.Hosts, req.Tags, req.Platforms),
 	}
-}
-
-// Helper to remove duplicates from []string
-func removeStringDuplicates(s []string) []string {
-	seen := make(map[string]struct{}, len(s))
-	i := 0
-	for _, v := range s {
-		if _, ok := seen[v]; ok {
-			continue
-		}
-		seen[v] = struct{}{}
-		s[i] = v
-		i++
-	}
-	return s[:i]
 }
 
 // Helper to verify the service is valid
@@ -207,4 +206,61 @@ func (h *HandlersAdmin) allowedEnvironments(username string, allEnvs []environme
 func (h *HandlersAdmin) generateFlags(flagsRaw, secretFile, certFile string) string {
 	replaced := strings.Replace(flagsRaw, "__SECRET_FILE__", secretFile, 1)
 	return strings.Replace(replaced, "__CERT_FILE__", certFile, 1)
+}
+
+// Helper to generate the target string for on-demand queries and carves
+func genTargetString(envs, uuids, hosts, tags, platforms []string) string {
+	var target string
+	if len(envs) > 0 {
+		target += "env[" + strings.Join(envs, ",") + "];"
+	}
+	if len(uuids) > 0 {
+		target += "uuid[" + strings.Join(uuids, ",") + "];"
+	}
+	if len(hosts) > 0 {
+		target += "host[" + strings.Join(hosts, ",") + "];"
+	}
+	if len(platforms) > 0 {
+		target += "platform[" + strings.Join(platforms, ",") + "];"
+	}
+	if len(tags) > 0 {
+		target += "tag[" + strings.Join(tags, ",") + "];"
+	}
+	return target
+}
+
+// Helper to convert the target string to a slice of QueryTargets
+func parseQueryTarget(target string) []QueryTarget {
+	var targets []QueryTarget
+	parts := strings.Split(target, ";")
+	for _, p := range parts {
+		if p != "" {
+			pType := strings.SplitN(p, "[", 2)[0]
+			pValue := strings.TrimSuffix(strings.SplitN(p, "[", 2)[1], "]")
+			t := QueryTarget{
+				Type:  pType,
+				Value: pValue,
+			}
+			targets = append(targets, t)
+		}
+	}
+	return targets
+}
+
+// Helper to convert the target string to a slice of CarveTargets
+func parseCarveTarget(target string) []CarveTarget {
+	var targets []CarveTarget
+	parts := strings.Split(target, ";")
+	for _, p := range parts {
+		if p != "" {
+			pType := strings.SplitN(p, "[", 2)[0]
+			pValue := strings.TrimSuffix(strings.SplitN(p, "[", 2)[1], "]")
+			t := CarveTarget{
+				Type:  pType,
+				Value: pValue,
+			}
+			targets = append(targets, t)
+		}
+	}
+	return targets
 }

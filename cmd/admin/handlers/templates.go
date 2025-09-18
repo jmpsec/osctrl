@@ -301,6 +301,12 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		uuids = append(uuids, n.UUID)
 		hosts = append(hosts, n.Localname)
 	}
+	// Get all tags
+	allTags, err := h.Tags.GetByEnv(env.ID)
+	if err != nil {
+		log.Err(err).Msg("error getting tags")
+		return
+	}
 	// Get if the user is admin
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
@@ -309,13 +315,15 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Prepare template data
 	templateData := QueryRunTemplateData{
-		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
+		Title:         "Query osquery Nodes in " + env.Name,
 		EnvUUID:       env.UUID,
+		EnvName:       env.Name,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
+		Tags:          tags.TagsToStrings(allTags),
 		Tables:        h.OsqueryTables,
 		TablesVersion: h.OsqueryVersion,
 	}
@@ -377,7 +385,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Prepare template data
 	templateData := QueryTableTemplateData{
-		Title:        "All on-demand queries",
+		Title:        "On-demand queries in " + env.Name,
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -436,7 +444,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Prepare template data
 	templateData := SavedQueriesTemplateData{
-		Title:        "Saved queries in <b>" + env.Name + "</b>",
+		Title:        "Saved queries in " + env.Name,
 		EnvUUID:      env.UUID,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
@@ -511,15 +519,23 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("error getting user")
 		return
 	}
+	// Get all tags
+	allTags, err := h.Tags.GetByEnv(env.ID)
+	if err != nil {
+		log.Err(err).Msg("error getting tags")
+		return
+	}
 	// Prepare template data
 	templateData := CarvesRunTemplateData{
-		Title:         "Query osquery Nodes in <b>" + env.Name + "</b>",
+		Title:         "Query osquery Nodes in " + env.Name,
 		EnvUUID:       env.UUID,
+		EnvName:       env.Name,
 		Metadata:      h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		UUIDs:         uuids,
 		Hosts:         hosts,
+		Tags:          tags.TagsToStrings(allTags),
 		Tables:        h.OsqueryTables,
 		TablesVersion: h.OsqueryVersion,
 	}
@@ -581,8 +597,9 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Prepare template data
 	templateData := CarvesTableTemplateData{
-		Title:        "Carved files in <b>" + env.Name + "</b>",
+		Title:        "Carved files in " + env.Name,
 		EnvUUID:      env.UUID,
+		EnvName:      env.Name,
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
@@ -643,12 +660,6 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("error getting query")
 		return
 	}
-	// Get query targets
-	targets, err := h.Queries.GetTargets(name)
-	if err != nil {
-		log.Err(err).Msg("error getting targets")
-		return
-	}
 	leftMetadata := AsideLeftMetadata{
 		EnvUUID:   env.UUID,
 		Query:     true,
@@ -681,7 +692,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
 		Query:         query,
-		QueryTargets:  targets,
+		QueryTargets:  parseQueryTarget(query.Target),
 		ServiceConfig: *h.AdminConfig,
 	}
 	if err := t.Execute(w, templateData); err != nil {
@@ -750,12 +761,6 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("error getting query")
 		return
 	}
-	// Get query targets
-	targets, err := h.Queries.GetTargets(name)
-	if err != nil {
-		log.Err(err).Msg("error getting targets")
-		return
-	}
 	// Get carves for this query
 	queryCarves, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
@@ -792,7 +797,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:    platforms,
 		Query:        query,
-		QueryTargets: targets,
+		QueryTargets: parseCarveTarget(query.Target),
 		Carves:       queryCarves,
 		CarveBlocks:  blocks,
 	}

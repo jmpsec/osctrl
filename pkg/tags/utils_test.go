@@ -44,3 +44,9 @@ func TestTagCustom(t *testing.T) {
 	assert.Equal(t, "CUSTOM-VALUE", SetCustomTag(4, "CUSTOM-VALUE"))
 	assert.Equal(t, "unknown", SetCustomTag(5, "CUSTOM-VALUE"))
 }
+
+func TestGetStrTagName(t *testing.T) {
+	assert.Equal(t, "VALUE", GetStrTagName("custom:VALUE"))
+	assert.Equal(t, "VALUE:EXTRA", GetStrTagName("custom:VALUE:EXTRA"))
+	assert.Equal(t, "VALUE", GetStrTagName("VALUE"))
+}

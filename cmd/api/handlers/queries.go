@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -129,7 +130,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		Type:          queries.StandardQueryType,
 		EnvironmentID: env.ID,
 	}
-	if err := h.Queries.Create(newQuery); err != nil {
+	if err := h.Queries.Create(&newQuery); err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
@@ -151,7 +152,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		expected = []uint{}
 		for _, e := range q.Environments {
 			if (e != "") && h.Envs.Exists(e) {
-				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					return
@@ -169,7 +170,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		platforms, _ := h.Nodes.GetAllPlatforms()
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(platforms, p) {
-				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					return

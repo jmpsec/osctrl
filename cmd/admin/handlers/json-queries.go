@@ -84,16 +84,6 @@ func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery, env string) Qu
 	if q.Expired {
 		status = queries.StatusExpired
 	}
-	// Preparing query targets
-	ts, _ := h.Queries.GetTargets(q.Name)
-	_ts := []QueryTarget{}
-	for _, t := range ts {
-		_t := QueryTarget{
-			Type:  t.Type,
-			Value: t.Value,
-		}
-		_ts = append(_ts, _t)
-	}
 	return QueryJSON{
 		Creator: q.Creator,
 		Name:    q.Name,
@@ -104,7 +94,7 @@ func (h *HandlersAdmin) JSONQueryJSON(q queries.DistributedQuery, env string) Qu
 		},
 		Status:   status,
 		Progress: progress,
-		Targets:  _ts,
+		Targets:  parseQueryTarget(q.Target),
 	}
 }
 

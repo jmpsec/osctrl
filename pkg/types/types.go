@@ -49,6 +49,7 @@ type ApiDistributedQueryRequest struct {
 	Platforms    []string `json:"platform_list"`
 	Environments []string `json:"environment_list"`
 	Hosts        []string `json:"host_list"`
+	Tags         []string `json:"tag_list"`
 	Query        string   `json:"query"`
 	Hidden       bool     `json:"hidden"`
 	ExpHours     int      `json:"exp_hours"`

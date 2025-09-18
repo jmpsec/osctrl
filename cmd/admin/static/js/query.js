@@ -4,6 +4,7 @@ function sendQuery(_queryUrl, _redir) {
   var _platform_list = $("#target_platform").val();
   var _uuid_list = $("#target_uuids").val();
   var _host_list = $("#target_hosts").val();
+  var _tag_list = $("#target_tags").val();
   var _exp_hours = parseInt($("#expiration_hours").val());
   var _query_name = $("#save_query_name").val();
   var _query_save = $("#save_query_check").is(":checked") ? true : false;
@@ -11,24 +12,10 @@ function sendQuery(_queryUrl, _redir) {
   var _query = editor.getValue();
 
   // Making sure targets are specified
-  if (
-    _env_list.length === 0 &&
-    _platform_list.length === 0 &&
-    _uuid_list.length === 0 &&
-    _host_list.length === 0
-  ) {
+  if (_env_list.length === 0 && _platform_list.length === 0 && _uuid_list.length === 0 && _host_list.length === 0 && _tag_list.length === 0) {
     $("#warningModalMessage").text("No targets have been specified");
     $("#warningModal").modal();
     return;
-  }
-  // Check if all environments have been selected
-  if (_env_list.includes("all_environments_99")) {
-    _env_list = [];
-    $("#target_env option").each(function () {
-      if ($(this).val() !== "" && $(this).val() !== "all_environments_99") {
-        _env_list.push($(this).val());
-      }
-    });
   }
   // Check if all platforms have been selected
   if (_platform_list.includes("all_platforms_99")) {
@@ -62,6 +49,7 @@ function sendQuery(_queryUrl, _redir) {
     platform_list: _platform_list,
     uuid_list: _uuid_list,
     host_list: _host_list,
+    tag_list: _tag_list,
     save: _query_save,
     name: _query_name,
     query: _query,
@@ -110,8 +98,7 @@ function actionQueries(_action, _names, _url, _redir) {
 }
 
 function confirmDeleteQueries(_names, _url) {
-  var modal_message =
-    "Are you sure you want to delete " + _names.length + " query(s)?";
+  var modal_message = "Are you sure you want to delete " + _names.length + " query(s)?";
   $("#confirmModalMessage").text(modal_message);
   $("#confirm_action").click(function () {
     $("#confirmModal").modal("hide");
@@ -121,8 +108,7 @@ function confirmDeleteQueries(_names, _url) {
 }
 
 function confirmDeleteSavedQueries(_names, _url) {
-  var modal_message =
-    "Are you sure you want to delete " + _names.length + " query(s)?";
+  var modal_message = "Are you sure you want to delete " + _names.length + " query(s)?";
   $("#confirmModalMessage").text(modal_message);
   $("#confirm_action").click(function () {
     $("#confirmModal").modal("hide");
@@ -132,19 +118,8 @@ function confirmDeleteSavedQueries(_names, _url) {
 }
 
 function queryResultLink(link, query, url) {
-  var external_link =
-    '<a href="' +
-    link +
-    '" _target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
-  return (
-    '<span class="query-link"><a href="' +
-    url +
-    '">' +
-    query +
-    "</a> - " +
-    external_link +
-    "</span> "
-  );
+  var external_link = '<a href="' + link + '" _target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
+  return '<span class="query-link"><a href="' + url + '">' + query + "</a> - " + external_link + "</span> ";
 }
 
 function toggleSaveQuery() {

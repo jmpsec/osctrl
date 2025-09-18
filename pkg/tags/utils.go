@@ -60,6 +60,8 @@ func TagTypeDecorator(tagType uint) string {
 		return TagTypeHostnameStr
 	case TagTypeCustom:
 		return TagTypeCustomStr
+	case TagTypeTag:
+		return TagTypeTagStr
 	default:
 		return TagTypeUnknownStr
 	}
@@ -107,4 +109,24 @@ func SetCustomTag(tagType uint, custom string) string {
 		tagCustom = TagCustomTag
 	}
 	return tagCustom
+}
+
+// Helper to convert a slice of tags to a slice of strings
+func TagsToStrings(tags []AdminTag) []string {
+	var tagStrings []string
+	for _, tag := range tags {
+		if tag.TagType == TagTypeCustom || tag.TagType == TagTypeTag {
+			tagStrings = append(tagStrings, fmt.Sprintf("%s:%s", tag.CustomTag, tag.Name))
+		}
+	}
+	return tagStrings
+}
+
+// Helper to extract custom tag and name from a full tag string
+func GetStrTagName(fullTag string) string {
+	parts := strings.SplitN(fullTag, ":", 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return fullTag
 }

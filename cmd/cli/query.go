@@ -270,7 +270,7 @@ func runQuery(c *cli.Context) error {
 			Type:          queries.StandardQueryType,
 			EnvironmentID: e.ID,
 		}
-		if err := queriesmgr.Create(newQuery); err != nil {
+		if err := queriesmgr.Create(&newQuery); err != nil {
 			return fmt.Errorf("❌ error query create - %w", err)
 		}
 		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
