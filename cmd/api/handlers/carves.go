@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -173,7 +174,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	var c types.ApiDistributedCarveRequest
+	var c types.ApiDistributedQueryRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
@@ -188,21 +189,13 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	if c.ExpHours == 0 {
 		expTime = time.Time{}
 	}
-	query := carves.GenCarveQuery(c.Path, false)
 	// Prepare and create new carve
-	carveName := carves.GenCarveName()
-
 	newQuery := queries.DistributedQuery{
-		Query:         query,
-		Name:          carveName,
+		Query:         carves.GenCarveQuery(c.Path, false),
+		Name:          carves.GenCarveName(),
 		Creator:       ctx[ctxUser],
-		Expected:      0,
-		Executions:    0,
 		Active:        true,
-		Expired:       false,
 		Expiration:    expTime,
-		Completed:     false,
-		Deleted:       false,
 		Type:          queries.CarveQueryType,
 		Path:          c.Path,
 		EnvironmentID: env.ID,
@@ -211,15 +204,36 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
-	// Create UUID target
-	if (c.UUID != "") && h.Nodes.CheckByUUID(c.UUID) {
-		if err := h.Queries.CreateTarget(carveName, queries.QueryTargetUUID, c.UUID); err != nil {
-			apiErrorResponse(w, "error creating carve UUID target", http.StatusInternalServerError, err)
+	// Prepare data for the handler code
+	data := handlers.ProcessingQuery{
+		Envs:          c.Environments,
+		Platforms:     c.Platforms,
+		UUIDs:         c.UUIDs,
+		Hosts:         c.Hosts,
+		Tags:          c.Tags,
+		EnvID:         env.ID,
+		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
+	}
+	manager := handlers.Managers{
+		Nodes: h.Nodes,
+		Envs:  h.Envs,
+		Tags:  h.Tags,
+	}
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+	if err != nil {
+		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
+	// If the list is empty, we don't need to create node queries
+	if len(targetNodesID) != 0 {
+		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
+			log.Err(err).Msgf("error creating node queries for carve %s", newQuery.Name)
+			apiErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
 			return
 		}
 	}
 	// Update value for expected
-	if err := h.Queries.SetExpected(carveName, 1, env.ID); err != nil {
+	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		return
 	}

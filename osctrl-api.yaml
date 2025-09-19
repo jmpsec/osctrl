@@ -814,7 +814,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ApiDistributedCarveRequest"
+              $ref: "#/components/schemas/ApiDistributedQueryRequest"
       responses:
         200:
           description: successful operation

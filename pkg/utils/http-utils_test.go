@@ -1,11 +1,8 @@
 package utils
 
 import (
-	"bytes"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,14 +46,6 @@ func serverMock() *httptest.Server {
 
 func testingMock(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("the test works"))
-}
-
-func captureOutput(f func()) string {
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	f()
-	log.SetOutput(os.Stderr)
-	return buf.String()
 }
 
 func TestSendRequest(t *testing.T) {

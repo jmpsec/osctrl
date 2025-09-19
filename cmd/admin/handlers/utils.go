@@ -37,16 +37,6 @@ func adminOKResponse(w http.ResponseWriter, msg string) {
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, AdminResponse{Message: msg})
 }
 
-// Helper to verify if a platform is valid
-func checkValidPlatform(platforms []string, platform string) bool {
-	for _, p := range platforms {
-		if p == platform {
-			return true
-		}
-	}
-	return false
-}
-
 // Helper to check if the CSRF token is valid
 func checkCSRFToken(ctxToken, receivedToken string) bool {
 	return (strings.TrimSpace(ctxToken) == strings.TrimSpace(receivedToken))
@@ -80,17 +70,12 @@ func generateCarveQuery(file string, glob bool) string {
 }
 
 // Helper to generate the file carve query
-func newCarveReady(user, path string, exp time.Time, envid uint, req DistributedCarveRequest) queries.DistributedQuery {
+func newCarveReady(user, path string, exp time.Time, envid uint, req DistributedQueryRequest) queries.DistributedQuery {
 	return queries.DistributedQuery{
 		Query:         generateCarveQuery(path, false),
 		Name:          generateCarveName(),
 		Creator:       user,
-		Expected:      0,
-		Executions:    0,
 		Active:        true,
-		Completed:     false,
-		Deleted:       false,
-		Expired:       false,
 		Expiration:    exp,
 		Type:          queries.CarveQueryType,
 		Path:          path,
@@ -102,25 +87,13 @@ func newCarveReady(user, path string, exp time.Time, envid uint, req Distributed
 // Helper to determine if a query may be a carve
 func newQueryReady(user, query string, exp time.Time, envid uint, req DistributedQueryRequest) queries.DistributedQuery {
 	if strings.Contains(query, "carve") {
-		cReq := DistributedCarveRequest{
-			Environments: req.Environments,
-			Platforms:    req.Platforms,
-			UUIDs:        req.UUIDs,
-			Hosts:        req.Hosts,
-			Tags:         req.Tags,
-		}
-		return newCarveReady(user, query, exp, envid, cReq)
+		return newCarveReady(user, query, exp, envid, req)
 	}
 	return queries.DistributedQuery{
 		Query:         query,
 		Name:          generateQueryName(),
 		Creator:       user,
-		Expected:      0,
-		Executions:    0,
 		Active:        true,
-		Completed:     false,
-		Deleted:       false,
-		Expired:       false,
 		Expiration:    exp,
 		Type:          queries.StandardQueryType,
 		EnvironmentID: envid,

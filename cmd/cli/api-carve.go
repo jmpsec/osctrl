@@ -98,11 +98,15 @@ func (api *OsctrlAPI) CompleteCarve(env, name string) (types.ApiGenericResponse,
 }
 
 // RunCarve to initiate a carve in osctrl
-func (api *OsctrlAPI) RunCarve(env, uuid, fPath string, exp int) (types.ApiQueriesResponse, error) {
-	c := types.ApiDistributedCarveRequest{
-		UUID:     uuid,
-		Path:     fPath,
-		ExpHours: exp,
+func (api *OsctrlAPI) RunCarve(env, fPath string, uuids, hosts, platforms, tags []string, hidden bool, exp int) (types.ApiQueriesResponse, error) {
+	c := types.ApiDistributedQueryRequest{
+		UUIDs:     uuids,
+		Hosts:     hosts,
+		Platforms: platforms,
+		Tags:      tags,
+		Path:      fPath,
+		Hidden:    hidden,
+		ExpHours:  exp,
 	}
 	var r types.ApiQueriesResponse
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APICarves, env))

@@ -43,13 +43,3 @@ func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {
 	log.Debug().Msgf("apiErrorResponse %s: %v", msg, err)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, types.ApiErrorResponse{Error: msg})
 }
-
-// Helper to verify if a platform is valid
-func checkValidPlatform(platforms []string, platform string) bool {
-	for _, p := range platforms {
-		if p == platform {
-			return true
-		}
-	}
-	return false
-}
