@@ -207,7 +207,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Path:          c.Path,
 		EnvironmentID: env.ID,
 	}
-	if err := h.Queries.Create(newQuery); err != nil {
+	if err := h.Queries.Create(&newQuery); err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}

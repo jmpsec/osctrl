@@ -85,6 +85,7 @@ type DistributedQuery struct {
 	EnvironmentID uint
 	ExtraData     string
 	Expiration    time.Time
+	Target        string
 }
 
 // NodeQuery links a node to a query
@@ -389,7 +390,7 @@ func (q *Queries) CleanupExpiredCarves(envid uint) error {
 }
 
 // Create to create new query to be served to nodes
-func (q *Queries) Create(query DistributedQuery) error {
+func (q *Queries) Create(query *DistributedQuery) error {
 	if err := q.DB.Create(&query).Error; err != nil {
 		return err
 	}

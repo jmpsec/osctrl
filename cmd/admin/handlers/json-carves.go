@@ -115,16 +115,6 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 		data := make(CarveData)
 		data["path"] = q.Path
 		data["name"] = q.Name
-		// Preparing query targets
-		ts, _ := h.Queries.GetTargets(q.Name)
-		_ts := []CarveTarget{}
-		for _, t := range ts {
-			_t := CarveTarget{
-				Type:  t.Type,
-				Value: t.Value,
-			}
-			_ts = append(_ts, _t)
-		}
 		// Preparing JSON
 		_c := CarveJSON{
 			Name:    q.Name,
@@ -136,7 +126,7 @@ func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request
 			},
 			Status:   status,
 			Progress: progress,
-			Targets:  _ts,
+			Targets:  parseCarveTarget(q.Target),
 		}
 		cJSON = append(cJSON, _c)
 	}

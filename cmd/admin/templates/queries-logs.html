@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ $serviceConfig := .ServiceConfig }} {{
-  template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $serviceConfig := .ServiceConfig }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -16,35 +15,18 @@
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
-                <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{
-                .Name }} {{ else }} {{ if .Completed }}
-                <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ]
-                - {{ .Name }} {{ else }} <i class="fas fa-hourglass-half"></i> [
-                <b>QUERY ACTIVE</b> ] - {{ .Name }} -
-                <b>{{ inFutureTime .Expiration }}</b> {{ end }} -
-                <a
-                  href="{{ queryResultLink .Name $template.EnvUUID }}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  ><i class="fas fa-external-link-alt"></i
-                ></a>
+                <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }} {{ else }} {{ if .Completed }} <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }} {{ else }}
+                <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b> {{ end }} -
+                <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 {{ end }}
                 <div class="card-header-actions">
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    data-tooltip="true"
-                    data-placement="bottom"
-                    title="Refresh table"
-                    onclick="refreshTableNow('tableQueryLogs');"
-                  >
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-                <table
-                  class="table table-responsive-sm table-bordered table-striped text-center"
-                >
+                <table class="table table-responsive-sm table-bordered table-striped text-center">
                   <thead>
                     <tr>
                       <th width="60%">Query</th>
@@ -54,21 +36,11 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td
-                        style="
-                          font-size: 1.5em;
-                          font-family: monospace;
-                          text-align: center;
-                          vertical-align: middle;
-                        "
-                      >
+                      <td style="font-size: 1.5em; font-family: monospace; text-align: center; vertical-align: middle">
                         <b>{{ .Query }}</b>
                       </td>
                       <td>
-                        <table
-                          class="table table-sm table-light"
-                          style="width: 100%"
-                        >
+                        <table class="table table-sm table-light" style="width: 100%">
                           <tr>
                             <th width="50%">Type</th>
                             <th width="50%">Value</th>
@@ -86,11 +58,7 @@
                         </table>
                       </td>
                       <td style="text-align: center; vertical-align: middle">
-                        <span style="color: black">{{ .Expected }}</span>/
-                        <b
-                          ><span style="color: green"
-                            >{{ .Executions }}</span
-                          ></b
+                        <span style="color: black">{{ .Expected }}</span>/ <b><span style="color: green">{{ .Executions }}</span></b
                         >/
                         <b><span style="color: red">{{ .Errors }}</span></b>
                       </td>
@@ -99,11 +67,7 @@
                 </table>
                 <br />
                 {{ if eq $serviceConfig.Logger "db" }}
-                <table
-                  id="tableQueryLogs"
-                  class="table table-bordered table-striped"
-                  style="width: 100%"
-                >
+                <table id="tableQueryLogs" class="table table-bordered table-striped" style="width: 100%">
                   <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
                     <tr>
@@ -114,11 +78,7 @@
                   </thead>
                 </table>
                 {{ else }}
-                <div class="alert alert-warning" role="alert">
-                  <i class="fas fa-exclamation-triangle"></i> The logger is set
-                  to <b>{{ $serviceConfig.Logger }}</b> in the service
-                  configuration. No results available.
-                </div>
+                <div class="alert alert-warning" role="alert"><i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration. No results available.</div>
                 {{ end }}
               </div>
             </div>
@@ -180,9 +140,7 @@
               targets: 1,
               render: function (data, type, row, meta) {
                 if (type === "display") {
-                  return (
-                    '<a href="/node/' + data.uuid + '">' + data.name + "</a>"
-                  );
+                  return '<a href="/node/' + data.uuid + '">' + data.name + "</a>";
                 } else {
                   return data;
                 }
@@ -193,11 +151,7 @@
               targets: 2,
               render: function (data, type, row, meta) {
                 if (type === "display") {
-                  return (
-                    "<pre>" +
-                    JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) +
-                    "</pre>"
-                  );
+                  return "<pre>" + JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) + "</pre>";
                 } else {
                   return data;
                 }

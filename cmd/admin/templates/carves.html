@@ -13,35 +13,20 @@
           <div class="animated fadeIn">
             <div class="card mt-2">
               <div class="card-header">
-                <i class="nav-icon fas fa-archive"></i> {{ .Title }}
+                <i class="nav-icon fas fa-archive"></i> Carved files in <b>{{ .EnvName }}</b>
                 <div class="card-header-actions">
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    data-tooltip="true"
-                    data-placement="bottom"
-                    title="Refresh table"
-                    onclick="refreshTableNow('tableCarves');"
-                  >
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableCarves');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-                <table
-                  id="tableCarves"
-                  class="table table-bordered table-striped"
-                  style="width: 100%"
-                >
+                <table id="tableCarves" class="table table-bordered table-striped" style="width: 100%">
                   <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
                     <tr>
                       <th>
-                        <input
-                          type="checkbox"
-                          name="select-all"
-                          value="1"
-                          id="select-all"
-                        />
+                        <input type="checkbox" name="select-all" value="1" id="select-all" />
                       </th>
                       <th>Carved Path</th>
                       <th>Creator</th>

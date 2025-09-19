@@ -125,14 +125,8 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	if q.ExpHours == 0 {
 		expTime = time.Time{}
 	}
-	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, expTime, env.ID)
-	if err := h.Queries.Create(newQuery); err != nil {
-		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
-		return
-	}
-	// Get the query id
-	newQuery, err = h.Queries.Get(newQuery.Name, env.ID)
-	if err != nil {
+	newQuery := newQueryReady(ctx[sessions.CtxUser], q.Query, expTime, env.ID, q)
+	if err := h.Queries.Create(&newQuery); err != nil {
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
@@ -140,12 +134,13 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	var expected []uint
 	targetNodesID := []uint{}
 	// TODO: Refactor this to use osctrl-api instead of direct DB queries
-	// Create environment target
+	// Extract targets by environment
 	if len(q.Environments) > 0 {
 		expected = []uint{}
 		for _, e := range q.Environments {
+			// TODO: Check if user has permissions to query the environment
 			if (e != "") && h.Envs.Exists(e) {
-				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					return
@@ -160,10 +155,10 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 	// Create platform target
 	if len(q.Platforms) > 0 {
 		expected = []uint{}
-		platforms, _ := h.Nodes.GetAllPlatforms()
+		platforms, _ := h.Nodes.GetEnvIDPlatforms(env.ID)
 		for _, p := range q.Platforms {
 			if (p != "") && checkValidPlatform(platforms, p) {
-				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					return
@@ -205,7 +200,26 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
-
+	// Create tags target
+	if len(q.Tags) > 0 {
+		expected = []uint{}
+		for _, _t := range q.Tags {
+			if _t != "" {
+				exist, tag := h.Tags.ExistsGet(tags.GetStrTagName(_t), env.ID)
+				if exist {
+					tagged, err := h.Tags.GetTaggedNodes(tag)
+					if err != nil {
+						log.Err(err).Msgf("error getting tagged nodes for tag %s", _t)
+						continue
+					}
+					for _, tn := range tagged {
+						expected = append(expected, tn.NodeID)
+					}
+				}
+			}
+		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
+	}
 	// If the list is empty, we don't need to create node queries
 	if len(targetNodesID) != 0 {
 		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
@@ -273,101 +287,115 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		adminErrorResponse(w, "path can not be empty", http.StatusInternalServerError, nil)
 		return
 	}
-	query := generateCarveQuery(c.Path, false)
-	// Prepare and create new carve
-	carveName := generateCarveName()
 	// Set query expiration
 	expTime := queries.QueryExpiration(c.ExpHours)
 	if c.ExpHours == 0 {
 		expTime = time.Time{}
 	}
-	newQuery := queries.DistributedQuery{
-		Query:         query,
-		Name:          carveName,
-		Creator:       ctx[sessions.CtxUser],
-		Expected:      0,
-		Executions:    0,
-		Active:        true,
-		Completed:     false,
-		Deleted:       false,
-		Expired:       false,
-		Expiration:    expTime,
-		Type:          queries.CarveQueryType,
-		Path:          c.Path,
-		EnvironmentID: env.ID,
-	}
-	if err := h.Queries.Create(newQuery); err != nil {
+	newQuery := newCarveReady(ctx[sessions.CtxUser], c.Path, expTime, env.ID, c)
+	if err := h.Queries.Create(&newQuery); err != nil {
 		adminErrorResponse(w, "error creating carve", http.StatusInternalServerError, err)
 		return
 	}
-	// Temporary list of UUIDs to calculate Expected
-	var expected []string
-	// Create environment target
+	// List all the nodes that match the query
+	var expected []uint
+	targetNodesID := []uint{}
+	// Extract targets by environment
 	if len(c.Environments) > 0 {
+		expected = []uint{}
 		for _, e := range c.Environments {
+			// TODO: Check if user has permissions to query the environment
 			if (e != "") && h.Envs.Exists(e) {
-				if err := h.Queries.CreateTarget(carveName, queries.QueryTargetEnvironment, e); err != nil {
-					adminErrorResponse(w, "error creating carve environment target", http.StatusInternalServerError, err)
-					return
-				}
-				nodes, err := h.Nodes.GetByEnv(e, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
 					return
 				}
 				for _, n := range nodes {
-					expected = append(expected, n.UUID)
+					expected = append(expected, n.ID)
 				}
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create platform target
 	if len(c.Platforms) > 0 {
-		platforms, _ := h.Nodes.GetAllPlatforms()
+		expected = []uint{}
+		platforms, _ := h.Nodes.GetEnvIDPlatforms(env.ID)
 		for _, p := range c.Platforms {
 			if (p != "") && checkValidPlatform(platforms, p) {
-				if err := h.Queries.CreateTarget(carveName, queries.QueryTargetPlatform, p); err != nil {
-					adminErrorResponse(w, "error creating carve platform target", http.StatusInternalServerError, err)
-					return
-				}
-				nodes, err := h.Nodes.GetByPlatform(p, "active", h.Settings.InactiveHours(settings.NoEnvironmentID))
+				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
 				if err != nil {
 					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
 					return
 				}
 				for _, n := range nodes {
-					expected = append(expected, n.UUID)
+					expected = append(expected, n.ID)
 				}
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create UUIDs target
 	if len(c.UUIDs) > 0 {
+		expected = []uint{}
 		for _, u := range c.UUIDs {
-			if (u != "") && h.Nodes.CheckByUUID(u) {
-				if err := h.Queries.CreateTarget(carveName, queries.QueryTargetUUID, u); err != nil {
-					adminErrorResponse(w, "error creating carve UUID target", http.StatusInternalServerError, err)
-					return
+			if u != "" {
+				node, err := h.Nodes.GetByUUID(u)
+				if err != nil {
+					log.Err(err).Msgf("error getting node %s and failed to create carve query for it", u)
+					continue
 				}
-				expected = append(expected, u)
+				expected = append(expected, node.ID)
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	// Create hostnames target
 	if len(c.Hosts) > 0 {
+		expected = []uint{}
 		for _, _h := range c.Hosts {
-			if (_h != "") && h.Nodes.CheckByHost(_h) {
-				if err := h.Queries.CreateTarget(carveName, queries.QueryTargetLocalname, _h); err != nil {
-					adminErrorResponse(w, "error creating carve hostname target", http.StatusInternalServerError, err)
-					return
+			if _h != "" {
+				node, err := h.Nodes.GetByIdentifier(_h)
+				if err != nil {
+					log.Err(err).Msgf("error getting node %s and failed to create carve query for it", _h)
+					continue
+				}
+				expected = append(expected, node.ID)
+			}
+		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
+	}
+	// Create tags target
+	if len(c.Tags) > 0 {
+		expected = []uint{}
+		for _, _t := range c.Tags {
+			if _t != "" {
+				exist, tag := h.Tags.ExistsGet(tags.GetStrTagName(_t), env.ID)
+				if exist {
+					tagged, err := h.Tags.GetTaggedNodes(tag)
+					if err != nil {
+						log.Err(err).Msgf("error getting tagged nodes for tag %s", _t)
+						continue
+					}
+					for _, tn := range tagged {
+						expected = append(expected, tn.NodeID)
+					}
 				}
 			}
 		}
+		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
-	// Remove duplicates from expected
-	expectedClear := removeStringDuplicates(expected)
+	// If the list is empty, we don't need to create node queries
+	if len(targetNodesID) != 0 {
+		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
+			log.Err(err).Msgf("error creating node queries for carve %s", newQuery.Name)
+			adminErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
+			return
+		}
+	}
 	// Update value for expected
-	if err := h.Queries.SetExpected(carveName, len(expectedClear), env.ID); err != nil {
+	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
 		adminErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		return
 	}

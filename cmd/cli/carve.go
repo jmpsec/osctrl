@@ -309,6 +309,7 @@ func runCarve(c *cli.Context) error {
 		os.Exit(1)
 	}
 	expHours := c.Int("expiration")
+	var cName string
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -330,7 +331,7 @@ func runCarve(c *cli.Context) error {
 			Path:          path,
 			EnvironmentID: e.ID,
 		}
-		if err := queriesmgr.Create(newQuery); err != nil {
+		if err := queriesmgr.Create(&newQuery); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
 		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
@@ -341,15 +342,17 @@ func runCarve(c *cli.Context) error {
 		if err := queriesmgr.SetExpected(carveName, 1, e.ID); err != nil {
 			return fmt.Errorf("❌ error setting expected - %w", err)
 		}
+		cName = carveName
 		return nil
 	} else if apiFlag {
 		c, err := osctrlAPI.RunCarve(env, uuid, path, expHours)
 		if err != nil {
 			return fmt.Errorf("❌ error running carve - %w", err)
 		}
-		if !silentFlag {
-			fmt.Printf("✅ carve %s created successfully\n", c.Name)
-		}
+		cName = c.Name
+	}
+	if !silentFlag {
+		fmt.Printf("✅ carve %s created successfully\n", cName)
 	}
 	return nil
 }

@@ -534,3 +534,12 @@ func (m *TagManager) GetNodeTags(tagged []AdminTag) ([]AdminTagForNode, error) {
 	}
 	return forNode, nil
 }
+
+// GetTaggedNodes to retrieve tagged nodes with a given tag name and environment
+func (m *TagManager) GetTaggedNodes(tag AdminTag) ([]TaggedNode, error) {
+	var tagged []TaggedNode
+	if err := m.DB.Where("id = ?", tag.ID).Find(&tagged).Error; err != nil {
+		return tagged, err
+	}
+	return tagged, nil
+}
