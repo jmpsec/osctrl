@@ -170,9 +170,15 @@ docker_dev_logs_api:
 docker_dev_logs_nginx:
 	docker logs -f osctrl-nginx-dev
 
-# Display docker logs for osquery client
-docker_dev_logs_osquery:
-	docker logs -f osctrl-osquery-dev
+# Display docker logs for osquery clients
+docker_dev_logs_osquery-1:
+	docker logs -f osctrl-osquery-dev-1
+
+docker_dev_logs_osquery-2:
+	docker logs -f osctrl-osquery-dev-2
+
+docker_dev_logs_osquery-3:
+	docker logs -f osctrl-osquery-dev-3
 
 # Display docker logs for postgresql server
 docker_dev_logs_postgresql:
@@ -235,9 +241,10 @@ up-backend:
 docker_dev_down:
 	docker-compose -f docker-compose-dev.yml down
 
-# Deletes all osctrl docker images
+# Deletes all osctrl docker images and volumes
 docker_dev_clean:
 	docker images | grep osctrl | awk '{print $$3}' | xargs -rI {} docker rmi -f {}
+	docker volume ls | grep osctrl | awk '{print $$2}' | xargs -rI {} docker volume rm {}
 
 # Rebuild only the TLS server
 docker_dev_rebuild_tls:
