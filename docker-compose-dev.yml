@@ -158,7 +158,7 @@ services:
     ports:
       - 127.0.0.1:5432:5432
     volumes:
-      - postgres-dev-db:/var/lib/postgresql/data
+      - postgres-osctrl-dev-db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_DB_USERNAME} -d ${POSTGRES_DB_NAME}'"]
       interval: 10s
@@ -176,7 +176,7 @@ services:
     ports:
       - 127.0.0.1:6379:6379
     volumes:
-      - redis-dev-data:/data
+      - redis-osctrl-dev-data:/data
     healthcheck:
       test: ["CMD", "redis-cli","ping"]
       interval: 10s
@@ -224,10 +224,10 @@ services:
       - osctrl-postgres
       - osctrl-redis
 
-  ######################################### osquery #########################################
-  osquery:
-    container_name: 'osctrl-osquery-dev'
-    image: 'osctrl-osquery-dev:${OSCTRL_VERSION}'
+  ######################################### osquery 1 #########################################
+  osquery-1:
+    container_name: 'osctrl-osquery-1-dev'
+    image: 'osctrl-osquery-dev-1:${OSCTRL_VERSION}'
     restart: unless-stopped
     build:
       context: .
@@ -251,8 +251,76 @@ services:
       - type: bind
         source: ./deploy/docker/conf/tls/osctrl.crt
         target: /opt/osctrl/config/osctrl.crt
-      - osquery-dev-data:/var/osquery
-      - osquery-dev-conf:/etc/osquery
+      - osquery-osctrl-dev-1-data:/var/osquery
+      - osquery-osctrl-dev-1-conf:/etc/osquery
+    depends_on:
+      - osctrl-tls
+      - osctrl-api
+      - osctrl-postgres
+
+  ######################################### osquery 2 #########################################
+  osquery-2:
+    container_name: 'osctrl-osquery-2-dev'
+    image: 'osctrl-osquery-dev-2:${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      target: osctrl-ubuntu-osquery
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-cli
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
+    environment:
+      #### osquery enroll ####
+      - ENV_NAME=dev
+      - HOST=osctrl-nginx
+      #### Database settings ####
+      - DB_HOST=osctrl-postgres
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-dev-backend
+    volumes:
+      - type: bind
+        source: ./deploy/docker/conf/tls/osctrl.crt
+        target: /opt/osctrl/config/osctrl.crt
+      - osquery-osctrl-dev-2-data:/var/osquery
+      - osquery-osctrl-dev-2-conf:/etc/osquery
+    depends_on:
+      - osctrl-tls
+      - osctrl-api
+      - osctrl-postgres
+
+  ######################################### osquery 3 #########################################
+  osquery-3:
+    container_name: 'osctrl-osquery-3-dev'
+    image: 'osctrl-osquery-dev-3:${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      target: osctrl-ubuntu-osquery
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-cli
+      args:
+        GOLANG_VERSION: ${GOLANG_VERSION}
+        OSQUERY_VERSION: ${OSQUERY_VERSION}
+    environment:
+      #### osquery enroll ####
+      - ENV_NAME=dev
+      - HOST=osctrl-nginx
+      #### Database settings ####
+      - DB_HOST=osctrl-postgres
+      - DB_NAME=${POSTGRES_DB_NAME}
+      - DB_USER=${POSTGRES_DB_USERNAME}
+      - DB_PASS=${POSTGRES_DB_PASSWORD}
+    networks:
+      - osctrl-dev-backend
+    volumes:
+      - type: bind
+        source: ./deploy/docker/conf/tls/osctrl.crt
+        target: /opt/osctrl/config/osctrl.crt
+      - osquery-osctrl-dev-3-data:/var/osquery
+      - osquery-osctrl-dev-3-conf:/etc/osquery
     depends_on:
       - osctrl-tls
       - osctrl-api
@@ -262,7 +330,11 @@ networks:
   osctrl-dev-backend:
 
 volumes:
-  postgres-dev-db:
-  redis-dev-data:
-  osquery-dev-data:
-  osquery-dev-conf:
+  postgres-osctrl-dev-db:
+  redis-osctrl-dev-data:
+  osquery-osctrl-dev-1-data:
+  osquery-osctrl-dev-1-conf:
+  osquery-osctrl-dev-2-data:
+  osquery-osctrl-dev-2-conf:
+  osquery-osctrl-dev-3-data:
+  osquery-osctrl-dev-3-conf:
