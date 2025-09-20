@@ -1348,7 +1348,22 @@ func init() {
 						&cli.StringFlag{
 							Name:    "uuid",
 							Aliases: []string{"u"},
-							Usage:   "Node UUID to be used",
+							Usage:   "Node UUID(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "host",
+							Aliases: []string{"hostname", "H"},
+							Usage:   "Node hostname(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "platform",
+							Aliases: []string{"p"},
+							Usage:   "Node platform(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "tag",
+							Aliases: []string{"t"},
+							Usage:   "Tag(s) to be used. Comma separated for multiple values",
 						},
 						&cli.BoolFlag{
 							Name:    "hidden",
@@ -1492,7 +1507,22 @@ func init() {
 						&cli.StringFlag{
 							Name:    "uuid",
 							Aliases: []string{"u"},
-							Usage:   "Node UUID to be used",
+							Usage:   "Node UUID(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "host",
+							Aliases: []string{"hostname", "H"},
+							Usage:   "Node hostname(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "platform",
+							Aliases: []string{"p"},
+							Usage:   "Node platform(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "tag",
+							Aliases: []string{"t"},
+							Usage:   "Tag(s) to be used. Comma separated for multiple values",
 						},
 						&cli.IntFlag{
 							Name:    "expiration",

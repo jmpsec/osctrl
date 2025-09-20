@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -130,95 +131,25 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
-	// List all the nodes that match the query
-	var expected []uint
-	targetNodesID := []uint{}
-	// TODO: Refactor this to use osctrl-api instead of direct DB queries
-	// Extract targets by environment
-	if len(q.Environments) > 0 {
-		expected = []uint{}
-		for _, e := range q.Environments {
-			// TODO: Check if user has permissions to query the environment
-			if (e != "") && h.Envs.Exists(e) {
-				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	// Prepare data for the handler code
+	data := handlers.ProcessingQuery{
+		Envs:          q.Environments,
+		Platforms:     q.Platforms,
+		UUIDs:         q.UUIDs,
+		Hosts:         q.Hosts,
+		Tags:          q.Tags,
+		EnvID:         env.ID,
+		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
 	}
-	// Create platform target
-	if len(q.Platforms) > 0 {
-		expected = []uint{}
-		platforms, _ := h.Nodes.GetEnvIDPlatforms(env.ID)
-		for _, p := range q.Platforms {
-			if (p != "") && checkValidPlatform(platforms, p) {
-				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	manager := handlers.Managers{
+		Nodes: h.Nodes,
+		Envs:  h.Envs,
+		Tags:  h.Tags,
 	}
-	// Create UUIDs target
-	if len(q.UUIDs) > 0 {
-		expected = []uint{}
-		for _, u := range q.UUIDs {
-			if u != "" {
-				node, err := h.Nodes.GetByUUID(u)
-				if err != nil {
-					log.Err(err).Msgf("error getting node %s and failed to create node query for it", u)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create hostnames target
-	if len(q.Hosts) > 0 {
-		expected = []uint{}
-		for _, _h := range q.Hosts {
-			if _h != "" {
-				node, err := h.Nodes.GetByIdentifier(_h)
-				if err != nil {
-					log.Err(err).Msgf("error getting node %s and failed to create node query for it", _h)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create tags target
-	if len(q.Tags) > 0 {
-		expected = []uint{}
-		for _, _t := range q.Tags {
-			if _t != "" {
-				exist, tag := h.Tags.ExistsGet(tags.GetStrTagName(_t), env.ID)
-				if exist {
-					tagged, err := h.Tags.GetTaggedNodes(tag)
-					if err != nil {
-						log.Err(err).Msgf("error getting tagged nodes for tag %s", _t)
-						continue
-					}
-					for _, tn := range tagged {
-						expected = append(expected, tn.NodeID)
-					}
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+	if err != nil {
+		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
 	}
 	// If the list is empty, we don't need to create node queries
 	if len(targetNodesID) != 0 {
@@ -271,7 +202,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Parse request JSON body
 	log.Debug().Msg("Decoding POST body")
-	var c DistributedCarveRequest
+	var c DistributedQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		adminErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		return
@@ -297,94 +228,25 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		adminErrorResponse(w, "error creating carve", http.StatusInternalServerError, err)
 		return
 	}
-	// List all the nodes that match the query
-	var expected []uint
-	targetNodesID := []uint{}
-	// Extract targets by environment
-	if len(c.Environments) > 0 {
-		expected = []uint{}
-		for _, e := range c.Environments {
-			// TODO: Check if user has permissions to query the environment
-			if (e != "") && h.Envs.Exists(e) {
-				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					adminErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	// Prepare data for the handler code
+	data := handlers.ProcessingQuery{
+		Envs:          c.Environments,
+		Platforms:     c.Platforms,
+		UUIDs:         c.UUIDs,
+		Hosts:         c.Hosts,
+		Tags:          c.Tags,
+		EnvID:         env.ID,
+		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
 	}
-	// Create platform target
-	if len(c.Platforms) > 0 {
-		expected = []uint{}
-		platforms, _ := h.Nodes.GetEnvIDPlatforms(env.ID)
-		for _, p := range c.Platforms {
-			if (p != "") && checkValidPlatform(platforms, p) {
-				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					adminErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	manager := handlers.Managers{
+		Nodes: h.Nodes,
+		Envs:  h.Envs,
+		Tags:  h.Tags,
 	}
-	// Create UUIDs target
-	if len(c.UUIDs) > 0 {
-		expected = []uint{}
-		for _, u := range c.UUIDs {
-			if u != "" {
-				node, err := h.Nodes.GetByUUID(u)
-				if err != nil {
-					log.Err(err).Msgf("error getting node %s and failed to create carve query for it", u)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create hostnames target
-	if len(c.Hosts) > 0 {
-		expected = []uint{}
-		for _, _h := range c.Hosts {
-			if _h != "" {
-				node, err := h.Nodes.GetByIdentifier(_h)
-				if err != nil {
-					log.Err(err).Msgf("error getting node %s and failed to create carve query for it", _h)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create tags target
-	if len(c.Tags) > 0 {
-		expected = []uint{}
-		for _, _t := range c.Tags {
-			if _t != "" {
-				exist, tag := h.Tags.ExistsGet(tags.GetStrTagName(_t), env.ID)
-				if exist {
-					tagged, err := h.Tags.GetTaggedNodes(tag)
-					if err != nil {
-						log.Err(err).Msgf("error getting tagged nodes for tag %s", _t)
-						continue
-					}
-					for _, tn := range tagged {
-						expected = append(expected, tn.NodeID)
-					}
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+	if err != nil {
+		adminErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
 	}
 	// If the list is empty, we don't need to create node queries
 	if len(targetNodesID) != 0 {

@@ -32,6 +32,7 @@ func RandomForNames() string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
+// Intersect returns the intersection of two slices of uints
 func Intersect(slice1, slice2 []uint) []uint {
 	if len(slice1) == 0 {
 		return slice2
@@ -40,12 +41,10 @@ func Intersect(slice1, slice2 []uint) []uint {
 	if len(slice2) == 0 {
 		return slice1
 	}
-
 	set := make(map[uint]struct{})
 	for _, item := range slice1 {
 		set[item] = struct{}{} // Add items from slice1 to the set
 	}
-
 	intersection := []uint{}
 	for _, item := range slice2 {
 		if _, exists := set[item]; exists {
@@ -53,6 +52,15 @@ func Intersect(slice1, slice2 []uint) []uint {
 			delete(set, item) // Ensure uniqueness in the result
 		}
 	}
-
 	return intersection
+}
+
+// Contains checks if string is in the slice
+func Contains(all []string, target string) bool {
+	for _, s := range all {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }

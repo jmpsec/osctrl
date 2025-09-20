@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -114,18 +114,12 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		expTime = time.Time{}
 	}
 	// Prepare and create new query
-	queryName := queries.GenQueryName()
 	newQuery := queries.DistributedQuery{
 		Query:         q.Query,
-		Name:          queryName,
+		Name:          queries.GenQueryName(),
 		Creator:       ctx[ctxUser],
-		Expected:      0,
-		Executions:    0,
 		Active:        true,
-		Expired:       false,
 		Expiration:    expTime,
-		Completed:     false,
-		Deleted:       false,
 		Hidden:        q.Hidden,
 		Type:          queries.StandardQueryType,
 		EnvironmentID: env.ID,
@@ -134,87 +128,26 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
-	// Get the query id
-	newQuery, err = h.Queries.Get(queryName, env.ID)
+	// Prepare data for the handler code
+	data := handlers.ProcessingQuery{
+		Envs:          q.Environments,
+		Platforms:     q.Platforms,
+		UUIDs:         q.UUIDs,
+		Hosts:         q.Hosts,
+		Tags:          q.Tags,
+		EnvID:         env.ID,
+		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
+	}
+	manager := handlers.Managers{
+		Nodes: h.Nodes,
+		Envs:  h.Envs,
+		Tags:  h.Tags,
+	}
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 	if err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
-
-	// List all the nodes that match the query
-	var expected []uint
-
-	targetNodesID := []uint{}
-	// Current logic is to select nodes meeting all criteria in the query
-	// TODO: I believe we should only allow to list nodes in one environment in URL paths
-	// We will refactor this part to be tag based queries and add more options to the query
-	if len(q.Environments) > 0 {
-		expected = []uint{}
-		for _, e := range q.Environments {
-			if (e != "") && h.Envs.Exists(e) {
-				nodes, err := h.Nodes.GetByEnv(e, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					apiErrorResponse(w, "error getting nodes by environment", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create platform target
-	if len(q.Platforms) > 0 {
-		expected = []uint{}
-		platforms, _ := h.Nodes.GetAllPlatforms()
-		for _, p := range q.Platforms {
-			if (p != "") && checkValidPlatform(platforms, p) {
-				nodes, err := h.Nodes.GetByPlatform(env.ID, p, nodes.ActiveNodes, h.Settings.InactiveHours(settings.NoEnvironmentID))
-				if err != nil {
-					apiErrorResponse(w, "error getting nodes by platform", http.StatusInternalServerError, err)
-					return
-				}
-				for _, n := range nodes {
-					expected = append(expected, n.ID)
-				}
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create UUIDs target
-	if len(q.UUIDs) > 0 {
-		expected = []uint{}
-		for _, u := range q.UUIDs {
-			if u != "" {
-				node, err := h.Nodes.GetByUUID(u)
-				if err != nil {
-					log.Warn().Msgf("error getting node %s and failed to create node query for it", u)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-	// Create hostnames target
-	// Currently we are using the GetByIdentifier function and it need be more clear
-	// about the definition of the identifier
-	if len(q.Hosts) > 0 {
-		expected = []uint{}
-		for _, hostName := range q.Hosts {
-			if hostName != "" {
-				node, err := h.Nodes.GetByIdentifier(hostName)
-				if err != nil {
-					log.Warn().Msgf("error getting node %s and failed to create node query for it", hostName)
-					continue
-				}
-				expected = append(expected, node.ID)
-			}
-		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
-	}
-
 	// If the list is empty, we don't need to create node queries
 	if len(targetNodesID) != 0 {
 		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
@@ -223,14 +156,13 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-
 	// Update value for expected
-	if err := h.Queries.SetExpected(queryName, len(targetNodesID), env.ID); err != nil {
+	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
 		return
 	}
 	// Return query name as serialized response
-	log.Debug().Msgf("Created query %s", newQuery.Name)
+	log.Debug().Msgf("Created query %s with id %d", newQuery.Name, newQuery.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 

@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -241,31 +245,48 @@ func runQuery(c *cli.Context) error {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	uuid := c.String("uuid")
-	if uuid == "" {
+	uuidStr := c.String("uuid")
+	if uuidStr == "" {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
+	uuidList := []string{uuidStr}
+	if strings.Contains(uuidStr, ",") {
+		uuidList = strings.Split(uuidStr, ",")
+	}
+	platformStr := c.String("platform")
+	platformList := []string{platformStr}
+	if strings.Contains(platformStr, ",") {
+		platformList = strings.Split(platformStr, ",")
+	}
+	hostStr := c.String("host")
+	hostList := []string{hostStr}
+	if strings.Contains(hostStr, ",") {
+		hostList = strings.Split(hostStr, ",")
+	}
+	tagStr := c.String("tag")
+	tagList := []string{tagStr}
+	if strings.Contains(tagStr, ",") {
+		tagList = strings.Split(tagStr, ",")
+	}
 	expHours := c.Int("expiration")
 	hidden := c.Bool("hidden")
-	var queryName string
+	queryName := queries.GenQueryName()
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return fmt.Errorf("❌ error env get - %w", err)
 		}
-		queryName = queries.GenQueryName()
+		expTime := queries.QueryExpiration(expHours)
+		if expHours == 0 {
+			expTime = time.Time{}
+		}
 		newQuery := queries.DistributedQuery{
 			Query:         query,
 			Name:          queryName,
 			Creator:       appName,
-			Expected:      0,
-			Executions:    0,
 			Active:        true,
-			Expired:       false,
-			Expiration:    queries.QueryExpiration(expHours),
-			Completed:     false,
-			Deleted:       false,
+			Expiration:    expTime,
 			Hidden:        hidden,
 			Type:          queries.StandardQueryType,
 			EnvironmentID: e.ID,
@@ -273,16 +294,36 @@ func runQuery(c *cli.Context) error {
 		if err := queriesmgr.Create(&newQuery); err != nil {
 			return fmt.Errorf("❌ error query create - %w", err)
 		}
-		if (uuid != "") && nodesmgr.CheckByUUID(uuid) {
-			if err := queriesmgr.CreateTarget(queryName, queries.QueryTargetUUID, uuid); err != nil {
-				return fmt.Errorf("❌ error create target - %w", err)
+		// Prepare data for the handler code
+		data := handlers.ProcessingQuery{
+			Envs:          []string{},
+			Platforms:     platformList,
+			UUIDs:         uuidList,
+			Hosts:         hostList,
+			Tags:          tagList,
+			EnvID:         e.ID,
+			InactiveHours: settingsmgr.InactiveHours(settings.NoEnvironmentID),
+		}
+		manager := handlers.Managers{
+			Nodes: nodesmgr,
+			Envs:  envs,
+			Tags:  tagsmgr,
+		}
+		targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+		if err != nil {
+			return fmt.Errorf("❌ error creating query carve - %w", err)
+		}
+		// If the list is empty, we don't need to create node queries
+		if len(targetNodesID) != 0 {
+			if err := queriesmgr.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
+				return fmt.Errorf("❌ error creating node queries - %w", err)
 			}
 		}
-		if err := queriesmgr.SetExpected(queryName, 1, e.ID); err != nil {
+		if err := queriesmgr.SetExpected(queryName, len(targetNodesID), e.ID); err != nil {
 			return fmt.Errorf("❌ error set expected - %w", err)
 		}
 	} else if apiFlag {
-		q, err := osctrlAPI.RunQuery(env, uuid, query, hidden, expHours)
+		q, err := osctrlAPI.RunQuery(env, query, uuidList, hostList, platformList, tagList, hidden, expHours)
 		if err != nil {
 			return fmt.Errorf("❌ error run query - %w", err)
 		}

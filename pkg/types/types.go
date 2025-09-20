@@ -51,15 +51,9 @@ type ApiDistributedQueryRequest struct {
 	Hosts        []string `json:"host_list"`
 	Tags         []string `json:"tag_list"`
 	Query        string   `json:"query"`
+	Path         string   `json:"path"`
 	Hidden       bool     `json:"hidden"`
 	ExpHours     int      `json:"exp_hours"`
-}
-
-// ApiDistributedCarveRequest to receive query requests
-type ApiDistributedCarveRequest struct {
-	UUID     string `json:"uuid"`
-	Path     string `json:"path"`
-	ExpHours int    `json:"exp_hours"`
 }
 
 // ApiNodeGenericRequest to receive generic node requests
