@@ -116,7 +116,7 @@ func (n *NodeManager) GetByIdentifier(identifier string) (OsqueryNode, error) {
 func (n *NodeManager) GetByIdentifierEnv(identifier string, envid uint) (OsqueryNode, error) {
 	var node OsqueryNode
 	if err := n.DB.Where(
-		"uuid = ? OR hostname = ? OR localname = ? AND environment_id = ?",
+		"(uuid = ? OR hostname = ? OR localname = ?) AND environment_id = ?",
 		strings.ToUpper(identifier),
 		identifier,
 		identifier,

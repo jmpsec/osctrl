@@ -250,33 +250,24 @@ func runQuery(c *cli.Context) error {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
-	var uuidList []string
+	uuidList := []string{uuidStr}
 	if strings.Contains(uuidStr, ",") {
 		uuidList = strings.Split(uuidStr, ",")
-	} else {
-		uuidList = []string{uuidStr}
 	}
 	platformStr := c.String("platform")
-	var platformList []string
+	platformList := []string{platformStr}
 	if strings.Contains(platformStr, ",") {
 		platformList = strings.Split(platformStr, ",")
-	} else {
-		platformList = []string{platformStr}
 	}
 	hostStr := c.String("host")
-	var hostList []string
+	hostList := []string{hostStr}
 	if strings.Contains(hostStr, ",") {
 		hostList = strings.Split(hostStr, ",")
-	} else {
-		hostList = []string{hostStr}
 	}
 	tagStr := c.String("tag")
-	var tagList []string
+	tagList := []string{tagStr}
 	if strings.Contains(tagStr, ",") {
 		tagList = strings.Split(tagStr, ",")
-	} else {
-		tagList = []string{tagStr}
-
 	}
 	expHours := c.Int("expiration")
 	hidden := c.Bool("hidden")
