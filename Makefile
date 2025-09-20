@@ -172,13 +172,13 @@ docker_dev_logs_nginx:
 
 # Display docker logs for osquery clients
 docker_dev_logs_osquery-1:
-	docker logs -f osctrl-osquery-dev-1
+	docker logs -f osctrl-osquery-1-dev
 
 docker_dev_logs_osquery-2:
-	docker logs -f osctrl-osquery-dev-2
+	docker logs -f osctrl-osquery-2-dev
 
 docker_dev_logs_osquery-3:
-	docker logs -f osctrl-osquery-dev-3
+	docker logs -f osctrl-osquery-3-dev
 
 # Display docker logs for postgresql server
 docker_dev_logs_postgresql:
