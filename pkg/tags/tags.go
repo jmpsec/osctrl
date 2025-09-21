@@ -342,7 +342,7 @@ func (m *TagManager) ChangeGetTagType(name string, tagType uint, envID uint) err
 // ChangeCustom to update custom value for a tag
 func (m *TagManager) ChangeCustom(tag *AdminTag, custom string) error {
 	if custom != tag.CustomTag {
-		if err := m.DB.Model(tag).Update("custom", custom).Error; err != nil {
+		if err := m.DB.Model(tag).Update("custom_tag", custom).Error; err != nil {
 			return fmt.Errorf("update %w", err)
 		}
 	}
@@ -356,7 +356,7 @@ func (m *TagManager) ChangeGetCustom(name string, custom string, envID uint) err
 		return fmt.Errorf("error getting tag %w", err)
 	}
 	if custom != tag.CustomTag {
-		if err := m.DB.Model(tag).Update("custom", custom).Error; err != nil {
+		if err := m.DB.Model(tag).Update("custom_tag", custom).Error; err != nil {
 			return fmt.Errorf("update %w", err)
 		}
 	}

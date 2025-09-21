@@ -112,7 +112,7 @@ func (api *OsctrlAPI) EditTag(env, name, color, icon, description string, tagTyp
 		Icon:        icon,
 		Env:         env,
 		TagType:     tagType,
-		Custom: 		 custom,
+		Custom:      custom,
 	}
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APITags, env, tags.ActionEdit))
 	jsonMessage, err := json.Marshal(t)

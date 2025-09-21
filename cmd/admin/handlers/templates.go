@@ -1435,7 +1435,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Prepare template data
 	templateData := TagsTemplateData{
-		Title:        "Manage tags",
+		Title:        "Manage all tags",
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Tags:         tags,

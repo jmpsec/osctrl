@@ -80,6 +80,8 @@ func TagTypeParser(tagType string) uint {
 		return TagTypeLocalname
 	case strings.ToUpper(TagTypeCustomStr):
 		return TagTypeCustom
+	case strings.ToUpper(TagTypeTagStr):
+		return TagTypeTag
 	default:
 		return TagTypeUnknown
 	}
@@ -129,4 +131,24 @@ func GetStrTagName(fullTag string) string {
 		return parts[1]
 	}
 	return fullTag
+}
+
+// Helper to make sure the custom value is valid
+func ValidateCustom(anyCustom string) string {
+	switch strings.ToUpper(anyCustom) {
+	case strings.ToUpper(TagTypeEnvStr):
+		return TagTypeEnvStr
+	case strings.ToUpper(TagTypeUUIDStr):
+		return TagTypeUUIDStr
+	case strings.ToUpper(TagTypePlatformStr):
+		return TagTypePlatformStr
+	case strings.ToUpper(TagTypeLocalnameStr):
+		return TagTypeLocalnameStr
+	case strings.ToUpper(TagTypeCustomStr):
+		return TagTypeCustomStr
+	case strings.ToUpper(TagTypeTagStr):
+		return TagTypeTagStr
+	default:
+		return TagTypeUnknownStr
+	}
 }

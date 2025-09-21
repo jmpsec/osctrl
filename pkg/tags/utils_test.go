@@ -50,3 +50,9 @@ func TestGetStrTagName(t *testing.T) {
 	assert.Equal(t, "VALUE:EXTRA", GetStrTagName("custom:VALUE:EXTRA"))
 	assert.Equal(t, "VALUE", GetStrTagName("VALUE"))
 }
+
+func TestValidateCustom(t *testing.T) {
+	assert.Equal(t, "custom", ValidateCustom("custom"))
+	assert.Equal(t, "unknown", ValidateCustom("anything"))
+	assert.Equal(t, "unknown", ValidateCustom(""))
+}

@@ -1186,6 +1186,16 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 				adminErrorResponse(w, "error changing tag type", http.StatusInternalServerError, err)
 				return
 			}
+			if err := h.Tags.ChangeCustom(&tag, tags.TagTypeDecorator(t.TagType)); err != nil {
+				adminErrorResponse(w, "error changing custom", http.StatusInternalServerError, err)
+				return
+			}
+		}
+		if t.Custom != "" && t.Custom != tag.CustomTag {
+			if err := h.Tags.ChangeCustom(&tag, t.Custom); err != nil {
+				adminErrorResponse(w, "error changing custom", http.StatusInternalServerError, err)
+				return
+			}
 		}
 		adminOKResponse(w, "tag updated successfully")
 	case tags.ActionRemove:
