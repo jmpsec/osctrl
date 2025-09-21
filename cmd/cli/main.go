@@ -1190,14 +1190,14 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "name",
-							Aliases: []string{"n", "tag-value"},
+							Aliases: []string{"n", "tag", "tag-value"},
 							Usage:   "Tag name to be used. It will be created if does not exist",
 						},
 						&cli.StringFlag{
 							Name:    "tag-type",
 							Aliases: []string{"type"},
 							Value:   "",
-							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'localname' or a custom value",
+							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'platform', 'localname', 'tag' and 'custom'",
 						},
 						&cli.StringFlag{
 							Name:    "custom",
@@ -1630,7 +1630,12 @@ func init() {
 							Name:    "tag-type",
 							Aliases: []string{"t", "type"},
 							Value:   "custom",
-							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'platform', 'localname' and 'custom'",
+							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'platform', 'localname', 'tag' and 'custom'",
+						},
+						&cli.StringFlag{
+							Name:    "tag-custom",
+							Aliases: []string{"C", "custom"},
+							Usage:   "Tag custom value to be used. It is only used if tag-type is set to 'custom'",
 						},
 					},
 					Action: cliWrapper(addTag),
@@ -1668,7 +1673,12 @@ func init() {
 						&cli.StringFlag{
 							Name:    "tag-type",
 							Aliases: []string{"t", "type"},
-							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'platform', 'localname' and 'custom'",
+							Usage:   "Tag type to be used. It can be 'env', 'uuid', 'platform', 'localname', 'tag' and 'custom'",
+						},
+						&cli.StringFlag{
+							Name:    "tag-custom",
+							Aliases: []string{"C", "custom"},
+							Usage:   "Tag custom value to be used. It is only used if tag-type is set to 'custom'",
 						},
 					},
 					Action: cliWrapper(editTag),

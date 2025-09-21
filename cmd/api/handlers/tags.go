@@ -200,6 +200,16 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 				apiErrorResponse(w, "error changing tag type", http.StatusInternalServerError, err)
 				return
 			}
+			if err := h.Tags.ChangeCustom(&tag, tags.ValidateCustom(t.Custom)); err != nil {
+				apiErrorResponse(w, "error changing custom", http.StatusInternalServerError, err)
+				return
+			}
+		}
+		if t.Custom != "" && t.Custom != tag.CustomTag {
+			if err := h.Tags.ChangeCustom(&tag, t.Custom); err != nil {
+				apiErrorResponse(w, "error changing custom", http.StatusInternalServerError, err)
+				return
+			}
 		}
 		returnData = "tag updated successfully"
 	case tags.ActionRemove:

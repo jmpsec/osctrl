@@ -41,6 +41,7 @@ func tagToData(t tags.AdminTag, m environments.MapEnvByID, header []string) [][]
 		t.CreatedBy,
 		stringifyBool(t.AutoTag),
 		tags.TagTypeDecorator(t.TagType),
+		t.CustomTag,
 	}
 	data = append(data, _t)
 	return data
@@ -61,6 +62,9 @@ func addTag(c *cli.Context) error {
 	color := c.String("color")
 	if color == "" {
 		color = tags.RandomColor()
+	} else if !strings.HasPrefix(color, "#") || len(color) != 7 {
+		fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
+		os.Exit(1)
 	}
 	icon := c.String("icon")
 	if icon == "" {
@@ -68,24 +72,28 @@ func addTag(c *cli.Context) error {
 	}
 	description := c.String("description")
 	tagType := tags.TagTypeParser(c.String("tag-type"))
-	custom := c.String("custom")
+	tagCustom := c.String("tag-custom")
+	if tagType == tags.TagTypeCustom && tagCustom == "" {
+		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
+		os.Exit(1)
+	}
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return fmt.Errorf("❌ error env get - %w", err)
 		}
 		// TODO - Use the correct user
-		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tagType, custom); err != nil {
+		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tagType, tags.SetCustomTag(tagType, tagCustom)); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
 	} else if apiFlag {
-		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, custom)
+		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
 	}
 	if !silentFlag {
-		fmt.Printf("✅ tag %s updated successfully\n", name)
+		fmt.Printf("✅ tag %s created successfully\n", name)
 	}
 	return nil
 }
@@ -135,10 +143,22 @@ func editTag(c *cli.Context) error {
 		os.Exit(1)
 	}
 	color := c.String("color")
+	if color == "" {
+		color = tags.RandomColor()
+	} else {
+		if !strings.HasPrefix(color, "#") || len(color) != 7 {
+			fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
+			os.Exit(1)
+		}
+	}
 	icon := c.String("icon")
 	description := c.String("description")
-	tagType := c.String("tag-type")
-	custom := c.String("custom")
+	tagType := tags.TagTypeParser(c.String("tag-type"))
+	tagCustom := c.String("tag-custom")
+	if tagType == tags.TagTypeCustom && tagCustom == "" {
+		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
+		os.Exit(1)
+	}
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
@@ -163,26 +183,21 @@ func editTag(c *cli.Context) error {
 				return fmt.Errorf("❌ %w", err)
 			}
 		}
-		if tagType != "" && tagType != tags.TagTypeDecorator(t.TagType) {
-			if err := tagsmgr.ChangeTagType(&t, tags.TagTypeParser(tagType)); err != nil {
+		if tagType != t.TagType {
+			if err := tagsmgr.ChangeTagType(&t, tagType); err != nil {
+				return fmt.Errorf("❌ %w", err)
+			}
+			if err := tagsmgr.ChangeCustom(&t, tags.ValidateCustom(tagCustom)); err != nil {
 				return fmt.Errorf("❌ %w", err)
 			}
 		}
-		if custom != "" && custom != t.CustomTag {
-			if err := tagsmgr.ChangeCustom(&t, custom); err != nil {
+		if tagCustom != "" && tagCustom != t.CustomTag {
+			if err := tagsmgr.ChangeCustom(&t, tagCustom); err != nil {
 				return fmt.Errorf("❌ %w", err)
 			}
 		}
 	} else if apiFlag {
-		t, err := osctrlAPI.GetTag(env, name)
-		if err != nil {
-			return fmt.Errorf("❌ %w", err)
-		}
-		tt := t.TagType
-		if tagType != "" && !strings.EqualFold(tagType, tags.TagTypeDecorator(t.TagType)) {
-			tt = tags.TagTypeParser(tagType)
-		}
-		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tt, custom)
+		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
@@ -253,6 +268,7 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 		"CreatedBy",
 		"AutoTag",
 		"TagType",
+		"CustomTag",
 	}
 	// Prepare output
 	switch formatFlag {
