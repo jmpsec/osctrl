@@ -271,46 +271,50 @@ func osctrlAPIService() {
 		"POST "+_apiPath(apiNodesPath)+"/lookup",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.LookupNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
 	// API: queries by environment
-	muxAPI.Handle(
-		"GET "+_apiPath(apiQueriesPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiQueriesPath)+"/{env}/list/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"POST "+_apiPath(apiQueriesPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiQueriesPath)+"/{env}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiAllQueriesPath+"/{env}"),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	if flagParams.OsqueryConfigValues.Query {
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/{env}/list/{target}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiQueriesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAllQueriesPath+"/{env}"),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	}
 	// API: carves by environment
-	muxAPI.Handle(
-		"GET "+_apiPath(apiCarvesPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiCarvesPath)+"/{env}/queries/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiCarvesPath)+"/{env}/list",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"POST "+_apiPath(apiCarvesPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiCarvesPath)+"/{env}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-	muxAPI.Handle(
-		"POST "+_apiPath(apiCarvesPath)+"/{env}/{action}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	if flagParams.OsqueryConfigValues.Carve {
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}/queries/{target}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}/list",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiCarvesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiCarvesPath)+"/{env}/{action}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	}
 	// API: users
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath)+"/{username}",

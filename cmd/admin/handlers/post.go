@@ -634,7 +634,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// After updating interval, you need to re-generate flags
-	flags, err := h.Envs.GenerateFlagsEnv(envVar, "", "")
+	flags, err := h.Envs.GenerateFlagsEnv(envVar, "", "", h.OsqueryValues)
 	if err != nil {
 		adminErrorResponse(w, "error re-generating flags", http.StatusInternalServerError, err)
 		return
@@ -825,7 +825,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			// Empty configuration
 			env.Configuration = h.Envs.GenEmptyConfiguration(true)
 			// Generate flags
-			flags, err := h.Envs.GenerateFlags(env, "", "")
+			flags, err := h.Envs.GenerateFlags(env, "", "", h.OsqueryValues)
 			if err != nil {
 				adminErrorResponse(w, "error generating flags", http.StatusInternalServerError, err)
 				return

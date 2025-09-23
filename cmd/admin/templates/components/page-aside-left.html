@@ -1,5 +1,7 @@
 {{ define "page-aside-left" }}
 
+{{ $leftmeta := .LeftMetadata }}
+
 <div class="sidebar">
   <nav class="sidebar-nav">
     <ul class="nav">
@@ -9,8 +11,6 @@
           <i class="nav-icon fas fa-tachometer-alt"></i> Dashboard
         </a>
       </li>
-
-      {{ $leftmeta := .LeftMetadata }}
 
       <li class="nav-title">Nodes by environment</li>
       {{range  $i, $e := $.Environments}}
@@ -71,6 +71,7 @@
               <i class="nav-icon fas fa-plus-circle"></i> enroll nodes
             </a>
           </li>
+        {{ if $leftmeta.OsqueryValues.Query }}
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/query/{{ $e.UUID }}/run">
               <i class="nav-icon fab fa-searchengin"></i> run query
@@ -95,6 +96,8 @@
               <i class="nav-icon far fa-save"></i> saved queries
             </a>
           </li>
+        {{ end }}
+        {{ if $leftmeta.OsqueryValues.Carve }}
           <li class="nav-item nav-dropdown">
             <a style="padding-left: 2em;" class="nav-link" href="/carves/{{ $e.UUID }}/run">
               <i class="nav-icon fas fa-file-upload"></i> carve file
@@ -114,6 +117,7 @@
               </li>
             </ul>
           {{end}}
+        {{ end }}
         </ul>
       </li>
       <li class="divider"></li>

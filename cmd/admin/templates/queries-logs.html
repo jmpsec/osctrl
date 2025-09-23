@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ $serviceConfig := .ServiceConfig }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $serviceConfig := .ServiceConfig }} {{ $leftmeta := .LeftMetadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,13 +11,14 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
-            {{ $template := . }} {{ with .Query }}
+          {{ if $leftmeta.Query }}
+            {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
                 <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }} {{ else }} {{ if .Completed }} <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }} {{ else }}
                 <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b> {{ end }} -
-                <a href="{{ queryResultLink .Name $template.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
+                <a href="{{ queryResultLink .Name $leftmeta.EnvUUID }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>
                 {{ end }}
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueryLogs');">
@@ -83,6 +84,14 @@
               </div>
             </div>
             {{ end }}
+          {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Query logs not available</h4>
+              </div>
+            </div>
+          {{ end }}
+
           </div>
         </div>
       </main>
@@ -110,7 +119,7 @@
           searching: true,
           processing: true,
           ajax: {
-            url: "/json/query/{{ $template.EnvUUID }}/{{ .Name }}",
+            url: "/json/query/{{ $leftmeta.EnvUUID }}/{{ .Name }}",
             dataSrc: function (json) {
               $("#status-card-header").removeClass("bg-danger");
               return json.data;

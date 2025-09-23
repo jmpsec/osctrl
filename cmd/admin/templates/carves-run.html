@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,8 +11,9 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
+            {{ if $leftmeta.OsqueryValues.Carve }}
             <div class="card mt-2">
-              <div class="card-header"><i class="nav-icon fas fa-file-upload"></i> Carve files in nodes by target, within <b>{{ .EnvName }}</b></div>
+              <div class="card-header"><i class="nav-icon fas fa-file-upload"></i> Carve files in nodes by target, within <b>{{ $leftmeta.EnvName }}</b></div>
               <div class="card-body">
                 <div class="row">
                   <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
@@ -136,7 +137,7 @@
                                   data-tooltip="true"
                                   data-placement="top"
                                   title="Carve file/directory"
-                                  onclick="sendCarve('/carves/{{ .EnvUUID }}/run', '/carves/{{ .EnvUUID }}/list');">
+                                  onclick="sendCarve('/carves/{{ $leftmeta.EnvUUID }}/run', '/carves/{{ $leftmeta.EnvUUID }}/list');">
                                   <i class="fas fa-file-upload"></i> Carve
                                 </button>
                               </div>
@@ -169,8 +170,13 @@
                 </div>
               </div>
             </div>
-
-            {{ template "page-modals" . }}
+            {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Carve not available</h4>
+              </div>
+            </div>
+            {{ end }} {{ template "page-modals" . }}
           </div>
         </div>
       </main>

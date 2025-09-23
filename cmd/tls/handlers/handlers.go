@@ -59,6 +59,7 @@ type HandlersTLS struct {
 	SettingsMap     *settings.MapSettings
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
+	OsqueryValues   *config.OsqueryConfiguration
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.DebugHTTPConfiguration
 }
@@ -141,6 +142,13 @@ func WithWriteHandler(writeHandler *batchWriter) Option {
 	}
 }
 
+// WithOsqueryValues to pass osquery configuration values
+func WithOsqueryValues(values *config.OsqueryConfiguration) Option {
+	return func(h *HandlersTLS) {
+		h.OsqueryValues = values
+	}
+}
+
 func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) Option {
 	return func(h *HandlersTLS) {
 		h.DebugHTTPConfig = cfg
@@ -168,7 +176,9 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	for _, opt := range opts {
 		opt(h)
 	}
-	h.EnvCache = environments.NewEnvCache(*h.Envs)
+	if h.EnvCache != nil && h.Envs != nil {
+		h.EnvCache = environments.NewEnvCache(*h.Envs)
+	}
 	return h
 }
 

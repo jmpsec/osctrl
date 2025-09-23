@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,15 +11,16 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
+            {{ if $leftmeta.OsqueryValues.Query }}
             <div class="card mt-2">
-              <div class="card-header"><i class="fab fa-searchengin"></i> Run on-demand queries by target, within <b>{{ .EnvName }}</b></div>
+              <div class="card-header"><i class="fab fa-searchengin"></i> Run on-demand queries by target, within <b>{{ $leftmeta.EnvName }}</b></div>
               <div class="card-body">
                 <div class="row">
                   <div class="col-sm-12 col-md-4 col-lg-4 col-xl-4">
                     <div class="card mt-2">
                       <div class="card-header">
                         <i class="fas fa-table"></i>
-                        <a href="https://osquery.io/schema/{{ $.TablesVersion }}" target="_blank" rel="noopener noreferrer"> osquery {{ $.TablesVersion }}: </a>
+                        <a href="https://osquery.io/schema/{{ $.OsqueryValues.Version }}" target="_blank" rel="noopener noreferrer"> osquery {{ $leftmeta.OsqueryValues.Version }}: </a>
                         <div class="card-header-actions">
                           <div class="card-header-action">
                             <div class="form-inline">
@@ -80,7 +81,7 @@
                                 </div>
                                 <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6">
                                   <fieldset class="form-group">
-                                    <label for="target_platform">By Platform in <b>{{ .EnvName }}</b>:</label>
+                                    <label for="target_platform">By Platform in <b>{{ $leftmeta.EnvName }}</b>:</label>
                                     <div id="selector_platform" class="input-group">
                                       <select class="form-control" name="target_platform" id="target_platform" multiple="multiple">
                                         <option value=""></option>
@@ -178,7 +179,7 @@
                                   data-tooltip="true"
                                   data-placement="top"
                                   title="Send query"
-                                  onclick="sendQuery('/query/{{ .EnvUUID }}/run', '/query/{{ .EnvUUID }}/list');">
+                                  onclick="sendQuery('/query/{{ $leftmeta.EnvUUID }}/run', '/query/{{ $leftmeta.EnvUUID }}/list');">
                                   <i class="fab fa-searchengin"></i> Query
                                 </button>
                               </div>
@@ -245,6 +246,13 @@
                 </div>
               </div>
             </div>
+            {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> On-demand queries not available</h4>
+              </div>
+            </div>
+            {{ end }}
 
             {{ template "page-modals" . }}
           </div>

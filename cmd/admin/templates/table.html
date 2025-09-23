@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }}{{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -13,50 +13,24 @@
           <div class="animated fadeIn">
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fa fas fa-server"></i> Table of {{ .Target }} Nodes by
-                {{ .Selector }} : <b>{{ .SelectorName }}</b>
+                <i class="fa fas fa-server"></i> Table of {{ .Target }} Nodes by {{ .Selector }} : <b>{{ .SelectorName }}</b>
                 <div class="card-header-actions">
-                  <small
-                    >Refresh in
-                    <span id="refresh_seconds">30</span> seconds</small
-                  >
-                  <button
-                    id="refresh_pause"
-                    class="btn btn-sm btn-outline-dark"
-                    data-tooltip="true"
-                    data-placement="bottom"
-                    title="Pause refresh"
-                    onclick="changeTableRefresh('refresh_value', 'refresh_pause');"
-                  >
+                  <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
+                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" data-tooltip="true" data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
                     <i class="fas fa-pause"></i>
                   </button>
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    data-tooltip="true"
-                    data-placement="bottom"
-                    title="Refresh nodes"
-                    onclick="refreshTableNow('tableNodes');"
-                  >
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh nodes" onclick="refreshTableNow('tableNodes');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body">
-                <table
-                  id="tableNodes"
-                  class="table table-responsive table-bordered table-striped"
-                  style="width: 100%"
-                >
+                <table id="tableNodes" class="table table-responsive table-bordered table-striped" style="width: 100%">
                   <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
                     <tr>
                       <th>
-                        <input
-                          type="checkbox"
-                          name="select-all"
-                          value="1"
-                          id="select-all"
-                        />
+                        <input type="checkbox" name="select-all" value="1" id="select-all" />
                       </th>
                       <th>UUID</th>
                       <th>Last User</th>
@@ -65,10 +39,7 @@
                       <th>Platform</th>
                       <th>Version</th>
                       <th>
-                        <span class="icon-osquery">
-                          <span class="path1"></span><span class="path2"></span
-                          ><span class="path3"></span
-                        ></span>
+                        <span class="icon-osquery"> <span class="path1"></span><span class="path2"></span><span class="path3"></span></span>
                       </th>
                       <th>Last Seen</th>
                       <th>First Seen</th>
@@ -80,60 +51,26 @@
 
             {{ template "page-modals" . }}
 
-            <div
-              class="modal fade"
-              id="tagModal"
-              tabindex="-1"
-              role="dialog"
-              aria-labelledby="tagModalLabel"
-              aria-hidden="true"
-            >
+            <div class="modal fade" id="tagModal" tabindex="-1" role="dialog" aria-labelledby="tagModalLabel" aria-hidden="true">
               <div class="modal-dialog modal-dark" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
                     <h4 class="modal-title">Tag nodes</h4>
-                    <button
-                      type="button"
-                      class="close"
-                      data-dismiss="modal"
-                      aria-label="Close"
-                    >
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
                   </div>
                   <div class="modal-body">
-                    <select
-                      style="display: none"
-                      name="add_tags[]"
-                      id="add_tags"
-                    ></select>
-                    <select
-                      style="width: 100%"
-                      name="modal_tags[]"
-                      id="modal_tags"
-                      multiple="multiple"
-                    >
+                    <select style="display: none" name="add_tags[]" id="add_tags"></select>
+                    <select style="width: 100%" name="modal_tags[]" id="modal_tags" multiple="multiple">
                       {{ range $i, $e := $.Tags }}
                       <option value="{{ $e.Name }}">{{ $e.Name }}</option>
                       {{ end }}
                     </select>
                   </div>
                   <div class="modal-footer">
-                    <button
-                      id="tag_action"
-                      type="button"
-                      class="btn btn-dark"
-                      data-dismiss="modal"
-                    >
-                      Tag
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-danger"
-                      data-dismiss="modal"
-                    >
-                      Cancel
-                    </button>
+                    <button id="tag_action" type="button" class="btn btn-dark" data-dismiss="modal">Tag</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                   </div>
                 </div>
                 <!-- /.modal-content -->
@@ -334,6 +271,7 @@
                 }
               }
             },
+            {{ if $leftmeta.OsqueryValues.Query }}
             {
               className: 'btn custom-size-btn btn-outline-dark',
               text: '<i class="fab fa-searchengin"></i>',
@@ -351,7 +289,7 @@
                   uuids.push(this.uuid);
                 });
                 if (uuids.length > 0) {
-                  showQueryNodes(uuids, '/query/{{ .EnvUUID }}/run');
+                  showQueryNodes(uuids, '/query/{{ $leftmeta.EnvUUID }}/run');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more nodes");
@@ -359,6 +297,8 @@
                 }
               }
             },
+            {{ end }}
+            {{ if $leftmeta.OsqueryValues.Carve }}
             {
               className: 'btn custom-size-btn btn-outline-info',
               text: '<i class="fas fa-file-upload"></i>',
@@ -376,7 +316,7 @@
                   uuids.push(this.uuid);
                 });
                 if (uuids.length > 0) {
-                  showCarveFiles(uuids, '/carve/{{ .EnvUUID }}/run');
+                  showCarveFiles(uuids, '/carve/{{ $leftmeta.EnvUUID }}/run');
                 } else {
                   console.log('Carve: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more nodes");
@@ -384,6 +324,7 @@
                 }
               }
             }
+            {{ end }}
           ]
         {{ else }}
           buttons: []

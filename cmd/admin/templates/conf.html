@@ -2,6 +2,7 @@
 <html lang="en">
 
   {{ $metadata := .Metadata }}
+  {{ $leftmeta := .LeftMetadata }}
 
   {{ template "page-head" . }}
 
@@ -19,9 +20,10 @@
 
           <div class="animated fadeIn">
 
+          {{ if $leftmeta.OsqueryValues.Config }}
             <div class="card mt-2">
               <div id="intervals_header" class="card-header">
-                <i class="far fa-clock"></i> Intervals for environment <b>{{ .Environment.Name }}</b>
+                <i class="far fa-clock"></i> Intervals for environment <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
                 {{ if $metadata.Admin }}
                   <div class="card-header-action">
@@ -74,7 +76,7 @@
             <!-- Options -->
             <div class="card mt-2">
               <div id="options_header" class="card-header">
-                <i class="far fa-file-alt"></i> osquery options for environment <b>{{ .Environment.Name }}</b>
+                <i class="far fa-file-alt"></i> osquery options for environment <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
                 {{ if $metadata.Admin }}
                   <div class="card-header-action">
@@ -282,6 +284,14 @@
 
               </div>
             </div>
+
+          {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> osquery configuration not available</h4>
+              </div>
+            </div>
+          {{ end }}
 
           {{ template "page-modals" . }}
 

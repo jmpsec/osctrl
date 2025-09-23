@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  {{ $metadata := .Metadata }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }}
 
   {{ template "page-head" . }}
 
@@ -21,7 +21,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-bolt"></i> Quick install/update nodes for environment <b>{{ .EnvName }}</b>
+                <i class="fas fa-bolt"></i> Quick install/update nodes for environment <b>{{ $leftmeta.EnvName }}</b>
 
                   <div class="card-header-actions">
                     <div class="row">
@@ -66,7 +66,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or macOS to quickly add/update nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
+                    Run this command in Linux or macOS to quickly add/update nodes in the environment <b>{{ $leftmeta.EnvName }}</b>. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -87,7 +87,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Windows to quickly add nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
+                    Run this command in Windows to quickly add nodes in the environment <b>{{ $leftmeta.EnvName }}</b>. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -108,7 +108,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Install one of the following packages to enroll nodes in the environment <b>{{ .EnvName }}</b>. It will install osquery in the system:
+                    Install one of the following packages to enroll nodes in the environment <b>{{ $leftmeta.EnvName }}</b>. It will install osquery in the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -207,7 +207,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-exclamation-triangle"></i> Quick <span style="color:red;">remove</span> nodes for environment <b>{{ .EnvName }}</b>
+                <i class="fas fa-exclamation-triangle"></i> Quick <span style="color:red;">remove</span> nodes for environment <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
 
                   <div class="row">
@@ -251,7 +251,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Linux or macOS to quickly <span style="color:red;">remove</span> nodes in the environment {{ .EnvName }}. It will NOT remove osquery from the system:
+                    Run this command in Linux or macOS to quickly <span style="color:red;">remove</span> nodes in the environment {{ $leftmeta.EnvName }}. It will NOT remove osquery from the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -271,7 +271,7 @@
 
                 <div class="row mb-4">
                   <div class="col-md-12">
-                    Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the environment {{ .EnvName }}. It will NOT remove osquery from the system:
+                    Run this command in Windows to quickly <span style="color:red;">remove</span> nodes in the environment {{ $leftmeta.EnvName }}. It will NOT remove osquery from the system:
                   </div>
                 </div>
                 <div class="row mb-4">
@@ -292,7 +292,7 @@
 
             <div class="card mt-2">
               <div class="card-header">
-                <i class="fas fa-key"></i> Values to manually enroll nodes for environment <b>{{ .EnvName }}</b>
+                <i class="fas fa-key"></i> Values to manually enroll nodes for environment <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
 
                   <div class="row">
@@ -316,7 +316,7 @@
                   <div class="col-md-2">
                     {{ if $metadata.Admin }}
                       <button class="btn btn-sm btn-dark float-right"
-                        onclick="window.open('/enroll/{{ .EnvUUID }}/download/secret', '_blank');" data-tooltip="true" data-placement="bottom" title="Download secret" >
+                        onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/secret', '_blank');" data-tooltip="true" data-placement="bottom" title="Download secret" >
                         <i class="fas fa-download"></i>
                       </button>
                     {{ end }}
@@ -343,16 +343,16 @@
                   </div>
                   <div class="col-md-2">
                     {{ if $metadata.Admin }}
-                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/flagsLinux', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for Linux">
+                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/flagsLinux', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for Linux">
                         <i class="fas fa-download"></i><i class="fab fa-linux"></i>
                       </button>
-                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/flagsMac', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for macOS">
+                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/flagsMac', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for macOS">
                         <i class="fas fa-download"></i><i class="fab fa-apple"></i>
                       </button>
-                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/flagsWindows', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for Windows">
+                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/flagsWindows', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for Windows">
                         <i class="fas fa-download"></i><i class="fab fa-windows"></i>
                       </button>
-                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/flagsFreeBSD', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for FreeBSD">
+                      <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/flagsFreeBSD', '_blank');" data-tooltip="true" data-placement="bottom" title="Download flags for FreeBSD">
                         <i class="fas fa-download"></i><i class="fab fa-freebsd"></i>
                       </button>
                     {{ end }}
@@ -385,7 +385,7 @@
                     <button class="btn btn-sm btn-dark float-right" data-tooltip="true" data-placement="bottom" title="Upload new certificate" onclick="confirmUploadCertificate();">
                       <i class="fas fa-upload"></i>
                     </button>
-                    <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ .EnvUUID }}/download/cert', '_blank');" data-tooltip="true" data-placement="bottom" title="Download certificate">
+                    <button class="btn btn-sm btn-dark float-right" onclick="window.open('/enroll/{{ $leftmeta.EnvUUID }}/download/cert', '_blank');" data-tooltip="true" data-placement="bottom" title="Download certificate">
                       <i class="fas fa-download"></i>
                     </button>
                   {{ end }}

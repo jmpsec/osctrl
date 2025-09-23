@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }}
+  {{ $leftmeta := .LeftMetadata }}
+  {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -13,7 +15,7 @@
           <div class="animated fadeIn">
             <div class="card mt-2">
               <div class="card-header">
-                <i class="nav-icon fab fa-searchengin"></i> On-demand queries in <b>{{ .EnvName }}</b>
+                <i class="nav-icon fab fa-searchengin"></i> On-demand queries in <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
                     <i class="fas fa-sync-alt"></i>
@@ -72,7 +74,7 @@
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {
-            url: "/query/{{ .EnvUUID }}/json/{{ .Target }}",
+            url: "/query/{{ $leftmeta.EnvUUID }}/json/{{ .Target }}",
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
@@ -111,7 +113,7 @@
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return queryResultLink(data.link, data.query, "/query/{{ .EnvUUID }}/logs/" + data.name);
+                  return queryResultLink(data.link, data.query, "/query/{{ $leftmeta.EnvUUID }}/logs/" + data.name);
                 } else {
                   return data;
                 }
@@ -193,7 +195,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteQueries(names, '/query/{{ .EnvUUID }}/actions');
+                  confirmDeleteQueries(names, '/query/{{ $leftmeta.EnvUUID }}/actions');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");
@@ -224,7 +226,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  completeQueries(names, '/query/{{ .EnvUUID }}/actions', '/query/{{ .EnvUUID }}/list');
+                  completeQueries(names, '/query/{{ $leftmeta.EnvUUID }}/actions', '/query/{{ $leftmeta.EnvUUID }}/list');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");
