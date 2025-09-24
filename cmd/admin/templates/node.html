@@ -2,6 +2,7 @@
 <html lang="en">
 
   {{ $metadata := .Metadata }}
+  {{ $leftmeta := .LeftMetadata }}
   {{ $serviceConfig := .ServiceConfig }}
 
   {{ template "page-head" . }}
@@ -111,14 +112,18 @@
                         data-tooltip="true" data-placement="top" title="Remove" onclick="confirmRemoveNodes(['{{ .UUID }}']);">
                           <i class="far fa-trash-alt"></i>
                         </button>
+                        {{ if $leftmeta.OsqueryValues.Query }}
                         <button type="button" class="btn custom-size-btn btn-outline-dark"
-                        data-tooltip="true" data-placement="top" title="Run Query" onclick="showQueryNodes(['{{ .UUID }}'], '/query/{{ $template.EnvUUID }}/run');">
+                        data-tooltip="true" data-placement="top" title="Run Query" onclick="showQueryNodes(['{{ .UUID }}'], '/query/{{ $leftmeta.EnvUUID }}/run');">
                           <i class="fab fa-searchengin"></i>
                         </button>
+                        {{ end }}
+                        {{ if $leftmeta.OsqueryValues.Carve }}
                         <button type="button" class="btn custom-size-btn btn-outline-info"
-                        data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles(['{{ .UUID }}'], '/carve/{{ $template.EnvUUID }}/run');">
+                        data-tooltip="true" data-placement="top" title="Carve File" onclick="showCarveFiles(['{{ .UUID }}'], '/carve/{{ $leftmeta.EnvUUID }}/run');">
                           <i class="fas fa-file-upload"></i>
                         </button>
+                        {{ end }}
                         <button type="button" class="btn custom-size-btn btn-outline-warning"
                         data-tooltip="true" data-placement="top" title="Tag Node" onclick="showTagNodes(['{{ .UUID }}']);">
                           <i class="fas fa-tag"></i>
@@ -138,12 +143,14 @@
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#metadata" role="tab" aria-controls="metadata">Metadata</a>
                       </li>
+                      {{ if $leftmeta.OsqueryValues.Logger }}
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#status-logs" role="tab" aria-controls="status-logs">Status Logs</a>
                       </li>
                       <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#result-logs" role="tab" aria-controls="result-logs">Result Logs</a>
                       </li>
+                      {{ end }}
                     </ul>
 
                     <div class="tab-content">

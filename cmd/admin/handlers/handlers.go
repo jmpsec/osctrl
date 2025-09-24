@@ -36,7 +36,7 @@ type HandlersAdmin struct {
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceMetadata types.BuildMetadata
-	OsqueryVersion  string
+	OsqueryValues   config.OsqueryConfiguration
 	TemplatesFolder string
 	StaticLocation  string
 	CarvesFolder    string
@@ -121,9 +121,9 @@ func WithMetadata(metadata types.BuildMetadata) HandlersOption {
 	}
 }
 
-func WithOsqueryVersion(version string) HandlersOption {
+func WithOsqueryValues(values config.OsqueryConfiguration) HandlersOption {
 	return func(h *HandlersAdmin) {
-		h.OsqueryVersion = version
+		h.OsqueryValues = values
 	}
 }
 

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }}{{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,9 +11,11 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
+
+            {{ if $leftmeta.OsqueryValues.Carve }}
             <div class="card mt-2">
               <div class="card-header">
-                <i class="nav-icon fas fa-archive"></i> Carved files in <b>{{ .EnvName }}</b>
+                <i class="nav-icon fas fa-archive"></i> Carved files in <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableCarves');">
                     <i class="fas fa-sync-alt"></i>
@@ -39,6 +41,13 @@
                 </table>
               </div>
             </div>
+            {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Carved files not available</h4>
+              </div>
+            </div>
+            {{ end }}
 
             {{ template "page-modals" . }}
           </div>
@@ -73,7 +82,7 @@
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {
-            url: "/carves/{{ .EnvUUID }}/json/{{ .Target }}",
+            url: "/carves/{{ $leftmeta.EnvUUID }}/json/{{ .Target }}",
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
@@ -112,7 +121,7 @@
               data: 'path',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return '<span style="font-family: monospace; font-size: 1.3em;"><a href="/carves/{{ .EnvUUID }}/details/'+data.name+'">'+data.path+'</a></span>';
+                  return '<span style="font-family: monospace; font-size: 1.3em;"><a href="/carves/{{ $leftmeta.EnvUUID }}/details/'+data.name+'">'+data.path+'</a></span>';
                 } else {
                   return data;
                 }
@@ -194,7 +203,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteCarves(names, '/carves/{{ .EnvUUID }}/actions');
+                  confirmDeleteCarves(names, '/carves/{{ $leftmeta.EnvUUID }}/actions');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");

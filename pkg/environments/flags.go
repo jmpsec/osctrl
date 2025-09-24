@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
+
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 const (
@@ -15,6 +17,37 @@ const (
 	FlagNameTLSServerCerts string = `tls_server_certs`
 	// FlagCarverBlockSize for the --carver_block_size flag
 	FlagNameCarverBlockSize string = `carver_block_size`
+	// FlagsConfigPlugin to configure the config plugin
+	FlagsConfigPlugin string = `
+--config_plugin=tls
+--config_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.ConfigPath }}
+--config_tls_refresh={{ .Environment.ConfigInterval }}
+--config_tls_max_attempts=5
+`
+	// FlagsLoggerPlugin to configure the logger plugin
+	FlagsLoggerPlugin string = `
+--logger_plugin=tls
+--logger_tls_compress=true
+--logger_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.LogPath }}
+--logger_tls_period={{ .Environment.LogInterval }}
+`
+	// FlagsQueryPlugin to configure the distributed query plugin
+	FlagsQueryPlugin string = `
+--disable_distributed=false
+--distributed_interval={{ .Environment.QueryInterval }}
+--distributed_plugin=tls
+--distributed_tls_max_attempts=5
+--distributed_tls_read_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryReadPath }}
+--distributed_tls_write_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryWritePath }}
+`
+	// FlagsCarverPlugin to configure the carver plugin
+	FlagsCarverPlugin string = `
+--disable_carver=false
+--carver_disable_function=false
+--carver_start_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverInitPath }}
+--carver_continue_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverBlockPath }}
+{{ .FlagCarverBlock }}
+`
 	// FlagsTemplate to generate flags for enrolling nodes
 	FlagsTemplate string = `
 --host_identifier=uuid
@@ -22,25 +55,10 @@ const (
 --utc=true
 --enroll_secret_path={{ .SecretFile }}
 --enroll_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.EnrollPath }}
---config_plugin=tls
---config_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.ConfigPath }}
---config_tls_refresh={{ .Environment.ConfigInterval }}
---config_tls_max_attempts=5
---logger_plugin=tls
---logger_tls_compress=true
---logger_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.LogPath }}
---logger_tls_period={{ .Environment.LogInterval }}
---disable_carver=false
---carver_disable_function=false
---carver_start_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverInitPath }}
---carver_continue_endpoint=/{{ .Environment.UUID }}/{{ .Environment.CarverBlockPath }}
-{{ .FlagCarverBlock }}
---disable_distributed=false
---distributed_interval={{ .Environment.QueryInterval }}
---distributed_plugin=tls
---distributed_tls_max_attempts=5
---distributed_tls_read_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryReadPath }}
---distributed_tls_write_endpoint=/{{ .Environment.UUID }}/{{ .Environment.QueryWritePath }}
+{{ .FlagsConfigPlugin }}
+{{ .FlagsLoggerPlugin }}
+{{ .FlagsQueryPlugin }}
+{{ .FlagsCarverPlugin }}
 --tls_hostname={{ .Environment.Hostname }}
 {{ .FlagServerCerts }}
 `
@@ -54,10 +72,14 @@ const (
 )
 
 type flagData struct {
-	SecretFile      string
-	Environment     TLSEnvironment
-	FlagServerCerts string
-	FlagCarverBlock string
+	SecretFile        string
+	Environment       TLSEnvironment
+	FlagsConfigPlugin string
+	FlagsLoggerPlugin string
+	FlagsQueryPlugin  string
+	FlagsCarverPlugin string
+	FlagServerCerts   string
+	FlagCarverBlock   string
 }
 
 // GenServerCertsFlag to generate the --tls_server_certs flag
@@ -101,8 +123,41 @@ func ParseFlagTemplate(tmplName, flagTemplate string, data interface{}) string {
 	return tpl.String()
 }
 
+// GenConfigFlags to generate config flags
+func GenConfigFlags(env TLSEnvironment) string {
+	data := flagData{
+		Environment: env,
+	}
+	return ParseFlagTemplate("configflags", FlagsConfigPlugin, data)
+}
+
+// GenLoggerFlags to generate logger flags
+func GenLoggerFlags(env TLSEnvironment) string {
+	data := flagData{
+		Environment: env,
+	}
+	return ParseFlagTemplate("loggerflags", FlagsLoggerPlugin, data)
+}
+
+// GenQueryFlags to generate query flags
+func GenQueryFlags(env TLSEnvironment) string {
+	data := flagData{
+		Environment: env,
+	}
+	return ParseFlagTemplate("queryflags", FlagsQueryPlugin, data)
+}
+
+// GenCarverFlags to generate carver flags
+func GenCarverFlags(env TLSEnvironment, carverBlock string) string {
+	data := flagData{
+		Environment:     env,
+		FlagCarverBlock: carverBlock,
+	}
+	return ParseFlagTemplate("carverflags", FlagsCarverPlugin, data)
+}
+
 // GenerateFlags to generate flags
-func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string) (string, error) {
+func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string, osqCfg config.OsqueryConfiguration) (string, error) {
 	flagSecret := secretPath
 	if secretPath == "" {
 		flagSecret = EmptyFlagSecret
@@ -115,20 +170,36 @@ func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, cer
 	if env.Certificate == "" {
 		flagServerCerts = ""
 	}
+	var configFlags, loggerFlags, queryFlags, carverFlags string
+	if osqCfg.Config {
+		configFlags = GenConfigFlags(env)
+	}
+	if osqCfg.Logger {
+		loggerFlags = GenLoggerFlags(env)
+	}
+	if osqCfg.Query {
+		queryFlags = GenQueryFlags(env)
+	}
+	if osqCfg.Carve {
+		carverFlags = GenCarverFlags(env, GenCarveBlockSizeFlag(CarverBlockSizeValue))
+	}
 	data := flagData{
-		SecretFile:      flagSecret,
-		Environment:     env,
-		FlagServerCerts: flagServerCerts,
-		FlagCarverBlock: GenCarveBlockSizeFlag(CarverBlockSizeValue),
+		SecretFile:        flagSecret,
+		Environment:       env,
+		FlagsConfigPlugin: configFlags,
+		FlagsLoggerPlugin: loggerFlags,
+		FlagsQueryPlugin:  queryFlags,
+		FlagsCarverPlugin: carverFlags,
+		FlagServerCerts:   flagServerCerts,
 	}
 	return ParseFlagTemplate("flags", FlagsTemplate, data), nil
 }
 
 // GenerateFlagsEnv to generate flags by environment name
-func (environment *EnvManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string) (string, error) {
+func (environment *EnvManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string, osqCfg config.OsqueryConfiguration) (string, error) {
 	env, err := environment.Get(idEnv)
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %w", err)
 	}
-	return environment.GenerateFlags(env, secretPath, certPath)
+	return environment.GenerateFlags(env, secretPath, certPath, osqCfg)
 }

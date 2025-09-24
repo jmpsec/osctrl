@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
@@ -39,6 +40,13 @@ func addEnvironment(c *cli.Context) error {
 	certFile := c.String("certificate")
 	if certFile != "" {
 		certificate = environments.ReadExternalFile(certFile)
+	}
+	// Get osquery values to generate flags
+	osqueryValues := config.OsqueryConfiguration{
+		Config: c.Bool("config"),
+		Logger: c.Bool("logger"),
+		Query:  c.Bool("query"),
+		Carve:  c.Bool("carve"),
 	}
 	if dbFlag {
 		// Create environment if it does not exist
@@ -74,7 +82,7 @@ func addEnvironment(c *cli.Context) error {
 				return err
 			}
 			// Generate flags
-			flags, err := envs.GenerateFlags(newEnv, "", "")
+			flags, err := envs.GenerateFlags(newEnv, "", "", osqueryValues)
 			if err != nil {
 				return err
 			}
@@ -100,6 +108,13 @@ func updateEnvironment(c *cli.Context) error {
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
+	}
+	// Get osquery values to generate flags
+	osqueryValues := config.OsqueryConfiguration{
+		Config: c.Bool("config-plugin"),
+		Logger: c.Bool("logger-plugin"),
+		Query:  c.Bool("query-plugin"),
+		Carve:  c.Bool("carve-plugin"),
 	}
 	if dbFlag {
 		env, err := envs.Get(envName)
@@ -149,7 +164,7 @@ func updateEnvironment(c *cli.Context) error {
 			return err
 		}
 		// Make sure flags are up to date
-		flags, err := envs.GenerateFlags(env, "", "")
+		flags, err := envs.GenerateFlags(env, "", "", osqueryValues)
 		if err != nil {
 			return err
 		}
@@ -274,8 +289,15 @@ func newFlagsEnvironment(c *cli.Context) error {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
+	// Get osquery values to generate flags
+	osqueryValues := config.OsqueryConfiguration{
+		Config: c.Bool("config"),
+		Logger: c.Bool("logger"),
+		Query:  c.Bool("query"),
+		Carve:  c.Bool("carve"),
+	}
 	if dbFlag {
-		flags, err := envs.GenerateFlagsEnv(envName, "", "")
+		flags, err := envs.GenerateFlagsEnv(envName, "", "", osqueryValues)
 		if err != nil {
 			return err
 		}
@@ -609,6 +631,13 @@ func genFlagsEnvironment(c *cli.Context) error {
 	}
 	secret := c.String("secret")
 	cert := c.String("certificate")
+	// Get osquery values to generate flags
+	osqueryValues := config.OsqueryConfiguration{
+		Config: c.Bool("config"),
+		Logger: c.Bool("logger"),
+		Query:  c.Bool("query"),
+		Carve:  c.Bool("carve"),
+	}
 	var env environments.TLSEnvironment
 	if dbFlag {
 		env, err = envs.Get(envName)
@@ -621,7 +650,7 @@ func genFlagsEnvironment(c *cli.Context) error {
 			return err
 		}
 	}
-	flags, err := envs.GenerateFlags(env, secret, cert)
+	flags, err := envs.GenerateFlags(env, secret, cert, osqueryValues)
 	if err != nil {
 		return err
 	}

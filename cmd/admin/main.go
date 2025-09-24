@@ -320,7 +320,7 @@ func osctrlAdminService() {
 			Commit:  buildCommit,
 			Date:    buildDate,
 		}),
-		handlers.WithOsqueryVersion(flagParams.OsqueryConfigValues.Version),
+		handlers.WithOsqueryValues(flagParams.OsqueryConfigValues),
 		handlers.WithTemplates(flagParams.TemplatesDir),
 		handlers.WithStaticLocation(flagParams.StaticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
@@ -381,10 +381,6 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /environment/{env}/{target}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler), flagParams.ConfigValues.Auth))
-	// Admin: table for platforms
-	adminMux.Handle(
-		"GET /platform/{platform}/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PlatformHandler), flagParams.ConfigValues.Auth))
 	// Admin: root
 	adminMux.Handle(
 		"GET /",

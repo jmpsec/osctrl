@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }}{{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,37 +11,23 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
+            {{ if $leftmeta.OsqueryValues.Query }}
             <div class="card mt-2">
               <div class="card-header">
                 <i class="nav-icon fab fa-searchengin"></i> {{ .Title }}
                 <div class="card-header-actions">
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    data-tooltip="true"
-                    data-placement="bottom"
-                    title="Refresh table"
-                    onclick="refreshTableNow('tableSaved');"
-                  >
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableSaved');">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
               <div class="card-body table-responsive">
-                <table
-                  id="tableSaved"
-                  class="table table-bordered table-striped"
-                  style="width: 100%"
-                >
+                <table id="tableSaved" class="table table-bordered table-striped" style="width: 100%">
                   <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
                     <tr>
                       <th>
-                        <input
-                          type="checkbox"
-                          name="select-all"
-                          value="1"
-                          id="select-all"
-                        />
+                        <input type="checkbox" name="select-all" value="1" id="select-all" />
                       </th>
                       <th>Name</th>
                       <th>Query</th>
@@ -51,8 +37,13 @@
                 </table>
               </div>
             </div>
-
-            {{ template "page-modals" . }}
+            {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Saved queries not available</h4>
+              </div>
+            </div>
+            {{ end }} {{ template "page-modals" . }}
           </div>
         </div>
       </main>
@@ -84,7 +75,7 @@
           processing : true,
           order : [[ 3, "desc" ]],
           ajax : {
-            url: "/query/{{ .EnvUUID }}/json/{{ .Target }}",
+            url: "/query/{{ $leftmeta.EnvUUID }}/json/{{ .Target }}",
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
@@ -164,7 +155,7 @@
                 }
                 if (names.length > 0) {
                   console.log(names);
-                  confirmDeleteSavedQueries(names, '/query/{{ .EnvUUID }}/actions');
+                  confirmDeleteSavedQueries(names, '/query/{{ $leftmeta.EnvUUID }}/actions');
                 } else {
                   console.log('Query: NO SELECTION');
                   $("#warningModalMessage").text("You must select one or more queries");

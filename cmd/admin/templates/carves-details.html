@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }} {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }}{{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -11,7 +11,7 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
-            {{ $carveBlocks := .CarveBlocks }} {{ $template := . }} {{ with .Query }}
+            {{ if $leftmeta.Carve }} {{ $carveBlocks := .CarveBlocks }} {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
@@ -86,7 +86,7 @@
                               data-tooltip="true"
                               data-placement="top"
                               title="Download"
-                              onclick="downloadCarve('/carves/{{ $template.EnvUUID }}/download/{{ $e.SessionID }}');">
+                              onclick="downloadCarve('/carves/{{ $leftmeta.EnvUUID }}/download/{{ $e.SessionID }}');">
                               <i class="fas fa-download"></i>
                             </button>
                           </div>
@@ -97,7 +97,7 @@
                               data-tooltip="true"
                               data-placement="top"
                               title="Delete"
-                              onclick="confirmDeleteCarve(['{{ $e.CarveID }}'], '/carves/{{ $template.EnvUUID }}/actions');">
+                              onclick="confirmDeleteCarve(['{{ $e.CarveID }}'], '/carves/{{ $leftmeta.EnvUUID }}/actions');">
                               <i class="far fa-trash-alt"></i>
                             </button>
                           </div>
@@ -191,6 +191,12 @@
                   </div>
                 </div>
                 {{ end }}
+              </div>
+            </div>
+            {{ else }}
+            <div class="card mt-2">
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Carve details not available</h4>
               </div>
             </div>
             {{ end }} {{ template "page-modals" . }}

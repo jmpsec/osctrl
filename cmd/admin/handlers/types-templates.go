@@ -31,21 +31,21 @@ type TemplateMetadata struct {
 
 // AsideLeftMetadata to pass metadata to the aside left menu
 type AsideLeftMetadata struct {
-	EnvUUID      string
-	ActiveNode   bool
-	InactiveNode bool
-	NodeUUID     string
-	Query        bool
-	QueryName    string
-	Carve        bool
-	CarveName    string
+	EnvUUID       string
+	EnvName       string
+	ActiveNode    bool
+	InactiveNode  bool
+	NodeUUID      string
+	Query         bool
+	QueryName     string
+	Carve         bool
+	CarveName     string
+	OsqueryValues config.OsqueryConfiguration
 }
 
 // TableTemplateData for passing data to the table template
 type TableTemplateData struct {
 	Title        string
-	EnvUUID      string
-	EnvName      string
 	Selector     string
 	SelectorName string
 	Target       string
@@ -68,8 +68,6 @@ type ConfTemplateData struct {
 // EnrollTemplateData for passing data to the conf template
 type EnrollTemplateData struct {
 	Title                 string
-	EnvName               string
-	EnvUUID               string
 	OnelinerExpiration    bool
 	EnrollExpiry          string
 	EnrollExpired         bool
@@ -100,15 +98,13 @@ type EnrollTemplateData struct {
 // QueryRunTemplateData for passing data to the query run template
 type QueryRunTemplateData struct {
 	Title         string
-	EnvUUID       string
-	EnvName       string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
 	UUIDs         []string
 	Hosts         []string
 	Tags          []string
 	Tables        []types.OsqueryTable
-	TablesVersion string
+	OsqueryValues config.OsqueryConfiguration
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
 }
@@ -119,8 +115,6 @@ type CarvesRunTemplateData QueryRunTemplateData
 // GenericTableTemplateData for passing data to a table template
 type GenericTableTemplateData struct {
 	Title        string
-	EnvUUID      string
-	EnvName      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Target       string
@@ -140,8 +134,6 @@ type CarvesTableTemplateData GenericTableTemplateData
 // CarvesDetailsTemplateData for passing data to the carves details
 type CarvesDetailsTemplateData struct {
 	Title        string
-	EnvUUID      string
-	EnvName      string
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Query        queries.DistributedQuery
@@ -155,8 +147,6 @@ type CarvesDetailsTemplateData struct {
 // QueryLogsTemplateData for passing data to the query template
 type QueryLogsTemplateData struct {
 	Title         string
-	EnvUUID       string
-	EnvName       string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
 	Query         queries.DistributedQuery
@@ -241,7 +231,6 @@ type TagsTemplateData struct {
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title         string
-	EnvUUID       string
 	Node          nodes.OsqueryNode
 	NodeTags      []tags.AdminTag
 	TagsForNode   []tags.AdminTagForNode
