@@ -176,7 +176,7 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	for _, opt := range opts {
 		opt(h)
 	}
-	if h.EnvCache != nil && h.Envs != nil {
+	if h.Envs != nil {
 		h.EnvCache = environments.NewEnvCache(*h.Envs)
 	}
 	return h
