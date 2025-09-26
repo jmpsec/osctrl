@@ -1164,7 +1164,11 @@ func printJSONStats() {
 		opData["count"] = count
 		opData["success_count"] = success
 		opData["fail_count"] = fail
-		opData["success_rate"] = float64(success) / float64(count) * 100
+		if count > 0 {
+			opData["success_rate"] = float64(success) / float64(count) * 100
+		} else {
+			opData["success_rate"] = 0.0
+		}
 		opData["min_ms"] = min.Milliseconds()
 		opData["avg_ms"] = avg.Milliseconds()
 		opData["max_ms"] = max.Milliseconds()
