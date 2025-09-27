@@ -254,6 +254,7 @@ type FakeNewsConfig struct {
 	ReadFile        string
 	WriteFile       string
 	Verbose         bool
+	Insecure        bool
 	OutputMode      OutputMode
 	SummaryInterval int
 }
@@ -265,9 +266,9 @@ type HTTPClient struct {
 }
 
 // NewHTTPClient creates a new HTTP client
-func NewHTTPClient(debug bool) *HTTPClient {
+func NewHTTPClient(debug bool, insecure bool) *HTTPClient {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
 	}
 	return &HTTPClient{
 		client: &http.Client{
@@ -330,8 +331,7 @@ func (c *HTTPClient) Post(url string, data interface{}, headers map[string]strin
 }
 
 // generateRandomIP generates a random IP address
-func generateRandomIP() string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func generateRandomIP(r *rand.Rand) string {
 	return fmt.Sprintf("%d.%d.%d.%d",
 		r.Intn(256),
 		r.Intn(256),
@@ -340,22 +340,20 @@ func generateRandomIP() string {
 }
 
 // generateHostname generates a hostname based on platform
-func generateHostname(platform string) string {
+func generateHostname(platform string, r *rand.Rand) string {
 	suffixes := []string{"Prod", "Legacy", "Test", "Dev", "PC"}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	suffix := suffixes[r.Intn(len(suffixes))]
 	titleCaser := cases.Title(language.English)
 	return fmt.Sprintf("%s-%s", titleCaser.String(platform), suffix)
 }
 
 // generateRandomNode generates a random node
-func generateRandomNode() Node {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func generateRandomNode(r *rand.Rand) Node {
 	platform := platforms[r.Intn(len(platforms))]
 	return Node{
 		Target:     platform,
-		IP:         generateRandomIP(),
-		Name:       generateHostname(platform),
+		IP:         generateRandomIP(r),
+		Name:       generateHostname(platform, r),
 		Version:    osqueryVersions[r.Intn(len(osqueryVersions))],
 		Identifier: uuid.New().String(),
 		Key:        "",
@@ -363,10 +361,10 @@ func generateRandomNode() Node {
 }
 
 // generateRandomNodes generates n random nodes
-func generateRandomNodes(n int) []Node {
+func generateRandomNodes(n int, r *rand.Rand) []Node {
 	nodes := make([]Node, n)
 	for i := 0; i < n; i++ {
-		nodes[i] = generateRandomNode()
+		nodes[i] = generateRandomNode(r)
 	}
 	return nodes
 }
@@ -1272,7 +1270,7 @@ func main() {
 
 	flag.StringVar(&config.URL, "url", TLS_URL, "URL for osctrl-tls used to enroll nodes")
 	flag.StringVar(&config.URL, "u", TLS_URL, "URL for osctrl-tls used to enroll nodes")
-	flag.StringVar(&config.Env, "environment", "", "Environment UUID for osctrl-tls")
+	flag.StringVar(&config.Env, "env", "", "Environment UUID for osctrl-tls")
 	flag.StringVar(&config.Secret, "secret", "", "Secret to enroll nodes for osctrl-tls")
 	flag.StringVar(&config.Secret, "s", "", "Secret to enroll nodes for osctrl-tls")
 	flag.IntVar(&config.Nodes, "nodes", 5, "Number of random nodes to simulate")
@@ -1289,6 +1287,7 @@ func main() {
 	flag.StringVar(&config.ReadFile, "r", "", "JSON file to read nodes from")
 	flag.StringVar(&config.WriteFile, "write", "", "JSON file to write nodes to")
 	flag.StringVar(&config.WriteFile, "w", "", "JSON file to write nodes to")
+	flag.BoolVar(&config.Insecure, "insecure", false, "Skip TLS certificate verification")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose output")
 	flag.BoolVar(&config.Verbose, "v", false, "Enable verbose output")
 
@@ -1341,6 +1340,9 @@ func main() {
 		config.URL += config.Env
 	}
 
+	// Initialize random seed
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	// Print configuration
 	fmt.Printf("Using URL %s\n", config.URL)
 	fmt.Printf("Using secret %s\n", config.Secret)
@@ -1366,7 +1368,7 @@ func main() {
 		}
 	} else {
 		fmt.Printf("Generating %d nodes\n", config.Nodes)
-		nodes = generateRandomNodes(config.Nodes)
+		nodes = generateRandomNodes(config.Nodes, r)
 	}
 
 	if config.Verbose {
@@ -1375,7 +1377,7 @@ func main() {
 	}
 
 	// Create HTTP client
-	client := NewHTTPClient(config.Verbose)
+	client := NewHTTPClient(config.Verbose, config.Insecure)
 
 	// Enroll nodes
 	for i := range nodes {
