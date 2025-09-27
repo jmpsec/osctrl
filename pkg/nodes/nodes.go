@@ -262,11 +262,6 @@ func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData,
 	return GetStats(n.DB, EnvironmentSelector, environment, hours)
 }
 
-// GetStatsByPlatform to populate table stats about nodes by platform
-func (n *NodeManager) GetStatsByPlatform(platform string, hours int64) (StatsData, error) {
-	return GetStats(n.DB, PlatformSelector, platform, hours)
-}
-
 // UpdateMetadataByUUID to update node metadata by UUID
 func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) error {
 	// Retrieve node
