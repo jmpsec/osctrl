@@ -311,7 +311,7 @@ func TestGetStats(t *testing.T) {
 	// Verify our test setup
 	var count int64
 	db.Model(&OsqueryNode{}).Count(&count)
-	require.Equal(t, int64(5), count, "Should have 6 test nodes in database")
+	require.Equal(t, int64(5), count, "Should have 5 test nodes in database")
 
 	// Test cases
 	tests := []struct {
