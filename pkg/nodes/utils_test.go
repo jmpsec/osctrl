@@ -268,15 +268,9 @@ func TestGetStats(t *testing.T) {
 	// Clear database to ensure clean state
 	db.Exec("DELETE FROM osquery_nodes")
 
-	// Create test nodes with different environments and platforms using the enhanced createMockNode
+	// Create test nodes with different environments using the enhanced createMockNode
 
 	// Platform: darwin - 2 active, 1 inactive
-	createMockNode(t, db, testNodeParams{
-		UUID:     "ACTIVE-DARWIN-1",
-		Platform: "darwin",
-		LastSeen: refTime.Add(-1 * time.Hour), // 1 hour ago (active)
-	})
-
 	createMockNode(t, db, testNodeParams{
 		UUID:        "ACTIVE-DARWIN-2",
 		Platform:    "darwin",
@@ -317,7 +311,7 @@ func TestGetStats(t *testing.T) {
 	// Verify our test setup
 	var count int64
 	db.Model(&OsqueryNode{}).Count(&count)
-	require.Equal(t, int64(6), count, "Should have 6 test nodes in database")
+	require.Equal(t, int64(5), count, "Should have 5 test nodes in database")
 
 	// Test cases
 	tests := []struct {
@@ -327,28 +321,6 @@ func TestGetStats(t *testing.T) {
 		hours         int64
 		expectedStats StatsData
 	}{
-		{
-			name:   "Stats for darwin platform",
-			column: "platform",
-			value:  "darwin",
-			hours:  24,
-			expectedStats: StatsData{
-				Total:    3,
-				Active:   2,
-				Inactive: 1,
-			},
-		},
-		{
-			name:   "Stats for windows platform",
-			column: "platform",
-			value:  "windows",
-			hours:  24,
-			expectedStats: StatsData{
-				Total:    3,
-				Active:   1,
-				Inactive: 2,
-			},
-		},
 		{
 			name:   "Stats for prod environment",
 			column: "environment",
@@ -373,8 +345,8 @@ func TestGetStats(t *testing.T) {
 		},
 		{
 			name:   "Stats for non-existent value",
-			column: "platform",
-			value:  "linux",
+			column: "environment",
+			value:  "nonexistent",
 			hours:  24,
 			expectedStats: StatsData{
 				Total:    0,

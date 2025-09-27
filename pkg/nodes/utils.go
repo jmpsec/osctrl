@@ -30,7 +30,7 @@ func ActiveTimeCutoff(hours int64) time.Time {
 }
 
 // ApplyNodeTarget adds the appropriate query constraints for the target node status
-// (active, inactive, all) to the provided gorm query
+// (active, inactive, all) to the provided gorm query. Default is all nodes.
 func ApplyNodeTarget(query *gorm.DB, target string, hours int64) *gorm.DB {
 	switch target {
 	case AllNodes:
@@ -58,9 +58,10 @@ func GetStats(db *gorm.DB, column, value string, hours int64) (StatsData, error)
 		return stats, err
 	}
 
-	// Get active count
+	// Get active count - nodes seen after the cutoff time
 	cutoff := ActiveTimeCutoff(hours)
-	if err := baseQuery.Where("last_seen > ?", cutoff).Count(&stats.Active).Error; err != nil {
+	activeQuery := db.Model(&OsqueryNode{}).Where(column+" = ?", value).Where("last_seen > ?", cutoff)
+	if err := activeQuery.Count(&stats.Active).Error; err != nil {
 		return stats, err
 	}
 
