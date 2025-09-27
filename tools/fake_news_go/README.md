@@ -38,6 +38,7 @@ go run tools/fake_news.go --secret YOUR_SECRET
 ```bash
 go run tools/fake_news.go \
   --secret YOUR_SECRET \
+  --env YOUR_ENV_UUID \
   --url http://localhost:9000/ \
   --nodes 10 \
   --status 30 \
@@ -50,6 +51,7 @@ go run tools/fake_news.go \
 ### Command Line Options
 
 - `--secret, -s`: Secret to enroll nodes for osctrl-tls (required)
+- `--env, -e`: Environment UUID for osctrl-tls (optional)
 - `--url, -u`: URL for osctrl-tls used to enroll nodes (default: http://localhost:9000/)
 - `--nodes, -n`: Number of random nodes to simulate (default: 5)
 - `--status, -S`: Interval in seconds for status requests to osctrl (default: 60)
@@ -58,6 +60,7 @@ go run tools/fake_news.go \
 - `--query, -q`: Interval in seconds for query requests to osctrl (default: 30)
 - `--read, -r`: JSON file to read nodes from
 - `--write, -w`: JSON file to write nodes to
+- --insecure: Skip TLS certificate verification
 - `--verbose, -v`: Enable verbose output
 
 ### Examples
@@ -76,6 +79,7 @@ go run tools/fake_news.go --secret mysecret --read nodes.json
 ```bash
 go run tools/fake_news.go \
   --secret mysecret \
+  --env YOUR_ENV_UUID \
   --nodes 20 \
   --status 10 \
   --result 15 \
