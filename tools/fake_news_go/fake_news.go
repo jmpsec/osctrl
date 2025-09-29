@@ -257,6 +257,7 @@ type FakeNewsConfig struct {
 	Insecure        bool
 	OutputMode      OutputMode
 	SummaryInterval int
+	StateFile       string
 }
 
 // HTTPClient wraps http.Client with custom configuration
@@ -324,6 +325,17 @@ func (c *HTTPClient) Post(url string, data interface{}, headers map[string]strin
 		if c.debug {
 			prettyJSON, _ := json.MarshalIndent(result, "", "  ")
 			fmt.Printf("%s\n", string(prettyJSON))
+		}
+	} else {
+		// Print error and output when not 200
+		fmt.Printf("HTTP request to %s returned status %d\n", url, resp.StatusCode)
+		fmt.Printf("Response body: %s\n", string(body))
+		// Write error to external file
+		f, ferr := os.OpenFile("http_errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if ferr == nil {
+			logLine := fmt.Sprintf("%s | %s | HTTP %d\n%s\n\n", time.Now().Format(time.RFC3339), url, resp.StatusCode, string(body))
+			f.WriteString(logLine)
+			f.Close()
 		}
 	}
 
@@ -1264,6 +1276,14 @@ func jsonReporter(ctx context.Context, interval time.Duration) {
 	}
 }
 
+func saveState(nodes []Node, filename string) error {
+	return saveNodesToFile(nodes, filename)
+}
+
+func loadState(filename string) ([]Node, error) {
+	return loadNodesFromFile(filename)
+}
+
 func main() {
 	// Command line flags
 	var config FakeNewsConfig
@@ -1285,11 +1305,10 @@ func main() {
 	flag.IntVar(&config.QueryInterval, "q", QUERY_READ_INTERVAL, "Interval in seconds for query requests to osctrl")
 	flag.StringVar(&config.ReadFile, "read", "", "JSON file to read nodes from")
 	flag.StringVar(&config.ReadFile, "r", "", "JSON file to read nodes from")
-	flag.StringVar(&config.WriteFile, "write", "", "JSON file to write nodes to")
-	flag.StringVar(&config.WriteFile, "w", "", "JSON file to write nodes to")
 	flag.BoolVar(&config.Insecure, "insecure", false, "Skip TLS certificate verification")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose output")
 	flag.BoolVar(&config.Verbose, "v", false, "Enable verbose output")
+	flag.StringVar(&config.StateFile, "state", "state.json", "JSON file to persist and resume node state")
 
 	// Output mode flags
 	var outputMode string
@@ -1360,15 +1379,29 @@ func main() {
 	var nodes []Node
 	var err error
 
-	if config.ReadFile != "" {
-		fmt.Printf("Reading from JSON %s\n", config.ReadFile)
-		nodes, err = loadNodesFromFile(config.ReadFile)
-		if err != nil {
-			log.Fatalf("Failed to load nodes from file: %v", err)
+	// Try to load state first if specified
+	if config.StateFile != "" {
+		fmt.Printf("Attempting to resume state from %s\n", config.StateFile)
+		nodes, err = loadState(config.StateFile)
+		if err == nil && len(nodes) > 0 {
+			fmt.Printf("Resumed %d nodes from state\n", len(nodes))
+		} else {
+			fmt.Printf("No valid state found, generating new nodes\n")
+			nodes = nil
 		}
-	} else {
-		fmt.Printf("Generating %d nodes\n", config.Nodes)
-		nodes = generateRandomNodes(config.Nodes, r)
+	}
+
+	if len(nodes) == 0 {
+		if config.ReadFile != "" {
+			fmt.Printf("Reading from JSON %s\n", config.ReadFile)
+			nodes, err = loadNodesFromFile(config.ReadFile)
+			if err != nil {
+				log.Fatalf("Failed to load nodes from file: %v", err)
+			}
+		} else {
+			fmt.Printf("Generating %d nodes\n", config.Nodes)
+			nodes = generateRandomNodes(config.Nodes, r)
+		}
 	}
 
 	if config.Verbose {
@@ -1379,10 +1412,12 @@ func main() {
 	// Create HTTP client
 	client := NewHTTPClient(config.Verbose, config.Insecure)
 
-	// Enroll nodes
+	// Enroll nodes if they have no key
 	for i := range nodes {
-		fmt.Printf("Enrolling %s as %s\n", nodes[i].Target, nodes[i].Name)
-		nodes[i].Key = enrollNode(client, nodes[i], config.Secret, urls["enroll"], config)
+		if nodes[i].Key == "" {
+			fmt.Printf("Enrolling %s as %s\n", nodes[i].Target, nodes[i].Name)
+			nodes[i].Key = enrollNode(client, nodes[i], config.Secret, urls["enroll"], config)
+		}
 	}
 
 	// Save nodes to file if requested
@@ -1391,6 +1426,18 @@ func main() {
 		if err := saveNodesToFile(nodes, config.WriteFile); err != nil {
 			log.Fatalf("Failed to save nodes to file: %v", err)
 		}
+	}
+
+	// Periodically save state if state file is specified
+	if config.StateFile != "" {
+		go func() {
+			for {
+				time.Sleep(10 * time.Second)
+				if err := saveState(nodes, config.StateFile); err != nil {
+					fmt.Printf("Failed to save state: %v\n", err)
+				}
+			}
+		}()
 	}
 
 	// Create context for graceful shutdown
