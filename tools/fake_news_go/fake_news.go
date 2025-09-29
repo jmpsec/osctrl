@@ -1276,13 +1276,6 @@ func jsonReporter(ctx context.Context, interval time.Duration) {
 	}
 }
 
-func saveState(nodes []Node, filename string) error {
-	return saveNodesToFile(nodes, filename)
-}
-
-func loadState(filename string) ([]Node, error) {
-	return loadNodesFromFile(filename)
-}
 
 func main() {
 	// Command line flags
