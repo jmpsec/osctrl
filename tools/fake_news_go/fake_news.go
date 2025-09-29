@@ -1423,14 +1423,20 @@ func main() {
 
 	// Periodically save state if state file is specified
 	if config.StateFile != "" {
-		go func() {
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(10 * time.Second)
+			defer ticker.Stop()
 			for {
-				time.Sleep(10 * time.Second)
-				if err := saveState(nodes, config.StateFile); err != nil {
-					fmt.Printf("Failed to save state: %v\n", err)
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := saveState(nodes, config.StateFile); err != nil {
+						fmt.Printf("Failed to save state: %v\n", err)
+					}
 				}
 			}
-		}()
+		}(ctx)
 	}
 
 	// Create context for graceful shutdown
