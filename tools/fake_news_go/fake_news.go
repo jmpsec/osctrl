@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -251,8 +250,6 @@ type FakeNewsConfig struct {
 	ResultInterval  int
 	ConfigInterval  int
 	QueryInterval   int
-	ReadFile        string
-	WriteFile       string
 	Verbose         bool
 	Insecure        bool
 	OutputMode      OutputMode
@@ -1276,7 +1273,6 @@ func jsonReporter(ctx context.Context, interval time.Duration) {
 	}
 }
 
-
 func main() {
 	// Command line flags
 	var config FakeNewsConfig
@@ -1296,8 +1292,6 @@ func main() {
 	flag.IntVar(&config.ConfigInterval, "c", CONFIG_INTERVAL, "Interval in seconds for config requests to osctrl")
 	flag.IntVar(&config.QueryInterval, "query", QUERY_READ_INTERVAL, "Interval in seconds for query requests to osctrl")
 	flag.IntVar(&config.QueryInterval, "q", QUERY_READ_INTERVAL, "Interval in seconds for query requests to osctrl")
-	flag.StringVar(&config.ReadFile, "read", "", "JSON file to read nodes from")
-	flag.StringVar(&config.ReadFile, "r", "", "JSON file to read nodes from")
 	flag.BoolVar(&config.Insecure, "insecure", false, "Skip TLS certificate verification")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose output")
 	flag.BoolVar(&config.Verbose, "v", false, "Enable verbose output")
@@ -1375,24 +1369,11 @@ func main() {
 	// Try to load state first if specified
 	if config.StateFile != "" {
 		fmt.Printf("Attempting to resume state from %s\n", config.StateFile)
-		nodes, err = loadState(config.StateFile)
+		nodes, err = loadNodesFromFile(config.StateFile)
 		if err == nil && len(nodes) > 0 {
 			fmt.Printf("Resumed %d nodes from state\n", len(nodes))
 		} else {
-			fmt.Printf("No valid state found, generating new nodes\n")
-			nodes = nil
-		}
-	}
-
-	if len(nodes) == 0 {
-		if config.ReadFile != "" {
-			fmt.Printf("Reading from JSON %s\n", config.ReadFile)
-			nodes, err = loadNodesFromFile(config.ReadFile)
-			if err != nil {
-				log.Fatalf("Failed to load nodes from file: %v", err)
-			}
-		} else {
-			fmt.Printf("Generating %d nodes\n", config.Nodes)
+			fmt.Printf("No valid state found, generating %d nodes\n", config.Nodes)
 			nodes = generateRandomNodes(config.Nodes, r)
 		}
 	}
@@ -1413,13 +1394,9 @@ func main() {
 		}
 	}
 
-	// Save nodes to file if requested
-	if config.WriteFile != "" {
-		fmt.Printf("Writing to JSON %s\n", config.WriteFile)
-		if err := saveNodesToFile(nodes, config.WriteFile); err != nil {
-			log.Fatalf("Failed to save nodes to file: %v", err)
-		}
-	}
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Periodically save state if state file is specified
 	if config.StateFile != "" {
@@ -1431,17 +1408,13 @@ func main() {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					if err := saveState(nodes, config.StateFile); err != nil {
+					if err := saveNodesToFile(nodes, config.StateFile); err != nil {
 						fmt.Printf("Failed to save state: %v\n", err)
 					}
 				}
 			}
 		}(ctx)
 	}
-
-	// Create context for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Create mutex for thread-safe node updates
 	var mutex sync.Mutex
