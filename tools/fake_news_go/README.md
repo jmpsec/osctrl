@@ -21,6 +21,7 @@ This is a Go implementation of the `fake_news.py` script that simulates load for
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    go mod tidy
    ```
@@ -59,23 +60,26 @@ go run tools/fake_news.go \
 - `--config, -c`: Interval in seconds for config requests to osctrl (default: 45)
 - `--query, -q`: Interval in seconds for query requests to osctrl (default: 30)
 - `--read, -r`: JSON file to read nodes from
-- `--write, -w`: JSON file to write nodes to
-- --insecure: Skip TLS certificate verification
+- `--state <file>`: JSON file to persist and resume node state. If provided, the program will attempt to load node state from this file on startup and periodically save node state during execution.
+- `--insecure`: Skip TLS certificate verification
 - `--verbose, -v`: Enable verbose output
 
 ### Examples
 
 #### Generate 10 nodes and save configuration
+
 ```bash
 go run tools/fake_news.go --secret mysecret --nodes 10 --write nodes.json
 ```
 
 #### Load existing nodes and run simulation
+
 ```bash
 go run tools/fake_news.go --secret mysecret --read nodes.json
 ```
 
 #### High-frequency simulation with verbose output
+
 ```bash
 go run tools/fake_news.go \
   --secret mysecret \
