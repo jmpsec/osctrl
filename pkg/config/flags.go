@@ -133,6 +133,7 @@ func InitTLSFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initOsctrldFlags(params)...)
+	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
@@ -171,6 +172,7 @@ func InitAPIFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
+	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	return allFlags
 }
