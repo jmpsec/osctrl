@@ -59,8 +59,7 @@ go run tools/fake_news.go \
 - `--result, -R`: Interval in seconds for result requests to osctrl (default: 60)
 - `--config, -c`: Interval in seconds for config requests to osctrl (default: 45)
 - `--query, -q`: Interval in seconds for query requests to osctrl (default: 30)
-- `--read, -r`: JSON file to read nodes from
-- `--state <file>`: JSON file to persist and resume node state. If provided, the program will attempt to load node state from this file on startup and periodically save node state during execution.
+- `--state <file>`: JSON file to persist and resume node state. If provided, the program will attempt to load node state from this file on startup and periodically save node state during execution. (default: state.json)
 - `--insecure`: Skip TLS certificate verification
 - `--verbose, -v`: Enable verbose output
 
@@ -69,13 +68,13 @@ go run tools/fake_news.go \
 #### Generate 10 nodes and save configuration
 
 ```bash
-go run tools/fake_news.go --secret mysecret --nodes 10 --write nodes.json
+go run tools/fake_news.go --secret mysecret --nodes 10 --state nodes.json
 ```
 
 #### Load existing nodes and run simulation
 
 ```bash
-go run tools/fake_news.go --secret mysecret --read nodes.json
+go run tools/fake_news.go --secret mysecret --state nodes.json
 ```
 
 #### High-frequency simulation with verbose output
