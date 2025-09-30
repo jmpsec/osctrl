@@ -1064,16 +1064,16 @@ func (gs *GlobalStats) RecordOperation(opType OperationType, latency time.Durati
 
 // RecordURLOperation records an operation for a specific URL
 func (gs *GlobalStats) RecordURLOperation(url string, latency time.Duration, success bool) {
+	gs.mu.Lock()
 	gs.urls.mu.Lock()
-	defer gs.urls.mu.Unlock()
 
 	if gs.urls.stats[url] == nil {
 		gs.urls.stats[url] = &LatencyStats{}
 	}
 	gs.urls.stats[url].AddLatency(latency, success)
-
-	gs.mu.Lock()
 	gs.lastUpdate = time.Now()
+
+	gs.urls.mu.Unlock()
 	gs.mu.Unlock()
 }
 
