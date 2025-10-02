@@ -356,8 +356,21 @@ func osctrlAdminService() {
 	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
 	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.StaticFiles))))
-
+	// Admin: background image
+	adminMux.HandleFunc("GET /background.png", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, flagParams.BackgroundImage)
+	})
 	// ///////////////////////// AUTHENTICATED CONTENT
+	// Admin: branding image
+	adminMux.Handle(
+		"GET /branding.png",
+		handlerAuthCheck(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, flagParams.BrandingImage)
+			}),
+			flagParams.ConfigValues.Auth,
+		),
+	)
 	// Admin: JSON data for environments
 	adminMux.Handle(
 		"GET /json/environment/{env}/{target}",

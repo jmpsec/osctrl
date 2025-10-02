@@ -37,6 +37,10 @@ const (
 	defTemplatesFolder string = "./tmpl_admin"
 	// Default carved files folder
 	defCarvedFolder string = "./carved_files/"
+	// Default background image file
+	defBackgroundImageFile string = defStaticFilesFolder + "/img/circuit.svg"
+	// Default branding image file
+	defBrandingImageFile string = defStaticFilesFolder + "/img/brand.png"
 	// Default DB configuration file
 	defDBConfigurationFile string = "config/db.json"
 	// Default redis configuration file
@@ -97,6 +101,10 @@ type ServiceFlagParams struct {
 	CarvedDir string
 	// Optimize UI
 	OptimizeUI bool
+	// Branding image file
+	BrandingImage string
+	// Background image file
+	BackgroundImage string
 
 	// Debug HTTP configuration values
 	DebugHTTPValues DebugHTTPConfiguration
@@ -817,6 +825,22 @@ func initAdminFlags(params *ServiceFlagParams) []cli.Flag {
 			Usage:       "Optimize the load of data in the UI. Used in deployments with a large number of nodes.",
 			EnvVars:     []string{"OPTIMIZE_UI"},
 			Destination: &params.OptimizeUI,
+		},
+		&cli.StringFlag{
+			Name:        "background-image",
+			Aliases:     []string{"bg-img", "background"},
+			Value:       defBackgroundImageFile,
+			Usage:       "Background image file for all the pages in the osctrl-admin UI",
+			EnvVars:     []string{"BACKGROUND_IMAGE"},
+			Destination: &params.BackgroundImage,
+		},
+		&cli.StringFlag{
+			Name:        "branding-image",
+			Aliases:     []string{"brand-img", "branding"},
+			Value:       defBrandingImageFile,
+			Usage:       "Branding image file for the osctrl-admin UI. Use an image with 450x130 pixels for best results.",
+			EnvVars:     []string{"BRANDING_IMAGE"},
+			Destination: &params.BrandingImage,
 		},
 	}
 }
