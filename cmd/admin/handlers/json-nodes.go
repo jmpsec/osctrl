@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -22,6 +24,14 @@ var (
 // ReturnedNodes to return a JSON with nodes
 type ReturnedNodes struct {
 	Data []NodeJSON `json:"data"`
+}
+
+// PaginatedNodes to return a JSON with nodes, paginated
+type PaginatedNodes struct {
+	Draw     int        `json:"draw"`
+	Total    int        `json:"recordsTotal"`
+	Filtered int        `json:"recordsFiltered"`
+	Data     []NodeJSON `json:"data"`
 }
 
 // NodeJSON to be used to populate JSON data for a node
@@ -107,6 +117,111 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 	}
 	returned := ReturnedNodes{
 		Data: nJSON,
+	}
+	// Serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
+}
+
+// JSONEnvironmentPagingHandler - Handler for JSON endpoints by environment, with pagination
+func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		log.Info().Msg("error getting environment")
+		return
+	}
+	// Check if environment is valid
+	if !h.Envs.Exists(envVar) {
+		log.Info().Msgf("error unknown environment (%s)", envVar)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Err(err).Msgf("error getting environment %s", envVar)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.UserLevel, env.UUID) {
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
+		return
+	}
+	// Extract target
+	target := r.PathValue("target")
+	if target == "" {
+		log.Info().Msg("error getting target")
+		return
+	}
+	// Verify target
+	if !NodeTargets[target] {
+		log.Info().Msgf("invalid target %s", target)
+		return
+	}
+	// Extract DataTables parameters
+	draw, _ := strconv.Atoi(r.URL.Query().Get("draw"))
+	start, _ := strconv.Atoi(r.URL.Query().Get("start"))
+	length, _ := strconv.Atoi(r.URL.Query().Get("length"))
+	searchValue := r.URL.Query().Get("search")
+	// Get total nodes count
+	totalCount, err := h.Nodes.CountAllByEnv(env.ID)
+	if err != nil {
+		log.Err(err).Msg("error getting total nodes count")
+		return
+	}
+	var nodes []nodes.OsqueryNode
+	// If there is a search value, run the search
+	if searchValue != "" {
+		nodes, err = h.Nodes.SearchByEnv(env.Name, searchValue, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
+		if err != nil {
+			log.Err(err).Msg("error searching nodes")
+			return
+		}
+	} else {
+		nodes, err = h.Nodes.GetByEnvLimit(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
+		if err != nil {
+			log.Err(err).Msg("error getting nodes")
+			return
+		}
+	}
+	// Pagination, it can be done more efficiently in the DB, but this is ok for now
+	end := min(start+length, len(nodes))
+	if start > end {
+		start = end
+	}
+	filteredCount := len(nodes)
+	nodes = nodes[start:end]
+	// Prepare data to be returned
+	nJSON := []NodeJSON{}
+	for _, n := range nodes {
+		nj := NodeJSON{
+			UUID:      n.UUID,
+			Username:  n.Username,
+			Localname: n.Localname,
+			IP:        n.IPAddress,
+			Platform:  n.Platform,
+			Version:   n.PlatformVersion,
+			Osquery:   n.OsqueryVersion,
+			LastSeen: CreationTimes{
+				Display:   utils.PastFutureTimes(n.UpdatedAt),
+				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
+			},
+			FirstSeen: CreationTimes{
+				Display:   utils.PastFutureTimes(n.CreatedAt),
+				Timestamp: utils.TimeTimestamp(n.CreatedAt),
+			},
+		}
+		nJSON = append(nJSON, nj)
+	}
+	returned := PaginatedNodes{
+		Draw:     draw,
+		Total:    int(totalCount),
+		Filtered: filteredCount,
+		Data:     nJSON,
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)

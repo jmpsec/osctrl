@@ -198,6 +198,35 @@ func (n *NodeManager) GetByEnv(env, target string, hours int64) ([]OsqueryNode, 
 	return nodes, nil
 }
 
+// GetByEnvLimit to retrieve target nodes by environment with limit and offset
+func (n *NodeManager) GetByEnvLimit(env, target string, hours int64) ([]OsqueryNode, error) {
+	var nodes []OsqueryNode
+	// Build query with base condition
+	query := n.DB.Where("environment = ?", env)
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
+	}
+	return nodes, nil
+}
+
+// SearchByEnv to search nodes by environment and search term
+func (n *NodeManager) SearchByEnv(env, term, target string, hours int64) ([]OsqueryNode, error) {
+	var nodes []OsqueryNode
+	likeTerm := "%" + term + "%"
+	// Build query with base condition
+	query := n.DB.Where("environment = ? AND (uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?)", env, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm)
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+	// Execute query
+	if err := query.Find(&nodes).Error; err != nil {
+		return nodes, err
+	}
+	return nodes, nil
+}
+
 // GetByPlatform to retrieve target nodes by platform
 func (n *NodeManager) GetByPlatform(envID uint, platform, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
@@ -416,4 +445,22 @@ func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
 func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
 	return n.DB.Model(&node).Updates(updates).Error
+}
+
+// CountAll to count all nodes
+func (n *NodeManager) CountAll() (int64, error) {
+	var count int64
+	if err := n.DB.Model(&OsqueryNode{}).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count all %w", err)
+	}
+	return count, nil
+}
+
+// CountAllByEnv to count all nodes
+func (n *NodeManager) CountAllByEnv(envID uint) (int64, error) {
+	var count int64
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment_id = ?", envID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count all %w", err)
+	}
+	return count, nil
 }
