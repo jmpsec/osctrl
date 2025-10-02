@@ -105,8 +105,8 @@ func (h *HandlersAdmin) JSONEnvironmentHandler(w http.ResponseWriter, r *http.Re
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
 			LastSeen: CreationTimes{
-				Display:   utils.PastFutureTimes(n.UpdatedAt),
-				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
+				Display:   utils.PastFutureTimes(n.LastSeen),
+				Timestamp: utils.TimeTimestamp(n.LastSeen),
 			},
 			FirstSeen: CreationTimes{
 				Display:   utils.PastFutureTimes(n.CreatedAt),
@@ -207,8 +207,8 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 			Version:   n.PlatformVersion,
 			Osquery:   n.OsqueryVersion,
 			LastSeen: CreationTimes{
-				Display:   utils.PastFutureTimes(n.UpdatedAt),
-				Timestamp: utils.TimeTimestamp(n.UpdatedAt),
+				Display:   utils.PastFutureTimes(n.LastSeen),
+				Timestamp: utils.TimeTimestamp(n.LastSeen),
 			},
 			FirstSeen: CreationTimes{
 				Display:   utils.PastFutureTimes(n.CreatedAt),
