@@ -48,6 +48,7 @@ type TableTemplateData struct {
 	Title        string
 	Selector     string
 	SelectorName string
+	OptimizeUI   bool
 	Target       string
 	Tags         []tags.AdminTag
 	Environments []environments.TLSEnvironment

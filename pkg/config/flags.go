@@ -95,6 +95,8 @@ type ServiceFlagParams struct {
 	TemplatesDir string
 	// Carved files folder
 	CarvedDir string
+	// Optimize UI
+	OptimizeUI bool
 
 	// Debug HTTP configuration values
 	DebugHTTPValues DebugHTTPConfiguration
@@ -807,6 +809,14 @@ func initAdminFlags(params *ServiceFlagParams) []cli.Flag {
 			Usage:       "Directory for all the received carved files from osquery",
 			EnvVars:     []string{"CARVED_FILES"},
 			Destination: &params.CarvedDir,
+		},
+		&cli.BoolFlag{
+			Name:        "optimize-ui",
+			Aliases:     []string{"O"},
+			Value:       false,
+			Usage:       "Optimize the load of data in the UI. Used in deployments with a large number of nodes.",
+			EnvVars:     []string{"OPTIMIZE_UI"},
+			Destination: &params.OptimizeUI,
 		},
 	}
 }

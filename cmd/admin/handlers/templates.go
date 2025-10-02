@@ -160,6 +160,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		LeftMetadata: leftMetadata,
 		Selector:     "environment",
 		SelectorName: env.Name,
+		OptimizeUI:   h.OptimizedUI,
 		Target:       target,
 		Tags:         tags,
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),

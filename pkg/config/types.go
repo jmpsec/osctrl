@@ -104,6 +104,7 @@ type AdminConfiguration struct {
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
 	Carver  YAMLConfigurationCarver  `mapstructure:"carver"`
+	Admin   YAMLConfigurationAdmin   `mapstructure:"admin"`
 	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
@@ -194,6 +195,15 @@ type YAMLConfigurationCarver struct {
 	Type            string `yaml:"type"`
 	CertificateFile string `yaml:"certificateFile"`
 	KeyFile         string `yaml:"keyFile"`
+}
+
+// YAMLConfigurationAdmin to hold admin UI specific configuration values
+type YAMLConfigurationAdmin struct {
+	SessionKey    string `yaml:"sessionKey"`
+	StaticDir     string `yaml:"staticDir"`
+	StaticOffline bool   `yaml:"keyFile"`
+	TemplatesDir  string `yaml:"templatesDir"`
+	OptimizeUI    bool   `yaml:"optimizeUI"`
 }
 
 // YAMLConfigurationDebug to hold the debug configuration values
