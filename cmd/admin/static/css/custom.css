@@ -46,15 +46,15 @@ th {
   border-left: 1px solid #c8ced3;
 }
 
-input[type=text]#query {
+input[type="text"]#query {
   font-family: monospace;
 }
 
-input[type=text]#query-sql {
+input[type="text"]#query-sql {
   font-family: monospace;
 }
 
-input[type=text]#carve {
+input[type="text"]#carve {
   font-family: monospace;
 }
 
@@ -68,7 +68,7 @@ input[type=text]#carve {
 }
 
 body {
-  font-family: 'Bai Jamjuree', sans-serif;
+  font-family: "Bai Jamjuree", sans-serif;
   background-image: url("/background-image");
   background-attachment: fixed;
 }
@@ -77,14 +77,14 @@ body {
   padding: 0.5rem;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
-  background-color: #F0F0F0;
+  background-color: #f0f0f0;
   -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
 .warning-back {
   padding: 0.5rem;
   margin-bottom: 0.5rem;
-  background-color: #F0F0F0;
+  background-color: #f0f0f0;
   -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
@@ -102,11 +102,11 @@ body {
   right: 1rem;
   z-index: 10;
   display: block;
-  padding: .25rem .5rem;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
   background-color: transparent;
   border: 0;
-  border-radius: .25rem;
+  border-radius: 0.25rem;
 }
 
 .btn-clipboard:hover {
@@ -162,6 +162,19 @@ button {
 .query-link {
   font-family: monospace;
   font-size: 1.3em;
+  max-width: 400px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.query-log {
+  font-family: monospace;
+  font-size: 1.3em;
+  max-width: 400px;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .badge-prefix {

@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  {{ $metadata := .Metadata }}
-  {{ $leftmeta := .LeftMetadata }}
-  {{ template "page-head" . }}
+  {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }} {{ template "page-head" . }}
 
   <body class="app header-fixed sidebar-fixed sidebar-lg-show">
     {{ template "page-header" . }}
@@ -113,7 +111,9 @@
               data: 'query',
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return queryResultLink(data.link, data.query, "/query/{{ $leftmeta.EnvUUID }}/logs/" + data.name);
+                  return '<div style="max-width:400px; white-space:normal; word-break:break-word;">' +
+                    queryResultLink(data.link, data.query, "/query/{{ $leftmeta.EnvUUID }}/logs/" + data.name) +
+                    '</div>';
                 } else {
                   return data;
                 }

@@ -432,7 +432,6 @@ func (n *NodeManager) IncreaseBytes(node OsqueryNode, incBytes int) error {
 }
 
 func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
-
 	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_seen", time.Now()).Error
 }
 
