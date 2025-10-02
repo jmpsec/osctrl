@@ -455,3 +455,12 @@ func (n *NodeManager) CountAll() (int64, error) {
 	}
 	return count, nil
 }
+
+// CountAllByEnv to count all nodes
+func (n *NodeManager) CountAllByEnv(envID uint) (int64, error) {
+	var count int64
+	if err := n.DB.Model(&OsqueryNode{}).Where("environment_id = ?", envID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count all %w", err)
+	}
+	return count, nil
+}

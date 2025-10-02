@@ -168,7 +168,7 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 	length, _ := strconv.Atoi(r.URL.Query().Get("length"))
 	searchValue := r.URL.Query().Get("search")
 	// Get total nodes count
-	totalCount, err := h.Nodes.CountAll()
+	totalCount, err := h.Nodes.CountAllByEnv(env.ID)
 	if err != nil {
 		log.Err(err).Msg("error getting total nodes count")
 		return
@@ -188,11 +188,8 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 			return
 		}
 	}
-	// Pagination
-	end := start + length
-	if end > len(nodes) {
-		end = len(nodes)
-	}
+	// Pagination, it can be done more efficiently in the DB, but this is ok for now
+	end := min(start+length, len(nodes))
 	if start > end {
 		start = end
 	}
