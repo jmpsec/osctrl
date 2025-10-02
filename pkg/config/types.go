@@ -199,11 +199,13 @@ type YAMLConfigurationCarver struct {
 
 // YAMLConfigurationAdmin to hold admin UI specific configuration values
 type YAMLConfigurationAdmin struct {
-	SessionKey    string `yaml:"sessionKey"`
-	StaticDir     string `yaml:"staticDir"`
-	StaticOffline bool   `yaml:"keyFile"`
-	TemplatesDir  string `yaml:"templatesDir"`
-	OptimizeUI    bool   `yaml:"optimizeUI"`
+	SessionKey      string `yaml:"sessionKey"`
+	StaticDir       string `yaml:"staticDir"`
+	StaticOffline   bool   `yaml:"keyFile"`
+	TemplatesDir    string `yaml:"templatesDir"`
+	OptimizeUI      bool   `yaml:"optimizeUI"`
+	BrandingImage   string `yaml:"brandingImage"`
+	BackgroundImage string `yaml:"backgroundImage"`
 }
 
 // YAMLConfigurationDebug to hold the debug configuration values

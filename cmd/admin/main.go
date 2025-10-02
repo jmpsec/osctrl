@@ -150,7 +150,7 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 }
 
 // Function to load the configuration from a single YAML file
-func loadConfigurationYAML(file string) (config.AdminConfiguration, error) {
+/*func loadConfigurationYAML(file string) (config.AdminConfiguration, error) {
 	var cfg config.AdminConfiguration
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -160,7 +160,7 @@ func loadConfigurationYAML(file string) (config.AdminConfiguration, error) {
 	}
 	// No errors!
 	return cfg, nil
-}
+}*/
 
 // Initialization code
 func init() {
@@ -356,8 +356,21 @@ func osctrlAdminService() {
 	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
 	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.StaticFiles))))
-
+	// Admin: background image
+	adminMux.HandleFunc("GET /background-image", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, flagParams.BackgroundImage)
+	})
 	// ///////////////////////// AUTHENTICATED CONTENT
+	// Admin: branding image
+	adminMux.Handle(
+		"GET /branding-image",
+		handlerAuthCheck(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, flagParams.BrandingImage)
+			}),
+			flagParams.ConfigValues.Auth,
+		),
+	)
 	// Admin: JSON data for environments
 	adminMux.Handle(
 		"GET /json/environment/{env}/{target}",
