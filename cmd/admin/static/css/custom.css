@@ -16,7 +16,7 @@
 }
 
 .navbar-brand {
-  background-image: url("/branding.png");
+  background-image: url("/branding-image");
   background-position: 50% 50%;
   background-repeat: no-repeat;
   background-size: 100%;
@@ -69,7 +69,7 @@ input[type=text]#carve {
 
 body {
   font-family: 'Bai Jamjuree', sans-serif;
-  background-image: url("/background.png");
+  background-image: url("/background-image");
   background-attachment: fixed;
 }
 
