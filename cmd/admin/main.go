@@ -14,6 +14,7 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/cmd/admin/handlers"
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -98,6 +99,7 @@ var (
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	handlersAdmin *handlers.HandlersAdmin
+	auditLog      *auditlog.AuditLogManager
 )
 
 // SAML variables
@@ -302,6 +304,12 @@ func osctrlAdminService() {
 		}
 	}
 
+	// Initialize audit log manager
+	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
+	if err != nil {
+		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
+	}
+
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersAdmin = handlers.CreateHandlersAdmin(
@@ -327,6 +335,7 @@ func osctrlAdminService() {
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
 		handlers.WithOptimizedUI(flagParams.OptimizeUI),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
+		handlers.WithAuditLog(auditLog),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
 		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
@@ -397,6 +406,12 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/tags",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.ConfigValues.Auth))
+	// Admin: JSON data for audit logs
+	if flagParams.AuditLog {
+		adminMux.Handle(
+			"GET /json/audit-logs",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONAuditLogHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: table for environments
 	adminMux.Handle(
 		"GET /environment/{env}/{target}",
@@ -541,6 +556,12 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"POST /profile",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler), flagParams.ConfigValues.Auth))
+	// Admin: audit logs
+	if flagParams.AuditLog {
+		adminMux.Handle(
+			"GET /audit-logs",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.AuditLogsGETHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: dashboard and search bar
 	adminMux.Handle(
 		"GET /dashboard",

@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -50,6 +52,8 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 			ExpiresTS: utils.TimeTimestamp(user.TokenExpire),
 		}
 	}
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
 }
@@ -105,6 +109,8 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		ExpirationTS: utils.TimeTimestamp(exp),
 		Expiration:   utils.PastFutureTimes(exp),
 	}
+	// Audit log token creation
+	h.AuditLog.NewToken(ctx[sessions.CtxUser], strings.Split(r.RemoteAddr, ":")[0])
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 }

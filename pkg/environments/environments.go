@@ -219,6 +219,15 @@ func (environment *EnvManager) Exists(identifier string) bool {
 	return (results > 0)
 }
 
+// ExistsGet checks if TLS Environment exists already and returns it
+func (environment *EnvManager) ExistsGet(identifier string) (bool, TLSEnvironment) {
+	e, err := environment.Get(identifier)
+	if err != nil {
+		return false, TLSEnvironment{}
+	}
+	return true, e
+}
+
 // All gets all TLS Environment
 func (environment *EnvManager) All() ([]TLSEnvironment, error) {
 	var envs []TLSEnvironment
