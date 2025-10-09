@@ -88,7 +88,6 @@ services:
       - SERVICE_LOG_FORMAT=console
       - LOGGER_DB_SAME=true
       - SESSION_KEY=${SESSION_KEY}
-      - AUDIT_LOG=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}

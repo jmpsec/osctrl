@@ -1,30 +1,50 @@
 package auditlog
 
+const (
+	// Log type strings
+	LogTypeLoginStr   = "Login"
+	LogTypeLogoutStr  = "Logout"
+	LogTypeNodeStr    = "Node"
+	LogTypeQueryStr   = "Query"
+	LogTypeCarveStr   = "Carve"
+	LogTypeTagStr     = "Tag"
+	LogTypeEnvStr     = "Environment"
+	LogTypeSettingStr = "Setting"
+	LogTypeVisitStr   = "Visit"
+	LogTypeUserStr    = "User"
+	LogTypeUnknown    = "Unknown"
+	// Severity strings
+	SeverityInfoStr    = "Info"
+	SeverityWarningStr = "Warning"
+	SeverityErrorStr   = "Error"
+	SeverityUnknownStr = "Unknown"
+)
+
 // LogTypeToString to convert log type to string
 func LogTypeToString(logType uint) string {
 	switch logType {
 	case 1:
-		return "Login"
+		return LogTypeLoginStr
 	case 2:
-		return "Logout"
+		return LogTypeLogoutStr
 	case 3:
-		return "Node"
+		return LogTypeNodeStr
 	case 4:
-		return "Query"
+		return LogTypeQueryStr
 	case 5:
-		return "Carve"
+		return LogTypeCarveStr
 	case 6:
-		return "Tag"
+		return LogTypeTagStr
 	case 7:
-		return "Environment"
+		return LogTypeEnvStr
 	case 8:
-		return "Setting"
+		return LogTypeSettingStr
 	case 9:
-		return "Visit"
+		return LogTypeVisitStr
 	case 10:
-		return "User"
+		return LogTypeUserStr
 	default:
-		return "Unknown"
+		return LogTypeUnknown
 	}
 }
 
@@ -32,12 +52,12 @@ func LogTypeToString(logType uint) string {
 func SeverityToString(severity uint) string {
 	switch severity {
 	case 1:
-		return "Info"
+		return SeverityInfoStr
 	case 2:
-		return "Warning"
+		return SeverityWarningStr
 	case 3:
-		return "Error"
+		return SeverityErrorStr
 	default:
-		return "Unknown"
+		return SeverityUnknownStr
 	}
 }
