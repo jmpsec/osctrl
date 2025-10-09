@@ -29,7 +29,7 @@ type ReturnedAudit struct {
 	Data []AuditLogJSON `json:"data"`
 }
 
-// JSONTagsHandler for audit logs in JSON
+// JSONAuditLogHandler for audit logs in JSON
 func (h *HandlersAdmin) JSONAuditLogHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.Enabled {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
