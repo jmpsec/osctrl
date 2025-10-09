@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -45,7 +46,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and send response
-	log.Debug().Msg("Login response sent")
+	h.AuditLog.NewLogin(user.Username, strings.Split(r.RemoteAddr, ":")[0])
 	adminOKResponse(w, "/dashboard")
 }
 
@@ -74,7 +75,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Serialize and send response
-	log.Debug().Msg("Logout response sent")
+	h.AuditLog.NewLogout(ctx[sessions.CtxUser], strings.Split(r.RemoteAddr, ":")[0])
 	adminOKResponse(w, "OK")
 }
 
@@ -172,7 +173,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	// Serialize and send response
-	log.Debug().Msg("Query run response sent")
+	h.AuditLog.NewQuery(ctx[sessions.CtxUser], q.Query, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	adminOKResponse(w, "OK")
 }
 
@@ -262,7 +263,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Serialize and send response
-	log.Debug().Msg("Carve run response sent")
+	h.AuditLog.NewCarve(ctx[sessions.CtxUser], c.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	adminOKResponse(w, "OK")
 }
 
@@ -345,8 +346,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 		}
 		adminOKResponse(w, "queries delete successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Query run response sent")
+	h.AuditLog.QueryAction(ctx[sessions.CtxUser], q.Action, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // CarvesActionsPOSTHandler - Handler for POST requests to carves
@@ -402,8 +402,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 		log.Debug().Msg("testing action")
 		adminOKResponse(w, "test successful")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Carves action response sent")
+	h.AuditLog.CarveAction(ctx[sessions.CtxUser], q.Action, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // ConfPOSTHandler for POST requests for saving configuration
@@ -466,8 +465,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error saving configuration parts", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update configuration", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("Configuration response sent")
 		adminOKResponse(w, "configuration saved successfully")
 		return
 	}
@@ -489,8 +488,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update options", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("Options response sent")
 		adminOKResponse(w, "options saved successfully")
 		return
 	}
@@ -512,8 +511,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update schedule", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("Schedule response sent")
 		adminOKResponse(w, "schedule saved successfully")
 		return
 	}
@@ -535,8 +534,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update packs", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("Packs response sent")
 		adminOKResponse(w, "packs saved successfully")
 		return
 	}
@@ -558,8 +557,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update decorators", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("Decorators response sent")
 		adminOKResponse(w, "decorators saved successfully")
 		return
 	}
@@ -581,8 +580,8 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "error updating configuration", http.StatusInternalServerError, err)
 			return
 		}
+		h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update ATC", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 		// Send response
-		log.Debug().Msg("ATC response sent")
 		adminOKResponse(w, "ATC saved successfully")
 		return
 	}
@@ -644,8 +643,8 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 		adminErrorResponse(w, "error updating flags", http.StatusInternalServerError, err)
 		return
 	}
+	h.AuditLog.ConfAction(ctx[sessions.CtxUser], "update intervals", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and send response
-	log.Debug().Msg("Intervals response sent")
 	adminOKResponse(w, "intervals saved successfully")
 }
 
@@ -741,8 +740,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 			adminOKResponse(w, "link set to not expire successfully")
 		}
 	}
-	// Serialize and send response
-	log.Debug().Msg("Expiration response sent")
+	h.AuditLog.ConfAction(ctx[sessions.CtxUser], fmt.Sprintf("%s:%s", e.Type, e.Action), strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // NodeActionsPOSTHandler for POST requests for multi node action
@@ -787,8 +785,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 			return
 		}
 	}
-	// Serialize and send response
-	log.Debug().Msg("Multi-node action response sent")
+	h.AuditLog.NodeAction(ctx[sessions.CtxUser], m.Action, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // EnvsPOSTHandler for POST request for /environments
@@ -878,8 +875,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		adminOKResponse(w, "debug changed successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Environments response sent")
+	h.AuditLog.EnvAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", c.Action, c.Name), strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // SettingsPOSTHandler for POST request for /settings
@@ -963,8 +959,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 		}
 		adminOKResponse(w, "setting deleted successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Settings response sent")
+	h.AuditLog.SettingsAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", s.Action, s.Name), strings.Split(r.RemoteAddr, ":")[0])
 }
 
 // UsersPOSTHandler for POST request for /users
@@ -1112,8 +1107,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			adminOKResponse(w, "service changed successfully")
 		}
 	}
-	// Serialize and send response
-	log.Debug().Msg("Users response sent")
+	h.AuditLog.UserAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", u.Action, u.Username), strings.Split(r.RemoteAddr, ":")[0])
 }
 
 // TagsPOSTHandler for POST request for /tags
@@ -1205,8 +1199,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		adminOKResponse(w, "tag removed successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Tags response sent")
+	h.AuditLog.TagAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", t.Action, t.Name), strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // TagNodesPOSTHandler for POST request for /tags/nodes
@@ -1263,8 +1256,9 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+	aMsg := fmt.Sprintf("tags processed: add %d, remove %d", len(t.TagsAdd), len(t.TagsRemove))
+	h.AuditLog.TagAction(ctx[sessions.CtxUser], aMsg, strings.Split(r.RemoteAddr, ":")[0], toBeProcessed[0].EnvironmentID)
 	// Serialize and send response
-	log.Debug().Msg("Tags response sent")
 	adminOKResponse(w, "tags processed successfully")
 }
 
@@ -1322,8 +1316,8 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 			return
 		}
 	}
+	h.AuditLog.UserAction(ctx[sessions.CtxUser], fmt.Sprintf("permissions - %s", usernameVar), strings.Split(r.RemoteAddr, ":")[0])
 	// Serialize and send response
-	log.Debug().Msg("Users response sent")
 	adminOKResponse(w, "permissions updated successfully")
 }
 
@@ -1423,8 +1417,8 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
+	h.AuditLog.EnvAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", e.Action, env.Name), strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and send response
-	log.Debug().Msg("Configuration response sent")
 	adminOKResponse(w, "enroll data saved")
 }
 
@@ -1491,8 +1485,7 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 		}
 		adminOKResponse(w, "profiled updated successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Edit profile response sent")
+	h.AuditLog.UserAction(ctx[sessions.CtxUser], fmt.Sprintf("%s - %s", u.Action, u.Username), strings.Split(r.RemoteAddr, ":")[0])
 }
 
 // SavedQueriesPOSTHandler for POST requests to save queries
@@ -1520,6 +1513,4 @@ func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.R
 	case "edit":
 		adminOKResponse(w, "query saved successfully")
 	}
-	// Serialize and send response
-	log.Debug().Msg("Saved query response sent")
 }

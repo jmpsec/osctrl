@@ -105,6 +105,8 @@ type ServiceFlagParams struct {
 	BrandingImage string
 	// Background image file
 	BackgroundImage string
+	// Audit log
+	AuditLog bool
 
 	// Debug HTTP configuration values
 	DebugHTTPValues DebugHTTPConfiguration
@@ -841,6 +843,14 @@ func initAdminFlags(params *ServiceFlagParams) []cli.Flag {
 			Usage:       "Branding image file for the osctrl-admin UI. Use an image with 450x130 pixels for best results.",
 			EnvVars:     []string{"BRANDING_IMAGE"},
 			Destination: &params.BrandingImage,
+		},
+		&cli.BoolFlag{
+			Name:        "audit-log",
+			Aliases:     []string{"audit"},
+			Value:       false,
+			Usage:       "Enable audit log for the osctrl-admin UI. It will log all the user actions in the UI",
+			EnvVars:     []string{"AUDIT_LOG"},
+			Destination: &params.AuditLog,
 		},
 	}
 }

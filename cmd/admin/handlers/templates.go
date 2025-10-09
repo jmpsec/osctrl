@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -37,7 +38,6 @@ var validTarget = map[string]bool{
 }
 
 // TemplateMetadata - Helper to prepare template metadata
-// TODO until a better implementation, all users are admin
 func (h *HandlersAdmin) TemplateMetadata(ctx sessions.ContextValue, metadata types.BuildMetadata, admin bool) TemplateMetadata {
 	return TemplateMetadata{
 		Username:  ctx[sessions.CtxUser],
@@ -88,7 +88,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Login template served")
+	h.AuditLog.Visit("anonymous", r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], settings.NoEnvironmentID)
 }
 
 // EnvironmentHandler for environment view of the table
@@ -169,7 +169,8 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Environment table template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // QueryRunGETHandler for GET requests to run queries
@@ -269,7 +270,8 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Query run template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // QueryListGETHandler for GET requests to queries
@@ -339,7 +341,8 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Query list template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // SavedQueriesGETHandler for GET requests to queries
@@ -403,7 +406,8 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Query list template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // CarvesRunGETHandler for GET requests to run file carves
@@ -497,7 +501,8 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Query run template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // CarvesListGETHandler for GET requests to carves
@@ -568,7 +573,8 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Carve list template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // QueryLogsHandler for GET requests to see query results by name
@@ -658,7 +664,8 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Query logs template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // CarvesDetailsHandler for GET requests to see carves details by name
@@ -763,7 +770,8 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Carve details template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // ConfGETHandler for GET requests for /conf
@@ -834,7 +842,8 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Conf template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // EnrollGETHandler for GET requests for /enroll
@@ -929,7 +938,8 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Enroll template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // EnrollGETHandler for GET requests for /enroll
@@ -1007,6 +1017,8 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 	utils.HTTPDownload(w, description, fName, int64(len(toDownload)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, bytes.NewReader(toDownload))
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // NodeHandler for node view
@@ -1126,7 +1138,8 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Node template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }
 
 // EnvsGETHandler for GET requests for /env
@@ -1170,7 +1183,8 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Environments template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // SettingsGETHandler for GET requests for /settings
@@ -1244,7 +1258,8 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Settings template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // UsersGETHandler for GET requests for /users
@@ -1307,7 +1322,8 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Users template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // UsersTokensGETHandler for GET requests for /users/tokens
@@ -1362,7 +1378,8 @@ func (h *HandlersAdmin) UsersTokensGETHandler(w http.ResponseWriter, r *http.Req
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Users template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // TagsGETHandler for GET requests for /tags
@@ -1420,7 +1437,8 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Tags template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // EditProfileGETHandler for user profile edit
@@ -1476,7 +1494,8 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Profile template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }
 
 // DashboardGETHandler for dashboard page
@@ -1537,5 +1556,56 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("template error")
 		return
 	}
-	log.Debug().Msg("Dashboard template served")
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
+}
+
+// AuditLogsGETHandler for GET requests for /audit-logs
+func (h *HandlersAdmin) AuditLogsGETHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.AdminLevel, users.NoEnvironment) {
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
+		return
+	}
+	// Custom functions to handle formatting
+	funcMap := template.FuncMap{
+		"pastFutureTimes": utils.PastFutureTimes,
+		"inFutureTime":    utils.InFutureTime,
+	}
+	// Prepare template
+	tempateFiles := h.NewTemplateFiles(h.TemplatesFolder, "audit.html").filepaths
+	t, err := template.New("audit.html").Funcs(funcMap).ParseFiles(tempateFiles...)
+	if err != nil {
+		log.Err(err).Msg("error getting audit log template")
+		return
+	}
+	// Get stats for all environments
+	envAll, err := h.Envs.All()
+	if err != nil {
+		log.Err(err).Msg("error getting environments")
+		return
+	}
+	// Get if the user is admin
+	user, err := h.Users.Get(ctx[sessions.CtxUser])
+	if err != nil {
+		log.Err(err).Msg("error getting user")
+		return
+	}
+	// Prepare template data
+	templateData := AuditLogTemplateData{
+		Title:        "Audit logs for all environments",
+		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
+		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
+	}
+	if err := t.Execute(w, templateData); err != nil {
+		log.Err(err).Msg("template error")
+		return
+	}
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 }

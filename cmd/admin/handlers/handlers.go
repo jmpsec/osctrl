@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -43,6 +44,7 @@ type HandlersAdmin struct {
 	OptimizedUI     bool
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *config.JSONConfigurationService
+	AuditLog        *auditlog.AuditLogManager
 	DBLogger        *logging.LoggerDB
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.DebugHTTPConfiguration
@@ -158,6 +160,12 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 func WithAdminConfig(config *config.JSONConfigurationService) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.AdminConfig = config
+	}
+}
+
+func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
+	return func(h *HandlersAdmin) {
+		h.AuditLog = auditLog
 	}
 }
 

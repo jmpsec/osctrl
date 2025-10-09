@@ -229,6 +229,14 @@ type TagsTemplateData struct {
 	LeftMetadata AsideLeftMetadata
 }
 
+// AuditLogTemplateData for passing data to the audit log template
+type AuditLogTemplateData struct {
+	Title        string
+	Environments []environments.TLSEnvironment
+	Metadata     TemplateMetadata
+	LeftMetadata AsideLeftMetadata
+}
+
 // NodeTemplateData for passing data to the query template
 type NodeTemplateData struct {
 	Title         string
