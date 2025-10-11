@@ -185,6 +185,7 @@ func InitAPIFlags(params *ServiceFlagParams) []cli.Flag {
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
+	allFlags = append(allFlags, initApiFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	return allFlags
 }
@@ -849,6 +850,20 @@ func initAdminFlags(params *ServiceFlagParams) []cli.Flag {
 			Aliases:     []string{"audit"},
 			Value:       false,
 			Usage:       "Enable audit log for the osctrl-admin UI. It will log all the user actions in the UI",
+			EnvVars:     []string{"AUDIT_LOG"},
+			Destination: &params.AuditLog,
+		},
+	}
+}
+
+// initApiFlags initializes all the flags specific to the osctrl-api service
+func initApiFlags(params *ServiceFlagParams) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "audit-log",
+			Aliases:     []string{"audit"},
+			Value:       false,
+			Usage:       "Enable audit log for the osctrl-api. It will log all the user actions in the API",
 			EnvVars:     []string{"AUDIT_LOG"},
 			Destination: &params.AuditLog,
 		},

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -69,6 +70,7 @@ var (
 	tagsmgr     *tags.TagManager
 	envs        *environments.EnvManager
 	db          *backend.DBManager
+	auditlogsmgr *auditlog.AuditLogManager
 	osctrlAPI   *OsctrlAPI
 	formats     map[string]bool
 )
@@ -608,24 +610,24 @@ func init() {
 							Usage:   "PKG package to be updated",
 						},
 						&cli.BoolFlag{
-							Name:    "config-plugin",
-							Value:   true,
-							Usage:   "Generate flags for osquery's config plugin",
+							Name:  "config-plugin",
+							Value: true,
+							Usage: "Generate flags for osquery's config plugin",
 						},
 						&cli.BoolFlag{
-							Name:    "logger-plugin",
-							Value:   true,
-							Usage:   "Generate flags for osquery's logger plugin",
+							Name:  "logger-plugin",
+							Value: true,
+							Usage: "Generate flags for osquery's logger plugin",
 						},
 						&cli.BoolFlag{
-							Name:    "query-plugin",
-							Value:   true,
-							Usage:   "Generate flags for osquery's on-demand query plugin",
+							Name:  "query-plugin",
+							Value: true,
+							Usage: "Generate flags for osquery's on-demand query plugin",
 						},
 						&cli.BoolFlag{
-							Name:    "carve-plugin",
-							Value:   true,
-							Usage:   "Generate flags for osquery's file carve plugin",
+							Name:  "carve-plugin",
+							Value: true,
+							Usage: "Generate flags for osquery's file carve plugin",
 						},
 					},
 					Action: cliWrapper(updateEnvironment),
@@ -1845,6 +1847,11 @@ func init() {
 			Action: checkAPI,
 		},
 		{
+			Name:   "audit-logs",
+			Usage:  "Get all audit logs for actions performed in osctrl",
+			Action: cliWrapper(auditLogs),
+		},
+		{
 			Name:  "login",
 			Usage: "Login into API and generate JSON config file with token",
 			Flags: []cli.Flag{
@@ -2043,13 +2050,13 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 				log.Debug().Msg("Initializing DB from file")
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
-					return fmt.Errorf("CreateDBManagerFile - %w", err)
+					return fmt.Errorf("error in CreateDBManagerFile - %w", err)
 				}
 			} else {
 				log.Debug().Msg("Creating DB manager from config")
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
-					return fmt.Errorf("CreateDBManager - %w", err)
+					return fmt.Errorf("error in CreateDBManager - %w", err)
 				}
 			}
 			// Initialize users
@@ -2073,6 +2080,12 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			// Initialize tags
 			log.Debug().Msg("Creating tags manager")
 			tagsmgr = tags.CreateTagManager(db.Conn)
+			// Initialize audit logs
+			log.Debug().Msg("Creating audit logs manager")
+			auditlogsmgr, err = auditlog.CreateAuditLogManager(db.Conn, appName, true)
+			if err != nil {
+				return fmt.Errorf("error creating audit log manager - %w", err)
+			}
 			// Execute action
 			return action(c)
 		}

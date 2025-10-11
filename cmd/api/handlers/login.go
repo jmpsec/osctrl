@@ -8,7 +8,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
-	"github.com/rs/zerolog/log"
 )
 
 // LoginHandler - POST Handler for API login request
@@ -59,7 +58,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		user.APIToken = token
 	}
+	h.AuditLog.NewLogin(l.Username, r.RemoteAddr)
 	// Serialize and serve JSON
-	log.Debug().Msgf("Returning token for %s", user.Username)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiLoginResponse{Token: user.APIToken})
 }

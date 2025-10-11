@@ -126,6 +126,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=db
       - SERVICE_LOG_FORMAT=console
+      - AUDIT_LOG=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
