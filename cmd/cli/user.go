@@ -81,6 +81,8 @@ func addUser(c *cli.Context) error {
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return fmt.Errorf("error creating permissions - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.UserAction(getShellUsername(), "add user "+username, "CLI")
 	} else if apiFlag {
 		if err := osctrlAPI.CreateUser(username, password, email, fullname, environment, admin, service); err != nil {
 			return fmt.Errorf("error creating user - %w", err)
@@ -170,6 +172,10 @@ func editUser(c *cli.Context) error {
 			return fmt.Errorf("error editing user - %w", err)
 		}
 	}
+	// Audit log
+	if dbFlag {
+		auditlogsmgr.UserAction(getShellUsername(), "edit user "+username, "CLI")
+	}
 	if !silentFlag {
 		fmt.Printf("✅ user %s edited successfully\n", username)
 	}
@@ -191,6 +197,8 @@ func deleteUser(c *cli.Context) error {
 		if err := adminUsers.DeleteAllPermissions(username); err != nil {
 			return fmt.Errorf("error deleting permissions - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.UserAction(getShellUsername(), "delete user "+username, "CLI")
 	} else if apiFlag {
 		if err := osctrlAPI.DeleteUser(username); err != nil {
 			return fmt.Errorf("error deleting user - %w", err)

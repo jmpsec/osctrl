@@ -157,6 +157,8 @@ func completeQuery(c *cli.Context) error {
 		if err := queriesmgr.Complete(name, e.ID); err != nil {
 			return fmt.Errorf("❌ error completing query - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.QueryAction(getShellUsername(), "complete query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.CompleteQuery(env, name)
 		if err != nil {
@@ -189,6 +191,8 @@ func deleteQuery(c *cli.Context) error {
 		if err := queriesmgr.Delete(name, e.ID); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
+		// Audit log
+		auditlogsmgr.QueryAction(getShellUsername(), "delete query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteQuery(env, name)
 		if err != nil {
@@ -221,6 +225,8 @@ func expireQuery(c *cli.Context) error {
 		if err := queriesmgr.Expire(name, e.ID); err != nil {
 			return fmt.Errorf("❌ error expiring query - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.QueryAction(getShellUsername(), "expire query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.ExpireQuery(env, name)
 		if err != nil {
@@ -322,6 +328,8 @@ func runQuery(c *cli.Context) error {
 		if err := queriesmgr.SetExpected(queryName, len(targetNodesID), e.ID); err != nil {
 			return fmt.Errorf("❌ error set expected - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.NewQuery(getShellUsername(), query, "CLI", e.ID)
 	} else if apiFlag {
 		q, err := osctrlAPI.RunQuery(env, query, uuidList, hostList, platformList, tagList, hidden, expHours)
 		if err != nil {

@@ -257,6 +257,17 @@ func (m *AuditLogManager) UserAction(username, action, ip string) {
 	}
 }
 
+// Permissions - create new permissions action audit log entry
+func (m *AuditLogManager) Permissions(username, action, ip string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("user %s changed permissions: %s", username, action)
+	if err := m.CreateNew(username, line, ip, LogTypeUser, SeverityInfo, envID); err != nil {
+		log.Err(err).Msg("error creating permissions action audit log")
+	}
+}
+
 // GetAll - get all audit logs
 func (m *AuditLogManager) GetAll() ([]AuditLog, error) {
 	var logs []AuditLog

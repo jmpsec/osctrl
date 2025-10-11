@@ -3,7 +3,9 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -29,5 +31,6 @@ func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d audit log entries", len(auditLogs))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, auditLogs)
 }

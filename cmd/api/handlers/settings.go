@@ -3,7 +3,9 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -30,6 +32,7 @@ func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned settings")
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 }
 
@@ -64,6 +67,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned settings")
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 }
 
@@ -114,6 +118,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned settings")
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 }
 
@@ -148,6 +153,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned settings")
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 }
 
@@ -198,5 +204,6 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned settings")
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, serviceSettings)
 }

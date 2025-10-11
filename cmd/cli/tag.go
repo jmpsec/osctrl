@@ -86,6 +86,8 @@ func addTag(c *cli.Context) error {
 		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tagType, tags.SetCustomTag(tagType, tagCustom)); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
+		// Audit log
+		auditlogsmgr.TagAction(getShellUsername(), "add tag "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {
@@ -118,6 +120,8 @@ func deleteTag(c *cli.Context) error {
 		if err := tagsmgr.DeleteGet(name, e.ID); err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
+		// Audit log
+		auditlogsmgr.TagAction(getShellUsername(), "delete tag "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteTag(env, name)
 		if err != nil {
@@ -196,6 +200,8 @@ func editTag(c *cli.Context) error {
 				return fmt.Errorf("❌ %w", err)
 			}
 		}
+		// Audit log
+		auditlogsmgr.TagAction(getShellUsername(), "edit tag "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {

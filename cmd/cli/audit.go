@@ -96,6 +96,8 @@ func auditLogs(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("❌ %w", err)
 		}
+		// Audit log
+		auditlogsmgr.Visit(getShellUsername(), "get audit logs", "CLI", 0)
 	} else if apiFlag {
 		als, err = osctrlAPI.GetAuditLogs()
 		if err != nil {

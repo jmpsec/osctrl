@@ -95,6 +95,8 @@ func changePermissions(c *cli.Context) error {
 				return fmt.Errorf("error setting query - %w", err)
 			}
 		}
+		// Audit log
+		auditlogsmgr.Permissions(getShellUsername(), "changed permissions for user "+username, "CLI", env.ID)
 	}
 	if !silentFlag {
 		fmt.Printf("✅ permissions changed for user %s successfully\n", username)
@@ -193,6 +195,8 @@ func resetPermissions(c *cli.Context) error {
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return err
 		}
+		// Audit log
+		auditlogsmgr.Permissions(getShellUsername(), "reset permissions for user "+username, "CLI", env.ID)
 	}
 	if !silentFlag {
 		fmt.Printf("✅ permissions reset for user %s successfully\n", username)
