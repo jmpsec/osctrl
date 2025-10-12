@@ -2050,13 +2050,13 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 				log.Debug().Msg("Initializing DB from file")
 				db, err = backend.CreateDBManagerFile(dbConfigFile)
 				if err != nil {
-					return fmt.Errorf("error in CreateDBManagerFile - %w", err)
+					return fmt.Errorf("in CreateDBManagerFile - %w", err)
 				}
 			} else {
 				log.Debug().Msg("Creating DB manager from config")
 				db, err = backend.CreateDBManager(dbConfig)
 				if err != nil {
-					return fmt.Errorf("error in CreateDBManager - %w", err)
+					return fmt.Errorf("in CreateDBManager - %w", err)
 				}
 			}
 			// Initialize users

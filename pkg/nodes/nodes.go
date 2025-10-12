@@ -361,7 +361,7 @@ func (n *NodeManager) Archive(uuid, trigger string) error {
 	}
 	archivedNode := nodeArchiveFromNode(node, trigger)
 	if err := n.DB.Create(&archivedNode).Error; err != nil {
-		return fmt.Errorf("error in Create %w", err)
+		return fmt.Errorf("in Create %w", err)
 	}
 	return nil
 }
@@ -373,7 +373,7 @@ func (n *NodeManager) UpdateByUUID(data OsqueryNode, uuid string) error {
 		return fmt.Errorf("getNodeByUUID %w", err)
 	}
 	if err := n.DB.Model(&node).Updates(data).Error; err != nil {
-		return fmt.Errorf("error in UpdateByUUID %w", err)
+		return fmt.Errorf("in UpdateByUUID %w", err)
 	}
 	return nil
 }
