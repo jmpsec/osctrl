@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/handlers"
@@ -70,6 +71,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned query %s", name)
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, query)
 }
 
@@ -163,6 +165,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Return query name as serialized response
 	log.Debug().Msgf("Created query %s with id %d", newQuery.Name, newQuery.ID)
+	h.AuditLog.NewQuery(ctx[ctxUser], newQuery.Query, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
@@ -230,6 +233,7 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Return message as serialized response
 	log.Debug().Msgf("Returned message %s", msgReturn)
+	h.AuditLog.QueryAction(ctx[ctxUser], actionVar+" query "+nameVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 
@@ -269,6 +273,7 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d queries", len(queries))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 }
 
@@ -319,6 +324,7 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d queries", len(queries))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 }
 
@@ -366,5 +372,6 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned query results for %s", name)
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queryLogs)
 }

@@ -20,9 +20,9 @@ func TestLogTypeToString(t *testing.T) {
 		{0, "Unknown"},
 		{99, "Unknown"},
 	}
-
+	al := AuditLogManager{}
 	for _, tt := range tests {
-		result := LogTypeToString(tt.input)
+		result := al.LogTypeToString(tt.input)
 		if result != tt.expected {
 			t.Errorf("LogTypeToString(%d) = %q; want %q", tt.input, result, tt.expected)
 		}
@@ -40,9 +40,9 @@ func TestSeverityToString(t *testing.T) {
 		{0, "Unknown"},
 		{99, "Unknown"},
 	}
-
+	al := AuditLogManager{}
 	for _, tt := range tests {
-		result := SeverityToString(tt.input)
+		result := al.SeverityToString(tt.input)
 		if result != tt.expected {
 			t.Errorf("SeverityToString(%d) = %q; want %q", tt.input, result, tt.expected)
 		}

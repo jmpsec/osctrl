@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -37,6 +39,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned user %s", usernameVar)
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, user)
 }
 
@@ -64,6 +67,7 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d users", len(users))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, users)
 }
 
@@ -207,5 +211,6 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned [%s]", returnData)
+	h.AuditLog.UserAction(ctx[ctxUser], actionVar+" user "+usernameVar, strings.Split(r.RemoteAddr, ":")[0])
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }

@@ -226,8 +226,6 @@ func osctrlAdminService() {
 	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Info().Msg("Loading service metrics")
-
 	// Start SAML Middleware if we are using SAML
 	if flagParams.ConfigValues.Auth == config.AuthSAML {
 		log.Debug().Msg("SAML enabled for authentication")
@@ -248,7 +246,6 @@ func osctrlAdminService() {
 			log.Fatal().Msgf("Can not initialize SAML Middleware %s", err)
 		}
 	}
-
 	// FIXME Redis cache - Ticker to cleanup sessions
 	// FIXME splay this?
 	log.Info().Msg("Initialize cleanup sessions")
@@ -263,7 +260,6 @@ func osctrlAdminService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-
 	// Goroutine to cleanup expired queries and carves
 	log.Info().Msg("Initialize cleanup queries/carves")
 	go func() {
@@ -294,7 +290,6 @@ func osctrlAdminService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-
 	var loggerDBConfig *backend.JSONConfigurationDB
 	// Set the logger configuration file if we have a DB logger
 	if flagParams.ConfigValues.Logger == config.LoggingDB {
@@ -303,13 +298,16 @@ func osctrlAdminService() {
 			loggerDBConfig = &flagParams.DBConfigValues
 		}
 	}
-
 	// Initialize audit log manager
+	if flagParams.AuditLog {
+		log.Info().Msg("Initialize audit log (enabled)")
+	} else {
+		log.Info().Msg("Initialize audit log (disabled)")
+	}
 	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
-
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersAdmin = handlers.CreateHandlersAdmin(
@@ -339,12 +337,10 @@ func osctrlAdminService() {
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
 		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
-
 	// ////////////////////////// ADMIN
 	log.Info().Msg("Initializing router")
 	// Create router for admin
 	adminMux := http.NewServeMux()
-
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
 	if flagParams.ConfigValues.Auth != config.AuthNone && flagParams.ConfigValues.Auth != config.AuthSAML {

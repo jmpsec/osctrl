@@ -21,7 +21,7 @@ const (
 )
 
 // LogTypeToString to convert log type to string
-func LogTypeToString(logType uint) string {
+func (m *AuditLogManager) LogTypeToString(logType uint) string {
 	switch logType {
 	case 1:
 		return LogTypeLoginStr
@@ -49,7 +49,7 @@ func LogTypeToString(logType uint) string {
 }
 
 // SeverityToString to convert severity to string
-func SeverityToString(severity uint) string {
+func (m *AuditLogManager) SeverityToString(severity uint) string {
 	switch severity {
 	case 1:
 		return SeverityInfoStr

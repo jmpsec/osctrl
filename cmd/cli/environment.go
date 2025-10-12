@@ -94,6 +94,8 @@ func addEnvironment(c *cli.Context) error {
 			fmt.Printf("❌ environment %s already exists!\n", envName)
 			os.Exit(1)
 		}
+		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "add environment "+envName, "CLI", 0)
 		fmt.Printf("✅ environment %s was created successfully\n", envName)
 	} else if apiFlag {
 		fmt.Println("❌ API not supported yet for this operation")
@@ -172,6 +174,8 @@ func updateEnvironment(c *cli.Context) error {
 		if err := envs.UpdateFlags(envName, flags); err != nil {
 			return err
 		}
+		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "update environment "+envName, "CLI", env.ID)
 		fmt.Printf("✅ environment %s was updated successfully\n", envName)
 	} else if apiFlag {
 		fmt.Println("❌ API not supported yet for this operation")
@@ -188,6 +192,8 @@ func deleteEnvironment(c *cli.Context) error {
 		os.Exit(1)
 	}
 	if dbFlag {
+		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "delete environment "+envName, "CLI", 0)
 		return envs.Delete(envName)
 	} else if apiFlag {
 		fmt.Println("❌ API not supported yet for this operation")
@@ -209,6 +215,8 @@ func showEnvironment(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
+		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "show environment "+envName, "CLI", 0)
 	} else if apiFlag {
 		env, err = osctrlAPI.GetEnvironment(envName)
 		if err != nil {
@@ -272,6 +280,8 @@ func showFlagsEnvironment(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
+		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "show flags for "+envName, "CLI", 0)
 	} else if apiFlag {
 		env, err = osctrlAPI.GetEnvironment(envName)
 		if err != nil {

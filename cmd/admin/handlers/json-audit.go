@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -61,8 +60,8 @@ func (h *HandlersAdmin) JSONAuditLogHandler(w http.ResponseWriter, r *http.Reque
 			Username: logEntry.Username,
 			Line:     logEntry.Line,
 			SourceIP: logEntry.SourceIP,
-			LogType:  auditlog.LogTypeToString(logEntry.LogType),
-			Severity: auditlog.SeverityToString(logEntry.Severity),
+			LogType:  h.AuditLog.LogTypeToString(logEntry.LogType),
+			Severity: h.AuditLog.SeverityToString(logEntry.Severity),
 			Env:      environments.EnvironmentFinderID(logEntry.EnvironmentID, envs, false),
 			When: CreationTimes{
 				Display: utils.PastFutureTimes(logEntry.CreatedAt),

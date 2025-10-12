@@ -33,6 +33,8 @@ const (
 	APITags = "/tags"
 	// APILogin for the login path
 	APILogin = "/login"
+	// APIAuditLogs for the audit logs path
+	APIAuditLogs = "/audit-logs"
 	// APIChecksNoAuth for the unauthenticated checks path
 	APIChecksNoAuth = "/checks-no-auth"
 	// APIChecksAuth for the authenticated checks path

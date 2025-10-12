@@ -219,6 +219,8 @@ func completeCarve(c *cli.Context) error {
 		if err := queriesmgr.Complete(name, e.ID); err != nil {
 			return fmt.Errorf("❌ error completing carve - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.CarveAction(getShellUsername(), "complete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.CompleteQuery(env, name)
 		if err != nil {
@@ -251,6 +253,8 @@ func deleteCarve(c *cli.Context) error {
 		if err := queriesmgr.Delete(name, e.ID); err != nil {
 			return fmt.Errorf("❌ error deleting carve - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.CarveAction(getShellUsername(), "delete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteQuery(env, name)
 		if err != nil {
@@ -283,6 +287,8 @@ func expireCarve(c *cli.Context) error {
 		if err := queriesmgr.Expire(name, e.ID); err != nil {
 			return fmt.Errorf("❌ error expiring carve - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.CarveAction(getShellUsername(), "expire carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.ExpireQuery(env, name)
 		if err != nil {
@@ -385,6 +391,8 @@ func runCarve(c *cli.Context) error {
 		if err := queriesmgr.SetExpected(cName, len(targetNodesID), e.ID); err != nil {
 			return fmt.Errorf("❌ error setting expected - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.NewCarve(getShellUsername(), path, "CLI", e.ID)
 	} else if apiFlag {
 		c, err := osctrlAPI.RunCarve(env, path, uuidList, hostList, platformList, tagList, hidden, expHours)
 		if err != nil {
