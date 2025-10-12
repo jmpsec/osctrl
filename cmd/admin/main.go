@@ -300,7 +300,9 @@ func osctrlAdminService() {
 	}
 	// Initialize audit log manager
 	if flagParams.AuditLog {
-		log.Info().Msg("Initialize audit log")
+		log.Info().Msg("Initialize audit log (enabled)")
+	} else {
+		log.Info().Msg("Initialize audit log (disabled)")
 	}
 	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
 	if err != nil {
