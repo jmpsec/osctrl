@@ -394,6 +394,11 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/query/{env}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
+	if flagParams.OptimizeUI {
+		adminMux.Handle(
+			"GET /json-download/query/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: JSON data for sidebar stats
 	adminMux.Handle(
 		"GET /json/stats/{target}/{identifier}",
