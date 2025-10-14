@@ -11,14 +11,12 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
-            {{ if $leftmeta.Carve }} {{ $carveBlocks := .CarveBlocks }} {{ with .Query }}
+            {{ $carveBlocks := .CarveBlocks }} {{ if $leftmeta.Carve }} {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
                 <i class="fas fa-stopwatch"></i> [ <b>QUERY EXPIRED</b> ] - {{ .Name }} {{ else }} {{ if .Completed }} <i class="fas fa-flag-checkered"></i> [ <b>QUERY COMPLETED</b> ] - {{ .Name }} {{ else }}
-                <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} -
-                <b>{{ inFutureTime .Expiration }}</b>
-                {{ end }} {{ end }}
+                <i class="fas fa-hourglass-half"></i> [ <b>QUERY ACTIVE</b> ] - {{ .Name }} - <b>{{ inFutureTime .Expiration }}</b>{{ end }} {{ end }}
                 <div class="card-header-actions">
                   <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh details" onclick="refreshCarveDetails();">
                     <i class="fas fa-sync-alt"></i>
@@ -203,6 +201,7 @@
           </div>
         </div>
       </main>
+      {{ end }}
 
       {{ if $metadata.Admin }} {{ template "page-aside-right" . }} {{ end }}
     </div>
@@ -212,7 +211,6 @@
     <!-- custom JS -->
     <script src="/static/js/carves.js"></script>
     <script src="/static/js/tables.js"></script>
-    {{ with .Query }}
     <script type="text/javascript">
       $(document).ready(function () {
         // Enable all tooltips
@@ -225,6 +223,5 @@
         }, 60000);
       });
     </script>
-    {{ end }}
   </body>
 </html>

@@ -645,9 +645,10 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Left metadata
 	leftMetadata := AsideLeftMetadata{
-		EnvUUID:   env.UUID,
-		Query:     true,
-		QueryName: query.Name,
+		EnvUUID:       env.UUID,
+		Query:         true,
+		QueryName:     query.Name,
+		OsqueryValues: h.OsqueryValues,
 	}
 	// Prepare template data
 	templateData := QueryLogsTemplateData{
@@ -744,9 +745,10 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 		blocks[c.SessionID] = bs
 	}
 	leftMetadata := AsideLeftMetadata{
-		EnvUUID:   env.UUID,
-		Carve:     true,
-		CarveName: query.Name,
+		EnvUUID:       env.UUID,
+		Carve:         true,
+		CarveName:     query.Name,
+		OsqueryValues: h.OsqueryValues,
 	}
 	// Get if the user is admin
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
