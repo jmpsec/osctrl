@@ -93,7 +93,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		log.Err(err).Msg("error invalid enrolling secret")
+		log.Err(err).Msg("invalid enrolling secret")
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}

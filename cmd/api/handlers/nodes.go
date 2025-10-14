@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -53,8 +54,9 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Serialize and serve JSON
 	log.Debug().Msgf("Returned node %s", nodeVar)
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed node "+nodeVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
 }
 
@@ -93,7 +95,8 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Serialize and serve JSON
-	log.Debug().Msg("Returned nodes")
+	log.Debug().Msg("Returned active nodes")
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed active nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -132,7 +135,8 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Serialize and serve JSON
-	log.Debug().Msg("Returned nodes")
+	log.Debug().Msg("Returned inactive nodes")
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed inactive nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -171,7 +175,8 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Serialize and serve JSON
-	log.Debug().Msg("Returned nodes")
+	log.Debug().Msg("Returned all nodes")
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed all nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
 }
 
@@ -213,8 +218,9 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
+	log.Debug().Msgf("Deleted node %s", n.UUID)
+	h.AuditLog.NodeAction(ctx[ctxUser], "deleted node "+n.UUID, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and serve JSON
-	log.Debug().Msgf("Returned node %s", n.UUID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
 }
 
@@ -262,8 +268,9 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error tagging node", http.StatusInternalServerError, err)
 		return
 	}
-	// Serialize and serve JSON
 	log.Debug().Msgf("Tagged node %s with %s", n.UUID, t.Tag)
+	h.AuditLog.NodeAction(ctx[ctxUser], "tagged node "+n.UUID+" with "+t.Tag, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node tagged"})
 }
 
@@ -298,6 +305,8 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
+	log.Debug().Msgf("Looked up node %s", l.Identifier)
+	h.AuditLog.NodeAction(ctx[ctxUser], "looked up node "+l.Identifier, strings.Split(r.RemoteAddr, ":")[0], n.ID)
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, n)
 }

@@ -41,7 +41,8 @@ type LogJSON struct {
 
 // ReturnedQueryLogs to return a JSON with query logs
 type ReturnedQueryLogs struct {
-	Data []QueryLogJSON `json:"data"`
+	Data     []QueryLogJSON `json:"data"`
+	Download string         `json:"download"`
 }
 
 // QueryTargetNode to return the target of a on-demand query
@@ -204,6 +205,93 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Iterate through targets to get logs
 	queryLogJSON := []QueryLogJSON{}
+	var downloadUrl string
+	// Get logs
+	if h.DBLogger != nil {
+		queryLogs, err := h.DBLogger.QueryLogs(name)
+		if err != nil {
+			log.Err(err).Msg("error getting logs")
+			return
+		}
+		// TODO customize max number of logs to show
+		if h.OptimizedUI && len(queryLogs) > 100 {
+			downloadUrl = "/json-download/query/" + envVar + "/" + name
+		} else {
+			// Prepare data to be returned
+			for _, q := range queryLogs {
+				// Get target node
+				node, err := h.Nodes.GetByUUID(q.UUID)
+				if err != nil {
+					node.UUID = q.UUID
+					node.Localname = ""
+				}
+				_c := CreationTimes{
+					Display:   utils.PastFutureTimes(q.CreatedAt),
+					Timestamp: strconv.Itoa(int(q.CreatedAt.Unix())),
+				}
+				qData, err := json.Marshal(q.Data)
+				if err != nil {
+					log.Err(err).Msg("error serializing logs")
+					continue
+				}
+				_l := QueryLogJSON{
+					Created: _c,
+					Target: QueryTargetNode{
+						UUID: node.UUID,
+						Name: node.Localname,
+					},
+					Data: string(qData),
+				}
+				queryLogJSON = append(queryLogJSON, _l)
+			}
+		}
+	}
+	returned := ReturnedQueryLogs{
+		Data:     queryLogJSON,
+		Download: downloadUrl,
+	}
+	// Serialize and serve JSON
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
+}
+
+// JSONDownloadQueryLogsHandler for JSON query logs by query name
+func (h *HandlersAdmin) JSONDownloadQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.Enabled {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		log.Info().Msg("error getting environment")
+		return
+	}
+	// Check if environment is valid
+	if !h.Envs.Exists(envVar) {
+		log.Info().Msgf("error unknown environment (%s)", envVar)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		log.Err(err).Msgf("error getting environment %s", envVar)
+		return
+	}
+	// Get context data
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, env.UUID) {
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
+		return
+	}
+	// Extract query name
+	// FIXME verify name
+	name := r.PathValue("name")
+	if name == "" {
+		log.Info().Msg("error getting name")
+		return
+	}
+	// Iterate through targets to get logs
+	queryLogJSON := []QueryLogJSON{}
 	// Get logs
 	if h.DBLogger != nil {
 		queryLogs, err := h.DBLogger.QueryLogs(name)
@@ -239,9 +327,20 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 			queryLogJSON = append(queryLogJSON, _l)
 		}
 	}
-	returned := ReturnedQueryLogs{
-		Data: queryLogJSON,
+	// Prepare JSON data for download
+	jsonData, err := json.MarshalIndent(queryLogJSON, "", "  ")
+	if err != nil {
+		log.Err(err).Msg("error marshaling query logs")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, nil)
+		return
 	}
-	// Serialize and serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
+	// Set headers for file download
+	filename := name + "_logs.json"
+	desc := "Logs for " + name
+	utils.HTTPDownload(w, desc, filename, int64(len(jsonData)))
+	// Write the file content
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(jsonData); err != nil {
+		log.Err(err).Msg("error writing response")
+	}
 }

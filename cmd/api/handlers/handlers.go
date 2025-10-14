@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -31,6 +32,7 @@ type HandlersApi struct {
 	RedisCache      *cache.RedisManager
 	ServiceVersion  string
 	ServiceName     string
+	AuditLog        *auditlog.AuditLogManager
 	ApiConfig       *config.JSONConfigurationService
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.DebugHTTPConfiguration
@@ -101,6 +103,12 @@ func WithVersion(version string) HandlersOption {
 func WithName(name string) HandlersOption {
 	return func(h *HandlersApi) {
 		h.ServiceName = name
+	}
+}
+
+func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.AuditLog = auditLog
 	}
 }
 

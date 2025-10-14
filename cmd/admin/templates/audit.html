@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  {{ $metadata := .Metadata }}
+  {{ $leftmeta := .LeftMetadata }}
+
+  {{ template "page-head" . }}
+
+  <body class="app header-fixed sidebar-fixed sidebar-lg-show">
+
+    {{ template "page-header" . }}
+
+    <div class="app-body">
+
+      {{ template "page-aside-left" . }}
+
+      <main class="main">
+
+        <div class="container-fluid">
+
+          <div class="animated fadeIn">
+
+
+            <div class="card mt-2">
+              <div class="card-header">
+                <i class="fas fa-id-card"></i> Audit Logs
+                <div class="card-header-actions">
+                  <small>Refresh in <span id="refresh_seconds">30</span> seconds</small>
+                  <button id="refresh_pause" class="btn btn-sm btn-outline-dark" data-tooltip="true" data-placement="bottom" title="Pause refresh" onclick="changeTableRefresh('refresh_value', 'refresh_pause');">
+                    <i class="fas fa-pause"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh nodes" onclick="refreshTableNow('tableAudit');">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body table-responsive" style="width:100%;">
+                <table id="tableAudit" class="table table-bordered table-striped" style="width:100%;">
+                  <input type="hidden" id="refresh_value" value="yes" />
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>User</th>
+                      <th>Log</th>
+                      <th>IP Address</th>
+                      <th>LogType</th>
+                      <th>Severity</th>
+                      <th>Environment</th>
+                      <th>When</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+
+          {{ template "page-modals" . }}
+
+        </div>
+
+      </main>
+
+      {{ if $metadata.Admin }}
+        {{ template "page-aside-right" . }}
+      {{ end }}
+
+    </div>
+
+    {{ template "page-js" . }}
+
+    <!-- custom JS -->
+    <script src="/static/js/tables.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+          console.log(message);
+          $('.card-header').addClass("bg-danger");
+        };
+        $.fn.dataTable.ext.ajax;
+        var tableAudit = $('#tableAudit').DataTable({
+          pageLength : 25,
+          paging: true,
+          searching : true,
+          processing : true,
+          order : [[ 7, "desc" ]],
+          scrollX: true,
+          initComplete : function(settings, json) {
+            $('.card-header').removeClass("bg-danger");
+          },
+          ajax : {
+            url: "/json/audit-logs",
+            dataSrc: function(json) {
+              $('.card-header').removeClass("bg-danger");
+              return json.data;
+            },
+            error: function(xhr, error, code) {
+              $('.card-header').addClass("bg-danger");
+              console.log("Error: " + error);
+              console.log("Error code: " + code);
+              console.log("Error response: " + xhr.responseText);
+            }
+          },
+          columns : [
+            {"data" : "service"},
+            {"data" : "username"},
+            {"data" : "line"},
+            {"data" : "sourceip"},
+            {"data" : "logtype"},
+            {"data" : "severity"},
+            {"data" : "environment"},
+            {"data" : {
+                _:    "when.display",
+                sort: "when.timestamp"
+              }
+            }
+          ],
+          columnDefs: [
+            {
+              targets: 0,
+              data: 'service',
+              width: '10%'
+            },{
+              targets: 1,
+              data: 'username',
+              width: '10%'
+            },{
+              targets: 2,
+              data: 'line',
+              width: '25%'
+            },{
+              targets: 3,
+              data: 'sourceip',
+              width: '10%'
+            },{
+              targets: 4,
+              data: 'logtype',
+              width: '10%'
+            },{
+              targets: 5,
+              data: 'severity',
+              width: '10%'
+            },{
+              targets: 6,
+              data: 'environment',
+              width: '10%'
+            },{
+              targets: 7,
+              data: 'when',
+              width: '15%'
+            }
+          ]
+        });
+
+        // Enable all tooltips
+        $('[data-tooltip="true"]').tooltip({trigger : 'hover'});
+
+        // Display the number of seconds left and refresh
+        var refreshSeconds = 30;
+        var timeleft = refreshSeconds;
+        var tableTimer = setInterval(function(){
+          if (document.getElementById("refresh_value").value === 'yes') {
+            timeleft--;
+          }
+          document.getElementById("refresh_seconds").textContent = timeleft;
+          if(timeleft <= 0) {
+            timeleft = refreshSeconds;
+            tableAudit.ajax.reload();
+          }
+        },1000);
+
+        // Refresh sidebar stats
+        beginStats();
+        var statsTimer = setInterval(function(){
+          beginStats();
+        },60000);
+
+      });
+    </script>
+  </body>
+</html>

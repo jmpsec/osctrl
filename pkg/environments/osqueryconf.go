@@ -233,7 +233,7 @@ func (environment *EnvManager) NodePacksEntries(configuration []byte, platform s
 func (environment *EnvManager) GenPacksEntries(configuration []byte) (PacksEntries, error) {
 	packsConf, err := environment.GenStructPacks(configuration)
 	if err != nil {
-		return PacksEntries{}, fmt.Errorf("error in GenStructPacks %w", err)
+		return PacksEntries{}, fmt.Errorf("in GenStructPacks %w", err)
 	}
 	packsEntries := make(PacksEntries)
 	for k, p := range packsConf {
@@ -243,11 +243,11 @@ func (environment *EnvManager) GenPacksEntries(configuration []byte) (PacksEntri
 		default:
 			rawdata, err := json.Marshal(v)
 			if err != nil {
-				return PacksEntries{}, fmt.Errorf("error in Marshal %w", err)
+				return PacksEntries{}, fmt.Errorf("in Marshal %w", err)
 			}
 			var parsed PackEntry
 			if err := json.Unmarshal(rawdata, &parsed); err != nil {
-				return PacksEntries{}, fmt.Errorf("error in Unmarshal %w", err)
+				return PacksEntries{}, fmt.Errorf("in Unmarshal %w", err)
 			}
 			packsEntries[k] = parsed
 		}

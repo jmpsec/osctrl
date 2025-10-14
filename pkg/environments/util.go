@@ -57,6 +57,9 @@ func PackageDownloadURL(env TLSEnvironment, pkg string) string {
 
 // EnvironmentFinderID to find the environment and return its name based on the environment ID
 func EnvironmentFinderID(envID uint, envs []TLSEnvironment, uuid bool) string {
+	if envID == 0 {
+		return "None"
+	}
 	for _, env := range envs {
 		if env.ID == envID {
 			if uuid {

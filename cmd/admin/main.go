@@ -14,6 +14,7 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	"github.com/jmpsec/osctrl/cmd/admin/handlers"
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -98,6 +99,7 @@ var (
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	handlersAdmin *handlers.HandlersAdmin
+	auditLog      *auditlog.AuditLogManager
 )
 
 // SAML variables
@@ -224,8 +226,6 @@ func osctrlAdminService() {
 	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
-	log.Info().Msg("Loading service metrics")
-
 	// Start SAML Middleware if we are using SAML
 	if flagParams.ConfigValues.Auth == config.AuthSAML {
 		log.Debug().Msg("SAML enabled for authentication")
@@ -246,7 +246,6 @@ func osctrlAdminService() {
 			log.Fatal().Msgf("Can not initialize SAML Middleware %s", err)
 		}
 	}
-
 	// FIXME Redis cache - Ticker to cleanup sessions
 	// FIXME splay this?
 	log.Info().Msg("Initialize cleanup sessions")
@@ -261,7 +260,6 @@ func osctrlAdminService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-
 	// Goroutine to cleanup expired queries and carves
 	log.Info().Msg("Initialize cleanup queries/carves")
 	go func() {
@@ -292,7 +290,6 @@ func osctrlAdminService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-
 	var loggerDBConfig *backend.JSONConfigurationDB
 	// Set the logger configuration file if we have a DB logger
 	if flagParams.ConfigValues.Logger == config.LoggingDB {
@@ -301,7 +298,16 @@ func osctrlAdminService() {
 			loggerDBConfig = &flagParams.DBConfigValues
 		}
 	}
-
+	// Initialize audit log manager
+	if flagParams.AuditLog {
+		log.Info().Msg("Initialize audit log (enabled)")
+	} else {
+		log.Info().Msg("Initialize audit log (disabled)")
+	}
+	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
+	if err != nil {
+		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
+	}
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersAdmin = handlers.CreateHandlersAdmin(
@@ -327,15 +333,14 @@ func osctrlAdminService() {
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
 		handlers.WithOptimizedUI(flagParams.OptimizeUI),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
+		handlers.WithAuditLog(auditLog),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
 		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
-
 	// ////////////////////////// ADMIN
 	log.Info().Msg("Initializing router")
 	// Create router for admin
 	adminMux := http.NewServeMux()
-
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
 	if flagParams.ConfigValues.Auth != config.AuthNone && flagParams.ConfigValues.Auth != config.AuthSAML {
@@ -389,6 +394,11 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/query/{env}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
+	if flagParams.OptimizeUI {
+		adminMux.Handle(
+			"GET /json-download/query/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: JSON data for sidebar stats
 	adminMux.Handle(
 		"GET /json/stats/{target}/{identifier}",
@@ -397,6 +407,12 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/tags",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.ConfigValues.Auth))
+	// Admin: JSON data for audit logs
+	if flagParams.AuditLog {
+		adminMux.Handle(
+			"GET /json/audit-logs",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONAuditLogHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: table for environments
 	adminMux.Handle(
 		"GET /environment/{env}/{target}",
@@ -541,6 +557,12 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"POST /profile",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler), flagParams.ConfigValues.Auth))
+	// Admin: audit logs
+	if flagParams.AuditLog {
+		adminMux.Handle(
+			"GET /audit-logs",
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.AuditLogsGETHandler), flagParams.ConfigValues.Auth))
+	}
 	// Admin: dashboard and search bar
 	adminMux.Handle(
 		"GET /dashboard",

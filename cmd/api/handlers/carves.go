@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -58,6 +59,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned carve %s", name)
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carve)
 }
 
@@ -108,6 +110,7 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d carves", len(carves))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
 }
 
@@ -147,6 +150,7 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned %d carves", len(carves))
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carves)
 }
 
@@ -239,6 +243,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Return query name as serialized response
 	log.Debug().Msgf("Created query %s", newQuery.Name)
+	h.AuditLog.NewCarve(ctx[ctxUser], newQuery.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
@@ -306,5 +311,6 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Return message as serialized response
 	log.Debug().Msgf("%s", msgReturn)
+	h.AuditLog.CarveAction(ctx[ctxUser], actionVar+" carve "+nameVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }

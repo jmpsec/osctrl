@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
@@ -25,4 +27,18 @@ func stringSliceToAnySlice(header []string) []any {
 		result[i] = v
 	}
 	return result
+}
+
+// Helper to get the shell username
+func getShellUsername() string {
+	user := os.Getenv("USER")
+	if user == "" {
+		user = os.Getenv("USERNAME")
+	}
+	if user == "" {
+		user = "cli-user"
+	} else {
+		user = "env: " + user
+	}
+	return user
 }

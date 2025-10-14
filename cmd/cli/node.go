@@ -127,6 +127,8 @@ func deleteNode(c *cli.Context) error {
 		if err := nodesmgr.ArchiveDeleteByUUID(uuid); err != nil {
 			return fmt.Errorf("error deleting - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.NodeAction(getShellUsername(), "delete node "+uuid, "CLI", 0)
 	} else if apiFlag {
 		if err := osctrlAPI.DeleteNode(env, uuid); err != nil {
 			return fmt.Errorf("error deleting node - %w", err)
@@ -187,6 +189,8 @@ func tagNode(c *cli.Context) error {
 		if err := tagsmgr.TagNode(tag, n, appName, false, tagTypeInt, tagCustom); err != nil {
 			return fmt.Errorf("error tagging - %w", err)
 		}
+		// Audit log
+		auditlogsmgr.NodeAction(getShellUsername(), "tag node "+uuid+" with "+tag, "CLI", e.ID)
 	} else if apiFlag {
 		if err := osctrlAPI.TagNode(env, uuid, tag, tagTypeInt, tagCustom); err != nil {
 			return fmt.Errorf("error tagging node - %w", err)

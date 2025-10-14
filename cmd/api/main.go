@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -84,6 +85,8 @@ const (
 	apiTagsPath = "/tags"
 	// API settings path
 	apiSettingsPath = "/settings"
+	// API audit logs path
+	apiAuditLogsPath = "/audit-logs"
 )
 
 // Global variables
@@ -102,6 +105,7 @@ var (
 	app         *cli.App
 	flags       []cli.Flag
 	flagParams  config.ServiceFlagParams
+	auditLog    *auditlog.AuditLogManager
 )
 
 // Valid values for auth and logging in configuration
@@ -209,6 +213,14 @@ func osctrlAPIService() {
 	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
+	// Initialize audit log manager
+	if flagParams.AuditLog {
+		log.Info().Msg("Initialize audit log")
+	}
+	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
+	if err != nil {
+		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
+	}
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersApi = handlers.CreateHandlersApi(
@@ -223,6 +235,7 @@ func osctrlAPIService() {
 		handlers.WithCache(redis),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
+		handlers.WithAuditLog(auditLog),
 		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
 	)
 
@@ -380,7 +393,12 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
-
+	// API: audit log
+	if flagParams.AuditLog {
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAuditLogsPath),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuditLogsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+	}
 	// Launch listeners for API server
 	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
 	if flagParams.TLSServer {

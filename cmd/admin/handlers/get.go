@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -150,4 +151,6 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		fileReader, _ = os.Open(archived.File)
 		_, _ = io.Copy(w, fileReader)
 	}
+	// Audit log visit
+	h.AuditLog.Visit(ctx[sessions.CtxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 }

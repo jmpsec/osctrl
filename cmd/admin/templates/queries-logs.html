@@ -11,8 +11,7 @@
       <main class="main">
         <div class="container-fluid">
           <div class="animated fadeIn">
-          {{ if $leftmeta.Query }}
-            {{ with .Query }}
+            {{ if $leftmeta.Query }} {{ with .Query }}
             <div class="card mt-2">
               <div class="card-header">
                 {{ if .Expired }}
@@ -68,6 +67,11 @@
                 </table>
                 <br />
                 {{ if eq $serviceConfig.Logger "db" }}
+                <div id="downloadLinkContainer" class="alert alert-info" style="display: none">
+                  <i class="fas fa-info-circle"></i>
+                  <strong>Large Result Set:</strong> The results are too large to display in the table.
+                  <a id="downloadLink" href="#" class="btn btn-sm btn-primary ml-2"> <i class="fas fa-download"></i> Download Full Results </a>
+                </div>
                 <table id="tableQueryLogs" class="table table-bordered table-striped" style="width: 100%">
                   <input type="hidden" id="refresh_value" value="yes" />
                   <thead>
@@ -83,15 +87,13 @@
                 {{ end }}
               </div>
             </div>
-            {{ end }}
-          {{ else }}
+            {{ end }} {{ else }}
             <div class="card mt-2">
               <div class="alert alert-danger" role="alert">
                 <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Query logs not available</h4>
               </div>
             </div>
-          {{ end }}
-
+            {{ end }}
           </div>
         </div>
       </main>
@@ -111,6 +113,7 @@
           $(".card-header").addClass("bg-danger");
         };
         $.fn.dataTable.ext.ajax;
+        var downloadUrl = ""; // Store download URL globally
         var tableQueryLogs = $("#tableQueryLogs").DataTable({
           initComplete: function (settings, json) {
             $(".card-header").removeClass("bg-danger");
@@ -122,6 +125,17 @@
             url: "/json/query/{{ $leftmeta.EnvUUID }}/{{ .Name }}",
             dataSrc: function (json) {
               $("#status-card-header").removeClass("bg-danger");
+              // Store download URL if available
+              downloadUrl = json.download || "";
+
+              // Show/hide download link container
+              if (downloadUrl && downloadUrl !== "") {
+                $("#downloadLink").attr("href", downloadUrl);
+                $("#downloadLinkContainer").show();
+              } else {
+                $("#downloadLinkContainer").hide();
+              }
+
               return json.data;
             },
             error: function (xhr, error, code) {
@@ -159,10 +173,70 @@
               width: "75%",
               targets: 2,
               render: function (data, type, row, meta) {
-                if (type === "display") {
-                  return "<pre>" + JSON.stringify(JSON.parse(JSON.parse(data)), null, 2) + "</pre>";
-                } else {
+                try {
+                  var rawData = JSON.parse(JSON.parse(data));
+                  var results = rawData.result;
+                  if (!Array.isArray(results) || results.length === 0) {
+                    return type === "display" ? '<div class="text-muted">No results</div>' : "";
+                  }
+                  // For filtering/searching, return all values as searchable text
+                  if (type === "filter" || type === "search") {
+                    var searchText = [];
+                    results.forEach(function (obj) {
+                      Object.keys(obj).forEach(function (key) {
+                        var value = obj[key];
+                        if (value !== undefined && value !== null) {
+                          if (typeof value === "object") {
+                            searchText.push(JSON.stringify(value));
+                          } else {
+                            searchText.push(String(value));
+                          }
+                        }
+                      });
+                    });
+                    return searchText.join(" ");
+                  }
+                  // For display, show the table
+                  if (type === "display") {
+                    // Get all unique keys from all objects
+                    var keys = [];
+                    results.forEach(function (obj) {
+                      Object.keys(obj).forEach(function (key) {
+                        if (keys.indexOf(key) === -1) {
+                          keys.push(key);
+                        }
+                      });
+                    });
+
+                    // Build table
+                    var table = '<table class="table table-sm table-bordered table-hover" style="margin-bottom: 0;">';
+                    table += '<thead class="thead-light"><tr>';
+                    keys.forEach(function (key) {
+                      table += '<th style="font-size: 0.85rem;">' + key + "</th>";
+                    });
+                    table += "</tr></thead><tbody>";
+
+                    results.forEach(function (obj) {
+                      table += "<tr>";
+                      keys.forEach(function (key) {
+                        var value = obj[key] !== undefined && obj[key] !== null ? obj[key] : "";
+                        // Handle nested objects/arrays
+                        if (typeof value === "object") {
+                          value = JSON.stringify(value);
+                        }
+                        table += '<td style="font-size: 0.85rem;">' + value + "</td>";
+                      });
+                      table += "</tr>";
+                    });
+
+                    table += "</tbody></table>";
+                    return table;
+                  }
+
+                  // For other types (sort, etc), return raw data
                   return data;
+                } catch (e) {
+                  return type === "display" ? '<div class="text-danger">Error parsing results: ' + e.message + "</div>" : "";
                 }
               },
             },
