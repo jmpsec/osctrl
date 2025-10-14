@@ -411,12 +411,15 @@
           $(this).find('#carve').focus();
         });
 
-        // Select2 initialization
-        var tagsSelect = $('#modal_tags').select2({
-          theme: "classic"
-        });
-        tagsSelect.on("select2:select", function(e){
-          $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
+        // Deferred Select2 initialization
+        var _tagsSelectReady = false;
+        $('#tagModal').one('shown.bs.modal', function(){
+          if(_tagsSelectReady) return;
+          var tagsSelect = $('#modal_tags').select2({ theme: 'classic' });
+          tagsSelect.on('select2:select', function(e){
+            $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
+          });
+          _tagsSelectReady = true;
         });
       });
     </script>
