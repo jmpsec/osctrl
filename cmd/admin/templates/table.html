@@ -417,25 +417,15 @@
           $(this).find('#carve').focus();
         });
 
-        // Deferred Select2 initialization (only when tag modal first opens)
+        // Deferred Select2 initialization
         var _tagsSelectReady = false;
-        function ensureSelect2(cb){
-          if ($.fn.select2) { return cb(); }
-          // If not loaded (edge case), dynamically load from CDN
-          var s = document.createElement('script');
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js';
-          s.onload = cb;
-          document.head.appendChild(s);
-        }
         $('#tagModal').one('shown.bs.modal', function(){
-          ensureSelect2(function(){
-            if(_tagsSelectReady) return;
-            var tagsSelect = $('#modal_tags').select2({ theme: 'classic' });
-            tagsSelect.on('select2:select', function(e){
-              $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
-            });
-            _tagsSelectReady = true;
+          if(_tagsSelectReady) return;
+          var tagsSelect = $('#modal_tags').select2({ theme: 'classic' });
+          tagsSelect.on('select2:select', function(e){
+            $('#add_tags').append(new Option(e.params.data.text, e.params.data.text));
           });
+          _tagsSelectReady = true;
         });
       });
     </script>
