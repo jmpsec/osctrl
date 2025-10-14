@@ -198,18 +198,44 @@ func (n *NodeManager) GetByEnv(env, target string, hours int64) ([]OsqueryNode, 
 	return nodes, nil
 }
 
-// GetByEnvLimit to retrieve target nodes by environment with limit and offset
-func (n *NodeManager) GetByEnvLimit(env, target string, hours int64) ([]OsqueryNode, error) {
+// GetByEnvPage retrieves a page of nodes by environment applying target filters using LIMIT/OFFSET
+func (n *NodeManager) GetByEnvPage(env, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
-	// Build query with base condition
+	if limit <= 0 { // safety default
+		limit = 25
+	}
+	if limit > 500 { // cap to avoid abuse
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	query := n.DB.Where("environment = ?", env)
-	// Apply active/inactive filtering
 	query = ApplyNodeTarget(query, target, hours)
-	// Execute query
-	if err := query.Find(&nodes).Error; err != nil {
+	// Default ordering only if client did not request a specific column
+	orderExpr := "last_seen DESC"
+	if orderBy != "" {
+		direction := "ASC"
+		if desc {
+			direction = "DESC"
+		}
+		orderExpr = orderBy + " " + direction
+	}
+	if err := query.Order(orderExpr).Offset(offset).Limit(limit).Find(&nodes).Error; err != nil {
 		return nodes, err
 	}
 	return nodes, nil
+}
+
+// CountByEnvTarget counts nodes for an environment after applying target (active/inactive/all)
+func (n *NodeManager) CountByEnvTarget(env string, target string, hours int64) (int64, error) {
+	var count int64
+	query := n.DB.Model(&OsqueryNode{}).Where("environment = ?", env)
+	query = ApplyNodeTarget(query, target, hours)
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // SearchByEnv to search nodes by environment and search term
@@ -225,6 +251,46 @@ func (n *NodeManager) SearchByEnv(env, term, target string, hours int64) ([]Osqu
 		return nodes, err
 	}
 	return nodes, nil
+}
+
+// SearchByEnvPage performs a paginated search
+func (n *NodeManager) SearchByEnvPage(env, term, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
+	if limit <= 0 {
+		limit = 25
+	} else if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var nodes []OsqueryNode
+	likeTerm := "%" + term + "%"
+	query := n.DB.Where("environment = ? AND (uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?)", env, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm)
+	query = ApplyNodeTarget(query, target, hours)
+	orderExpr := "last_seen DESC"
+	if orderBy != "" {
+		direction := "ASC"
+		if desc {
+			direction = "DESC"
+		}
+		orderExpr = orderBy + " " + direction
+	}
+	if err := query.Order(orderExpr).Offset(offset).Limit(limit).Find(&nodes).Error; err != nil {
+		return nodes, err
+	}
+	return nodes, nil
+}
+
+// CountSearchByEnv counts matching nodes for a search term with target filters
+func (n *NodeManager) CountSearchByEnv(env, term, target string, hours int64) (int64, error) {
+	likeTerm := "%" + term + "%"
+	query := n.DB.Model(&OsqueryNode{}).Where("environment = ? AND (uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?)", env, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm)
+	query = ApplyNodeTarget(query, target, hours)
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // GetByPlatform to retrieve target nodes by platform

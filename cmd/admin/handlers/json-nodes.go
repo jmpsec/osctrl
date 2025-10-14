@@ -167,37 +167,44 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 	start, _ := strconv.Atoi(r.URL.Query().Get("start"))
 	length, _ := strconv.Atoi(r.URL.Query().Get("length"))
 	searchValue := r.URL.Query().Get("search")
-	// Get total nodes count
-	totalCount, err := h.Nodes.CountAllByEnv(env.ID)
+
+	// DB-level counts
+	totalCount, err := h.Nodes.CountByEnvTarget(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
 	if err != nil {
-		log.Err(err).Msg("error getting total nodes count")
+		log.Err(err).Msg("error counting total nodes")
 		return
 	}
-	var nodes []nodes.OsqueryNode
-	// If there is a search value, run the search
+	var filteredCount int64
+	var nodesSlice []nodes.OsqueryNode
+	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	// Ordering (DataTables sends order[0][column], order[0][dir])
+	orderColIdxStr := r.URL.Query().Get("order[0][column]")
+	orderDir := r.URL.Query().Get("order[0][dir]")
+	colName := mapDTColumnToDB(orderColIdxStr)
+	desc := (orderDir == "desc")
 	if searchValue != "" {
-		nodes, err = h.Nodes.SearchByEnv(env.Name, searchValue, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
+		// Count filtered first
+		filteredCount, err = h.Nodes.CountSearchByEnv(env.Name, searchValue, target, hours)
 		if err != nil {
-			log.Err(err).Msg("error searching nodes")
+			log.Err(err).Msg("error counting search nodes")
+			return
+		}
+		nodesSlice, err = h.Nodes.SearchByEnvPage(env.Name, searchValue, target, hours, start, length, colName, desc)
+		if err != nil {
+			log.Err(err).Msg("error searching nodes page")
 			return
 		}
 	} else {
-		nodes, err = h.Nodes.GetByEnvLimit(env.Name, target, h.Settings.InactiveHours(settings.NoEnvironmentID))
+		filteredCount = totalCount
+		nodesSlice, err = h.Nodes.GetByEnvPage(env.Name, target, hours, start, length, colName, desc)
 		if err != nil {
-			log.Err(err).Msg("error getting nodes")
+			log.Err(err).Msg("error getting nodes page")
 			return
 		}
 	}
-	// Pagination, it can be done more efficiently in the DB, but this is ok for now
-	end := min(start+length, len(nodes))
-	if start > end {
-		start = end
-	}
-	filteredCount := len(nodes)
-	nodes = nodes[start:end]
 	// Prepare data to be returned
 	nJSON := []NodeJSON{}
-	for _, n := range nodes {
+	for _, n := range nodesSlice {
 		nj := NodeJSON{
 			UUID:      n.UUID,
 			Username:  n.Username,
@@ -220,9 +227,38 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 	returned := PaginatedNodes{
 		Draw:     draw,
 		Total:    int(totalCount),
-		Filtered: filteredCount,
+		Filtered: int(filteredCount),
 		Data:     nJSON,
 	}
 	// Serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, returned)
+}
+
+// mapDTColumnToDB maps DataTables column index (as string) to actual DB column name.
+// DataTables columns order in the UI:
+// 0 checkbox,1 uuid,2 username(last user),3 localname,4 ip,5 platform,6 version(platform_version),7 osquery,8 lastseen,9 firstseen
+// We only allow ordering on a safe subset of real DB columns.
+func mapDTColumnToDB(idx string) string {
+	switch idx {
+	case "1":
+		return "uuid"
+	case "2":
+		return "username"
+	case "3":
+		return "localname"
+	case "4":
+		return "ip_address"
+	case "5":
+		return "platform"
+	case "6":
+		return "platform_version"
+	case "7":
+		return "osquery_version"
+	case "8":
+		return "last_seen"
+	case "9":
+		return "created_at" // first seen
+	default:
+		return "" // fallback to default ordering in caller
+	}
 }
