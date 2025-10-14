@@ -127,11 +127,17 @@
           {{ if .OptimizeUI }}
             url: "/paginated-json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
             data: function(d) {
+              // Explicitly forward ordering parameters expected by server handler
+              // while preserving the simplified search parameter name already used server-side.
+              var orderCol = (d.order && d.order.length) ? d.order[0].column : 8; // default Last Seen
+              var orderDir = (d.order && d.order.length) ? d.order[0].dir : 'desc';
               return {
                 draw: d.draw,
                 start: d.start,
                 length: d.length,
-                search: d.search.value
+                search: d.search.value,
+                'order[0][column]': orderCol,
+                'order[0][dir]': orderDir
               };
             },
           {{ else }}
