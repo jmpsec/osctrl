@@ -72,7 +72,7 @@
                         <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
                         <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}">
                       </td>
-                      <td>{{index $counterTags $t.ID}}</td>
+                      <td>{{with index $counterTags $t.ID}}{{.}}{{else}}0{{end}}</td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>
