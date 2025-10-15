@@ -1422,6 +1422,12 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("error getting tags")
 		return
 	}
+	// Get current tags count
+	tagsCount, err := h.Tags.CountTaggedNodes(tags)
+	if err != nil {
+		log.Err(err).Msg("error getting tags count")
+		return
+	}
 	// Get if the user is admin
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
@@ -1434,6 +1440,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 		Metadata:     h.TemplateMetadata(ctx, h.ServiceMetadata, user.Admin),
 		Environments: h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Tags:         tags,
+		CounterTags:  tagsCount,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")

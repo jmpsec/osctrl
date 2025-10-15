@@ -44,18 +44,12 @@ const (
 	ActionUntag string = "untag"
 	// TagCustomEnv as custom tag for environment name
 	TagCustomEnv string = TagTypeEnvStr
-	// TagCustomUUID as custom tag for node UUID
-	TagCustomUUID string = TagTypeUUIDStr
 	// TagCustomPlatform as custom tag for node platform
 	TagCustomPlatform string = TagTypePlatformStr
-	// TagCustomLocalname as custom tag for node localname
-	TagCustomLocalname string = TagTypeLocalnameStr
 	// TagCustomUnknown as custom tag for unknown tags
 	TagCustomUnknown string = TagTypeUnknownStr
 	// TagCustomTag as custom tag for regular tags
 	TagCustomTag string = TagTypeTagStr
-	// TagCustomHostname as custom tag for hostname tags
-	TagCustomHostname string = TagTypeHostnameStr
 )
 
 // AdminTag to hold all tags
@@ -89,6 +83,9 @@ type TaggedNode struct {
 	TaggedBy   string
 	UserID     uint
 }
+
+// TagCounter to hold tagged node counts
+type TagCounter map[uint]int
 
 // TagManager have all tags
 type TagManager struct {
@@ -148,13 +145,9 @@ func (m *TagManager) New(name, description, color, icon, user string, envID uint
 	case TagTypeEnv:
 		tagCustom = TagCustomEnv
 		cohort = true
-	case TagTypeUUID:
-		tagCustom = TagCustomUUID
 	case TagTypePlatform:
 		tagCustom = TagCustomPlatform
 		cohort = true
-	case TagTypeLocalname:
-		tagCustom = TagCustomLocalname
 	case TagTypeCustom:
 		tagCustom = custom
 	case TagTypeUnknown:
@@ -399,7 +392,7 @@ func (m *TagManager) ChangeEnvironment(tag *AdminTag, envID uint) error {
 
 // AutoTagNode to automatically tag a node based on multiple fields
 func (m *TagManager) AutoTagNode(env string, node nodes.OsqueryNode, user string) error {
-	l := []string{env, node.UUID, node.Platform, node.Localname}
+	l := []string{env, node.Platform}
 	return m.TagNodeMulti(l, node, user, true, "")
 }
 
@@ -538,8 +531,21 @@ func (m *TagManager) GetNodeTags(tagged []AdminTag) ([]AdminTagForNode, error) {
 // GetTaggedNodes to retrieve tagged nodes with a given tag name and environment
 func (m *TagManager) GetTaggedNodes(tag AdminTag) ([]TaggedNode, error) {
 	var tagged []TaggedNode
-	if err := m.DB.Where("id = ?", tag.ID).Find(&tagged).Error; err != nil {
+	if err := m.DB.Where("admin_tag_id = ?", tag.ID).Find(&tagged).Error; err != nil {
 		return tagged, err
 	}
 	return tagged, nil
+}
+
+// CountTaggedNodes to count tagged nodes for a given list of tags
+func (m *TagManager) CountTaggedNodes(tags []AdminTag) (TagCounter, error) {
+	tagCounter := make(TagCounter)
+	for _, t := range tags {
+		tagged, err := m.GetTaggedNodes(t)
+		if err != nil {
+			return tagCounter, err
+		}
+		tagCounter[t.ID] = len(tagged)
+	}
+	return tagCounter, nil
 }

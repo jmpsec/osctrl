@@ -225,6 +225,7 @@ type TagsTemplateData struct {
 	Environments []environments.TLSEnvironment
 	Platforms    []string
 	Tags         []tags.AdminTag
+	CounterTags  tags.TagCounter
 	Metadata     TemplateMetadata
 	LeftMetadata AsideLeftMetadata
 }

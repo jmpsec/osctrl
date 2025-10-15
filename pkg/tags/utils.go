@@ -10,14 +10,8 @@ import (
 const (
 	// TagTypeEnvStr is the tag type for shortened environment
 	TagTypeEnvStr = "env"
-	// TagTypeUUIDStr is the tag type for UUID
-	TagTypeUUIDStr = "uuid"
 	// TagTypePlatformStr is the tag type for platform
 	TagTypePlatformStr = "platform"
-	// TagTypeLocalnameStr is the tag type for localname
-	TagTypeLocalnameStr = "localname"
-	// TagTypeHostnameStr is the tag type for hostname
-	TagTypeHostnameStr = "hostname"
 	// TagTypeCustomStr is the tag type for custom
 	TagTypeCustomStr = "custom"
 	// TagTypeUnknownStr is the tag type for unknown
@@ -50,14 +44,8 @@ func TagTypeDecorator(tagType uint) string {
 	switch tagType {
 	case TagTypeEnv:
 		return TagTypeEnvStr
-	case TagTypeUUID:
-		return TagTypeUUIDStr
 	case TagTypePlatform:
 		return TagTypePlatformStr
-	case TagTypeLocalname:
-		return TagTypeLocalnameStr
-	case TagTypeHostname:
-		return TagTypeHostnameStr
 	case TagTypeCustom:
 		return TagTypeCustomStr
 	case TagTypeTag:
@@ -72,12 +60,8 @@ func TagTypeParser(tagType string) uint {
 	switch strings.ToUpper(tagType) {
 	case strings.ToUpper(TagTypeEnvStr):
 		return TagTypeEnv
-	case strings.ToUpper(TagTypeUUIDStr):
-		return TagTypeUUID
 	case strings.ToUpper(TagTypePlatformStr):
 		return TagTypePlatform
-	case strings.ToUpper(TagTypeLocalnameStr):
-		return TagTypeLocalname
 	case strings.ToUpper(TagTypeCustomStr):
 		return TagTypeCustom
 	case strings.ToUpper(TagTypeTagStr):
@@ -93,14 +77,8 @@ func SetCustomTag(tagType uint, custom string) string {
 	switch tagType {
 	case TagTypeEnv:
 		tagCustom = TagCustomEnv
-	case TagTypeUUID:
-		tagCustom = TagCustomUUID
 	case TagTypePlatform:
 		tagCustom = TagCustomPlatform
-	case TagTypeLocalname:
-		tagCustom = TagCustomLocalname
-	case TagTypeHostname:
-		tagCustom = TagCustomHostname
 	case TagTypeCustom:
 		tagCustom = custom
 	case TagTypeUnknown:
@@ -138,12 +116,8 @@ func ValidateCustom(anyCustom string) string {
 	switch strings.ToUpper(anyCustom) {
 	case strings.ToUpper(TagTypeEnvStr):
 		return TagTypeEnvStr
-	case strings.ToUpper(TagTypeUUIDStr):
-		return TagTypeUUIDStr
 	case strings.ToUpper(TagTypePlatformStr):
 		return TagTypePlatformStr
-	case strings.ToUpper(TagTypeLocalnameStr):
-		return TagTypeLocalnameStr
 	case strings.ToUpper(TagTypeCustomStr):
 		return TagTypeCustomStr
 	case strings.ToUpper(TagTypeTagStr):
