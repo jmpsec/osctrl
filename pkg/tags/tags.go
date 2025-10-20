@@ -18,20 +18,14 @@ const (
 	DefaultAutocreated = "Autocreated"
 	// TagTypeEnv as tag type for environment name
 	TagTypeEnv uint = 0
-	// TagTypeUUID as tag type for node UUID
-	TagTypeUUID uint = 1
 	// TagTypePlatform as tag type for node platform
 	TagTypePlatform uint = 2
-	// TagTypeLocalname as tag type for node localname
-	TagTypeLocalname uint = 3
 	// TagTypeCustom as tag type for custom tags
 	TagTypeCustom uint = 4
 	// TagTypeUnknown as tag type for unknown tags
 	TagTypeUnknown uint = 5
 	// TagTypeTag as tag type for regular tags
 	TagTypeTag uint = 6
-	// TagTypeHostname as tag type for hostname tags
-	TagTypeHostname uint = 7
 	// ActionAdd as action to add a tag
 	ActionAdd string = "add"
 	// ActionEdit as action to edit a tag
@@ -540,12 +534,38 @@ func (m *TagManager) GetTaggedNodes(tag AdminTag) ([]TaggedNode, error) {
 // CountTaggedNodes to count tagged nodes for a given list of tags
 func (m *TagManager) CountTaggedNodes(tags []AdminTag) (TagCounter, error) {
 	tagCounter := make(TagCounter)
-	for _, t := range tags {
-		tagged, err := m.GetTaggedNodes(t)
-		if err != nil {
-			return tagCounter, err
+	if len(tags) == 0 {
+		return tagCounter, nil
+	}
+	// Collect tag IDs
+	tagIDs := make([]uint, len(tags))
+	for i, t := range tags {
+		tagIDs[i] = t.ID
+	}
+	// Result struct for query
+	type result struct {
+		AdminTagID uint
+		Count      int
+	}
+	var results []result
+	// Grouped count query
+	if err := m.DB.
+		Model(&TaggedNode{}).
+		Select("admin_tag_id, COUNT(*) as count").
+		Where("admin_tag_id IN ?", tagIDs).
+		Group("admin_tag_id").
+		Scan(&results).Error; err != nil {
+		return tagCounter, err
+	}
+	// Populate TagCounter from results
+	for _, r := range results {
+		tagCounter[r.AdminTagID] = r.Count
+	}
+	// Ensure all tags are present in the map (with zero if not found)
+	for _, id := range tagIDs {
+		if _, ok := tagCounter[id]; !ok {
+			tagCounter[id] = 0
 		}
-		tagCounter[t.ID] = len(tagged)
 	}
 	return tagCounter, nil
 }
