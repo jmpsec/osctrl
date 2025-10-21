@@ -163,12 +163,6 @@ func tagNode(c *cli.Context) error {
 	switch tagType {
 	case tags.TagTypeEnvStr:
 		tagTypeInt = tags.TagTypeEnv
-	case tags.TagTypeUUIDStr:
-		tagTypeInt = tags.TagTypeUUID
-	case tags.TagTypeLocalnameStr:
-		tagTypeInt = tags.TagTypeLocalname
-	case tags.TagTypeHostnameStr:
-		tagTypeInt = tags.TagTypeHostname
 	case tags.TagTypePlatformStr:
 		tagTypeInt = tags.TagTypePlatform
 	case tags.TagTypeTagStr:

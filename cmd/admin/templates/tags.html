@@ -49,10 +49,12 @@
                       <th>Color</th>
                       <th>Icon</th>
                       <th>Environment</th>
+                      <th>Tagged Nodes</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
+                  {{ $counterTags := $.CounterTags }}
                   {{range  $i, $t := $.Tags}}
                     <tr>
                       <td>
@@ -70,6 +72,7 @@
                         <b>{{ environmentFinder $t.EnvironmentID $.Environments false }}</b>
                         <input type="hidden" value="{{ environmentFinder $t.EnvironmentID $.Environments true }}" id="tag_env_{{ $t.Name }}">
                       </td>
+                      <td>{{with index $counterTags $t.ID}}{{.}}{{else}}0{{end}}</td>
                       <td>
                         <button type="button" class="btn btn-sm btn-ghost-danger" onclick="confirmDeleteTag('{{ $t.Name }}');">
                           <i class="far fa-trash-alt"></i>
@@ -138,13 +141,10 @@
                         <select class="form-control" name="tag_type" id="tag_type">
                           <option value=""></option>
                           <option value="0">Environment</option>
-                          <option value="1">UUID</option>
                           <option value="2">Platform</option>
-                          <option value="3">Localname</option>
                           <option value="4">Custom</option>
                           <option value="5">Unknown</option>
                           <option value="6">Tag</option>
-                          <option value="7">Hostname</option>
                         </select>
                       </div>
                     </div>
