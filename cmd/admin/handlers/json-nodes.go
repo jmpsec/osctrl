@@ -327,10 +327,10 @@ func (h *HandlersAdmin) JSONNodeSearchHandler(w http.ResponseWriter, r *http.Req
 		var id, text string
 		if fieldType == "hostname" {
 			id = node.Localname
-			text = node.Localname + " (" + node.UUID + ")"
+			text = node.Localname
 		} else {
 			id = node.UUID
-			text = node.UUID + " (" + node.Localname + ")"
+			text = node.UUID
 		}
 
 		results = append(results, Select2Result{
