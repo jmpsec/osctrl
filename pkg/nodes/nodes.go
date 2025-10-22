@@ -293,6 +293,41 @@ func (n *NodeManager) CountSearchByEnv(env, term, target string, hours int64) (i
 	return count, nil
 }
 
+// SearchByField searches nodes by a specific field (uuid or localname) with pagination
+// fieldType must be either "uuid" or "localname"
+func (n *NodeManager) SearchByField(fieldType, term, target string, hours int64, limit int) ([]OsqueryNode, error) {
+	if limit <= 0 {
+		limit = 50
+	} else if limit > 500 {
+		limit = 500
+	}
+
+	var nodes []OsqueryNode
+	var query *gorm.DB
+
+	// Build query based on field type
+	switch fieldType {
+	case "localname":
+		likeTerm := "%" + term + "%"
+		query = n.DB.Where("localname LIKE ?", likeTerm)
+	case "uuid":
+		// UUID is stored uppercase, so convert search term to uppercase for consistency
+		likeTerm := "%" + strings.ToUpper(term) + "%"
+		query = n.DB.Where("uuid LIKE ?", likeTerm)
+	default:
+		return nil, fmt.Errorf("invalid fieldType: %s, must be 'uuid' or 'localname'", fieldType)
+	}
+
+	// Apply active/inactive filtering
+	query = ApplyNodeTarget(query, target, hours)
+
+	// Execute query with limit
+	if err := query.Order("localname ASC").Limit(limit).Find(&nodes).Error; err != nil {
+		return nodes, err
+	}
+	return nodes, nil
+}
+
 // GetByPlatform to retrieve target nodes by platform
 func (n *NodeManager) GetByPlatform(envID uint, platform, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode

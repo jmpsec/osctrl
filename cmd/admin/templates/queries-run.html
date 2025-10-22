@@ -101,10 +101,6 @@
                                     <label>By node UUID:</label>
                                     <div id="selector_uuids" class="input-group">
                                       <select class="form-control" name="target_uuids[]" id="target_uuids" multiple="multiple">
-                                        <option value=""></option>
-                                        {{ range $i, $e := $.UUIDs }}
-                                        <option value="{{ $e }}">{{ $e }}</option>
-                                        {{ end }}
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. 11111111-2222-3333-4444-555555555555</small>
@@ -115,10 +111,6 @@
                                     <label>By node Hostname:</label>
                                     <div id="selector_hosts" class="input-group">
                                       <select class="form-control" name="target_hosts[]" id="target_hosts" multiple="multiple">
-                                        <option value=""></option>
-                                        {{ range $i, $e := $.Hosts }}
-                                        <option value="{{ $e }}">{{ $e }}</option>
-                                        {{ end }}
                                       </select>
                                     </div>
                                     <small class="text-muted">ex. MacBookPro</small>
@@ -264,6 +256,20 @@
 
     {{ template "page-js" . }}
 
+    <!-- custom CSS for Select2 search input -->
+    <style>
+      .select2-search--inline .select2-search__field {
+        min-width: 300px !important;
+        width: 100% !important;
+      }
+      .select2-container--classic .select2-search--inline .select2-search__field {
+        min-width: 300px !important;
+      }
+      .select2-selection--multiple {
+        min-height: 38px !important;
+      }
+    </style>
+
     <!-- custom JS -->
     <script src="/static/js/query.js"></script>
     <script type="text/javascript">
@@ -280,18 +286,63 @@
         // Select2 initialization
         $("#target_platform").select2({
           theme: "classic",
+          width: '100%'
         });
         $("#target_env").select2({
           theme: "classic",
+          width: '100%'
         });
         $("#target_uuids").select2({
           theme: "classic",
+          width: '100%',
+          ajax: {
+            url: '/json/nodes/search',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+              return {
+                q: params.term,
+                field: 'uuid'
+              };
+            },
+            processResults: function(data) {
+              return {
+                results: data.results
+              };
+            },
+            cache: true
+          },
+          minimumInputLength: 2,
+          placeholder: 'Type to search UUIDs...',
+          allowClear: true
         });
         $("#target_hosts").select2({
           theme: "classic",
+          width: '100%',
+          ajax: {
+            url: '/json/nodes/search',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+              return {
+                q: params.term,
+                field: 'hostname'
+              };
+            },
+            processResults: function(data) {
+              return {
+                results: data.results
+              };
+            },
+            cache: true
+          },
+          minimumInputLength: 2,
+          placeholder: 'Type to search hostnames...',
+          allowClear: true
         });
         $("#target_tags").select2({
           theme: "classic",
+          width: '100%'
         });
 
         // Enable all tooltips
