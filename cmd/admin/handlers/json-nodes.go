@@ -304,12 +304,11 @@ func (h *HandlersAdmin) JSONNodeSearchHandler(w http.ResponseWriter, r *http.Req
 	var dbField string
 	switch fieldType {
 	case "hostname":
-		dbField = "localname"
+		dbField = "hostname"
 	case "uuid":
 		dbField = "uuid"
 	default:
-		// Return error for invalid fieldType
-		log.Warn().Msgf("get invalid fieldType: %s", fieldType)
+		log.Warn().Msgf("invalid fieldType: %s", fieldType)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusBadRequest, Select2Response{Results: []Select2Result{}})
 		return
 	}
@@ -327,17 +326,13 @@ func (h *HandlersAdmin) JSONNodeSearchHandler(w http.ResponseWriter, r *http.Req
 	for _, node := range nodesFound {
 		var id, text string
 		if fieldType == "hostname" {
-			id = node.Localname
-			text = node.Localname
-		} else {
+			id = node.Hostname
+			text = node.Hostname
+		} else { // uuid
 			id = node.UUID
 			text = node.UUID
 		}
-
-		results = append(results, Select2Result{
-			ID:   id,
-			Text: text,
-		})
+		results = append(results, Select2Result{ID: id, Text: text})
 	}
 
 	// Return results

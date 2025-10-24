@@ -293,8 +293,8 @@ func (n *NodeManager) CountSearchByEnv(env, term, target string, hours int64) (i
 	return count, nil
 }
 
-// SearchByField searches nodes by a specific field (uuid or localname) with pagination
-// fieldType must be either "uuid" or "localname"
+// SearchByField searches nodes by a specific field (uuid, hostname or localname) with pagination
+// fieldType must be one of: "uuid", "hostname", "localname"
 func (n *NodeManager) SearchByField(fieldType, term, target string, hours int64, limit int) ([]OsqueryNode, error) {
 	if limit <= 0 {
 		limit = 50
@@ -310,19 +310,22 @@ func (n *NodeManager) SearchByField(fieldType, term, target string, hours int64,
 	case "localname":
 		likeTerm := "%" + term + "%"
 		query = n.DB.Where("localname LIKE ?", likeTerm)
+	case "hostname":
+		likeTerm := "%" + term + "%"
+		query = n.DB.Where("hostname LIKE ?", likeTerm)
 	case "uuid":
 		// UUID is stored uppercase, so convert search term to uppercase for consistency
 		likeTerm := "%" + strings.ToUpper(term) + "%"
 		query = n.DB.Where("uuid LIKE ?", likeTerm)
 	default:
-		return nil, fmt.Errorf("invalid fieldType: %s, must be 'uuid' or 'localname'", fieldType)
+		return nil, fmt.Errorf("invalid fieldType: %s, must be 'uuid', 'hostname' or 'localname'", fieldType)
 	}
 
 	// Apply active/inactive filtering
 	query = ApplyNodeTarget(query, target, hours)
 
 	// Execute query with limit
-	if err := query.Order("localname ASC").Limit(limit).Find(&nodes).Error; err != nil {
+	if err := query.Order("hostname ASC").Limit(limit).Find(&nodes).Error; err != nil {
 		return nodes, err
 	}
 	return nodes, nil
