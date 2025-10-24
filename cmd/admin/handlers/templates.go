@@ -222,19 +222,6 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
-	// Get all nodes
-	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
-	if err != nil {
-		log.Err(err).Msg("error getting all nodes")
-		return
-	}
-	// Convert to list of UUIDs and Hosts
-	// FIXME if the number of nodes is big, this may cause issues loading the page
-	var uuids, hosts []string
-	for _, n := range nodes {
-		uuids = append(uuids, n.UUID)
-		hosts = append(hosts, n.Localname)
-	}
 	// Get all tags
 	allTags, err := h.Tags.GetByEnv(env.ID)
 	if err != nil {
@@ -260,8 +247,6 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		LeftMetadata:  leftMetadata,
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
-		UUIDs:         uuids,
-		Hosts:         hosts,
 		Tags:          tags.TagsToStrings(allTags),
 		Tables:        h.OsqueryTables,
 		OsqueryValues: h.OsqueryValues,
@@ -453,19 +438,6 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		log.Err(err).Msg("error getting platforms")
 		return
 	}
-	// Get all nodes
-	nodes, err := h.Nodes.Gets("active", h.Settings.InactiveHours(settings.NoEnvironmentID))
-	if err != nil {
-		log.Err(err).Msg("error getting all nodes")
-		return
-	}
-	// Convert to list of UUIDs and Hosts
-	// FIXME if the number of nodes is big, this may cause issues loading the page
-	var uuids, hosts []string
-	for _, n := range nodes {
-		uuids = append(uuids, n.UUID)
-		hosts = append(hosts, n.Localname)
-	}
 	// Get if the user is admin
 	user, err := h.Users.Get(ctx[sessions.CtxUser])
 	if err != nil {
@@ -491,8 +463,6 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 		LeftMetadata:  leftMetadata,
 		Environments:  h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		Platforms:     platforms,
-		UUIDs:         uuids,
-		Hosts:         hosts,
 		Tags:          tags.TagsToStrings(allTags),
 		Tables:        h.OsqueryTables,
 		OsqueryValues: h.OsqueryValues,

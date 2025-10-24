@@ -407,6 +407,10 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/tags",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.ConfigValues.Auth))
+	// Admin: JSON data for node search (UUID/hostname) - for Select2 AJAX
+	adminMux.Handle(
+		"GET /json/nodes/search",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONNodeSearchHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for audit logs
 	if flagParams.AuditLog {
 		adminMux.Handle(

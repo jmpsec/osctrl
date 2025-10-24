@@ -101,8 +101,6 @@ type QueryRunTemplateData struct {
 	Title         string
 	Environments  []environments.TLSEnvironment
 	Platforms     []string
-	UUIDs         []string
-	Hosts         []string
 	Tags          []string
 	Tables        []types.OsqueryTable
 	OsqueryValues config.OsqueryConfiguration

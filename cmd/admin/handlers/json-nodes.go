@@ -21,6 +21,11 @@ var (
 	}
 )
 
+const (
+	// DefaultNodeSearchLimit is the default maximum number of results for node search
+	DefaultNodeSearchLimit = 50
+)
+
 // ReturnedNodes to return a JSON with nodes
 type ReturnedNodes struct {
 	Data []NodeJSON `json:"data"`
@@ -261,4 +266,78 @@ func mapDTColumnToDB(idx string) string {
 	default:
 		return "" // fallback to default ordering in caller
 	}
+}
+
+// Select2Result represents a single result item for Select2
+type Select2Result struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+// Select2Response represents the response structure for Select2 AJAX requests
+type Select2Response struct {
+	Results []Select2Result `json:"results"`
+}
+
+// JSONNodeSearchHandler - Handler for searching nodes by UUID or hostname (for Select2 AJAX)
+func (h *HandlersAdmin) JSONNodeSearchHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context().Value(sessions.ContextKey(sessions.CtxSession)).(sessions.ContextValue)
+	// Check permissions - user needs at least query level
+	if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, users.NoEnvironment) {
+		log.Info().Msgf("%s has insufficient permissions", ctx[sessions.CtxUser])
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusForbidden, Select2Response{Results: []Select2Result{}})
+		return
+	}
+
+	searchTerm := r.URL.Query().Get("q")
+	fieldType := r.URL.Query().Get("field")
+
+	// Get limit from query parameter, default to DefaultNodeSearchLimit
+	limit := DefaultNodeSearchLimit
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	// Map field type to database field name
+	var dbField string
+	switch fieldType {
+	case "hostname":
+		dbField = "hostname"
+	case "uuid":
+		dbField = "uuid"
+	default:
+		log.Warn().Msgf("invalid fieldType: %s", fieldType)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusBadRequest, Select2Response{Results: []Select2Result{}})
+		return
+	}
+
+	// Search nodes at database level
+	nodesFound, err := h.Nodes.SearchByField(dbField, searchTerm, "active", h.Settings.InactiveHours(settings.NoEnvironmentID), limit)
+	if err != nil {
+		log.Err(err).Msg("error searching nodes")
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, Select2Response{Results: []Select2Result{}})
+		return
+	}
+
+	// Format results for Select2
+	results := []Select2Result{}
+	for _, node := range nodesFound {
+		var id, text string
+		if fieldType == "hostname" {
+			id = node.Hostname
+			text = node.Hostname
+		} else { // uuid
+			id = node.UUID
+			text = node.UUID
+		}
+		results = append(results, Select2Result{ID: id, Text: text})
+	}
+
+	// Return results
+	response := Select2Response{
+		Results: results,
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 }
