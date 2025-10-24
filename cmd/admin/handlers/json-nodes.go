@@ -311,6 +311,7 @@ func (h *HandlersAdmin) JSONNodeSearchHandler(w http.ResponseWriter, r *http.Req
 		// Return error for invalid fieldType
 		log.Warn().Msgf("get invalid fieldType: %s", fieldType)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusBadRequest, Select2Response{Results: []Select2Result{}})
+		return
 	}
 
 	// Search nodes at database level
