@@ -214,7 +214,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		// TODO customize max number of logs to show
-		if h.OptimizedUI && len(queryLogs) > 100 {
+		if len(queryLogs) > 100 {
 			downloadUrl = "/json-download/query/" + envVar + "/" + name
 		} else {
 			// Prepare data to be returned

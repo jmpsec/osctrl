@@ -203,7 +203,6 @@ type YAMLConfigurationAdmin struct {
 	StaticDir       string `yaml:"staticDir"`
 	StaticOffline   bool   `yaml:"keyFile"`
 	TemplatesDir    string `yaml:"templatesDir"`
-	OptimizeUI      bool   `yaml:"optimizeUI"`
 	BrandingImage   string `yaml:"brandingImage"`
 	BackgroundImage string `yaml:"backgroundImage"`
 }

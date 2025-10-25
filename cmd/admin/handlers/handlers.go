@@ -41,7 +41,6 @@ type HandlersAdmin struct {
 	TemplatesFolder string
 	StaticLocation  string
 	CarvesFolder    string
-	OptimizedUI     bool
 	OsqueryTables   []types.OsqueryTable
 	AdminConfig     *config.JSONConfigurationService
 	AuditLog        *auditlog.AuditLogManager
@@ -103,12 +102,6 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 func WithCarvesFolder(carves string) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.CarvesFolder = carves
-	}
-}
-
-func WithOptimizedUI(optimized bool) HandlersOption {
-	return func(h *HandlersAdmin) {
-		h.OptimizedUI = optimized
 	}
 }
 

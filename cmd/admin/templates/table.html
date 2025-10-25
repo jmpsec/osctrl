@@ -106,7 +106,6 @@
                "<'row'<'col-sm-12 col-md-4'B><'col-sm-12 col-md-4 text-center'i><'col-sm-12 col-md-4'p>>",
           processing : true,
           order : [[ 8, "desc" ]],
-        {{ if .OptimizeUI }}
           serverSide: true,
           initComplete : function(settings, json) {
             $('.card-header').removeClass("bg-danger");
@@ -118,13 +117,7 @@
               }
             });
           },
-        {{ else }}
-          initComplete : function(settings, json) {
-            $('.card-header').removeClass("bg-danger");
-          },
-        {{ end }}
           ajax : {
-          {{ if .OptimizeUI }}
             url: "/paginated-json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
             data: function(d) {
               // Explicitly forward ordering parameters expected by server handler
@@ -140,9 +133,6 @@
                 'order[0][dir]': orderDir
               };
             },
-          {{ else }}
-            url: "/json/{{ .Selector }}/{{ .SelectorName }}/{{ .Target }}",
-          {{ end }}
             dataSrc: function(json) {
               $('.card-header').removeClass("bg-danger");
               return json.data;
