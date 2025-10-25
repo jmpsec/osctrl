@@ -331,7 +331,6 @@ func osctrlAdminService() {
 		handlers.WithStaticLocation(flagParams.StaticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithCarvesFolder(flagParams.CarvedDir),
-		handlers.WithOptimizedUI(flagParams.OptimizeUI),
 		handlers.WithAdminConfig(&flagParams.ConfigValues),
 		handlers.WithAuditLog(auditLog),
 		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
@@ -376,16 +375,10 @@ func osctrlAdminService() {
 			flagParams.ConfigValues.Auth,
 		),
 	)
-	// Admin: JSON data for environments
-	adminMux.Handle(
-		"GET /json/environment/{env}/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentHandler), flagParams.ConfigValues.Auth))
 	// Admin: paginated JSON data for environments
-	if flagParams.OptimizeUI {
-		adminMux.Handle(
-			"GET /paginated-json/environment/{env}/{target}",
-			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentPagingHandler), flagParams.ConfigValues.Auth))
-	}
+	adminMux.Handle(
+		"GET /paginated-json/environment/{env}/{target}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentPagingHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for logs
 	adminMux.Handle(
 		"GET /json/logs/{type}/{env}/{uuid}",
@@ -394,11 +387,9 @@ func osctrlAdminService() {
 	adminMux.Handle(
 		"GET /json/query/{env}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
-	if flagParams.OptimizeUI {
-		adminMux.Handle(
-			"GET /json-download/query/{env}/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.ConfigValues.Auth))
-	}
+	adminMux.Handle(
+		"GET /json-download/query/{env}/{name}",
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.ConfigValues.Auth))
 	// Admin: JSON data for sidebar stats
 	adminMux.Handle(
 		"GET /json/stats/{target}/{identifier}",
