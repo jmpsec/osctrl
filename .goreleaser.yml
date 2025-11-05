@@ -85,7 +85,7 @@ builds:
       - -X main.buildDate={{.Date}}
 
 archives:
-  - id: [ osctrl ]
+  - id: osctrl
     allow_different_binary_count: true
     name_template: >-
       {{ .ProjectName }}-
@@ -95,8 +95,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
-        format: [ 'zip' ]
-    builds:
+        formats: [ 'zip' ]
+    ids:
       - osctrl-tls
       - osctrl-admin
       - osctrl-api
