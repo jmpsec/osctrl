@@ -4,18 +4,15 @@ set -e
 
 OSCTRL_USER="${VARIABLE:-osctrl}"
 OSCTRL_GROUP="${VARIABLE:-osctrl}"
-WORKING_DIR="${VARIABLE:-/etc/osctrl}"
+WORKING_DIR="${VARIABLE:-/opt/osctrl}"
 OSQUERY_VERSION="${VARIABLE:-5.19.0}"
 OSCTRL_VERSION="${VARIABLE:-0.0.0}"
 
 ###################################### Init DEB contents ######################################
 DEB_DIR=".debpkg-osctrl-${OSCTRL_COMPONENT}-${COMMIT_SHA}-${GOOS}-${GOARCH}"
 mkdir -p "${DEB_DIR}/DEBIAN"
-mkdir -p "${DEB_DIR}/usr/local/bin"
-mkdir -p "${DEB_DIR}/usr/share/osctrl"
-mkdir -p "${DEB_DIR}/etc/osctrl"
 mkdir -p "${DEB_DIR}/etc/systemd/system"
-mkdir -p "${DEB_DIR}/usr/share/osctrl/osctrl-${OSCTRL_COMPONENT}"
+mkdir -p "${DEB_DIR}/opt/osctrl/osctrl-${OSCTRL_COMPONENT}"
 mkdir -p "${DEB_DIR}/var/log/osctrl-${OSCTRL_COMPONENT}"
 
 
