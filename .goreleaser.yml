@@ -95,8 +95,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
-    builds:
+        formats: [ 'zip' ]
+    ids:
       - osctrl-tls
       - osctrl-admin
       - osctrl-api
@@ -177,12 +177,10 @@ nfpms:
     license: MIT
     formats:
       - deb
-    bindir: /usr/bin
+    bindir: /opt/osctrl/bin
     contents:
-      - src: osctrl-tls-linux-amd64
-        dst: /usr/bin/osctrl-tls
-      - src: osctrl-tls-linux-arm64
-        dst: /usr/bin/osctrl-tls
+      - src: ./dist/osctrl-tls-{{ .Os }}-{{ .Arch }}
+        dst: /opt/osctrl/bin/osctrl-tls
     overrides:
       deb:
         scripts:
@@ -196,12 +194,10 @@ nfpms:
     license: MIT
     formats:
       - deb
-    bindir: /usr/bin
+    bindir: /opt/osctrl/bin
     contents:
-      - src: osctrl-admin-linux-amd64
-        dst: /usr/bin/osctrl-admin
-      - src: osctrl-admin-linux-arm64
-        dst: /usr/bin/osctrl-admin
+      - src: ./dist/osctrl-admin-{{ .Os }}-{{ .Arch }}
+        dst: /opt/osctrl/bin/osctrl-admin
     overrides:
       deb:
         scripts:
@@ -215,12 +211,10 @@ nfpms:
     license: MIT
     formats:
       - deb
-    bindir: /usr/bin
+    bindir: /opt/osctrl/bin
     contents:
-      - src: osctrl-api-linux-amd64
-        dst: /usr/bin/osctrl-api
-      - src: osctrl-api-linux-arm64
-        dst: /usr/bin/osctrl-api
+      - src: ./dist/osctrl-api-{{ .Os }}-{{ .Arch }}
+        dst: /opt/osctrl/bin/osctrl-api
     overrides:
       deb:
         scripts:
@@ -234,12 +228,10 @@ nfpms:
     license: MIT
     formats:
       - deb
-    bindir: /usr/bin
+    bindir: /opt/osctrl/bin
     contents:
-      - src: osctrl-cli-linux-amd64
-        dst: /usr/bin/osctrl-cli
-      - src: osctrl-cli-linux-arm64
-        dst: /usr/bin/osctrl-cli
+      - src: ./dist/osctrl-cli-{{ .Os }}-{{ .Arch }}
+        dst: /opt/osctrl/bin/osctrl-cli
     overrides:
       deb:
         scripts:
