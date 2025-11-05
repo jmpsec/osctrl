@@ -2,10 +2,6 @@
 
 set -e
 
-################### Restart osctrl-{{ OSCTRL_COMPONENT }} service ###################
-systemctl restart osctrl-{{ OSCTRL_COMPONENT }}.service
-echo "osctrl-{{ OSCTRL_COMPONENT }} service restarted successfully."
-
 ################### Reload osctrl-{{ OSCTRL_COMPONENT }} service ###################
 systemctl daemon-reload
 echo "osctrl-{{ OSCTRL_COMPONENT }} service daemon reloaded successfully."
