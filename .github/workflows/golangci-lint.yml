@@ -19,7 +19,7 @@ env:
 jobs:
   golangci:
     name: lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
