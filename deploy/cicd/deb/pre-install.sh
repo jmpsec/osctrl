@@ -21,7 +21,6 @@ then
     chown osctrl:adm -R /var/log/osctrl-{{ OSCTRL_COMPONENT }}
 fi
 
-------------------
 
 ################### Set perms on config directory ###################
 if [ -d "/opt/osctrl/config" ]
