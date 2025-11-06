@@ -16,7 +16,7 @@ env:
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -68,7 +68,7 @@ jobs:
 
   create_deb_packages:
     needs: [build_and_test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -104,7 +104,7 @@ jobs:
 
   create_docker_images:
     needs: [build_and_test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -145,7 +145,7 @@ jobs:
 
   push_docker_images:
     needs: [create_docker_images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -220,9 +220,40 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.meta.outputs.version }}
 
-  create_release:
+  create_github_release:
     needs: [build_and_test, create_deb_packages, push_docker_images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      ########################### Checkout code ###########################
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 2
+
+      ########################### Generate SHA1 commit hash ###########################
+      - name: Declare GIT hash and branch
+        id: vars
+        shell: bash
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      ########################### Create release ###########################
+      - name: Create a new GitHub release
+        uses: ./.github/actions/tagged_release/github
+        with:
+          # Assuming the action can be called without component to just create the release
+          # If not, modify the action to support a 'create_only' mode
+          create_only: true
+          release_version_tag: "${{ steps.vars.outputs.RELEASE_VERSION }}"
+
+  upload_release_assets:
+    needs: [create_github_release]
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -246,7 +277,6 @@ jobs:
           fetch-depth: 2
 
       ########################### Generate SHA1 commit hash ###########################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
       - name: Declare GIT hash and branch
         id: vars
         shell: bash
@@ -255,8 +285,8 @@ jobs:
           echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      ########################### Create release ###########################
-      - name: Create a new release with binaries and packages
+      ########################### Upload release assets ###########################
+      - name: Upload release assets
         uses: ./.github/actions/tagged_release/github
         with:
           go_os: "${{ matrix.goos }}"
@@ -264,3 +294,4 @@ jobs:
           osctrl_component: "${{ matrix.components }}"
           commit_sha: "${{ steps.vars.outputs.sha_short }}"
           release_version_tag: "${{ steps.vars.outputs.RELEASE_VERSION }}"
+          upload_only: true # Assuming the action supports this mode

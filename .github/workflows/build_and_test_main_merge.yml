@@ -14,7 +14,7 @@ env:
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -71,7 +71,7 @@ jobs:
         goos: ["linux"]
         goarch: ["amd64"]
     needs: [build_and_test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       ########################### Checkout code ###########################
       - name: Checkout code
@@ -101,7 +101,7 @@ jobs:
 
   create_docker_images:
     needs: [build_and_test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         components: ["tls", "admin", "api", "cli"]
@@ -141,7 +141,7 @@ jobs:
 
   push_docker_images:
     needs: [create_docker_images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
