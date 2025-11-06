@@ -28,17 +28,17 @@ then
     chown root:osctrl -R /opt/osctrl/config
 fi
 
-################### Copy common configs ###################
-if [ ! -f /opt/osctrl/db.json.example ]
+################### Copy needed configs ###################
+if [ ! -f /opt/osctrl/config/db.json ]
 then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/db.json.example /opt/osctrl/db.json.example
-    chown root:root /opt/osctrl/db.json.example
+    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/db.json.example /opt/osctrl/config/db.json
+    chown root:root /opt/osctrl/config/db.json.example
 fi
 
-if [ ! -f /opt/osctrl/redis.json.example ]
+if [ ! -f /opt/osctrl/config/redis.json ]
 then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/redis.json.example /opt/osctrl/redis.json.example
-    chown root:root /opt/osctrl/redis.json.example
+    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/redis.json.example /opt/osctrl/config/redis.json
+    chown root:root /opt/osctrl/config/redis.json.example
 fi
 rm -rd /tmp/osctrl-{{ OSCTRL_COMPONENT }}
 
