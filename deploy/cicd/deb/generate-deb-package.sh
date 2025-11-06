@@ -35,19 +35,19 @@ cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
 
 
 # Example configs
-cp deploy/config/db.json "${DEB_DIR}/opt/osctrl/config/db.json.example" && \
-    chmod 640 "${DEB_DIR}/opt/osctrl/config/db.json.example"
+cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example"
 
-cp deploy/config/redis.json "${DEB_DIR}/opt/osctrl/config/redis.json.example" && \
-    chmod 640 "${DEB_DIR}/opt/osctrl/config/redis.json.example"
+cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example"
 
 
 # General components content
 cp osctrl-${OSCTRL_COMPONENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT}" && \
     chmod 755 "${DEB_DIR}/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT}"
 
-cp deploy/config/service.json "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json.example" && \
-    chmod 640 "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json.example"
+cp deploy/config/service.json "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json" && \
+    chmod 640 "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json"
 
 # Generate systemd config file
 EXECSTART="/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT} \\
