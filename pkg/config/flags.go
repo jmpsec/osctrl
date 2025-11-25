@@ -643,7 +643,7 @@ func initKafkaFlags(params *ServiceFlagParams) []cli.Flag {
 			Value:       "",
 			Usage:       "Kafka bootstrap servers to be used as configuration for logging",
 			EnvVars:     []string{"LOG_KAFKA_BOOTSTRAP_SERVERS"},
-			Destination: &params.KafkaConfiguration.BoostrapServer,
+			Destination: &params.KafkaConfiguration.BootstrapServer,
 		},
 		&cli.StringFlag{
 			Name:        "log-kafka-sslca-location",
