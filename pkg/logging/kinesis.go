@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -8,10 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 )
 
 // KinesisConfiguration to hold all Kinesis configuration values
@@ -27,36 +28,53 @@ type KinesisConfiguration struct {
 // LoggerKinesis will be used to log data using Kinesis
 type LoggerKinesis struct {
 	Configuration KinesisConfiguration
-	KinesisClient *kinesis.Kinesis
+	KinesisClient *kinesis.Client
 	Enabled       bool
 }
 
 // CreateLoggerKinesis to initialize the logger
 func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
-	config, err := LoadKinesis(kinesisFile)
+	cfg, err := LoadKinesis(kinesisFile)
 	if err != nil {
 		return nil, err
 	}
-	s, err := session.NewSession(&aws.Config{
-		Region:      aws.String(config.Region),
-		Endpoint:    aws.String(config.Endpoint),
-		Credentials: credentials.NewStaticCredentials(config.AccessKeyID, config.SecretAccessKey, config.SessionToken),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("NewSession: %w", err)
+
+	loadOpts := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(cfg.Region),
 	}
-	kc := kinesis.New(s)
-	streamName := aws.String(config.Stream)
-	_, err = kc.DescribeStream(&kinesis.DescribeStreamInput{StreamName: streamName})
+	if cfg.AccessKeyID != "" || cfg.SecretAccessKey != "" || cfg.SessionToken != "" {
+		loadOpts = append(loadOpts,
+			awsconfig.WithCredentialsProvider(
+				credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, cfg.SessionToken),
+			))
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), loadOpts...)
 	if err != nil {
+		return nil, fmt.Errorf("load AWS config: %w", err)
+	}
+
+	var kinesisOpts []func(*kinesis.Options)
+	if cfg.Endpoint != "" {
+		endpoint := cfg.Endpoint
+		kinesisOpts = append(kinesisOpts, func(o *kinesis.Options) {
+			o.BaseEndpoint = aws.String(endpoint)
+		})
+	}
+
+	kc := kinesis.NewFromConfig(awsCfg, kinesisOpts...)
+
+	if _, err := kc.DescribeStream(context.Background(), &kinesis.DescribeStreamInput{
+		StreamName: aws.String(cfg.Stream),
+	}); err != nil {
 		return nil, fmt.Errorf("DescribeStream: %w", err)
 	}
-	l := &LoggerKinesis{
-		Configuration: config,
+
+	return &LoggerKinesis{
+		Configuration: cfg,
 		KinesisClient: kc,
 		Enabled:       true,
-	}
-	return l, nil
+	}, nil
 }
 
 // LoadKinesis - Function to load the Kinesis configuration from JSON file
@@ -90,15 +108,16 @@ func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid 
 		log.Debug().Msgf("Sending %d bytes to Kinesis for %s - %s", len(data), environment, uuid)
 	}
 	streamName := aws.String(logSK.Configuration.Stream)
-	putOutput, err := logSK.KinesisClient.PutRecord(&kinesis.PutRecordInput{
-		Data:         []byte(data),
+	putOutput, err := logSK.KinesisClient.PutRecord(context.Background(), &kinesis.PutRecordInput{
+		Data:         data,
 		StreamName:   streamName,
 		PartitionKey: aws.String(logType + ":" + environment + ":" + uuid),
 	})
 	if err != nil {
 		log.Err(err).Msg("Error sending kinesis stream")
+		return
 	}
 	if debug {
-		log.Debug().Msgf("PutRecordOutput %s", putOutput.String())
+		log.Debug().Msgf("PutRecordOutput %+v", putOutput)
 	}
 }
