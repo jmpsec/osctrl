@@ -23,7 +23,7 @@ type LoggerKafka struct {
 
 func CreateLoggerKafka(config config.KafkaConfiguration) (*LoggerKafka, error) {
 	opts := []kgo.Opt{
-		kgo.SeedBrokers(config.BoostrapServer),
+		kgo.SeedBrokers(config.BootstrapServer),
 		kgo.ConsumeTopics(config.Topic),
 	}
 

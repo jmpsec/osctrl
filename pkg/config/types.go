@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const YAMLConfigType = "yaml"
+
 // Types of services
 const (
 	ServiceTLS   string = "tls"
@@ -100,6 +102,7 @@ type AdminConfiguration struct {
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
 	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
 	Osctrld YAMLConfigurationOsctrld `mapstructure:"osctrld"`
+	SAML    YAMLConfigurationSAML    `mapstructure:"saml"`
 	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
@@ -244,14 +247,14 @@ type YAMLConfigurationJWT struct {
 
 // YAMLConfigurationSAML to keep all SAML details for auth
 type YAMLConfigurationSAML struct {
-	CertPath     string `yaml:"certpath"`
-	KeyPath      string `yaml:"keypath"`
-	MetaDataURL  string `yaml:"metadataurl"`
-	RootURL      string `yaml:"rooturl"`
-	LoginURL     string `yaml:"loginurl"`
-	LogoutURL    string `yaml:"logouturl"`
-	JITProvision bool   `yaml:"jitprovision"`
-	SPInitiated  bool   `yaml:"spinitiated"`
+	CertPath     string `yaml:"certPath"`
+	KeyPath      string `yaml:"keyPath"`
+	MetaDataURL  string `yaml:"metadataUrl"`
+	RootURL      string `yaml:"rootUrl"`
+	LoginURL     string `yaml:"loginUrl"`
+	LogoutURL    string `yaml:"logoutUrl"`
+	JITProvision bool   `yaml:"jitProvision"`
+	SPInitiated  bool   `yaml:"spInitiated"`
 }
 
 // S3Configuration to hold all S3 configuration values
@@ -269,9 +272,9 @@ type KafkaSASLConfigurations struct {
 }
 
 type KafkaConfiguration struct {
-	BoostrapServer    string                  `json:"bootstrap_servers"`
-	SSLCALocation     string                  `json:"ssl_ca_location"`
-	ConnectionTimeout time.Duration           `json:"connection_timeout"`
+	BootstrapServer   string                  `json:"bootstrapServers"`
+	SSLCALocation     string                  `json:"sslCALocation"`
+	ConnectionTimeout time.Duration           `json:"connectionTimeout"`
 	SASL              KafkaSASLConfigurations `json:"sasl"`
 	Topic             string                  `json:"topic"`
 }

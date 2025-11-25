@@ -135,18 +135,23 @@ func loadJSONConfiguration(file, service string) (config.JSONConfigurationServic
 	return cfg, nil
 }
 
+
 // Function to load the configuration from a single YAML file
-func loadConfigurationYAML(file string) (config.TLSConfiguration, error) {
+/*func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	var cfg config.TLSConfiguration
 	// Load file and read config
 	viper.SetConfigFile(file)
-	viper.SetConfigType("yaml")
+	viper.SetConfigType(config.YAMLConfigType)
 	if err := viper.ReadInConfig(); err != nil {
+		return cfg, err
+	}
+	// Unmarshal into struct
+	if err := viper.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// No errors!
 	return cfg, nil
-}
+}*/
 
 // Initialization code
 func init() {
