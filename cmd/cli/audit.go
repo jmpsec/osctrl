@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of audit logs entries into the data expected for output
@@ -84,7 +85,7 @@ func helperAuditLogs(als []auditlog.AuditLog, m environments.MapEnvByID) error {
 	return nil
 }
 
-func auditLogs(c *cli.Context) error {
+func auditLogs(ctx context.Context, cmd *cli.Command) error {
 	var als []auditlog.AuditLog
 	var m environments.MapEnvByID
 	if dbFlag {

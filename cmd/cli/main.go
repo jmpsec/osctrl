@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/term"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -56,23 +57,23 @@ const (
 
 // Global variables
 var (
-	err         error
-	app         *cli.App
-	dbConfig    backend.JSONConfigurationDB
-	apiConfig   JSONConfigurationAPI
-	flags       []cli.Flag
-	commands    []*cli.Command
-	settingsmgr *settings.Settings
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	filecarves  *carves.Carves
-	adminUsers  *users.UserManager
-	tagsmgr     *tags.TagManager
-	envs        *environments.EnvManager
-	db          *backend.DBManager
+	err          error
+	app          *cli.Command
+	dbConfig     backend.JSONConfigurationDB
+	apiConfig    JSONConfigurationAPI
+	flags        []cli.Flag
+	commands     []*cli.Command
+	settingsmgr  *settings.Settings
+	nodesmgr     *nodes.NodeManager
+	queriesmgr   *queries.Queries
+	filecarves   *carves.Carves
+	adminUsers   *users.UserManager
+	tagsmgr      *tags.TagManager
+	envs         *environments.EnvManager
+	db           *backend.DBManager
 	auditlogsmgr *auditlog.AuditLogManager
-	osctrlAPI   *OsctrlAPI
-	formats     map[string]bool
+	osctrlAPI    *OsctrlAPI
+	formats      map[string]bool
 )
 
 // Variables for flags
@@ -102,7 +103,7 @@ func init() {
 			Aliases:     []string{"d"},
 			Value:       false,
 			Usage:       "Connect to local osctrl DB using JSON config file",
-			EnvVars:     []string{"DB_CONFIG"},
+			Sources:     cli.EnvVars("DB_CONFIG"),
 			Destination: &dbFlag,
 		},
 		&cli.BoolFlag{
@@ -110,7 +111,7 @@ func init() {
 			Aliases:     []string{"a"},
 			Value:       true,
 			Usage:       "Connect to remote osctrl using JSON config file",
-			EnvVars:     []string{"API_CONFIG"},
+			Sources:     cli.EnvVars("API_CONFIG"),
 			Destination: &apiFlag,
 		},
 		&cli.StringFlag{
@@ -118,21 +119,21 @@ func init() {
 			Aliases:     []string{"A"},
 			Value:       defaultApiConfigFile,
 			Usage:       "Load API JSON configuration from `FILE`",
-			EnvVars:     []string{"API_CONFIG_FILE"},
+			Sources:     cli.EnvVars("API_CONFIG_FILE"),
 			Destination: &apiConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "api-url",
 			Aliases:     []string{"U"},
 			Usage:       "The URL for osctrl API to be used",
-			EnvVars:     []string{"API_URL"},
+			Sources:     cli.EnvVars("API_URL"),
 			Destination: &apiConfig.URL,
 		},
 		&cli.StringFlag{
 			Name:        "api-token",
 			Aliases:     []string{"T"},
 			Usage:       "Token to authenticate with the osctrl API",
-			EnvVars:     []string{"API_TOKEN"},
+			Sources:     cli.EnvVars("API_TOKEN"),
 			Destination: &apiConfig.Token,
 		},
 		&cli.StringFlag{
@@ -140,63 +141,63 @@ func init() {
 			Aliases:     []string{"D"},
 			Value:       "",
 			Usage:       "Load DB JSON configuration from `FILE`",
-			EnvVars:     []string{"DB_CONFIG_FILE"},
+			Sources:     cli.EnvVars("DB_CONFIG_FILE"),
 			Destination: &dbConfigFile,
 		},
 		&cli.StringFlag{
 			Name:        "db-host",
 			Value:       "127.0.0.1",
 			Usage:       "Backend host to be connected to",
-			EnvVars:     []string{"DB_HOST"},
+			Sources:     cli.EnvVars("DB_HOST"),
 			Destination: &dbConfig.Host,
 		},
 		&cli.StringFlag{
 			Name:        "db-port",
 			Value:       "5432",
 			Usage:       "Backend port to be connected to",
-			EnvVars:     []string{"DB_PORT"},
+			Sources:     cli.EnvVars("DB_PORT"),
 			Destination: &dbConfig.Port,
 		},
 		&cli.StringFlag{
 			Name:        "db-name",
 			Value:       "osctrl",
 			Usage:       "Database name to be used in the backend",
-			EnvVars:     []string{"DB_NAME"},
+			Sources:     cli.EnvVars("DB_NAME"),
 			Destination: &dbConfig.Name,
 		},
 		&cli.StringFlag{
 			Name:        "db-user",
 			Value:       "postgres",
 			Usage:       "Username to be used for the backend",
-			EnvVars:     []string{"DB_USER"},
+			Sources:     cli.EnvVars("DB_USER"),
 			Destination: &dbConfig.Username,
 		},
 		&cli.StringFlag{
 			Name:        "db-pass",
 			Value:       "postgres",
 			Usage:       "Password to be used for the backend",
-			EnvVars:     []string{"DB_PASS"},
+			Sources:     cli.EnvVars("DB_PASS"),
 			Destination: &dbConfig.Password,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-idle-conns",
 			Value:       20,
 			Usage:       "Maximum number of connections in the idle connection pool",
-			EnvVars:     []string{"DB_MAX_IDLE_CONNS"},
+			Sources:     cli.EnvVars("DB_MAX_IDLE_CONNS"),
 			Destination: &dbConfig.MaxIdleConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-max-open-conns",
 			Value:       100,
 			Usage:       "Maximum number of open connections to the database",
-			EnvVars:     []string{"DB_MAX_OPEN_CONNS"},
+			Sources:     cli.EnvVars("DB_MAX_OPEN_CONNS"),
 			Destination: &dbConfig.MaxOpenConns,
 		},
 		&cli.IntFlag{
 			Name:        "db-conn-max-lifetime",
 			Value:       30,
 			Usage:       "Maximum amount of time a connection may be reused",
-			EnvVars:     []string{"DB_CONN_MAX_LIFETIME"},
+			Sources:     cli.EnvVars("DB_CONN_MAX_LIFETIME"),
 			Destination: &dbConfig.ConnMaxLifetime,
 		},
 		&cli.BoolFlag{
@@ -218,7 +219,7 @@ func init() {
 			Aliases:     []string{"o"},
 			Value:       prettyFormat,
 			Usage:       "Format to be used for data output",
-			EnvVars:     []string{"OUTPUT_FORMAT"},
+			Sources:     cli.EnvVars("OUTPUT_FORMAT"),
 			Destination: &formatFlag,
 		},
 		&cli.BoolFlag{
@@ -234,7 +235,7 @@ func init() {
 		{
 			Name:  "user",
 			Usage: "Commands for users",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
@@ -491,7 +492,7 @@ func init() {
 			Name:    "environment",
 			Aliases: []string{"env"},
 			Usage:   "Commands for TLS environment",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
@@ -906,7 +907,7 @@ func init() {
 				},
 				{
 					Name: "node-actions",
-					Subcommands: []*cli.Command{
+					Commands: []*cli.Command{
 						{
 							Name:    "show-flags",
 							Aliases: []string{"s"},
@@ -1127,7 +1128,7 @@ func init() {
 		{
 			Name:  "settings",
 			Usage: "Commands for settings",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
@@ -1250,7 +1251,7 @@ func init() {
 		{
 			Name:  "node",
 			Usage: "Commands for nodes",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
@@ -1371,7 +1372,7 @@ func init() {
 		{
 			Name:  "query",
 			Usage: "Commands for queries",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "complete",
 					Aliases: []string{"c"},
@@ -1530,7 +1531,7 @@ func init() {
 		{
 			Name:  "carve",
 			Usage: "Commands for file carves",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "complete",
 					Aliases: []string{"c"},
@@ -1690,7 +1691,7 @@ func init() {
 		{
 			Name:  "tag",
 			Usage: "Commands for tags",
-			Subcommands: []*cli.Command{
+			Commands: []*cli.Command{
 				{
 					Name:    "add",
 					Aliases: []string{"a"},
@@ -1889,9 +1890,9 @@ func init() {
 }
 
 // Action for the DB check
-func checkDB(c *cli.Context) error {
+func checkDB(ctx context.Context, cmd *cli.Command) error {
 	if verboseFlag {
-		showFlags(c)
+		showFlags(ctx, cmd)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 	if dbFlag && dbConfigFile != "" {
@@ -1917,9 +1918,9 @@ func checkDB(c *cli.Context) error {
 }
 
 // Action for the API check
-func checkAPI(c *cli.Context) error {
+func checkAPI(ctx context.Context, cmd *cli.Command) error {
 	if verboseFlag {
-		showFlags(c)
+		showFlags(ctx, cmd)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 	if apiFlag {
@@ -1943,9 +1944,9 @@ func checkAPI(c *cli.Context) error {
 }
 
 // Action for the API login
-func loginAPI(c *cli.Context) error {
+func loginAPI(ctx context.Context, cmd *cli.Command) error {
 	if verboseFlag {
-		showFlags(c)
+		showFlags(ctx, cmd)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 	// API URL can is needed
@@ -1956,17 +1957,17 @@ func loginAPI(c *cli.Context) error {
 	// Initialize API
 	osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 	// We need credentials
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	env := c.String("environment")
+	env := cmd.String("environment")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	expHours := c.Int("expiration")
+	expHours := cmd.Int("expiration")
 	fmt.Printf("\n ->  Please introduce your password: ")
 	passwordByte, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
@@ -1993,39 +1994,39 @@ func loginAPI(c *cli.Context) error {
 	return nil
 }
 
-func showFlags(c *cli.Context) {
+func showFlags(ctx context.Context, cmd *cli.Command) {
 	fmt.Println("=== Flag Values ===")
 	// Get all defined flags
-	for _, flag := range c.App.Flags {
+	for _, flag := range cmd.Flags {
 		// For each flag type, extract and print its value
 		switch f := flag.(type) {
 		case *cli.StringFlag:
-			fmt.Printf("  %s: %q\n", f.Names()[0], c.String(f.Names()[0]))
+			fmt.Printf("  %s: %q\n", f.Names()[0], cmd.String(f.Names()[0]))
 		case *cli.BoolFlag:
-			fmt.Printf("  %s: %t\n", f.Names()[0], c.Bool(f.Names()[0]))
+			fmt.Printf("  %s: %t\n", f.Names()[0], cmd.Bool(f.Names()[0]))
 		case *cli.IntFlag:
-			fmt.Printf("  %s: %d\n", f.Names()[0], c.Int(f.Names()[0]))
+			fmt.Printf("  %s: %d\n", f.Names()[0], cmd.Int(f.Names()[0]))
 		case *cli.Int64Flag:
-			fmt.Printf("  %s: %d\n", f.Names()[0], c.Int64(f.Names()[0]))
+			fmt.Printf("  %s: %d\n", f.Names()[0], cmd.Int64(f.Names()[0]))
 		case *cli.Float64Flag:
-			fmt.Printf("  %s: %f\n", f.Names()[0], c.Float64(f.Names()[0]))
+			fmt.Printf("  %s: %f\n", f.Names()[0], cmd.Float64(f.Names()[0]))
 		}
 	}
 	// Show command-specific flags if we're in a command
-	if c.Command != nil && len(c.Command.Flags) > 0 {
-		fmt.Printf("=== Command '%s' Flag Values ===\n", c.Command.Name)
-		for _, flag := range c.Command.Flags {
+	if cmd != nil && len(cmd.Flags) > 0 {
+		fmt.Printf("=== Command '%s' Flag Values ===\n", cmd.Name)
+		for _, flag := range cmd.Flags {
 			switch f := flag.(type) {
 			case *cli.StringFlag:
-				fmt.Printf("  %s: %q\n", f.Names()[0], c.String(f.Names()[0]))
+				fmt.Printf("  %s: %q\n", f.Names()[0], cmd.String(f.Names()[0]))
 			case *cli.BoolFlag:
-				fmt.Printf("  %s: %t\n", f.Names()[0], c.Bool(f.Names()[0]))
+				fmt.Printf("  %s: %t\n", f.Names()[0], cmd.Bool(f.Names()[0]))
 			case *cli.IntFlag:
-				fmt.Printf("  %s: %d\n", f.Names()[0], c.Int(f.Names()[0]))
+				fmt.Printf("  %s: %d\n", f.Names()[0], cmd.Int(f.Names()[0]))
 			case *cli.Int64Flag:
-				fmt.Printf("  %s: %d\n", f.Names()[0], c.Int64(f.Names()[0]))
+				fmt.Printf("  %s: %d\n", f.Names()[0], cmd.Int64(f.Names()[0]))
 			case *cli.Float64Flag:
-				fmt.Printf("  %s: %f\n", f.Names()[0], c.Float64(f.Names()[0]))
+				fmt.Printf("  %s: %f\n", f.Names()[0], cmd.Float64(f.Names()[0]))
 			}
 		}
 	}
@@ -2033,10 +2034,10 @@ func showFlags(c *cli.Context) {
 }
 
 // Function to wrap actions
-func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
-	return func(c *cli.Context) error {
+func cliWrapper(action func(context.Context, *cli.Command) error) func(context.Context, *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
 		if verboseFlag {
-			showFlags(c)
+			showFlags(ctx, cmd)
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		}
 		// Verify if format is correct
@@ -2087,7 +2088,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 				return fmt.Errorf("error creating audit log manager - %w", err)
 			}
 			// Execute action
-			return action(c)
+			return action(ctx, cmd)
 		}
 		if apiFlag {
 			if apiConfigFile != "" {
@@ -2101,7 +2102,7 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 			log.Debug().Msg("Creating API client")
 			osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 			// Execute action
-			return action(c)
+			return action(ctx, cmd)
 		}
 		// If we are here, nor DB or API has been enabled
 		return nil
@@ -2109,9 +2110,9 @@ func cliWrapper(action func(*cli.Context) error) func(*cli.Context) error {
 }
 
 // Action to run when no flags are provided
-func cliAction(c *cli.Context) error {
-	if c.NumFlags() == 0 {
-		if err := cli.ShowAppHelp(c); err != nil {
+func cliAction(ctx context.Context, cmd *cli.Command) error {
+	if len(cmd.Flags) == 0 {
+		if err := cli.ShowCommandHelp(ctx, cmd, cmd.Name); err != nil {
 			log.Fatal().Msgf("❌ Error with CLI help - %s", err)
 		}
 		return cli.Exit("\nNo flags provided", 2)
@@ -2122,38 +2123,34 @@ func cliAction(c *cli.Context) error {
 // Go go!
 func main() {
 	// Let's go!
-	app = cli.NewApp()
-	app.Name = appName
-	app.Usage = appUsage
-	app.Version = buildVersion
-	cli.HelpFlag = &cli.BoolFlag{
-		Name:    "help",
-		Aliases: []string{"h"},
-		Usage:   "Show help",
-	}
-	app.Description = appDescription
-	app.Flags = flags
-	// Customize version output (supports `--version` and `version` command)
-	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("%s version=%s commit=%s date=%s\n", appName, buildVersion, buildCommit, buildDate)
-	}
-	// Add -v alias to the global --version flag
-	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "version",
-		Aliases: []string{"v"},
-		Usage:   "Print version information",
-	}
-	// Assign commands
-	app.Commands = commands
-	// Start service only for default action; version/help won't trigger this
-	app.Action = func(c *cli.Context) error {
-		if err := cliAction(c); err != nil {
-			return err
-		}
-		return nil
+	app = &cli.Command{
+		Name:        appName,
+		Usage:       appUsage,
+		Version:     buildVersion,
+		Description: appDescription,
+		Flags: append(flags, &cli.BoolFlag{
+			Name:    "version",
+			Aliases: []string{"v"},
+			Usage:   "Print version information",
+			Action: func(ctx context.Context, cmd *cli.Command, b bool) error {
+				if b {
+					fmt.Printf("%s version=%s commit=%s date=%s\n", appName, buildVersion, buildCommit, buildDate)
+					os.Exit(0)
+				}
+				return nil
+			},
+		}),
+		HideVersion: true,
+		Commands:    commands,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if err := cliAction(ctx, cmd); err != nil {
+				return err
+			}
+			return nil
+		},
 	}
 	// Run the app
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal().Msgf("❌ %v", err)
 	}
 }

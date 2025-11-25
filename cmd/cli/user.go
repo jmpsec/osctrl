@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of users into the data expected for output
@@ -41,19 +42,19 @@ func userToData(u users.AdminUser, header []string) [][]string {
 	return data
 }
 
-func addUser(c *cli.Context) error {
+func addUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	password := c.String("password")
-	email := c.String("email")
-	fullname := c.String("fullname")
-	admin := c.Bool("admin")
-	service := c.Bool("service")
-	environment := c.String("environment")
+	password := cmd.String("password")
+	email := cmd.String("email")
+	fullname := cmd.String("fullname")
+	admin := cmd.Bool("admin")
+	service := cmd.Bool("service")
+	environment := cmd.String("environment")
 	if dbFlag {
 		// Check if user exists
 		if adminUsers.Exists(username) {
@@ -94,20 +95,20 @@ func addUser(c *cli.Context) error {
 	return nil
 }
 
-func editUser(c *cli.Context) error {
+func editUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	password := c.String("password")
-	email := c.String("email")
-	fullname := c.String("fullname")
-	admin := c.Bool("admin")
-	notAdmin := c.Bool("non-admin")
-	service := c.Bool("service")
-	nonService := c.Bool("non-service")
+	password := cmd.String("password")
+	email := cmd.String("email")
+	fullname := cmd.String("fullname")
+	admin := cmd.Bool("admin")
+	notAdmin := cmd.Bool("non-admin")
+	service := cmd.Bool("service")
+	nonService := cmd.Bool("non-service")
 	if password != "" {
 		if dbFlag {
 			if err := adminUsers.ChangePassword(username, password); err != nil {
@@ -182,9 +183,9 @@ func editUser(c *cli.Context) error {
 	return nil
 }
 
-func deleteUser(c *cli.Context) error {
+func deleteUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
@@ -210,7 +211,7 @@ func deleteUser(c *cli.Context) error {
 	return nil
 }
 
-func listUsers(c *cli.Context) error {
+func listUsers(ctx context.Context, cmd *cli.Command) error {
 	// Retrieve data
 	var usrs []users.AdminUser
 	if dbFlag {
@@ -261,9 +262,9 @@ func listUsers(c *cli.Context) error {
 	return nil
 }
 
-func showUser(c *cli.Context) error {
+func showUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)

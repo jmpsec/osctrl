@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,7 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -22,37 +23,37 @@ const (
 	optionTypeBool   = "bool"
 )
 
-func addEnvironment(c *cli.Context) error {
+func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get environment hostname
-	envHost := c.String("hostname")
+	envHost := cmd.String("hostname")
 	if envHost == "" {
 		fmt.Println("❌ environment hostname is required")
 		os.Exit(1)
 	}
 	// Get certificate
 	var certificate string
-	certFile := c.String("certificate")
+	certFile := cmd.String("certificate")
 	if certFile != "" {
 		certificate = environments.ReadExternalFile(certFile)
 	}
 	// Get osquery values to generate flags
 	osqueryValues := config.OsqueryConfiguration{
-		Config: c.Bool("config"),
-		Logger: c.Bool("logger"),
-		Query:  c.Bool("query"),
-		Carve:  c.Bool("carve"),
+		Config: cmd.Bool("config"),
+		Logger: cmd.Bool("logger"),
+		Query:  cmd.Bool("query"),
+		Carve:  cmd.Bool("carve"),
 	}
 	if dbFlag {
 		// Create environment if it does not exist
 		if !envs.Exists(envName) {
 			newEnv := envs.Empty(envName, envHost)
-			newEnv.DebugHTTP = c.Bool("debug")
+			newEnv.DebugHTTP = cmd.Bool("debug")
 			newEnv.Configuration = envs.GenEmptyConfiguration(true)
 			newEnv.Certificate = certificate
 			newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
@@ -104,60 +105,60 @@ func addEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func updateEnvironment(c *cli.Context) error {
+func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get osquery values to generate flags
 	osqueryValues := config.OsqueryConfiguration{
-		Config: c.Bool("config-plugin"),
-		Logger: c.Bool("logger-plugin"),
-		Query:  c.Bool("query-plugin"),
-		Carve:  c.Bool("carve-plugin"),
+		Config: cmd.Bool("config-plugin"),
+		Logger: cmd.Bool("logger-plugin"),
+		Query:  cmd.Bool("query-plugin"),
+		Carve:  cmd.Bool("carve-plugin"),
 	}
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
 			return err
 		}
-		debug := c.Bool("debug")
+		debug := cmd.Bool("debug")
 		env.DebugHTTP = debug
-		enroll := c.Bool("enroll")
+		enroll := cmd.Bool("enroll")
 		env.AcceptEnrolls = enroll
-		hostname := c.String("hostname")
+		hostname := cmd.String("hostname")
 		if hostname != "" {
 			env.Hostname = hostname
 		}
 		// Packages
-		deb := c.String("deb")
+		deb := cmd.String("deb")
 		if deb != "" {
 			env.DebPackage = deb
 		}
-		rpm := c.String("rpm")
+		rpm := cmd.String("rpm")
 		if rpm != "" {
 			env.RpmPackage = rpm
 		}
-		msi := c.String("msi")
+		msi := cmd.String("msi")
 		if msi != "" {
 			env.MsiPackage = msi
 		}
-		pkg := c.String("pkg")
+		pkg := cmd.String("pkg")
 		if pkg != "" {
 			env.PkgPackage = pkg
 		}
 		// Intervals
-		loggingInterval := c.Int("logging")
+		loggingInterval := cmd.Int("logging")
 		if loggingInterval != 0 {
 			env.LogInterval = loggingInterval
 		}
-		configInterval := c.Int("config")
+		configInterval := cmd.Int("config")
 		if configInterval != 0 {
 			env.ConfigInterval = configInterval
 		}
-		queryInterval := c.Int("query")
+		queryInterval := cmd.Int("query")
 		if queryInterval != 0 {
 			env.QueryInterval = queryInterval
 		}
@@ -184,9 +185,9 @@ func updateEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func deleteEnvironment(c *cli.Context) error {
+func deleteEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -202,9 +203,9 @@ func deleteEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func showEnvironment(c *cli.Context) error {
+func showEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -267,9 +268,9 @@ func showEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func showFlagsEnvironment(c *cli.Context) error {
+func showFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -292,19 +293,19 @@ func showFlagsEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func newFlagsEnvironment(c *cli.Context) error {
+func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get osquery values to generate flags
 	osqueryValues := config.OsqueryConfiguration{
-		Config: c.Bool("config"),
-		Logger: c.Bool("logger"),
-		Query:  c.Bool("query"),
-		Carve:  c.Bool("carve"),
+		Config: cmd.Bool("config"),
+		Logger: cmd.Bool("logger"),
+		Query:  cmd.Bool("query"),
+		Carve:  cmd.Bool("carve"),
 	}
 	if dbFlag {
 		flags, err := envs.GenerateFlagsEnv(envName, "", "", osqueryValues)
@@ -321,7 +322,7 @@ func newFlagsEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func listEnvironment(c *cli.Context) error {
+func listEnvironment(ctx context.Context, cmd *cli.Command) error {
 	var envAll []environments.TLSEnvironment
 	if dbFlag {
 		envAll, err = envs.All()
@@ -356,9 +357,9 @@ func listEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func quickAddEnvironment(c *cli.Context) error {
+func quickAddEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -375,9 +376,9 @@ func quickAddEnvironment(c *cli.Context) error {
 			return err
 		}
 	}
-	insecure := (c.Bool("insecure") || (env.Certificate != ""))
+	insecure := (cmd.Bool("insecure") || (env.Certificate != ""))
 	var oneLiner string
-	switch c.String("target") {
+	switch cmd.String("target") {
 	case targetShell:
 		oneLiner, _ = environments.QuickAddOneLinerShell(insecure, env)
 	case targetPowershell:
@@ -390,9 +391,9 @@ func quickAddEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func extendEnrollEnvironment(c *cli.Context) error {
+func extendEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -416,9 +417,9 @@ func extendEnrollEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func rotateEnrollEnvironment(c *cli.Context) error {
+func rotateEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -442,9 +443,9 @@ func rotateEnrollEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func expireEnrollEnvironment(c *cli.Context) error {
+func expireEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -468,9 +469,9 @@ func expireEnrollEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func notexpireEnrollEnvironment(c *cli.Context) error {
+func notexpireEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -494,9 +495,9 @@ func notexpireEnrollEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func quickRemoveEnvironment(c *cli.Context) error {
+func quickRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -513,9 +514,9 @@ func quickRemoveEnvironment(c *cli.Context) error {
 			return err
 		}
 	}
-	insecure := (c.Bool("insecure") || (env.Certificate != ""))
+	insecure := (cmd.Bool("insecure") || (env.Certificate != ""))
 	var oneLiner string
-	switch c.String("target") {
+	switch cmd.String("target") {
 	case targetShell:
 		oneLiner, _ = environments.QuickRemoveOneLinerShell(insecure, env)
 	case targetPowershell:
@@ -528,9 +529,9 @@ func quickRemoveEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func extendRemoveEnvironment(c *cli.Context) error {
+func extendRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -554,9 +555,9 @@ func extendRemoveEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func rotateRemoveEnvironment(c *cli.Context) error {
+func rotateRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -580,9 +581,9 @@ func rotateRemoveEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func expireRemoveEnvironment(c *cli.Context) error {
+func expireRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -606,9 +607,9 @@ func expireRemoveEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func notexpireRemoveEnvironment(c *cli.Context) error {
+func notexpireRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -632,21 +633,21 @@ func notexpireRemoveEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func genFlagsEnvironment(c *cli.Context) error {
+func genFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
-	secret := c.String("secret")
-	cert := c.String("certificate")
+	secret := cmd.String("secret")
+	cert := cmd.String("certificate")
 	// Get osquery values to generate flags
 	osqueryValues := config.OsqueryConfiguration{
-		Config: c.Bool("config"),
-		Logger: c.Bool("logger"),
-		Query:  c.Bool("query"),
-		Carve:  c.Bool("carve"),
+		Config: cmd.Bool("config"),
+		Logger: cmd.Bool("logger"),
+		Query:  cmd.Bool("query"),
+		Carve:  cmd.Bool("carve"),
 	}
 	var env environments.TLSEnvironment
 	if dbFlag {
@@ -668,9 +669,9 @@ func genFlagsEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func secretEnvironment(c *cli.Context) error {
+func secretEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -691,9 +692,9 @@ func secretEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func certificateEnvironment(c *cli.Context) error {
+func certificateEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
@@ -714,27 +715,27 @@ func certificateEnvironment(c *cli.Context) error {
 	return nil
 }
 
-func addScheduledQuery(c *cli.Context) error {
+func addScheduledQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
-	queryName := c.String("query-name")
+	queryName := cmd.String("query-name")
 	if queryName == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Get query
-	query := c.String("query")
+	query := cmd.String("query")
 	if query == "" {
 		fmt.Println("❌ query is required")
 		os.Exit(1)
 	}
 	// Get interval
-	interval := c.Int("interval")
+	interval := cmd.Int("interval")
 	if interval == 0 {
 		fmt.Println("❌ interval is required")
 		os.Exit(1)
@@ -743,8 +744,8 @@ func addScheduledQuery(c *cli.Context) error {
 	qData := environments.ScheduleQuery{
 		Query:    query,
 		Interval: json.Number(strconv.Itoa(interval)),
-		Platform: c.String("platform"),
-		Version:  c.String("version"),
+		Platform: cmd.String("platform"),
+		Version:  cmd.String("version"),
 	}
 	if err := envs.AddScheduleConfQuery(envName, queryName, qData); err != nil {
 		return err
@@ -753,15 +754,15 @@ func addScheduledQuery(c *cli.Context) error {
 	return nil
 }
 
-func removeScheduledQuery(c *cli.Context) error {
+func removeScheduledQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
-	queryName := c.String("query-name")
+	queryName := cmd.String("query-name")
 	if queryName == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
@@ -774,34 +775,34 @@ func removeScheduledQuery(c *cli.Context) error {
 	return nil
 }
 
-func addOsqueryOption(c *cli.Context) error {
+func addOsqueryOption(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get option
-	option := c.String("option")
+	option := cmd.String("option")
 	if option == "" {
 		fmt.Println("❌ option is required")
 		os.Exit(1)
 	}
 	// Get option type
-	optionType := c.String("type")
+	optionType := cmd.String("type")
 	if optionType == "" {
 		fmt.Println("❌ option type is required")
 		os.Exit(1)
 	}
 	// Get option value based on the type
 	var optionValue interface{}
-	switch c.String("type") {
+	switch cmd.String("type") {
 	case optionTypeBool:
-		optionValue = c.Bool("bool-value")
+		optionValue = cmd.Bool("bool-value")
 	case optionTypeInt:
-		optionValue = c.Int("int-value")
+		optionValue = cmd.Int("int-value")
 	case optionTypeString:
-		optionValue = c.String("string-value")
+		optionValue = cmd.String("string-value")
 	default:
 		fmt.Printf("❌ invalid type! It can be %s, %s or %s\n", optionTypeBool, optionTypeInt, optionTypeString)
 		os.Exit(1)
@@ -814,15 +815,15 @@ func addOsqueryOption(c *cli.Context) error {
 	return nil
 }
 
-func removeOsqueryOption(c *cli.Context) error {
+func removeOsqueryOption(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get option
-	option := c.String("option")
+	option := cmd.String("option")
 	if option == "" {
 		fmt.Println("❌ option is required")
 		os.Exit(1)
@@ -835,24 +836,24 @@ func removeOsqueryOption(c *cli.Context) error {
 	return nil
 }
 
-func addNewPack(c *cli.Context) error {
+func addNewPack(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
-	pName := c.String("pack")
+	pName := cmd.String("pack")
 	if pName == "" {
 		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Compose query pack
 	pack := environments.PackEntry{
-		Platform: c.String("platform"),
-		Version:  c.String("version"),
-		Shard:    json.Number(strconv.Itoa(c.Int("shard"))),
+		Platform: cmd.String("platform"),
+		Version:  cmd.String("version"),
+		Shard:    json.Number(strconv.Itoa(cmd.Int("shard"))),
 	}
 	// Add pack to configuration
 	if err := envs.AddQueryPackConf(envName, pName, pack); err != nil {
@@ -862,15 +863,15 @@ func addNewPack(c *cli.Context) error {
 	return nil
 }
 
-func removePack(c *cli.Context) error {
+func removePack(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
-	pName := c.String("pack")
+	pName := cmd.String("pack")
 	if pName == "" {
 		fmt.Println("❌ pack name is required")
 		os.Exit(1)
@@ -883,21 +884,21 @@ func removePack(c *cli.Context) error {
 	return nil
 }
 
-func addLocalPack(c *cli.Context) error {
+func addLocalPack(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get pack name
-	pName := c.String("pack")
+	pName := cmd.String("pack")
 	if pName == "" {
 		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get pack local path
-	pPath := c.String("pack-path")
+	pPath := cmd.String("pack-path")
 	if pPath == "" {
 		fmt.Println("❌ pack path is required")
 		os.Exit(1)
@@ -910,33 +911,33 @@ func addLocalPack(c *cli.Context) error {
 	return nil
 }
 
-func addPackQuery(c *cli.Context) error {
+func addPackQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
-	packName := c.String("pack")
+	packName := cmd.String("pack")
 	if packName == "" {
 		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get query
-	query := c.String("query")
+	query := cmd.String("query")
 	if query == "" {
 		fmt.Println("❌ query is required")
 		os.Exit(1)
 	}
 	// Get query name
-	queryName := c.String("query-name")
+	queryName := cmd.String("query-name")
 	if queryName == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
 	// Get interval
-	interval := c.Int("interval")
+	interval := cmd.Int("interval")
 	if interval == 0 {
 		fmt.Println("❌ interval is required")
 		os.Exit(1)
@@ -945,8 +946,8 @@ func addPackQuery(c *cli.Context) error {
 	qData := environments.ScheduleQuery{
 		Query:    query,
 		Interval: json.Number(strconv.Itoa(interval)),
-		Platform: c.String("platform"),
-		Version:  c.String("version"),
+		Platform: cmd.String("platform"),
+		Version:  cmd.String("version"),
 	}
 	if err := envs.AddQueryToPackConf(envName, packName, queryName, qData); err != nil {
 		return err
@@ -955,21 +956,21 @@ func addPackQuery(c *cli.Context) error {
 	return nil
 }
 
-func removePackQuery(c *cli.Context) error {
+func removePackQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
-	envName := c.String("name")
+	envName := cmd.String("name")
 	if envName == "" {
 		fmt.Println("❌ environment name is required")
 		os.Exit(1)
 	}
 	// Get query name
-	packName := c.String("pack")
+	packName := cmd.String("pack")
 	if packName == "" {
 		fmt.Println("❌ pack name is required")
 		os.Exit(1)
 	}
 	// Get query name
-	queryName := c.String("query-name")
+	queryName := cmd.String("query-name")
 	if queryName == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)

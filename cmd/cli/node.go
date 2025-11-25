@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of nodes into the data expected for output
@@ -45,16 +46,16 @@ func nodeToData(n nodes.OsqueryNode, header []string) [][]string {
 	return data
 }
 
-func listNodes(c *cli.Context) error {
+func listNodes(ctx context.Context, cmd *cli.Command) error {
 	// Get flag values for this command
 	target := "active"
-	if c.Bool("all") {
+	if cmd.Bool("all") {
 		target = "all"
 	}
-	if c.Bool("inactive") {
+	if cmd.Bool("inactive") {
 		target = "inactive"
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -111,14 +112,14 @@ func listNodes(c *cli.Context) error {
 	return nil
 }
 
-func deleteNode(c *cli.Context) error {
+func deleteNode(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	uuid := c.String("uuid")
+	uuid := cmd.String("uuid")
 	if uuid == "" {
 		fmt.Println("❌ uuid is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -140,25 +141,25 @@ func deleteNode(c *cli.Context) error {
 	return nil
 }
 
-func tagNode(c *cli.Context) error {
+func tagNode(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	uuid := c.String("uuid")
+	uuid := cmd.String("uuid")
 	if uuid == "" {
 		fmt.Println("❌ uuid is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	tag := c.String("tag-value")
+	tag := cmd.String("tag-value")
 	if tag == "" {
 		fmt.Println("❌ tag is required")
 		os.Exit(1)
 	}
-	tagType := c.String("tag-type")
-	tagCustom := c.String("custom")
+	tagType := cmd.String("tag-type")
+	tagCustom := cmd.String("custom")
 	var tagTypeInt uint
 	switch tagType {
 	case tags.TagTypeEnvStr:
@@ -231,14 +232,14 @@ func _showNode(node nodes.OsqueryNode) error {
 	return nil
 }
 
-func showNode(c *cli.Context) error {
+func showNode(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	uuid := c.String("uuid")
+	uuid := cmd.String("uuid")
 	if uuid == "" {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -258,9 +259,9 @@ func showNode(c *cli.Context) error {
 	return _showNode(node)
 }
 
-func lookupNode(c *cli.Context) error {
+func lookupNode(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	identifier := c.String("identifier")
+	identifier := cmd.String("identifier")
 	if identifier == "" {
 		fmt.Println("❌ identifier is required")
 		os.Exit(1)

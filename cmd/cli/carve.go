@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -14,7 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of nodes into the data expected for output
@@ -49,9 +50,9 @@ func carveToData(c carves.CarvedFile, header []string) [][]string {
 	return data
 }
 
-func listCarves(c *cli.Context) error {
+func listCarves(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -113,28 +114,28 @@ func listCarves(c *cli.Context) error {
 	return nil
 }
 
-func listCarveQueries(c *cli.Context) error {
+func listCarveQueries(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	target := "all"
-	if c.Bool("all") {
+	if cmd.Bool("all") {
 		target = "all"
 	}
-	if c.Bool("active") {
+	if cmd.Bool("active") {
 		target = "active"
 	}
-	if c.Bool("completed") {
+	if cmd.Bool("completed") {
 		target = "completed"
 	}
-	if c.Bool("deleted") {
+	if cmd.Bool("deleted") {
 		target = "deleted"
 	}
-	if c.Bool("hidden") {
+	if cmd.Bool("hidden") {
 		target = "hidden"
 	}
-	if c.Bool("expired") {
+	if cmd.Bool("expired") {
 		target = "expired"
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -199,14 +200,14 @@ func listCarveQueries(c *cli.Context) error {
 	return nil
 }
 
-func completeCarve(c *cli.Context) error {
+func completeCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ carve name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -233,14 +234,14 @@ func completeCarve(c *cli.Context) error {
 	return nil
 }
 
-func deleteCarve(c *cli.Context) error {
+func deleteCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ carve name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -267,14 +268,14 @@ func deleteCarve(c *cli.Context) error {
 	return nil
 }
 
-func expireCarve(c *cli.Context) error {
+func expireCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ carve name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -301,19 +302,19 @@ func expireCarve(c *cli.Context) error {
 	return nil
 }
 
-func runCarve(c *cli.Context) error {
+func runCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	path := c.String("path")
+	path := cmd.String("path")
 	if path == "" {
 		fmt.Println("❌ path is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	uuidStr := c.String("uuid")
+	uuidStr := cmd.String("uuid")
 	if uuidStr == "" {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
@@ -322,23 +323,23 @@ func runCarve(c *cli.Context) error {
 	if strings.Contains(uuidStr, ",") {
 		uuidList = strings.Split(uuidStr, ",")
 	}
-	platformStr := c.String("platform")
+	platformStr := cmd.String("platform")
 	platformList := []string{platformStr}
 	if strings.Contains(platformStr, ",") {
 		platformList = strings.Split(platformStr, ",")
 	}
-	hostStr := c.String("host")
+	hostStr := cmd.String("host")
 	hostList := []string{hostStr}
 	if strings.Contains(hostStr, ",") {
 		hostList = strings.Split(hostStr, ",")
 	}
-	tagStr := c.String("tag")
+	tagStr := cmd.String("tag")
 	tagList := []string{tagStr}
 	if strings.Contains(tagStr, ",") {
 		tagList = strings.Split(tagStr, ",")
 	}
-	expHours := c.Int("expiration")
-	hidden := c.Bool("hidden")
+	expHours := cmd.Int("expiration")
+	hidden := cmd.Bool("hidden")
 	cName := carves.GenCarveName()
 	if dbFlag {
 		e, err := envs.Get(env)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of tags into the data expected for output
@@ -47,32 +48,32 @@ func tagToData(t tags.AdminTag, m environments.MapEnvByID, header []string) [][]
 	return data
 }
 
-func addTag(c *cli.Context) error {
+func addTag(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ tag name is required")
 		os.Exit(1)
 	}
-	color := c.String("color")
+	color := cmd.String("color")
 	if color == "" {
 		color = tags.RandomColor()
 	} else if !strings.HasPrefix(color, "#") || len(color) != 7 {
 		fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
 		os.Exit(1)
 	}
-	icon := c.String("icon")
+	icon := cmd.String("icon")
 	if icon == "" {
 		icon = tags.DefaultTagIcon
 	}
-	description := c.String("description")
-	tagType := tags.TagTypeParser(c.String("tag-type"))
-	tagCustom := c.String("tag-custom")
+	description := cmd.String("description")
+	tagType := tags.TagTypeParser(cmd.String("tag-type"))
+	tagCustom := cmd.String("tag-custom")
 	if tagType == tags.TagTypeCustom && tagCustom == "" {
 		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
 		os.Exit(1)
@@ -100,14 +101,14 @@ func addTag(c *cli.Context) error {
 	return nil
 }
 
-func deleteTag(c *cli.Context) error {
+func deleteTag(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env-uuid")
+	env := cmd.String("env-uuid")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ tag name is required")
 		os.Exit(1)
@@ -134,19 +135,19 @@ func deleteTag(c *cli.Context) error {
 	return nil
 }
 
-func editTag(c *cli.Context) error {
+func editTag(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env-uuid")
+	env := cmd.String("env-uuid")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ tag name is required")
 		os.Exit(1)
 	}
-	color := c.String("color")
+	color := cmd.String("color")
 	if color == "" {
 		color = tags.RandomColor()
 	} else {
@@ -155,10 +156,10 @@ func editTag(c *cli.Context) error {
 			os.Exit(1)
 		}
 	}
-	icon := c.String("icon")
-	description := c.String("description")
-	tagType := tags.TagTypeParser(c.String("tag-type"))
-	tagCustom := c.String("tag-custom")
+	icon := cmd.String("icon")
+	description := cmd.String("description")
+	tagType := tags.TagTypeParser(cmd.String("tag-type"))
+	tagCustom := cmd.String("tag-custom")
 	if tagType == tags.TagTypeCustom && tagCustom == "" {
 		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
 		os.Exit(1)
@@ -214,14 +215,14 @@ func editTag(c *cli.Context) error {
 	return nil
 }
 
-func showTag(c *cli.Context) error {
+func showTag(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env-uuid")
+	env := cmd.String("env-uuid")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ tag name is required")
 		os.Exit(1)
@@ -305,9 +306,9 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 	return nil
 }
 
-func listTagsByEnv(c *cli.Context) error {
+func listTagsByEnv(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	env := c.String("env-uuid")
+	env := cmd.String("env-uuid")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -344,7 +345,7 @@ func listTagsByEnv(c *cli.Context) error {
 	return nil
 }
 
-func listAllTags(c *cli.Context) error {
+func listAllTags(ctx context.Context, cmd *cli.Command) error {
 	var tgs []tags.AdminTag
 	var m environments.MapEnvByID
 	if dbFlag {

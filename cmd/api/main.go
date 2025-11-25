@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -26,7 +27,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/spf13/viper"
 )
@@ -102,7 +103,7 @@ var (
 	queriesmgr  *queries.Queries
 	filecarves  *carves.Carves
 	handlersApi *handlers.HandlersApi
-	app         *cli.App
+	app         *cli.Command
 	flags       []cli.Flag
 	flagParams  config.ServiceFlagParams
 	auditLog    *auditlog.AuditLogManager
@@ -438,7 +439,7 @@ func osctrlAPIService() {
 }
 
 // Action to run when no flags are provided to run checks and prepare data
-func cliAction(c *cli.Context) error {
+func cliAction(ctx context.Context, cmd *cli.Command) error {
 	// Load configuration if external JSON config file is used
 	if flagParams.ConfigFlag {
 		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceAPI)
@@ -500,44 +501,45 @@ func initializeLoggers(cfg config.JSONConfigurationService) {
 
 func main() {
 	// Initiate CLI and parse arguments
-	app = cli.NewApp()
-	app.Name = serviceName
-	app.Usage = appDescription
-	app.Version = buildVersion
-	app.Description = appDescription
-	app.Flags = flags
-	// Customize version output (supports `--version` and `version` command)
-	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
-	}
-	// Add -v alias to the global --version flag
-	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "version",
-		Aliases: []string{"v"},
-		Usage:   "Print version information",
-	}
-	// Define this command for help to exit when help flag is passed
-	app.Commands = []*cli.Command{
-		{
-			Name: "help",
-			Action: func(c *cli.Context) error {
-				cli.ShowAppHelpAndExit(c, 0)
+	app = &cli.Command{
+		Name:        serviceName,
+		Usage:       appDescription,
+		Version:     buildVersion,
+		Description: appDescription,
+		Flags: append(flags, &cli.BoolFlag{
+			Name:    "version",
+			Aliases: []string{"v"},
+			Usage:   "Print version information",
+			Action: func(ctx context.Context, cmd *cli.Command, b bool) error {
+				if b {
+					fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
+					os.Exit(0)
+				}
 				return nil
 			},
+		}),
+		HideVersion: true,
+		Commands: []*cli.Command{
+			{
+				Name: "help",
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					cli.ShowCommandHelpAndExit(ctx, cmd, cmd.Name, 0)
+					return nil
+				},
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if err := cliAction(ctx, cmd); err != nil {
+				return err
+			}
+			// Initialize service logger
+			initializeLoggers(flagParams.ConfigValues)
+			// Run the service
+			osctrlAPIService()
+			return nil
 		},
 	}
-	// Start service only for default action; version/help won't trigger this
-	app.Action = func(c *cli.Context) error {
-		if err := cliAction(c); err != nil {
-			return err
-		}
-		// Initialize service logger
-		initializeLoggers(flagParams.ConfigValues)
-		// Run the service
-		osctrlAPIService()
-		return nil
-	}
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
 	}
