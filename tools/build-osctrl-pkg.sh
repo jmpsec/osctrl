@@ -22,7 +22,7 @@ function usage() {
   echo "  -v          Enable verbose mode with 'set -x'"
   echo
   echo "Example:"
-  echo "  $0 -i osquery_5.19.0.pkg -o osquery-osctrl_5.19.0.pkg"
+  echo "  $0 -i osquery_5.20.0.pkg -o osquery-osctrl_5.20.0.pkg"
 }
 
 # Stop script on error
