@@ -253,11 +253,15 @@ func listUsers(ctx context.Context, cmd *cli.Command) error {
 		if len(usrs) > 0 {
 			fmt.Printf("Existing users (%d):\n", len(usrs))
 			data := usersToData(usrs, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Println("No users")
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
@@ -307,8 +311,12 @@ func showUser(ctx context.Context, cmd *cli.Command) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := userToData(usr, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

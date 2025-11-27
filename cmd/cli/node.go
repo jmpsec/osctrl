@@ -103,11 +103,15 @@ func listNodes(ctx context.Context, cmd *cli.Command) error {
 		if len(nds) > 0 {
 			fmt.Printf("Existing %s nodes (%d):\n", target, len(nds))
 			data := nodesToData(nds, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Printf("No %s nodes\n", target)
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
@@ -226,8 +230,12 @@ func _showNode(node nodes.OsqueryNode) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := nodeToData(node, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

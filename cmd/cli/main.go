@@ -2111,11 +2111,8 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 
 // Action to run when no flags are provided
 func cliAction(ctx context.Context, cmd *cli.Command) error {
-	if len(cmd.Flags) == 0 {
-		if err := cli.ShowCommandHelp(ctx, cmd, cmd.Name); err != nil {
-			log.Fatal().Msgf("❌ Error with CLI help - %s", err)
-		}
-		return cli.Exit("\nNo flags provided", 2)
+	if cmd.NumFlags() == 0 {
+		cli.ShowAppHelpAndExit(cmd, 2)
 	}
 	return nil
 }

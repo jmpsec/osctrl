@@ -84,13 +84,13 @@ func (api *OsctrlAPI) CompleteQuery(env, name string) (types.ApiGenericResponse,
 // RunQuery to initiate a query in osctrl
 func (api *OsctrlAPI) RunQuery(env, query string, uuids, hosts, platforms, tags []string, hidden bool, exp int) (types.ApiQueriesResponse, error) {
 	q := types.ApiDistributedQueryRequest{
-		UUIDs:    uuids,
-		Hosts:    hosts,
+		UUIDs:     uuids,
+		Hosts:     hosts,
 		Platforms: platforms,
-		Tags:     tags,
-		Query:    query,
-		Hidden:   hidden,
-		ExpHours: exp,
+		Tags:      tags,
+		Query:     query,
+		Hidden:    hidden,
+		ExpHours:  exp,
 	}
 	var r types.ApiQueriesResponse
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIQueries, env))

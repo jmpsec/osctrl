@@ -32,8 +32,12 @@ func listConfiguration(ctx context.Context, cmd *cli.Command) error {
 			}
 			data = append(data, _v)
 		}
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	} else {
 		fmt.Printf("No configuration values\n")
 	}

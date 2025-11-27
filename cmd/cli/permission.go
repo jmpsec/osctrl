@@ -155,8 +155,12 @@ func showPermissions(ctx context.Context, cmd *cli.Command) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := accessToData(userAccess, envName, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
@@ -245,8 +249,12 @@ func allPermissions(ctx context.Context, cmd *cli.Command) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := permissionsToData(existingAccess, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

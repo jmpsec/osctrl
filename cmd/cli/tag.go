@@ -150,11 +150,9 @@ func editTag(ctx context.Context, cmd *cli.Command) error {
 	color := cmd.String("color")
 	if color == "" {
 		color = tags.RandomColor()
-	} else {
-		if !strings.HasPrefix(color, "#") || len(color) != 7 {
-			fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
-			os.Exit(1)
-		}
+	} else if !strings.HasPrefix(color, "#") || len(color) != 7 {
+		fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
+		os.Exit(1)
 	}
 	icon := cmd.String("icon")
 	description := cmd.String("description")
@@ -297,11 +295,15 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 		if len(tgs) > 0 {
 			fmt.Printf("Existing tags (%d):\n", len(tgs))
 			data := tagsToData(tgs, m, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Println("No tags")
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

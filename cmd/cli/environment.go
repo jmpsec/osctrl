@@ -349,8 +349,12 @@ func listEnvironment(ctx context.Context, cmd *cli.Command) error {
 			}
 			data = append(data, e)
 		}
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	} else {
 		fmt.Printf("No environments\n")
 	}

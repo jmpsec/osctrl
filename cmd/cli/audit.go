@@ -76,11 +76,15 @@ func helperAuditLogs(als []auditlog.AuditLog, m environments.MapEnvByID) error {
 		if len(als) > 0 {
 			fmt.Printf("Existing audit logs (%d):\n", len(als))
 			data := auditlogsToData(als, m, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Println("No audit logs")
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

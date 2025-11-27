@@ -105,11 +105,15 @@ func listCarves(ctx context.Context, cmd *cli.Command) error {
 		if len(cs) > 0 {
 			fmt.Printf("Existing carves (%d):\n", len(cs))
 			data := carvesToData(cs, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Println("No carves")
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
@@ -191,11 +195,15 @@ func listCarveQueries(ctx context.Context, cmd *cli.Command) error {
 		if len(qs) > 0 {
 			fmt.Printf("Existing %s carve queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Printf("No %s carve queries\n", target)
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

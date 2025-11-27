@@ -462,7 +462,7 @@ func main() {
 			{
 				Name: "help",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					cli.ShowCommandHelpAndExit(ctx, cmd, cmd.Name, 0)
+					cli.ShowAppHelpAndExit(cmd, 2)
 					return nil
 				},
 			},
