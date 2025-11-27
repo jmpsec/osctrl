@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert user permissions into the data expected for output
@@ -47,22 +48,22 @@ func accessToData(access users.EnvAccess, env string, header []string) [][]strin
 	return data
 }
 
-func changePermissions(c *cli.Context) error {
+func changePermissions(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	envName := c.String("environment")
+	envName := cmd.String("environment")
 	if envName == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	admin := c.Bool("admin")
-	user := c.Bool("user")
-	carve := c.Bool("carve")
-	query := c.Bool("query")
+	admin := cmd.Bool("admin")
+	user := cmd.Bool("user")
+	carve := cmd.Bool("carve")
+	query := cmd.Bool("query")
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
@@ -104,14 +105,14 @@ func changePermissions(c *cli.Context) error {
 	return nil
 }
 
-func showPermissions(c *cli.Context) error {
+func showPermissions(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	envName := c.String("environment")
+	envName := cmd.String("environment")
 	if envName == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -154,28 +155,32 @@ func showPermissions(c *cli.Context) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := accessToData(userAccess, envName, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
 
-func resetPermissions(c *cli.Context) error {
+func resetPermissions(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
 	}
-	envName := c.String("environment")
+	envName := cmd.String("environment")
 	if envName == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	admin := c.Bool("admin")
-	user := c.Bool("user")
-	carve := c.Bool("carve")
-	query := c.Bool("query")
+	admin := cmd.Bool("admin")
+	user := cmd.Bool("user")
+	carve := cmd.Bool("carve")
+	query := cmd.Bool("query")
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
@@ -204,9 +209,9 @@ func resetPermissions(c *cli.Context) error {
 	return nil
 }
 
-func allPermissions(c *cli.Context) error {
+func allPermissions(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	username := c.String("username")
+	username := cmd.String("username")
 	if username == "" {
 		fmt.Println("❌ username is required")
 		os.Exit(1)
@@ -244,8 +249,12 @@ func allPermissions(c *cli.Context) error {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		data := permissionsToData(existingAccess, nil)
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of nodes into the data expected for output
@@ -51,28 +52,28 @@ func queryToData(q queries.DistributedQuery, header []string) [][]string {
 	return data
 }
 
-func listQueries(c *cli.Context) error {
+func listQueries(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	target := "all"
-	if c.Bool("all") {
+	if cmd.Bool("all") {
 		target = "all"
 	}
-	if c.Bool("active") {
+	if cmd.Bool("active") {
 		target = "active"
 	}
-	if c.Bool("completed") {
+	if cmd.Bool("completed") {
 		target = "completed"
 	}
-	if c.Bool("deleted") {
+	if cmd.Bool("deleted") {
 		target = "deleted"
 	}
-	if c.Bool("hidden") {
+	if cmd.Bool("hidden") {
 		target = "hidden"
 	}
-	if c.Bool("expired") {
+	if cmd.Bool("expired") {
 		target = "expired"
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -128,23 +129,27 @@ func listQueries(c *cli.Context) error {
 		if len(qs) > 0 {
 			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Printf("No %s queries\n", target)
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
 
-func completeQuery(c *cli.Context) error {
+func completeQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -171,14 +176,14 @@ func completeQuery(c *cli.Context) error {
 	return nil
 }
 
-func deleteQuery(c *cli.Context) error {
+func deleteQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -205,14 +210,14 @@ func deleteQuery(c *cli.Context) error {
 	return nil
 }
 
-func expireQuery(c *cli.Context) error {
+func expireQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ query name is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
@@ -239,19 +244,19 @@ func expireQuery(c *cli.Context) error {
 	return nil
 }
 
-func runQuery(c *cli.Context) error {
+func runQuery(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	query := c.String("query")
+	query := cmd.String("query")
 	if query == "" {
 		fmt.Println("❌ query is required")
 		os.Exit(1)
 	}
-	env := c.String("env")
+	env := cmd.String("env")
 	if env == "" {
 		fmt.Println("❌ environment is required")
 		os.Exit(1)
 	}
-	uuidStr := c.String("uuid")
+	uuidStr := cmd.String("uuid")
 	if uuidStr == "" {
 		fmt.Println("❌ UUID is required")
 		os.Exit(1)
@@ -260,23 +265,23 @@ func runQuery(c *cli.Context) error {
 	if strings.Contains(uuidStr, ",") {
 		uuidList = strings.Split(uuidStr, ",")
 	}
-	platformStr := c.String("platform")
+	platformStr := cmd.String("platform")
 	platformList := []string{platformStr}
 	if strings.Contains(platformStr, ",") {
 		platformList = strings.Split(platformStr, ",")
 	}
-	hostStr := c.String("host")
+	hostStr := cmd.String("host")
 	hostList := []string{hostStr}
 	if strings.Contains(hostStr, ",") {
 		hostList = strings.Split(hostStr, ",")
 	}
-	tagStr := c.String("tag")
+	tagStr := cmd.String("tag")
 	tagList := []string{tagStr}
 	if strings.Contains(tagStr, ",") {
 		tagList = strings.Split(tagStr, ",")
 	}
-	expHours := c.Int("expiration")
-	hidden := c.Bool("hidden")
+	expHours := cmd.Int("expiration")
+	hidden := cmd.Bool("hidden")
 	queryName := queries.GenQueryName()
 	if dbFlag {
 		e, err := envs.Get(env)

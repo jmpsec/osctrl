@@ -1,16 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
-func listConfiguration(c *cli.Context) error {
+func listConfiguration(ctx context.Context, cmd *cli.Command) error {
 	values, err := settingsmgr.RetrieveAllValues()
 	if err != nil {
 		return err
@@ -31,68 +32,72 @@ func listConfiguration(c *cli.Context) error {
 			}
 			data = append(data, _v)
 		}
-		table.Bulk(data)
-		table.Render()
+		if err := table.Bulk(data); err != nil {
+			return fmt.Errorf("❌ error bulk table - %w", err)
+		}
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	} else {
 		fmt.Printf("No configuration values\n")
 	}
 	return nil
 }
 
-func addSetting(c *cli.Context) error {
+func addSetting(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
-	service := c.String("service")
+	service := cmd.String("service")
 	if service == "" {
 		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
-	typeValue := c.String("type")
+	typeValue := cmd.String("type")
 	if typeValue == "" {
 		fmt.Println("❌ type is required")
 		os.Exit(1)
 	}
 	switch typeValue {
 	case settings.TypeString:
-		return settingsmgr.NewStringValue(service, name, c.String("string"), settings.NoEnvironmentID)
+		return settingsmgr.NewStringValue(service, name, cmd.String("string"), settings.NoEnvironmentID)
 	case settings.TypeInteger:
-		return settingsmgr.NewIntegerValue(service, name, c.Int64("integer"), settings.NoEnvironmentID)
+		return settingsmgr.NewIntegerValue(service, name, cmd.Int64("integer"), settings.NoEnvironmentID)
 	case settings.TypeBoolean:
-		return settingsmgr.NewBooleanValue(service, name, c.Bool("boolean"), settings.NoEnvironmentID)
+		return settingsmgr.NewBooleanValue(service, name, cmd.Bool("boolean"), settings.NoEnvironmentID)
 	}
 	return nil
 }
 
-func updateSetting(c *cli.Context) error {
+func updateSetting(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
-	service := c.String("service")
+	service := cmd.String("service")
 	if service == "" {
 		fmt.Println("❌ service is required")
 		os.Exit(1)
 	}
-	typeValue := c.String("type")
+	typeValue := cmd.String("type")
 	if typeValue == "" {
 		fmt.Println("❌ type is required")
 		os.Exit(1)
 	}
-	info := c.String("info")
+	info := cmd.String("info")
 	var err error
 	switch typeValue {
 	case settings.TypeInteger:
-		err = settingsmgr.SetInteger(c.Int64("integer"), service, name, settings.NoEnvironmentID)
+		err = settingsmgr.SetInteger(cmd.Int64("integer"), service, name, settings.NoEnvironmentID)
 	case settings.TypeBoolean:
-		err = settingsmgr.SetBoolean(c.Bool("true"), service, name, settings.NoEnvironmentID)
+		err = settingsmgr.SetBoolean(cmd.Bool("true"), service, name, settings.NoEnvironmentID)
 	case settings.TypeString:
-		err = settingsmgr.SetString(c.String("string"), service, name, false, settings.NoEnvironmentID)
+		err = settingsmgr.SetString(cmd.String("string"), service, name, false, settings.NoEnvironmentID)
 	}
 	if err != nil {
 		return fmt.Errorf("error set type - %w", err)
@@ -109,14 +114,14 @@ func updateSetting(c *cli.Context) error {
 	return nil
 }
 
-func deleteSetting(c *cli.Context) error {
+func deleteSetting(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
-	name := c.String("name")
+	name := cmd.String("name")
 	if name == "" {
 		fmt.Println("❌ name is required")
 		os.Exit(1)
 	}
-	service := c.String("service")
+	service := cmd.String("service")
 	if service == "" {
 		fmt.Println("❌ service is required")
 		os.Exit(1)

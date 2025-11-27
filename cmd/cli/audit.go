@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/olekukonko/tablewriter"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to convert a slice of audit logs entries into the data expected for output
@@ -75,16 +76,20 @@ func helperAuditLogs(als []auditlog.AuditLog, m environments.MapEnvByID) error {
 		if len(als) > 0 {
 			fmt.Printf("Existing audit logs (%d):\n", len(als))
 			data := auditlogsToData(als, m, nil)
-			table.Bulk(data)
+			if err := table.Bulk(data); err != nil {
+				return fmt.Errorf("❌ error bulk table - %w", err)
+			}
 		} else {
 			fmt.Println("No audit logs")
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			return fmt.Errorf("❌ error rendering table - %w", err)
+		}
 	}
 	return nil
 }
 
-func auditLogs(c *cli.Context) error {
+func auditLogs(ctx context.Context, cmd *cli.Command) error {
 	var als []auditlog.AuditLog
 	var m environments.MapEnvByID
 	if dbFlag {
