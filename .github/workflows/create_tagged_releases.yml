@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 env:
-  GOLANG_VERSION: 1.24.3
+  GOLANG_VERSION: 1.25.4
   OSQUERY_VERSION: 5.20.0
 
 jobs:
