@@ -1,5 +1,5 @@
 ######################################## osctrl-dev-base ########################################
-ARG GOLANG_VERSION=${GOLANG_VERSION:-1.24.3}
+ARG GOLANG_VERSION=${GOLANG_VERSION:-1.25.4}
 FROM golang:${GOLANG_VERSION} AS osctrl-admin-dev
 
 WORKDIR /usr/src/app

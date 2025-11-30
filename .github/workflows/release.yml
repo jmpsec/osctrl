@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 env:
-  GOLANG_VERSION: 1.24.3
+  GOLANG_VERSION: 1.25.4
 
 jobs:
   goreleaser:
