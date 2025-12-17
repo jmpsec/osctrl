@@ -15,7 +15,7 @@ import (
 )
 
 func setupTestManager(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
-	conf := config.JSONConfigurationJWT{
+	conf := config.YAMLConfigurationJWT{
 		JWTSecret:     "test",
 		HoursToExpire: 1,
 	}
@@ -104,7 +104,7 @@ func TestCheckLoginCredentials(t *testing.T) {
 
 func TestCreateCheckToken(t *testing.T) {
 	manager, _ := setupTestManager(t)
-	conf := config.JSONConfigurationJWT{
+	conf := config.YAMLConfigurationJWT{
 		JWTSecret: "test",
 	}
 	token, tt, err := manager.CreateToken("testUsername", "issuer", 0)

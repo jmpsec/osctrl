@@ -22,7 +22,7 @@ type TokenJSON struct {
 
 // TokensGETHandler for GET requests for /tokens/{username}
 func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username
@@ -60,7 +60,7 @@ func (h *HandlersAdmin) TokensGETHandler(w http.ResponseWriter, r *http.Request)
 
 // TokensPOSTHandler for POST request for /tokens/{username}/refresh
 func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username and verify
@@ -94,7 +94,7 @@ func (h *HandlersAdmin) TokensPOSTHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	log.Debug().Msg("Creating token")
-	token, exp, err := h.Users.CreateToken(user.Username, h.AdminConfig.Host, t.ExpHours)
+	token, exp, err := h.Users.CreateToken(user.Username, h.Configuration.Service.Host, t.ExpHours)
 	if err != nil {
 		adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 		return

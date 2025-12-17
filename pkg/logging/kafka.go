@@ -16,12 +16,12 @@ import (
 )
 
 type LoggerKafka struct {
-	config   config.KafkaConfiguration
+	config   config.KafkaLogger
 	Enabled  bool
 	producer *kgo.Client
 }
 
-func CreateLoggerKafka(config config.KafkaConfiguration) (*LoggerKafka, error) {
+func CreateLoggerKafka(config *config.KafkaLogger) (*LoggerKafka, error) {
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(config.BootstrapServer),
 		kgo.ConsumeTopics(config.Topic),
@@ -75,7 +75,7 @@ func CreateLoggerKafka(config config.KafkaConfiguration) (*LoggerKafka, error) {
 	}
 
 	return &LoggerKafka{
-		config:   config,
+		config:   *config,
 		Enabled:  true,
 		producer: producer,
 	}, nil

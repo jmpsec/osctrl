@@ -24,7 +24,7 @@ import (
 // LoginPOSTHandler for login page for POST requests
 func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request) {
 	// Never show the body in the login request
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	var l LoginRequest
@@ -52,7 +52,7 @@ func (h *HandlersAdmin) LoginPOSTHandler(w http.ResponseWriter, r *http.Request)
 
 // LogoutPOSTHandler for POST requests to logout
 func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var l LogoutRequest
@@ -81,7 +81,7 @@ func (h *HandlersAdmin) LogoutPOSTHandler(w http.ResponseWriter, r *http.Request
 
 // QueryRunPOSTHandler for POST requests to run queries
 func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -179,7 +179,7 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 
 // CarvesRunPOSTHandler for POST requests to run file carves
 func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -269,7 +269,7 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 
 // QueryActionsPOSTHandler for POST requests to queries
 func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -351,7 +351,7 @@ func (h *HandlersAdmin) QueryActionsPOSTHandler(w http.ResponseWriter, r *http.R
 
 // CarvesActionsPOSTHandler - Handler for POST requests to carves
 func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -407,7 +407,7 @@ func (h *HandlersAdmin) CarvesActionsPOSTHandler(w http.ResponseWriter, r *http.
 
 // ConfPOSTHandler for POST requests for saving configuration
 func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -593,7 +593,7 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 
 // IntervalsPOSTHandler for POST requests for saving intervals
 func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment and verify
@@ -650,7 +650,7 @@ func (h *HandlersAdmin) IntervalsPOSTHandler(w http.ResponseWriter, r *http.Requ
 
 // ExpirationPOSTHandler for POST requests for expiring enroll links
 func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -745,7 +745,7 @@ func (h *HandlersAdmin) ExpirationPOSTHandler(w http.ResponseWriter, r *http.Req
 
 // NodeActionsPOSTHandler for POST requests for multi node action
 func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var m NodeMultiActionRequest
@@ -790,7 +790,7 @@ func (h *HandlersAdmin) NodeActionsPOSTHandler(w http.ResponseWriter, r *http.Re
 
 // EnvsPOSTHandler for POST request for /environments
 func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var c EnvironmentsRequest
@@ -880,7 +880,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 
 // SettingsPOSTHandler for POST request for /settings
 func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract service
@@ -964,7 +964,7 @@ func (h *HandlersAdmin) SettingsPOSTHandler(w http.ResponseWriter, r *http.Reque
 
 // UsersPOSTHandler for POST request for /users
 func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var u UsersRequest
@@ -1020,7 +1020,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if u.Token {
-			token, exp, err := h.Users.CreateToken(newUser.Username, h.AdminConfig.Host, h.Users.JWTConfig.HoursToExpire)
+			token, exp, err := h.Users.CreateToken(newUser.Username, h.Configuration.Service.Host, h.Users.JWTConfig.HoursToExpire)
 			if err != nil {
 				adminErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
 				return
@@ -1112,7 +1112,7 @@ func (h *HandlersAdmin) UsersPOSTHandler(w http.ResponseWriter, r *http.Request)
 
 // TagsPOSTHandler for POST request for /tags
 func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var t TagsRequest
@@ -1204,7 +1204,7 @@ func (h *HandlersAdmin) TagsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 
 // TagNodesPOSTHandler for POST request for /tags/nodes
 func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var t TagNodesRequest
@@ -1264,7 +1264,7 @@ func (h *HandlersAdmin) TagNodesPOSTHandler(w http.ResponseWriter, r *http.Reque
 
 // PermissionsPOSTHandler for POST request for /users/permissions
 func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username and verify
@@ -1323,7 +1323,7 @@ func (h *HandlersAdmin) PermissionsPOSTHandler(w http.ResponseWriter, r *http.Re
 
 // EnrollPOSTHandler for POST requests enroll data
 func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -1424,7 +1424,7 @@ func (h *HandlersAdmin) EnrollPOSTHandler(w http.ResponseWriter, r *http.Request
 
 // EditProfilePOSTHandler for POST requests to edit profile
 func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var u UsersRequest
@@ -1490,7 +1490,7 @@ func (h *HandlersAdmin) EditProfilePOSTHandler(w http.ResponseWriter, r *http.Re
 
 // SavedQueriesPOSTHandler for POST requests to save queries
 func (h *HandlersAdmin) SavedQueriesPOSTHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	var s SavedQueryRequest

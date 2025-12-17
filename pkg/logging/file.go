@@ -1,24 +1,13 @@
 package logging
 
 import (
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
-
-// LumberjackConfig to keep configuration for rotating logs
-type LumberjackConfig struct {
-	// Maximum size in megabytes of the log file before it gets rotated
-	MaxSize int
-	// Maximum number of old log files to retain
-	MaxBackups int
-	// Maximum number of days to retain old log files based on the timestamp encoded in their filename
-	MaxAge int
-	// If the rotated log files should be compressed using gzip
-	Compress bool
-}
 
 // LoggerFile will be used to log data using external file
 type LoggerFile struct {
@@ -28,10 +17,10 @@ type LoggerFile struct {
 }
 
 // CreateLoggerFile to initialize the logger
-func CreateLoggerFile(filename string, cfg LumberjackConfig) (*LoggerFile, error) {
+func CreateLoggerFile(cfg *config.LocalLogger) (*LoggerFile, error) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	z := zerolog.New(&lumberjack.Logger{
-		Filename:   filename,
+		Filename:   cfg.FilePath,
 		MaxSize:    cfg.MaxSize,
 		MaxBackups: cfg.MaxBackups,
 		MaxAge:     cfg.MaxAge,
@@ -40,7 +29,7 @@ func CreateLoggerFile(filename string, cfg LumberjackConfig) (*LoggerFile, error
 	logger := z.With().Caller().Timestamp().Logger()
 	return &LoggerFile{
 		Enabled:  true,
-		Filename: filename,
+		Filename: cfg.FilePath,
 		Logger:   &logger,
 	}, nil
 }

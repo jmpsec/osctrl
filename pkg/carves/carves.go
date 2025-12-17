@@ -159,9 +159,9 @@ func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 			}
 			return c.S3.Upload(block, uuid, data)
 		}
-		return fmt.Errorf("S3 carver not initialized")
+		return fmt.Errorf("s3 carver not initialized")
 	}
-	return fmt.Errorf("Unknown carver") // can be nil or err
+	return fmt.Errorf("unknown carver") // can be nil or err
 }
 
 // Delete to delete a carve by id
@@ -260,11 +260,11 @@ func (c *Carves) ChangeStatus(status, sessionid string) error {
 		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
 	if err := c.DB.Model(&carve).Update("status", status).Error; err != nil {
-		return fmt.Errorf("Update %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	if status == StatusCompleted {
 		if err := c.DB.Model(&carve).Update("completed_at", time.Now()).Error; err != nil {
-			return fmt.Errorf("Update %w", err)
+			return fmt.Errorf("update %w", err)
 		}
 	}
 	return nil
@@ -277,7 +277,7 @@ func (c *Carves) CompleteBlock(sessionid string) error {
 		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
 	if err := c.DB.Model(&carve).Update("completed_blocks", carve.CompletedBlocks+1).Error; err != nil {
-		return fmt.Errorf("Update %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	return nil
 }
@@ -293,7 +293,7 @@ func (c *Carves) ArchiveCarve(sessionid, archive string) error {
 		"archive_path": archive,
 	}
 	if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	return nil
 }

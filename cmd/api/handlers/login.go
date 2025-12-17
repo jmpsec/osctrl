@@ -13,7 +13,7 @@ import (
 // LoginHandler - POST Handler for API login request
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled, never log the body for login
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	// Extract environment

@@ -26,5 +26,5 @@ repos:
       - id: go-fmt-import
       - id: go-static-check # install https://staticcheck.io/docs/
       - id: golangci-lint # requires github.com/golangci/golangci-lint
-        args: [--config=.golangci.yml] # optional
+        args: [--config=.golangci.yml, --allow-parallel-runners] # optional
       - id: go-unit-tests

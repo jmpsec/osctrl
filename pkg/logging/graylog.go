@@ -3,7 +3,6 @@ package logging
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -11,58 +10,23 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
-
-// GraylogConfiguration to hold all graylog configuration values
-type GraylogConfiguration struct {
-	URL     string `json:"url"`
-	Host    string `json:"host"`
-	Queries string `json:"queries"`
-	Status  string `json:"status"`
-	Results string `json:"results"`
-}
-
-// LoadGraylog - Function to load the Graylog configuration from JSON file
-func LoadGraylog(file string) (GraylogConfiguration, error) {
-	var _graylogCfg GraylogConfiguration
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	err := viper.ReadInConfig()
-	if err != nil {
-		return _graylogCfg, err
-	}
-	cfgRaw := viper.Sub(config.LoggingGraylog)
-	if cfgRaw == nil {
-		return _graylogCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingGraylog, file)
-	}
-	if err := cfgRaw.Unmarshal(&_graylogCfg); err != nil {
-		return _graylogCfg, err
-	}
-	// No errors!
-	return _graylogCfg, nil
-}
 
 // LoggerGraylog will be used to log data using Graylog
 type LoggerGraylog struct {
-	Configuration GraylogConfiguration
+	Configuration config.GraylogLogger
 	Headers       map[string]string
 	Enabled       bool
 }
 
 // CreateLoggerGraylog to initialize the logger
-func CreateLoggerGraylog(graylogFile string) (*LoggerGraylog, error) {
-	config, err := LoadGraylog(graylogFile)
-	if err != nil {
-		return nil, err
-	}
+func CreateLoggerGraylog(cfg *config.GraylogLogger) (*LoggerGraylog, error) {
 	l := &LoggerGraylog{
 		Enabled: true,
 		Headers: map[string]string{
 			utils.ContentType: utils.JSONApplicationUTF8,
 		},
-		Configuration: config,
+		Configuration: *cfg,
 	}
 	return l, nil
 }

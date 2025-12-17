@@ -15,7 +15,7 @@ import (
 )
 
 func setupTestManagerForPermissions(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
-	conf := config.JSONConfigurationJWT{
+	conf := config.YAMLConfigurationJWT{
 		JWTSecret:     "test",
 		HoursToExpire: 1,
 	}

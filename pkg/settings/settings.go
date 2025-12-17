@@ -177,7 +177,7 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 	}
 	// Create record in database
 	if err := conf.DB.Create(&entry).Error; err != nil {
-		return fmt.Errorf("Create NewValue %w", err)
+		return fmt.Errorf("create NewValue %w", err)
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (conf *Settings) NewJSON(service, name, value string, envID uint) error {
 	entry.String = value
 	// Create record in database
 	if err := conf.DB.Create(&entry).Error; err != nil {
-		return fmt.Errorf("Create NewJSON %w", err)
+		return fmt.Errorf("create NewJSON %w", err)
 	}
 	return nil
 }
@@ -226,10 +226,10 @@ func (conf *Settings) VerifyService(sType string) bool {
 func (conf *Settings) DeleteValue(service, name string, envID uint) error {
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("DeleteValue %w", err)
+		return fmt.Errorf("deleteValue %w", err)
 	}
 	if err := conf.DB.Unscoped().Delete(&value).Error; err != nil {
-		return fmt.Errorf("Delete %w", err)
+		return fmt.Errorf("delete %w", err)
 	}
 	return nil
 }
@@ -303,63 +303,63 @@ func (conf *Settings) SetJSON(service, name, value string, envID uint) error {
 }
 
 // SetTLSJSON sets all the JSON configuration values for TLS service
-func (conf *Settings) SetTLSJSON(cfg config.JSONConfigurationService, envID uint) error {
-	if err := conf.SetJSON(config.ServiceTLS, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetTLSJSON(cfg *config.ServiceParameters, envID uint) error {
+	if err := conf.SetJSON(config.ServiceTLS, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONPort, cfg.Service.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONHost, cfg.Service.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONAuth, cfg.Service.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONLogger, cfg.Logger, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONLogger, cfg.Logger.Type, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONCarver, cfg.Carver, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONCarver, cfg.Carver.Type, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAdminJSON sets all the JSON configuration values for admin service
-func (conf *Settings) SetAdminJSON(cfg config.JSONConfigurationService, envID uint) error {
-	if err := conf.SetJSON(config.ServiceAdmin, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetAdminJSON(cfg *config.ServiceParameters, envID uint) error {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONPort, cfg.Service.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONHost, cfg.Service.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONAuth, cfg.Service.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONLogger, cfg.Logger, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONLogger, cfg.Logger.Type, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONSessionKey, cfg.SessionKey, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONSessionKey, cfg.Admin.SessionKey, envID); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetAPIJSON sets all the JSON configuration values for API service
-func (conf *Settings) SetAPIJSON(cfg config.JSONConfigurationService, envID uint) error {
-	if err := conf.SetJSON(config.ServiceAPI, JSONListener, cfg.Listener, envID); err != nil {
+func (conf *Settings) SetAPIJSON(cfg *config.ServiceParameters, envID uint) error {
+	if err := conf.SetJSON(config.ServiceAPI, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAPI, JSONPort, cfg.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONPort, cfg.Service.Port, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAPI, JSONHost, cfg.Host, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONHost, cfg.Service.Host, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAPI, JSONAuth, cfg.Auth, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONAuth, cfg.Service.Auth, envID); err != nil {
 		return err
 	}
 	return nil
@@ -415,11 +415,11 @@ func (conf *Settings) SetInteger(intValue int64, service, name string, envID uin
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetInteger %d %w", intValue, err)
+		return fmt.Errorf("setInteger %d %w", intValue, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Update(TypeInteger, intValue).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	log.Debug().Msgf("SetInteger %d %s %s", intValue, service, name)
 	return nil
@@ -439,11 +439,11 @@ func (conf *Settings) SetBoolean(boolValue bool, service, name string, envID uin
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetBoolean %v %w", boolValue, err)
+		return fmt.Errorf("setBoolean %v %w", boolValue, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Updates(map[string]interface{}{TypeBoolean: boolValue}).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	log.Debug().Msgf("SetBoolean %v %s %s", boolValue, service, name)
 	return nil
@@ -475,17 +475,17 @@ func (conf *Settings) SetString(strValue string, service, name string, _json boo
 	if _json {
 		val, err = conf.RetrieveJSON(service, name, envID)
 		if err != nil {
-			return fmt.Errorf("SetString %s %w", strValue, err)
+			return fmt.Errorf("setString %s %w", strValue, err)
 		}
 	} else {
 		val, err = conf.RetrieveValue(service, name, envID)
 		if err != nil {
-			return fmt.Errorf("SetString %s %w", strValue, err)
+			return fmt.Errorf("setString %s %w", strValue, err)
 		}
 	}
 	// Update
 	if err := conf.DB.Model(&val).Update(TypeString, strValue).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	log.Debug().Msgf("SetString %s %s %s", strValue, service, name)
 	return nil
@@ -505,11 +505,11 @@ func (conf *Settings) SetInfo(info string, service, name string, envID uint) err
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
-		return fmt.Errorf("SetInfo %s %w", info, err)
+		return fmt.Errorf("setInfo %s %w", info, err)
 	}
 	// Update
 	if err := conf.DB.Model(&value).Update("info", info).Error; err != nil {
-		return fmt.Errorf("Updates %w", err)
+		return fmt.Errorf("update %w", err)
 	}
 	log.Debug().Msgf("SetInfo %s %s %s", info, service, name)
 	return nil

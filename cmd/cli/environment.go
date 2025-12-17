@@ -43,7 +43,7 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 		certificate = environments.ReadExternalFile(certFile)
 	}
 	// Get osquery values to generate flags
-	osqueryValues := config.OsqueryConfiguration{
+	osqueryValues := config.YAMLConfigurationOsquery{
 		Config: cmd.Bool("config"),
 		Logger: cmd.Bool("logger"),
 		Query:  cmd.Bool("query"),
@@ -113,7 +113,7 @@ func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
 		os.Exit(1)
 	}
 	// Get osquery values to generate flags
-	osqueryValues := config.OsqueryConfiguration{
+	osqueryValues := config.YAMLConfigurationOsquery{
 		Config: cmd.Bool("config-plugin"),
 		Logger: cmd.Bool("logger-plugin"),
 		Query:  cmd.Bool("query-plugin"),
@@ -301,7 +301,7 @@ func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 		os.Exit(1)
 	}
 	// Get osquery values to generate flags
-	osqueryValues := config.OsqueryConfiguration{
+	osqueryValues := config.YAMLConfigurationOsquery{
 		Config: cmd.Bool("config"),
 		Logger: cmd.Bool("logger"),
 		Query:  cmd.Bool("query"),
@@ -647,7 +647,7 @@ func genFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 	secret := cmd.String("secret")
 	cert := cmd.String("certificate")
 	// Get osquery values to generate flags
-	osqueryValues := config.OsqueryConfiguration{
+	osqueryValues := config.YAMLConfigurationOsquery{
 		Config: cmd.Bool("config"),
 		Logger: cmd.Bool("logger"),
 		Query:  cmd.Bool("query"),

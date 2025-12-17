@@ -51,11 +51,11 @@ type TokenClaims struct {
 // UserManager have all users of the system
 type UserManager struct {
 	DB        *gorm.DB
-	JWTConfig *config.JSONConfigurationJWT
+	JWTConfig *config.YAMLConfigurationJWT
 }
 
 // CreateUserManager to initialize the users struct and tables
-func CreateUserManager(backend *gorm.DB, jwtconfig *config.JSONConfigurationJWT) *UserManager {
+func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT) *UserManager {
 	// Check if JWT is not empty
 	if jwtconfig.JWTSecret == "" {
 		log.Fatal().Msgf("JWT Secret can not be empty")

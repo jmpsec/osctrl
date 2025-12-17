@@ -16,7 +16,7 @@ import (
 // UserHandler - GET Handler for environment users
 func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
@@ -46,7 +46,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 // UsersHandler - GET Handler for multiple JSON nodes
 func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
@@ -74,7 +74,7 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 // UserActionHandler - POST Handler to take actions on a user by username and environment
 func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access

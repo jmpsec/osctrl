@@ -59,9 +59,9 @@ type HandlersTLS struct {
 	SettingsMap     *settings.MapSettings
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
-	OsqueryValues   *config.OsqueryConfiguration
+	OsqueryValues   *config.YAMLConfigurationOsquery
 	DebugHTTP       *zerolog.Logger
-	DebugHTTPConfig *config.DebugHTTPConfiguration
+	DebugHTTPConfig *config.YAMLConfigurationDebug
 }
 
 // TLSResponse to be returned to requests
@@ -143,18 +143,19 @@ func WithWriteHandler(writeHandler *batchWriter) Option {
 }
 
 // WithOsqueryValues to pass osquery configuration values
-func WithOsqueryValues(values *config.OsqueryConfiguration) Option {
+func WithOsqueryValues(values *config.YAMLConfigurationOsquery) Option {
 	return func(h *HandlersTLS) {
 		h.OsqueryValues = values
 	}
 }
 
-func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) Option {
+func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) Option {
 	return func(h *HandlersTLS) {
 		h.DebugHTTPConfig = cfg
 		h.DebugHTTP = nil
-		if cfg.Enabled {
-			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+		if cfg.EnableHTTP {
+			l, err := logging.CreateDebugHTTP(config.LocalLogger{
+				FilePath:   cfg.HTTPFile,
 				MaxSize:    25,
 				MaxBackups: 5,
 				MaxAge:     10,
@@ -163,7 +164,7 @@ func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) Option {
 			if err != nil {
 				log.Err(err).Msg("error creating debug HTTP logger")
 				l = nil
-				h.DebugHTTPConfig.Enabled = false
+				h.DebugHTTPConfig.EnableHTTP = false
 			}
 			h.DebugHTTP = l
 		}

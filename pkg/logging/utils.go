@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"github.com/jmpsec/osctrl/pkg/backend"
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 const (
@@ -12,7 +12,7 @@ const (
 )
 
 // Helper to check if two DB configurations are the same
-func sameConfigDB(loggerOne, loggerTwo backend.JSONConfigurationDB) bool {
+func sameConfigDB(loggerOne, loggerTwo config.YAMLConfigurationDB) bool {
 	return (loggerOne.Host == loggerTwo.Host) && (loggerOne.Port == loggerTwo.Port) && (loggerOne.Name == loggerTwo.Name)
 }
 

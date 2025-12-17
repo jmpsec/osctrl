@@ -130,29 +130,34 @@ func jsonRawIndent(raw string) string {
 }
 
 // Helper to convert from settings values to JSON configuration
-func toJSONConfigurationService(values []settings.SettingValue) config.JSONConfigurationService {
-	var cfg config.JSONConfigurationService
+func toJSONConfigurationService(values []settings.SettingValue) *config.ServiceParameters {
+	cfg := &config.ServiceParameters{
+		Service: &config.YAMLConfigurationService{},
+		Admin:   &config.YAMLConfigurationAdmin{},
+		Logger:  &config.YAMLConfigurationLogger{},
+		Carver:  &config.YAMLConfigurationCarver{},
+	}
 	for _, v := range values {
 		if v.Name == settings.JSONListener {
-			cfg.Listener = v.String
+			cfg.Service.Listener = v.String
 		}
 		if v.Name == settings.JSONPort {
-			cfg.Port = v.String
+			cfg.Service.Port = v.String
 		}
 		if v.Name == settings.JSONHost {
-			cfg.Host = v.String
+			cfg.Service.Host = v.String
 		}
 		if v.Name == settings.JSONAuth {
-			cfg.Auth = v.String
+			cfg.Service.Auth = v.String
 		}
 		if v.Name == settings.JSONLogger {
-			cfg.Logger = v.String
+			cfg.Logger.Type = v.String
 		}
 		if v.Name == settings.JSONCarver {
-			cfg.Carver = v.String
+			cfg.Carver.Type = v.String
 		}
 		if v.Name == settings.JSONSessionKey {
-			cfg.SessionKey = v.String
+			cfg.Admin.SessionKey = v.String
 		}
 	}
 	return cfg

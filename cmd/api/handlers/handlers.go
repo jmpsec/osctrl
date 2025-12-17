@@ -33,9 +33,9 @@ type HandlersApi struct {
 	ServiceVersion  string
 	ServiceName     string
 	AuditLog        *auditlog.AuditLogManager
-	ApiConfig       *config.JSONConfigurationService
+	ApiConfig       *config.APIConfiguration
 	DebugHTTP       *zerolog.Logger
-	DebugHTTPConfig *config.DebugHTTPConfiguration
+	DebugHTTPConfig *config.YAMLConfigurationDebug
 }
 
 type HandlersOption func(*HandlersApi)
@@ -112,12 +112,13 @@ func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
 	}
 }
 
-func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
+func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) HandlersOption {
 	return func(h *HandlersApi) {
 		h.DebugHTTPConfig = cfg
 		h.DebugHTTP = nil
-		if cfg.Enabled {
-			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+		if cfg.EnableHTTP {
+			l, err := logging.CreateDebugHTTP(config.LocalLogger{
+				FilePath:   cfg.HTTPFile,
 				MaxSize:    25,
 				MaxBackups: 5,
 				MaxAge:     10,
@@ -126,7 +127,7 @@ func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
 			if err != nil {
 				log.Err(err).Msg("error creating debug HTTP logger")
 				l = nil
-				h.DebugHTTPConfig.Enabled = false
+				h.DebugHTTPConfig.EnableHTTP = false
 			}
 			h.DebugHTTP = l
 		}

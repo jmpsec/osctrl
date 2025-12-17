@@ -66,7 +66,7 @@
                   </tbody>
                 </table>
                 <br />
-                {{ if eq $serviceConfig.Logger "db" }}
+                {{ if eq $serviceConfig.Logger.Type "db" }}
                 <div id="downloadLinkContainer" class="alert alert-info" style="display: none">
                   <i class="fas fa-info-circle"></i>
                   <strong>Large Result Set:</strong> The results are too large to display in the table.
@@ -83,7 +83,7 @@
                   </thead>
                 </table>
                 {{ else }}
-                <div class="alert alert-warning" role="alert"><i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger }}</b> in the service configuration. No results available.</div>
+                <div class="alert alert-warning" role="alert"><i class="fas fa-exclamation-triangle"></i> The logger is set to <b>{{ $serviceConfig.Logger.Type }}</b> in the service configuration. No results available.</div>
                 {{ end }}
               </div>
             </div>

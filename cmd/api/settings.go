@@ -9,7 +9,7 @@ import (
 )
 
 // Function to load all settings for the service
-func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
+func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) error {
 	log.Debug().Msg("Initializing settings")
 	// Check if service settings for metrics is ready, initialize if so
 	if !mgr.IsValue(config.ServiceAPI, settings.ServiceMetrics, settings.NoEnvironmentID) {

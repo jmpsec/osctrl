@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/spf13/viper"
 
 	"gorm.io/driver/mysql"
@@ -28,48 +29,12 @@ const (
 // DBManager have access to backend
 type DBManager struct {
 	Conn   *gorm.DB
-	Config *JSONConfigurationDB
+	Config *config.YAMLConfigurationDB
 	DSN    string
 }
 
-// JSONConfigurationDB to hold all backend configuration values
-type JSONConfigurationDB struct {
-	Type            string `json:"type"` // Database type: postgres, mysql, sqlite
-	Host            string `json:"host"`
-	Port            string `json:"port"`
-	Name            string `json:"name"`
-	Username        string `json:"username"`
-	Password        string `json:"password"`
-	SSLMode         string `json:"sslmode"`
-	MaxIdleConns    int    `json:"maxIdleConns"`
-	MaxOpenConns    int    `json:"maxOpenConns"`
-	ConnMaxLifetime int    `json:"connMaxLifetime"`
-	ConnRetry       int    `json:"connRetry"`
-	FilePath        string `json:"filePath"` // Used for SQLite
-}
-
-// LoadConfiguration to load the DB configuration file and assign to variables
-func LoadConfiguration(file, key string) (JSONConfigurationDB, error) {
-	var config JSONConfigurationDB
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return config, err
-	}
-	// Backend values
-	dbRaw := viper.Sub(key)
-	if dbRaw == nil {
-		return config, fmt.Errorf("JSON key %s not found in %s", key, file)
-	}
-	if err := dbRaw.Unmarshal(&config); err != nil {
-		return config, err
-	}
-	// No errors!
-	return config, nil
-}
-
 // PrepareDSN to generate DB connection string
-func PrepareDSN(config JSONConfigurationDB) string {
+func PrepareDSN(config config.YAMLConfigurationDB) string {
 	switch config.Type {
 	case DBTypePostgres:
 		return fmt.Sprintf(
@@ -132,23 +97,44 @@ func (db *DBManager) Check() error {
 	return nil
 }
 
-// CreateDBManager to initialize the DB struct
-func CreateDBManagerFile(file string) (*DBManager, error) {
-	dbConfig, err := LoadConfiguration(file, DBKey)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load DB configuration - %w", err)
+// LoadDBManagerFile - Function to load DB configuration from YAML file
+func LoadDBManagerFile(dbConfigFile string) (*config.YAMLConfigurationDB, error) {
+	var cfg config.YAMLConfigurationDB
+	// Load file and read config
+	viper.SetConfigFile(dbConfigFile)
+	viper.SetConfigType(config.YAMLConfigType)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
 	}
-	return CreateDBManager(dbConfig)
+	// Extract the correct section
+	viperSub := viper.Sub(config.YAMLDBType)
+	if viperSub == nil {
+		return nil, fmt.Errorf("no '%s' section found in configuration file", config.YAMLDBType)
+	}
+	// Unmarshal into struct
+	if err := viperSub.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+// CreateDBManagerFile to load values from YAML file and initialize the DB struct
+func CreateDBManagerFile(dbConfigFile string) (*DBManager, error) {
+	cfg, err := LoadDBManagerFile(dbConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load DB configuration file - %w", err)
+	}
+	return CreateDBManager(cfg)
 }
 
 // CreateDBManager to initialize the DB struct
-func CreateDBManager(dbConfig JSONConfigurationDB) (*DBManager, error) {
+func CreateDBManager(dbConfig *config.YAMLConfigurationDB) (*DBManager, error) {
 	db := &DBManager{}
-	db.Config = &dbConfig
-	db.DSN = PrepareDSN(dbConfig)
+	db.Config = dbConfig
+	db.DSN = PrepareDSN(*dbConfig)
 	dbConn, err := db.GetDB()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get DB - %w", err)
+		return nil, fmt.Errorf("failed to get DB - %w", err)
 	}
 	db.Conn = dbConn
 	return db, nil

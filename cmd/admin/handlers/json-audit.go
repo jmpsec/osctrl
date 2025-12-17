@@ -30,7 +30,7 @@ type ReturnedAudit struct {
 
 // JSONAuditLogHandler for audit logs in JSON
 func (h *HandlersAdmin) JSONAuditLogHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data

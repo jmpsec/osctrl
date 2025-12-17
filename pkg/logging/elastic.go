@@ -14,37 +14,23 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
-
-// ElasticConfiguration to hold all elastic configuration values
-type ElasticConfiguration struct {
-	Host           string `json:"host"`
-	Port           string `json:"port"`
-	IndexPrefix    string `json:"indexPrefix"`
-	DateSeparator  string `json:"dateSeparator"`  // Expected is . for YYYY.MM.DD
-	IndexSeparator string `json:"indexSeparator"` // Expected is - for prefix-YYYY.MM.DD
-}
 
 // LoggerElastic will be used to log data using Elastic
 type LoggerElastic struct {
-	Configuration ElasticConfiguration
+	Configuration config.ElasticLogger
 	Enabled       bool
 	Client        *elasticsearch.Client
 }
 
 // CreateLoggerElastic to initialize the logger
-func CreateLoggerElastic(elasticFile string) (*LoggerElastic, error) {
-	config, err := LoadElastic(elasticFile)
-	if err != nil {
-		return nil, err
-	}
-	cfg := elasticsearch.Config{
+func CreateLoggerElastic(cfg *config.ElasticLogger) (*LoggerElastic, error) {
+	esCfg := elasticsearch.Config{
 		Addresses: []string{
-			fmt.Sprintf("http://%s:%s", config.Host, config.Port),
+			fmt.Sprintf("http://%s:%s", cfg.Host, cfg.Port),
 		},
 	}
-	es, err := elasticsearch.NewClient(cfg)
+	es, err := elasticsearch.NewClient(esCfg)
 	if err != nil {
 		return nil, err
 	} else {
@@ -58,31 +44,11 @@ func CreateLoggerElastic(elasticFile string) (*LoggerElastic, error) {
 		}
 	}
 	l := &LoggerElastic{
-		Configuration: config,
+		Configuration: *cfg,
 		Enabled:       true,
 		Client:        es,
 	}
 	return l, nil
-}
-
-// LoadElastic - Function to load the Elastic configuration from JSON file
-func LoadElastic(file string) (ElasticConfiguration, error) {
-	var _elasticCfg ElasticConfiguration
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return _elasticCfg, err
-	}
-	cfgRaw := viper.Sub(config.LoggingElastic)
-	if cfgRaw == nil {
-		return _elasticCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingElastic, file)
-	}
-	if err := cfgRaw.Unmarshal(&_elasticCfg); err != nil {
-		return _elasticCfg, err
-	}
-	// No errors!
-	return _elasticCfg, nil
 }
 
 // IndexName - Function to return the index name
