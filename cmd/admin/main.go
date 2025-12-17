@@ -96,7 +96,9 @@ var (
 	carvers3    *carves.CarverS3
 	app         *cli.Command
 	flags       []cli.Flag
-	flagParams  config.ServiceFlagParams
+	// FIXME this struct is temporary until we refactor to write settings to the DB
+	flagParams           *config.ServiceParameters
+	serviceConfiguration config.AdminConfiguration
 	// FIXME this is nasty and should not be a global but here we are
 	osqueryTables []types.OsqueryTable
 	handlersAdmin *handlers.HandlersAdmin
@@ -106,7 +108,7 @@ var (
 // SAML variables
 var (
 	samlMiddleware *samlsp.Middleware
-	samlConfig     JSONConfigurationSAML
+	samlConfig     config.YAMLConfigurationSAML
 	samlData       samlThings
 )
 
@@ -124,36 +126,8 @@ var validCarver = map[string]bool{
 	config.CarverS3:    true,
 }
 
-// Function to load the configuration file
-func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
-	var cfg config.JSONConfigurationService
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return cfg, err
-	}
-	// Admin values
-	adminRaw := viper.Sub(service)
-	if adminRaw == nil {
-		return cfg, fmt.Errorf("JSON key %s not found in file %s", service, file)
-	}
-	if err := adminRaw.Unmarshal(&cfg); err != nil {
-		return cfg, err
-	}
-	// Check if values are valid
-	if !validAuth[cfg.Auth] {
-		return cfg, fmt.Errorf("invalid auth method")
-	}
-	if !validCarver[cfg.Carver] {
-		return cfg, fmt.Errorf("invalid carver method")
-	}
-	// No errors!
-	return cfg, nil
-}
-
 // Function to load the configuration from a single YAML file
-/*func loadYAMLConfiguration(file string) (config.AdminConfiguration, error) {
+func loadYAMLConfiguration(file string) (config.AdminConfiguration, error) {
 	var cfg config.AdminConfiguration
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -165,14 +139,49 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
+	// Check if values are valid
+	if !validAuth[cfg.Service.Auth] {
+		return cfg, fmt.Errorf("invalid auth method")
+	}
+	if !validCarver[cfg.Carver.Type] {
+		return cfg, fmt.Errorf("invalid carver method")
+	}
 	// No errors!
 	return cfg, nil
-}*/
+}
 
 // Initialization code
 func init() {
+	// Initialize default flagParams
+	flagParams = &config.ServiceParameters{
+		Service: &config.YAMLConfigurationService{},
+		DB:      &config.YAMLConfigurationDB{},
+		Redis:   &config.YAMLConfigurationRedis{},
+		Osquery: &config.YAMLConfigurationOsquery{},
+		Osctrld: &config.YAMLConfigurationOsctrld{},
+		SAML:    &config.YAMLConfigurationSAML{},
+		JWT:     &config.YAMLConfigurationJWT{},
+		TLS:     &config.YAMLConfigurationTLS{},
+		Logger: &config.YAMLConfigurationLogger{
+			DB:       &config.YAMLConfigurationDB{},
+			S3:       &config.S3Logger{},
+			Graylog:  &config.GraylogLogger{},
+			Elastic:  &config.ElasticLogger{},
+			Splunk:   &config.SplunkLogger{},
+			Logstash: &config.LogstashLogger{},
+			Kinesis:  &config.KinesisLogger{},
+			Kafka:    &config.KafkaLogger{},
+			Local:    &config.LocalLogger{},
+		},
+		Carver: &config.YAMLConfigurationCarver{
+			S3:    &config.S3Carver{},
+			Local: &config.LocalCarver{},
+		},
+		Admin: &config.YAMLConfigurationAdmin{},
+		Debug: &config.YAMLConfigurationDebug{},
+	}
 	// Initialize CLI flags using the config package
-	flags = config.InitAdminFlags(&flagParams)
+	flags = config.InitAdminFlags(flagParams)
 }
 
 // Go go!
@@ -180,39 +189,39 @@ func osctrlAdminService() {
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
-		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
+		db, err = backend.CreateDBManager(flagParams.DB)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to backend")
-			if flagParams.DBConfigValues.ConnRetry == 0 {
+			if flagParams.DB.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Debug().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DBConfigValues.ConnRetry)
-		time.Sleep(time.Duration(flagParams.DBConfigValues.ConnRetry) * time.Second)
+		log.Debug().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DB.ConnRetry)
+		time.Sleep(time.Duration(flagParams.DB.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
 	for {
-		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
+		redis, err = cache.CreateRedisManager(*flagParams.Redis)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to cache")
-			if flagParams.RedisConfigValues.ConnRetry == 0 {
+			if flagParams.Redis.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.RedisConfigValues.ConnRetry)
-		time.Sleep(time.Duration(flagParams.RedisConfigValues.ConnRetry) * time.Second)
+		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.Redis.ConnRetry)
+		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize users")
-	adminUsers = users.CreateUserManager(db.Conn, &flagParams.JWTConfigValues)
+	adminUsers = users.CreateUserManager(db.Conn, flagParams.JWT)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize environments")
@@ -224,15 +233,15 @@ func osctrlAdminService() {
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
-	carvesmgr = carves.CreateFileCarves(db.Conn, flagParams.ConfigValues.Carver, carvers3)
+	carvesmgr = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, carvers3)
 	log.Info().Msg("Initialize sessions")
-	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, flagParams.ConfigValues.SessionKey)
+	sessionsmgr = sessions.CreateSessionManager(db.Conn, authCookieName, flagParams.Admin.SessionKey)
 	log.Info().Msg("Loading service settings")
-	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
+	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
 	// Start SAML Middleware if we are using SAML
-	if flagParams.ConfigValues.Auth == config.AuthSAML {
+	if flagParams.Service.Auth == config.AuthSAML {
 		log.Debug().Msg("SAML enabled for authentication")
 		// Initialize SAML keypair to sign SAML Request.
 		var err error
@@ -295,21 +304,20 @@ func osctrlAdminService() {
 			time.Sleep(time.Duration(_t) * time.Second)
 		}
 	}()
-	var loggerDBConfig *backend.JSONConfigurationDB
+	var loggerDBConfig *config.YAMLConfigurationDB
 	// Set the logger configuration file if we have a DB logger
-	if flagParams.ConfigValues.Logger == config.LoggingDB {
-		if flagParams.LoggerDBSame {
-			flagParams.LoggerFile = ""
-			loggerDBConfig = &flagParams.DBConfigValues
+	if flagParams.Logger.Type == config.LoggingDB {
+		if flagParams.Logger.LoggerDBSame {
+			loggerDBConfig = flagParams.DB
 		}
 	}
 	// Initialize audit log manager
-	if flagParams.AuditLog {
+	if flagParams.Service.AuditLog {
 		log.Info().Msg("Initialize audit log (enabled)")
 	} else {
 		log.Info().Msg("Initialize audit log (disabled)")
 	}
-	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
+	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.Service.AuditLog)
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
@@ -331,15 +339,15 @@ func osctrlAdminService() {
 			Commit:  buildCommit,
 			Date:    buildDate,
 		}),
-		handlers.WithOsqueryValues(flagParams.OsqueryConfigValues),
-		handlers.WithTemplates(flagParams.TemplatesDir),
-		handlers.WithStaticLocation(flagParams.StaticOffline),
+		handlers.WithOsqueryValues(*flagParams.Osquery),
+		handlers.WithTemplates(flagParams.Admin.TemplatesDir),
+		handlers.WithStaticLocation(flagParams.Admin.StaticOffline),
 		handlers.WithOsqueryTables(osqueryTables),
-		handlers.WithCarvesFolder(flagParams.CarvedDir),
-		handlers.WithAdminConfig(&flagParams.ConfigValues),
+		handlers.WithCarvesFolder(flagParams.Carver.Local.CarvesDir),
+		handlers.WithConfiguration(flagParams),
 		handlers.WithAuditLog(auditLog),
-		handlers.WithDBLogger(flagParams.LoggerFile, loggerDBConfig),
-		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
+		handlers.WithDBLogger(loggerDBConfig),
+		handlers.WithDebugHTTP(flagParams.Debug),
 	)
 	// ////////////////////////// ADMIN
 	log.Info().Msg("Initializing router")
@@ -347,7 +355,7 @@ func osctrlAdminService() {
 	adminMux := http.NewServeMux()
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
-	if flagParams.ConfigValues.Auth != config.AuthNone && flagParams.ConfigValues.Auth != config.AuthSAML {
+	if flagParams.Service.Auth != config.AuthNone && flagParams.Service.Auth != config.AuthSAML {
 		// login
 		adminMux.HandleFunc("GET "+loginPath, handlersAdmin.LoginHandler)
 		adminMux.HandleFunc("POST "+loginPath, handlersAdmin.LoginPOSTHandler)
@@ -364,10 +372,10 @@ func osctrlAdminService() {
 	// Admin: favicon
 	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
 	// Admin: static
-	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.StaticFiles))))
+	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.Admin.StaticDir))))
 	// Admin: background image
 	adminMux.HandleFunc("GET /background-image", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, flagParams.BackgroundImage)
+		http.ServeFile(w, r, flagParams.Admin.BackgroundImage)
 	})
 	// ///////////////////////// AUTHENTICATED CONTENT
 	// Admin: branding image
@@ -375,204 +383,204 @@ func osctrlAdminService() {
 		"GET /branding-image",
 		handlerAuthCheck(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				http.ServeFile(w, r, flagParams.BrandingImage)
+				http.ServeFile(w, r, flagParams.Admin.BrandingImage)
 			}),
-			flagParams.ConfigValues.Auth,
+			flagParams.Service.Auth,
 		),
 	)
 	// Admin: paginated JSON data for environments
 	adminMux.Handle(
 		"GET /paginated-json/environment/{env}/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentPagingHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONEnvironmentPagingHandler), flagParams.Service.Auth))
 	// Admin: JSON data for logs
 	adminMux.Handle(
 		"GET /json/logs/{type}/{env}/{uuid}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONLogsHandler), flagParams.Service.Auth))
 	// Admin: JSON data for query logs
 	adminMux.Handle(
 		"GET /json/query/{env}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryLogsHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"GET /json-download/query/{env}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONDownloadQueryLogsHandler), flagParams.Service.Auth))
 	// Admin: JSON data for sidebar stats
 	adminMux.Handle(
 		"GET /json/stats/{target}/{identifier}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONStatsHandler), flagParams.Service.Auth))
 	// Admin: JSON data for tags
 	adminMux.Handle(
 		"GET /json/tags",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONTagsHandler), flagParams.Service.Auth))
 	// Admin: JSON data for node search (UUID/hostname) - for Select2 AJAX
 	adminMux.Handle(
 		"GET /json/nodes/search",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONNodeSearchHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONNodeSearchHandler), flagParams.Service.Auth))
 	// Admin: JSON data for audit logs
-	if flagParams.AuditLog {
+	if flagParams.Service.AuditLog {
 		adminMux.Handle(
 			"GET /json/audit-logs",
-			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONAuditLogHandler), flagParams.ConfigValues.Auth))
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONAuditLogHandler), flagParams.Service.Auth))
 	}
 	// Admin: table for environments
 	adminMux.Handle(
 		"GET /environment/{env}/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvironmentHandler), flagParams.Service.Auth))
 	// Admin: root
 	adminMux.Handle(
 		"GET /",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.RootHandler), flagParams.Service.Auth))
 	// Admin: node view
 	adminMux.Handle(
 		"GET /node/{uuid}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeHandler), flagParams.Service.Auth))
 	// Admin: multi node action
 	adminMux.Handle(
 		"POST /node/actions",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.NodeActionsPOSTHandler), flagParams.Service.Auth))
 	// Admin: run queries
 	adminMux.Handle(
 		"GET /query/{env}/run",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /query/{env}/run",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryRunPOSTHandler), flagParams.Service.Auth))
 	// Admin: list queries
 	adminMux.Handle(
 		"GET /query/{env}/list",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryListGETHandler), flagParams.Service.Auth))
 	// Admin: saved queries
 	adminMux.Handle(
 		"GET /query/{env}/saved",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SavedQueriesGETHandler), flagParams.Service.Auth))
 	// Admin: query actions
 	adminMux.Handle(
 		"POST /query/{env}/actions",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryActionsPOSTHandler), flagParams.Service.Auth))
 	// Admin: query JSON
 	adminMux.Handle(
 		"GET /query/{env}/json/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONQueryHandler), flagParams.Service.Auth))
 	// Admin: query logs
 	adminMux.Handle(
 		"GET /query/{env}/logs/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.QueryLogsHandler), flagParams.Service.Auth))
 	// Admin: carve files
 	adminMux.Handle(
 		"GET /carves/{env}/run",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /carves/{env}/run",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesRunPOSTHandler), flagParams.Service.Auth))
 	// Admin: list carves
 	adminMux.Handle(
 		"GET /carves/{env}/list",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesListGETHandler), flagParams.Service.Auth))
 	// Admin: carves actions
 	adminMux.Handle(
 		"POST /carves/{env}/actions",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesActionsPOSTHandler), flagParams.Service.Auth))
 	// Admin: carves JSON
 	adminMux.Handle(
 		"GET /carves/{env}/json/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.JSONCarvesHandler), flagParams.Service.Auth))
 	// Admin: carves details
 	adminMux.Handle(
 		"GET /carves/{env}/details/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDetailsHandler), flagParams.Service.Auth))
 	// Admin: carves download
 	adminMux.Handle(
 		"GET /carves/{env}/download/{sessionid}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.CarvesDownloadHandler), flagParams.Service.Auth))
 	// Admin: nodes configuration
 	adminMux.Handle(
 		"GET /conf/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /conf/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ConfPOSTHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /intervals/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.IntervalsPOSTHandler), flagParams.Service.Auth))
 	// Admin: nodes enroll
 	adminMux.Handle(
 		"GET /enroll/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /enroll/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollPOSTHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"GET /enroll/{env}/download/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnrollDownloadHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /expiration/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.ExpirationPOSTHandler), flagParams.Service.Auth))
 	// Admin: server settings
 	adminMux.Handle(
 		"GET /settings/{service}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /settings/{service}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.SettingsPOSTHandler), flagParams.Service.Auth))
 	// Admin: manage environments
 	adminMux.Handle(
 		"GET /environments",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /environments",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EnvsPOSTHandler), flagParams.Service.Auth))
 	// Admin: manage users
 	adminMux.Handle(
 		"GET /users",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /users",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.UsersPOSTHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"GET /users/permissions/{username}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /users/permissions/{username}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.PermissionsPOSTHandler), flagParams.Service.Auth))
 	// Admin: manage tags
 	adminMux.Handle(
 		"GET /tags",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /tags",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagsPOSTHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /tags/nodes",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TagNodesPOSTHandler), flagParams.Service.Auth))
 	// Admin: manage tokens
 	adminMux.Handle(
 		"GET /tokens/{username}",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /tokens/{username}/refresh",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.TokensPOSTHandler), flagParams.Service.Auth))
 	// Admin: edit profile
 	adminMux.Handle(
 		"GET /profile",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfileGETHandler), flagParams.Service.Auth))
 	adminMux.Handle(
 		"POST /profile",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.EditProfilePOSTHandler), flagParams.Service.Auth))
 	// Admin: audit logs
-	if flagParams.AuditLog {
+	if flagParams.Service.AuditLog {
 		adminMux.Handle(
 			"GET /audit-logs",
-			handlerAuthCheck(http.HandlerFunc(handlersAdmin.AuditLogsGETHandler), flagParams.ConfigValues.Auth))
+			handlerAuthCheck(http.HandlerFunc(handlersAdmin.AuditLogsGETHandler), flagParams.Service.Auth))
 	}
 	// Admin: dashboard and search bar
 	adminMux.Handle(
 		"GET /dashboard",
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.DashboardGETHandler), flagParams.Service.Auth))
 	// Admin: logout
 	adminMux.Handle(
 		"POST "+logoutPath,
-		handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler), flagParams.ConfigValues.Auth))
+		handlerAuthCheck(http.HandlerFunc(handlersAdmin.LogoutPOSTHandler), flagParams.Service.Auth))
 	// SAML ACS
-	if flagParams.ConfigValues.Auth == config.AuthSAML {
+	if flagParams.Service.Auth == config.AuthSAML {
 		adminMux.Handle("GET /saml/acs", samlMiddleware)
 		adminMux.Handle("POST /saml/acs", samlMiddleware)
 		adminMux.Handle("GET /saml/metadata", samlMiddleware)
@@ -585,8 +593,8 @@ func osctrlAdminService() {
 		})
 	}
 	// Launch HTTP server for admin
-	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
-	if flagParams.TLSServer {
+	serviceListener := flagParams.Service.Listener + ":" + flagParams.Service.Port
+	if flagParams.TLS.Termination {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -606,7 +614,7 @@ func osctrlAdminService() {
 		}
 		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, buildVersion, serviceListener)
 		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := srv.ListenAndServeTLS(flagParams.TLSCertFile, flagParams.TLSKeyFile); err != nil {
+		if err := srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
 	} else {
@@ -620,61 +628,23 @@ func osctrlAdminService() {
 
 // Action to run when no flags are provided to run checks and prepare data
 func cliAction(ctx context.Context, cmd *cli.Command) error {
-	// Load configuration if external JSON config file is used
+	// Load configuration if external YAML config file is used
 	if flagParams.ConfigFlag {
-		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceAdmin)
+		serviceConfiguration, err = loadYAMLConfiguration(flagParams.ServiceConfigFile)
 		if err != nil {
-			return fmt.Errorf("failed to load service configuration %s - %w", flagParams.ServiceConfigFile, err)
+			return fmt.Errorf("error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
-	}
-	// Load redis configuration if external JSON config file is used
-	if flagParams.RedisFlag {
-		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
-		if err != nil {
-			return fmt.Errorf("failed to load redis configuration - %w", err)
-		}
-	}
-	// Load DB configuration if external JSON config file is used
-	if flagParams.DBFlag {
-		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
-		if err != nil {
-			return fmt.Errorf("failed to load DB configuration - %w", err)
-		}
-	}
-	// Load SAML configuration if this authentication is used in the service config
-	if flagParams.ConfigValues.Auth == config.AuthSAML {
-		samlConfig, err = loadSAML(flagParams.SAMLConfigFile)
-		if err != nil {
-			return fmt.Errorf("failed to load SAML configuration - %w", err)
-		}
-	}
-	// Load JWT configuration if external JWT JSON config file is used
-	if flagParams.JWTFlag {
-		flagParams.JWTConfigValues, err = loadJWTConfiguration(flagParams.JWTConfigFile)
-		if err != nil {
-			return fmt.Errorf("failed to load JWT configuration - %w", err)
-		}
+		flagParams = loadedYAMLToServiceParams(serviceConfiguration, flagParams.ServiceConfigFile)
 	}
 	// Load osquery tables JSON file
-	osqueryTables, err = loadOsqueryTables(flagParams.OsqueryConfigValues.TablesFile)
+	osqueryTables, err = loadOsqueryTables(flagParams.Osquery.TablesFile)
 	if err != nil {
 		return fmt.Errorf("failed to load osquery tables - %w", err)
-	}
-	// Load carver configuration if external JSON config file is used
-	if flagParams.ConfigValues.Carver == config.CarverS3 {
-		if flagParams.S3CarverConfig.Bucket != "" {
-			carvers3, err = carves.CreateCarverS3(flagParams.S3CarverConfig)
-		} else {
-			carvers3, err = carves.CreateCarverS3File(flagParams.CarverConfigFile)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to initiate s3 carver - %w", err)
-		}
 	}
 	return nil
 }
 
-func initializeLoggers(cfg config.JSONConfigurationService) {
+func initializeLoggers(cfg config.YAMLConfigurationService) {
 	// Set the log level
 	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
@@ -736,7 +706,7 @@ func main() {
 				return err
 			}
 			// Initialize service logger
-			initializeLoggers(flagParams.ConfigValues)
+			initializeLoggers(*flagParams.Service)
 			// Service starts!
 			osctrlAdminService()
 			return nil

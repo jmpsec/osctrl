@@ -224,7 +224,7 @@ endif
 ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
 	$(error Missing TLS private key file)
 endif
-	docker-compose -f docker-compose-dev.yml build
+	docker-compose -f docker-compose-dev.yml build --provenance=false
 
 # Build and run dev docker containers
 make docker_dev:

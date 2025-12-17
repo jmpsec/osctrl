@@ -13,7 +13,6 @@ import (
 	osctrl_config "github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -34,7 +33,7 @@ const (
 
 // CarverS3 will be used to carve files using S3 as destination
 type CarverS3 struct {
-	S3Config  osctrl_config.S3Configuration
+	S3Config  osctrl_config.S3Carver
 	AWSConfig aws.Config
 	Client    *s3.Client
 	Uploader  *manager.Uploader
@@ -42,17 +41,8 @@ type CarverS3 struct {
 	Debug     bool
 }
 
-// CreateCarverS3File to initialize the carver
-func CreateCarverS3File(s3File string) (*CarverS3, error) {
-	cfg, err := LoadS3(s3File)
-	if err != nil {
-		return nil, err
-	}
-	return CreateCarverS3(cfg)
-}
-
 // CreateCarverS3 to initialize the carver
-func CreateCarverS3(s3Config osctrl_config.S3Configuration) (*CarverS3, error) {
+func CreateCarverS3(s3Config osctrl_config.S3Carver) (*CarverS3, error) {
 	ctx := context.Background()
 	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
 	cfg, err := config.LoadDefaultConfig(
@@ -73,26 +63,6 @@ func CreateCarverS3(s3Config osctrl_config.S3Configuration) (*CarverS3, error) {
 		Debug:     true,
 	}
 	return l, nil
-}
-
-// LoadS3 - Function to load the S3 configuration from JSON file
-func LoadS3(file string) (osctrl_config.S3Configuration, error) {
-	var _s3Cfg osctrl_config.S3Configuration
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return _s3Cfg, err
-	}
-	cfgRaw := viper.Sub(osctrl_config.LoggingS3)
-	if cfgRaw == nil {
-		return _s3Cfg, fmt.Errorf("JSON key %s not found in %s", osctrl_config.LoggingS3, file)
-	}
-	if err := cfgRaw.Unmarshal(&_s3Cfg); err != nil {
-		return _s3Cfg, err
-	}
-	// No errors!
-	return _s3Cfg, nil
 }
 
 // Settings - Function to prepare settings for the logger

@@ -92,21 +92,23 @@ const (
 
 // Global variables
 var (
-	err         error
-	db          *backend.DBManager
-	redis       *cache.RedisManager
-	apiUsers    *users.UserManager
-	tagsmgr     *tags.TagManager
-	settingsmgr *settings.Settings
-	envs        *environments.EnvManager
-	nodesmgr    *nodes.NodeManager
-	queriesmgr  *queries.Queries
-	filecarves  *carves.Carves
-	handlersApi *handlers.HandlersApi
-	app         *cli.Command
-	flags       []cli.Flag
-	flagParams  config.ServiceFlagParams
-	auditLog    *auditlog.AuditLogManager
+	err                  error
+	db                   *backend.DBManager
+	redis                *cache.RedisManager
+	apiUsers             *users.UserManager
+	tagsmgr              *tags.TagManager
+	settingsmgr          *settings.Settings
+	envs                 *environments.EnvManager
+	nodesmgr             *nodes.NodeManager
+	queriesmgr           *queries.Queries
+	filecarves           *carves.Carves
+	handlersApi          *handlers.HandlersApi
+	app                  *cli.Command
+	flags                []cli.Flag
+	serviceConfiguration config.APIConfiguration
+	// FIXME this struct is temporary until we refactor to write settings to the DB
+	flagParams *config.ServiceParameters
+	auditLog   *auditlog.AuditLogManager
 )
 
 // Valid values for auth and logging in configuration
@@ -115,33 +117,8 @@ var validAuth = map[string]bool{
 	config.AuthJWT:  true,
 }
 
-// Function to load the configuration file and assign to variables
-func loadConfiguration(file, service string) (config.JSONConfigurationService, error) {
-	var cfg config.JSONConfigurationService
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return cfg, err
-	}
-	// API values
-	apiRaw := viper.Sub(service)
-	if apiRaw == nil {
-		return cfg, fmt.Errorf("JSON key %s not found in %s", service, file)
-	}
-	if err := apiRaw.Unmarshal(&cfg); err != nil {
-		return cfg, err
-	}
-	// Check if values are valid
-	if !validAuth[cfg.Auth] {
-		return cfg, fmt.Errorf("invalid auth method: '%s'", cfg.Auth)
-	}
-	// No errors!
-	return cfg, nil
-}
-
 // Function to load the configuration from a single YAML file
-/*func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
+func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
 	var cfg config.APIConfiguration
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -153,14 +130,30 @@ func loadConfiguration(file, service string) (config.JSONConfigurationService, e
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
+	// Check if values are valid
+	if !validAuth[cfg.Service.Auth] {
+		return cfg, fmt.Errorf("invalid auth method: '%s'", cfg.Service.Auth)
+	}
 	// No errors!
 	return cfg, nil
-}*/
+}
 
 // Initialization code
 func init() {
+	// Initialize default flagParams
+	flagParams = &config.ServiceParameters{
+		Service: &config.YAMLConfigurationService{},
+		DB:      &config.YAMLConfigurationDB{},
+		Redis:   &config.YAMLConfigurationRedis{},
+		JWT:     &config.YAMLConfigurationJWT{},
+		TLS:     &config.YAMLConfigurationTLS{},
+		Osquery: &config.YAMLConfigurationOsquery{},
+		Logger:  &config.YAMLConfigurationLogger{},
+		Carver:  &config.YAMLConfigurationCarver{},
+		Debug:   &config.YAMLConfigurationDebug{},
+	}
 	// Initialize CLI flags using the config package
-	flags = config.InitAPIFlags(&flagParams)
+	flags = config.InitAPIFlags(flagParams)
 }
 
 // Go go!
@@ -168,39 +161,39 @@ func osctrlAPIService() {
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
-		db, err = backend.CreateDBManager(flagParams.DBConfigValues)
+		db, err = backend.CreateDBManager(flagParams.DB)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to backend")
-			if flagParams.DBConfigValues.ConnRetry == 0 {
+			if flagParams.DB.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to backend failed and no retry was set")
 			}
 		}
-		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DBConfigValues.ConnRetry)
-		time.Sleep(time.Duration(flagParams.DBConfigValues.ConnRetry) * time.Second)
+		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DB.ConnRetry)
+		time.Sleep(time.Duration(flagParams.DB.ConnRetry) * time.Second)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
 	for {
-		redis, err = cache.CreateRedisManager(flagParams.RedisConfigValues)
+		redis, err = cache.CreateRedisManager(*flagParams.Redis)
 		if redis != nil {
 			log.Info().Msg("Connection to cache successful!")
 			break
 		}
 		if err != nil {
 			log.Err(err).Msg("Failed to connect to cache")
-			if flagParams.RedisConfigValues.ConnRetry == 0 {
+			if flagParams.Redis.ConnRetry == 0 {
 				log.Fatal().Msg("Connection to cache failed and no retry was set")
 			}
 		}
-		log.Info().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.RedisConfigValues.ConnRetry)
-		time.Sleep(time.Duration(flagParams.RedisConfigValues.ConnRetry) * time.Second)
+		log.Info().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.Redis.ConnRetry)
+		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize users")
-	apiUsers = users.CreateUserManager(db.Conn, &flagParams.JWTConfigValues)
+	apiUsers = users.CreateUserManager(db.Conn, flagParams.JWT)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize environment")
@@ -213,16 +206,16 @@ func osctrlAPIService() {
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, flagParams.ConfigValues.Carver, nil)
+	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, nil)
 	log.Info().Msg("Loading service settings")
-	if err := loadingSettings(settingsmgr, flagParams.ConfigValues); err != nil {
+	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
 	// Initialize audit log manager
-	if flagParams.AuditLog {
+	if flagParams.Service.AuditLog {
 		log.Info().Msg("Initialize audit log")
 	}
-	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.AuditLog)
+	auditLog, err = auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.Service.AuditLog)
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
@@ -241,7 +234,7 @@ func osctrlAPIService() {
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
-		handlers.WithDebugHTTP(&flagParams.DebugHTTPValues),
+		handlers.WithDebugHTTP(flagParams.Debug),
 	)
 
 	// ///////////////////////// API
@@ -262,151 +255,151 @@ func osctrlAPIService() {
 	// ///////////////////////// UNAUTHENTICATED
 	muxAPI.Handle(
 		"POST "+_apiPath(apiLoginPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// ///////////////////////// AUTHENTICATED
 	// API: check status
 	muxAPI.HandleFunc("GET "+_apiPath(checksAuthPath), handlersApi.CheckHandlerAuth)
 	// API: nodes by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/all",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.AllNodesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.AllNodesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/active",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.ActiveNodesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ActiveNodesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/inactive",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.InactiveNodesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.InactiveNodesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{node}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/{env}/delete",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/{env}/tag",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.TagNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.TagNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/lookup",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.LookupNodeHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.LookupNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
-	if flagParams.OsqueryConfigValues.Query {
+	if flagParams.Osquery.Query {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}/list/{target}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiQueriesPath)+"/{env}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesRunHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAllQueriesPath+"/{env}"),
-			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: carves by environment
-	if flagParams.OsqueryConfigValues.Carve {
+	if flagParams.Osquery.Carve {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/queries/{target}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/list",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiCarvesPath)+"/{env}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiCarvesPath)+"/{env}/{action}/{name}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: users
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath)+"/{username}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/{action}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: platforms
 	muxAPI.Handle(
 		"GET "+_apiPath(apiPlatformsPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.PlatformsEnvHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: environments
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/map/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentMapHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentMapHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{action}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: tags by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.AllTagsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.AllTagsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.TagsEnvHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.TagsEnvHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath)+"/{env}/{name}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.TagEnvHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.TagEnvHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiTagsPath)+"/{env}/{action}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.TagsActionHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.TagsActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: settings by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath),
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/json",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceJSONHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceJSONHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: audit log
-	if flagParams.AuditLog {
+	if flagParams.Service.AuditLog {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAuditLogsPath),
-			handlerAuthCheck(http.HandlerFunc(handlersApi.AuditLogsHandler), flagParams.ConfigValues.Auth, flagParams.JWTConfigValues.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuditLogsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// Launch listeners for API server
-	serviceListener := flagParams.ConfigValues.Listener + ":" + flagParams.ConfigValues.Port
-	if flagParams.TLSServer {
+	serviceListener := flagParams.Service.Listener + ":" + flagParams.Service.Port
+	if flagParams.TLS.Termination {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -426,7 +419,7 @@ func osctrlAPIService() {
 		}
 		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, buildVersion, serviceListener)
 		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := srv.ListenAndServeTLS(flagParams.TLSCertFile, flagParams.TLSKeyFile); err != nil {
+		if err := srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile); err != nil {
 			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
 		}
 	} else {
@@ -440,38 +433,18 @@ func osctrlAPIService() {
 
 // Action to run when no flags are provided to run checks and prepare data
 func cliAction(ctx context.Context, cmd *cli.Command) error {
-	// Load configuration if external JSON config file is used
+	// Load configuration if external YAML config file is used
 	if flagParams.ConfigFlag {
-		flagParams.ConfigValues, err = loadConfiguration(flagParams.ServiceConfigFile, config.ServiceAPI)
+		serviceConfiguration, err = loadYAMLConfiguration(flagParams.ServiceConfigFile)
 		if err != nil {
-			return fmt.Errorf("failed to load service configuration %s - %s", flagParams.ServiceConfigFile, err.Error())
+			return fmt.Errorf("error loading %s - %w", flagParams.ServiceConfigFile, err)
 		}
-	}
-	// Load DB configuration if external JSON config file is used
-	if flagParams.DBFlag {
-		flagParams.DBConfigValues, err = backend.LoadConfiguration(flagParams.DBConfigFile, backend.DBKey)
-		if err != nil {
-			return fmt.Errorf("failed to load DB configuration - %s", err.Error())
-		}
-	}
-	// Load redis configuration if external JSON config file is used
-	if flagParams.RedisFlag {
-		flagParams.RedisConfigValues, err = cache.LoadConfiguration(flagParams.RedisConfigFile, cache.RedisKey)
-		if err != nil {
-			return fmt.Errorf("failed to load redis configuration - %s", err.Error())
-		}
-	}
-	// Load JWT configuration if external JWT JSON config file is used
-	if flagParams.JWTFlag {
-		flagParams.JWTConfigValues, err = loadJWTConfiguration(flagParams.JWTConfigFile)
-		if err != nil {
-			return fmt.Errorf("failed to load JWT configuration - %s", err.Error())
-		}
+		flagParams = loadedYAMLToServiceParams(serviceConfiguration, flagParams.ServiceConfigFile)
 	}
 	return nil
 }
 
-func initializeLoggers(cfg config.JSONConfigurationService) {
+func initializeLoggers(cfg config.YAMLConfigurationService) {
 	// Set the log level
 	switch strings.ToLower(cfg.LogLevel) {
 	case config.LogLevelDebug:
@@ -533,7 +506,7 @@ func main() {
 				return err
 			}
 			// Initialize service logger
-			initializeLoggers(flagParams.ConfigValues)
+			initializeLoggers(*flagParams.Service)
 			// Run the service
 			osctrlAPIService()
 			return nil

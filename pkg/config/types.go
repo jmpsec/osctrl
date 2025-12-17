@@ -5,6 +5,7 @@ import (
 )
 
 const YAMLConfigType = "yaml"
+const YAMLDBType = "db"
 
 // Types of services
 const (
@@ -64,22 +65,6 @@ const (
 	DBTypeSQLite   string = "sqlite"
 )
 
-// JSONConfigurationService to hold the service configuration values
-type JSONConfigurationService struct {
-	Listener        string `json:"listener"`
-	Port            string `json:"port"`
-	LogLevel        string `json:"logLevel"`
-	LogFormat       string `json:"logFormat"`
-	MetricsListener string `json:"metricsListener"`
-	MetricsPort     string `json:"metricsPort"`
-	MetricsEnabled  bool   `json:"metricsEnabled"`
-	Host            string `json:"host"`
-	Auth            string `json:"auth"`
-	Logger          string `json:"logger"`
-	Carver          string `json:"carver"`
-	SessionKey      string `json:"sessionKey"`
-}
-
 // TLSConfiguration to hold osctrl-tls configuration values
 type TLSConfiguration struct {
 	Service     YAMLConfigurationService `mapstructure:"service"`
@@ -116,8 +101,10 @@ type APIConfiguration struct {
 	Service YAMLConfigurationService `mapstructure:"service"`
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
+	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
 	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
+	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
 	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
@@ -129,6 +116,7 @@ type YAMLConfigurationService struct {
 	LogFormat string `yaml:"logFormat"`
 	Host      string `yaml:"host"`
 	Auth      string `yaml:"auth"`
+	AuditLog  bool   `yaml:"auditLog"`
 }
 
 // YAMLConfigurationDB to hold all backend configuration values
@@ -188,16 +176,25 @@ type YAMLConfigurationTLS struct {
 
 // YAMLConfigurationLogger to hold the logger configuration values
 type YAMLConfigurationLogger struct {
-	Type         string `yaml:"type"`
-	LoggerDBSame bool   `yaml:"loggerDBSame"`
-	AlwaysLog    bool   `yaml:"alwaysLog"`
+	Type         string               `yaml:"type"`
+	LoggerDBSame bool                 `yaml:"loggerDBSame"`
+	AlwaysLog    bool                 `yaml:"alwaysLog"`
+	DB           *YAMLConfigurationDB `mapstructure:"db"`
+	S3           *S3Logger            `mapstructure:"s3"`
+	Graylog      *GraylogLogger       `mapstructure:"graylog"`
+	Elastic      *ElasticLogger       `mapstructure:"elastic"`
+	Splunk       *SplunkLogger        `mapstructure:"splunk"`
+	Logstash     *LogstashLogger      `mapstructure:"logstash"`
+	Kinesis      *KinesisLogger       `mapstructure:"kinesis"`
+	Kafka        *KafkaLogger         `mapstructure:"kafka"`
+	Local        *LocalLogger         `mapstructure:"local"`
 }
 
 // YAMLConfigurationCarver to hold the carver configuration values
 type YAMLConfigurationCarver struct {
-	Type            string `yaml:"type"`
-	CertificateFile string `yaml:"certificateFile"`
-	KeyFile         string `yaml:"keyFile"`
+	Type  string       `yaml:"type"`
+	S3    *S3Carver    `mapstructure:"s3"`
+	Local *LocalCarver `mapstructure:"local"`
 }
 
 // YAMLConfigurationAdmin to hold admin UI specific configuration values
@@ -217,26 +214,12 @@ type YAMLConfigurationDebug struct {
 	ShowBody   bool   `yaml:"showBody"`
 }
 
-// JSONConfigurationWriter to hold writer service configuration values
-type JSONConfigurationWriter struct {
-	// BatchWriter configuration: it need be refactored to a separate struct
-	WriterBatchSize  int           `json:"writerBatchSize"`
-	WriterTimeout    time.Duration `json:"writerTimeout"`
-	WriterBufferSize int           `json:"writerBufferSize"`
-}
-
 // YAMLConfigurationWriter to hold the DB batch writer configuration values
 type YAMLConfigurationWriter struct {
 	// BatchWriter configuration: it need be refactored to a separate struct
-	WriterBatchSize  int `yaml:"writerBatchSize"`
-	WriterTimeout    int `yaml:"writerTimeout"`
-	WriterBufferSize int `yaml:"writerBufferSize"`
-}
-
-// JSONConfigurationJWT to hold all JWT configuration values
-type JSONConfigurationJWT struct {
-	JWTSecret     string `json:"jwtSecret"`
-	HoursToExpire int    `json:"hoursToExpire"`
+	WriterBatchSize  int           `yaml:"writerBatchSize"`
+	WriterTimeout    time.Duration `yaml:"writerTimeout"`
+	WriterBufferSize int           `yaml:"writerBufferSize"`
 }
 
 // YAMLConfigurationJWT to hold all JWT configuration values
@@ -255,48 +238,4 @@ type YAMLConfigurationSAML struct {
 	LogoutURL    string `yaml:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"`
 	SPInitiated  bool   `yaml:"spInitiated"`
-}
-
-// S3Configuration to hold all S3 configuration values
-type S3Configuration struct {
-	Bucket          string `json:"bucket"`
-	Region          string `json:"region"`
-	AccessKey       string `json:"accessKey"`
-	SecretAccessKey string `json:"secretAccesKey"`
-}
-
-type KafkaSASLConfigurations struct {
-	Mechanism string `json:"mechanism"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-}
-
-type KafkaConfiguration struct {
-	BootstrapServer   string                  `json:"bootstrapServers"`
-	SSLCALocation     string                  `json:"sslCALocation"`
-	ConnectionTimeout time.Duration           `json:"connectionTimeout"`
-	SASL              KafkaSASLConfigurations `json:"sasl"`
-	Topic             string                  `json:"topic"`
-}
-
-// DebugHTTPConfiguration to hold all debug configuration values
-type DebugHTTPConfiguration struct {
-	Enabled  bool   `json:"enabled"`
-	File     string `json:"file"`
-	ShowBody bool   `json:"showBody"`
-}
-
-// OsctrldConfiguration to hold osctrld configuration values
-type OsctrldConfiguration struct {
-	Enabled bool `json:"enabled"`
-}
-
-// OsqueryConfiguration to hold osquery configuration values
-type OsqueryConfiguration struct {
-	Version    string `json:"version"`
-	TablesFile string `json:"tablesFile"`
-	Logger     bool   `json:"logger"`
-	Config     bool   `json:"config"`
-	Query      bool   `json:"query"`
-	Carve      bool   `json:"carve"`
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // Function to load all settings for the service
-func loadingSettings(mgr *settings.Settings, cfg config.JSONConfigurationService) error {
+func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) error {
 	// Check if service settings for debug service is ready
 	log.Debug().Msg("Initializing settings")
 	// Check if service settings for sessions cleanup is ready

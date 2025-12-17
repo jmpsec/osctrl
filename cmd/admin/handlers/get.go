@@ -16,7 +16,7 @@ import (
 
 // FaviconHandler for the favicon
 func (h *HandlersAdmin) FaviconHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	w.Header().Set(utils.ContentType, "image/png")
@@ -38,7 +38,7 @@ func (h *HandlersAdmin) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler for forbidden error requests
 func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP for environment
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
@@ -47,7 +47,7 @@ func (h *HandlersAdmin) ForbiddenHandler(w http.ResponseWriter, r *http.Request)
 
 // RootHandler - Handler for the root path
 func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
@@ -55,7 +55,7 @@ func (h *HandlersAdmin) RootHandler(w http.ResponseWriter, r *http.Request) {
 
 // PermissionsGETHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username and verify
@@ -82,7 +82,7 @@ func (h *HandlersAdmin) PermissionsGETHandler(w http.ResponseWriter, r *http.Req
 
 // CarvesDownloadHandler for GET requests to download carves
 func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data

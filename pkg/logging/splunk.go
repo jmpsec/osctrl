@@ -3,7 +3,6 @@ package logging
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -11,59 +10,26 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
-
-// SlunkConfiguration to hold all splunk configuration values
-type SlunkConfiguration struct {
-	URL   string `json:"url"`
-	Token string `json:"token"`
-	Host  string `json:"host"`
-	Index string `json:"index"`
-}
 
 // LoggerSplunk will be used to log data using Splunk
 type LoggerSplunk struct {
-	Configuration SlunkConfiguration
+	Configuration config.SplunkLogger
 	Headers       map[string]string
 	Enabled       bool
 }
 
 // CreateLoggerSplunk to initialize the logger
-func CreateLoggerSplunk(splunkFile string) (*LoggerSplunk, error) {
-	config, err := LoadSplunk(splunkFile)
-	if err != nil {
-		return nil, err
-	}
+func CreateLoggerSplunk(cfg *config.SplunkLogger) (*LoggerSplunk, error) {
 	l := &LoggerSplunk{
-		Configuration: config,
+		Configuration: *cfg,
 		Headers: map[string]string{
-			utils.Authorization: "Splunk " + config.Token,
+			utils.Authorization: "Splunk " + cfg.Token,
 			utils.ContentType:   utils.JSONApplicationUTF8,
 		},
 		Enabled: true,
 	}
 	return l, nil
-}
-
-// LoadSplunk - Function to load the Splunk configuration from JSON file
-func LoadSplunk(file string) (SlunkConfiguration, error) {
-	var _splunkCfg SlunkConfiguration
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return _splunkCfg, err
-	}
-	cfgRaw := viper.Sub(config.LoggingSplunk)
-	if cfgRaw == nil {
-		return _splunkCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingSplunk, file)
-	}
-	if err := cfgRaw.Unmarshal(&_splunkCfg); err != nil {
-		return _splunkCfg, err
-	}
-	// No errors!
-	return _splunkCfg, nil
 }
 
 const (

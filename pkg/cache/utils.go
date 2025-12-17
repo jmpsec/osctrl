@@ -2,9 +2,11 @@ package cache
 
 import (
 	"fmt"
+
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 // PrepareAddr to generate redis connection string
-func PrepareAddr(config JSONConfigurationRedis) string {
-	return fmt.Sprintf("%s:%s", config.Host, config.Port)
+func PrepareAddr(cfg config.YAMLConfigurationRedis) string {
+	return fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 }

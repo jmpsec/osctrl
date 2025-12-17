@@ -60,7 +60,7 @@ type QueryLogJSON struct {
 
 // JSONLogsHandler GET requests for JSON status/result logs by node and environment
 func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract type
@@ -122,7 +122,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == types.StatusLog && h.AdminConfig.Logger == config.LoggingDB {
+	if logType == types.StatusLog && h.Configuration.Logger.Type == config.LoggingDB {
 		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
@@ -141,7 +141,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == types.ResultLog && h.AdminConfig.Logger == config.LoggingDB {
+	} else if logType == types.ResultLog && h.Configuration.Logger.Type == config.LoggingDB {
 		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
@@ -169,7 +169,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 
 // JSONQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -256,7 +256,7 @@ func (h *HandlersAdmin) JSONQueryLogsHandler(w http.ResponseWriter, r *http.Requ
 
 // JSONDownloadQueryLogsHandler for JSON query logs by query name
 func (h *HandlersAdmin) JSONDownloadQueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment

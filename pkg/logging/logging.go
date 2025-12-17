@@ -9,11 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	// DefaultFileLog file to store logs
-	DefaultFileLog = "osctrl.log"
-)
-
 // LoggerTLS will be used to handle logging for the TLS endpoint
 type LoggerTLS struct {
 	Logging      string
@@ -24,37 +19,37 @@ type LoggerTLS struct {
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint
-func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
+func CreateLoggerTLS(cfg config.ServiceParameters, mgr *settings.Settings, nodes *nodes.NodeManager, queries *queries.Queries) (*LoggerTLS, error) {
 	l := &LoggerTLS{
-		Logging: cfg.ConfigValues.Logger,
+		Logging: cfg.Logger.Type,
 		Nodes:   nodes,
 		Queries: queries,
 	}
-	switch cfg.ConfigValues.Logger {
+	switch cfg.Logger.Type {
 	case config.LoggingSplunk:
-		s, err := CreateLoggerSplunk(cfg.LoggerFile)
+		s, err := CreateLoggerSplunk(cfg.Logger.Splunk)
 		if err != nil {
 			return nil, err
 		}
 		s.Settings(mgr)
 		l.Logger = s
 	case config.LoggingGraylog:
-		g, err := CreateLoggerGraylog(cfg.LoggerFile)
+		g, err := CreateLoggerGraylog(cfg.Logger.Graylog)
 		if err != nil {
 			return nil, err
 		}
 		g.Settings(mgr)
 		l.Logger = g
 	case config.LoggingDB:
-		if cfg.LoggerDBSame {
-			d, err := CreateLoggerDBConfig(cfg.DBConfigValues)
+		if cfg.Logger.LoggerDBSame {
+			d, err := CreateLoggerDBConfig(cfg.DB)
 			if err != nil {
 				return nil, err
 			}
 			d.Settings(mgr)
 			l.Logger = d
 		} else {
-			d, err := CreateLoggerDBFile(cfg.LoggerFile)
+			d, err := CreateLoggerDBConfig(cfg.Logger.DB)
 			if err != nil {
 				return nil, err
 			}
@@ -69,14 +64,7 @@ func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingFile:
-		// TODO: All this should be customizable
-		rotateCfg := LumberjackConfig{
-			MaxSize:    25,
-			MaxBackups: 5,
-			MaxAge:     10,
-			Compress:   true,
-		}
-		d, err := CreateLoggerFile(DefaultFileLog, rotateCfg)
+		d, err := CreateLoggerFile(cfg.Logger.Local)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +78,7 @@ func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingKinesis:
-		d, err := CreateLoggerKinesis(cfg.LoggerFile)
+		d, err := CreateLoggerKinesis(cfg.Logger.Kinesis)
 		if err != nil {
 			return nil, err
 		}
@@ -99,35 +87,28 @@ func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes
 	case config.LoggingS3:
 		var d *LoggerS3
 		var err error
-		if cfg.S3LogConfig.Bucket != "" {
-			d, err = CreateLoggerS3(cfg.S3LogConfig)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			d, err = CreateLoggerS3File(cfg.LoggerFile)
-			if err != nil {
-				return nil, err
-			}
+		d, err = CreateLoggerS3(cfg.Logger.S3)
+		if err != nil {
+			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingLogstash:
-		d, err := CreateLoggerLogstash(cfg.LoggerFile)
+		d, err := CreateLoggerLogstash(cfg.Logger.Logstash)
 		if err != nil {
 			return nil, err
 		}
 		d.Settings(mgr)
 		l.Logger = d
 	case config.LoggingKafka:
-		k, err := CreateLoggerKafka(cfg.KafkaConfiguration)
+		k, err := CreateLoggerKafka(cfg.Logger.Kafka)
 		if err != nil {
 			return nil, err
 		}
 		k.Settings(mgr)
 		l.Logger = k
 	case config.LoggingElastic:
-		e, err := CreateLoggerElastic(cfg.LoggerFile)
+		e, err := CreateLoggerElastic(cfg.Logger.Elastic)
 		if err != nil {
 			return nil, err
 		}
@@ -135,8 +116,8 @@ func CreateLoggerTLS(cfg config.ServiceFlagParams, mgr *settings.Settings, nodes
 		l.Logger = e
 	}
 	// Initialize the logger that will always log to DB
-	if cfg.AlwaysLog {
-		always, err := CreateLoggerDBConfig(cfg.DBConfigValues)
+	if cfg.Logger.AlwaysLog {
+		always, err := CreateLoggerDBConfig(cfg.DB)
 		if err != nil {
 			return nil, err
 		}

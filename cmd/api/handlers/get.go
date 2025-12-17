@@ -11,7 +11,7 @@ import (
 // HealthHandler - Handle health requests
 func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
@@ -21,7 +21,7 @@ func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 // CheckHandlerNoAuth - Handle unauthenticated check requests
 func (h *HandlersApi) CheckHandlerNoAuth(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
@@ -31,7 +31,7 @@ func (h *HandlersApi) CheckHandlerNoAuth(w http.ResponseWriter, r *http.Request)
 // CheckHandlerAuth - Handle authenticated check requests
 func (h *HandlersApi) CheckHandlerAuth(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
@@ -47,7 +47,7 @@ func (h *HandlersApi) CheckHandlerAuth(w http.ResponseWriter, r *http.Request) {
 // RootHandler - Handle root requests
 func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
@@ -57,7 +57,7 @@ func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
 // ErrorHandler - Handle error requests
 func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response
@@ -67,7 +67,7 @@ func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 // ForbiddenHandler - Handle forbidden error requests
 func (h *HandlersApi) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Send response

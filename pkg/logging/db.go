@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/jmpsec/osctrl/pkg/backend"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -56,18 +57,8 @@ type LoggerDB struct {
 	Enabled  bool
 }
 
-// CreateLoggerDB to initialize the logger
-func CreateLoggerDBFile(dbfile string) (*LoggerDB, error) {
-	// Initialize backend
-	backend, err := backend.CreateDBManagerFile(dbfile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create backend - %w", err)
-	}
-	return CreateLoggerDB(backend)
-}
-
 // CreateLoggerDB to initialize the logger without reading a config file
-func CreateLoggerDBConfig(dbConfig backend.JSONConfigurationDB) (*LoggerDB, error) {
+func CreateLoggerDBConfig(dbConfig *config.YAMLConfigurationDB) (*LoggerDB, error) {
 	// Initialize backend
 	backend, err := backend.CreateDBManager(dbConfig)
 	if err != nil {

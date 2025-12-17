@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/rs/zerolog"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
@@ -11,10 +12,10 @@ const (
 )
 
 // CreateDebugHTTP to initialize the debug HTTP logger
-func CreateDebugHTTP(filename string, cfg LumberjackConfig) (*zerolog.Logger, error) {
+func CreateDebugHTTP(cfg config.LocalLogger) (*zerolog.Logger, error) {
 	zerolog.TimeFieldFormat = LoggerTimeFormat
 	z := zerolog.New(&lumberjack.Logger{
-		Filename:   filename,
+		Filename:   cfg.FilePath,
 		MaxSize:    cfg.MaxSize,
 		MaxBackups: cfg.MaxBackups,
 		MaxAge:     cfg.MaxAge,

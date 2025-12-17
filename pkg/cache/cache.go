@@ -2,10 +2,9 @@ package cache
 
 import (
 	"context"
-	"fmt"
 
 	redis "github.com/go-redis/redis/v8"
-	"github.com/spf13/viper"
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 const (
@@ -15,38 +14,8 @@ const (
 
 // RedisManager have access to cached data
 type RedisManager struct {
-	Config *JSONConfigurationRedis
+	Config *config.YAMLConfigurationRedis
 	Client *redis.Client
-}
-
-// JSONConfigurationRedis to hold all redis configuration values
-type JSONConfigurationRedis struct {
-	Host             string `json:"host"`
-	Port             string `json:"port"`
-	Password         string `json:"password"`
-	ConnectionString string `json:"connectionstring"`
-	DB               int    `json:"db"`
-	ConnRetry        int    `json:"connRetry"`
-}
-
-// LoadConfiguration to load the redis configuration file and assign to variables
-func LoadConfiguration(file, key string) (JSONConfigurationRedis, error) {
-	var config JSONConfigurationRedis
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return config, err
-	}
-	// Backend values
-	redisRaw := viper.Sub(key)
-	if redisRaw == nil {
-		return config, fmt.Errorf("JSON key %s not found in %s", key, file)
-	}
-	if err := redisRaw.Unmarshal(&config); err != nil {
-		return config, err
-	}
-	// No errors!
-	return config, nil
 }
 
 // GetRedis to get redis client ready
@@ -72,19 +41,10 @@ func (rm *RedisManager) Check() error {
 	return nil
 }
 
-// CreateRedisManagerFile to initialize the redis manager struct from file
-func CreateRedisManagerFile(file string) (*RedisManager, error) {
-	redisConfig, err := LoadConfiguration(file, RedisKey)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load redis configuration - %w", err)
-	}
-	return CreateRedisManager(redisConfig)
-}
-
 // CreateRedisManager to initialize the redis manager struct
-func CreateRedisManager(config JSONConfigurationRedis) (*RedisManager, error) {
+func CreateRedisManager(cfg config.YAMLConfigurationRedis) (*RedisManager, error) {
 	rm := &RedisManager{}
-	rm.Config = &config
+	rm.Config = &cfg
 	rm.Client = rm.GetRedis()
 	if err := rm.Check(); err != nil {
 		return nil, err

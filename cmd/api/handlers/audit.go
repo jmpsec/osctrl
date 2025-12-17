@@ -14,7 +14,7 @@ import (
 // AuditLogsHandler - GET Handler for all audit logs
 func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access

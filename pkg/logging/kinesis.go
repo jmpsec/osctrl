@@ -7,7 +7,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -15,30 +14,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 )
 
-// KinesisConfiguration to hold all Kinesis configuration values
-type KinesisConfiguration struct {
-	Stream          string `json:"stream"`
-	Region          string `json:"region"`
-	Endpoint        string `json:"endpoint"`
-	AccessKeyID     string `json:"access_key"`
-	SecretAccessKey string `json:"secret_key"`
-	SessionToken    string `json:"session_token"`
-}
-
 // LoggerKinesis will be used to log data using Kinesis
 type LoggerKinesis struct {
-	Configuration KinesisConfiguration
+	Configuration config.KinesisLogger
 	KinesisClient *kinesis.Client
 	Enabled       bool
 }
 
 // CreateLoggerKinesis to initialize the logger
-func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
-	cfg, err := LoadKinesis(kinesisFile)
-	if err != nil {
-		return nil, err
-	}
-
+func CreateLoggerKinesis(cfg *config.KinesisLogger) (*LoggerKinesis, error) {
 	loadOpts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(cfg.Region),
 	}
@@ -71,30 +55,10 @@ func CreateLoggerKinesis(kinesisFile string) (*LoggerKinesis, error) {
 	}
 
 	return &LoggerKinesis{
-		Configuration: cfg,
+		Configuration: *cfg,
 		KinesisClient: kc,
 		Enabled:       true,
 	}, nil
-}
-
-// LoadKinesis - Function to load the Kinesis configuration from JSON file
-func LoadKinesis(file string) (KinesisConfiguration, error) {
-	var _kinesisCfg KinesisConfiguration
-	log.Info().Msgf("Loading %s", file)
-	// Load file and read config
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return _kinesisCfg, err
-	}
-	cfgRaw := viper.Sub(config.LoggingSplunk)
-	if cfgRaw == nil {
-		return _kinesisCfg, fmt.Errorf("JSON key %s not found in %s", config.LoggingSplunk, file)
-	}
-	if err := cfgRaw.Unmarshal(&_kinesisCfg); err != nil {
-		return _kinesisCfg, err
-	}
-	// No errors!
-	return _kinesisCfg, nil
 }
 
 // Settings - Function to prepare settings for the logger

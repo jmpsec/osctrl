@@ -21,7 +21,7 @@ var (
 
 // JSONStatsHandler for platform/environment stats in JSON
 func (h *HandlersAdmin) JSONStatsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data

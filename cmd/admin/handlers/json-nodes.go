@@ -55,7 +55,7 @@ type NodeJSON struct {
 
 // JSONEnvironmentPagingHandler - Handler for JSON endpoints by environment, with pagination
 func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment

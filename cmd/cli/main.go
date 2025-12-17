@@ -59,7 +59,7 @@ const (
 var (
 	err          error
 	app          *cli.Command
-	dbConfig     backend.JSONConfigurationDB
+	dbConfig     *config.YAMLConfigurationDB
 	apiConfig    JSONConfigurationAPI
 	flags        []cli.Flag
 	commands     []*cli.Command
@@ -91,6 +91,9 @@ var (
 
 // Initialization code
 func init() {
+	// Initialize db config
+	dbConfig = &config.YAMLConfigurationDB{}
+	// Initialize logging
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 		return filepath.Base(file) + ":" + strconv.Itoa(line)
@@ -102,7 +105,7 @@ func init() {
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
-			Usage:       "Connect to local osctrl DB using JSON config file",
+			Usage:       "Connect to local osctrl DB using YAML config file",
 			Sources:     cli.EnvVars("DB_CONFIG"),
 			Destination: &dbFlag,
 		},
@@ -140,7 +143,7 @@ func init() {
 			Name:        "db-file",
 			Aliases:     []string{"D"},
 			Value:       "",
-			Usage:       "Load DB JSON configuration from `FILE`",
+			Usage:       "Load DB YAML configuration from `FILE`",
 			Sources:     cli.EnvVars("DB_CONFIG_FILE"),
 			Destination: &dbConfigFile,
 		},
@@ -1902,6 +1905,7 @@ func checkDB(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to create backend - %w", err)
 		}
 	} else {
+		// Initialize backend
 		db, err = backend.CreateDBManager(dbConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create backend - %w", err)
@@ -2062,7 +2066,7 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 			}
 			// Initialize users
 			log.Debug().Msg("Creating user manager")
-			adminUsers = users.CreateUserManager(db.Conn, &config.JSONConfigurationJWT{JWTSecret: appName})
+			adminUsers = users.CreateUserManager(db.Conn, &config.YAMLConfigurationJWT{JWTSecret: appName})
 			// Initialize environment
 			log.Debug().Msg("Creating environment manager")
 			envs = environments.CreateEnvironment(db.Conn)

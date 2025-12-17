@@ -16,7 +16,7 @@ import (
 // NodeHandler - GET Handler for single JSON nodes
 func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -63,7 +63,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 // ActiveNodesHandler - GET Handler for active JSON nodes
 func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -103,7 +103,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 // InactiveNodesHandler - GET Handler for inactive JSON nodes
 func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -143,7 +143,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 // AllNodesHandler - GET Handler for all JSON nodes
 func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -183,7 +183,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 // DeleteNodeHandler - POST Handler to delete single node
 func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -227,7 +227,7 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 // TagNodeHandler - POST Handler to tag a node
 func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -277,7 +277,7 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 // LookupNodeHandler - POST Handler to lookup a node by identifier
 func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access

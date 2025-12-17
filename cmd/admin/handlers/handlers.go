@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
-	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -37,16 +36,16 @@ type HandlersAdmin struct {
 	RedisCache      *cache.RedisManager
 	Sessions        *sessions.SessionManager
 	ServiceMetadata types.BuildMetadata
-	OsqueryValues   config.OsqueryConfiguration
+	OsqueryValues   config.YAMLConfigurationOsquery
 	TemplatesFolder string
 	StaticLocation  string
 	CarvesFolder    string
 	OsqueryTables   []types.OsqueryTable
-	AdminConfig     *config.JSONConfigurationService
+	Configuration   *config.ServiceParameters
 	AuditLog        *auditlog.AuditLogManager
 	DBLogger        *logging.LoggerDB
 	DebugHTTP       *zerolog.Logger
-	DebugHTTPConfig *config.DebugHTTPConfiguration
+	DebugHTTPConfig *config.YAMLConfigurationDebug
 }
 
 type HandlersOption func(*HandlersAdmin)
@@ -123,7 +122,7 @@ func WithMetadata(metadata types.BuildMetadata) HandlersOption {
 	}
 }
 
-func WithOsqueryValues(values config.OsqueryConfiguration) HandlersOption {
+func WithOsqueryValues(values config.YAMLConfigurationOsquery) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.OsqueryValues = values
 	}
@@ -150,9 +149,9 @@ func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
 	}
 }
 
-func WithAdminConfig(config *config.JSONConfigurationService) HandlersOption {
+func WithConfiguration(config *config.ServiceParameters) HandlersOption {
 	return func(h *HandlersAdmin) {
-		h.AdminConfig = config
+		h.Configuration = config
 	}
 }
 
@@ -162,27 +161,15 @@ func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
 	}
 }
 
-func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOption {
+func WithDBLogger(config *config.YAMLConfigurationDB) HandlersOption {
 	return func(h *HandlersAdmin) {
-		if dbfile == "" {
-			if config == nil {
-				h.DBLogger = nil
-				return
-			}
-			logger, err := logging.CreateLoggerDBConfig(*config)
-			if err != nil {
-				log.Err(err).Msg("error creating DB logger (config)")
-				logger = &logging.LoggerDB{
-					Enabled:  false,
-					Database: nil,
-				}
-			}
-			h.DBLogger = logger
+		if config == nil {
+			h.DBLogger = nil
 			return
 		}
-		logger, err := logging.CreateLoggerDBFile(dbfile)
+		logger, err := logging.CreateLoggerDBConfig(config)
 		if err != nil {
-			log.Err(err).Msg("error creating DB logger (file)")
+			log.Err(err).Msg("error creating DB logger (config)")
 			logger = &logging.LoggerDB{
 				Enabled:  false,
 				Database: nil,
@@ -192,12 +179,13 @@ func WithDBLogger(dbfile string, config *backend.JSONConfigurationDB) HandlersOp
 	}
 }
 
-func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
+func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) HandlersOption {
 	return func(h *HandlersAdmin) {
 		h.DebugHTTPConfig = cfg
 		h.DebugHTTP = nil
-		if cfg.Enabled {
-			l, err := logging.CreateDebugHTTP(cfg.File, logging.LumberjackConfig{
+		if cfg.EnableHTTP {
+			l, err := logging.CreateDebugHTTP(config.LocalLogger{
+				FilePath:   cfg.HTTPFile,
 				MaxSize:    25,
 				MaxBackups: 5,
 				MaxAge:     10,
@@ -206,7 +194,7 @@ func WithDebugHTTP(cfg *config.DebugHTTPConfiguration) HandlersOption {
 			if err != nil {
 				log.Err(err).Msg("error creating debug HTTP logger")
 				l = nil
-				h.DebugHTTPConfig.Enabled = false
+				h.DebugHTTPConfig.EnableHTTP = false
 			}
 			h.DebugHTTP = l
 		}

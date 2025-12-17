@@ -21,29 +21,17 @@ const (
 	LogstashHTTP = "http"
 )
 
-// LogstashConfiguration to hold all logstash configuration values
-type LogstashConfiguration struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Protocol string `json:"protocol"`
-	Path     string `json:"path"`
-}
-
 // LoggerLogstash will be used to log data using Logstash
 type LoggerLogstash struct {
-	Configuration LogstashConfiguration
+	Configuration config.LogstashLogger
 	Headers       map[string]string
 	Enabled       bool
 }
 
 // CreateLoggerLogstash to initialize the logger
-func CreateLoggerLogstash(logstashFile string) (*LoggerLogstash, error) {
-	config, err := LoadLogstash(logstashFile)
-	if err != nil {
-		return nil, err
-	}
+func CreateLoggerLogstash(cfg *config.LogstashLogger) (*LoggerLogstash, error) {
 	l := &LoggerLogstash{
-		Configuration: config,
+		Configuration: *cfg,
 		Headers: map[string]string{
 			utils.ContentType: utils.JSONApplicationUTF8,
 		},
@@ -53,8 +41,8 @@ func CreateLoggerLogstash(logstashFile string) (*LoggerLogstash, error) {
 }
 
 // LoadLogstash - Function to load the Logstash configuration from JSON file
-func LoadLogstash(file string) (LogstashConfiguration, error) {
-	var _logstashCfg LogstashConfiguration
+func LoadLogstash(file string) (config.LogstashLogger, error) {
+	var _logstashCfg config.LogstashLogger
 	log.Info().Msgf("Loading %s", file)
 	// Load file and read config
 	viper.SetConfigFile(file)

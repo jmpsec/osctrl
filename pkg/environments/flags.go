@@ -157,7 +157,7 @@ func GenCarverFlags(env TLSEnvironment, carverBlock string) string {
 }
 
 // GenerateFlags to generate flags
-func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string, osqCfg config.OsqueryConfiguration) (string, error) {
+func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, certPath string, osqCfg config.YAMLConfigurationOsquery) (string, error) {
 	flagSecret := secretPath
 	if secretPath == "" {
 		flagSecret = EmptyFlagSecret
@@ -196,7 +196,7 @@ func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, cer
 }
 
 // GenerateFlagsEnv to generate flags by environment name
-func (environment *EnvManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string, osqCfg config.OsqueryConfiguration) (string, error) {
+func (environment *EnvManager) GenerateFlagsEnv(idEnv string, secretPath, certPath string, osqCfg config.YAMLConfigurationOsquery) (string, error) {
 	env, err := environment.Get(idEnv)
 	if err != nil {
 		return "", fmt.Errorf("error getting environment %w", err)

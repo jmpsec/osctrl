@@ -67,7 +67,7 @@ func (h *HandlersAdmin) NewTemplateFiles(base string, layoutFilename string) *Te
 
 // LoginHandler for login page for GET requests
 func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Prepare template
@@ -93,7 +93,7 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 // EnvironmentHandler for environment view of the table
 func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -174,7 +174,7 @@ func (h *HandlersAdmin) EnvironmentHandler(w http.ResponseWriter, r *http.Reques
 
 // QueryRunGETHandler for GET requests to run queries
 func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -260,7 +260,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 
 // QueryListGETHandler for GET requests to queries
 func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -331,7 +331,7 @@ func (h *HandlersAdmin) QueryListGETHandler(w http.ResponseWriter, r *http.Reque
 
 // SavedQueriesGETHandler for GET requests to queries
 func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -396,7 +396,7 @@ func (h *HandlersAdmin) SavedQueriesGETHandler(w http.ResponseWriter, r *http.Re
 
 // CarvesRunGETHandler for GET requests to run file carves
 func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -476,7 +476,7 @@ func (h *HandlersAdmin) CarvesRunGETHandler(w http.ResponseWriter, r *http.Reque
 
 // CarvesListGETHandler for GET requests to carves
 func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -548,7 +548,7 @@ func (h *HandlersAdmin) CarvesListGETHandler(w http.ResponseWriter, r *http.Requ
 
 // QueryLogsHandler for GET requests to see query results by name
 func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -628,7 +628,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		Platforms:     platforms,
 		Query:         query,
 		QueryTargets:  parseQueryTarget(query.Target),
-		ServiceConfig: *h.AdminConfig,
+		ServiceConfig: h.Configuration,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -640,7 +640,7 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 
 // CarvesDetailsHandler for GET requests to see carves details by name
 func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -747,7 +747,7 @@ func (h *HandlersAdmin) CarvesDetailsHandler(w http.ResponseWriter, r *http.Requ
 
 // ConfGETHandler for GET requests for /conf
 func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -819,7 +819,7 @@ func (h *HandlersAdmin) ConfGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -915,7 +915,7 @@ func (h *HandlersAdmin) EnrollGETHandler(w http.ResponseWriter, r *http.Request)
 
 // EnrollGETHandler for GET requests for /enroll
 func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -994,7 +994,7 @@ func (h *HandlersAdmin) EnrollDownloadHandler(w http.ResponseWriter, r *http.Req
 
 // NodeHandler for node view
 func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract uuid
@@ -1103,7 +1103,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		Dashboard:     dashboardEnabled,
 		Packs:         packs,
 		Schedule:      schedule,
-		ServiceConfig: *h.AdminConfig,
+		ServiceConfig: h.Configuration,
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -1115,7 +1115,7 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 
 // EnvsGETHandler for GET requests for /env
 func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1160,7 +1160,7 @@ func (h *HandlersAdmin) EnvsGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // SettingsGETHandler for GET requests for /settings
 func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1235,7 +1235,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 
 // UsersGETHandler for GET requests for /users
 func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1299,7 +1299,7 @@ func (h *HandlersAdmin) UsersGETHandler(w http.ResponseWriter, r *http.Request) 
 
 // UsersTokensGETHandler for GET requests for /users/tokens
 func (h *HandlersAdmin) UsersTokensGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract username
@@ -1355,7 +1355,7 @@ func (h *HandlersAdmin) UsersTokensGETHandler(w http.ResponseWriter, r *http.Req
 
 // TagsGETHandler for GET requests for /tags
 func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1421,7 +1421,7 @@ func (h *HandlersAdmin) TagsGETHandler(w http.ResponseWriter, r *http.Request) {
 
 // EditProfileGETHandler for user profile edit
 func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1478,7 +1478,7 @@ func (h *HandlersAdmin) EditProfileGETHandler(w http.ResponseWriter, r *http.Req
 
 // DashboardGETHandler for dashboard page
 func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data
@@ -1540,7 +1540,7 @@ func (h *HandlersAdmin) DashboardGETHandler(w http.ResponseWriter, r *http.Reque
 
 // AuditLogsGETHandler for GET requests for /audit-logs
 func (h *HandlersAdmin) AuditLogsGETHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data

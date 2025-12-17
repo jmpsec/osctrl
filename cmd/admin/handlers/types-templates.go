@@ -40,7 +40,7 @@ type AsideLeftMetadata struct {
 	QueryName     string
 	Carve         bool
 	CarveName     string
-	OsqueryValues config.OsqueryConfiguration
+	OsqueryValues config.YAMLConfigurationOsquery
 }
 
 // TableTemplateData for passing data to the table template
@@ -102,7 +102,7 @@ type QueryRunTemplateData struct {
 	Platforms     []string
 	Tags          []string
 	Tables        []types.OsqueryTable
-	OsqueryValues config.OsqueryConfiguration
+	OsqueryValues config.YAMLConfigurationOsquery
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
 }
@@ -151,7 +151,7 @@ type QueryLogsTemplateData struct {
 	QueryTargets  []QueryTarget
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
-	ServiceConfig config.JSONConfigurationService
+	ServiceConfig *config.ServiceParameters
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -170,7 +170,7 @@ type SettingsTemplateData struct {
 	Environments    []environments.TLSEnvironment
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
-	ServiceConfig   config.JSONConfigurationService
+	ServiceConfig   *config.ServiceParameters
 	Metadata        TemplateMetadata
 	LeftMetadata    AsideLeftMetadata
 }
@@ -248,5 +248,5 @@ type NodeTemplateData struct {
 	Dashboard     bool
 	Schedule      environments.ScheduleConf
 	Packs         environments.PacksEntries
-	ServiceConfig config.JSONConfigurationService
+	ServiceConfig *config.ServiceParameters
 }

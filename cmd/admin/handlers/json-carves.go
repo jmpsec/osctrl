@@ -51,7 +51,7 @@ type CarveTarget struct {
 
 // JSONCarvesHandler for JSON carves by target
 func (h *HandlersAdmin) JSONCarvesHandler(w http.ResponseWriter, r *http.Request) {
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment

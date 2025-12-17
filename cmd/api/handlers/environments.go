@@ -27,7 +27,7 @@ var (
 // EnvironmentHandler - GET Handler to return one environment by UUID as JSON
 func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -61,7 +61,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 // EnvironmentMapHandler - GET Handler to return one environment as JSON
 func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract target
@@ -105,7 +105,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 // EnvironmentsHandler - GET Handler to return all environments as JSON
 func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Get context data and check access
@@ -129,7 +129,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 // EnvEnrollHandler - GET Handler to return node enrollment values (secret, certificate, one-liner) for an environment as JSON
 func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -193,7 +193,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 // EnvRemoveHandler - GET Handler to return node removal values for an environment as JSON
 func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -251,7 +251,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 // EnvEnrollActionsHandler - POST Handler to perform actions (extend, expire) in enroll values
 func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
@@ -351,7 +351,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 // EnvRemoveActionsHandler - POST Handler to perform actions (extend, expire) in remove values
 func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.Enabled {
+	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract environment
