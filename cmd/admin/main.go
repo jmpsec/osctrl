@@ -700,6 +700,57 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:    "config-validate",
+				Aliases: []string{"config-verify"},
+				Usage:   "Validate YAML configuration file",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "file",
+						Aliases: []string{"f"},
+						Usage:   "Path to the YAML configuration file to validate",
+						Value:   "config/" + config.ServiceAdmin + ".yml",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					file := cmd.String("file")
+					if file == "" {
+						return fmt.Errorf("no configuration file provided")
+					}
+					_, err := loadYAMLConfiguration(file)
+					if err != nil {
+						return fmt.Errorf("❌ YAML configuration %s is invalid: %w", file, err)
+					}
+					fmt.Printf("✅ YAML configuration %s is valid.\n", file)
+					return nil
+				},
+			},
+			{
+				Name:  "config-generate",
+				Usage: "Generate an example configuration file using the current flag values",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "file",
+						Aliases: []string{"f"},
+						Value:   "config/" + config.ServiceAdmin + ".yml",
+						Usage:   "File path to write the generated configuration",
+					},
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"F"},
+						Usage:   "Overwrite the output file if it already exists",
+						Value:   false,
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					file := cmd.String("file")
+					if err := config.GenerateAdminConfigFile(file, flagParams, cmd.Bool("force")); err != nil {
+						return err
+					}
+					fmt.Printf("Example configuration written to %s.\n", file)
+					return nil
+				},
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if err := cliAction(ctx, cmd); err != nil {
