@@ -34,7 +34,7 @@ var validCarver = map[string]bool{
 func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 	// Check if values are valid
 	if !validAuth[cfg.Service.Auth] {
-		return fmt.Errorf("invalid auth method")
+		return fmt.Errorf("invalid auth method: %s", cfg.Service.Auth)
 	}
 	if !validLogging[cfg.Logger.Type] {
 		return fmt.Errorf("invalid logging method")
