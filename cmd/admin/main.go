@@ -709,7 +709,7 @@ func main() {
 						Name:    "file",
 						Aliases: []string{"f"},
 						Usage:   "Path to the YAML configuration file to validate",
-						Value:   "config/" + config.ServiceTLS + ".yml",
+						Value:   "config/" + config.ServiceAdmin + ".yml",
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
