@@ -1,8 +1,0 @@
-{
-  "redis": {
-    "host": "_REDIS_HOST",
-    "port": "_REDIS_PORT",
-    "password": "_REDIS_PASSWORD",
-    "db": 0
-  }
-}

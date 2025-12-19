@@ -165,10 +165,10 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_LISTENER"),
 			Destination: &params.Service.Listener,
 		},
-		&cli.StringFlag{
+		&cli.IntFlag{
 			Name:        "port",
 			Aliases:     []string{"p"},
-			Value:       "9000",
+			Value:       9000,
 			Usage:       "TCP port for the service",
 			Sources:     cli.EnvVars("SERVICE_PORT"),
 			Destination: &params.Service.Port,
@@ -253,9 +253,9 @@ func initMetricsFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("METRICS_LISTENER"),
 			Destination: &params.Metrics.Listener,
 		},
-		&cli.StringFlag{
+		&cli.IntFlag{
 			Name:        "metrics-port",
-			Value:       "9090",
+			Value:       9090,
 			Usage:       "Port for exposing prometheus metrics",
 			Sources:     cli.EnvVars("METRICS_PORT"),
 			Destination: &params.Metrics.Port,
@@ -314,9 +314,9 @@ func initRedisFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("REDIS_HOST"),
 			Destination: &params.Redis.Host,
 		},
-		&cli.StringFlag{
+		&cli.IntFlag{
 			Name:        "redis-port",
-			Value:       "6379",
+			Value:       6379,
 			Usage:       "Redis port to be connected to",
 			Sources:     cli.EnvVars("REDIS_PORT"),
 			Destination: &params.Redis.Port,
@@ -362,9 +362,9 @@ func initDBFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("DB_HOST"),
 			Destination: &params.DB.Host,
 		},
-		&cli.StringFlag{
+		&cli.IntFlag{
 			Name:        "db-port",
-			Value:       "5432",
+			Value:       5432,
 			Usage:       "Backend port to be connected to",
 			Sources:     cli.EnvVars("DB_PORT"),
 			Destination: &params.DB.Port,

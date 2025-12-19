@@ -593,7 +593,7 @@ func osctrlAdminService() {
 		})
 	}
 	// Launch HTTP server for admin
-	serviceListener := flagParams.Service.Listener + ":" + flagParams.Service.Port
+	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
 	if flagParams.TLS.Termination {
 		cfg := &tls.Config{
 			MinVersion:               tls.VersionTLS12,

@@ -307,7 +307,7 @@ func (conf *Settings) SetTLSJSON(cfg *config.ServiceParameters, envID uint) erro
 	if err := conf.SetJSON(config.ServiceTLS, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONPort, cfg.Service.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONPort, fmt.Sprintf("%d", cfg.Service.Port), envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(config.ServiceTLS, JSONHost, cfg.Service.Host, envID); err != nil {
@@ -330,7 +330,7 @@ func (conf *Settings) SetAdminJSON(cfg *config.ServiceParameters, envID uint) er
 	if err := conf.SetJSON(config.ServiceAdmin, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONPort, cfg.Service.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONPort, fmt.Sprintf("%d", cfg.Service.Port), envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(config.ServiceAdmin, JSONHost, cfg.Service.Host, envID); err != nil {
@@ -353,7 +353,7 @@ func (conf *Settings) SetAPIJSON(cfg *config.ServiceParameters, envID uint) erro
 	if err := conf.SetJSON(config.ServiceAPI, JSONListener, cfg.Service.Listener, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAPI, JSONPort, cfg.Service.Port, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAPI, JSONPort, fmt.Sprintf("%d", cfg.Service.Port), envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(config.ServiceAPI, JSONHost, cfg.Service.Host, envID); err != nil {

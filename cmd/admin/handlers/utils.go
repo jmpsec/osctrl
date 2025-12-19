@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"strconv"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -142,7 +143,12 @@ func toJSONConfigurationService(values []settings.SettingValue) *config.ServiceP
 			cfg.Service.Listener = v.String
 		}
 		if v.Name == settings.JSONPort {
-			cfg.Service.Port = v.String
+			// Convert string to int for Port assignment
+			if portInt, err := strconv.Atoi(v.String); err == nil {
+				cfg.Service.Port = portInt
+			} else {
+				cfg.Service.Port = 0 // or handle error as appropriate
+			}
 		}
 		if v.Name == settings.JSONHost {
 			cfg.Service.Host = v.String

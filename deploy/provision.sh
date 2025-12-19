@@ -138,18 +138,9 @@ _NAME="osctrl"
 TLS_COMPONENT="tls"
 ADMIN_COMPONENT="admin"
 API_COMPONENT="api"
-TLS_CONF="$TLS_COMPONENT.json"
-ADMIN_CONF="$ADMIN_COMPONENT.json"
-API_CONF="$API_COMPONENT.json"
-DB_CONF="db.json"
-CACHE_CONF="redis.json"
-JWT_CONF="jwt.json"
-LOGGER_CONF_ADMIN="logger_admin.json"
-LOGGER_CONF_TLS="logger_tls.json"
-SERVICE_TEMPLATE="service.json"
-DB_TEMPLATE="db.json"
-CACHE_TEMPLATE="redis.json"
-JWT_TEMPLATE="jwt.json"
+TLS_CONF="$TLS_COMPONENT.yml"
+ADMIN_CONF="$ADMIN_COMPONENT.yml"
+API_CONF="$API_COMPONENT.yml"
 SYSTEMD_TEMPLATE="systemd.service"
 DEV_HOST="osctrl.dev"
 
@@ -434,11 +425,12 @@ package openssl
 package tmux
 package bc
 package rsync
+package yq
 
 # Golang
 # package golang-go
 if ! [ -x "$(command -v go)" ]; then
-  install_go_24
+  install_go_25
 fi
 
 # Upgrade service
@@ -618,20 +610,20 @@ else
   # PostgreSQL - Backend
   if [[ "$POSTGRES" == true ]]; then
     if [[ "$DISTRO" == "ubuntu" ]]; then
-      # Ubuntu 22.04 uses postgresql 14
-      if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "22" ]]; then
-        package postgresql-14
+      # Ubuntu 24.04 uses postgresql 18
+      if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
+        package postgresql-18
+        package postgresql-contrib
+        package postgresql-client-18
+        POSTGRES_SERVICE="postgresql"
+        POSTGRES_PSQL="/usr/lib/postgresql/18/bin/psql"
+      else
+        # Assuming we are in Ubuntu 22.04, which uses postgresql 14
+        package postgresql
         package postgresql-contrib
         package postgresql-client-14
         POSTGRES_SERVICE="postgresql"
         POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
-      else
-        # Assuming we are in Ubuntu 20.04, which uses postgresql 12
-        package postgresql
-        package postgresql-contrib
-        package postgresql-client-12
-        POSTGRES_SERVICE="postgresql"
-        POSTGRES_PSQL="/usr/lib/postgresql/12/bin/psql"
       fi
     # Debian uses postgresql 15
     elif [[ "$DISTRO" == "debian" ]]; then
@@ -666,15 +658,13 @@ else
   # Prepare destination and configuration folder
   sudo mkdir -p "$DEST_PATH/config"
 
-  # Generate DB configuration file for services
-  configuration_db "$SOURCE_PATH/deploy/config/$DB_TEMPLATE" "$DEST_PATH/config/$DB_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS" "sudo"
+  # Prepare DB configuration values for services
+  configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
 
-  # Generate Cache configuration file for services
-  configuration_cache "$SOURCE_PATH/deploy/config/$CACHE_TEMPLATE" "$DEST_PATH/config/$CACHE_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS" "sudo"
+  # Prepare Cache configuration values for services
+  configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
 
-  # Prepare DB logger configuration for services
-  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF_ADMIN"
-  sudo cp "$DEST_PATH/config/$DB_CONF" "$DEST_PATH/config/$LOGGER_CONF_TLS"
+  configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER"
 
   # JWT configuration
   cat "$SOURCE_PATH/deploy/config/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
@@ -693,8 +683,8 @@ else
     # Build TLS service
     make tls
 
-    # Configuration file generation for TLS service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER" "sudo"
+    # Prepare configuration values for TLS service
+    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER" "sudo"
 
     # Systemd configuration for TLS service
     _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --config"
@@ -704,8 +694,8 @@ else
     # Build Admin service
     make admin
 
-    # Configuration file generation for Admin service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER" "sudo"
+    # Prepare configuration values for Admin service
+    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER" "sudo"
 
     # Prepare data folder
     sudo mkdir -p "$DEST_PATH/data"
@@ -729,8 +719,8 @@ else
     # Build API service
     make api
 
-    # Configuration file generation for API service
-    configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER" "sudo"
+    # Prepare configuration values for API service
+    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER" "sudo"
 
     # Systemd configuration for API service
     _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"

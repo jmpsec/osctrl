@@ -154,9 +154,9 @@ func init() {
 			Sources:     cli.EnvVars("DB_HOST"),
 			Destination: &dbConfig.Host,
 		},
-		&cli.StringFlag{
+		&cli.IntFlag{
 			Name:        "db-port",
-			Value:       "5432",
+			Value:       5432,
 			Usage:       "Backend port to be connected to",
 			Sources:     cli.EnvVars("DB_PORT"),
 			Destination: &dbConfig.Port,

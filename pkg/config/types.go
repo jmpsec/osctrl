@@ -111,7 +111,7 @@ type APIConfiguration struct {
 // YAMLConfigurationService to hold the service configuration values
 type YAMLConfigurationService struct {
 	Listener  string `yaml:"listener"`
-	Port      string `yaml:"port"`
+	Port      int    `yaml:"port"`
 	LogLevel  string `yaml:"logLevel"`
 	LogFormat string `yaml:"logFormat"`
 	Host      string `yaml:"host"`
@@ -123,7 +123,7 @@ type YAMLConfigurationService struct {
 type YAMLConfigurationDB struct {
 	Type            string `yaml:"type"` // Database type: postgres, mysql, sqlite
 	Host            string `yaml:"host"`
-	Port            string `yaml:"port"`
+	Port            int    `yaml:"port"`
 	Name            string `yaml:"name"`
 	Username        string `yaml:"username"`
 	Password        string `yaml:"password"`
@@ -138,7 +138,7 @@ type YAMLConfigurationDB struct {
 // YAMLConfigurationRedis to hold all redis configuration values
 type YAMLConfigurationRedis struct {
 	Host             string `yaml:"host"`
-	Port             string `yaml:"port"`
+	Port             int    `yaml:"port"`
 	Password         string `yaml:"password"`
 	ConnectionString string `yaml:"connectionString"`
 	DB               int    `yaml:"db"`
@@ -159,7 +159,7 @@ type YAMLConfigurationOsquery struct {
 type YAMLConfigurationMetrics struct {
 	Enabled  bool   `yaml:"enabled"`
 	Listener string `yaml:"listener"`
-	Port     string `yaml:"port"`
+	Port     int    `yaml:"port"`
 }
 
 // YAMLConfigurationOsctrld to hold the osctrld configuration values
