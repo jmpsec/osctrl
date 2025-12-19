@@ -146,7 +146,7 @@ func initConfigFlags(params *ServiceParameters, service string) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       "config/" + service + ".yaml",
+			Value:       "config/" + service + ".yml",
 			Usage:       "Load service configuration from `FILE`",
 			Sources:     cli.EnvVars("SERVICE_CONFIG_FILE"),
 			Destination: &params.ServiceConfigFile,
