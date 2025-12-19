@@ -40,7 +40,7 @@ func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 		return fmt.Errorf("invalid logging method: %s", cfg.Logger.Type)
 	}
 	if !validCarver[cfg.Carver.Type] {
-		return fmt.Errorf("invalid carver method")
+		return fmt.Errorf("invalid carver method: %s", cfg.Carver.Type)
 	}
 	// No errors!
 	return nil
