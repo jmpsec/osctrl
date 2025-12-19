@@ -246,8 +246,8 @@ function configuration_db() {
   sudo yq ".db.host = \"$__dbhost\"" -i "$__dest"
   sudo yq ".db.port = $__dbport" -i "$__dest"
   sudo yq ".db.name = \"$__dbname\"" -i "$__dest"
-  sudo yq ".db.user = \"$__dbuser\"" -i "$__dest"
-  sudo yq ".db.pass = \"$__dbpass\"" -i "$__dest"
+  sudo yq ".db.username = \"$__dbuser\"" -i "$__dest"
+  sudo yq ".db.password = \"$__dbpass\"" -i "$__dest"
 }
 
 # Cache configuration file generation
