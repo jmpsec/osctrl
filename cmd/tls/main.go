@@ -82,32 +82,6 @@ var (
 	flagParams *config.ServiceParameters
 )
 
-// Valid values for authentication in configuration
-var validAuth = map[string]bool{
-	config.AuthNone: true,
-}
-
-// Valid values for logging in configuration
-var validLogging = map[string]bool{
-	config.LoggingNone:     true,
-	config.LoggingStdout:   true,
-	config.LoggingFile:     true,
-	config.LoggingDB:       true,
-	config.LoggingGraylog:  true,
-	config.LoggingSplunk:   true,
-	config.LoggingLogstash: true,
-	config.LoggingKinesis:  true,
-	config.LoggingS3:       true,
-	config.LoggingElastic:  true,
-}
-
-// Valid values for carver in configuration
-var validCarver = map[string]bool{
-	config.CarverDB:    true,
-	config.CarverLocal: true,
-	config.CarverS3:    true,
-}
-
 // Function to load the configuration from a single YAML file
 func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	var cfg config.TLSConfiguration
@@ -121,15 +95,8 @@ func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
-	// Check if values are valid
-	if !validAuth[cfg.Service.Auth] {
-		return cfg, fmt.Errorf("invalid auth method")
-	}
-	if !validLogging[cfg.Logger.Type] {
-		return cfg, fmt.Errorf("invalid logging method")
-	}
-	if !validCarver[cfg.Carver.Type] {
-		return cfg, fmt.Errorf("invalid carver method")
+	if err := config.ValidateTLSConfigValues(cfg); err != nil {
+		return cfg, err
 	}
 	// No errors!
 	return cfg, nil
@@ -448,6 +415,57 @@ func main() {
 				Name: "help",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					cli.ShowAppHelpAndExit(cmd, 2)
+					return nil
+				},
+			},
+			{
+				Name:    "config-validate",
+				Aliases: []string{"config-verify"},
+				Usage:   "Validate YAML configuration file",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "file",
+						Aliases: []string{"f"},
+						Usage:   "Path to the YAML configuration file to validate",
+						Value:   "config/" + config.ServiceTLS + ".yml",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					file := cmd.String("file")
+					if file == "" {
+						return fmt.Errorf("no configuration file provided")
+					}
+					_, err := loadYAMLConfiguration(file)
+					if err != nil {
+						return fmt.Errorf("❌ YAML configuration %s is invalid: %w", file, err)
+					}
+					fmt.Printf("✅ YAML configuration %s is valid.\n", file)
+					return nil
+				},
+			},
+			{
+				Name:  "config-generate",
+				Usage: "Generate an example configuration file using the current flag values",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "file",
+						Aliases: []string{"f"},
+						Value:   "config/" + config.ServiceTLS + ".yml",
+						Usage:   "File path to write the generated configuration",
+					},
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"F"},
+						Usage:   "Overwrite the output file if it already exists",
+						Value:   false,
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					file := cmd.String("file")
+					if err := config.GenerateTLSConfigFile(file, flagParams, cmd.Bool("force")); err != nil {
+						return err
+					}
+					fmt.Printf("Example configuration written to %s.\n", file)
 					return nil
 				},
 			},

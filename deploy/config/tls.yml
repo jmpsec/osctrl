@@ -55,8 +55,6 @@ logger:
   loggerDBSame: false
   alwaysLog: false
 
-
-
 carver:
   # Valid values: "none", "local", "db", "s3"
   type: "db"
