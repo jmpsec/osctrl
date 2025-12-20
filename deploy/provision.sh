@@ -610,13 +610,13 @@ else
   # PostgreSQL - Backend
   if [[ "$POSTGRES" == true ]]; then
     if [[ "$DISTRO" == "ubuntu" ]]; then
-      # Ubuntu 24.04 uses postgresql 18
+      # Ubuntu 24.04 uses postgresql 16
       if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
-        package postgresql-18
+        package postgresql-16
         package postgresql-contrib
-        package postgresql-client-18
+        package postgresql-client-16
         POSTGRES_SERVICE="postgresql"
-        POSTGRES_PSQL="/usr/lib/postgresql/18/bin/psql"
+        POSTGRES_PSQL="/usr/lib/postgresql/16/bin/psql"
       else
         # Assuming we are in Ubuntu 22.04, which uses postgresql 14
         package postgresql
@@ -658,17 +658,6 @@ else
   # Prepare destination and configuration folder
   sudo mkdir -p "$DEST_PATH/config"
 
-  # Prepare DB configuration values for services
-  configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
-
-  # Prepare Cache configuration values for services
-  configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
-
-  configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER"
-
-  # JWT configuration
-  cat "$SOURCE_PATH/deploy/config/$JWT_TEMPLATE" | sed "s|_JWT_SECRET|$_JWT_SECRET|g" | sudo tee "$DEST_PATH/config/$JWT_CONF"
-
   # Build code
   cd "$SOURCE_PATH"
   make clean
@@ -683,8 +672,19 @@ else
     # Build TLS service
     make tls
 
-    # Prepare configuration values for TLS service
-    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$TLS_COMPONENT" "127.0.0.1" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER" "sudo"
+    # Generate TLS configuration file using osctrl-tls
+    ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF"
+
+    # Prepare DB configuration values for services
+    configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
+    # Prepare Cache configuration values for services
+    configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
+
+    configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER"
+
+    # Verify TLS configuration
+    ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
 
     # Systemd configuration for TLS service
     _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --config"
@@ -694,8 +694,19 @@ else
     # Build Admin service
     make admin
 
-    # Prepare configuration values for Admin service
-    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$ADMIN_COMPONENT" "127.0.0.1" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER" "sudo"
+    # Generate Admin configuration file using osctrl-admin
+    ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF"
+
+    # Prepare DB configuration values for services
+    configuration_db "$DEST_PATH/config/$ADMIN_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
+    # Prepare Cache configuration values for services
+    configuration_cache "$DEST_PATH/config/$ADMIN_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
+
+    configuration_service "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER"
+
+    # JWT configuration
+    configuration_jwt "$DEST_PATH/config/$ADMIN_CONF" "$_JWT_SECRET"
 
     # Prepare data folder
     sudo mkdir -p "$DEST_PATH/data"
@@ -711,6 +722,9 @@ else
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/templates" "tmpl_admin"
     _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "cmd/admin/static" "static"
 
+    # Verify TLS configuration
+    ./bin/osctrl-admin config-verify -f "$DEST_PATH/config/$ADMIN_CONF"
+
     # Systemd configuration for Admin service
     _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"
   fi
@@ -719,15 +733,29 @@ else
     # Build API service
     make api
 
-    # Prepare configuration values for API service
-    #configuration_service "$SOURCE_PATH/deploy/config/$SERVICE_TEMPLATE" "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$API_COMPONENT" "127.0.0.1" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER" "sudo"
+    # Generate API configuration file using osctrl-api
+    ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF"
+
+    # Prepare DB configuration values for services
+    configuration_db "$DEST_PATH/config/$API_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
+    # Prepare Cache configuration values for services
+    configuration_cache "$DEST_PATH/config/$API_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
+
+    configuration_service "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER"
+
+    # JWT configuration
+    configuration_jwt "$DEST_PATH/config/$API_CONF" "$_JWT_SECRET"
+
+    # Verify API configuration
+    ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
 
     # Systemd configuration for API service
     _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"
   fi
 
   # Some needed files
-  __db_conf="$DEST_PATH/config/$DB_CONF"
+  __db_conf="$DEST_PATH/config/$TLS_CONF"
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 

@@ -268,6 +268,18 @@ function configuration_cache() {
   sudo yq ".redis.password = \"$__cachepass\"" -i "$__dest"
 }
 
+# JWT configuration file generation
+#   string  conf_destination
+#   string  jwt_secret
+function configuration_jwt() {
+  local __dest=$1
+  local __jwtsecret=$2
+
+  log "Inserting JWT configuration values in $__dest"
+
+  sudo yq ".jwt.jwtSecret = \"$__jwtsecret\"" -i "$__dest"
+}
+
 # Enable service as systemd
 #   string  service_user
 #   string  service_group
