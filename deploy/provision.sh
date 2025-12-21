@@ -681,7 +681,7 @@ else
     # Prepare Cache configuration values for services
     configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
 
-    configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "$_T_LOGGING" "$_T_CARVER"
+    configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "console" "$_T_LOGGING" "$_T_CARVER"
 
     # Verify TLS configuration
     ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
@@ -703,7 +703,7 @@ else
     # Prepare Cache configuration values for services
     configuration_cache "$DEST_PATH/config/$ADMIN_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
 
-    configuration_service "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$_A_AUTH" "$_A_LOGGING" "$_A_CARVER"
+    configuration_service "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$_A_AUTH" "console" "$_A_LOGGING" "$_A_CARVER"
 
     # JWT configuration
     configuration_jwt "$DEST_PATH/config/$ADMIN_CONF" "$_JWT_SECRET"
@@ -742,7 +742,7 @@ else
     # Prepare Cache configuration values for services
     configuration_cache "$DEST_PATH/config/$API_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
 
-    configuration_service "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$_P_AUTH" "$_P_LOGGING" "$_P_CARVER"
+    configuration_service "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$_P_AUTH" "console" "$_P_LOGGING" "$_P_CARVER"
 
     # JWT configuration
     configuration_jwt "$DEST_PATH/config/$API_CONF" "$_JWT_SECRET"

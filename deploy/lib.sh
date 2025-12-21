@@ -207,6 +207,7 @@ function certbot_certificates_nginx() {
 #   string  service_host_port (host|port)
 #   string  service_name
 #   string  auth_option
+#   string  logformat_option
 #   string  logging_option
 #   string  carver_option
 function configuration_service() {
@@ -214,14 +215,16 @@ function configuration_service() {
   local __host=`echo $2 | cut -d"|" -f1`
   local __port=`echo $2 | cut -d"|" -f2`
   local __auth=$3
-  local __logging=$4
-  local __carver=$5
+  local __logformat=$4
+  local __logging=$5
+  local __carver=$6
 
   log "Generating $__dest service configuration"
 
   sudo yq ".service.host = \"$__host\"" -i "$__dest"
   sudo yq ".service.port = $__port" -i "$__dest"
   sudo yq ".service.auth = \"$__auth\"" -i "$__dest"
+  sudo yq ".service.logFormat = \"$__logformat\"" -i "$__dest"
   sudo yq ".logger.type = \"$__logging\"" -i "$__dest"
   sudo yq ".carver.type = \"$__carver\"" -i "$__dest"
 }
