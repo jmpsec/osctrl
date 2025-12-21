@@ -446,10 +446,10 @@ function install_yq() {
   local __file="yq_linux_$__arch"
   local __url="https://github.com/mikefarah/yq/releases/download/latest/$__file"
 
-  if ! [[ -f "/usr/local/bin/yq" ]]; then
+  if ! [[ -f "/usr/bin/yq" ]]; then
     log  "Installing yq"
-    sudo curl -sL "$__url" -o /usr/local/bin/yq
-    sudo chmod +x /usr/local/bin/yq
+    sudo curl -sL "$__url" -o /usr/bin/yq
+    sudo chmod a+x /usr/bin/yq
     yq --version
   else
     yq --version
