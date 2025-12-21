@@ -437,6 +437,25 @@ function install_go_25() {
   fi
 }
 
+# Install yq from releases (https://github.com/mikefarah/yq)
+function install_yq() {
+  local __arch="$(uname -i)"
+  if [[ "$__arch" == "aarch64" ]]; then
+    __arch="arm64"
+  fi
+  local __file="yq_linux_$__arch"
+  local __url="https://github.com/mikefarah/yq/releases/download/latest/$__file"
+
+  if ! [[ -f "/usr/local/bin/yq" ]]; then
+    log  "Installing yq"
+    sudo curl -sL "$__url" -o /usr/local/bin/yq
+    sudo chmod +x /usr/local/bin/yq
+    yq --version
+  else
+    yq --version
+  fi
+}
+
 # Generate self-signed certificate for SAML authentication
 #   string  path_to_certs
 #   string  certificate_name

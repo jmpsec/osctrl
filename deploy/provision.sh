@@ -425,7 +425,7 @@ package openssl
 package tmux
 package bc
 package rsync
-package yq
+install_yq
 
 # Golang
 # package golang-go
@@ -673,7 +673,7 @@ else
     make tls
 
     # Generate TLS configuration file using osctrl-tls
-    ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF"
+    sudo ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF"
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
@@ -695,7 +695,7 @@ else
     make admin
 
     # Generate Admin configuration file using osctrl-admin
-    ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF"
+    sudo ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF"
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$ADMIN_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
@@ -734,7 +734,7 @@ else
     make api
 
     # Generate API configuration file using osctrl-api
-    ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF"
+    sudo ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF"
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$API_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
