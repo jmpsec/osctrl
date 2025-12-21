@@ -673,7 +673,7 @@ else
     make tls
 
     # Generate TLS configuration file using osctrl-tls
-    sudo ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF"
+    sudo ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF" --force
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
@@ -687,7 +687,7 @@ else
     ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
 
     # Systemd configuration for TLS service
-    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --config"
+    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$TLS_CONF"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
@@ -695,7 +695,7 @@ else
     make admin
 
     # Generate Admin configuration file using osctrl-admin
-    sudo ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF"
+    sudo ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF" --force
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$ADMIN_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
@@ -726,7 +726,7 @@ else
     ./bin/osctrl-admin config-verify -f "$DEST_PATH/config/$ADMIN_CONF"
 
     # Systemd configuration for Admin service
-    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"
+    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$ADMIN_CONF"
   fi
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
@@ -734,7 +734,7 @@ else
     make api
 
     # Generate API configuration file using osctrl-api
-    sudo ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF"
+    sudo ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF" --force
 
     # Prepare DB configuration values for services
     configuration_db "$DEST_PATH/config/$API_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
@@ -751,7 +751,7 @@ else
     ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
 
     # Systemd configuration for API service
-    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--redis --db --jwt --config"
+    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$API_CONF"
   fi
 
   # Some needed files
