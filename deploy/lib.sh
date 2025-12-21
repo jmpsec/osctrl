@@ -406,9 +406,29 @@ function install_go_25() {
   local __url="https://dl.google.com/go/$__file"
   if ! [[ -d "/usr/local/go" ]]; then
     log  "Installing Golang $__version"
+    # Create a temporary folder
+    local __tmpdir
+    __tmpdir=$(mktemp -d /tmp/go-install-XXXXXX) || {
+      _log "Failed to create temporary directory for Go installation"
+      return 1
+    }
+    if [[ -z "$__tmpdir" || ! -d "$__tmpdir" ]]; then
+      _log "Temporary directory for Go installation is invalid: '$__tmpdir'"
+      return 1
+    fi
+    cd "$__tmpdir"
+
+    # Download and extract in temp folder
     sudo curl -sO "$__url"
     sudo tar -xf "$__file"
+
+    # Move to final destination
     sudo mv go /usr/local
+
+    # Clean up temp folder
+    cd -
+    sudo rm -rf "$__tmpdir"
+
     echo "export PATH=$PATH:/usr/local/go/bin" | sudo tee -a /etc/profile
     source /etc/profile
     go version
