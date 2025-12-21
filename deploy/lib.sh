@@ -444,7 +444,7 @@ function install_yq() {
     __arch="arm64"
   fi
   local __file="yq_linux_$__arch"
-  local __url="https://github.com/mikefarah/yq/releases/download/latest/$__file"
+  local __url="https://github.com/mikefarah/yq/releases/latest/download/$__file"
 
   if ! [[ -f "/usr/bin/yq" ]]; then
     log  "Installing yq"
