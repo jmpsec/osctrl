@@ -719,8 +719,8 @@ else
     sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
 
     # Prepare static files for Admin service
-    sudo rsync -av "$SOURCE_PATH/cmd/admin/templates" "$DEST_PATH/tmpl_admin"
-    sudo rsync -av "$SOURCE_PATH/cmd/admin/static" "$DEST_PATH/static"
+    sudo rsync -av "$SOURCE_PATH/cmd/admin/templates/" "$DEST_PATH/tmpl_admin"
+    sudo rsync -av "$SOURCE_PATH/cmd/admin/static/" "$DEST_PATH/static"
 
     # Verify TLS configuration
     ./bin/osctrl-admin config-verify -f "$DEST_PATH/config/$ADMIN_CONF"
