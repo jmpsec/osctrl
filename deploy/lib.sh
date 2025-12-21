@@ -318,29 +318,6 @@ function _systemd() {
   sudo systemctl start "$__service.service"
 }
 
-# Prepare service directories and copy static files
-#   string  mode_of_operation
-#   string  path_to_code
-#   string  path_destination
-#   string  server_component
-#   string  target_files
-function _static_files() {
-  local __mode=$1
-  local __path=$2
-  local __dest=$3
-  local __from=$4
-  local __target=$5
-
-  # Files will be linked if we are in dev
-  if [[ "$__mode" == "dev" ]]; then
-    if [[ ! -d "$__dest/$__target" ]]; then
-      sudo ln -s "$__path/$__from" "$__dest/$__target"
-    fi
-  else
-    sudo rsync -av "$__path/$__from/" "$__dest/$__target"
-  fi
-}
-
 # Create empty DB and username
 #   string  PostgreSQL_db_name
 #   string  PostgreSQL_system_user
