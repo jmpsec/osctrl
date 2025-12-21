@@ -8,5 +8,5 @@ import (
 
 // PrepareAddr to generate redis connection string
 func PrepareAddr(cfg config.YAMLConfigurationRedis) string {
-	return fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	return fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 }

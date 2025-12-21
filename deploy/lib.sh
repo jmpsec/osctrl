@@ -203,34 +203,34 @@ function certbot_certificates_nginx() {
 }
 
 # Service configuration file generation
-#   string  conf_template
 #   string  conf_destination
 #   string  service_host_port (host|port)
 #   string  service_name
-#   string  listener
 #   string  auth_option
+#   string  logformat_option
 #   string  logging_option
 #   string  carver_option
-#   string  sudo_command
 function configuration_service() {
-  local __conf=$1
-  local __dest=$2
-  local __tlshost=`echo $3 | cut -d"|" -f1`
-  local __tlsport=`echo $3 | cut -d"|" -f2`
-  local __service=$4
-  local __listener=$5
-  local __auth=$6
-  local __logging=$7
-  local __carver=$8
-  local __sudo=$9
+  local __dest=$1
+  local __host=`echo $2 | cut -d"|" -f1`
+  local __port=`echo $2 | cut -d"|" -f2`
+  local __auth=$3
+  local __logformat=$4
+  local __logging=$5
+  local __carver=$6
 
-  log "Generating $__dest configuration"
+  log "Generating $__dest service configuration"
 
-  cat "$__conf" | sed "s|_SERVICE_PORT|$__tlsport|g" | sed "s|_SERVICE_HOST|$__tlshost|g" | sed "s|_LISTENER|$__listener|g" | sed "s|_SERVICE_NAME|$__service|g" | sed "s|_SERVICE_AUTH|$__auth|g" | sed "s|_SERVICE_LOGGING|$__logging|g" | sed "s|_SERVICE_CARVER|$__carver|g" |  $__sudo tee "$__dest"
+  sudo yq ".service.host = \"$__host\"" -i "$__dest"
+  sudo yq ".service.port = $__port" -i "$__dest"
+  sudo yq ".service.auth = \"$__auth\"" -i "$__dest"
+  sudo yq ".service.logFormat = \"$__logformat\"" -i "$__dest"
+  sudo yq ".logger.type = \"$__logging\"" -i "$__dest"
+  sudo yq ".logger.loggerDBSame = true" -i "$__dest"
+  sudo yq ".carver.type = \"$__carver\"" -i "$__dest"
 }
 
 # DB configuration file generation
-#   string  conf_template
 #   string  conf_destination
 #   string  db_host
 #   string  db_port
@@ -238,37 +238,50 @@ function configuration_service() {
 #   string  db_username
 #   string  db_password
 function configuration_db() {
-  local __conf=$1
-  local __dest=$2
-  local __dbhost=$3
-  local __dbport=$4
-  local __dbname=$5
-  local __dbuser=$6
-  local __dbpass=$7
-  local __sudo=$8
+  local __dest=$1
+  local __dbhost=$2
+  local __dbport=$3
+  local __dbname=$4
+  local __dbuser=$5
+  local __dbpass=$6
 
-  log "Generating $__dest configuration"
+  log "Inserting DB configuration values in $__dest"
 
-  cat "$__conf" | sed "s|_DB_HOST|$__dbhost|g" | sed "s|_DB_PORT|$__dbport|g" | sed "s|_DB_NAME|$__dbname|g" | sed "s|_DB_USERNAME|$__dbuser|g" | sed "s|_DB_PASSWORD|$__dbpass|g" | $__sudo tee "$__dest"
+  sudo yq ".db.host = \"$__dbhost\"" -i "$__dest"
+  sudo yq ".db.port = $__dbport" -i "$__dest"
+  sudo yq ".db.name = \"$__dbname\"" -i "$__dest"
+  sudo yq ".db.username = \"$__dbuser\"" -i "$__dest"
+  sudo yq ".db.password = \"$__dbpass\"" -i "$__dest"
 }
 
 # Cache configuration file generation
-#   string  conf_template
 #   string  conf_destination
 #   string  cache_host
 #   string  cache_port
 #   string  cache_password
 function configuration_cache() {
-  local __conf=$1
-  local __dest=$2
-  local __cachehost=$3
-  local __cacheport=$4
-  local __cachepass=$5
-  local __sudo=$6
+  local __dest=$1
+  local __cachehost=$2
+  local __cacheport=$3
+  local __cachepass=$4
 
-  log "Generating $__dest configuration"
+  log "Inserting cache configuration values in $__dest"
 
-  cat "$__conf" | sed "s|_REDIS_HOST|$__cachehost|g" | sed "s|_REDIS_PORT|$__cacheport|g" | sed "s|_REDIS_PASSWORD|$__cachepass|g" | $__sudo tee "$__dest"
+  sudo yq ".redis.host = \"$__cachehost\"" -i "$__dest"
+  sudo yq ".redis.port = $__cacheport" -i "$__dest"
+  sudo yq ".redis.password = \"$__cachepass\"" -i "$__dest"
+}
+
+# JWT configuration file generation
+#   string  conf_destination
+#   string  jwt_secret
+function configuration_jwt() {
+  local __dest=$1
+  local __jwtsecret=$2
+
+  log "Inserting JWT configuration values in $__dest"
+
+  sudo yq ".jwt.jwtSecret = \"$__jwtsecret\"" -i "$__dest"
 }
 
 # Enable service as systemd
@@ -303,29 +316,6 @@ function _systemd() {
   # Enable and start service
   sudo systemctl enable "$__service.service"
   sudo systemctl start "$__service.service"
-}
-
-# Prepare service directories and copy static files
-#   string  mode_of_operation
-#   string  path_to_code
-#   string  path_destination
-#   string  server_component
-#   string  target_files
-function _static_files() {
-  local __mode=$1
-  local __path=$2
-  local __dest=$3
-  local __from=$4
-  local __target=$5
-
-  # Files will be linked if we are in dev
-  if [[ "$__mode" == "dev" ]]; then
-    if [[ ! -d "$__dest/$__target" ]]; then
-      sudo ln -s "$__path/$__from" "$__dest/$__target"
-    fi
-  else
-    sudo rsync -av "$__path/$__from/" "$__dest/$__target"
-  fi
 }
 
 # Create empty DB and username
@@ -405,9 +395,9 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
-# Install go 1.25.4 from tgz
-function install_go_24() {
-  local __version="1.25.4"
+# Install go 1.25.5 from tgz
+function install_go_25() {
+  local __version="1.25.5"
   local __arch="$(uname -i)"
   if [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
@@ -425,6 +415,25 @@ function install_go_24() {
   else
     source /etc/profile
     go version
+  fi
+}
+
+# Install yq from releases (https://github.com/mikefarah/yq)
+function install_yq() {
+  local __arch="$(uname -i)"
+  if [[ "$__arch" == "aarch64" ]]; then
+    __arch="arm64"
+  fi
+  local __file="yq_linux_$__arch"
+  local __url="https://github.com/mikefarah/yq/releases/latest/download/$__file"
+
+  if ! [[ -f "/usr/bin/yq" ]]; then
+    log  "Installing yq"
+    sudo curl -sL "$__url" -o /usr/bin/yq
+    sudo chmod a+x /usr/bin/yq
+    yq --version
+  else
+    yq --version
   fi
 }
 

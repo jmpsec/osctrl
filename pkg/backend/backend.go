@@ -15,9 +15,9 @@ import (
 
 const (
 	// DBString to format connection string to database for postgres
-	PostgresDBString = "host=%s port=%s dbname=%s user=%s password=%s sslmode=%s"
+	PostgresDBString = "host=%s port=%d dbname=%s user=%s password=%s sslmode=%s"
 	// MySQLDBString to format connection string for MySQL
-	MySQLDBString = "%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local"
+	MySQLDBString = "%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
 	// Database types

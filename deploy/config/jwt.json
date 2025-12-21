@@ -1,6 +1,0 @@
-{
-  "jwt": {
-    "jwtSecret": "_JWT_SECRET",
-    "hoursToExpire": 3
-  }
-}

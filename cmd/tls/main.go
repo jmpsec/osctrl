@@ -246,8 +246,8 @@ func osctrlService() {
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
 		go func() {
-			log.Info().Msgf("Starting prometheus server at %s:%s", flagParams.Metrics.Listener, flagParams.Metrics.Port)
-			err := http.ListenAndServe(flagParams.Metrics.Listener+":"+flagParams.Metrics.Port, prometheusServer)
+			log.Info().Msgf("Starting prometheus server at %s:%d", flagParams.Metrics.Listener, flagParams.Metrics.Port)
+			err := http.ListenAndServe(flagParams.Metrics.Listener+":"+strconv.Itoa(flagParams.Metrics.Port), prometheusServer)
 			if err != nil {
 				log.Fatal().Msgf("Error starting prometheus server: %v", err)
 			}
@@ -315,7 +315,7 @@ func osctrlService() {
 	}
 
 	// ////////////////////////////// Everything is ready at this point!
-	serviceListener := flagParams.Service.Listener + ":" + flagParams.Service.Port
+	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
 	if flagParams.TLS.Termination {
 		log.Info().Msg("TLS Termination is enabled")
 		cfg := &tls.Config{
