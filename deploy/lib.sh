@@ -226,6 +226,7 @@ function configuration_service() {
   sudo yq ".service.auth = \"$__auth\"" -i "$__dest"
   sudo yq ".service.logFormat = \"$__logformat\"" -i "$__dest"
   sudo yq ".logger.type = \"$__logging\"" -i "$__dest"
+  sudo yq ".logger.loggerDBSame = true" -i "$__dest"
   sudo yq ".carver.type = \"$__carver\"" -i "$__dest"
 }
 
