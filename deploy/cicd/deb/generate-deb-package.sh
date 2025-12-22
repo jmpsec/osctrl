@@ -34,12 +34,9 @@ cp deploy/cicd/deb/deb-conffiles "${DEB_DIR}/DEBIAN/conffiles" && \
     sed -i "s#{{ OSCTRL_COMPONENT }}#${OSCTRL_COMPONENT}#g" "${DEB_DIR}/DEBIAN/conffiles"
 
 
-# Example configs
-cp deploy/config/db.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example" && \
-    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/db.json.example"
-
-cp deploy/config/redis.json "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example" && \
-    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/redis.json.example"
+# Example configuration
+cp deploy/config/${OSCTRL_COMPONENT}.yml "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/${OSCTRL_COMPONENT}.yml.example" && \
+    chmod 640 "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONENT}/${OSCTRL_COMPONENT}.yml.example"
 
 
 # General components content
@@ -52,31 +49,7 @@ cp deploy/config/service.json "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.
 # Generate systemd config file
 EXECSTART="/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT} \\
     --config \\
-    --config-file /opt/osctrl/config/${OSCTRL_COMPONENT}.json \\
-    --redis \\
-    --redis-file /opt/osctrl/config/redis.json \\
-    --db \\
-    --db-file /opt/osctrl/config/db.json"
-
-if [ "$OSCTRL_COMPONENT" == "admin" ]
-then
-    ADMIN_ARGS=" \\
-    --jwt \\
-    --jwt-file /opt/osctrl/config/jwt.json \\
-    --carved /opt/osctrl/carves \\
-    --templates /opt/osctrl/tmpl_admin \\
-    --static /opt/osctrl/static \\
-    --osquery-tables /opt/osctrl/data/osquery-${OSQUERY_VERSION}.json"
-    EXECSTART+=${ADMIN_ARGS}
-fi
-
-if [ "$OSCTRL_COMPONENT" == "api" ]
-then
-    API_ARGS=" \\
-    --jwt \\
-    --jwt-file /opt/osctrl/config/jwt.json"
-    EXECSTART+=${API_ARGS}
-fi
+    --config-file /opt/osctrl/config/${OSCTRL_COMPONENT}.yml"
 
 cat > "${DEB_DIR}/etc/systemd/system/osctrl-${OSCTRL_COMPONENT}.service" << EOF
 [Unit]
@@ -116,11 +89,7 @@ then
     mkdir -p "${DEB_DIR}/opt/osctrl/static"
     mkdir -p "${DEB_DIR}/opt/osctrl/tmpl_admin"
 
-    # Copy configs
-    cp deploy/config/jwt.json "${DEB_DIR}/opt/osctrl/config/jwt.json" && \
-        chmod 640 "${DEB_DIR}/opt/osctrl/config/jwt.json"
-
-    # Copy Osctrl-admin web assets
+    # Copy osctrl-admin web assets
     cp -r cmd/admin/templates "${DEB_DIR}/opt/osctrl/tmpl_admin"
     cp -r cmd/admin/static "${DEB_DIR}/opt/osctrl/static"
 
@@ -128,17 +97,6 @@ then
     cp deploy/osquery/data/${OSQUERY_VERSION}.json "${DEB_DIR}/opt/osctrl/data/osquery-${OSQUERY_VERSION}.json"
 
     # Define conffiles
-    echo "/opt/osctrl/config/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
     echo "/opt/osctrl/data/osquery-${OSQUERY_VERSION}.json" >> "${DEB_DIR}/DEBIAN/conffiles"
 
-fi
-
-if [ "$OSCTRL_COMPONENT" == "api" ]
-then
-    # Copy configs
-    cp deploy/config/jwt.json "${DEB_DIR}/opt/osctrl/config/jwt.json" && \
-        chmod 640 "${DEB_DIR}/opt/osctrl/config/jwt.json"
-
-    # Define conffiles
-    echo "/opt/osctrl/config/jwt.json" >> "${DEB_DIR}/DEBIAN/conffiles"
 fi
