@@ -65,7 +65,7 @@ jwt:
   jwtSecret: ""
   hoursToExpire: 3
 
-# TLS termination  configuration
+# TLS termination configuration
 tls:
   termination: false
   certificateFile: config/tls.crt
