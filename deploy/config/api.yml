@@ -1,13 +1,14 @@
 # YAML configuration for osctrl-api
 
 service:
-  listener: 0.0.0.0
+  listener: 127.0.0.1
   port: 9000
   # Valid values: "debug", "info", "warn", "error"
   logLevel: info
   # Valid values: "json", "console"
   logFormat: json
-  host: 0.0.0.0
+  host: osctrl.net
+  # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
   auth: none
   auditLog: false
 
@@ -38,7 +39,7 @@ redis:
 # Osquery nodes configuration
 osquery:
   version: 5.20.0
-  tablesFile: data/5.20.0.json
+  tablesFile: ./data/5.20.0.json
   logger: true
   config: true
   query: true
@@ -52,26 +53,92 @@ jwt:
 # TLS termination  configuration
 tls:
   termination: false
-  certificateFile: config/tls.crt
-  keyFile: config/tls.key
+  certificateFile: ./config/tls.crt
+  keyFile: ./config/tls.key
 
 # Logger configuration to handle received logs from osquery nodes
 logger:
+  # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
   type: db
   loggerDBSame: false
   alwaysLog: false
-  db: null
-  s3: null
-  graylog: null
-  elastic: null
-  splunk: null
-  logstash: null
-  kinesis: null
-  kafka: null
-  local: null
+  db:
+    type: ""
+    host: ""
+    port: 0
+    name: ""
+    username: ""
+    password: ""
+    sslmode: ""
+    maxIdleConns: 0
+    maxOpenConns: 0
+    connMaxLifetime: 0
+    connRetry: 0
+    filePath: ""
+  s3:
+    bucket: ""
+    region: ""
+    accessKey: ""
+    secretAccessKey: ""
+  graylog:
+    url: ""
+    host: ""
+    queries: ""
+    status: ""
+    results: ""
+  elastic:
+    host: ""
+    port: ""
+    indexPrefix: ""
+    dateSeparator: ""
+    indexSeparator: ""
+  splunk:
+    url: ""
+    token: ""
+    host: ""
+    index: ""
+  logstash:
+    host: ""
+    port: ""
+    protocol: ""
+    path: ""
+  kinesis:
+    stream: ""
+    region: ""
+    endpoint: ""
+    accessKey: ""
+    secretKey: ""
+    sessionToken: ""
+  kafka:
+    bootstrapServers: ""
+    sslCALocation: ""
+    connectionTimeout: 5s
+    sasl:
+      mechanism: ""
+      username: ""
+      password: ""
+    topic: ""
+  local:
+    filePath: ""
+    maxSize: 0
+    maxBackups: 0
+    maxAge: 0
+    compress: false
+
+# Carver configuration to handle file carves from osquery nodes
+carver:
+  # Valid values: "none", "local", "db", "s3"
+  type: db
+  s3:
+    bucket: ""
+    region: ""
+    accessKey: ""
+    secretAccessKey: ""
+  local:
+    carvesDir: ./carved_files/
 
 # Debug configuration
 debug:
   enableHttp: false
-  httpFile: debug-http-api.log
+  httpFile: ./debug-http-api.log
   showBody: false

@@ -1,13 +1,13 @@
 # YAML configuration for osctrl-admin
 
 service:
-  listener: 0.0.0.0
+  listener: 127.0.0.1
   port: 9000
   # Valid values: "debug", "info", "warn", "error"
   logLevel: info
   # Valid values: "json", "console"
   logFormat: json
-  host: 0.0.0.0
+  host: osctrl.net
   # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
   auth: none
   auditLog: false
@@ -39,7 +39,7 @@ redis:
 # Osquery nodes configuration
 osquery:
   version: 5.20.0
-  tablesFile: data/5.20.0.json
+  tablesFile: ./data/5.20.0.json
   logger: true
   config: true
   query: true
@@ -68,8 +68,8 @@ jwt:
 # TLS termination configuration
 tls:
   termination: false
-  certificateFile: config/tls.crt
-  keyFile: config/tls.key
+  certificateFile: ./config/tls.crt
+  keyFile: ./config/tls.key
 
 # Logger configuration to handle received logs from osquery nodes
 logger:
@@ -127,7 +127,7 @@ logger:
   kafka:
     bootstrapServers: ""
     sslCALocation: ""
-    connectionTimeout: 0s
+    connectionTimeout: 5s
     sasl:
       mechanism: ""
       username: ""
@@ -163,5 +163,5 @@ admin:
 # Debug configuration
 debug:
   enableHttp: false
-  httpFile: debug-http-admin.log
+  httpFile: ./debug-http-admin.log
   showBody: false

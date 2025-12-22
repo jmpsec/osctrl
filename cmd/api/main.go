@@ -148,9 +148,22 @@ func init() {
 		JWT:     &config.YAMLConfigurationJWT{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
-		Logger:  &config.YAMLConfigurationLogger{},
-		Carver:  &config.YAMLConfigurationCarver{},
-		Debug:   &config.YAMLConfigurationDebug{},
+		Logger: &config.YAMLConfigurationLogger{
+			DB:       &config.YAMLConfigurationDB{},
+			S3:       &config.S3Logger{},
+			Graylog:  &config.GraylogLogger{},
+			Elastic:  &config.ElasticLogger{},
+			Splunk:   &config.SplunkLogger{},
+			Logstash: &config.LogstashLogger{},
+			Kinesis:  &config.KinesisLogger{},
+			Kafka:    &config.KafkaLogger{},
+			Local:    &config.LocalLogger{},
+		},
+		Carver: &config.YAMLConfigurationCarver{
+			S3:    &config.S3Carver{},
+			Local: &config.LocalCarver{},
+		},
+		Debug: &config.YAMLConfigurationDebug{},
 	}
 	// Initialize CLI flags using the config package
 	flags = config.InitAPIFlags(flagParams)

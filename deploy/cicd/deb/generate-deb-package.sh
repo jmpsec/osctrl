@@ -43,8 +43,8 @@ cp deploy/config/${OSCTRL_COMPONENT}.yml "${DEB_DIR}/tmp/osctrl-${OSCTRL_COMPONE
 cp osctrl-${OSCTRL_COMPONENT}-${GOOS}-${GOARCH}.bin "${DEB_DIR}/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT}" && \
     chmod 755 "${DEB_DIR}/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT}"
 
-cp deploy/config/service.json "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json" && \
-    chmod 640 "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.json"
+cp deploy/config/${OSCTRL_COMPONENT}.yml "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.yml" && \
+    chmod 640 "${DEB_DIR}/opt/osctrl/config/${OSCTRL_COMPONENT}.yml"
 
 # Generate systemd config file
 EXECSTART="/opt/osctrl/bin/osctrl-${OSCTRL_COMPONENT} \\

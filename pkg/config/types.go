@@ -105,6 +105,7 @@ type APIConfiguration struct {
 	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
+	Carver  YAMLConfigurationCarver  `mapstructure:"carver"`
 	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
