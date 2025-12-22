@@ -13,6 +13,8 @@ const (
 	defaultBackendRetryTimeout int = 10
 	// Default timeout to attempt redis reconnect
 	defaultRedisRetryTimeout int = 10
+	// Default JWT token expiration time in hours
+	defJWTExpirationHours int = 3
 )
 
 // osquery
@@ -20,11 +22,11 @@ const (
 	// osquery version to display tables
 	defOsqueryTablesVersion = version.OsqueryVersion
 	// JSON file with osquery tables data
-	defOsqueryTablesFile string = "data/" + defOsqueryTablesVersion + ".json"
+	defOsqueryTablesFile string = "./data/" + defOsqueryTablesVersion + ".json"
 	// Default TLS certificate file
-	defTLSCertificateFile string = "config/tls.crt"
+	defTLSCertificateFile string = "./config/tls.crt"
 	// Default TLS private key file
-	defTLSKeyFile string = "config/tls.key"
+	defTLSKeyFile string = "./config/tls.key"
 	// Static files folder
 	defStaticFilesFolder string = "./static"
 	// Default templates folder
@@ -128,6 +130,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
+	allFlags = append(allFlags, initCarverFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	return allFlags
 }
@@ -146,7 +149,7 @@ func initConfigFlags(params *ServiceParameters, service string) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Aliases:     []string{"C"},
-			Value:       "config/" + service + ".yml",
+			Value:       "./config/" + service + ".yml",
 			Usage:       "Load service configuration from `FILE`",
 			Sources:     cli.EnvVars("SERVICE_CONFIG_FILE"),
 			Destination: &params.ServiceConfigFile,
@@ -160,7 +163,7 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "listener",
 			Aliases:     []string{"l"},
-			Value:       "0.0.0.0",
+			Value:       "127.0.0.1",
 			Usage:       "Listener for the service",
 			Sources:     cli.EnvVars("SERVICE_LISTENER"),
 			Destination: &params.Service.Listener,
@@ -176,7 +179,7 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "host",
 			Aliases:     []string{"H"},
-			Value:       "0.0.0.0",
+			Value:       "osctrl.net",
 			Usage:       "Exposed hostname the service uses",
 			Sources:     cli.EnvVars("SERVICE_HOST"),
 			Destination: &params.Service.Host,
@@ -248,7 +251,7 @@ func initMetricsFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:        "metrics-listener",
-			Value:       "0.0.0.0",
+			Value:       "127.0.0.1",
 			Usage:       "Listener for prometheus metrics",
 			Sources:     cli.EnvVars("METRICS_LISTENER"),
 			Destination: &params.Metrics.Listener,
@@ -613,7 +616,7 @@ func initJWTFlags(params *ServiceParameters) []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:        "jwt-expire",
-			Value:       3,
+			Value:       defJWTExpirationHours,
 			Usage:       "Maximum amount of hours for the tokens to expire",
 			Sources:     cli.EnvVars("JWT_EXPIRE"),
 			Destination: &params.JWT.HoursToExpire,
@@ -733,7 +736,7 @@ func initDebugFlags(params *ServiceParameters, service string) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:        "http-debug-file",
-			Value:       "debug-http-" + service + ".log",
+			Value:       "./debug-http-" + service + ".log",
 			Usage:       "File to dump the HTTP requests when HTTP Debug mode is enabled",
 			Sources:     cli.EnvVars("HTTP_DEBUG_FILE"),
 			Destination: &params.Debug.HTTPFile,
