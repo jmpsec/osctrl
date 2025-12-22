@@ -1,0 +1,77 @@
+# YAML configuration for osctrl-api
+
+service:
+  listener: 0.0.0.0
+  port: 9000
+  # Valid values: "debug", "info", "warn", "error"
+  logLevel: info
+  # Valid values: "json", "console"
+  logFormat: json
+  host: 0.0.0.0
+  auth: none
+  auditLog: false
+
+# Database configuration
+db:
+  type: postgres
+  host: 127.0.0.1
+  port: 5432
+  name: osctrl
+  username: postgres
+  password: postgres
+  sslmode: disable
+  maxIdleConns: 20
+  maxOpenConns: 100
+  connMaxLifetime: 30
+  connRetry: 10
+  filePath: ./osctrl.db
+
+# Redis cache configuration
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  connectionString: ""
+  db: 0
+  connRetry: 10
+
+# Osquery nodes configuration
+osquery:
+  version: 5.20.0
+  tablesFile: data/5.20.0.json
+  logger: true
+  config: true
+  query: true
+  carve: true
+
+# JWT authentication configuration
+jwt:
+  jwtSecret: ""
+  hoursToExpire: 3
+
+# TLS termination  configuration
+tls:
+  termination: false
+  certificateFile: config/tls.crt
+  keyFile: config/tls.key
+
+# Logger configuration to handle received logs from osquery nodes
+logger:
+  type: db
+  loggerDBSame: false
+  alwaysLog: false
+  db: null
+  s3: null
+  graylog: null
+  elastic: null
+  splunk: null
+  logstash: null
+  kinesis: null
+  kafka: null
+  local: null
+
+# Debug configuration
+debug:
+  enableHttp: false
+  httpFile: debug-http-api.log
+  showBody: false

@@ -28,18 +28,13 @@ then
     chown root:osctrl -R /opt/osctrl/config
 fi
 
-################### Copy needed configs ###################
-if [ ! -f /opt/osctrl/config/db.json ]
+################### Copy needed configuration ###################
+if [ ! -f /opt/osctrl/config/{{ OSCTRL_COMPONENT }}.yml ]
 then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/db.json.example /opt/osctrl/config/db.json
-    chown root:root /opt/osctrl/config/db.json.example
+    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/{{ OSCTRL_COMPONENT }}.yml.example /opt/osctrl/config/{{ OSCTRL_COMPONENT }}.yml
+    chown root:root /opt/osctrl/config/{{ OSCTRL_COMPONENT }}.yml
 fi
 
-if [ ! -f /opt/osctrl/config/redis.json ]
-then
-    cp /tmp/osctrl-{{ OSCTRL_COMPONENT }}/redis.json.example /opt/osctrl/config/redis.json
-    chown root:root /opt/osctrl/config/redis.json.example
-fi
 rm -rd /tmp/osctrl-{{ OSCTRL_COMPONENT }}
 
 ################### osctrl-admin web assets ###################
