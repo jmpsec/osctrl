@@ -20,15 +20,49 @@
 
 Random collection of tools/scripts that all have been used at some point during the development of osctrl
 
-## api_testing.py
+## api_tester.py
 
-Python3 script to test the `osctrl-api` endpoints and check authentication and responsiveness.
+Comprehensive Python3 test suite for the `osctrl-api` service. Tests all API endpoints systematically and provides detailed pass/fail reporting. Useful for regression testing after making changes to the API.
+
+**Basic usage:**
 
 ```shell
-$ python3 api_testing.py "http://localhost:9002" "ThisIsTheAPIToken"
+# With login credentials
+$ python3 api_tester.py http://localhost:9002 --username admin --password admin --env <env-uuid>
+
+# With existing token
+$ python3 api_tester.py http://localhost:9002 --token <api-token> --env <env-uuid>
+
+# Skip authentication tests
+$ python3 api_tester.py http://localhost:9002 --skip-auth
+
+# Verbose output
+$ python3 api_tester.py http://localhost:9002 --token <token> --env <env-uuid> --verbose
+
+# Disable SSL verification (for self-signed certs)
+$ python3 api_tester.py https://api.example.com --token <token> --env <env-uuid> --insecure
 ```
 
-It requires to install [requests](https://pypi.org/project/requests/)  with `pip install requests`.
+**Options:**
+
+- `--username, -u`: Username for authentication
+- `--password, -p`: Password for authentication
+- `--env, -e`: Environment UUID for testing (required for most tests)
+- `--token, -t`: Use existing API token instead of logging in
+- `--skip-auth`: Skip authentication tests
+- `--verbose, -v`: Show detailed request/response information
+- `--insecure, -k`: Disable SSL certificate verification
+
+The script tests all API endpoints including:
+
+- Health checks and status endpoints
+- Authentication (login)
+- Environments, platforms, nodes
+- Tags, settings, users
+- Queries and carves (if enabled)
+- Audit logs (if enabled)
+
+It requires to install [requests](https://pypi.org/project/requests/) with `pip install requests`.
 
 ## fake_logging.py
 
