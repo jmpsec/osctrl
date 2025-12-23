@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        components: ["tls", "admin", "api", "cli"]
+        components: ["tls", "admin", "api"]
         goos: ["linux"]
         goarch: ["amd64", "arm64"]
     steps:

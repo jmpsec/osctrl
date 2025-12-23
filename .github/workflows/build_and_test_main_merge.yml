@@ -67,9 +67,9 @@ jobs:
   create_deb_packages:
     strategy:
       matrix:
-        components: ["tls", "admin", "api", "cli"]
+        components: ["tls", "admin", "api"]
         goos: ["linux"]
-        goarch: ["amd64"]
+        goarch: ["amd64", "arm64"]
     needs: [build_and_test]
     runs-on: ubuntu-latest
     steps:
