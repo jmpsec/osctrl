@@ -49,7 +49,7 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// Make sure service is valid
-	if !h.Settings.VerifyType(service) {
+	if !h.Settings.VerifyService(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
 		return
 	}
@@ -84,7 +84,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	// Make sure service is valid
-	if !h.Settings.VerifyType(service) {
+	if !h.Settings.VerifyService(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
 		return
 	}
@@ -135,7 +135,7 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	// Make sure service is valid
-	if !h.Settings.VerifyType(service) {
+	if !h.Settings.VerifyService(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
 		return
 	}
@@ -170,7 +170,7 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 		return
 	}
 	// Make sure service is valid
-	if !h.Settings.VerifyType(service) {
+	if !h.Settings.VerifyService(service) {
 		apiErrorResponse(w, "invalid service", http.StatusInternalServerError, nil)
 		return
 	}

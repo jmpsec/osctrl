@@ -270,8 +270,9 @@ func osctrlAPIService() {
 		"POST "+_apiPath(apiLoginPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// ///////////////////////// AUTHENTICATED
-	// API: check status
-	muxAPI.HandleFunc("GET "+_apiPath(checksAuthPath), handlersApi.CheckHandlerAuth)
+	// API: check auth
+	muxAPI.Handle(
+		"GET "+_apiPath(checksAuthPath), handlerAuthCheck(http.HandlerFunc(handlersApi.CheckHandlerAuth), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: nodes by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/all",
@@ -322,7 +323,7 @@ func osctrlAPIService() {
 	if flagParams.Osquery.Carve {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/queries/{target}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveQueriesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
