@@ -40,7 +40,7 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --skip-publish --clean
+          args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_HUB_ORG: ${{ secrets.DOCKER_HUB_ORG }}
