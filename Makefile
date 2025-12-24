@@ -244,7 +244,7 @@ docker_dev_down:
 
 # Deletes all osctrl docker images and volumes
 docker_dev_clean:
-	docker images | grep osctrl | awk '{print $$3}' | xargs -rI {} docker rmi -f {}
+	docker images --format table | grep osctrl | awk '{print $$3}' | xargs -rI {} docker rmi -f {}
 	docker volume ls | grep osctrl | awk '{print $$2}' | xargs -rI {} docker volume rm {}
 
 # Rebuild only the TLS server
