@@ -48,7 +48,7 @@ type AuditLogManager struct {
 
 // CreateAuditLogManager to initialize the audit log struct and tables
 func CreateAuditLogManager(backend *gorm.DB, service string, enabled bool) (*AuditLogManager, error) {
-	var t *AuditLogManager = &AuditLogManager{
+	t := &AuditLogManager{
 		DB:      backend,
 		Service: service,
 		Enabled: enabled,

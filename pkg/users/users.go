@@ -60,7 +60,7 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT)
 	if jwtconfig.JWTSecret == "" {
 		log.Fatal().Msgf("JWT Secret can not be empty")
 	}
-	var u *UserManager = &UserManager{DB: backend, JWTConfig: jwtconfig}
+	u := &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
 	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (admin_users): %v", err)

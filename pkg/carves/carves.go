@@ -66,7 +66,7 @@ type Carves struct {
 
 // CreateFileCarves to initialize the carves struct and tables
 func CreateFileCarves(backend *gorm.DB, carverType string, s3 *CarverS3) *Carves {
-	var c *Carves = &Carves{DB: backend, Carver: carverType, S3: s3}
+	c := &Carves{DB: backend, Carver: carverType, S3: s3}
 	// table carved_files
 	if err := backend.AutoMigrate(&CarvedFile{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (carved_files): %v", err)

@@ -110,20 +110,20 @@ func listQueries(ctx context.Context, cmd *cli.Command) error {
 		"Expiration",
 	}
 	// Prepare output
-	switch {
-	case formatFlag == jsonFormat:
+	switch formatFlag {
+	case jsonFormat:
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
 			return fmt.Errorf("❌ error json marshal - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
-	case formatFlag == csvFormat:
+	case csvFormat:
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("❌ error csv writeall - %w", err)
 		}
-	case formatFlag == prettyFormat:
+	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
 		if len(qs) > 0 {

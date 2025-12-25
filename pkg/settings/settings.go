@@ -140,7 +140,7 @@ var ValidServices = map[string]struct{}{
 
 // NewSettings to initialize the access to settings and table
 func NewSettings(backend *gorm.DB) *Settings {
-	var s *Settings = &Settings{DB: backend}
+	s := &Settings{DB: backend}
 	// table setting_values
 	if err := backend.AutoMigrate(&SettingValue{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (setting_values): %v", err)

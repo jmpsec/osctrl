@@ -38,7 +38,7 @@ type NodeManager struct {
 
 // CreateNodes to initialize the nodes struct and its tables
 func CreateNodes(backend *gorm.DB) *NodeManager {
-	var n *NodeManager = &NodeManager{
+	n := &NodeManager{
 		DB: backend,
 	}
 	// table osquery_nodes
