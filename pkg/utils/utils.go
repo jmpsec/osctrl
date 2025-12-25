@@ -28,7 +28,7 @@ func RandomForNames() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	hasher := md5.New()
-	_, _ = hasher.Write([]byte(fmt.Sprintf("%x", b)))
+	_, _ = fmt.Fprintf(hasher, "%x", b)
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 

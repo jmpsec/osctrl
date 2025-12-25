@@ -19,12 +19,15 @@ repos:
       - id: check-docstring-first
       - id: requirements-txt-fixer
 
-
   - repo: https://github.com/Bahjat/pre-commit-golang
     rev: v1.0.5
     hooks:
       - id: go-fmt-import
       - id: go-static-check # install https://staticcheck.io/docs/
-      - id: golangci-lint # requires github.com/golangci/golangci-lint
-        args: [--config=.golangci.yml, --allow-parallel-runners] # optional
       - id: go-unit-tests
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.62.2
+    hooks:
+      - id: golangci-lint
+        args: [--config=.golangci.yml]

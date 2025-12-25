@@ -88,7 +88,7 @@ type TagManager struct {
 
 // CreateTagManager to initialize the tags struct and tables
 func CreateTagManager(backend *gorm.DB) *TagManager {
-	var t *TagManager = &TagManager{DB: backend}
+	t := &TagManager{DB: backend}
 	// table admin_tags
 	if err := backend.AutoMigrate(&AdminTag{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (admin_tags): %v", err)

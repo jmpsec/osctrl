@@ -116,7 +116,7 @@ type EnvManager struct {
 
 // CreateEnvironment to initialize the environment struct and tables
 func CreateEnvironment(backend *gorm.DB) *EnvManager {
-	var e *EnvManager = &EnvManager{DB: backend}
+	e := &EnvManager{DB: backend}
 	// table tls_environments
 	if err := backend.AutoMigrate(&TLSEnvironment{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (tls_environments): %v", err)

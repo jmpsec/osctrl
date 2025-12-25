@@ -65,8 +65,6 @@ const (
 	LogstashMethod = "POST"
 	// LogstashContentType Content Type for requests
 	LogstashContentType = "application/json"
-	// LogstashConnStr Connection string for Logstash
-	LogstashConnStr = "%s:%s"
 )
 
 // LogstashMessage to handle log format to be sent to Logstash
@@ -111,7 +109,7 @@ func (logLS *LoggerLogstash) SendUDP(logType string, data []byte, environment, u
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to Logstash TCP for %s - %s", len(data), environment, uuid)
 	}
-	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
+	connAddr := net.JoinHostPort(logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("udp", connAddr)
 	if err != nil {
 		log.Err(err).Msg("Error connecting to Logstash")
@@ -134,7 +132,7 @@ func (logLS *LoggerLogstash) SendTCP(logType string, data []byte, environment, u
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to Logstash UDP for %s - %s", len(data), environment, uuid)
 	}
-	connAddr := fmt.Sprintf(LogstashConnStr, logLS.Configuration.Host, logLS.Configuration.Port)
+	connAddr := net.JoinHostPort(logLS.Configuration.Host, logLS.Configuration.Port)
 	conn, err := net.Dial("tcp", connAddr)
 	if err != nil {
 		log.Err(err).Msg("Error connecting to Logstash")

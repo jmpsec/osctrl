@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -58,7 +58,7 @@ func randomForNames() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	hasher := md5.New()
-	_, _ = hasher.Write([]byte(fmt.Sprintf("%x", b)))
+	_, _ = fmt.Fprintf(hasher, "%x", b)
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
