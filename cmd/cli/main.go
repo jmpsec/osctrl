@@ -236,260 +236,179 @@ func init() {
 	// Initialize CLI flags commands
 	commands = []*cli.Command{
 		{
-			Name:  "user",
-			Usage: "Commands for users",
+			Name:   "audit-logs",
+			Usage:  "Get all audit logs for actions performed in osctrl",
+			Action: cliWrapper(auditLogs),
+		},
+		{
+			Name:  "carve",
+			Usage: "Commands for file carves",
 			Commands: []*cli.Command{
 				{
-					Name:    "add",
-					Aliases: []string{"a"},
-					Usage:   "Add a new user",
+					Name:    "complete",
+					Aliases: []string{"c"},
+					Usage:   "Mark an file carve query as completed",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "Username for the new user",
-						},
-						&cli.StringFlag{
-							Name:    "password",
-							Aliases: []string{"p"},
-							Usage:   "Password for the new user",
-						},
-						&cli.BoolFlag{
-							Name:    "global-admin",
-							Aliases: []string{"a", "admin"},
-							Hidden:  false,
-							Usage:   "Make this user a global admin",
-						},
-						&cli.BoolFlag{
-							Name:    "service",
-							Aliases: []string{"s"},
-							Hidden:  false,
-							Usage:   "Make this user a service account",
-						},
-						&cli.StringFlag{
-							Name:    "environment",
-							Aliases: []string{"e"},
-							Value:   "",
-							Usage:   "Grant read access to this environment",
-						},
-						&cli.StringFlag{
-							Name:    "email",
-							Aliases: []string{"E"},
-							Usage:   "Email for the new user",
-						},
-						&cli.StringFlag{
-							Name:    "fullname",
+							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Full name for the new user",
-						},
-					},
-					Action: cliWrapper(addUser),
-				},
-				{
-					Name:    "edit",
-					Aliases: []string{"e"},
-					Usage:   "Edit an existing user",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to be edited",
+							Usage:   "Carve name to be completed",
 						},
 						&cli.StringFlag{
-							Name:    "password",
-							Aliases: []string{"p"},
-							Usage:   "New password to be used",
-						},
-						&cli.StringFlag{
-							Name:    "email",
-							Aliases: []string{"E"},
-							Usage:   "Email to be used",
-						},
-						&cli.StringFlag{
-							Name:    "fullname",
-							Aliases: []string{"n"},
-							Usage:   "Full name to be used",
-						},
-						&cli.BoolFlag{
-							Name:    "global-admin",
-							Aliases: []string{"a", "admin"},
-							Hidden:  false,
-							Usage:   "Make this user an admin",
-						},
-						&cli.BoolFlag{
-							Name:    "non-admin",
-							Aliases: []string{"d"},
-							Hidden:  false,
-							Usage:   "Make this user an non-admin",
-						},
-						&cli.BoolFlag{
-							Name:    "service",
-							Aliases: []string{"s"},
-							Hidden:  false,
-							Usage:   "Make this user a service account",
-						},
-						&cli.BoolFlag{
-							Name:    "non-service",
-							Aliases: []string{"S"},
-							Hidden:  false,
-							Usage:   "Make this user a non-service account",
-						},
-						&cli.StringFlag{
-							Name:    "environment",
-							Aliases: []string{"env"},
-							Usage:   "Grant read access to this environment",
-						},
-					},
-					Action: cliWrapper(editUser),
-				},
-				{
-					Name:    "change-permissions",
-					Aliases: []string{"p", "access"},
-					Usage:   "Change permission in an environment for an existing user",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to perform the action",
-						},
-						&cli.StringFlag{
-							Name:    "environment",
+							Name:    "env",
 							Aliases: []string{"e"},
-							Usage:   "Environment for this user",
-						},
-						&cli.BoolFlag{
-							Name:    "admin",
-							Aliases: []string{"a"},
-							Hidden:  false,
-							Usage:   "Grant admin permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "user",
-							Aliases: []string{"U"},
-							Hidden:  false,
-							Usage:   "Grant user permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "query",
-							Aliases: []string{"q"},
-							Hidden:  false,
-							Usage:   "Grant query permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "carve",
-							Aliases: []string{"c"},
-							Hidden:  false,
-							Usage:   "Grant carve permissions",
+							Usage:   "Environment to be used",
 						},
 					},
-					Action: cliWrapper(changePermissions),
-				},
-				{
-					Name:    "reset-permissions",
-					Aliases: []string{"R", "reset"},
-					Usage:   "Clear and reset permissions for a user in an environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to perform the action",
-						},
-						&cli.StringFlag{
-							Name:    "environment",
-							Aliases: []string{"e"},
-							Usage:   "Environment for this user",
-						},
-						&cli.BoolFlag{
-							Name:    "admin",
-							Aliases: []string{"a"},
-							Hidden:  false,
-							Usage:   "Grant admin permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "user",
-							Aliases: []string{"U"},
-							Hidden:  false,
-							Usage:   "Grant user permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "query",
-							Aliases: []string{"q"},
-							Hidden:  false,
-							Usage:   "Grant query permissions",
-						},
-						&cli.BoolFlag{
-							Name:    "carve",
-							Aliases: []string{"c"},
-							Hidden:  false,
-							Usage:   "Grant carve permissions",
-						},
-					},
-					Action: cliWrapper(resetPermissions),
-				},
-				{
-					Name:    "show-permissions",
-					Aliases: []string{"S", "perms"},
-					Usage:   "Show permissions for a user in an environment",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to perform the action",
-						},
-						&cli.StringFlag{
-							Name:    "environment",
-							Aliases: []string{"e"},
-							Usage:   "Environment for this user",
-						},
-					},
-					Action: cliWrapper(showPermissions),
-				},
-				{
-					Name:    "all-permissions",
-					Aliases: []string{"A", "all-perms"},
-					Usage:   "Show all permissions for an existing user",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to perform the action",
-						},
-					},
-					Action: cliWrapper(allPermissions),
+					Action: cliWrapper(completeCarve),
 				},
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
-					Usage:   "Delete an existing user",
+					Usage:   "Mark a file carve query as deleted",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to be deleted",
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Carve name to be deleted",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
 						},
 					},
-					Action: cliWrapper(deleteUser),
+					Action: cliWrapper(deleteCarve),
 				},
 				{
-					Name:    "show",
-					Aliases: []string{"s"},
-					Usage:   "Show an existing user",
+					Name:    "expire",
+					Aliases: []string{"e"},
+					Usage:   "Mark a file carve query as expired",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
-							Name:    "username",
-							Aliases: []string{"u"},
-							Usage:   "User to be displayed",
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Carve name to be expired",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
 						},
 					},
-					Action: cliWrapper(showUser),
+					Action: cliWrapper(expireCarve),
+				},
+				{
+					Name:    "run",
+					Aliases: []string{"r"},
+					Usage:   "Start a new carve for a file or a directory",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "path",
+							Aliases: []string{"p"},
+							Usage:   "File or directory path to be carved",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.StringFlag{
+							Name:    "uuid",
+							Aliases: []string{"u"},
+							Usage:   "Node UUID(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "host",
+							Aliases: []string{"hostname", "H"},
+							Usage:   "Node hostname(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "platform",
+							Aliases: []string{"p"},
+							Usage:   "Node platform(s) to be used. Comma separated for multiple values",
+						},
+						&cli.StringFlag{
+							Name:    "tag",
+							Aliases: []string{"t"},
+							Usage:   "Tag(s) to be used. Comma separated for multiple values",
+						},
+						&cli.IntFlag{
+							Name:    "expiration",
+							Aliases: []string{"E"},
+							Value:   6,
+							Usage:   "Expiration in hours (0 for no expiration)",
+						},
+					},
+					Action: cliWrapper(runCarve),
 				},
 				{
 					Name:    "list",
 					Aliases: []string{"l"},
-					Usage:   "List all existing users",
-					Action:  cliWrapper(listUsers),
+					Usage:   "List file carves",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(listCarves),
+				},
+				{
+					Name:    "list-queries",
+					Aliases: []string{"l"},
+					Usage:   "List file carves queries",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:    "all",
+							Aliases: []string{"A"},
+							Hidden:  false,
+							Usage:   "Show all file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "active",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Show active file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "completed",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Show completed file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "expired",
+							Aliases: []string{"E"},
+							Hidden:  false,
+							Usage:   "Show expired file carves queries",
+						},
+						&cli.BoolFlag{
+							Name:    "deleted",
+							Aliases: []string{"d"},
+							Hidden:  false,
+							Usage:   "Show deleted file carves queries",
+						},
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+					},
+					Action: cliWrapper(listCarveQueries),
 				},
 			},
+		},
+		{
+			Name:   "check-api",
+			Usage:  "Checks API token",
+			Action: checkAPI,
+		},
+		{
+			Name:   "check-db",
+			Usage:  "Checks DB connection",
+			Action: checkDB,
 		},
 		{
 			Name:    "environment",
@@ -1129,127 +1048,33 @@ func init() {
 			},
 		},
 		{
-			Name:  "settings",
-			Usage: "Commands for settings",
-			Commands: []*cli.Command{
-				{
-					Name:    "add",
-					Aliases: []string{"a"},
-					Usage:   "Add a new settings value",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Value name to be added",
-						},
-						&cli.StringFlag{
-							Name:    "service",
-							Aliases: []string{"s"},
-							Usage:   "Value service to be added",
-						},
-						&cli.StringFlag{
-							Name:    "type, t",
-							Aliases: []string{"t"},
-							Usage:   "Value type to be added",
-						},
-						&cli.StringFlag{
-							Name:  "string",
-							Value: "",
-							Usage: "Value string",
-						},
-						&cli.Int64Flag{
-							Name:  "integer",
-							Value: 0,
-							Usage: "Value integer",
-						},
-						&cli.BoolFlag{
-							Name:   "boolean",
-							Hidden: false,
-							Usage:  "Value boolean",
-						},
-						&cli.StringFlag{
-							Name:    "info",
-							Aliases: []string{"i"},
-							Value:   "",
-							Usage:   "Setting info",
-						},
-					},
-					Action: cliWrapper(addSetting),
-				},
-				{
-					Name:    "update",
+			Name:  "login",
+			Usage: "Login into API and generate JSON config file with token",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "username",
 					Aliases: []string{"u"},
-					Usage:   "Update a configuration value",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Value name to be updated",
-						},
-						&cli.StringFlag{
-							Name:    "service",
-							Aliases: []string{"s"},
-							Usage:   "Value service to be updated",
-						},
-						&cli.StringFlag{
-							Name:    "type",
-							Aliases: []string{"t"},
-							Usage:   "Value type to be updated",
-						},
-						&cli.StringFlag{
-							Name:  "string",
-							Value: "",
-							Usage: "Value string",
-						},
-						&cli.Int64Flag{
-							Name:  "integer",
-							Value: 0,
-							Usage: "Value integer",
-						},
-						&cli.BoolFlag{
-							Name:   "true",
-							Hidden: false,
-							Usage:  "Value boolean true",
-						},
-						&cli.BoolFlag{
-							Name:   "false",
-							Hidden: false,
-							Usage:  "Value boolean false",
-						},
-						&cli.StringFlag{
-							Name:    "info",
-							Aliases: []string{"i"},
-							Value:   "",
-							Usage:   "Setting info",
-						},
-					},
-					Action: cliWrapper(updateSetting),
+					Usage:   "User to be used in login",
 				},
-				{
-					Name:    "delete",
-					Aliases: []string{"d"},
-					Usage:   "Delete an existing configuration value",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Value name to be deleted",
-						},
-						&cli.StringFlag{
-							Name:    "service",
-							Aliases: []string{"s"},
-							Usage:   "Value service to be deleted",
-						},
-					},
-					Action: cliWrapper(deleteSetting),
+				&cli.StringFlag{
+					Name:    "environment",
+					Aliases: []string{"e"},
+					Usage:   "Environment to be used in login",
 				},
-				{
-					Name:    "show",
-					Aliases: []string{"s"},
-					Usage:   "Show all configuration values",
-					Action:  cliWrapper(listConfiguration),
+				&cli.IntFlag{
+					Name:    "expiration",
+					Aliases: []string{"E"},
+					Value:   6,
+					Usage:   "Expiration in hours (0 for server default)",
+				},
+				&cli.BoolFlag{
+					Name:        "write-api-file",
+					Aliases:     []string{"w"},
+					Destination: &writeApiFileFlag,
+					Usage:       "Write API configuration to JSON file",
 				},
 			},
+			Action: loginAPI,
 		},
 		{
 			Name:  "node",
@@ -1532,162 +1357,125 @@ func init() {
 			},
 		},
 		{
-			Name:  "carve",
-			Usage: "Commands for file carves",
+			Name:  "settings",
+			Usage: "Commands for settings",
 			Commands: []*cli.Command{
 				{
-					Name:    "complete",
-					Aliases: []string{"c"},
-					Usage:   "Mark an file carve query as completed",
+					Name:    "add",
+					Aliases: []string{"a"},
+					Usage:   "Add a new settings value",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Carve name to be completed",
+							Usage:   "Value name to be added",
 						},
 						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
+							Name:    "service",
+							Aliases: []string{"s"},
+							Usage:   "Value service to be added",
+						},
+						&cli.StringFlag{
+							Name:    "type, t",
+							Aliases: []string{"t"},
+							Usage:   "Value type to be added",
+						},
+						&cli.StringFlag{
+							Name:  "string",
+							Value: "",
+							Usage: "Value string",
+						},
+						&cli.Int64Flag{
+							Name:  "integer",
+							Value: 0,
+							Usage: "Value integer",
+						},
+						&cli.BoolFlag{
+							Name:   "boolean",
+							Hidden: false,
+							Usage:  "Value boolean",
+						},
+						&cli.StringFlag{
+							Name:    "info",
+							Aliases: []string{"i"},
+							Value:   "",
+							Usage:   "Setting info",
 						},
 					},
-					Action: cliWrapper(completeCarve),
+					Action: cliWrapper(addSetting),
+				},
+				{
+					Name:    "update",
+					Aliases: []string{"u"},
+					Usage:   "Update a configuration value",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Usage:   "Value name to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "service",
+							Aliases: []string{"s"},
+							Usage:   "Value service to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "type",
+							Aliases: []string{"t"},
+							Usage:   "Value type to be updated",
+						},
+						&cli.StringFlag{
+							Name:  "string",
+							Value: "",
+							Usage: "Value string",
+						},
+						&cli.Int64Flag{
+							Name:  "integer",
+							Value: 0,
+							Usage: "Value integer",
+						},
+						&cli.BoolFlag{
+							Name:   "true",
+							Hidden: false,
+							Usage:  "Value boolean true",
+						},
+						&cli.BoolFlag{
+							Name:   "false",
+							Hidden: false,
+							Usage:  "Value boolean false",
+						},
+						&cli.StringFlag{
+							Name:    "info",
+							Aliases: []string{"i"},
+							Value:   "",
+							Usage:   "Setting info",
+						},
+					},
+					Action: cliWrapper(updateSetting),
 				},
 				{
 					Name:    "delete",
 					Aliases: []string{"d"},
-					Usage:   "Mark a file carve query as deleted",
+					Usage:   "Delete an existing configuration value",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Carve name to be deleted",
+							Usage:   "Value name to be deleted",
 						},
 						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
+							Name:    "service",
+							Aliases: []string{"s"},
+							Usage:   "Value service to be deleted",
 						},
 					},
-					Action: cliWrapper(deleteCarve),
+					Action: cliWrapper(deleteSetting),
 				},
 				{
-					Name:    "expire",
-					Aliases: []string{"e"},
-					Usage:   "Mark a file carve query as expired",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "name",
-							Aliases: []string{"n"},
-							Usage:   "Carve name to be expired",
-						},
-						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
-						},
-					},
-					Action: cliWrapper(expireCarve),
-				},
-				{
-					Name:    "run",
-					Aliases: []string{"r"},
-					Usage:   "Start a new carve for a file or a directory",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "path",
-							Aliases: []string{"p"},
-							Usage:   "File or directory path to be carved",
-						},
-						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
-						},
-						&cli.StringFlag{
-							Name:    "uuid",
-							Aliases: []string{"u"},
-							Usage:   "Node UUID(s) to be used. Comma separated for multiple values",
-						},
-						&cli.StringFlag{
-							Name:    "host",
-							Aliases: []string{"hostname", "H"},
-							Usage:   "Node hostname(s) to be used. Comma separated for multiple values",
-						},
-						&cli.StringFlag{
-							Name:    "platform",
-							Aliases: []string{"p"},
-							Usage:   "Node platform(s) to be used. Comma separated for multiple values",
-						},
-						&cli.StringFlag{
-							Name:    "tag",
-							Aliases: []string{"t"},
-							Usage:   "Tag(s) to be used. Comma separated for multiple values",
-						},
-						&cli.IntFlag{
-							Name:    "expiration",
-							Aliases: []string{"E"},
-							Value:   6,
-							Usage:   "Expiration in hours (0 for no expiration)",
-						},
-					},
-					Action: cliWrapper(runCarve),
-				},
-				{
-					Name:    "list",
-					Aliases: []string{"l"},
-					Usage:   "List file carves",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
-						},
-					},
-					Action: cliWrapper(listCarves),
-				},
-				{
-					Name:    "list-queries",
-					Aliases: []string{"l"},
-					Usage:   "List file carves queries",
-					Flags: []cli.Flag{
-						&cli.BoolFlag{
-							Name:    "all",
-							Aliases: []string{"A"},
-							Hidden:  false,
-							Usage:   "Show all file carves queries",
-						},
-						&cli.BoolFlag{
-							Name:    "active",
-							Aliases: []string{"a"},
-							Hidden:  false,
-							Usage:   "Show active file carves queries",
-						},
-						&cli.BoolFlag{
-							Name:    "completed",
-							Aliases: []string{"c"},
-							Hidden:  false,
-							Usage:   "Show completed file carves queries",
-						},
-						&cli.BoolFlag{
-							Name:    "expired",
-							Aliases: []string{"E"},
-							Hidden:  false,
-							Usage:   "Show expired file carves queries",
-						},
-						&cli.BoolFlag{
-							Name:    "deleted",
-							Aliases: []string{"d"},
-							Hidden:  false,
-							Usage:   "Show deleted file carves queries",
-						},
-						&cli.StringFlag{
-							Name:    "env",
-							Aliases: []string{"e"},
-							Usage:   "Environment to be used",
-						},
-					},
-					Action: cliWrapper(listCarveQueries),
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show all configuration values",
+					Action:  cliWrapper(listConfiguration),
 				},
 			},
 		},
@@ -1841,48 +1629,260 @@ func init() {
 			},
 		},
 		{
-			Name:   "check-db",
-			Usage:  "Checks DB connection",
-			Action: checkDB,
-		},
-		{
-			Name:   "check-api",
-			Usage:  "Checks API token",
-			Action: checkAPI,
-		},
-		{
-			Name:   "audit-logs",
-			Usage:  "Get all audit logs for actions performed in osctrl",
-			Action: cliWrapper(auditLogs),
-		},
-		{
-			Name:  "login",
-			Usage: "Login into API and generate JSON config file with token",
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "username",
-					Aliases: []string{"u"},
-					Usage:   "User to be used in login",
+			Name:  "user",
+			Usage: "Commands for users",
+			Commands: []*cli.Command{
+				{
+					Name:    "add",
+					Aliases: []string{"a"},
+					Usage:   "Add a new user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "Username for the new user",
+						},
+						&cli.StringFlag{
+							Name:    "password",
+							Aliases: []string{"p"},
+							Usage:   "Password for the new user",
+						},
+						&cli.BoolFlag{
+							Name:    "global-admin",
+							Aliases: []string{"a", "admin"},
+							Hidden:  false,
+							Usage:   "Make this user a global admin",
+						},
+						&cli.BoolFlag{
+							Name:    "service",
+							Aliases: []string{"s"},
+							Hidden:  false,
+							Usage:   "Make this user a service account",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Value:   "",
+							Usage:   "Grant read access to this environment",
+						},
+						&cli.StringFlag{
+							Name:    "email",
+							Aliases: []string{"E"},
+							Usage:   "Email for the new user",
+						},
+						&cli.StringFlag{
+							Name:    "fullname",
+							Aliases: []string{"n"},
+							Usage:   "Full name for the new user",
+						},
+					},
+					Action: cliWrapper(addUser),
 				},
-				&cli.StringFlag{
-					Name:    "environment",
+				{
+					Name:    "edit",
 					Aliases: []string{"e"},
-					Usage:   "Environment to be used in login",
+					Usage:   "Edit an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to be edited",
+						},
+						&cli.StringFlag{
+							Name:    "password",
+							Aliases: []string{"p"},
+							Usage:   "New password to be used",
+						},
+						&cli.StringFlag{
+							Name:    "email",
+							Aliases: []string{"E"},
+							Usage:   "Email to be used",
+						},
+						&cli.StringFlag{
+							Name:    "fullname",
+							Aliases: []string{"n"},
+							Usage:   "Full name to be used",
+						},
+						&cli.BoolFlag{
+							Name:    "global-admin",
+							Aliases: []string{"a", "admin"},
+							Hidden:  false,
+							Usage:   "Make this user an admin",
+						},
+						&cli.BoolFlag{
+							Name:    "non-admin",
+							Aliases: []string{"d"},
+							Hidden:  false,
+							Usage:   "Make this user an non-admin",
+						},
+						&cli.BoolFlag{
+							Name:    "service",
+							Aliases: []string{"s"},
+							Hidden:  false,
+							Usage:   "Make this user a service account",
+						},
+						&cli.BoolFlag{
+							Name:    "non-service",
+							Aliases: []string{"S"},
+							Hidden:  false,
+							Usage:   "Make this user a non-service account",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"env"},
+							Usage:   "Grant read access to this environment",
+						},
+					},
+					Action: cliWrapper(editUser),
 				},
-				&cli.IntFlag{
-					Name:    "expiration",
-					Aliases: []string{"E"},
-					Value:   6,
-					Usage:   "Expiration in hours (0 for server default)",
+				{
+					Name:    "change-permissions",
+					Aliases: []string{"p", "access"},
+					Usage:   "Change permission in an environment for an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Usage:   "Environment for this user",
+						},
+						&cli.BoolFlag{
+							Name:    "admin",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Grant admin permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "user",
+							Aliases: []string{"U"},
+							Hidden:  false,
+							Usage:   "Grant user permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "query",
+							Aliases: []string{"q"},
+							Hidden:  false,
+							Usage:   "Grant query permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "carve",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Grant carve permissions",
+						},
+					},
+					Action: cliWrapper(changePermissions),
 				},
-				&cli.BoolFlag{
-					Name:        "write-api-file",
-					Aliases:     []string{"w"},
-					Destination: &writeApiFileFlag,
-					Usage:       "Write API configuration to JSON file",
+				{
+					Name:    "reset-permissions",
+					Aliases: []string{"R", "reset"},
+					Usage:   "Clear and reset permissions for a user in an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Usage:   "Environment for this user",
+						},
+						&cli.BoolFlag{
+							Name:    "admin",
+							Aliases: []string{"a"},
+							Hidden:  false,
+							Usage:   "Grant admin permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "user",
+							Aliases: []string{"U"},
+							Hidden:  false,
+							Usage:   "Grant user permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "query",
+							Aliases: []string{"q"},
+							Hidden:  false,
+							Usage:   "Grant query permissions",
+						},
+						&cli.BoolFlag{
+							Name:    "carve",
+							Aliases: []string{"c"},
+							Hidden:  false,
+							Usage:   "Grant carve permissions",
+						},
+					},
+					Action: cliWrapper(resetPermissions),
+				},
+				{
+					Name:    "show-permissions",
+					Aliases: []string{"S", "perms"},
+					Usage:   "Show permissions for a user in an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+						&cli.StringFlag{
+							Name:    "environment",
+							Aliases: []string{"e"},
+							Usage:   "Environment for this user",
+						},
+					},
+					Action: cliWrapper(showPermissions),
+				},
+				{
+					Name:    "all-permissions",
+					Aliases: []string{"A", "all-perms"},
+					Usage:   "Show all permissions for an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to perform the action",
+						},
+					},
+					Action: cliWrapper(allPermissions),
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "Delete an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to be deleted",
+						},
+					},
+					Action: cliWrapper(deleteUser),
+				},
+				{
+					Name:    "show",
+					Aliases: []string{"s"},
+					Usage:   "Show an existing user",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "username",
+							Aliases: []string{"u"},
+							Usage:   "User to be displayed",
+						},
+					},
+					Action: cliWrapper(showUser),
+				},
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "List all existing users",
+					Action:  cliWrapper(listUsers),
 				},
 			},
-			Action: loginAPI,
 		},
 	}
 	// Initialize formats values
