@@ -1958,7 +1958,7 @@ func loginAPI(ctx context.Context, cmd *cli.Command) error {
 		showFlags(ctx, cmd)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
-	// API URL can is needed
+	// API URL is needed
 	if apiConfig.URL == "" {
 		urlParam := cmd.String("url")
 		if urlParam != "" {
