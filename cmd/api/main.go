@@ -266,9 +266,7 @@ func osctrlAPIService() {
 	muxAPI.HandleFunc("GET "+_apiPath(checksNoAuthPath), handlersApi.CheckHandlerNoAuth)
 
 	// ///////////////////////// UNAUTHENTICATED
-	muxAPI.Handle(
-		"POST "+_apiPath(apiLoginPath)+"/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.LoginHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.HandleFunc("POST "+_apiPath(apiLoginPath)+"/{env}", handlersApi.LoginHandler)
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(

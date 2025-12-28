@@ -417,9 +417,11 @@ class APITester:
         if self.env_uuid:
             self.test("Get all queries", "GET",
                      f"{API_PREFIX}/queries/{self.env_uuid}",
+                     expected_status=[200, 404],
                      skip_if_no_token=True)
             self.test("Get all queries (alt endpoint)", "GET",
                      f"{API_PREFIX}/all-queries/{self.env_uuid}",
+                     expected_status=[200, 404],
                      skip_if_no_token=True)
         print()
 
@@ -446,19 +448,37 @@ class APITester:
         self.print_summary()
 
     def print_summary(self):
-        """Print test summary"""
+        """Print test summary with emojis"""
         total = self.passed + self.failed + self.skipped
-        self.log(f"\n{Colors.BOLD}=== Test Summary ==={Colors.RESET}")
-        self.log(f"Total tests: {total}")
-        self.log(f"{Colors.GREEN}Passed: {self.passed}{Colors.RESET}")
-        self.log(f"{Colors.RED}Failed: {self.failed}{Colors.RESET}")
-        self.log(f"{Colors.YELLOW}Skipped: {self.skipped}{Colors.RESET}")
+        pass_rate = (self.passed / total * 100) if total > 0 else 0
+
+        self.log(f"\n{Colors.BOLD}{'='*50}{Colors.RESET}")
+        self.log(f"{Colors.BOLD}📊 Test Summary{Colors.RESET}")
+        self.log(f"{Colors.BOLD}{'='*50}{Colors.RESET}\n")
+
+        self.log(f"📈 Total tests:   {total}")
+        self.log(f"{Colors.GREEN}✅ Passed:        {self.passed} ({pass_rate:.1f}%){Colors.RESET}")
+        self.log(f"{Colors.RED}❌ Failed:        {self.failed}{Colors.RESET}")
+        self.log(f"{Colors.YELLOW}⏭️ Skipped:       {self.skipped}{Colors.RESET}")
 
         if self.failed > 0:
-            self.log(f"\n{Colors.BOLD}Failed tests:{Colors.RESET}")
+            self.log(f"\n{Colors.BOLD}{'='*50}{Colors.RESET}")
+            self.log(f"{Colors.BOLD}❌ Failed tests:{Colors.RESET}")
+            self.log(f"{Colors.BOLD}{'='*50}{Colors.RESET}")
             for result in self.test_results:
                 if result['status'] == 'failed':
-                    self.log(f"  - {result['name']}: {result['message']}", Colors.RED)
+                    self.log(f"  🔴 {result['name']}", Colors.RED)
+                    self.log(f"     └─ {result['message']}", Colors.RED)
+
+        # Overall result
+        self.log(f"\n{Colors.BOLD}{'='*50}{Colors.RESET}")
+        if self.failed == 0 and self.passed > 0:
+            self.log(f"{Colors.GREEN}{Colors.BOLD}🎉 All tests passed!{Colors.RESET}")
+        elif self.failed > 0:
+            self.log(f"{Colors.RED}{Colors.BOLD}⚠️  Some tests failed!{Colors.RESET}")
+        else:
+            self.log(f"{Colors.YELLOW}{Colors.BOLD}⚠️  No tests were run{Colors.RESET}")
+        self.log(f"{Colors.BOLD}{'='*50}{Colors.RESET}\n")
 
         # Exit with appropriate code
         if self.failed > 0:

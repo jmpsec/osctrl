@@ -1057,6 +1057,11 @@ func init() {
 					Usage:   "User to be used in login",
 				},
 				&cli.StringFlag{
+					Name:    "url",
+					Aliases: []string{"U"},
+					Usage:   "URL to be used in login",
+				},
+				&cli.StringFlag{
 					Name:    "environment",
 					Aliases: []string{"e"},
 					Usage:   "Environment to be used in login",
@@ -1955,11 +1960,14 @@ func loginAPI(ctx context.Context, cmd *cli.Command) error {
 	}
 	// API URL can is needed
 	if apiConfig.URL == "" {
-		fmt.Println("❌ API URL is required")
-		os.Exit(1)
+		urlParam := cmd.String("url")
+		if urlParam != "" {
+			apiConfig.URL = urlParam
+		} else {
+			fmt.Println("❌ API URL is required")
+			os.Exit(1)
+		}
 	}
-	// Initialize API
-	osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 	// We need credentials
 	username := cmd.String("username")
 	if username == "" {
@@ -1978,6 +1986,8 @@ func loginAPI(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("error reading password %w", err)
 	}
 	fmt.Println()
+	// Initialize API
+	osctrlAPI = CreateAPI(apiConfig, insecureFlag)
 	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte), expHours)
 	if err != nil {
 		return fmt.Errorf("error in login %w", err)
