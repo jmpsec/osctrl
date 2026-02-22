@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -814,7 +815,12 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	switch c.Action {
 	case "create":
-		// FIXME verify fields
+		//  Verify request fields
+		if !environments.VerifyEnvFilters(c.Name, c.Icon, c.Type, c.Hostname) {
+			adminErrorResponse(w, "invalid data", http.StatusInternalServerError, nil)
+			return
+		}
+		// Proceed with request data
 		if !h.Envs.Exists(c.Name) && c.Name != "" {
 			env := h.Envs.Empty(c.Name, c.Hostname)
 			env.Icon = c.Icon
@@ -859,6 +865,11 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case "delete":
+		//  Verify request fields
+		if !environments.EnvNameFilter(c.Name) {
+			adminErrorResponse(w, "invalid environment name", http.StatusInternalServerError, nil)
+			return
+		}
 		if h.Envs.Exists(c.Name) {
 			if err := h.Envs.Delete(c.Name); err != nil {
 				adminErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
@@ -867,6 +878,11 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		adminOKResponse(w, "environment deleted successfully")
 	case "edit":
+		//  Verify request fields
+		if !environments.EnvUUIDFilter(c.UUID) {
+			adminErrorResponse(w, "invalid environment UUID", http.StatusInternalServerError, nil)
+			return
+		}
 		if h.Envs.Exists(c.UUID) {
 			if err := h.Envs.UpdateHostname(c.UUID, c.Hostname); err != nil {
 				adminErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
