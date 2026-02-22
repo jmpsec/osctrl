@@ -76,3 +76,10 @@ tls.env
 
 # bruno
 tools/bruno/collection.bru
+
+# Untracked markdown files
+*.md
+!README.md
+!CONTRIBUTING.md
+!CHANGELOG.md
+!SECURITY.md

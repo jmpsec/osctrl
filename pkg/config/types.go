@@ -202,7 +202,7 @@ type YAMLConfigurationCarver struct {
 type YAMLConfigurationAdmin struct {
 	SessionKey      string `yaml:"sessionKey"`
 	StaticDir       string `yaml:"staticDir"`
-	StaticOffline   bool   `yaml:"keyFile"`
+	StaticOffline   bool   `yaml:"staticOffline"`
 	TemplatesDir    string `yaml:"templatesDir"`
 	BrandingImage   string `yaml:"brandingImage"`
 	BackgroundImage string `yaml:"backgroundImage"`
