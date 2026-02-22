@@ -15,33 +15,33 @@ var validType = map[string]bool{
 	envOsquery: true,
 }
 
-// IconFilter - Helper to filter the icon name to prevent unsanitazed input
+// IconFilter - Helper to filter the icon name to prevent unsanitized input
 func IconFilter(s string) bool {
 	// regex to only allow lowercase letters, numbers, dashes and underscores
 	re := regexp.MustCompile(iconRegex)
 	return re.MatchString(s)
 }
 
-// EnvTypeFilter - Helper to filter the environment type to prevent unsanitazed input
+// EnvTypeFilter - Helper to filter the environment type to prevent unsanitized input
 func EnvTypeFilter(s string) bool {
 	return validType[s]
 }
 
-// HostnameFilter - Helper to filter the hostname to prevent unsanitazed input
+// HostnameFilter - Helper to filter the hostname to prevent unsanitized input
 func HostnameFilter(s string) bool {
 	// regex to only allow uppercase and lowercase letters, numbers, dashes and dots
 	re := regexp.MustCompile(hostnameRegex)
 	return re.MatchString(s)
 }
 
-// EnvNameFilter - Helper to filter the environment name to prevent unsanitazed input
+// EnvNameFilter - Helper to filter the environment name to prevent unsanitized input
 func EnvNameFilter(s string) bool {
 	// regex to only allow letters, numbers, dashes and underscores
 	re := regexp.MustCompile(nameRegex)
 	return re.MatchString(s)
 }
 
-// EnvUUIDFilter - Helper to filter the environment uuid to prevent unsanitazed input
+// EnvUUIDFilter - Helper to filter the environment uuid to prevent unsanitized input
 func EnvUUIDFilter(s string) bool {
 	// regex to only allow lowercase letters, numbers and dashes
 	re := regexp.MustCompile(uuidRegex)
