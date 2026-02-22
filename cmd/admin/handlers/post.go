@@ -821,7 +821,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Proceed with request data
-		if !h.Envs.Exists(c.Name) && c.Name != "" {
+		if !h.Envs.Exists(c.Name) {
 			env := h.Envs.Empty(c.Name, c.Hostname)
 			env.Icon = c.Icon
 			env.Type = c.Type

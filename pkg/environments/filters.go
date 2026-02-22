@@ -10,7 +10,7 @@ const (
 	envOsquery    string = "osquery"
 )
 
-// Valid values for authentication in configuration
+// Valid values for environment type in configuration
 var validType = map[string]bool{
 	envOsquery: true,
 }
@@ -29,7 +29,7 @@ func EnvTypeFilter(s string) bool {
 
 // HostnameFilter - Helper to filter the hostname to prevent unsanitazed input
 func HostnameFilter(s string) bool {
-	// regex to only allow lowercase letters, numbers, dashes and dots
+	// regex to only allow uppercase and lowercase letters, numbers, dashes and dots
 	re := regexp.MustCompile(hostnameRegex)
 	return re.MatchString(s)
 }
