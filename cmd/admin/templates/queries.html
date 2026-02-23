@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   {{ $metadata := .Metadata }} {{ $leftmeta := .LeftMetadata }} {{ template "page-head" . }}
 
@@ -13,9 +13,11 @@
           <div class="animated fadeIn">
             <div class="card mt-2">
               <div class="card-header">
-                <i class="nav-icon fab fa-searchengin"></i> On-demand queries in <b>{{ $leftmeta.EnvName }}</b>
+                <i class="nav-icon fab fa-searchengin"></i>
+                On-demand queries in
+                <b>{{ $leftmeta.EnvName }}</b>
                 <div class="card-header-actions">
-                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries');">
+                  <button class="btn btn-sm btn-outline-primary" data-tooltip="true" data-placement="bottom" title="Refresh table" onclick="refreshTableNow('tableQueries')">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
@@ -110,13 +112,24 @@
               width: '40%',
               data: 'query',
               render: function (data, type, row, meta) {
-                if (type === 'display') {
-                  return '<div style="max-width:400px; white-space:normal; word-break:break-word;">' +
-                    queryResultLink(data.link, data.query, "/query/{{ $leftmeta.EnvUUID }}/logs/" + data.name) +
-                    '</div>';
-                } else {
-                  return data;
+                if (type !== "display") {
+                  return data && data.query ? data.query : "";
                 }
+                const logUrl = "/query/{{ $leftmeta.EnvUUID }}/logs/" + encodeURIComponent(String(data.name || ""));
+                const wrapper = $("<div>", {
+                  style: "max-width:400px; white-space:normal; word-break:break-word;"
+                });
+                const queryLink = $("<a>", {
+                  href: safeHref(logUrl),
+                  text: String(data.query || "")
+                });
+                const externalLink = $("<a>", {
+                  href: safeHref(data.link),
+                  target: "_blank",
+                  rel: "noopener noreferrer"
+                }).append($("<i>", { class: "fas fa-external-link-alt" }));
+                wrapper.append($("<span>", { class: "query-link" }).append(queryLink).append(" - ").append(externalLink));
+                return wrapper.prop("outerHTML");
               }
             },{
               targets: 2,

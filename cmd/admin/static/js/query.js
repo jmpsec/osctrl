@@ -117,9 +117,25 @@ function confirmDeleteSavedQueries(_names, _url) {
   $("#confirmModal").modal();
 }
 
+function escapeHTML(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function safeHref(href) {
+  const s = String(href || "").trim();
+  const lower = s.toLowerCase();
+  if (!s || lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
+    return "#";
+  }
+  return s;
+}
+
 function queryResultLink(link, query, url) {
-  var external_link = '<a href="' + link + '" _target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
-  return '<span class="query-link"><a href="' + url + '">' + query + "</a> - " + external_link + "</span> ";
+  var safeQuery = escapeHTML(query);
+  var safeURL = escapeHTML(safeHref(url));
+  var safeLink = escapeHTML(safeHref(link));
+  var external_link = '<a href="' + safeLink + '" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
+  return '<span class="query-link"><a href="' + safeURL + '">' + safeQuery + "</a> - " + external_link + "</span> ";
 }
 
 function toggleSaveQuery() {
