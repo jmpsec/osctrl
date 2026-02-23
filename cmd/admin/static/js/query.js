@@ -124,10 +124,16 @@ function escapeHTML(value) {
 function safeHref(href) {
   const s = String(href || "").trim();
   const lower = s.toLowerCase();
-  if (!s || lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
-    return "#";
+  // Allow relative URLs (path, hash, or query only)
+  if (s.startsWith("/") || s.startsWith("#") || s.startsWith("?")) {
+    return s;
   }
-  return s;
+  // Allow only http and https absolute URLs
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return s;
+  }
+  // Fallback for disallowed or empty URLs
+  return "#";
 }
 
 function queryResultLink(link, query, url) {
