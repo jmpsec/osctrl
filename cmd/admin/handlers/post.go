@@ -883,6 +883,10 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 			adminErrorResponse(w, "invalid environment UUID", http.StatusInternalServerError, nil)
 			return
 		}
+		if !environments.HostnameFilter(c.Hostname) {
+			adminErrorResponse(w, "invalid hostname", http.StatusInternalServerError, nil)
+			return
+		}
 		if h.Envs.Exists(c.UUID) {
 			if err := h.Envs.UpdateHostname(c.UUID, c.Hostname); err != nil {
 				adminErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
