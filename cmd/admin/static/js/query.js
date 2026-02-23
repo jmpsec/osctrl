@@ -117,9 +117,23 @@ function confirmDeleteSavedQueries(_names, _url) {
   $("#confirmModal").modal();
 }
 
-function queryResultLink(link, query, url) {
-  var external_link = '<a href="' + link + '" _target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
-  return '<span class="query-link"><a href="' + url + '">' + query + "</a> - " + external_link + "</span> ";
+function escapeHTML(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function safeHref(href) {
+  const s = String(href || "").trim();
+  const lower = s.toLowerCase();
+  // Allow relative URLs (path, hash, or query only)
+  if (s.startsWith("/") || s.startsWith("#") || s.startsWith("?")) {
+    return s;
+  }
+  // Allow only http and https absolute URLs
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return s;
+  }
+  // Fallback for disallowed or empty URLs
+  return "#";
 }
 
 function toggleSaveQuery() {
