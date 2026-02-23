@@ -136,14 +136,6 @@ function safeHref(href) {
   return "#";
 }
 
-function queryResultLink(link, query, url) {
-  var safeQuery = escapeHTML(query);
-  var safeURL = escapeHTML(safeHref(url));
-  var safeLink = escapeHTML(safeHref(link));
-  var external_link = '<a href="' + safeLink + '" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i></a>';
-  return '<span class="query-link"><a href="' + safeURL + '">' + safeQuery + "</a> - " + external_link + "</span> ";
-}
-
 function toggleSaveQuery() {
   $("#save_query_name").val("");
   if ($("#save_query_check").is(":checked")) {
