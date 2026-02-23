@@ -817,7 +817,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	case "create":
 		//  Verify request fields
 		if !environments.VerifyEnvFilters(c.Name, c.Icon, c.Type, c.Hostname) {
-			adminErrorResponse(w, "invalid data", http.StatusInternalServerError, nil)
+			adminErrorResponse(w, "invalid data", http.StatusBadRequest, nil)
 			return
 		}
 		// Proceed with request data
@@ -867,7 +867,7 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	case "delete":
 		//  Verify request fields
 		if !environments.EnvNameFilter(c.Name) {
-			adminErrorResponse(w, "invalid environment name", http.StatusInternalServerError, nil)
+			adminErrorResponse(w, "invalid environment name", http.StatusBadRequest, nil)
 			return
 		}
 		if h.Envs.Exists(c.Name) {
@@ -880,7 +880,11 @@ func (h *HandlersAdmin) EnvsPOSTHandler(w http.ResponseWriter, r *http.Request) 
 	case "edit":
 		//  Verify request fields
 		if !environments.EnvUUIDFilter(c.UUID) {
-			adminErrorResponse(w, "invalid environment UUID", http.StatusInternalServerError, nil)
+			adminErrorResponse(w, "invalid environment UUID", http.StatusBadRequest, nil)
+			return
+		}
+		if !environments.HostnameFilter(c.Hostname) {
+			adminErrorResponse(w, "invalid hostname", http.StatusBadRequest, nil)
 			return
 		}
 		if h.Envs.Exists(c.UUID) {
