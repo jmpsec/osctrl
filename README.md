@@ -67,7 +67,7 @@ osctrl/
 │   ├── users/                   # User and permissions management
 │   ├── utils/                   # Utility helpers
 │   └── version/                 # Version metadata
-├── deploy/                      # Deployment configs/scripts (docker, nginx, cicd, osquery, systemd)
+├── deploy/                      # Deployment configs/scripts (docker/nginx/osquery/systemd, CI/CD, redis, config, helpers, etc.)
 ├── tools/                       # Dev/release helpers and API test assets (Bruno collections, scripts)
 ├── bin/                         # Built binaries (from make)
 ├── docker-compose-dev.yml       # Local multi-service development stack
