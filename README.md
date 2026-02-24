@@ -66,6 +66,7 @@ osctrl/
 │   ├── tags/                    # Tag management
 │   ├── users/                   # User and permissions management
 │   ├── utils/                   # Utility helpers
+│   ├── types/                   # Shared type definitions
 │   └── version/                 # Version metadata
 ├── deploy/                      # Deployment configs/scripts (docker/nginx/osquery/systemd, CI/CD, redis, config, helpers, etc.)
 ├── tools/                       # Dev/release helpers and API test assets (Bruno collections, scripts)
