@@ -42,6 +42,64 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 
 You can find the documentation of the project in [https://osctrl.net](https://osctrl.net)
 
+## 🗂 Project Structure
+
+```text
+osctrl/
+├── cmd/                         # Service and CLI entrypoints
+│   ├── admin/                   # osctrl-admin (web UI + admin handlers/templates/static)
+│   ├── api/                     # osctrl-api (REST API service)
+│   ├── cli/                     # osctrl-cli (operator CLI)
+│   └── tls/                     # osctrl-tls (osquery remote API endpoint)
+├── pkg/                         # Shared application packages
+│   ├── auditlog/                # Audit log manager
+│   ├── backend/                 # DB manager/bootstrap
+│   ├── cache/                   # Redis/cache managers
+│   ├── carves/                  # File carve logic/storage integrations
+│   ├── config/                  # Config structs/flags/validation
+│   ├── environments/            # Environment management
+│   ├── handlers/                # Shared HTTP handlers
+│   ├── logging/                 # Log pipeline + logger backends
+│   ├── nodes/                   # Node state/registration/cache
+│   ├── queries/                 # Query management/scheduling/results
+│   ├── settings/                # Runtime settings
+│   ├── tags/                    # Tag management
+│   ├── users/                   # User and permissions management
+│   ├── utils/                   # Utility helpers
+│   ├── types/                   # Shared type definitions
+│   └── version/                 # Version metadata
+├── deploy/                      # Deployment configs/scripts (docker/nginx/osquery/systemd, CI/CD, redis, config, helpers, etc.)
+├── tools/                       # Dev/release helpers and API test assets (Bruno collections, scripts)
+├── bin/                         # Built binaries (from make)
+├── docker-compose-dev.yml       # Local multi-service development stack
+├── Makefile                     # Build/test/dev targets
+└── osctrl-api.yaml              # OpenAPI specification for osctrl-api
+```
+
+## 🏛 Architecture
+
+```mermaid
+flowchart LR
+    A["osquery Agents"] -->|TLS Remote API| T["osctrl-tls"]
+    O["Operators"] -->|Web UI| W["osctrl-admin"]
+    O -->|CLI| C["osctrl-cli"]
+    O -->|REST| P["osctrl-api"]
+
+    W -->|HTTP API| P
+    C -->|HTTP API| P
+
+    T --> S["Shared Packages (pkg/*)"]
+    W --> S
+    P --> S
+    C --> S
+    C -.->|Direct DB mode| D
+
+    S --> D["PostgreSQL Backend"]
+    S --> R["Redis Cache"]
+    S --> L["Log Destinations (DB, file, S3, Elastic, Splunk, Graylog, Kafka, Kinesis, Logstash)"]
+    S --> F["Carve Storage (DB, local, S3)"]
+```
+
 ## 🛠 Development
 
 The fastest way to get started with **osctrl** development is by using [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/). But you can find other methods below.
