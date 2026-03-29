@@ -64,6 +64,7 @@ coverage.out
 
 # Configuration
 osctrl-api.json
+version_data.json
 
 # Go Workspace
 go.work
