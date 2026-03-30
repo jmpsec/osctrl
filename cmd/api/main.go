@@ -171,7 +171,7 @@ func init() {
 
 // Retrieve latest release information and compare
 func checkLatestRelease() {
-	log.Info().Msg("Checking for the latest release... (timeout 10s)")
+	log.Info().Msg("Checking for the latest release...")
 	latest, err := version.RetrieveVersionData(version.VersionDataURL)
 	if err != nil {
 		log.Err(err).Msg("Error retrieving latest release information")
