@@ -774,7 +774,7 @@ func main() {
 			}
 			// Initialize service logger
 			initializeLoggers(*flagParams.Service)
-			// Analyze version and compare with the latest release
+			// Analyze version and compare with the latest release, runs in a separate goroutine to not delay the service startup
 			go checkLatestRelease()
 			// Service starts!
 			osctrlAdminService()
