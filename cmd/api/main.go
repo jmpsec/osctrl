@@ -178,10 +178,10 @@ func checkLatestRelease() {
 		return
 	}
 	if version.CheckSuggestedRelease(latest.SuggestedRelease) {
+		log.Info().Msgf("%s is up to date with the latest release (%s)", serviceName, buildVersion)
+	} else {
 		log.Info().Msgf("A newer version of %s is available: %s (current: %s)", serviceName, latest.SuggestedRelease, buildVersion)
 		log.Info().Msgf("Release notes: %s", latest.MoreInformation)
-	} else {
-		log.Info().Msgf("%s is up to date with the latest release (%s)", serviceName, buildVersion)
 	}
 }
 
@@ -586,8 +586,8 @@ func main() {
 			}
 			// Initialize service logger
 			initializeLoggers(*flagParams.Service)
-			// Analyze version and compare with the latest release
-			checkLatestRelease()
+			// Analyze version and compare with the latest release, runs in a separate goroutine to not delay the service startup
+			go checkLatestRelease()
 			// Run the service
 			osctrlAPIService()
 			return nil
