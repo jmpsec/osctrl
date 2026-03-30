@@ -178,9 +178,9 @@ func checkLatestRelease() {
 		return
 	}
 	if version.CheckSuggestedRelease(latest.SuggestedRelease) {
-		log.Info().Msgf("%s is up to date with the latest release (%s)", serviceName, buildVersion)
+		log.Info().Msgf("%s (%s) is up to date with the suggested release (%s), latest %s", serviceName, buildVersion, latest.SuggestedRelease, latest.LatestRelease)
 	} else {
-		log.Info().Msgf("A newer version of %s is available: %s (current: %s)", serviceName, latest.SuggestedRelease, buildVersion)
+		log.Info().Msgf("Please upgrade %s to at least %s. Latest version available: %s (current: %s)", serviceName, latest.SuggestedRelease, latest.LatestRelease, buildVersion)
 		log.Info().Msgf("Release notes: %s", latest.MoreInformation)
 	}
 }
