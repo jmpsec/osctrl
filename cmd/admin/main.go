@@ -186,17 +186,17 @@ func init() {
 
 // Retrieve latest release information and compare
 func checkLatestRelease() {
-	log.Info().Msg("Checking for the latest release... (timeout 10s)")
+	log.Info().Msg("Checking for the latest release...")
 	latest, err := version.RetrieveVersionData(version.VersionDataURL)
 	if err != nil {
 		log.Err(err).Msg("Error retrieving latest release information")
 		return
 	}
 	if version.CheckSuggestedRelease(latest.SuggestedRelease) {
-		log.Info().Msgf("A newer version of %s is available: %s (current: %s)", serviceName, latest.SuggestedRelease, buildVersion)
-		log.Info().Msgf("Release notes: %s", latest.MoreInformation)
+		log.Info().Msgf("%s (%s) is up to date with the suggested release (%s), latest %s", serviceName, buildVersion, latest.SuggestedRelease, latest.LatestRelease)
 	} else {
-		log.Info().Msgf("%s is up to date with the latest release (%s)", serviceName, buildVersion)
+		log.Info().Msgf("Please upgrade %s to at least %s. Latest version available: %s (current: %s)", serviceName, latest.SuggestedRelease, latest.LatestRelease, buildVersion)
+		log.Info().Msgf("Release notes: %s", latest.MoreInformation)
 	}
 }
 
@@ -775,7 +775,7 @@ func main() {
 			// Initialize service logger
 			initializeLoggers(*flagParams.Service)
 			// Analyze version and compare with the latest release
-			checkLatestRelease()
+			go checkLatestRelease()
 			// Service starts!
 			osctrlAdminService()
 			return nil
