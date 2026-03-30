@@ -169,6 +169,22 @@ func init() {
 	flags = config.InitAPIFlags(flagParams)
 }
 
+// Retrieve latest release information and compare
+func checkLatestRelease() {
+	log.Info().Msg("Checking for the latest release...")
+	latest, err := version.RetrieveVersionData(version.VersionDataURL)
+	if err != nil {
+		log.Err(err).Msg("Error retrieving latest release information")
+		return
+	}
+	if version.CheckSuggestedRelease(latest.SuggestedRelease) {
+		log.Info().Msgf("%s is up to date with the latest release (%s)", serviceName, buildVersion)
+	} else {
+		log.Info().Msgf("A newer version of %s is available: %s (current: %s)", serviceName, latest.SuggestedRelease, buildVersion)
+		log.Info().Msgf("Release notes: %s", latest.MoreInformation)
+	}
+}
+
 // Go go!
 func osctrlAPIService() {
 	// ////////////////////////////// Backend
@@ -570,6 +586,8 @@ func main() {
 			}
 			// Initialize service logger
 			initializeLoggers(*flagParams.Service)
+			// Analyze version and compare with the latest release, runs in a separate goroutine to not delay the service startup
+			go checkLatestRelease()
 			// Run the service
 			osctrlAPIService()
 			return nil
