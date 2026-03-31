@@ -12,7 +12,10 @@ RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
 RUN mkdir -p /opt/osctrl/bin \
     /opt/osctrl/config \
     /opt/osctrl/tmpl_admin/components \
-    /opt/osctrl/static \
+    /opt/osctrl/static/css \
+    /opt/osctrl/static/js \
+    /opt/osctrl/static/fonts \
+    /opt/osctrl/static/img \
     /opt/osctrl/data \
     /opt/osctrl/carved_files && \
     chown -R osctrl-${COMPONENT}:osctrl-${COMPONENT} /opt/osctrl
@@ -20,10 +23,14 @@ RUN mkdir -p /opt/osctrl/bin \
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
 RUN chmod 0755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
-# GoReleaser extra_files provides these paths in the docker build context.
-COPY templates/ /opt/osctrl/tmpl_admin
-COPY static/ /opt/osctrl/static
-COPY data/*.json /opt/osctrl/data/
+# GoReleaser extra_files are flattened in the docker build context.
+COPY *.html /opt/osctrl/tmpl_admin/
+COPY page-*.html /opt/osctrl/tmpl_admin/components/
+COPY *.css /opt/osctrl/static/css/
+COPY *.js /opt/osctrl/static/js/
+COPY *.eot *.ttf *.woff *.woff2 /opt/osctrl/static/fonts/
+COPY *.png *.svg /opt/osctrl/static/img/
+COPY *.json /opt/osctrl/data/
 
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
