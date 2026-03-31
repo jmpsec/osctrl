@@ -128,7 +128,7 @@ dockers:
     use: buildx
     skip_push: false
     build_flag_templates:
-      - "--platform=linux/amd64,linux/arm64"
+      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
     extra_files:
       - dist/osctrl-tls-linux-amd64
       - dist/osctrl-tls-linux-arm64
@@ -140,7 +140,7 @@ dockers:
     use: buildx
     skip_push: false
     build_flag_templates:
-      - "--platform=linux/amd64,linux/arm64"
+      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
     extra_files:
       - dist/osctrl-admin-linux-amd64
       - dist/osctrl-admin-linux-arm64
@@ -152,7 +152,7 @@ dockers:
     use: buildx
     skip_push: false
     build_flag_templates:
-      - "--platform=linux/amd64,linux/arm64"
+      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
     extra_files:
       - dist/osctrl-api-linux-amd64
       - dist/osctrl-api-linux-arm64
@@ -164,7 +164,7 @@ dockers:
     use: buildx
     skip_push: false
     build_flag_templates:
-      - "--platform=linux/amd64,linux/arm64"
+      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
     extra_files:
       - dist/osctrl-cli-linux-amd64
       - dist/osctrl-cli-linux-arm64
