@@ -1,20 +1,26 @@
-name: Build a release with GoReleaser
+name: Release - Tagged
 
 on:
   push:
-    # Publish semver tags as releases.
-    tags: ["v*.*.*"]
+    tags:
+      - v*.*.*
 
 permissions:
   contents: write
   packages: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   GOLANG_VERSION: 1.25.4
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -25,50 +31,64 @@ jobs:
         uses: actions/setup-go@8e57b58e57be52ac95949151e2777ffda8501267 # v5.5.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
+          cache: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@af1b253b8dc984466d22633f04ef341c1520ed2f # v3.11.1
 
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --clean
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCKER_HUB_ORG: ${{ secrets.DOCKER_HUB_ORG }}
+          DOCKER_HUB_ORG: docker.io/${{ secrets.DOCKER_HUB_ORG }}
 
-  # Optional: Sign Docker images with cosign
-  sign:
-    needs: goreleaser
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Sign Docker images
+      - name: Verify signed images
+        shell: bash
+        env:
+          DOCKER_HUB_ORG: docker.io/${{ secrets.DOCKER_HUB_ORG }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
+
+          retry() {
+            local attempts=$1
+            shift
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge "$attempts" ]; then
+                echo "Command failed after $attempts attempts: $*"
+                return 1
+              fi
+              n=$((n + 1))
+              sleep $((5 * n))
+            done
+          }
+
           for component in tls admin api cli; do
-            cosign sign --yes docker.io/${{ secrets.DOCKER_HUB_ORG }}/osctrl-$component:${{ github.ref_name }}
-            cosign verify \
-              --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
-              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-              docker.io/${{ secrets.DOCKER_HUB_ORG }}/osctrl-$component:${{ github.ref_name }}
+            image="${DOCKER_HUB_ORG}/osctrl-${component}"
+            for tag in "${RELEASE_TAG}" latest; do
+              digest="$(docker buildx imagetools inspect "${image}:${tag}" | awk '/Digest:/ {print $2; exit}')"
+              if [ -z "${digest}" ]; then
+                echo "Unable to resolve digest for ${image}:${tag}"
+                exit 1
+              fi
+
+              retry 3 cosign verify \
+                --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "${image}@${digest}" >/dev/null
+            done
           done
