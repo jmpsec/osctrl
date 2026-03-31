@@ -120,5 +120,6 @@ func TestInFutureTime(t *testing.T) {
 
 func TestPastFutureTimesEpoch(t *testing.T) {
 	assert.NotEmpty(t, PastFutureTimesEpoch(0))
-	assert.Equal(t, "Since Thu Jan 01 01:00:00 CET 1970", PastFutureTimesEpoch(0))
+	expected := "Since " + time.Unix(0, 0).Format("Mon Jan 02 15:04:05 MST 2006")
+	assert.Equal(t, expected, PastFutureTimesEpoch(0))
 }
