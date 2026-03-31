@@ -15,7 +15,7 @@ const (
 	// OsctrlVersion to have the version for all components
 	OsctrlVersion = "0.5.0"
 	// OsqueryVersion to have the version for osquery defined
-	OsqueryVersion = "5.21.0"
+	OsqueryVersion = "5.22.1"
 	// VersionDataURL to have the URL to retrieve the latest version for all osctrl components
 	VersionDataURL = "https://stats.osctrl.net/version_data.json"
 	// versionDataRequestTimeout sets the max time to wait for version data retrieval.
