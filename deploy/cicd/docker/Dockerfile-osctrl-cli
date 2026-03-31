@@ -4,24 +4,18 @@ ARG COMPONENT=cli
 ARG GOOS=linux
 ARG GOARCH=amd64
 
-# Install software
 RUN apt-get update -y -q && \
+    apt-get install -y -q --no-install-recommends ca-certificates bash && \
     rm -rf /var/lib/apt/lists/*
 
-# Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
-RUN mkdir -p /opt/osctrl/bin && \
-    mkdir -p /opt/osctrl/config && \
-    mkdir -p /opt/osctrl/script && \
-    chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
+RUN mkdir -p /opt/osctrl/bin \
+    /opt/osctrl/config && \
+    chown -R osctrl-${COMPONENT}:osctrl-${COMPONENT} /opt/osctrl
 
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
-RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
-
-
-COPY deploy/docker/conf/cli/entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
+RUN chmod 0755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT ["/bin/bash"]
