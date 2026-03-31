@@ -1,4 +1,4 @@
-name: Build and test osctrl
+name: CI - Main
 
 on:
   push:
@@ -7,187 +7,93 @@ on:
 
 permissions:
   contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: ci-main-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   GOLANG_VERSION: 1.25.4
-  OSQUERY_VERSION: 5.22.1
 
 jobs:
-  build_and_test:
+  validate:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        components: ["tls", "admin", "api", "cli"]
-        goos: ["linux", "darwin", "windows"]
-        goarch: ["amd64", "arm64"]
+    timeout-minutes: 45
     steps:
-      ########################### Checkout code ###########################
-      - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 2
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      ########################### Generate SHA1 commit hash ###########################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-      - name: Declare GIT hash and branch
-        id: vars
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache: true
+
+      - name: Test (retry)
         shell: bash
         run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          retry() {
+            local attempts=$1
+            shift
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge "$attempts" ]; then
+                echo "Command failed after $attempts attempts: $*"
+                return 1
+              fi
+              n=$((n + 1))
+              sleep $((5 * n))
+            done
+          }
+          retry 3 go test ./...
 
-      ########################### Build osctrl ###########################
-      - name: Build osctrl binaries
-        # Build all osctrl components for linux for all archs
-        # Build all osctrl components for darwin for all archs
-        # Build osctrl cli for windows for all archs
-        if: matrix.goos == 'linux' || matrix.goos == 'darwin' || (matrix.goos == 'windows' && matrix.components == 'cli')
-        uses: ./.github/actions/build/binaries
+      - name: GoReleaser snapshot build
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
-          go_os: "${{ matrix.goos }}"
-          go_arch: "${{ matrix.goarch }}"
-          osctrl_component: "${{ matrix.components }}"
-          commit_sha: "${{ steps.vars.outputs.sha_short }}"
-          commit_branch: "${{ steps.vars.outputs.branch }}"
-          golang_version: "${{ env.GOLANG_VERSION }}"
+          distribution: goreleaser
+          version: latest
+          args: build --snapshot --clean --single-target
 
-      ########################### Test binaries ###########################
-      # - name: Run tests
-      #   id: bin_tests
-      #   uses: .github/actions/test/binaries
-      #   with:
-      #     go_os: "${{ matrix.goos }}"
-      #     go_arch: "${{ matrix.goarch }}"
-      #     osctrl_component: "${{ matrix.components }}"
-      #     commit_sha: "${{ steps.vars.outputs.sha_short }}"
-      #     commit_branch: "${{ steps.vars.outputs.branch }}"
-      #     golang_version: "${{ env.GOLANG_VERSION }}"
-
-  create_deb_packages:
-    strategy:
-      matrix:
-        components: ["tls", "admin", "api"]
-        goos: ["linux"]
-        goarch: ["amd64", "arm64"]
-    needs: [build_and_test]
+  publish-ghcr:
+    name: Publish GHCR images with GoReleaser
+    needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      ########################### Checkout code ###########################
-      - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          fetch-depth: 2
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache: true
 
-      ########################### Generate SHA1 commit hash ###########################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-      - name: Declare GIT hash and branch
-        id: vars
-        shell: bash
-        run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
-      ########################### Build DEB packages ###########################
-      - name: Build osctrl DEB packages
-        uses: ./.github/actions/build/dpkg
-        with:
-          go_os: ${{ matrix.goos }}
-          go_arch: ${{ matrix.goarch }}
-          osctrl_component: ${{ matrix.components }}
-          commit_sha: ${{ steps.vars.outputs.sha_short }}
-          osquery_version: ${{ env.OSQUERY_VERSION }}
-
-  create_docker_images:
-    needs: [build_and_test]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        components: ["tls", "admin", "api", "cli"]
-        goos: ["linux"]
-        goarch: ["amd64", "arm64"]
-    steps:
-      ########################### Checkout code ###########################
-      - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 2
-
-      ########################### Generate SHA1 commit hash ###########################
-      # https://newbedev.com/getting-current-branch-and-commit-hash-in-github-action
-      - name: Declare GIT hash and branch
-        id: vars
-        shell: bash
-        run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      ########################### Build Docker containers ###########################
-      - name: Build and deploy osctrl Docker containers
-        uses: ./.github/actions/build/docker
-        with:
-          #### golang env vars ####
-          go_os: ${{ matrix.goos }}
-          go_arch: ${{ matrix.goarch }}
-          #### Build vars ####
-          osctrl_component: ${{ matrix.components }}
-          commit_sha: ${{ steps.vars.outputs.sha_short }}
-          #### Dockerhub creds ####
-          docker_hub_org: ${{ secrets.DOCKER_HUB_ORG }}
-          docker_hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-  push_docker_images:
-    needs: [create_docker_images]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        components: ["tls", "admin", "api", "cli"]
-    steps:
-      ########################### Get digests from build ###########################
-      - name: Download digests
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          pattern: digests-osctrl-${{ matrix.components }}-*
-          merge-multiple: true
-          path: /tmp/digests
-
-      ########################### Setup Docker ###########################
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@af1b253b8dc984466d22633f04ef341c1520ed2f # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
-      ########################### Add meta data for containers ###########################
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
+      - name: Login to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
-          images: ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}
-          labels: |
-            org.opencontainers.image.title=osctrl-${{ matrix.components }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=match,pattern=v(.*),group=1
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      ########################### Log into Dockerhub ###########################
-      - name: Login to Docker Hub
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+      - name: Install cosign
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+
+      - name: Release snapshot to GHCR with GoReleaser
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      ########################### Create and push images ###########################
-      - name: Create manifest list and push
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}@sha256:%s ' *)
-
-      ########################### Inspect new image ###########################
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ secrets.DOCKER_HUB_ORG }}/osctrl-${{ matrix.components }}:${{ steps.meta.outputs.version }}
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HUB_ORG: ghcr.io/${{ github.repository_owner }}

@@ -169,6 +169,14 @@ dockers:
       - osctrl-cli-linux-amd64
       - osctrl-cli-linux-arm64
 
+docker_signs:
+  - artifacts: all
+    cmd: cosign
+    args:
+      - sign
+      - "${artifact}@${digest}"
+      - --yes
+
 nfpms:
   - id: osctrl-tls
     maintainer: jmpsec/osctrl
