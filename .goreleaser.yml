@@ -130,8 +130,8 @@ dockers:
       - "--platform=linux/amd64"
       - "--platform=linux/arm64"
     extra_files:
-      - osctrl-tls-linux-amd64
-      - osctrl-tls-linux-arm64
+      - dist/osctrl-tls-linux-amd64
+      - dist/osctrl-tls-linux-arm64
 
   - image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}"
@@ -142,8 +142,8 @@ dockers:
       - "--platform=linux/amd64"
       - "--platform=linux/arm64"
     extra_files:
-      - osctrl-admin-linux-amd64
-      - osctrl-admin-linux-arm64
+      - dist/osctrl-admin-linux-amd64
+      - dist/osctrl-admin-linux-arm64
 
   - image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
@@ -154,8 +154,8 @@ dockers:
       - "--platform=linux/amd64"
       - "--platform=linux/arm64"
     extra_files:
-      - osctrl-api-linux-amd64
-      - osctrl-api-linux-arm64
+      - dist/osctrl-api-linux-amd64
+      - dist/osctrl-api-linux-arm64
 
   - image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}"
@@ -166,8 +166,8 @@ dockers:
       - "--platform=linux/amd64"
       - "--platform=linux/arm64"
     extra_files:
-      - osctrl-cli-linux-amd64
-      - osctrl-cli-linux-arm64
+      - dist/osctrl-cli-linux-amd64
+      - dist/osctrl-cli-linux-arm64
 
 docker_signs:
   - artifacts: all
