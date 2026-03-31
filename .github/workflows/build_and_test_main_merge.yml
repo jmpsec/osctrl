@@ -58,25 +58,19 @@ jobs:
           args: build --snapshot --clean --single-target
 
   publish-ghcr:
-    name: Publish GHCR images
+    name: Publish GHCR images with GoReleaser
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - component: tls
-            dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
-          - component: admin
-            dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
-          - component: api
-            dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
-          - component: cli
-            dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache: true
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
@@ -91,75 +85,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image (retry)
-        id: build
-        shell: bash
-        env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/osctrl-${{ matrix.component }}
-          DOCKERFILE: ${{ matrix.dockerfile }}
-        run: |
-          set -euo pipefail
-          retry() {
-            local attempts=$1
-            shift
-            local n=1
-            until "$@"; do
-              if [ "$n" -ge "$attempts" ]; then
-                echo "Command failed after $attempts attempts: $*"
-                return 1
-              fi
-              n=$((n + 1))
-              sleep $((5 * n))
-            done
-          }
-
-          short_sha="${GITHUB_SHA::12}"
-          main_tag="${IMAGE}:main"
-          sha_tag="${IMAGE}:sha-${short_sha}"
-
-          retry 3 docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --file "${DOCKERFILE}" \
-            --tag "${main_tag}" \
-            --tag "${sha_tag}" \
-            --push \
-            .
-
-          digest="$(docker buildx imagetools inspect "${main_tag}" | awk '/Digest:/ {print $2; exit}')"
-          if [ -z "${digest}" ]; then
-            echo "Unable to resolve image digest for ${main_tag}"
-            exit 1
-          fi
-
-          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
-          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
-
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
 
-      - name: Sign and verify image digest (keyless)
-        shell: bash
+      - name: Release snapshot to GHCR with GoReleaser
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --clean
         env:
-          IMAGE: ${{ steps.build.outputs.image }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          set -euo pipefail
-          retry() {
-            local attempts=$1
-            shift
-            local n=1
-            until "$@"; do
-              if [ "$n" -ge "$attempts" ]; then
-                echo "Command failed after $attempts attempts: $*"
-                return 1
-              fi
-              n=$((n + 1))
-              sleep $((5 * n))
-            done
-          }
-
-          retry 3 cosign sign --yes "${IMAGE}@${DIGEST}"
-          retry 3 cosign verify \
-            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "${IMAGE}@${DIGEST}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HUB_ORG: ghcr.io/${{ github.repository_owner }}
