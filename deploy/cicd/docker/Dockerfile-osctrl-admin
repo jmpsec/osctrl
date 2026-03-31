@@ -4,28 +4,28 @@ ARG COMPONENT=admin
 ARG GOOS=linux
 ARG GOARCH=amd64
 
-# Install software
 RUN apt-get update -y -q && \
+    apt-get install -y -q --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Install/Setup osctrl
 RUN useradd -ms /usr/sbin/nologin osctrl-${COMPONENT}
-RUN mkdir -p /opt/osctrl/bin && \
-    mkdir -p /opt/osctrl/config && \
-    mkdir -p /opt/osctrl/script && \
-    mkdir -p /opt/osctrl/tmpl_admin/components && \
-    mkdir -p /opt/osctrl/static && \
-    mkdir -p /opt/osctrl/data && \
-    chown osctrl-${COMPONENT}:osctrl-${COMPONENT} -R /opt/osctrl
+RUN mkdir -p /opt/osctrl/bin \
+    /opt/osctrl/config \
+    /opt/osctrl/tmpl_admin/components \
+    /opt/osctrl/static \
+    /opt/osctrl/data \
+    /opt/osctrl/carved_files && \
+    chown -R osctrl-${COMPONENT}:osctrl-${COMPONENT} /opt/osctrl
+
 COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
-RUN chmod 755 /opt/osctrl/bin/osctrl-${COMPONENT}
+RUN chmod 0755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
-### Copy osctrl-admin web templates ###
+# GoReleaser extra_files provides these paths in the docker build context.
+COPY templates/ /opt/osctrl/tmpl_admin
+COPY static/ /opt/osctrl/static
+COPY data/*.json /opt/osctrl/data/
+
 USER osctrl-${COMPONENT}
-COPY cmd/admin/templates/ /opt/osctrl/tmpl_admin
-COPY cmd/admin/static/ /opt/osctrl/static
-COPY deploy/osquery/data/*.json /opt/osctrl/data/
-
 WORKDIR /opt/osctrl
 EXPOSE 9001/tcp
 CMD ["/opt/osctrl/bin/osctrl-admin"]

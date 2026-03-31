@@ -144,6 +144,9 @@ dockers:
     extra_files:
       - dist/osctrl-admin-linux-amd64
       - dist/osctrl-admin-linux-arm64
+      - cmd/admin/templates
+      - cmd/admin/static
+      - deploy/osquery/data
 
   - image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
