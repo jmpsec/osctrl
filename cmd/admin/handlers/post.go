@@ -442,6 +442,11 @@ func (h *HandlersAdmin) ConfPOSTHandler(w http.ResponseWriter, r *http.Request) 
 		adminErrorResponse(w, "invalid CSRF token", http.StatusInternalServerError, nil)
 		return
 	}
+	// Check if configuration is read-only
+	if h.OsqueryValues.ReadOnly {
+		adminErrorResponse(w, "configuration is read-only", http.StatusForbidden, nil)
+		return
+	}
 	if c.ConfigurationB64 != "" {
 		// Base64 decode received configuration
 		// TODO verify configuration

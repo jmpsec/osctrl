@@ -43,6 +43,12 @@ type ScriptRequest struct {
 	Certificate string `json:"certificate"`
 }
 
+// OsqueryConfigRequest to receive osquery configuration requests
+type OsqueryConfigRequest struct {
+	Configuration string `json:"configuration"`
+	Integrity     string `json:"integrity"`
+}
+
 // ApiDistributedQueryRequest to receive query requests
 type ApiDistributedQueryRequest struct {
 	UUIDs        []string `json:"uuid_list"`

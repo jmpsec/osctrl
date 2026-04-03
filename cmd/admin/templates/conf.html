@@ -98,7 +98,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="options_conf" name="options_conf">{{ .Environment.Options }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="options_conf" name="options_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Options }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="options_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -136,7 +141,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="schedule_conf" name="schedule_conf">{{ .Environment.Schedule }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="schedule_conf" name="schedule_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Schedule }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="schedule_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -170,7 +180,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="packs_conf" name="packs_conf">{{ .Environment.Packs }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="packs_conf" name="packs_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Packs }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="packs_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -204,7 +219,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="atc_conf" name="atc_conf">{{ .Environment.ATC }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="atc_conf" name="atc_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.ATC }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="atc_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -238,7 +258,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="decorators_conf" name="decorators_conf">{{ .Environment.Decorators }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="decorators_conf" name="decorators_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Decorators }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="decorators_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -272,7 +297,12 @@
               </div>
               <div class="card-body">
 
-                <textarea id="final_conf" name="final_conf">{{ .Environment.Configuration }}</textarea>
+                {{ if $leftmeta.OsqueryValues.ReadOnly }}
+                  <div class="alert alert-warning py-2 mb-2" role="alert">
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
+                  </div>
+                {{ end }}
+                <textarea id="final_conf" name="final_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Configuration }}</textarea>
                 <div class="row">
                   <div class="col-md-12">
                     <button id="conf_json_status_color" class="text-left btn btn-sm btn-square btn-block btn-success disabled">
@@ -311,6 +341,11 @@
     <script src="/static/js/configuration.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
+        var isReadOnly = {{ if $leftmeta.OsqueryValues.ReadOnly }}true{{ else }}false{{ end }};
+        if (isReadOnly) {
+          $('.main button').prop("disabled", true).addClass("disabled");
+        }
+
         // Codemirror editor for configuration
         // JSON validity check when content is changed
         var editorConfiguration = CodeMirror.fromTextArea(document.getElementById("final_conf"), {
@@ -318,7 +353,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#final_conf').data('CodeMirrorInstance', editorConfiguration);
         editorConfiguration.on('change', function(_editor){
@@ -361,7 +396,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#options_conf').data('CodeMirrorInstance', editorOptions);
         editorOptions.on('change', function(_editor){
@@ -407,7 +442,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#schedule_conf').data('CodeMirrorInstance', editorSchedule);
         editorSchedule.on('change', function(_editor){
@@ -452,7 +487,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#packs_conf').data('CodeMirrorInstance', editorPacks);
         editorPacks.on('change', function(_editor){
@@ -495,7 +530,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#atc_conf').data('CodeMirrorInstance', editorATC);
         editorATC.on('change', function(_editor){
@@ -538,7 +573,7 @@
           lineNumbers: true,
           styleActiveLine: true,
           matchBrackets: true,
-          readOnly: false
+          readOnly: isReadOnly
         });
         $('#decorators_conf').data('CodeMirrorInstance', editorDecorators);
         editorDecorators.on('change', function(_editor){

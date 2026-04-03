@@ -12,17 +12,18 @@ import (
 // Helper to generate an example TLS configuration file
 func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
 	cfgTLS := TLSConfiguration{
-		Service:     *cfg.Service,
-		DB:          *cfg.DB,
-		Redis:       *cfg.Redis,
-		BatchWriter: *cfg.BatchWriter,
-		Osquery:     *cfg.Osquery,
-		Osctrld:     *cfg.Osctrld,
-		Metrics:     *cfg.Metrics,
-		TLS:         *cfg.TLS,
-		Logger:      *cfg.Logger,
-		Carver:      *cfg.Carver,
-		Debug:       *cfg.Debug,
+		Service:         *cfg.Service,
+		DB:              *cfg.DB,
+		Redis:           *cfg.Redis,
+		BatchWriter:     *cfg.BatchWriter,
+		Osquery:         *cfg.Osquery,
+		ConfigEndpoints: *cfg.ConfigEndpoints,
+		Osctrld:         *cfg.Osctrld,
+		Metrics:         *cfg.Metrics,
+		TLS:             *cfg.TLS,
+		Logger:          *cfg.Logger,
+		Carver:          *cfg.Carver,
+		Debug:           *cfg.Debug,
 	}
 	return GenerateGenericConfigFile(path, cfgTLS, overwrite)
 }
