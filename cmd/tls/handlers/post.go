@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1062,4 +1065,114 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
+}
+
+// OsqueryConfigEndpointHandler - Function to handle the osquery configuration endpoint
+func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *http.Request) {
+	// Retrieve environment variable
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// To prevent abuse, check if the received UUID is valid
+	if !utils.CheckUUID(envVar) {
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	// Extract secret
+	secretVar := r.PathValue("secret")
+	if secretVar == "" {
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
+	confirmed := false
+	integrityCheck := false
+	for _, confEndpoint := range *h.ConfigEndpoints {
+		if confEndpoint.Environment == envVar && confEndpoint.Secret == secretVar {
+			confirmed = true
+			integrityCheck = confEndpoint.IntegrityCheck
+			break
+		}
+	}
+	if !confirmed {
+		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+		return
+	}
+	// If we are here, the secret is confirmed, so we can proceed to get the environment
+	env, err := h.Envs.GetByUUID(envVar)
+	if err != nil {
+		log.Err(err).Msg("error getting environment")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Debug HTTP
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Decode read POST body
+	var o types.OsqueryConfigRequest
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Err(err).Msg("error reading POST body")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	if err := json.Unmarshal(body, &o); err != nil {
+		log.Err(err).Msg("error parsing POST body")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Decode base64 configuration
+	configDecoded, err := base64.StdEncoding.DecodeString(o.Configuration)
+	if err != nil {
+		log.Err(err).Msg("error decoding base64 configuration")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Unzip configuration
+	gzipReader, err := gzip.NewReader(bytes.NewReader(configDecoded))
+	if err != nil {
+		log.Err(err).Msg("error decoding gzip configuration")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	defer gzipReader.Close()
+	configuration, err := io.ReadAll(gzipReader)
+	if err != nil {
+		log.Err(err).Msg("error reading unzipped configuration")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Verify integrity of the configuration using the provided hash
+	if integrityCheck {
+		hash := sha256.Sum256(configuration)
+		if o.Integrity != fmt.Sprintf("%x", hash) {
+			log.Err(err).Msg("configuration integrity check failed")
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+			return
+		}
+	}
+	// Parse configuration
+	cnf, err := h.Envs.GenStructConf(configuration)
+	if err != nil {
+		log.Err(err).Msg("error parsing configuration")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Update full configuration
+	if err := h.Envs.UpdateConfiguration(env.UUID, cnf); err != nil {
+		log.Err(err).Msg("error saving configuration")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	// Update all configuration parts
+	if err := h.Envs.UpdateConfigurationParts(env.UUID, cnf); err != nil {
+		log.Err(err).Msg("error saving configuration parts")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	response := TLSResponse{Message: "configuration saved successfully"}
+	// Send response
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
 }

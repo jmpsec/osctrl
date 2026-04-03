@@ -69,6 +69,7 @@ func loadedYAMLToServiceParams(yml config.TLSConfiguration, loadedFile string) *
 		BatchWriter:       &yml.BatchWriter,
 		Redis:             &yml.Redis,
 		Osquery:           &yml.Osquery,
+		ConfigEndpoints:   &yml.ConfigEndpoints,
 		Osctrld:           &yml.Osctrld,
 		Metrics:           &yml.Metrics,
 		TLS:               &yml.TLS,

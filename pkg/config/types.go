@@ -67,17 +67,18 @@ const (
 
 // TLSConfiguration to hold osctrl-tls configuration values
 type TLSConfiguration struct {
-	Service     YAMLConfigurationService `mapstructure:"service"`
-	DB          YAMLConfigurationDB      `mapstructure:"db"`
-	BatchWriter YAMLConfigurationWriter  `mapstructure:"batchWriter"`
-	Redis       YAMLConfigurationRedis   `mapstructure:"redis"`
-	Osquery     YAMLConfigurationOsquery `mapstructure:"osquery"`
-	Osctrld     YAMLConfigurationOsctrld `mapstructure:"osctrld"`
-	Metrics     YAMLConfigurationMetrics `mapstructure:"metrics"`
-	TLS         YAMLConfigurationTLS     `mapstructure:"tls"`
-	Logger      YAMLConfigurationLogger  `mapstructure:"logger"`
-	Carver      YAMLConfigurationCarver  `mapstructure:"carver"`
-	Debug       YAMLConfigurationDebug   `mapstructure:"debug"`
+	Service         YAMLConfigurationService   `mapstructure:"service"`
+	DB              YAMLConfigurationDB        `mapstructure:"db"`
+	BatchWriter     YAMLConfigurationWriter    `mapstructure:"batchWriter"`
+	Redis           YAMLConfigurationRedis     `mapstructure:"redis"`
+	Osquery         YAMLConfigurationOsquery   `mapstructure:"osquery"`
+	ConfigEndpoints YAMLConfigurationEndpoints `mapstructure:"configEndpoints"`
+	Osctrld         YAMLConfigurationOsctrld   `mapstructure:"osctrld"`
+	Metrics         YAMLConfigurationMetrics   `mapstructure:"metrics"`
+	TLS             YAMLConfigurationTLS       `mapstructure:"tls"`
+	Logger          YAMLConfigurationLogger    `mapstructure:"logger"`
+	Carver          YAMLConfigurationCarver    `mapstructure:"carver"`
+	Debug           YAMLConfigurationDebug     `mapstructure:"debug"`
 }
 
 // AdminConfiguration to hold osctrl-admin configuration values
@@ -154,6 +155,17 @@ type YAMLConfigurationOsquery struct {
 	Config     bool   `yaml:"config"`
 	Query      bool   `yaml:"query"`
 	Carve      bool   `yaml:"carve"`
+	ReadOnly   bool   `yaml:"readOnly"`
+}
+
+// YAMLConfigurationEndpoints to hold the configuration endpoints that will receive osquery configuration updates
+type YAMLConfigurationEndpoints []YAMLConfigurationEndpoint
+
+// YAMLConfigurationEndpoint to hold each endpoint that will receive osquery configuration updates
+type YAMLConfigurationEndpoint struct {
+	Environment    string `yaml:"environment"`
+	Secret         string `yaml:"secret"`
+	IntegrityCheck bool   `yaml:"integrityCheck"`
 }
 
 // YAMLConfigurationMetrics to hold the metrics configuration values

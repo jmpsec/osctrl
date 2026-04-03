@@ -57,6 +57,8 @@ type ServiceParameters struct {
 	Redis *YAMLConfigurationRedis
 	// osquery configuration values
 	Osquery *YAMLConfigurationOsquery
+	// Config endpoints configuration values
+	ConfigEndpoints *YAMLConfigurationEndpoints
 	// osctrld configuration values
 	Osctrld *YAMLConfigurationOsctrld
 	// Metrics configuration values
@@ -668,6 +670,13 @@ func initOsqueryFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Enable remote tls carver for osquery",
 			Sources:     cli.EnvVars("OSQUERY_CARVE"),
 			Destination: &params.Osquery.Carve,
+		},
+		&cli.BoolFlag{
+			Name:        "read-only-configuration",
+			Value:       false,
+			Usage:       "Disable configuration changes via admin or api services",
+			Sources:     cli.EnvVars("OSQUERY_READ_ONLY"),
+			Destination: &params.Osquery.ReadOnly,
 		},
 	}
 }

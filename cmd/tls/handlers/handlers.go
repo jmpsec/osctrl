@@ -60,6 +60,7 @@ type HandlersTLS struct {
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
 	OsqueryValues   *config.YAMLConfigurationOsquery
+	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
 }
@@ -149,6 +150,14 @@ func WithOsqueryValues(values *config.YAMLConfigurationOsquery) Option {
 	}
 }
 
+// WithConfigEndpoints to pass configuration endpoints values
+func WithConfigEndpoints(endpoints *config.YAMLConfigurationEndpoints) Option {
+	return func(h *HandlersTLS) {
+		h.ConfigEndpoints = endpoints
+	}
+}
+
+// WithDebugHTTP to pass debug HTTP configuration values
 func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) Option {
 	return func(h *HandlersTLS) {
 		h.DebugHTTPConfig = cfg

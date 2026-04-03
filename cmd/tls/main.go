@@ -106,14 +106,15 @@ func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 func init() {
 	// Initialize default flagParams
 	flagParams = &config.ServiceParameters{
-		Service:     &config.YAMLConfigurationService{},
-		DB:          &config.YAMLConfigurationDB{},
-		BatchWriter: &config.YAMLConfigurationWriter{},
-		Redis:       &config.YAMLConfigurationRedis{},
-		Osquery:     &config.YAMLConfigurationOsquery{},
-		Osctrld:     &config.YAMLConfigurationOsctrld{},
-		Metrics:     &config.YAMLConfigurationMetrics{},
-		TLS:         &config.YAMLConfigurationTLS{},
+		Service:         &config.YAMLConfigurationService{},
+		DB:              &config.YAMLConfigurationDB{},
+		BatchWriter:     &config.YAMLConfigurationWriter{},
+		Redis:           &config.YAMLConfigurationRedis{},
+		Osquery:         &config.YAMLConfigurationOsquery{},
+		Osctrld:         &config.YAMLConfigurationOsctrld{},
+		ConfigEndpoints: &config.YAMLConfigurationEndpoints{},
+		Metrics:         &config.YAMLConfigurationMetrics{},
+		TLS:             &config.YAMLConfigurationTLS{},
 		Logger: &config.YAMLConfigurationLogger{
 			DB:       &config.YAMLConfigurationDB{},
 			S3:       &config.S3Logger{},
@@ -283,6 +284,7 @@ func osctrlService() {
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithOsqueryValues(flagParams.Osquery),
+		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
@@ -328,6 +330,12 @@ func osctrlService() {
 		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler)
 		// TLS: osctrld retrieve script to install/remove osquery
 		muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
+	}
+
+	// Enable configuration endpoints if passed via YAML configuration
+	if flagParams.ConfigEndpoints != nil && len(*flagParams.ConfigEndpoints) > 0 {
+		log.Info().Msgf("Enabling %d configuration endpoints", len(*flagParams.ConfigEndpoints))
+		muxTLS.HandleFunc("POST /{env}/{secret}/"+environments.DefaultConfigEndpointPath, handlersTLS.OsqueryConfigEndpointHandler)
 	}
 
 	// ////////////////////////////// Everything is ready at this point!

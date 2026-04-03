@@ -47,6 +47,8 @@ const (
 	DefaultVerifyPath string = "osctrld-verify"
 	// DefaultScriptPath
 	DefaultScriptPath string = "osctrld-script"
+	// DefaultConfigEndpointPath
+	DefaultConfigEndpointPath string = "osquery-config"
 )
 
 // TLSEnvironment to hold each of the TLS environment
