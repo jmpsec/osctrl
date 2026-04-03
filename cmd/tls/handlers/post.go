@@ -1147,9 +1147,13 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 	// Verify integrity of the configuration using the provided hash
 	if integrityCheck {
 		hash := sha256.Sum256(configuration)
-		if o.Integrity != fmt.Sprintf("%x", hash) {
-			log.Err(err).Msg("configuration integrity check failed")
-			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		computedIntegrity := fmt.Sprintf("%x", hash)
+		if o.Integrity != computedIntegrity {
+			log.Warn().
+				Str("expected_integrity", o.Integrity).
+				Str("computed_integrity", computedIntegrity).
+				Msg("configuration integrity check failed")
+			utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 			return
 		}
 	}
