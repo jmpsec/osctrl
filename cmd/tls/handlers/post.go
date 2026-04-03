@@ -1138,10 +1138,17 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	defer gzipReader.Close()
-	configuration, err := io.ReadAll(gzipReader)
+	const maxConfigSize = 500 * 1024
+	limitedReader := io.LimitReader(gzipReader, maxConfigSize+1)
+	configuration, err := io.ReadAll(limitedReader)
 	if err != nil {
 		log.Err(err).Msg("error reading unzipped configuration")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	if len(configuration) > maxConfigSize {
+		log.Error().Msg("unzipped configuration is larger than 500KB")
+		utils.HTTPResponse(w, "", http.StatusRequestEntityTooLarge, []byte(""))
 		return
 	}
 	// Verify integrity of the configuration using the provided hash
