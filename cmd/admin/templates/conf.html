@@ -100,7 +100,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="options_conf" name="options_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Options }}</textarea>
