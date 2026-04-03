@@ -143,7 +143,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="schedule_conf" name="schedule_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Schedule }}</textarea>
@@ -182,7 +182,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="packs_conf" name="packs_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Packs }}</textarea>
@@ -221,7 +221,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="atc_conf" name="atc_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.ATC }}</textarea>
@@ -260,7 +260,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="decorators_conf" name="decorators_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Decorators }}</textarea>
@@ -299,7 +299,7 @@
 
                 {{ if $leftmeta.OsqueryValues.ReadOnly }}
                   <div class="alert alert-warning py-2 mb-2" role="alert">
-                    <i class="fas fa-lock mr-1"></i> Editing is disabled for this environment.
+                    <i class="fas fa-lock mr-1"></i> Editing is disabled by server configuration.
                   </div>
                 {{ end }}
                 <textarea id="final_conf" name="final_conf" {{ if $leftmeta.OsqueryValues.ReadOnly }}readonly{{ end }}>{{ .Environment.Configuration }}</textarea>
