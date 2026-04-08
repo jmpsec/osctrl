@@ -714,6 +714,12 @@ func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("OIDC_JIT_PROVISION"),
 			Destination: &params.OIDC.JITProvision,
 		},
+		&cli.BoolFlag{
+			Name:        "oidc-use-pkce",
+			Usage:       "Enable PKCE (S256) for the OIDC Authorization Code flow",
+			Sources:     cli.EnvVars("OIDC_USE_PKCE"),
+			Destination: &params.OIDC.UsePKCE,
+		},
 	}
 }
 

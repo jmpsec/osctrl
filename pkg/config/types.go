@@ -265,4 +265,5 @@ type YAMLConfigurationOIDC struct {
 	GroupsClaim    string   `yaml:"groupsClaim"    mapstructure:"groupsClaim"`
 	RequiredGroups []string `yaml:"requiredGroups" mapstructure:"requiredGroups"`
 	JITProvision   bool     `yaml:"jitProvision"   mapstructure:"jitProvision"`
+	UsePKCE        bool     `yaml:"usePKCE"        mapstructure:"usePKCE"`
 }

@@ -97,12 +97,25 @@ func oidcLoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "oidc nonce error", http.StatusInternalServerError)
 		return
 	}
-	if err := setOIDCStateCookie(w, state, nonce); err != nil {
+	var verifier string
+	if oidcRT.cfg.UsePKCE {
+		verifier, err = randomToken()
+		if err != nil {
+			log.Err(err).Msg("oidc: failed to generate pkce verifier")
+			http.Error(w, "oidc pkce error", http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := setOIDCStateCookie(w, state, nonce, verifier); err != nil {
 		log.Err(err).Msg("oidc: failed to encode state cookie")
 		http.Error(w, "oidc state error", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, oidcRT.oauth2.AuthCodeURL(state, gooidc.Nonce(nonce)), http.StatusFound)
+	opts := []oauth2.AuthCodeOption{gooidc.Nonce(nonce)}
+	if verifier != "" {
+		opts = append(opts, oauth2.S256ChallengeOption(verifier))
+	}
+	http.Redirect(w, r, oidcRT.oauth2.AuthCodeURL(state, opts...), http.StatusFound)
 }
 
 // oidcCallbackHandler validates the callback, exchanges the code for tokens,
@@ -113,9 +126,14 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "oidc not initialized", http.StatusInternalServerError)
 		return
 	}
-	expectedState, expectedNonce, err := readOIDCStateCookie(r)
+	expectedState, expectedNonce, verifier, err := readOIDCStateCookie(r)
 	if err != nil {
 		log.Err(err).Msg("oidc: state cookie missing or invalid")
+		http.Redirect(w, r, forbiddenPath, http.StatusFound)
+		return
+	}
+	if oidcRT.cfg.UsePKCE && verifier == "" {
+		log.Error().Msg("oidc: pkce enabled but no verifier in state cookie")
 		http.Redirect(w, r, forbiddenPath, http.StatusFound)
 		return
 	}
@@ -138,7 +156,11 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	token, err := oidcRT.oauth2.Exchange(ctx, code)
+	var exchangeOpts []oauth2.AuthCodeOption
+	if verifier != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(verifier))
+	}
+	token, err := oidcRT.oauth2.Exchange(ctx, code, exchangeOpts...)
 	if err != nil {
 		log.Err(err).Msg("oidc: code exchange failed")
 		http.Redirect(w, r, forbiddenPath, http.StatusFound)
@@ -295,11 +317,15 @@ func randomToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func setOIDCStateCookie(w http.ResponseWriter, state, nonce string) error {
+func setOIDCStateCookie(w http.ResponseWriter, state, nonce, verifier string) error {
 	if sessionsmgr == nil || len(sessionsmgr.Codecs) == 0 {
 		return errors.New("session manager not initialized")
 	}
-	encoded, err := securecookie.EncodeMulti(oidcStateCookieName, map[string]string{"state": state, "nonce": nonce}, sessionsmgr.Codecs...)
+	payload := map[string]string{"state": state, "nonce": nonce}
+	if verifier != "" {
+		payload["verifier"] = verifier
+	}
+	encoded, err := securecookie.EncodeMulti(oidcStateCookieName, payload, sessionsmgr.Codecs...)
 	if err != nil {
 		return err
 	}
@@ -315,24 +341,24 @@ func setOIDCStateCookie(w http.ResponseWriter, state, nonce string) error {
 	return nil
 }
 
-func readOIDCStateCookie(r *http.Request) (string, string, error) {
+func readOIDCStateCookie(r *http.Request) (state, nonce, verifier string, err error) {
 	c, err := r.Cookie(oidcStateCookieName)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if sessionsmgr == nil || len(sessionsmgr.Codecs) == 0 {
-		return "", "", errors.New("session manager not initialized")
+		return "", "", "", errors.New("session manager not initialized")
 	}
 	var payload map[string]string
 	if err := securecookie.DecodeMulti(oidcStateCookieName, c.Value, &payload, sessionsmgr.Codecs...); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	state, ok1 := payload["state"]
 	nonce, ok2 := payload["nonce"]
 	if !ok1 || !ok2 {
-		return "", "", errors.New("oidc: state cookie missing fields")
+		return "", "", "", errors.New("oidc: state cookie missing fields")
 	}
-	return state, nonce, nil
+	return state, nonce, payload["verifier"], nil
 }
 
 func clearOIDCStateCookie(w http.ResponseWriter) {
