@@ -112,11 +112,15 @@ var (
 	samlData       samlThings
 )
 
+// OIDC runtime, populated when service.auth == oidc.
+var oidcRT *oidcRuntime
+
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
 	config.AuthDB:   true,
 	config.AuthSAML: true,
 	config.AuthJSON: true,
+	config.AuthOIDC: true,
 }
 
 // Valid values for carver in configuration
@@ -160,6 +164,7 @@ func init() {
 		Osquery: &config.YAMLConfigurationOsquery{},
 		Osctrld: &config.YAMLConfigurationOsctrld{},
 		SAML:    &config.YAMLConfigurationSAML{},
+		OIDC:    &config.YAMLConfigurationOIDC{},
 		JWT:     &config.YAMLConfigurationJWT{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Logger: &config.YAMLConfigurationLogger{
@@ -276,6 +281,16 @@ func osctrlAdminService() {
 			log.Fatal().Msgf("Can not initialize SAML Middleware %s", err)
 		}
 	}
+	// Discover and initialize the OIDC provider when configured.
+	if flagParams.Service.Auth == config.AuthOIDC {
+		log.Debug().Msg("OIDC enabled for authentication")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		oidcRT, err = initOIDC(ctx, *flagParams.OIDC)
+		cancel()
+		if err != nil {
+			log.Fatal().Msgf("Can not initialize OIDC: %s", err)
+		}
+	}
 	// FIXME Redis cache - Ticker to cleanup sessions
 	// FIXME splay this?
 	log.Info().Msg("Initialize cleanup sessions")
@@ -371,7 +386,7 @@ func osctrlAdminService() {
 	adminMux := http.NewServeMux()
 	// ///////////////////////// UNAUTHENTICATED CONTENT
 	// Admin: login only if local auth is enabled
-	if flagParams.Service.Auth != config.AuthNone && flagParams.Service.Auth != config.AuthSAML {
+	if flagParams.Service.Auth != config.AuthNone && flagParams.Service.Auth != config.AuthSAML && flagParams.Service.Auth != config.AuthOIDC {
 		// login
 		adminMux.HandleFunc("GET "+loginPath, handlersAdmin.LoginHandler)
 		adminMux.HandleFunc("POST "+loginPath, handlersAdmin.LoginPOSTHandler)
@@ -607,6 +622,12 @@ func osctrlAdminService() {
 		adminMux.HandleFunc("GET "+logoutPath, func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, samlConfig.LogoutURL, http.StatusFound)
 		})
+	}
+	// OIDC routes
+	if flagParams.Service.Auth == config.AuthOIDC {
+		adminMux.HandleFunc("GET "+loginPath, oidcLoginHandler)
+		adminMux.HandleFunc("GET "+oidcCallbackPath, oidcCallbackHandler)
+		adminMux.HandleFunc("GET "+logoutPath, oidcLogoutHandler)
 	}
 	// Launch HTTP server for admin
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)

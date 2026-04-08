@@ -60,6 +60,30 @@ saml:
   jitProvision: false
   spInitiated: false
 
+# OIDC authentication configuration
+oidc:
+  # IssuerURL is the OIDC discovery base (the server hosts /.well-known/openid-configuration there).
+  issuerUrl: ""
+  clientId: ""
+  clientSecret: ""
+  # RedirectURL must point to <admin-host>/oidc/callback and be registered with the IdP.
+  redirectUrl: ""
+  scopes:
+    - openid
+    - profile
+    - email
+  # usernameClaim controls which ID-token claim becomes the osctrl username:
+  #   "preferred_username" (default), "email", or "sub".
+  usernameClaim: preferred_username
+  # groupsClaim is the ID-token claim containing group memberships (default: "groups").
+  # Some IdPs use "roles" or "cognito:groups". You may need to add the corresponding
+  # scope (e.g. "groups") to the scopes list above for the IdP to include the claim.
+  groupsClaim: groups
+  # requiredGroups restricts login to users who belong to at least one of
+  # these groups. Leave empty to allow any authenticated user.
+  requiredGroups: []
+  jitProvision: false
+
 # JWT authentication configuration
 jwt:
   jwtSecret: ""
