@@ -627,7 +627,9 @@ func osctrlAdminService() {
 	if flagParams.Service.Auth == config.AuthOIDC {
 		adminMux.HandleFunc("GET "+loginPath, oidcLoginHandler)
 		adminMux.HandleFunc("GET "+oidcCallbackPath, oidcCallbackHandler)
-		adminMux.HandleFunc("GET "+logoutPath, oidcLogoutHandler)
+		adminMux.HandleFunc("GET "+logoutPath, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, loginPath, http.StatusFound)
+		})
 	}
 	// Launch HTTP server for admin
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)

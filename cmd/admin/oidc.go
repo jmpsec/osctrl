@@ -224,21 +224,6 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
-// oidcLogoutHandler clears the osctrl session and redirects to /login.
-func oidcLogoutHandler(w http.ResponseWriter, r *http.Request) {
-	username := ""
-	if _, s := sessionsmgr.CheckAuth(r); s.Username != "" {
-		username = s.Username
-	}
-	if err := sessionsmgr.Destroy(r); err != nil {
-		log.Err(err).Msg("oidc: error destroying session")
-	}
-	if auditLog != nil && username != "" {
-		auditLog.NewLogout(username, utils.GetIP(r))
-	}
-	http.Redirect(w, r, loginPath, http.StatusFound)
-}
-
 // resolveOIDCUser returns the existing user or JIT-provisions a new non-admin
 // user (parity with SAML).
 func resolveOIDCUser(username, email, fullname string) (users.AdminUser, error) {
