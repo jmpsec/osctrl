@@ -49,8 +49,8 @@ func initOIDC(ctx context.Context, cfg config.YAMLConfigurationOIDC) (*oidcRunti
 	if cfg.ClientID == "" {
 		return nil, errors.New("oidc: clientId is required")
 	}
-	if cfg.ClientSecret == "" {
-		return nil, errors.New("oidc: clientSecret is required")
+	if cfg.ClientSecret == "" && !cfg.UsePKCE {
+		return nil, errors.New("oidc: clientSecret is required when PKCE is disabled")
 	}
 	if cfg.RedirectURL == "" {
 		return nil, errors.New("oidc: redirectUrl is required")
