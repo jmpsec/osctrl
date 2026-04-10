@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 )
@@ -218,7 +219,7 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if auditLog != nil {
-		auditLog.NewLogin(user.Username, strings.Split(r.RemoteAddr, ":")[0])
+		auditLog.NewLogin(user.Username, utils.GetIP(r))
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
@@ -233,7 +234,7 @@ func oidcLogoutHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("oidc: error destroying session")
 	}
 	if auditLog != nil && username != "" {
-		auditLog.NewLogout(username, strings.Split(r.RemoteAddr, ":")[0])
+		auditLog.NewLogout(username, utils.GetIP(r))
 	}
 	http.Redirect(w, r, loginPath, http.StatusFound)
 }
