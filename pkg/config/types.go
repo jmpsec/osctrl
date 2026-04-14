@@ -89,6 +89,7 @@ type AdminConfiguration struct {
 	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
 	Osctrld YAMLConfigurationOsctrld `mapstructure:"osctrld"`
 	SAML    YAMLConfigurationSAML    `mapstructure:"saml"`
+	OIDC    YAMLConfigurationOIDC    `mapstructure:"oidc"`
 	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
@@ -251,4 +252,18 @@ type YAMLConfigurationSAML struct {
 	LogoutURL    string `yaml:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"`
 	SPInitiated  bool   `yaml:"spInitiated"`
+}
+
+// YAMLConfigurationOIDC to keep all OIDC details for auth
+type YAMLConfigurationOIDC struct {
+	IssuerURL      string   `yaml:"issuerUrl"      mapstructure:"issuerUrl"`
+	ClientID       string   `yaml:"clientId"       mapstructure:"clientId"`
+	ClientSecret   string   `yaml:"clientSecret"   mapstructure:"clientSecret"`
+	RedirectURL    string   `yaml:"redirectUrl"    mapstructure:"redirectUrl"`
+	Scopes         []string `yaml:"scopes"         mapstructure:"scopes"`
+	UsernameClaim  string   `yaml:"usernameClaim"  mapstructure:"usernameClaim"`
+	GroupsClaim    string   `yaml:"groupsClaim"    mapstructure:"groupsClaim"`
+	RequiredGroups []string `yaml:"requiredGroups" mapstructure:"requiredGroups"`
+	JITProvision   bool     `yaml:"jitProvision"   mapstructure:"jitProvision"`
+	UsePKCE        bool     `yaml:"usePKCE"        mapstructure:"usePKCE"`
 }

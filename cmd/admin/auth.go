@@ -19,7 +19,7 @@ const (
 func handlerAuthCheck(h http.Handler, auth string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch auth {
-		case config.AuthDB:
+		case config.AuthDB, config.AuthOIDC:
 			// Check if user is already authenticated
 			authenticated, session := sessionsmgr.CheckAuth(r)
 			if !authenticated {

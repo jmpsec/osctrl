@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/version"
@@ -65,6 +67,8 @@ type ServiceParameters struct {
 	Metrics *YAMLConfigurationMetrics
 	// SAML configuration values
 	SAML *YAMLConfigurationSAML
+	// OIDC configuration values
+	OIDC *YAMLConfigurationOIDC
 	// JWT configuration values
 	JWT *YAMLConfigurationJWT
 	// TLS configuration values
@@ -114,6 +118,7 @@ func InitAdminFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initCarverFlags(params, ServiceAdmin)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
+	allFlags = append(allFlags, initOIDCFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initAdminFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAdmin)...)
@@ -622,6 +627,98 @@ func initJWTFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Maximum amount of hours for the tokens to expire",
 			Sources:     cli.EnvVars("JWT_EXPIRE"),
 			Destination: &params.JWT.HoursToExpire,
+		},
+	}
+}
+
+// initOIDCFlags initializes OIDC flags
+func initOIDCFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:        "oidc-issuer-url",
+			Usage:       "OIDC issuer URL (the realm root, /.well-known/openid-configuration is appended automatically)",
+			Sources:     cli.EnvVars("OIDC_ISSUER_URL"),
+			Destination: &params.OIDC.IssuerURL,
+		},
+		&cli.StringFlag{
+			Name:        "oidc-client-id",
+			Usage:       "OIDC client ID registered with the IdP",
+			Sources:     cli.EnvVars("OIDC_CLIENT_ID"),
+			Destination: &params.OIDC.ClientID,
+		},
+		&cli.StringFlag{
+			Name:        "oidc-client-secret",
+			Usage:       "OIDC client secret",
+			Sources:     cli.EnvVars("OIDC_CLIENT_SECRET"),
+			Destination: &params.OIDC.ClientSecret,
+		},
+		&cli.StringFlag{
+			Name:        "oidc-redirect-url",
+			Usage:       "OIDC redirect URL — must match the IdP client config and end with /oidc/callback",
+			Sources:     cli.EnvVars("OIDC_REDIRECT_URL"),
+			Destination: &params.OIDC.RedirectURL,
+		},
+		&cli.StringFlag{
+			Name:    "oidc-scopes",
+			Usage:   "OIDC scopes as a comma-separated list (defaults to \"openid,profile,email\")",
+			Sources: cli.EnvVars("OIDC_SCOPES"),
+			Action: func(_ context.Context, _ *cli.Command, v string) error {
+				if v == "" {
+					return nil
+				}
+				parts := strings.Split(v, ",")
+				out := make([]string, 0, len(parts))
+				for _, p := range parts {
+					if p = strings.TrimSpace(p); p != "" {
+						out = append(out, p)
+					}
+				}
+				params.OIDC.Scopes = out
+				return nil
+			},
+		},
+		&cli.StringFlag{
+			Name:        "oidc-username-claim",
+			Usage:       "ID-token claim used as the osctrl username (preferred_username, email, sub)",
+			Sources:     cli.EnvVars("OIDC_USERNAME_CLAIM"),
+			Destination: &params.OIDC.UsernameClaim,
+		},
+		&cli.StringFlag{
+			Name:        "oidc-groups-claim",
+			Usage:       "ID-token claim that contains group memberships (default: groups)",
+			Sources:     cli.EnvVars("OIDC_GROUPS_CLAIM"),
+			Destination: &params.OIDC.GroupsClaim,
+		},
+		&cli.StringFlag{
+			Name:    "oidc-required-groups",
+			Usage:   "Comma-separated list of groups — user must belong to at least one to log in",
+			Sources: cli.EnvVars("OIDC_REQUIRED_GROUPS"),
+			Action: func(_ context.Context, _ *cli.Command, v string) error {
+				if v == "" {
+					return nil
+				}
+				parts := strings.Split(v, ",")
+				out := make([]string, 0, len(parts))
+				for _, p := range parts {
+					if p = strings.TrimSpace(p); p != "" {
+						out = append(out, p)
+					}
+				}
+				params.OIDC.RequiredGroups = out
+				return nil
+			},
+		},
+		&cli.BoolFlag{
+			Name:        "oidc-jit-provision",
+			Usage:       "Auto-create osctrl users on first OIDC login (as non-admin)",
+			Sources:     cli.EnvVars("OIDC_JIT_PROVISION"),
+			Destination: &params.OIDC.JITProvision,
+		},
+		&cli.BoolFlag{
+			Name:        "oidc-use-pkce",
+			Usage:       "Enable PKCE (S256) for the OIDC Authorization Code flow",
+			Sources:     cli.EnvVars("OIDC_USE_PKCE"),
+			Destination: &params.OIDC.UsePKCE,
 		},
 	}
 }

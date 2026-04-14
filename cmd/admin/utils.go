@@ -49,6 +49,7 @@ func loadedYAMLToServiceParams(yml config.AdminConfiguration, loadedFile string)
 		Osquery:           &yml.Osquery,
 		Osctrld:           &yml.Osctrld,
 		SAML:              &yml.SAML,
+		OIDC:              &yml.OIDC,
 		JWT:               &yml.JWT,
 		TLS:               &yml.TLS,
 		Logger:            &yml.Logger,
