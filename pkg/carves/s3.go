@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	awsTypes "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -36,7 +35,6 @@ type CarverS3 struct {
 	S3Config  osctrl_config.S3Carver
 	AWSConfig aws.Config
 	Client    *s3.Client
-	Uploader  *manager.Uploader
 	Enabled   bool
 	Debug     bool
 }
@@ -53,12 +51,10 @@ func CreateCarverS3(s3Config osctrl_config.S3Carver) (*CarverS3, error) {
 		return nil, err
 	}
 	client := s3.NewFromConfig(cfg)
-	uploader := manager.NewUploader(client)
 	l := &CarverS3{
 		S3Config:  s3Config,
 		AWSConfig: cfg,
 		Client:    client,
-		Uploader:  uploader,
 		Enabled:   true,
 		Debug:     true,
 	}
@@ -82,10 +78,10 @@ func (carveS3 *CarverS3) Upload(block CarvedBlock, uuid, data string) error {
 		return fmt.Errorf("error decoding data - %w", err)
 	}
 	ptrContentLength := int64(len(toUpload))
-	uploadOutput, err := carveS3.Uploader.Upload(ctx, &s3.PutObjectInput{
+	uploadOutput, err := carveS3.Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(carveS3.S3Config.Bucket),
 		Key:           aws.String(GenerateS3Key(block.Environment, uuid, block.SessionID, block.BlockID)),
-		Body:          bytes.NewBuffer(toUpload),
+		Body:          bytes.NewReader(toUpload),
 		ContentLength: &ptrContentLength,
 		ContentType:   aws.String(http.DetectContentType(toUpload)),
 	})
@@ -176,19 +172,25 @@ func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 	if carveS3.Debug {
 		log.Debug().Msgf("Downloading %s from S3", carve.ArchivePath)
 	}
-	downloader := manager.NewDownloader(carveS3.Client)
-	var fileReader io.WriterAt
-	downloadedBytes, err := downloader.Download(ctx, fileReader, &s3.GetObjectInput{
+	output, err := carveS3.Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(carveS3.S3Config.Bucket),
 		Key:    aws.String(S3URLtoKey(carve.ArchivePath, carveS3.S3Config.Bucket)),
 	})
-	// Forcing sequential downloads so we can skip the offset from io.WriterAt
-	downloader.Concurrency = 1
 	if err != nil {
 		return nil, fmt.Errorf("Download - %w", err)
 	}
+	defer output.Body.Close()
+
+	data, err := io.ReadAll(output.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Download - reading object body - %w", err)
+	}
+	fileReader := newBytesWriterAt(len(data))
+	if _, err := fileReader.WriteAt(data, 0); err != nil {
+		return nil, fmt.Errorf("Download - buffering object body - %w", err)
+	}
 	if carveS3.Debug {
-		log.Debug().Msgf("S3 Downloaded %s [%d bytes]", carve.ArchivePath, downloadedBytes)
+		log.Debug().Msgf("S3 Downloaded %s [%d bytes]", carve.ArchivePath, len(data))
 	}
 	return fileReader, nil
 }
@@ -208,4 +210,25 @@ func (carveS3 *CarverS3) GetDownloadLink(carve CarvedFile) (string, error) {
 		return "", fmt.Errorf("PresignGetObject - %w", err)
 	}
 	return lnk.URL, nil
+}
+
+type bytesWriterAt struct {
+	data []byte
+}
+
+func newBytesWriterAt(size int) *bytesWriterAt {
+	return &bytesWriterAt{data: make([]byte, size)}
+}
+
+func (b *bytesWriterAt) WriteAt(p []byte, off int64) (int, error) {
+	if off < 0 {
+		return 0, fmt.Errorf("negative offset")
+	}
+	start := int(off)
+	end := start + len(p)
+	if end > len(b.data) {
+		return 0, fmt.Errorf("write exceeds buffer size")
+	}
+	copy(b.data[start:end], p)
+	return len(p), nil
 }
