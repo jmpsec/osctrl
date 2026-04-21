@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -23,7 +22,6 @@ type LoggerS3 struct {
 	S3Config  osctrl_config.S3Logger
 	AWSConfig aws.Config
 	Client    *s3.Client
-	Uploader  *manager.Uploader
 	Enabled   bool
 	Debug     bool
 }
@@ -40,12 +38,10 @@ func CreateLoggerS3(s3Config *osctrl_config.S3Logger) (*LoggerS3, error) {
 		return nil, err
 	}
 	client := s3.NewFromConfig(cfg)
-	uploader := manager.NewUploader(client)
 	l := &LoggerS3{
 		S3Config:  *s3Config,
 		AWSConfig: cfg,
 		Client:    client,
-		Uploader:  uploader,
 		Enabled:   true,
 		Debug:     false,
 	}
@@ -64,10 +60,10 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 		log.Debug().Msgf("Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
 	}
 	ptrContentLength := int64(len(data))
-	result, err := logS3.Uploader.Upload(ctx, &s3.PutObjectInput{
+	result, err := logS3.Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(logS3.S3Config.Bucket),
 		Key:           aws.String(environment + "/" + logType + "/" + uuid + ":" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".json"),
-		Body:          bytes.NewBuffer(data),
+		Body:          bytes.NewReader(data),
 		ContentLength: &ptrContentLength,
 		ContentType:   aws.String(http.DetectContentType(data)),
 	})
