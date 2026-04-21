@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.22.15
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.43.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
+	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/crewjam/saml v0.5.1
 	github.com/elastic/go-elasticsearch v0.0.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.4
@@ -29,6 +30,7 @@ require (
 	github.com/urfave/cli/v3 v3.8.0
 	go.yaml.in/yaml/v2 v2.4.4
 	golang.org/x/crypto v0.50.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/term v0.42.0
 	golang.org/x/text v0.36.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -40,7 +42,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 )
 
