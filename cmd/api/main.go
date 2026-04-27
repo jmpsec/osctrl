@@ -248,6 +248,8 @@ func osctrlAPIService() {
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
 		handlers.WithDebugHTTP(flagParams.Debug),
+		handlers.WithOsqueryValues(*flagParams.Osquery),
+
 	)
 
 	// ///////////////////////// API
@@ -356,6 +358,10 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiEnvironmentsPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
