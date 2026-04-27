@@ -392,24 +392,24 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 	var msgReturn string
 	switch actionVar {
 	case settings.ActionExtend:
-		if err := h.Envs.ExtendEnroll(env.UUID); err != nil {
+		if err := h.Envs.ExtendRemove(env.UUID); err != nil {
 			apiErrorResponse(w, "error extending remove", http.StatusInternalServerError, err)
 			return
 		}
 		msgReturn = "remove extended successfully"
 	case settings.ActionExpire:
-		if err := h.Envs.ExpireEnroll(env.UUID); err != nil {
+		if err := h.Envs.ExpireRemove(env.UUID); err != nil {
 			apiErrorResponse(w, "error expiring remove", http.StatusInternalServerError, err)
 			return
 		}
 	case settings.ActionRotate:
-		if err := h.Envs.RotateEnroll(env.UUID); err != nil {
+		if err := h.Envs.RotateRemove(env.UUID); err != nil {
 			apiErrorResponse(w, "error rotating remove", http.StatusInternalServerError, err)
 			return
 		}
 		msgReturn = "remove rotated successfully"
 	case settings.ActionNotexpire:
-		if err := h.Envs.NotExpireEnroll(env.UUID); err != nil {
+		if err := h.Envs.NotExpireRemove(env.UUID); err != nil {
 			apiErrorResponse(w, "error setting no remove", http.StatusInternalServerError, err)
 			return
 		}
