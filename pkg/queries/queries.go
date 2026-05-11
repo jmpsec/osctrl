@@ -439,24 +439,28 @@ func (q *Queries) GetTargets(name string) ([]DistributedQueryTarget, error) {
 
 // IncExecution to increase the execution count for this query
 func (q *Queries) IncExecution(name string, envid uint) error {
-	query, err := q.Get(name, envid)
-	if err != nil {
-		return err
+	result := q.DB.Model(&DistributedQuery{}).
+		Where("name = ? AND environment_id = ?", name, envid).
+		UpdateColumn("executions", gorm.Expr("executions + ?", 1))
+	if result.Error != nil {
+		return result.Error
 	}
-	if err := q.DB.Model(&query).Update("executions", query.Executions+1).Error; err != nil {
-		return err
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("query %s not found for environment %d", name, envid)
 	}
 	return nil
 }
 
 // IncError to increase the error count for this query
 func (q *Queries) IncError(name string, envid uint) error {
-	query, err := q.Get(name, envid)
-	if err != nil {
-		return err
+	result := q.DB.Model(&DistributedQuery{}).
+		Where("name = ? AND environment_id = ?", name, envid).
+		UpdateColumn("errors", gorm.Expr("errors + ?", 1))
+	if result.Error != nil {
+		return result.Error
 	}
-	if err := q.DB.Model(&query).Update("errors", query.Errors+1).Error; err != nil {
-		return err
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("query %s not found for environment %d", name, envid)
 	}
 	return nil
 }
