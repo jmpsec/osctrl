@@ -4,7 +4,6 @@ FROM golang:${GOLANG_VERSION} AS osctrl-admin-dev
 
 WORKDIR /usr/src/app
 
-ARG OSQUERY_VERSION
 ENV GO111MODULE="on"
 ENV GOOS="linux"
 ENV CGO_ENABLED=0
@@ -20,15 +19,15 @@ COPY . /usr/src/app
 RUN go mod download
 RUN go mod verify
 
-### Copy osctrl-admin bin and configs ###
+### Create directories for binaries, configuration or carved files ###
 RUN mkdir -p /opt/osctrl/bin
 RUN mkdir -p /opt/osctrl/config
 RUN mkdir -p /opt/osctrl/carved_files
 
 ### Copy osctrl-admin web templates ###
-COPY cmd/admin/templates/ /opt/osctrl/tmpl_admin
-COPY cmd/admin/static/ /opt/osctrl/static
-COPY deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
+#COPY cmd/admin/templates/ /opt/osctrl/tmpl_admin
+#COPY cmd/admin/static/ /opt/osctrl/static
+#COPY deploy/osquery/data/${OSQUERY_VERSION}.json /opt/osctrl/data/${OSQUERY_VERSION}.json
 
 EXPOSE 9001
 ENTRYPOINT ["air", "-c", "deploy/docker/conf/dev/air/.air-osctrl-admin.toml"]
