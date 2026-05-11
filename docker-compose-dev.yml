@@ -61,6 +61,14 @@ services:
       - 127.0.0.1:9000:9000
     volumes:
       - .:/usr/src/app:rw,delegated
+    develop:
+      watch:
+        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-tls
+          action: rebuild
+        - path: ./go.mod
+          action: rebuild
+        - path: ./go.sum
+          action: rebuild
     depends_on:
       - osctrl-postgres
       - osctrl-redis
@@ -76,7 +84,6 @@ services:
       dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-admin
       args:
         GOLANG_VERSION: ${GOLANG_VERSION}
-        OSQUERY_VERSION: ${OSQUERY_VERSION}
     environment:
       #### osctrl-admin configuration settings ####
       - SERVICE_LISTENER=0.0.0.0
@@ -95,12 +102,24 @@ services:
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=osctrl-redis
+      #### Admin settings ####
+      - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
+      - STATIC_FILES=/usr/src/app/cmd/admin/static
+      - TEMPLATES_DIR=/usr/src/app/cmd/admin/templates
     networks:
       - osctrl-dev-backend
     ports:
       - 127.0.0.1:9001:9001
     volumes:
       - .:/usr/src/app:rw,delegated
+    develop:
+      watch:
+        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-admin
+          action: rebuild
+        - path: ./go.mod
+          action: rebuild
+        - path: ./go.sum
+          action: rebuild
     depends_on:
       - osctrl-postgres
       - osctrl-redis
@@ -139,6 +158,14 @@ services:
       - 127.0.0.1:9002:9002
     volumes:
       - .:/usr/src/app:rw,delegated
+    develop:
+      watch:
+        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-api
+          action: rebuild
+        - path: ./go.mod
+          action: rebuild
+        - path: ./go.sum
+          action: rebuild
     depends_on:
       - osctrl-postgres
       - osctrl-redis
@@ -220,6 +247,14 @@ services:
         source: ./deploy/docker/conf/tls/osctrl.crt
         target: /opt/osctrl/config/osctrl.crt
       - .:/usr/src/app:rw,delegated
+    develop:
+      watch:
+        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-cli
+          action: rebuild
+        - path: ./go.mod
+          action: rebuild
+        - path: ./go.sum
+          action: rebuild
     depends_on:
       - osctrl-postgres
       - osctrl-redis
