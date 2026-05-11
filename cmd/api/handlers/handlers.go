@@ -36,6 +36,7 @@ type HandlersApi struct {
 	ApiConfig       *config.APIConfiguration
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
+	OsqueryValues   config.YAMLConfigurationOsquery
 }
 
 type HandlersOption func(*HandlersApi)
@@ -109,6 +110,11 @@ func WithName(name string) HandlersOption {
 func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.AuditLog = auditLog
+	}
+}
+func WithOsqueryValues(values config.YAMLConfigurationOsquery) HandlersOption {
+	return func(h *HandlersApi) {
+		h.OsqueryValues = values
 	}
 }
 

@@ -116,6 +116,16 @@ type ApiActionsRequest struct {
 	DebPkgURL   string `json:"url_deb_pkg"`
 }
 
+// ApiEnvRequest to receive environment action requests
+type ApiEnvRequest struct {
+	Action   string `json:"action"`
+	Name     string `json:"name"`
+	UUID     string `json:"uuid"`
+	Hostname string `json:"hostname"`
+	Icon     string `json:"icon"`
+	Type     string `json:"type"`
+}
+
 // ApiTagsRequest to receive tag requests
 type ApiTagsRequest struct {
 	Name        string `json:"name"`
