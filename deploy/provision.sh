@@ -164,7 +164,7 @@ BRANCH="main"
 SOURCE_PATH=~/osctrl
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
-OSQUERY_VERSION="5.22.1"
+OSQUERY_VERSION="5.23.0"
 
 # Backend values
 _DB_HOST="localhost"
