@@ -159,9 +159,7 @@ stopOsquery() {
   fi
   if [ "$_OS" = "darwin" ]; then
     log "Stopping $_OSQUERY_SERVICE_OSX"
-    if launchctl list | grep -qcm1 "$_OSQUERY_SERVICE_OSX"; then
-      sudo launchctl unload "$_PLIST_OSX"
-    fi
+    sudo launchctl unload "$_PLIST_OSX" >/dev/null 2>&1 || true
   fi
   if [ "$_OS" = "freebsd" ]; then
     log "Stopping $_OSQUERY_SERVICE_FREEBSD"
