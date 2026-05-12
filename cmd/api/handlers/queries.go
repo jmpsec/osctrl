@@ -111,6 +111,20 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
 		return
 	}
+	// Check if query is carve and user has permissions to carve
+	if queries.IsCarveQuery(q.Query) {
+		if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to carve", ctx[ctxUser]), http.StatusForbidden, nil)
+			return
+		}
+	}
+	// Make sure the user has permissions to run queries in the environments
+	for _, e := range q.Environments {
+		if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, e) {
+			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run queries in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
+			return
+		}
+	}
 	expTime := queries.QueryExpiration(q.ExpHours)
 	if q.ExpHours == 0 {
 		expTime = time.Time{}

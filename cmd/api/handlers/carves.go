@@ -189,6 +189,13 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "path can not be empty", http.StatusInternalServerError, nil)
 		return
 	}
+	// Make sure the user has permissions to run queries in the environments
+	for _, e := range c.Environments {
+		if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, e) {
+			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run queries in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
+			return
+		}
+	}
 	expTime := queries.QueryExpiration(c.ExpHours)
 	if c.ExpHours == 0 {
 		expTime = time.Time{}
