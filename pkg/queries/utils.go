@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -14,4 +15,9 @@ func GenQueryName() string {
 // Helper to generate the time.Time for the expiration of a query or carve based on hours
 func QueryExpiration(exp int) time.Time {
 	return time.Now().Add(time.Duration(exp) * time.Hour)
+}
+
+// Helper to check if query is carve
+func IsCarveQuery(query string) bool {
+	return strings.Contains(strings.ToLower(query), "carves")
 }

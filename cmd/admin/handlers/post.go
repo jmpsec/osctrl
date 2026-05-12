@@ -122,7 +122,20 @@ func (h *HandlersAdmin) QueryRunPOSTHandler(w http.ResponseWriter, r *http.Reque
 		adminErrorResponse(w, "query can not be empty", http.StatusInternalServerError, nil)
 		return
 	}
-	// FIXME check if query is carve and user has permissions to carve
+	// Check if query is carve and user has permissions to carve
+	if queries.IsCarveQuery(q.Query) {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, env.UUID) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to carve", ctx[sessions.CtxUser]), http.StatusForbidden, nil)
+			return
+		}
+	}
+	// Make sure the user has permissions to run queries in the environments
+	for _, e := range q.Environments {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.QueryLevel, e) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run queries in environment %s", ctx[sessions.CtxUser], e), http.StatusForbidden, nil)
+			return
+		}
+	}
 	// Prepare and create new query
 	expTime := queries.QueryExpiration(q.ExpHours)
 	if q.ExpHours == 0 {
@@ -219,6 +232,13 @@ func (h *HandlersAdmin) CarvesRunPOSTHandler(w http.ResponseWriter, r *http.Requ
 	if c.Path == "" {
 		adminErrorResponse(w, "path can not be empty", http.StatusInternalServerError, nil)
 		return
+	}
+	// Make sure the user has permissions to run queries in the environments
+	for _, e := range c.Environments {
+		if !h.Users.CheckPermissions(ctx[sessions.CtxUser], users.CarveLevel, e) {
+			adminErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run carves in environment %s", ctx[sessions.CtxUser], e), http.StatusForbidden, nil)
+			return
+		}
 	}
 	// Set query expiration
 	expTime := queries.QueryExpiration(c.ExpHours)
