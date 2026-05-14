@@ -171,6 +171,32 @@ services:
       - osctrl-redis
 
 
+  ######################################### osctrl-frontend (React SPA) #########################################
+  # Ships the React admin frontend on http://<host>:8088, side by side with
+  # the legacy admin still served by osctrl-nginx on :8443. Both talk to the
+  # same osctrl-api over the dev backend network so they can be compared on
+  # the same data.
+  #
+  # The image is multi-stage: node:20 builds dist/, nginx:alpine serves it
+  # + reverse-proxies /api/* to osctrl-api:9002. No volume mount of the
+  # host tree — changes to frontend/ require
+  # `docker compose build osctrl-frontend` (no hot reload here; use
+  # `npm run dev` directly for that).
+  osctrl-frontend:
+    container_name: 'osctrl-frontend-dev'
+    image: 'osctrl-frontend-dev:${OSCTRL_VERSION}'
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-frontend
+    networks:
+      - osctrl-dev-backend
+    ports:
+      - '0.0.0.0:8088:80'
+    depends_on:
+      - osctrl-api
+
+
   ######################################### PostgreSQL #########################################
   osctrl-postgres:
     container_name: 'osctrl-postgres-dev'
@@ -235,6 +261,8 @@ services:
       - OSCTRL_USER=${OSCTRL_USER}
       - OSCTRL_PASS=${OSCTRL_PASS}
       - API_URL=http://osctrl-api:9002
+      #### JWT secret — required to satisfy pkg/users MinJWTSecretBytes gate ####
+      - JWT_SECRET=${JWT_SECRET}
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}

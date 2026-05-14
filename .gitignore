@@ -84,3 +84,4 @@ tools/bruno/collection.bru
 !CONTRIBUTING.md
 !CHANGELOG.md
 !SECURITY.md
+!frontend/**/*.md

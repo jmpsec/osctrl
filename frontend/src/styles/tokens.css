@@ -1,0 +1,86 @@
+/* tokens.css — single source of truth for both themes.
+ * Mirrored by src/lib/design-tokens.ts; keep them in sync.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg-0: #07090c;
+  --bg-1: #0c1014;
+  --bg-2: #11171d;
+  --bg-3: #18202a;
+  --border: #1e2934;
+  --border-strong: #2a3845;
+
+  /* text */
+  --text-1: #ecf1f6;
+  --text-2: #a6b3c0;
+  --text-3: #6a7886;
+  --text-link: #5fb8ff;
+
+  /* brand */
+  --signal: #2bc4be;
+  --signal-bright: #5fe3df;
+  --signal-deep: #0a6b66;
+  --signal-glow: rgba(43, 196, 190, 0.35);
+  --halo-r: 43;
+  --halo-g: 196;
+  --halo-b: 190;
+
+  /* semantic */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #67c0ff;
+  --success-r: 74; --success-g: 222; --success-b: 128;
+  --warning-r: 251; --warning-g: 191; --warning-b: 36;
+  --danger-r: 248; --danger-g: 113; --danger-b: 113;
+  --info-r: 103; --info-g: 192; --info-b: 255;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-0: #f4f7f8;
+  --bg-1: #ffffff;
+  --bg-2: #f8fafb;
+  --bg-3: #edf1f3;
+  --border: #e2e8ec;
+  --border-strong: #cfd8de;
+
+  --text-1: #0e1620;
+  --text-2: #495766;
+  --text-3: #7a8694;
+  --text-link: #1f6fd9;
+
+  --signal: #0a8a85;
+  --signal-bright: #14a8a3;
+  --signal-deep: #074a48;
+  --signal-glow: rgba(10, 138, 133, 0.22);
+  --halo-r: 10;
+  --halo-g: 138;
+  --halo-b: 133;
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #2563eb;
+  --success-r: 22; --success-g: 163; --success-b: 74;
+  --warning-r: 217; --warning-g: 119; --warning-b: 6;
+  --danger-r: 220; --danger-g: 38; --danger-b: 38;
+  --info-r: 37; --info-g: 99; --info-b: 235;
+}
+
+/* Reduced motion. Per the brand guide section 05.
+ * Transitions become instant; the LIVE pulse and stale shimmer stop. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- osctrl Geometric tower mark — same paths as components/atoms/Logo.tsx
+       but with the signal-teal hex hardcoded so browser favicon rendering
+       (which has no access to our CSS custom properties) is on-brand. The
+       dark "#051010" background panel matches the dark-mode app shell so the
+       icon is legible in browser-tab dark themes. -->
+  <rect width="64" height="64" rx="12" fill="#051010"/>
+  <g stroke="#2bc4be" fill="#2bc4be">
+    <path d="M14 22 Q32 4 50 22" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M20 28 Q32 18 44 28" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="32" cy="32" r="2"/>
+    <path d="M20 38 L44 38 L40 46 L24 46 Z"/>
+    <rect x="29.5" y="46" width="5" height="10" rx="1"/>
+    <rect x="22" y="56" width="20" height="3" rx="1"/>
+  </g>
+</svg>
