@@ -276,7 +276,7 @@ func osctrlAPIService() {
 		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize users")
-	apiUsers = users.CreateUserManager(db.Conn, flagParams.JWT)
+	apiUsers = users.CreateUserManager(db.Conn).WithJWT(flagParams.JWT)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize environment")
@@ -357,18 +357,17 @@ func osctrlAPIService() {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
-	// Pre-auth env list so the SPA login screen can offer a dropdown instead
-	// of a free-text field. The handler exposes only (uuid, name) — no
-	// secrets — and shares the same per-IP rate limiter as POST /login so the
-	// endpoint can't be turned into a higher-throughput env-enumeration probe.
-	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", loginRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
-	// Pre-auth starter-sample endpoints. The SPA reads these to populate the
-	// queries/new and carves/new template rows. Samples are static read-only
-	// data shipped with the binary, not tenant- or env-scoped — same posture
-	// as /login/environments. Shared per-IP rate limiter blocks low-effort
-	// scanning probes.
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", loginRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", loginRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
+	// Read-only pre-auth endpoints (env list for the login picker, sample
+	// query/carve starter packs). These reveal no secrets and aren't a
+	// brute-force vector, so they get a much more permissive limiter — the
+	// SPA legitimately fetches them on every login-page render, and React
+	// strict-mode / browser reloads easily exceed a 10/min budget. We still
+	// rate-limit to block low-effort scanning probes, just at 60/min/IP.
+	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
+	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
+	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(

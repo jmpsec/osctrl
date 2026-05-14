@@ -59,17 +59,13 @@ type UserManager struct {
 // HS256 ⇒ 32 bytes). Generate one with: openssl rand -base64 48
 const MinJWTSecretBytes = 32
 
-// CreateUserManager to initialize the users struct and tables
-func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT) *UserManager {
-	// JWT secret must be present and long enough for HS256.
-	if jwtconfig.JWTSecret == "" {
-		log.Fatal().Msgf("JWT Secret can not be empty")
-	}
-	if len(jwtconfig.JWTSecret) < MinJWTSecretBytes {
-		log.Fatal().Msgf("JWT Secret too short: have %d bytes, need >= %d. Generate one with: openssl rand -base64 48",
-			len(jwtconfig.JWTSecret), MinJWTSecretBytes)
-	}
-	u := &UserManager{DB: backend, JWTConfig: jwtconfig}
+// CreateUserManager initializes the DB-backed user/permission manager.
+// JWT signing config is attached separately via WithJWT — callers that
+// don't mint tokens (osctrl-cli) skip it. CreateToken refuses to run
+// without a configured JWT, so a non-token caller cannot accidentally
+// sign anything.
+func CreateUserManager(backend *gorm.DB) *UserManager {
+	u := &UserManager{DB: backend}
 	// table admin_users
 	if err := backend.AutoMigrate(&AdminUser{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (admin_users): %v", err)
@@ -78,6 +74,22 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT)
 	if err := backend.AutoMigrate(&UserPermission{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (user_permissions): %v", err)
 	}
+	return u
+}
+
+// WithJWT attaches JWT signing config to the user manager. The secret
+// is validated here — at the point where token-issuing capability is
+// granted — not at DB-manager construction time. Returns the manager
+// so calls can chain: users.CreateUserManager(db).WithJWT(cfg).
+func (u *UserManager) WithJWT(jwtconfig *config.YAMLConfigurationJWT) *UserManager {
+	if jwtconfig == nil || jwtconfig.JWTSecret == "" {
+		log.Fatal().Msg("JWT Secret can not be empty")
+	}
+	if len(jwtconfig.JWTSecret) < MinJWTSecretBytes {
+		log.Fatal().Msgf("JWT Secret too short: have %d bytes, need >= %d. Generate one with: openssl rand -base64 48",
+			len(jwtconfig.JWTSecret), MinJWTSecretBytes)
+	}
+	u.JWTConfig = jwtconfig
 	return u
 }
 
@@ -136,6 +148,9 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 
 // CreateToken to create a new JWT token for a given user
 func (m *UserManager) CreateToken(username, issuer string, expHours int) (string, time.Time, error) {
+	if m.JWTConfig == nil {
+		return "", time.Time{}, fmt.Errorf("CreateToken called on UserManager without JWT config — caller must initialize via WithJWT")
+	}
 	tDuration := time.Duration(expHours)
 	if expHours == 0 {
 		tDuration = time.Duration(m.JWTConfig.HoursToExpire)

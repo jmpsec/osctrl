@@ -15,7 +15,7 @@ import (
 // truncated down to the nearest `bucketSeconds` boundary. Group by this
 // expression, count(*), and you have a contiguous-bucket histogram.
 func BucketExpr(db *gorm.DB, column string, bucketSeconds int) string {
-	switch db.Dialector.Name() {
+	switch db.Name() {
 	case "postgres":
 		return fmt.Sprintf(
 			"(floor(extract(epoch from %s) / %d) * %d)::bigint",

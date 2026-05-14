@@ -564,7 +564,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 					false,
 					tags.TagTypeEnv,
 					""); err != nil {
-					msgReturn = fmt.Sprintf("error generating tag %s ", err.Error())
+					apiErrorResponse(w, "error generating tag", http.StatusInternalServerError, err)
 					return
 				}
 			}

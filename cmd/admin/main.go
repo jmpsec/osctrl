@@ -242,7 +242,7 @@ func osctrlAdminService() {
 		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
 	log.Info().Msg("Initialize users")
-	adminUsers = users.CreateUserManager(db.Conn, flagParams.JWT)
+	adminUsers = users.CreateUserManager(db.Conn).WithJWT(flagParams.JWT)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize environments")

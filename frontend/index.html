@@ -6,19 +6,9 @@
     <meta name="theme-color" content="#2bc4be" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>osctrl</title>
-    <script>
-      (function () {
-        try {
-          var t = localStorage.getItem('osctrl.theme');
-          if (t !== 'light' && t !== 'dark') {
-            t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-          }
-          document.documentElement.setAttribute('data-theme', t);
-        } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
-      })();
-    </script>
+    <!-- Theme bootstrap runs blocking from a static asset so `script-src 'self'`
+         covers it without a CSP hash to maintain. -->
+    <script src="/theme-bootstrap.js"></script>
   </head>
   <body>
     <div id="root"></div>

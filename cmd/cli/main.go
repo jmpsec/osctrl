@@ -2074,9 +2074,11 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 					return fmt.Errorf("in CreateDBManager - %w", err)
 				}
 			}
-			// Initialize users
+			// Initialize users. The CLI manages user/permission rows directly
+			// and never mints JWTs, so we skip WithJWT — CreateToken fails
+			// fast if anything in this binary ever tries to call it.
 			log.Debug().Msg("Creating user manager")
-			adminUsers = users.CreateUserManager(db.Conn, &config.YAMLConfigurationJWT{JWTSecret: appName})
+			adminUsers = users.CreateUserManager(db.Conn)
 			// Initialize environment
 			log.Debug().Msg("Creating environment manager")
 			envs = environments.CreateEnvironment(db.Conn)

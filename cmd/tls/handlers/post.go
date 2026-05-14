@@ -24,6 +24,35 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Per-endpoint request-body caps. Anonymous (pre-enroll) endpoints get a
+// small cap; authenticated osquery endpoints get the headroom they need
+// for legitimate workloads. Caps are an upper bound — handlers that
+// previously read unbounded bodies now reject larger payloads with 413
+// instead of letting the process OOM. (Tighten or relax via cfg later.)
+const (
+	maxBodyEnroll      = 64 * 1024         // 64 KiB — enroll request JSON
+	maxBodyConfig      = 64 * 1024         // 64 KiB — config request JSON
+	maxBodyLog         = 100 * 1024 * 1024 // 100 MiB — status/result log batch
+	maxBodyQueryRead   = 16 * 1024         // 16 KiB — distributed-read request
+	maxBodyQueryWrite  = 100 * 1024 * 1024 // 100 MiB — distributed-write result
+	maxBodyCarveInit   = 8 * 1024          // 8 KiB — carve session init
+	maxBodyCarveBlock  = 16 * 1024 * 1024  // 16 MiB — carve block (osquery carver_block_size default is 5 MiB)
+	maxBodyQuickEnroll = 8 * 1024          // 8 KiB — quick-enroll
+	maxBodyFlags       = 8 * 1024          // 8 KiB — flags request
+	maxBodyCert        = 8 * 1024          // 8 KiB — cert request
+	maxBodyVerify      = 8 * 1024          // 8 KiB — verify request
+	maxBodyScript      = 8 * 1024          // 8 KiB — script request
+	maxBodyOsqueryConf = 2 * 1024 * 1024   // 2 MiB — osctrld config push (base64+gzip; decompressed is capped at 500 KiB further down)
+)
+
+// readBody enforces the per-endpoint cap before reading the body. Wraps
+// http.MaxBytesReader so the connection is closed cleanly on overflow
+// rather than the handler streaming an arbitrarily large body.
+func readBody(w http.ResponseWriter, r *http.Request, max int64) ([]byte, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, max)
+	return io.ReadAll(r.Body)
+}
+
 // EnrollHandler - Function to handle the enroll requests from osquery nodes
 func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
@@ -55,7 +84,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.EnrollRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyEnroll)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -136,7 +165,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.ConfigRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyConfig)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -225,7 +254,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Extract POST body and decode JSON
 	var t types.LogRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyLog)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -305,7 +334,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.QueryReadRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyQueryRead)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -391,7 +420,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Decode read POST body
 	var t types.QueryWriteRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyQueryWrite)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -631,7 +660,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.CarveInitRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyCarveInit)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -709,7 +738,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Decode read POST body
 	var t types.CarveBlockRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyCarveBlock)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -769,7 +798,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.FlagsRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyFlags)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -828,7 +857,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.CertRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyCert)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -881,7 +910,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.VerifyRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyVerify)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -971,7 +1000,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Decode read POST body
 	var t types.ScriptRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyScript)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -1152,9 +1181,13 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Decode read POST body
+	// Decode read POST body. Even though we cap the *decompressed*
+	// configuration at 500 KiB below, the raw POST body also needs a cap —
+	// otherwise an authenticated client (post-secret-check) can send an
+	// arbitrarily large body and OOM the process. 2 MiB leaves ample
+	// headroom for base64+gzip framing around a 500 KiB config.
 	var o types.OsqueryConfigRequest
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r, maxBodyOsqueryConf)
 	if err != nil {
 		log.Err(err).Msg("error reading POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))

@@ -60,7 +60,7 @@ func setupTestManager(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
 	mock.ExpectExec(`CREATE INDEX IF NOT EXISTS .*`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	manager := CreateUserManager(_postgres, &conf)
+	manager := CreateUserManager(_postgres).WithJWT(&conf)
 	return manager, mock
 }
 
