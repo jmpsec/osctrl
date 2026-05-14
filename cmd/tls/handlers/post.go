@@ -97,6 +97,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		log.Err(err).Msg("invalid enrolling secret")
+		h.AuditLog.FailedEnroll(utils.GetIP(r), env.Name, "invalid enroll secret", env.ID)
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}

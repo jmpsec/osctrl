@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/cmd/tls/handlers"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -20,8 +21,10 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -154,6 +157,15 @@ func checkLatestRelease() {
 
 // Go go!
 func osctrlService() {
+	// Configure forwarding-header trust before any handler can call
+	// utils.GetIP. Empty (default) means GetIP ignores X-Forwarded-For /
+	// X-Real-IP and always uses RemoteAddr, so an internet attacker
+	// can't spoof IPs to defeat the enroll rate-limit or poison the
+	// audit log.
+	if tp := strings.TrimSpace(flagParams.Service.TrustedProxies); tp != "" {
+		utils.SetTrustedProxies(strings.Split(tp, ","))
+		log.Info().Msgf("Trusting forwarding headers from: %s", tp)
+	}
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
@@ -270,6 +282,16 @@ func osctrlService() {
 			}
 		}()
 	}
+	// Initialize audit log so failed enroll attempts are recorded.
+	//
+	auditLog, err := auditlog.CreateAuditLogManager(db.Conn, serviceName, flagParams.Service.AuditLog)
+	if err != nil {
+		log.Fatal().Msgf("error initializing audit log manager: %v", err)
+	}
+	// Per-IP rate limit on /enroll. Bursts of 20 per minute, idle eviction
+	// after 10 minutes.
+	enrollLimiter := ratelimit.New(20, time.Minute, 10*time.Minute)
+
 	// Initialize TLS handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersTLS = handlers.CreateHandlersTLS(
@@ -286,6 +308,7 @@ func osctrlService() {
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
+		handlers.WithAuditLog(auditLog),
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
@@ -299,7 +322,16 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET "+errorPath, handlersTLS.ErrorHandler)
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
-	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler)))
+	// Rate-limit + Prometheus around the enroll handler. The limiter sees
+	// the request first so spray traffic doesn't churn the rest of the
+	// chain. Audit-log on rejection so SoC tooling can alert. The audit
+	// helper takes the env name from the path lazily — we don't know the
+	// env at this layer.
+	enrollRateLimit := enrollLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
+		envName := r.PathValue("env")
+		auditLog.FailedEnroll(key, envName, "rate limit exceeded", 0)
+	})
+	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, enrollRateLimit(handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler))))
 	if flagParams.Osquery.Config {
 		muxTLS.Handle("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.ConfigHandler)))
 	}

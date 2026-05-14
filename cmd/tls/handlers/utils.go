@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -32,9 +33,14 @@ func generateCarveSessionID() string {
 	return id.String()
 }
 
-// Helper to check if the provided secret is valid for this environment
+// Helper to check if the provided secret is valid for this environment.
+// Constant-time compare to avoid leaking the secret via byte-by-byte timing
+// from the anonymous internet-facing enroll endpoint.
 func (h *HandlersTLS) checkValidSecret(secret string, env environments.TLSEnvironment) bool {
-	return (strings.TrimSpace(secret) == env.Secret)
+	return subtle.ConstantTimeCompare(
+		[]byte(strings.TrimSpace(secret)),
+		[]byte(env.Secret),
+	) == 1
 }
 
 // Helper to check if the provided SecretPath is valid for enrolling in a environment
@@ -57,9 +63,14 @@ func (h *HandlersTLS) checkExpiredRemoveSecretPath(env environments.TLSEnvironme
 	return h.checkExpiredPath(env.RemoveExpire)
 }
 
-// Helper to check if the provided generic SecretPath is valid
+// Helper to check if the provided generic SecretPath is valid.
+// Constant-time compare for the same reason as checkValidSecret —
+// these helpers run on the public enroll/remove URL paths.
 func (h *HandlersTLS) checkValidRemovePath(secretpath, envSecret string) bool {
-	return (strings.TrimSpace(secretpath) == envSecret)
+	return subtle.ConstantTimeCompare(
+		[]byte(strings.TrimSpace(secretpath)),
+		[]byte(envSecret),
+	) == 1
 }
 
 // Helper to check if a provided generic SecretPath is expired
