@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
-	"gorm.io/gorm"
 )
 
 // TestProjectEnvironmentViewStripsSecrets is the load-bearing regression test
@@ -19,16 +18,14 @@ import (
 // known-sensitive substring is absent from the serialized JSON.
 func TestProjectEnvironmentViewStripsSecrets(t *testing.T) {
 	src := environments.TLSEnvironment{
-		Model: gorm.Model{
-			ID:        1,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
-		UUID:     "11111111-2222-3333-4444-555555555555",
-		Name:     "prod",
-		Hostname: "osctrl.example.com",
-		Type:     "dev",
-		Icon:     "rocket",
+		ID:        1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UUID:      "11111111-2222-3333-4444-555555555555",
+		Name:      "prod",
+		Hostname:  "osctrl.example.com",
+		Type:      "dev",
+		Icon:      "rocket",
 		// The fields below must NOT appear in the projection.
 		Secret:           "SECRET-MARKER-enroll",
 		EnrollSecretPath: "SECRET-MARKER-enroll-path",

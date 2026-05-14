@@ -1,13 +1,17 @@
 package handlers
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/handlers"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -16,11 +20,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// QueryTargets enumerates the target filters accepted by QueryListHandler.
+// TargetHiddenActive is intentionally excluded: no UI tab references it and
+// GetByEnvTargetPaged has no branch for it (mirrors Gets() which returns nothing).
 var QueryTargets = map[string]bool{
 	queries.TargetAll:             true,
 	queries.TargetAllFull:         true,
 	queries.TargetActive:          true,
-	queries.TargetHiddenActive:    true,
 	queries.TargetCompleted:       true,
 	queries.TargetExpired:         true,
 	queries.TargetSaved:           true,
@@ -48,7 +54,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -88,7 +94,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -196,7 +202,7 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -264,7 +270,7 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -291,7 +297,9 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
 }
 
-// QueryListHandler - GET Handler to return queries in JSON by target and environment
+// QueryListHandler - GET Handler to return queries in JSON by target and environment (paginated)
+//
+// Query params: page, page_size, q (free-text search), sort (column key), dir (asc|desc)
 func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -304,7 +312,7 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -326,23 +334,62 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "invalid target", http.StatusBadRequest, nil)
 		return
 	}
-	// Get queries
-	queries, err := h.Queries.GetQueries(targetVar, env.ID)
+	// Parse pagination / search / sort params
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+	search := q.Get("q")
+	sortCol := q.Get("sort")
+	desc := strings.ToLower(q.Get("dir")) != "asc"
+
+	// Clamp pagination once at the handler so the response echoes effective
+	// values; the package function still clamps defensively.
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 500 {
+		pageSize = 500
+	}
+	if page <= 0 {
+		page = 1
+	}
+
+	result, err := h.Queries.GetByEnvTargetPaged(env.ID, targetVar, queries.StandardQueryType, search, page, pageSize, sortCol, desc)
 	if err != nil {
 		apiErrorResponse(w, "error getting queries", http.StatusInternalServerError, err)
 		return
 	}
-	if len(queries) == 0 {
-		apiErrorResponse(w, "no queries", http.StatusNotFound, nil)
-		return
+
+	// Empty result is a valid state — return HTTP 200 with empty items.
+	items := result.Items
+	if items == nil {
+		items = []queries.DistributedQuery{}
 	}
+	var totalPages int
+	if result.TotalItems > 0 {
+		totalPages = int((result.TotalItems + int64(pageSize) - 1) / int64(pageSize))
+	}
+
+	resp := types.QueriesPagedResponse{
+		Items:      items,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: result.TotalItems,
+		TotalPages: totalPages,
+	}
+
 	// Serialize and serve JSON
-	log.Debug().Msgf("Returned %d queries", len(queries))
+	log.Debug().Msgf("Returned %d queries (page %d of %d)", len(items), page, totalPages)
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queries)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
-// QueryResultsHandler - GET Handler to return a single query results in JSON
+// QueryResultsHandler - GET Handler to return paginated query results in JSON
+//
+// Path:   /api/v1/queries/{env}/results/{name}
+// Params: page, page_size, since (RFC3339 timestamp; unparseable → ignored)
+//
+// Empty results are a valid state and return HTTP 200 with items: [].
 func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -357,11 +404,11 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusInternalServerError, nil)
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -380,20 +427,175 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
 		return
 	}
-	// Get query by name
-	// TODO this is a temporary solution, we need to refactor this and take into consideration the
-	// logger for TLS and whether if the results are stored in the DB or a different DB
-	queryLogs, err := postgresQueryLogs(h.DB, name)
-	if err != nil {
-		if err.Error() == "record not found" {
-			apiErrorResponse(w, "query not found", http.StatusNotFound, err)
-		} else {
-			apiErrorResponse(w, "error getting query", http.StatusInternalServerError, err)
+
+	// Parse pagination + since cursor
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	if pageSize > 1000 {
+		pageSize = 1000
+	}
+	if page <= 0 {
+		page = 1
+	}
+	var since time.Time
+	var sinceEcho string
+	if s := strings.TrimSpace(q.Get("since")); s != "" {
+		if t, perr := time.Parse(time.RFC3339, s); perr == nil {
+			since = t
+			sinceEcho = s
 		}
+	}
+
+	items, total, err := logging.GetQueryResults(h.DB, name, since, page, pageSize)
+	if err != nil {
+		apiErrorResponse(w, "error getting query results", http.StatusInternalServerError, err)
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned query results for %s", name)
+	if items == nil {
+		items = []map[string]any{}
+	}
+	var totalPages int
+	if total > 0 {
+		totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
+	}
+	resp := types.QueryResultsResponse{
+		Items:      items,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: total,
+		TotalPages: totalPages,
+		Since:      sinceEcho,
+	}
+	log.Debug().Msgf("Returned query results for %s (page %d of %d, %d rows)", name, page, totalPages, len(items))
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, queryLogs)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
+}
+
+// QueryResultsCSVHandler - GET Handler to stream query results as CSV
+//
+// Path: /api/v1/queries/{env}/results/csv/{name}
+//
+// (The `.csv` lives as a literal path segment before `{name}` because Go's
+// ServeMux grammar requires wildcards to end at `/` or end-of-pattern, so
+// `{name}.csv` is a parse error at registration time.)
+func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Request) {
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		apiErrorResponse(w, "error getting name", http.StatusBadRequest, nil)
+		return
+	}
+	// Extract environment
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		return
+	}
+	// Get environment
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
+		return
+	}
+	// Get context data and check access
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	// Verify the named query belongs to THIS env. See the matching gate
+	// in QueryResultsHandler for the rationale.
+	if !h.Queries.Exists(name, env.ID) {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
+	// Pass 1 (streaming): walk every row, collect the union of column names.
+	// We only retain column names here — never the row data — to keep memory at O(columns).
+	colSet := make(map[string]struct{})
+	if err := logging.StreamQueryResults(h.DB, name, func(row logging.OsqueryQueryData) error {
+		var cols map[string]string
+		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
+			cols = map[string]string{"data": row.Data}
+		}
+		for k := range cols {
+			colSet[k] = struct{}{}
+		}
+		return nil
+	}); err != nil {
+		apiErrorResponse(w, "error getting query results", http.StatusInternalServerError, err)
+		return
+	}
+	headers := make([]string, 0, len(colSet)+1)
+	headers = append(headers, "uuid")
+	sortedCols := make([]string, 0, len(colSet))
+	for k := range colSet {
+		sortedCols = append(sortedCols, k)
+	}
+	sort.Strings(sortedCols)
+	headers = append(headers, sortedCols...)
+
+	// Set response headers BEFORE writing any body.
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name+".csv"))
+
+	cw := csv.NewWriter(w)
+	flusher, _ := w.(http.Flusher)
+	if err := cw.Write(headers); err != nil {
+		log.Err(err).Msgf("error writing CSV header for %s", name)
+		return
+	}
+	cw.Flush()
+	if flusher != nil {
+		flusher.Flush()
+	}
+
+	// Pass 2 (streaming): write data rows, flushing after each so bytes reach the client incrementally.
+	rowCount := 0
+	if err := logging.StreamQueryResults(h.DB, name, func(row logging.OsqueryQueryData) error {
+		var cols map[string]string
+		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
+			cols = map[string]string{"data": row.Data}
+		}
+		record := make([]string, len(headers))
+		record[0] = row.UUID
+		for i, col := range sortedCols {
+			record[i+1] = cols[col]
+		}
+		if werr := cw.Write(record); werr != nil {
+			return werr
+		}
+		cw.Flush()
+		if flusher != nil {
+			flusher.Flush()
+		}
+		rowCount++
+		return nil
+	}); err != nil {
+		// Headers already sent; we can only log and stop.
+		log.Err(err).Msgf("error streaming CSV rows for %s", name)
+		return
+	}
+	log.Debug().Msgf("Exported CSV for query %s (%d rows)", name, rowCount)
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+}
+
+// OsqueryTablesHandler - GET Handler to return the osquery schema tables
+//
+// Path: /api/v1/osquery/tables
+// The schema is global (not env-scoped). Requires any authenticated user.
+// Responses are cache-able for one hour since the schema rarely changes.
+func (h *HandlersApi) OsqueryTablesHandler(w http.ResponseWriter, r *http.Request) {
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, h.OsqueryTables)
 }

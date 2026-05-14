@@ -198,35 +198,6 @@ func (n *NodeManager) GetByEnv(env, target string, hours int64) ([]OsqueryNode, 
 	return nodes, nil
 }
 
-// GetByEnvPage retrieves a page of nodes by environment applying target filters using LIMIT/OFFSET
-func (n *NodeManager) GetByEnvPage(env, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
-	var nodes []OsqueryNode
-	if limit <= 0 { // safety default
-		limit = 25
-	}
-	if limit > 500 { // cap to avoid abuse
-		limit = 500
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	query := n.DB.Where("environment = ?", env)
-	query = ApplyNodeTarget(query, target, hours)
-	// Default ordering only if client did not request a specific column
-	orderExpr := "last_seen DESC"
-	if orderBy != "" {
-		direction := "ASC"
-		if desc {
-			direction = "DESC"
-		}
-		orderExpr = orderBy + " " + direction
-	}
-	if err := query.Order(orderExpr).Offset(offset).Limit(limit).Find(&nodes).Error; err != nil {
-		return nodes, err
-	}
-	return nodes, nil
-}
-
 // CountByEnvTarget counts nodes for an environment after applying target (active/inactive/all)
 func (n *NodeManager) CountByEnvTarget(env string, target string, hours int64) (int64, error) {
 	var count int64
@@ -248,34 +219,6 @@ func (n *NodeManager) SearchByEnv(env, term, target string, hours int64) ([]Osqu
 	query = ApplyNodeTarget(query, target, hours)
 	// Execute query
 	if err := query.Find(&nodes).Error; err != nil {
-		return nodes, err
-	}
-	return nodes, nil
-}
-
-// SearchByEnvPage performs a paginated search
-func (n *NodeManager) SearchByEnvPage(env, term, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
-	if limit <= 0 {
-		limit = 25
-	} else if limit > 500 {
-		limit = 500
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	var nodes []OsqueryNode
-	likeTerm := "%" + term + "%"
-	query := n.DB.Where("environment = ? AND (uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?)", env, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm)
-	query = ApplyNodeTarget(query, target, hours)
-	orderExpr := "last_seen DESC"
-	if orderBy != "" {
-		direction := "ASC"
-		if desc {
-			direction = "DESC"
-		}
-		orderExpr = orderBy + " " + direction
-	}
-	if err := query.Order(orderExpr).Offset(offset).Limit(limit).Find(&nodes).Error; err != nil {
 		return nodes, err
 	}
 	return nodes, nil
@@ -393,6 +336,17 @@ func (n *NodeManager) GetEnvIDPlatforms(envID uint) ([]string, error) {
 // GetStatsByEnv to populate table stats about nodes by environment
 func (n *NodeManager) GetStatsByEnv(environment string, hours int64) (StatsData, error) {
 	return GetStats(n.DB, EnvironmentSelector, environment, hours)
+}
+
+// GetPlatformCountsByEnv exposes the package-level helper through NodeManager
+// so handlers don't reach into n.DB directly.
+func (n *NodeManager) GetPlatformCountsByEnv(environment string) (PlatformCounts, error) {
+	return GetPlatformCountsByEnv(n.DB, environment)
+}
+
+// GetOsqueryVersionCounts wrapper.
+func (n *NodeManager) GetOsqueryVersionCounts() ([]OsqueryVersionCount, error) {
+	return GetOsqueryVersionCounts(n.DB)
 }
 
 // UpdateMetadataByUUID to update node metadata by UUID
@@ -548,6 +502,153 @@ func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
 // MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
 func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
 	return n.DB.Model(&node).Updates(updates).Error
+}
+
+// SortableColumns is the closed set of columns that may be ordered by external
+// callers. Enforced in GetByEnvPaged so the allowlist is part of the data layer,
+// not just the HTTP handler. Resolves audit finding U-DB-1.
+var SortableColumns = map[string]string{
+	"uuid":      "uuid",
+	"hostname":  "hostname",
+	"localname": "localname",
+	"ip":        "ip_address",
+	"platform":  "platform",
+	"version":   "platform_version",
+	"osquery":   "osquery_version",
+	"lastseen":  "last_seen",
+	"firstseen": "created_at",
+}
+
+// NodesPage is the canonical paginated-list result for nodes.
+type NodesPage struct {
+	Items      []OsqueryNode
+	TotalItems int64
+}
+
+// GetByEnvPaged returns a page of nodes for an environment, applying the target
+// filter (all / active / inactive), optional search, optional sort, and the
+// optional platform bucket filter ("linux" / "darwin" / "windows" / "other").
+// The sort column is validated against SortableColumns; unknown columns fall
+// back to last_seen DESC. This is the single canonical paginated reader.
+//
+// page is 1-indexed. pageSize is clamped to [1, 500] with default 50.
+// platformBucket is one of the buckets normalizePlatformBucket recognises; an
+// empty string disables the filter. Unknown buckets also disable it (so the
+// caller can pass user input directly without input-validation boilerplate).
+func (n *NodeManager) GetByEnvPaged(env, target string, hours int64, search string, page, pageSize int, sortColumn string, desc bool, platformBucket string) (NodesPage, error) {
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 500 {
+		pageSize = 500
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+
+	// Resolve sort column against the package allowlist; fall back to last_seen
+	// if the caller asked for something we don't allow.
+	dbColumn, ok := SortableColumns[sortColumn]
+	if !ok || sortColumn == "" {
+		dbColumn = "last_seen"
+		desc = true
+	}
+	direction := "ASC"
+	if desc {
+		direction = "DESC"
+	}
+	// dbColumn is always from the allowlist — safe to interpolate.
+	orderExpr := fmt.Sprintf("%s %s", dbColumn, direction)
+
+	// Build the base query
+	query := n.DB.Model(&OsqueryNode{}).Where("environment = ?", env)
+	query = ApplyNodeTarget(query, target, hours)
+	query = applyPlatformBucket(query, platformBucket)
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where(
+			"uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?",
+			like, like, like, like, like, like, like, like,
+		)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return NodesPage{}, err
+	}
+
+	var items []OsqueryNode
+	if err := query.Order(orderExpr).Offset(offset).Limit(pageSize).Find(&items).Error; err != nil {
+		return NodesPage{}, err
+	}
+	return NodesPage{Items: items, TotalItems: total}, nil
+}
+
+// safeOrderExpr translates a caller-supplied orderBy column name into a
+// safe `ORDER BY <col> [ASC|DESC]` expression. The column name is
+// gated by SortableColumns (the same allowlist GetByEnvPaged uses); an
+// unknown/empty key falls back to the default `last_seen DESC` rather
+// than splicing user input into SQL.
+func safeOrderExpr(orderBy string, desc bool) string {
+	if orderBy == "" {
+		return "last_seen DESC"
+	}
+	col, ok := SortableColumns[orderBy]
+	if !ok {
+		return "last_seen DESC"
+	}
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	return col + " " + dir
+}
+
+// Deprecated: prefer GetByEnvPaged which applies the column allowlist at
+// the package layer and unifies search, paging, and sorting into a
+// single call. Retained for the legacy admin UI's callers in
+// cmd/admin/handlers/json-nodes.go; the orderBy parameter is gated by
+// SortableColumns so an unknown column silently falls back to
+// `last_seen DESC` rather than interpolating into SQL.
+func (n *NodeManager) GetByEnvPage(env, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
+	var nodeList []OsqueryNode
+	if limit <= 0 { // safety default
+		limit = 25
+	}
+	if limit > 500 { // cap to avoid abuse
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	query := n.DB.Where("environment = ?", env)
+	query = ApplyNodeTarget(query, target, hours)
+	if err := query.Order(safeOrderExpr(orderBy, desc)).Offset(offset).Limit(limit).Find(&nodeList).Error; err != nil {
+		return nodeList, err
+	}
+	return nodeList, nil
+}
+
+// Deprecated: prefer GetByEnvPaged. Same orderBy hardening as
+// GetByEnvPage.
+func (n *NodeManager) SearchByEnvPage(env, term, target string, hours int64, offset, limit int, orderBy string, desc bool) ([]OsqueryNode, error) {
+	if limit <= 0 {
+		limit = 25
+	} else if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var nodeList []OsqueryNode
+	likeTerm := "%" + term + "%"
+	query := n.DB.Where("environment = ? AND (uuid LIKE ? OR hostname LIKE ? OR localname LIKE ? OR ip_address LIKE ? OR username LIKE ? OR osquery_user LIKE ? OR platform LIKE ? OR osquery_version LIKE ?)", env, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm)
+	query = ApplyNodeTarget(query, target, hours)
+	if err := query.Order(safeOrderExpr(orderBy, desc)).Offset(offset).Limit(limit).Find(&nodeList).Error; err != nil {
+		return nodeList, err
+	}
+	return nodeList, nil
 }
 
 // CountAll to count all nodes

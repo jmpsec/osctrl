@@ -53,46 +53,49 @@ const (
 
 // TLSEnvironment to hold each of the TLS environment
 type TLSEnvironment struct {
-	gorm.Model
-	UUID             string `gorm:"index"`
-	Name             string
-	Hostname         string
-	Secret           string
-	EnrollSecretPath string
-	EnrollExpire     time.Time
-	RemoveSecretPath string
-	RemoveExpire     time.Time
-	Type             string
-	DebPackage       string
-	RpmPackage       string
-	MsiPackage       string
-	PkgPackage       string
-	DebugHTTP        bool
-	Icon             string
-	Options          string
-	Schedule         string
-	Packs            string
-	Decorators       string
-	ATC              string
-	Configuration    string
-	Flags            string
-	Certificate      string
-	ConfigTLS        bool
-	ConfigInterval   int
-	LoggingTLS       bool
-	LogInterval      int
-	QueryTLS         bool
-	QueryInterval    int
-	CarvesTLS        bool
-	EnrollPath       string
-	LogPath          string
-	ConfigPath       string
-	QueryReadPath    string
-	QueryWritePath   string
-	CarverInitPath   string
-	CarverBlockPath  string
-	AcceptEnrolls    bool
-	UserID           uint
+	ID               uint           `gorm:"primarykey" json:"id"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
+	UUID             string         `gorm:"index" json:"uuid"`
+	Name             string         `json:"name"`
+	Hostname         string         `json:"hostname"`
+	Secret           string         `json:"secret"`
+	EnrollSecretPath string         `json:"enroll_secret_path"`
+	EnrollExpire     time.Time      `json:"enroll_expire"`
+	RemoveSecretPath string         `json:"remove_secret_path"`
+	RemoveExpire     time.Time      `json:"remove_expire"`
+	Type             string         `json:"type"`
+	DebPackage       string         `json:"deb_package"`
+	RpmPackage       string         `json:"rpm_package"`
+	MsiPackage       string         `json:"msi_package"`
+	PkgPackage       string         `json:"pkg_package"`
+	DebugHTTP        bool           `json:"debug_http"`
+	Icon             string         `json:"icon"`
+	Options          string         `json:"options"`
+	Schedule         string         `json:"schedule"`
+	Packs            string         `json:"packs"`
+	Decorators       string         `json:"decorators"`
+	ATC              string         `json:"atc"`
+	Configuration    string         `json:"configuration"`
+	Flags            string         `json:"flags"`
+	Certificate      string         `json:"certificate"`
+	ConfigTLS        bool           `json:"config_tls"`
+	ConfigInterval   int            `json:"config_interval"`
+	LoggingTLS       bool           `json:"logging_tls"`
+	LogInterval      int            `json:"log_interval"`
+	QueryTLS         bool           `json:"query_tls"`
+	QueryInterval    int            `json:"query_interval"`
+	CarvesTLS        bool           `json:"carves_tls"`
+	EnrollPath       string         `json:"enroll_path"`
+	LogPath          string         `json:"log_path"`
+	ConfigPath       string         `json:"config_path"`
+	QueryReadPath    string         `json:"query_read_path"`
+	QueryWritePath   string         `json:"query_write_path"`
+	CarverInitPath   string         `json:"carver_init_path"`
+	CarverBlockPath  string         `json:"carver_block_path"`
+	AcceptEnrolls    bool           `json:"accept_enrolls"`
+	UserID           uint           `json:"user_id"`
 }
 
 // MapEnvironments to hold the TLS environments by name and UUID

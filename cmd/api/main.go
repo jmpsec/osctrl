@@ -20,10 +20,12 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osquery"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
@@ -74,6 +76,8 @@ const (
 	apiNodesPath = "/nodes"
 	// API queries path
 	apiQueriesPath = "/queries"
+	// API saved queries path
+	apiSavedQueriesPath = "/saved-queries"
 	// API users path
 	apiUsersPath = "/users"
 	// API all queries path
@@ -90,6 +94,12 @@ const (
 	apiSettingsPath = "/settings"
 	// API audit logs path
 	apiAuditLogsPath = "/audit-logs"
+	// API logs path
+	apiLogsPath = "/logs"
+	// API stats path
+	apiStatsPath = "/stats"
+	// API osquery path
+	apiOsqueryPath = "/osquery"
 )
 
 // Global variables
@@ -109,8 +119,9 @@ var (
 	flags                []cli.Flag
 	serviceConfiguration config.APIConfiguration
 	// FIXME this struct is temporary until we refactor to write settings to the DB
-	flagParams *config.ServiceParameters
-	auditLog   *auditlog.AuditLogManager
+	flagParams    *config.ServiceParameters
+	auditLog      *auditlog.AuditLogManager
+	osqueryTables []types.OsqueryTable
 )
 
 // Valid values for auth and logging in configuration
@@ -291,6 +302,15 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
+	// Load osquery tables schema (best-effort; an empty slice is fine if the file doesn't exist)
+	if flagParams.Osquery.TablesFile != "" {
+		log.Info().Msgf("Loading osquery tables from %s", flagParams.Osquery.TablesFile)
+		osqueryTables, err = osquery.LoadTables(flagParams.Osquery.TablesFile)
+		if err != nil {
+			log.Warn().Msgf("Failed to load osquery tables: %v", err)
+			osqueryTables = []types.OsqueryTable{}
+		}
+	}
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
 	handlersApi = handlers.CreateHandlersApi(
@@ -307,6 +327,7 @@ func osctrlAPIService() {
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
 		handlers.WithDebugHTTP(flagParams.Debug),
+		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithOsqueryValues(*flagParams.Osquery),
 	)
 
@@ -336,6 +357,18 @@ func osctrlAPIService() {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
+	// Pre-auth env list so the SPA login screen can offer a dropdown instead
+	// of a free-text field. The handler exposes only (uuid, name) — no
+	// secrets — and shares the same per-IP rate limiter as POST /login so the
+	// endpoint can't be turned into a higher-throughput env-enumeration probe.
+	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", loginRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
+	// Pre-auth starter-sample endpoints. The SPA reads these to populate the
+	// queries/new and carves/new template rows. Samples are static read-only
+	// data shipped with the binary, not tenant- or env-scoped — same posture
+	// as /login/environments. Shared per-IP rate limiter blocks low-effort
+	// scanning probes.
+	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", loginRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
+	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", loginRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(
@@ -362,6 +395,36 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/lookup",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.LookupNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: paginated nodes — canonical SPA endpoint
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodesPagedHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: node logs
+	muxAPI.Handle(
+		"GET "+_apiPath(apiLogsPath)+"/{type}/{env}/{uuid}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeLogsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: cross-env dashboard stats
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.StatsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: fleet-wide osquery version breakdown for dashboard's hygiene panel.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/osquery-versions",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.OsqueryVersionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: per-env activity heatmap (15-min audit-log buckets across N hours).
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvActivityHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: per-node activity heatmap (status/result/query/carve buckets).
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/node/{env}/{uuid}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// Batch variant — accepts ?uuids=a,b,c (up to 100). Returns a map keyed by
+	// uuid. Lets the Nodes table render a per-row sparkline without firing N
+	// parallel HTTP requests.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/node-batch/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
 		muxAPI.Handle(
@@ -379,13 +442,34 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}/results/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// CSV export for query results
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/{env}/results/csv/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QueryResultsCSVHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAllQueriesPath+"/{env}"),
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// API: saved queries (Track 4)
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSavedQueriesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SavedQueriesListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiSavedQueriesPath)+"/{env}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SavedQueryCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PATCH "+_apiPath(apiSavedQueriesPath)+"/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SavedQueryUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiSavedQueriesPath)+"/{env}/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SavedQueryDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
+	// API: osquery schema tables (globally available to authenticated users)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiOsqueryPath)+"/tables",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.OsqueryTablesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: carves by environment
 	if flagParams.Osquery.Carve {
 		muxAPI.Handle(
@@ -404,16 +488,37 @@ func osctrlAPIService() {
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}/archive/{name}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveArchiveHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"POST "+_apiPath(apiCarvesPath)+"/{env}/{action}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: users
+	muxAPI.Handle(
+		"GET "+_apiPath(apiUsersPath)+"/me",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiUsersPath)+"/me",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MePatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/me/password",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MePasswordHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath)+"/{username}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UserHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/{username}/permissions",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SetUserPermissionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/{username}/token/refresh",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.RefreshUserTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiUsersPath)+"/{username}/token",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteUserTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/{action}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -426,7 +531,7 @@ func osctrlAPIService() {
 		"GET "+_apiPath(apiEnvironmentsPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
-		"POST "+_apiPath(apiEnvironmentsPath),
+		"POST "+_apiPath(apiEnvironmentsPath)+"/actions",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 
 	muxAPI.Handle(
@@ -447,6 +552,33 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: environments CRUD + config (Track 8)
+	muxAPI.Handle(
+		"POST "+_apiPath(apiEnvironmentsPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiEnvironmentsPath)+"/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiEnvironmentsPath)+"/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// Env config routes use a `/config/{env}` shape (literal in segment 1) so
+	// they cannot register-conflict with `/map/{target}` registered above. A
+	// `/{env}/config` shape would put a wildcard in segment 1 — Go's ServeMux
+	// refuses to accept it alongside `/map/{target}` since neither pattern
+	// strictly dominates the other.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiEnvironmentsPath)+"/config/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiEnvironmentsPath)+"/config/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentConfigPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiEnvironmentsPath)+"/intervals/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentIntervalsPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiEnvironmentsPath)+"/expiration/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentExpirationPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: tags by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath),
@@ -476,6 +608,10 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: settings PATCH (Track 9)
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(

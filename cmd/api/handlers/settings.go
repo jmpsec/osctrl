@@ -95,7 +95,7 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -110,9 +110,9 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get settings scoped to THIS env. Previously this passed
-	// NoEnvironmentID and silently returned global settings, which let an
-	// env-X admin read another env's values as a side-channel via the
+	// Get settings scoped to THIS env. Was previously passing
+	// NoEnvironmentID and silently returning global settings, which let
+	// an env-X admin read another env's values as a side-channel via the
 	// env-scoped route.
 	serviceSettings, err := h.Settings.RetrieveValues(service, false, env.ID)
 	if err != nil {
@@ -184,7 +184,7 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)

@@ -3,34 +3,156 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
-// AuditLogsHandler - GET Handler for all audit logs
+// AuditLogsHandler - GET /api/v1/audit-logs
+//
+// Query params:
+//
+//	?service=...       exact match on service name
+//	?username=...      case-insensitive partial match on username
+//	?type=...          log type integer (1..10), see pkg/auditlog.LogType*
+//	?env_uuid=...      filter to one environment (resolved to internal ID)
+//	?since=RFC3339     created_at >= since
+//	?until=RFC3339     created_at <= until
+//	?page=N            1-indexed page; default 1
+//	?page_size=N       default 50, max 500
+//
+// Returns the SPA-canonical paginated envelope. The handler audit-logs the
+// visit on success.
 func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
-	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get audit logs
-	auditLogs, err := h.AuditLog.GetAll()
+
+	q := r.URL.Query()
+	filter := auditlog.PageFilter{
+		Service:  strings.TrimSpace(q.Get("service")),
+		Username: strings.TrimSpace(q.Get("username")),
+	}
+	if v := q.Get("type"); v != "" {
+		n, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			apiErrorResponse(w, "type must be an integer", http.StatusBadRequest, err)
+			return
+		}
+		if _, ok := auditlog.LogTypes[uint(n)]; !ok {
+			apiErrorResponse(w, "type is not a known log_type", http.StatusBadRequest, nil)
+			return
+		}
+		filter.LogType = uint(n)
+	}
+	if v := q.Get("env_uuid"); v != "" {
+		env, err := h.Envs.GetByUUID(v)
+		if err != nil {
+			apiErrorResponse(w, "env_uuid not found", http.StatusBadRequest, err)
+			return
+		}
+		filter.EnvID = env.ID
+	}
+	if v := q.Get("since"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			apiErrorResponse(w, "since must be RFC3339", http.StatusBadRequest, err)
+			return
+		}
+		filter.Since = t
+	}
+	if v := q.Get("until"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			apiErrorResponse(w, "until must be RFC3339", http.StatusBadRequest, err)
+			return
+		}
+		filter.Until = t
+	}
+	if v := q.Get("page"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			apiErrorResponse(w, "page must be a positive integer", http.StatusBadRequest, err)
+			return
+		}
+		filter.Page = n
+	} else {
+		filter.Page = 1
+	}
+	if v := q.Get("page_size"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			apiErrorResponse(w, "page_size must be a positive integer", http.StatusBadRequest, err)
+			return
+		}
+		filter.PageSize = n
+	}
+	if filter.PageSize == 0 {
+		filter.PageSize = 50
+	}
+	// Mirror the package-layer clamp at the handler so the response
+	// envelope echoes the actual effective value and the doc-comment
+	// "max 500" remains honest if the package layer's bound ever
+	// shifts.
+	if filter.PageSize > 500 {
+		filter.PageSize = 500
+	}
+
+	rows, total, err := h.AuditLog.GetPaged(filter)
 	if err != nil {
-		log.Err(err).Msg("error getting audit logs")
+		apiErrorResponse(w, "error getting audit logs", http.StatusInternalServerError, err)
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned %d audit log entries", len(auditLogs))
+
+	// Resolve EnvironmentID → UUID with a single map lookup so the SPA can
+	// render env names directly. Empty UUID == no env / system action.
+	envMap, _ := h.Envs.GetMapByID()
+
+	items := make([]types.AuditLogView, 0, len(rows))
+	for _, r := range rows {
+		view := types.AuditLogView{
+			ID:            r.ID,
+			CreatedAt:     r.CreatedAt,
+			Service:       r.Service,
+			Username:      r.Username,
+			Line:          r.Line,
+			LogType:       r.LogType,
+			Severity:      r.Severity,
+			SourceIP:      r.SourceIP,
+			EnvironmentID: r.EnvironmentID,
+		}
+		if r.EnvironmentID > 0 {
+			if e, ok := envMap[r.EnvironmentID]; ok {
+				view.EnvUUID = e.UUID
+			}
+		}
+		items = append(items, view)
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total + int64(filter.PageSize) - 1) / int64(filter.PageSize))
+	}
+	resp := types.AuditLogsPagedResponse{
+		Items:      items,
+		Page:       filter.Page,
+		PageSize:   filter.PageSize,
+		TotalItems: total,
+		TotalPages: totalPages,
+	}
+
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, auditLogs)
+	log.Debug().Msgf("Returned %d audit log entries (page=%d, size=%d, total=%d)", len(items), filter.Page, filter.PageSize, total)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
