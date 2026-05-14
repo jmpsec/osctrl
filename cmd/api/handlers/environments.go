@@ -25,6 +25,44 @@ var (
 	}
 )
 
+// denyEnv emits a 403 AND an audit-log entry pinned to the env handler's
+// resource class. Used by the env-handler family for every deny branch
+// so cross-tenant probes leave an SoC-alertable trail. The path comes
+// from r.URL.Path; envID is 0 (NoEnvironment) when the deny happened
+// before env resolution.
+func (h *HandlersApi) denyEnv(w http.ResponseWriter, r *http.Request, ctx ContextValue, envID uint, reason string) {
+	h.AuditLog.Denied(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], reason, auditlog.LogTypeEnvironment, envID)
+	apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("denied: %s for user %s", reason, ctx[ctxUser]))
+}
+
+// projectEnvironmentView strips the env-secret-bearing fields from
+// TLSEnvironment to produce the SPA-canonical low-privilege envelope.
+// Callers MUST use this when serving env data to a non-admin (UserLevel /
+// QueryLevel / CarveLevel) user.
+func projectEnvironmentView(env environments.TLSEnvironment) types.TLSEnvironmentView {
+	return types.TLSEnvironmentView{
+		ID:             env.ID,
+		CreatedAt:      env.CreatedAt,
+		UpdatedAt:      env.UpdatedAt,
+		UUID:           env.UUID,
+		Name:           env.Name,
+		Hostname:       env.Hostname,
+		Type:           env.Type,
+		Icon:           env.Icon,
+		DebugHTTP:      env.DebugHTTP,
+		ConfigTLS:      env.ConfigTLS,
+		ConfigInterval: env.ConfigInterval,
+		LoggingTLS:     env.LoggingTLS,
+		LogInterval:    env.LogInterval,
+		QueryTLS:       env.QueryTLS,
+		QueryInterval:  env.QueryInterval,
+		CarvesTLS:      env.CarvesTLS,
+		AcceptEnrolls:  env.AcceptEnrolls,
+		EnrollExpire:   env.EnrollExpire,
+		RemoveExpire:   env.RemoveExpire,
+	}
+}
+
 // EnvironmentHandler - GET Handler to return one environment by UUID as JSON
 func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
@@ -50,13 +88,21 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned environment %s", env.Name)
+	// Decide projection by privilege level: admins on this env (or
+	// super-admins) receive the full storage struct including secret /
+	// certificate / flags. UserLevel operators receive the low-privilege
+	// view that omits enroll credentials.
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+	if h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		log.Debug().Msgf("Returned environment %s (admin view)", env.Name)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
+		return
+	}
+	log.Debug().Msgf("Returned environment %s (low-priv view)", env.Name)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, projectEnvironmentView(env))
 }
 
 // EnvironmentMapHandler - GET Handler to return one environment as JSON
@@ -79,7 +125,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	// Prepare map by target
@@ -112,7 +158,7 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	// Get platforms
@@ -149,10 +195,15 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Get context data and check access
+	// Get context data and check access. The enroll endpoint exposes the
+	// env's enroll secret (directly via target=secret, indirectly via the
+	// one-liners that embed it in the URL, and via target=flags). That
+	// secret is the only credential needed to enroll nodes via osctrl-tls,
+	// so it must be gated to AdminLevel on the env, not UserLevel.
+	//
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	// Extract target
@@ -185,8 +236,9 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "invalid target", http.StatusBadRequest, fmt.Errorf("invalid target %s", targetVar))
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned data for environment%s : %s", env.Name, returnData)
+	// Serialize and serve JSON. Don't log the payload — it contains the
+	// enroll secret.
+	log.Debug().Msgf("Returned enroll data for environment %s target=%s", env.Name, targetVar)
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
@@ -213,10 +265,12 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Get context data and check access
+	// Get context data and check access. The remove one-liners embed the
+	// remove-secret in the URL, so the endpoint must be AdminLevel-gated
+	// just like the enroll variant.
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	// Extract target
@@ -243,8 +297,9 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "invalid target", http.StatusBadRequest, fmt.Errorf("invalid target %s", targetVar))
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, returnData)
+	// Serialize and serve JSON. Don't log the payload — it embeds the
+	// remove secret.
+	log.Debug().Msgf("Returned remove data for environment %s target=%s", env.Name, targetVar)
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
@@ -274,7 +329,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	// Extract action
@@ -374,7 +429,7 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	// Extract action
@@ -433,7 +488,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	var e types.ApiEnvRequest
@@ -449,6 +504,23 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 		if !environments.VerifyEnvFilters(e.Name, e.Icon, e.Type, e.Hostname) {
 			apiErrorResponse(w, "invalid data", http.StatusBadRequest, nil)
 			return
+		}
+		// Validate the optional client-supplied UUID strictly.
+		//   - utils.CheckUUID delegates to google/uuid Parse, accepting only
+		//     canonical UUIDs. EnvUUIDFilter alone is `^[a-z0-9-]+$`, which
+		//     would have happily accepted "-", "a", "deadbeef", etc.
+		//   - ExistsByUUID (vs the polymorphic Exists) ensures a UUID-collision
+		//     check cannot match against an existing env's NAME. The old
+		//     Exists(e.UUID) leaked information across axes.
+		if e.UUID != "" {
+			if !utils.CheckUUID(e.UUID) {
+				apiErrorResponse(w, "invalid uuid", http.StatusBadRequest, fmt.Errorf("rejected uuid %q", e.UUID))
+				return
+			}
+			if h.Envs.ExistsByUUID(e.UUID) {
+				apiErrorResponse(w, "uuid already in use", http.StatusConflict, fmt.Errorf("uuid %q collides", e.UUID))
+				return
+			}
 		}
 		// Check if environment already exists
 		if !h.Envs.Exists(e.Name) {
@@ -481,18 +553,18 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			// Create a tag for this new environment
 			if !h.Tags.Exists(env.Name) {
-			if err := h.Tags.NewTag(
-				env.Name,
-				"Tag for environment "+env.Name,
-				"",
-				env.Icon,
-				ctx[ctxUser],
-				env.ID,
-				false,
-				tags.TagTypeEnv,
-				""); err != nil {
-				msgReturn = fmt.Sprintf("error generating tag %s ", err.Error())
-				return
+				if err := h.Tags.NewTag(
+					env.Name,
+					"Tag for environment "+env.Name,
+					"",
+					env.Icon,
+					ctx[ctxUser],
+					env.ID,
+					false,
+					tags.TagTypeEnv,
+					""); err != nil {
+					msgReturn = fmt.Sprintf("error generating tag %s ", err.Error())
+					return
 				}
 			}
 			msgReturn = "environment created successfully"
@@ -501,21 +573,37 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case "delete":
-		// Verify request fields
+		// Validate both name and UUID strictly, then verify they refer to
+		// the SAME environment so the request can't authorise via one
+		// env's UUID while targeting another env by name. The previous
+		// shape (polymorphic Exists(e.UUID) → Delete(e.Name)) allowed
+		// that authorisation/target split.
 		if !environments.EnvNameFilter(e.Name) {
 			apiErrorResponse(w, "invalid environment name", http.StatusBadRequest, nil)
 			return
 		}
-		if h.Envs.Exists(e.UUID) {
-			if err := h.Envs.Delete(e.Name); err != nil {
-				apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
-				return
-			}
-			msgReturn = "environment deleted successfully"
-		} else {
-			apiErrorResponse(w, "environment not found", http.StatusNotFound, fmt.Errorf("environment %s not found", e.Name))
+		if e.UUID == "" {
+			apiErrorResponse(w, "missing environment UUID", http.StatusBadRequest, nil)
 			return
 		}
+		if !utils.CheckUUID(e.UUID) {
+			apiErrorResponse(w, "invalid environment UUID", http.StatusBadRequest, nil)
+			return
+		}
+		targetEnv, getErr := h.Envs.GetByUUID(e.UUID)
+		if getErr != nil {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, fmt.Errorf("environment %s not found", e.UUID))
+			return
+		}
+		if targetEnv.Name != e.Name {
+			apiErrorResponse(w, "name does not match the environment with that UUID", http.StatusBadRequest, fmt.Errorf("uuid %s maps to name %q, body claims %q", e.UUID, targetEnv.Name, e.Name))
+			return
+		}
+		if err := h.Envs.Delete(targetEnv.Name); err != nil {
+			apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
+			return
+		}
+		msgReturn = "environment deleted successfully"
 	case "edit":
 		// Verify request fields
 		if !environments.EnvUUIDFilter(e.UUID) {

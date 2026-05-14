@@ -194,8 +194,8 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "auth",
 			Aliases:     []string{"A"},
-			Value:       AuthNone,
-			Usage:       "Authentication mechanism for the service",
+			Value:       AuthJWT,
+			Usage:       "Authentication mechanism for the service (jwt|none — `none` requires OSCTRL_INSECURE_NO_AUTH=1)",
 			Sources:     cli.EnvVars("SERVICE_AUTH"),
 			Destination: &params.Service.Auth,
 		},
@@ -216,10 +216,17 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 		&cli.BoolFlag{
 			Name:        "audit-log",
 			Aliases:     []string{"audit"},
-			Value:       false,
-			Usage:       "Enable audit log for the service. Logs all sensitive actions",
+			Value:       true,
+			Usage:       "Enable audit log for the service. Logs sensitive actions (logins, env mutations, query/carve runs, etc.). Disable only for local dev — production deployments MUST keep this on so SoC tooling has a stream to alert on.",
 			Sources:     cli.EnvVars("AUDIT_LOG"),
 			Destination: &params.Service.AuditLog,
+		},
+		&cli.StringFlag{
+			Name:        "trusted-proxies",
+			Value:       "",
+			Usage:       "Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers will be honored. Empty (default) ignores forwarding headers and uses RemoteAddr verbatim — prevents header-spoofed rate-limit bypass and audit-log poisoning.",
+			Sources:     cli.EnvVars("SERVICE_TRUSTED_PROXIES"),
+			Destination: &params.Service.TrustedProxies,
 		},
 	}
 }

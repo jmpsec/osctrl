@@ -16,7 +16,7 @@ import (
 
 func setupTestManagerForPermissions(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
 	conf := config.YAMLConfigurationJWT{
-		JWTSecret:     "test",
+		JWTSecret:     "test-secret-must-be-at-least-32-bytes-long",
 		HoursToExpire: 1,
 	}
 	mockDB, mock, err := sqlmock.New()

@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // OsqueryTable to show tables to query
 type OsqueryTable struct {
 	Name      string   `json:"name"`
@@ -85,6 +87,7 @@ type ApiLoginRequest struct {
 // ApiErrorResponse to be returned to API requests with the error message
 type ApiErrorResponse struct {
 	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
 }
 
 // ApiQueriesResponse to be returned to API requests for queries
@@ -104,7 +107,8 @@ type ApiDataResponse struct {
 
 // ApiLoginResponse to be returned to API login requests with the generated token
 type ApiLoginResponse struct {
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	CSRFToken string `json:"csrf_token,omitempty"`
 }
 
 // ApiActionsRequest to receive action requests
@@ -154,4 +158,57 @@ type ApiUserRequest struct {
 	NotService   bool     `json:"not_service"`
 	API          bool     `json:"api"`
 	Environments []string `json:"environments"`
+}
+
+// TLSEnvironmentView is the low-privilege projection of an environment.
+// UserLevel operators (env scope) need basic env metadata so the SPA can
+// render its env switcher / dashboard / table chrome — but they MUST NOT
+// receive the enroll secret, the certificate, or one-liner URLs that
+// embed the secret. The full storage struct is admin-only via
+// EnvironmentAdminHandler.
+type TLSEnvironmentView struct {
+	ID             uint      `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	UUID           string    `json:"uuid"`
+	Name           string    `json:"name"`
+	Hostname       string    `json:"hostname"`
+	Type           string    `json:"type"`
+	Icon           string    `json:"icon"`
+	DebugHTTP      bool      `json:"debug_http"`
+	ConfigTLS      bool      `json:"config_tls"`
+	ConfigInterval int       `json:"config_interval"`
+	LoggingTLS     bool      `json:"logging_tls"`
+	LogInterval    int       `json:"log_interval"`
+	QueryTLS       bool      `json:"query_tls"`
+	QueryInterval  int       `json:"query_interval"`
+	CarvesTLS      bool      `json:"carves_tls"`
+	AcceptEnrolls  bool      `json:"accept_enrolls"`
+	EnrollExpire   time.Time `json:"enroll_expire"`
+	RemoveExpire   time.Time `json:"remove_expire"`
+}
+
+// AdminUserView is the PII-minimized projection of an AdminUser for
+// the GET /api/v1/users and GET /api/v1/users/{username} endpoints.
+// Drops LastIPAddress / LastUserAgent / LastAccess / LastTokenUse: a
+// super-admin reading another super-admin's record gets enough to
+// manage them (username, email, fullname, admin/service flags, env
+// scope) but not the network/timing metadata that helps an attacker
+// who later compromises one super-admin profile target the others.
+//
+// Users querying THEIR OWN record see the metadata they need via the
+// pre-existing UserMeResponse from /api/v1/users/me — this view is
+// strictly for the cross-user "list / inspect another admin" paths.
+type AdminUserView struct {
+	ID            uint      `json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Username      string    `json:"username"`
+	Email         string    `json:"email"`
+	Fullname      string    `json:"fullname"`
+	Admin         bool      `json:"admin"`
+	Service       bool      `json:"service"`
+	UUID          string    `json:"uuid"`
+	TokenExpire   time.Time `json:"token_expire"`
+	EnvironmentID uint      `json:"environment_id"`
 }

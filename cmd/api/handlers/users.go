@@ -13,6 +13,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// projectAdminUserView strips network-and-timing metadata
+// (LastIPAddress / LastUserAgent / LastAccess / LastTokenUse) from an
+// AdminUser before serialization to a cross-user reader. Operators
+// querying their own row use /api/v1/users/me's full UserMeResponse.
+func projectAdminUserView(u users.AdminUser) types.AdminUserView {
+	return types.AdminUserView{
+		ID:            u.ID,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		Username:      u.Username,
+		Email:         u.Email,
+		Fullname:      u.Fullname,
+		Admin:         u.Admin,
+		Service:       u.Service,
+		UUID:          u.UUID,
+		TokenExpire:   u.TokenExpire,
+		EnvironmentID: u.EnvironmentID,
+	}
+}
+
 // UserHandler - GET Handler for environment users
 func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
@@ -37,10 +57,12 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting user", http.StatusInternalServerError, nil)
 		return
 	}
-	// Serialize and serve JSON
+	// Serialize and serve the PII-minimized view; the full user record
+	// is only available to the user themselves via /api/v1/users/me.
+	//
 	log.Debug().Msgf("Returned user %s", usernameVar)
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, user)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, projectAdminUserView(user))
 }
 
 // UsersHandler - GET Handler for multiple JSON nodes
@@ -56,19 +78,24 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get users
-	users, err := h.Users.All()
+	all, err := h.Users.All()
 	if err != nil {
 		apiErrorResponse(w, "error getting users", http.StatusInternalServerError, err)
 		return
 	}
-	if len(users) == 0 {
+	if len(all) == 0 {
 		apiErrorResponse(w, "no users", http.StatusNotFound, nil)
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned %d users", len(users))
+	// PII-minimized view for the cross-user list — see projectAdminUserView.
+	//
+	views := make([]types.AdminUserView, 0, len(all))
+	for _, u := range all {
+		views = append(views, projectAdminUserView(u))
+	}
+	log.Debug().Msgf("Returned %d users", len(views))
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, users)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, views)
 }
 
 // UserActionHandler - POST Handler to take actions on a user by username and environment

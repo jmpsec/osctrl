@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -83,6 +86,14 @@ const Authorization string = "Authorization"
 // OsctrlUserAgent for customized User-Agent
 const OsctrlUserAgent string = "osctrl-http-client/1.1"
 
+// AcceptsJSON reports whether the request's Accept header signals JSON.
+// Used by the auth middleware to choose between 401 JSON (for SPA/XHR
+// clients) and 302 redirect (for browser navigation).
+func AcceptsJSON(r *http.Request) bool {
+	accept := r.Header.Get("Accept")
+	return strings.Contains(strings.ToLower(accept), "application/json")
+}
+
 // SendRequest - Helper function to send HTTP requests
 func SendRequest(reqType, reqURL string, params io.Reader, headers map[string]string) (int, []byte, error) {
 	u, err := url.Parse(reqURL)
@@ -146,17 +157,122 @@ func DebugHTTPDump(l *zerolog.Logger, r *http.Request, showBody bool) {
 	l.Log().Msg(DebugHTTP(r, showBody))
 }
 
-// GetIP - Helper to get the IP address from a HTTP request
+// trustedProxies is the global set of CIDRs whose X-Real-IP /
+// X-Forwarded-For headers GetIP is allowed to honor. When empty (the
+// safe default), GetIP returns the connection's RemoteAddr IP verbatim
+// and ignores any forwarding headers — preventing an anonymous internet
+// attacker from rotating headers to defeat rate-limits or poison the
+// audit log. Operators wire trusted proxies at startup via
+// SetTrustedProxies; once set, GetIP only consults forwarding headers
+// when the connecting peer falls inside one of the configured CIDRs.
+var (
+	trustedProxiesMu sync.RWMutex
+	trustedProxies   []*net.IPNet
+)
+
+// SetTrustedProxies configures the CIDR allowlist for forwarding-header
+// trust. Pass an empty slice (or call with no args) to revert to the
+// safe-by-default "ignore forwarding headers" posture. Each CIDR string
+// must parse via net.ParseCIDR; invalid entries are logged and skipped.
+func SetTrustedProxies(cidrs []string) {
+	parsed := make([]*net.IPNet, 0, len(cidrs))
+	for _, c := range cidrs {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		_, n, err := net.ParseCIDR(c)
+		if err != nil {
+			log.Warn().Str("cidr", c).Err(err).Msg("trusted-proxies: invalid CIDR, skipping")
+			continue
+		}
+		parsed = append(parsed, n)
+	}
+	trustedProxiesMu.Lock()
+	trustedProxies = parsed
+	trustedProxiesMu.Unlock()
+}
+
+// isFromTrustedProxy reports whether the connecting peer (host portion
+// of r.RemoteAddr) sits inside any configured trusted-proxy CIDR.
+func isFromTrustedProxy(r *http.Request) bool {
+	trustedProxiesMu.RLock()
+	tps := trustedProxies
+	trustedProxiesMu.RUnlock()
+	if len(tps) == 0 {
+		return false
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, n := range tps {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// remoteIP returns the connecting peer's IP (no port). Falls back to
+// RemoteAddr-as-is when SplitHostPort fails (rare; some net/http test
+// machinery omits the port).
+func remoteIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// GetIP returns the client IP for r. When trusted-proxies are configured
+// AND r.RemoteAddr's IP is inside one of them, the right-most untrusted
+// hop from X-Forwarded-For (or X-Real-IP) is used (per RFC 7239 §5.2 the
+// right-most-untrusted is the IP the trusted edge actually saw connect).
+// Otherwise the forwarding headers are ignored and the connection's
+// RemoteAddr IP is returned.
 func GetIP(r *http.Request) string {
-	realIP := r.Header.Get(XRealIP)
-	if realIP != "" {
-		return realIP
+	if !isFromTrustedProxy(r) {
+		// Default safe path: never trust forwarding headers.
+		return remoteIP(r)
 	}
-	forwarded := r.Header.Get(XForwardedFor)
-	if forwarded != "" {
-		return forwarded
+	// Trusted-proxy path. Prefer X-Forwarded-For (a comma-list of hops:
+	// `client, proxy1, proxy2`). Walk right-to-left and return the
+	// first IP that's NOT itself inside a trusted-proxy CIDR.
+	if xff := r.Header.Get(XForwardedFor); xff != "" {
+		hops := strings.Split(xff, ",")
+		trustedProxiesMu.RLock()
+		tps := trustedProxies
+		trustedProxiesMu.RUnlock()
+		for i := len(hops) - 1; i >= 0; i-- {
+			hop := strings.TrimSpace(hops[i])
+			ip := net.ParseIP(hop)
+			if ip == nil {
+				continue
+			}
+			isProxy := false
+			for _, n := range tps {
+				if n.Contains(ip) {
+					isProxy = true
+					break
+				}
+			}
+			if !isProxy {
+				return hop
+			}
+		}
 	}
-	return r.RemoteAddr
+	// Fall back to X-Real-IP (set by single-hop edges like nginx with
+	// `proxy_set_header X-Real-IP $remote_addr;`).
+	if rip := strings.TrimSpace(r.Header.Get(XRealIP)); rip != "" {
+		return rip
+	}
+	// Last resort: the trusted proxy's own address.
+	return remoteIP(r)
 }
 
 // HTTPResponse - Helper to send HTTP response

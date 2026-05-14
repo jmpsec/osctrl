@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -78,7 +79,35 @@ func GenCarveName() string {
 	return "carve_" + utils.RandomForNames()
 }
 
-// Helper to generate the carve query
+// validCarvePath restricts the characters that can appear in a carve
+// path. The carve string is concatenated into the osquery SQL that
+// every targeted node executes; without this gate a CarveLevel
+// operator could inject arbitrary osquery (e.g. `'; SELECT 1; --`) and
+// pivot from "exfil this path" to "run any SELECT against your nodes".
+//
+// The character class covers realistic carve targets across the three
+// platforms: absolute POSIX paths (Linux/macOS), Windows paths with
+// backslashes and drive letters, and glob wildcards (* and ?). It
+// explicitly excludes single quote, semicolon, and comment markers.
+var validCarvePath = regexp.MustCompile(`^[/A-Za-z0-9._\-\\:*?]+$`)
+
+// ValidCarvePath reports whether s is a safe value to splice into
+// GenCarveQuery. Callers MUST verify before calling GenCarveQuery —
+// the result is interpolated directly into SQL.
+func ValidCarvePath(s string) bool {
+	if s == "" {
+		return false
+	}
+	return validCarvePath.MatchString(s)
+}
+
+// Helper to generate the carve query.
+//
+// `file` is interpolated into the SQL string verbatim. The caller MUST
+// have validated it via ValidCarvePath beforehand — passing an
+// unvalidated user-controlled value here lets the requesting operator
+// run arbitrary osquery on every targeted host, which is well beyond
+// the "carve a file" capability the endpoint advertises.
 func GenCarveQuery(file string, glob bool) string {
 	if glob {
 		return "SELECT * FROM carves WHERE carve=1 AND path LIKE '" + file + "';"

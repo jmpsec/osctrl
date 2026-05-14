@@ -120,6 +120,11 @@ type YAMLConfigurationService struct {
 	Host      string `yaml:"host"`
 	Auth      string `yaml:"auth"`
 	AuditLog  bool   `yaml:"auditLog"`
+	// TrustedProxies is a comma-separated list of CIDRs whose
+	// X-Real-IP / X-Forwarded-For headers utils.GetIP will honor.
+	// Default empty → forwarding headers are ignored and the
+	// connection's RemoteAddr is used.
+	TrustedProxies string `yaml:"trustedProxies"`
 }
 
 // YAMLConfigurationDB to hold all backend configuration values

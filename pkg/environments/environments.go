@@ -214,10 +214,32 @@ func (environment *EnvManager) Create(env *TLSEnvironment) error {
 	return nil
 }
 
-// Exists checks if TLS Environment exists already
+// Exists checks if TLS Environment exists already by name OR uuid (polymorphic).
+// Prefer ExistsByUUID / ExistsByName when the caller knows which axis to check —
+// the polymorphic variant can confuse a UUID-collision check with a name match
+// and vice versa, which leaked information across axes in EnvActionsHandler.
+// (Cluster-4 review item — see ExistsByUUID below.)
 func (environment *EnvManager) Exists(identifier string) bool {
 	var results int64
 	environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", identifier, identifier).Count(&results)
+	return (results > 0)
+}
+
+// ExistsByUUID checks if a TLS Environment exists by UUID only.
+// Use this when validating a client-supplied UUID for collision before
+// creating a new environment, or for unambiguous delete-by-UUID semantics.
+func (environment *EnvManager) ExistsByUUID(uuid string) bool {
+	var results int64
+	environment.DB.Model(&TLSEnvironment{}).Where("uuid = ?", uuid).Count(&results)
+	return (results > 0)
+}
+
+// ExistsByName checks if a TLS Environment exists by name only.
+// (Companion to ExistsByUUID — provided for symmetry; callers preferring the
+// polymorphic Exists() can keep using it.)
+func (environment *EnvManager) ExistsByName(name string) bool {
+	var results int64
+	environment.DB.Model(&TLSEnvironment{}).Where("name = ?", name).Count(&results)
 	return (results > 0)
 }
 
