@@ -139,6 +139,14 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 			return
 		}
 		if n != env.Name {
+			// Reject a rename that would collide with an existing env.
+			// Mirrors the create-path uniqueness check; without this gate
+			// PATCH would silently produce two environments with the same
+			// name, which downstream lookups by name handle inconsistently.
+			if h.Envs.Exists(n) {
+				apiErrorResponse(w, "environment already exists", http.StatusConflict, fmt.Errorf("environment %s already exists", n))
+				return
+			}
 			patch["name"] = n
 		}
 	}
