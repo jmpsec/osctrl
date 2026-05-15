@@ -8,9 +8,19 @@ service:
   # Valid values: "json", "console"
   logFormat: json
   host: osctrl.net
-  # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
-  auth: none
-  auditLog: false
+  # Valid values: "jwt", "none". `none` requires OSCTRL_INSECURE_NO_AUTH=1
+  # in the environment and is intended for local-dev only — it impersonates
+  # super-admin on every request. Production deployments MUST use `jwt`.
+  auth: jwt
+  auditLog: true
+  # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers
+  # utils.GetIP will trust. Leave empty (default) when osctrl-api is
+  # directly internet-facing — forwarding headers are then ignored and
+  # RemoteAddr is used verbatim, preventing header-spoofed rate-limit
+  # bypass and audit-log poisoning. Set to your edge proxy's CIDR(s)
+  # when osctrl-api sits behind a trusted reverse proxy (e.g.
+  # `10.0.0.0/8` or `192.0.2.1/32,2001:db8::/64`).
+  trustedProxies: ""
 
 # Database configuration
 db:

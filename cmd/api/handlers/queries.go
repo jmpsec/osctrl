@@ -372,6 +372,14 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
+	// Verify the named query belongs to THIS env. logging.GetQueryResults
+	// filters on `name` only — without this gate a user with QueryLevel on
+	// env A could pull results from env B by passing B's query name in
+	// A's URL.
+	if !h.Queries.Exists(name, env.ID) {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
 	// Get query by name
 	// TODO this is a temporary solution, we need to refactor this and take into consideration the
 	// logger for TLS and whether if the results are stored in the DB or a different DB

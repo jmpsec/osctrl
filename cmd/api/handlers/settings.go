@@ -110,8 +110,11 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get settings
-	serviceSettings, err := h.Settings.RetrieveValues(service, false, settings.NoEnvironmentID)
+	// Get settings scoped to THIS env. Previously this passed
+	// NoEnvironmentID and silently returned global settings, which let an
+	// env-X admin read another env's values as a side-channel via the
+	// env-scoped route.
+	serviceSettings, err := h.Settings.RetrieveValues(service, false, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		return
@@ -196,8 +199,10 @@ func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *ht
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get settings
-	serviceSettings, err := h.Settings.RetrieveValues(service, true, settings.NoEnvironmentID)
+	// Get settings scoped to THIS env. Same defense as
+	// SettingsServiceEnvHandler above; was silently returning global
+	// settings via NoEnvironmentID.
+	serviceSettings, err := h.Settings.RetrieveValues(service, true, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting settings", http.StatusInternalServerError, err)
 		return

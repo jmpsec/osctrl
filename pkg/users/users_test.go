@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,7 +17,7 @@ import (
 
 func setupTestManager(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
 	conf := config.YAMLConfigurationJWT{
-		JWTSecret:     "test",
+		JWTSecret:     "test-secret-must-be-at-least-32-bytes-long",
 		HoursToExpire: 1,
 	}
 	mockDB, mock, err := sqlmock.New()
@@ -72,14 +73,14 @@ func TestHashTextWithSalt(t *testing.T) {
 	manager, _ := setupTestManager(t)
 	hashed, err := manager.HashTextWithSalt("testText")
 	assert.NoError(t, err)
-	assert.Equal(t, hashed[0:7], "$2a$10$")
+	assert.Equal(t, hashed[0:7], "$2a$12$")
 }
 
 func TestHashPasswordWithSalt(t *testing.T) {
 	manager, _ := setupTestManager(t)
 	hashed, err := manager.HashPasswordWithSalt("testPassword")
 	assert.NoError(t, err)
-	assert.Equal(t, hashed[0:7], "$2a$10$")
+	assert.Equal(t, hashed[0:7], "$2a$12$")
 }
 
 func TestCheckLoginCredentials(t *testing.T) {
@@ -105,7 +106,7 @@ func TestCheckLoginCredentials(t *testing.T) {
 func TestCreateCheckToken(t *testing.T) {
 	manager, _ := setupTestManager(t)
 	conf := config.YAMLConfigurationJWT{
-		JWTSecret: "test",
+		JWTSecret: "test-secret-must-be-at-least-32-bytes-long",
 	}
 	token, tt, err := manager.CreateToken("testUsername", "issuer", 0)
 	assert.NoError(t, err)
@@ -115,6 +116,20 @@ func TestCreateCheckToken(t *testing.T) {
 	claims, valid := manager.CheckToken(conf.JWTSecret, token)
 	assert.Equal(t, true, valid)
 	assert.Equal(t, "testUsername", claims.Username)
+}
+
+// TestCheckTokenRejectsNoneAlg locks in the key-func's alg-pinning behaviour:
+// even if a forged token bypasses the library's own none-mitigation, our
+// explicit `*jwt.SigningMethodHMAC` type-assertion refuses it.
+func TestCheckTokenRejectsNoneAlg(t *testing.T) {
+	manager, _ := setupTestManager(t)
+	// Hand-build a token signed with alg:none. golang-jwt requires
+	// jwt.UnsafeAllowNoneSignatureType as the key for SignedString to succeed.
+	tok := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{"username": "attacker"})
+	signed, err := tok.SignedString(jwt.UnsafeAllowNoneSignatureType)
+	assert.NoError(t, err)
+	_, valid := manager.CheckToken("test-secret-must-be-at-least-32-bytes-long", signed)
+	assert.False(t, valid, "alg:none tokens must be rejected by the key-func")
 }
 
 func TestGetUser(t *testing.T) {
@@ -387,9 +402,12 @@ func TestUpdateToken(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
 	mock.ExpectBegin()
+	// UpdateToken now also clears csrf_token alongside api_token /
+	// token_expire so a stale CSRF cookie can't outlive its session.
+	//
 	mock.ExpectExec(
-		regexp.QuoteMeta(`UPDATE "admin_users" SET "updated_at"=$1,"api_token"=$2,"token_expire"=$3 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $4`)).
-		WithArgs(sqlmock.AnyArg(), "testToken", tt, 1).
+		regexp.QuoteMeta(`UPDATE "admin_users" SET "api_token"=$1,"csrf_token"=$2,"token_expire"=$3,"updated_at"=$4 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $5`)).
+		WithArgs("testToken", "", tt, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -429,4 +447,46 @@ func TestGetAllUsers(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(users))
+}
+
+// TestUpdateTokenClearsCSRF locks the contract that rotating APIToken
+// also clears CSRFToken so a stale CSRF cookie can't outlive its
+// session.
+func TestUpdateTokenClearsCSRF(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	tt := time.Now()
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("alice", 1).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		regexp.QuoteMeta(`UPDATE "admin_users" SET "api_token"=$1,"csrf_token"=$2,"token_expire"=$3,"updated_at"=$4 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $5`)).
+		WithArgs("freshtoken", "", tt, sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := manager.UpdateToken("alice", "freshtoken", tt)
+	assert.NoError(t, err)
+}
+
+// TestClearTokenAlsoClearsCSRF locks the contract that DELETE
+// /users/{u}/token wipes both api_token and csrf_token.
+func TestClearTokenAlsoClearsCSRF(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("bob", 1).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		regexp.QuoteMeta(`UPDATE "admin_users" SET "api_token"=$1,"csrf_token"=$2,"token_expire"=$3,"updated_at"=$4 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $5`)).
+		WithArgs("", "", sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := manager.ClearToken("bob")
+	assert.NoError(t, err)
 }

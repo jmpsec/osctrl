@@ -10,7 +10,7 @@ service:
   host: osctrl.net
   # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
   auth: none
-  auditLog: false
+  auditLog: true
 
 # Database configuration
 db:

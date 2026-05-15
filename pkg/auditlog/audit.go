@@ -114,6 +114,35 @@ func (m *AuditLogManager) NewLogin(username, ip string) {
 	}
 }
 
+// FailedLogin records a failed login attempt — invalid credentials, missing
+// permission, or any other reason the login flow refused to mint a token.
+// `reason` is a short free-text string suitable for SoC alerting and MUST
+// NOT contain the offered password. Severity warning so it sticks out next
+// to the successful-login firehose.
+func (m *AuditLogManager) FailedLogin(username, ip, reason string) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("failed login for user %s: %s", username, reason)
+	if err := m.CreateNew(username, line, ip, LogTypeLogin, SeverityWarning, NoEnvironment); err != nil {
+		log.Err(err).Msg("error creating failed-login audit log")
+	}
+}
+
+// FailedEnroll records a failed osquery-node enrollment attempt — invalid
+// env secret, denied env, malformed payload. Severity warning, scoped to
+// the env in the path (envID == 0 when the env itself was the failure
+// reason).
+func (m *AuditLogManager) FailedEnroll(ip, envName, reason string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("failed enroll for env %s: %s", envName, reason)
+	if err := m.CreateNew("osctrl-tls", line, ip, LogTypeNode, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating failed-enroll audit log")
+	}
+}
+
 // NewLogout - create new logout audit log entry
 func (m *AuditLogManager) NewLogout(username, ip string) {
 	if !m.Enabled {
@@ -221,6 +250,22 @@ func (m *AuditLogManager) EnvAction(username, action, ip string, envID uint) {
 	line := fmt.Sprintf("user %s performed environment action: %s", username, action)
 	if err := m.CreateNew(username, line, ip, LogTypeEnvironment, SeverityInfo, envID); err != nil {
 		log.Err(err).Msg("error creating environment action audit log")
+	}
+}
+
+// Denied records a 403/forbidden access attempt at SeverityWarning so SoC
+// dashboards can surface cross-tenant probes. logType pins the resource
+// class (LogTypeEnvironment for env handlers, LogTypeNode for node
+// handlers, etc.). envID is the env the resource lives in, or
+// NoEnvironment when the deny happened before env resolution. The reason
+// field is short free text — never echo back the offered credential.
+func (m *AuditLogManager) Denied(username, path, ip, reason string, logType, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("denied access for user %s to %s: %s", username, path, reason)
+	if err := m.CreateNew(username, line, ip, logType, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating denied-access audit log")
 	}
 }
 

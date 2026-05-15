@@ -54,11 +54,20 @@ type UserManager struct {
 	JWTConfig *config.YAMLConfigurationJWT
 }
 
+// MinJWTSecretBytes is the minimum acceptable length of the HMAC JWT secret
+// (RFC 7518 §3.2 recommends a key at least as wide as the hash output for
+// HS256 ⇒ 32 bytes). Generate one with: openssl rand -base64 48
+const MinJWTSecretBytes = 32
+
 // CreateUserManager to initialize the users struct and tables
 func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT) *UserManager {
-	// Check if JWT is not empty
+	// JWT secret must be present and long enough for HS256.
 	if jwtconfig.JWTSecret == "" {
 		log.Fatal().Msgf("JWT Secret can not be empty")
+	}
+	if len(jwtconfig.JWTSecret) < MinJWTSecretBytes {
+		log.Fatal().Msgf("JWT Secret too short: have %d bytes, need >= %d. Generate one with: openssl rand -base64 48",
+			len(jwtconfig.JWTSecret), MinJWTSecretBytes)
 	}
 	u := &UserManager{DB: backend, JWTConfig: jwtconfig}
 	// table admin_users
@@ -72,10 +81,14 @@ func CreateUserManager(backend *gorm.DB, jwtconfig *config.YAMLConfigurationJWT)
 	return u
 }
 
+// BcryptCost is the bcrypt work factor for password hashing. 12 is the
+// 2026 commodity-CPU recommendation; bcrypt.DefaultCost is 10.
+const BcryptCost = 12
+
 // HashTextWithSalt to hash text before store it
 func (m *UserManager) HashTextWithSalt(text string) (string, error) {
 	saltedBytes := []byte(text)
-	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, bcrypt.DefaultCost)
+	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, BcryptCost)
 	if err != nil {
 		return "", err
 	}
@@ -88,7 +101,12 @@ func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
 	return m.HashTextWithSalt(password)
 }
 
-// CheckLoginCredentials to check provided login credentials by matching hashes
+// CheckLoginCredentials matches password hashes and, on a successful
+// match, opportunistically re-hashes the password at the current
+// BcryptCost when the stored hash is below it. Users created under an
+// older cost migrate transparently on their next login. The rehash
+// failure is non-fatal — login succeeds even if the rehash write
+// fails (next login retries).
 func (m *UserManager) CheckLoginCredentials(username, password string) (bool, AdminUser) {
 	// Check if we should include service users
 	user, err := m.Get(username)
@@ -98,9 +116,20 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	// Check for hash matching
 	p := []byte(password)
 	existing := []byte(user.PassHash)
-	err = bcrypt.CompareHashAndPassword(existing, p)
-	if err != nil {
+	if err := bcrypt.CompareHashAndPassword(existing, p); err != nil {
 		return false, AdminUser{}
+	}
+	// Successful login — rehash if the stored cost is below current.
+	if cost, cerr := bcrypt.Cost(existing); cerr == nil && cost < BcryptCost {
+		if newHash, herr := m.HashPasswordWithSalt(password); herr == nil {
+			if uerr := m.DB.Model(&user).Update("pass_hash", newHash).Error; uerr != nil {
+				log.Err(uerr).Msgf("rehash-on-login: failed to persist new pass_hash for %s", username)
+			} else {
+				user.PassHash = newHash
+			}
+		} else {
+			log.Err(herr).Msgf("rehash-on-login: bcrypt cost upgrade failed for %s", username)
+		}
 	}
 	return true, user
 }
@@ -130,10 +159,16 @@ func (m *UserManager) CreateToken(username, issuer string, expHours int) (string
 	return tokenString, expirationTime, nil
 }
 
-// CheckToken to verify if a token used is valid
+// CheckToken to verify if a token used is valid.
+// Pins the signing algorithm to HMAC so an attacker cannot swap to `alg:none`
+// or RS256-with-public-key (RS-vs-HS confusion) — defense-in-depth on top of
+// the underlying library's own mitigations.
 func (m *UserManager) CheckToken(jwtSecret, tokenStr string) (TokenClaims, bool) {
 	claims := &TokenClaims{}
 	tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected jwt signing method: %v", token.Header["alg"])
+		}
 		return []byte(jwtSecret), nil
 	})
 	if err != nil {
@@ -234,6 +269,18 @@ func (m *UserManager) IsAdmin(username string) bool {
 	return (results > 0)
 }
 
+// CountAdmins returns the number of active admin (Admin=true) users.
+// Used by the permissions API to refuse demoting the last super-admin
+// (which would lock the system out — no remaining super-admin = no
+// one can promote anyone else).
+func (m *UserManager) CountAdmins() (int64, error) {
+	var results int64
+	if err := m.DB.Model(&AdminUser{}).Where("admin = ?", true).Count(&results).Error; err != nil {
+		return 0, fmt.Errorf("count admins: %w", err)
+	}
+	return results, nil
+}
+
 // ChangeAdmin to modify the admin setting for a user
 func (m *UserManager) ChangeAdmin(username string, admin bool) error {
 	user, err := m.Get(username)
@@ -327,13 +374,38 @@ func (m *UserManager) UpdateToken(username, token string, exp time.Time) error {
 		return fmt.Errorf("error getting user %w", err)
 	}
 	if token != user.APIToken {
-		if err := m.DB.Model(&user).Updates(
-			AdminUser{
-				APIToken:    token,
-				TokenExpire: exp,
-			}).Error; err != nil {
+		// Rotation also clears CSRFToken so the SPA's old non-HttpOnly
+		// CSRF cookie value stops matching the server-side binding —
+		// stops a stale CSRFToken from outliving the JWT it was minted
+		// alongside. The SPA must re-login (which writes a fresh
+		// CSRFToken via UpdateMetadata) before mutations work again.
+		//
+		if err := m.DB.Model(&user).Updates(map[string]interface{}{
+			"api_token":    token,
+			"token_expire": exp,
+			"csrf_token":   "",
+		}).Error; err != nil {
 			return fmt.Errorf("update %w", err)
 		}
+	}
+	return nil
+}
+
+// ClearToken empties the user's APIToken and CSRFToken so any existing
+// JWT + CSRF cookie pair for them stops validating. Used by DELETE
+// /api/v1/users/{username}/token. We use a map-update so the empty
+// strings actually land (GORM's struct-Updates skips zero-value fields).
+func (m *UserManager) ClearToken(username string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %w", err)
+	}
+	if err := m.DB.Model(&user).Updates(map[string]interface{}{
+		"api_token":    "",
+		"token_expire": time.Time{},
+		"csrf_token":   "",
+	}).Error; err != nil {
+		return fmt.Errorf("update %w", err)
 	}
 	return nil
 }

@@ -21,9 +21,11 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -185,8 +187,49 @@ func checkLatestRelease() {
 	}
 }
 
+// guardAuthMode refuses to start the API with --auth=none unless the operator
+// explicitly opts in via OSCTRL_INSECURE_NO_AUTH=1. When the opt-in is set,
+// every 60s a loud warning is logged so the deployment cannot drift into
+// "auth-off forever" without anyone noticing.
+//
+// The warning goroutine watches the supplied context so a future graceful
+// shutdown path can cancel it cleanly. Today the API has no shutdown signal
+// handling so the context never fires — that's acceptable; we get the
+// no-leak property for free when shutdown is added.
+func guardAuthMode(ctx context.Context, auth string) {
+	if auth != config.AuthNone {
+		return
+	}
+	if os.Getenv("OSCTRL_INSECURE_NO_AUTH") != "1" {
+		log.Fatal().Msg("auth=none is disabled by default. Set OSCTRL_INSECURE_NO_AUTH=1 to opt in for local development only — every request will be served as super-admin")
+	}
+	go func() {
+		log.Warn().Msg("INSECURE: osctrl-api running with auth=none — every request is served as super-admin. DO NOT use in production")
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				log.Warn().Msg("INSECURE: osctrl-api running with auth=none — every request is served as super-admin. DO NOT use in production")
+			}
+		}
+	}()
+}
+
 // Go go!
 func osctrlAPIService() {
+	// Refuse to run unauthenticated unless the operator explicitly opts in.
+	guardAuthMode(context.Background(), flagParams.Service.Auth)
+	// Configure forwarding-header trust. Empty (default) means utils.GetIP
+	// ignores X-Forwarded-For / X-Real-IP and always uses RemoteAddr, so
+	// an internet attacker can't spoof IPs to defeat rate-limits or
+	// poison the audit log.
+	if tp := strings.TrimSpace(flagParams.Service.TrustedProxies); tp != "" {
+		utils.SetTrustedProxies(strings.Split(tp, ","))
+		log.Info().Msgf("Trusting forwarding headers from: %s", tp)
+	}
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
@@ -265,7 +308,6 @@ func osctrlAPIService() {
 		handlers.WithAuditLog(auditLog),
 		handlers.WithDebugHTTP(flagParams.Debug),
 		handlers.WithOsqueryValues(*flagParams.Osquery),
-
 	)
 
 	// ///////////////////////// API
@@ -284,7 +326,16 @@ func osctrlAPIService() {
 	muxAPI.HandleFunc("GET "+_apiPath(checksNoAuthPath), handlersApi.CheckHandlerNoAuth)
 
 	// ///////////////////////// UNAUTHENTICATED
-	muxAPI.HandleFunc("POST "+_apiPath(apiLoginPath)+"/{env}", handlersApi.LoginHandler)
+	// Login is the only password-acceptance surface on the API. Cap to
+	// 10 attempts per IP per minute (token-bucket; bursts of 10, refill
+	// at 1/6s) and 429 the rest. Rejections are audit-logged inside the
+	// LoginHandler / RateLimit middleware so SoC tooling sees the spray.
+	//
+	loginLimiter := ratelimit.New(10, time.Minute, 10*time.Minute)
+	loginRateLimit := loginLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
+		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
+	})
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(
@@ -392,7 +443,7 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{target}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiEnvironmentsPath)+"/{env}/remove/{action}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvRemoveActionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

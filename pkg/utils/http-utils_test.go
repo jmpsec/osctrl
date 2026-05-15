@@ -85,21 +85,31 @@ func TestSendRequest(t *testing.T) {
 }
 
 func TestGetIP(t *testing.T) {
+	t.Cleanup(func() { SetTrustedProxies(nil) })
+	// All three sub-tests run with a trusted-proxy configuration that
+	// covers the test RemoteAddr (127.0.0.0/8 for httptest defaults
+	// and the test addresses below). Without trust configured, GetIP
+	// ignores forwarding headers — that contract is asserted in
+	// TestGetIPIgnoresHeadersByDefault.
+	SetTrustedProxies([]string{"127.0.0.0/8"})
 	t.Run("get ip X-Real-IP header", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "https://whatever/server/path", nil)
+		req.RemoteAddr = "127.0.0.1:1234" // inside trusted CIDR
 		req.Header.Set(XRealIP, "1.2.3.4")
 		ip := GetIP(req)
 		assert.Equal(t, "1.2.3.4", ip)
 	})
 	t.Run("get ip X-Forwarder-For header", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "https://whatever/server/path", nil)
+		req.RemoteAddr = "127.0.0.1:1234"
 		req.Header.Set(XForwardedFor, "1.2.3.4")
 		ip := GetIP(req)
 		assert.Equal(t, "1.2.3.4", ip)
 	})
 	t.Run("get ip RemoteAddr", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "https://whatever/server/path", nil)
-		req.Header.Set(XForwardedFor, "")
+		// No RemoteAddr set and no headers — GetIP falls back to the
+		// empty value the request was built with.
 		ip := GetIP(req)
 		assert.Equal(t, "", ip)
 	})
@@ -131,4 +141,71 @@ func TestHTTPDownload(t *testing.T) {
 		HTTPDownload(rr, "whatever", "file.txt", 123)
 		assert.Equal(t, "123", rr.Header().Get(ContentLength))
 	})
+}
+
+// TestGetIPIgnoresHeadersByDefault — out-of-the-box GetIP MUST NOT
+// consult X-Real-IP / X-Forwarded-For.
+func TestGetIPIgnoresHeadersByDefault(t *testing.T) {
+	SetTrustedProxies(nil) // reset
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "203.0.113.5:12345"
+	req.Header.Set("X-Real-IP", "99.99.99.99")
+	req.Header.Set("X-Forwarded-For", "1.2.3.4, 5.6.7.8")
+	if got := GetIP(req); got != "203.0.113.5" {
+		t.Errorf("default GetIP: got %q, want %q (forwarding headers must be ignored)", got, "203.0.113.5")
+	}
+}
+
+// TestGetIPHonorsTrustedProxy — when the connecting peer is inside a
+// trusted-proxy CIDR, the right-most untrusted hop from X-Forwarded-For
+// becomes the result.
+func TestGetIPHonorsTrustedProxy(t *testing.T) {
+	t.Cleanup(func() { SetTrustedProxies(nil) })
+	SetTrustedProxies([]string{"10.0.0.0/8"})
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "10.0.0.5:12345" // trusted edge
+	// `client, edge1, edge2` — edge1/edge2 are inside the trusted CIDR,
+	// so the right-most-untrusted is "203.0.113.5".
+	req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1, 10.0.0.5")
+	if got := GetIP(req); got != "203.0.113.5" {
+		t.Errorf("trusted XFF: got %q, want %q", got, "203.0.113.5")
+	}
+}
+
+// TestGetIPUntrustedPeerIgnoresHeaders — even with trusted proxies set,
+// a request coming from OUTSIDE the trusted CIDRs must ignore headers.
+func TestGetIPUntrustedPeerIgnoresHeaders(t *testing.T) {
+	t.Cleanup(func() { SetTrustedProxies(nil) })
+	SetTrustedProxies([]string{"10.0.0.0/8"})
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "203.0.113.5:12345" // NOT in trusted CIDR
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	if got := GetIP(req); got != "203.0.113.5" {
+		t.Errorf("untrusted peer with header: got %q, want %q", got, "203.0.113.5")
+	}
+}
+
+// TestGetIPTrustedProxyIPv6 — verify IPv6 trusted-proxy match.
+func TestGetIPTrustedProxyIPv6(t *testing.T) {
+	t.Cleanup(func() { SetTrustedProxies(nil) })
+	SetTrustedProxies([]string{"fd00::/8"})
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "[fd00::1]:443"
+	req.Header.Set("X-Forwarded-For", "2001:db8::1")
+	if got := GetIP(req); got != "2001:db8::1" {
+		t.Errorf("trusted IPv6 XFF: got %q, want %q", got, "2001:db8::1")
+	}
+}
+
+// TestSetTrustedProxiesIgnoresInvalid — bad CIDRs are dropped silently
+// rather than panicking; the remaining good ones still apply.
+func TestSetTrustedProxiesIgnoresInvalid(t *testing.T) {
+	t.Cleanup(func() { SetTrustedProxies(nil) })
+	SetTrustedProxies([]string{"not-a-cidr", "10.0.0.0/8", "", "  "})
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "10.0.0.1:443"
+	req.Header.Set("X-Real-IP", "203.0.113.5")
+	if got := GetIP(req); got != "203.0.113.5" {
+		t.Errorf("partial CIDR set: got %q, want %q", got, "203.0.113.5")
+	}
 }
