@@ -83,12 +83,33 @@ type ServiceParameters struct {
 	Debug *YAMLConfigurationDebug
 }
 
+// initAuthFlag returns the per-service `--auth` flag with the given
+// default. Kept out of initServiceFlags so each service can pick the
+// default that matches its semantics:
+//
+//   - osctrl-api uses JWT to authenticate operators / SPA clients
+//   - osctrl-admin uses DB-backed user/password (or SAML/OIDC) for
+//     its browser login form
+//   - osctrl-tls authenticates osquery agents via per-environment
+//     enroll secret, not via this flag; AuthNone is correct for it
+func initAuthFlag(params *ServiceParameters, defaultValue string) cli.Flag {
+	return &cli.StringFlag{
+		Name:        "auth",
+		Aliases:     []string{"A"},
+		Value:       defaultValue,
+		Usage:       "Authentication mechanism for the service",
+		Sources:     cli.EnvVars("SERVICE_AUTH"),
+		Destination: &params.Service.Auth,
+	}
+}
+
 // InitTLSFlags initializes all the flags needed for the TLS service
 func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	var allFlags []cli.Flag
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)
+	allFlags = append(allFlags, initAuthFlag(params, AuthNone))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
 	allFlags = append(allFlags, initMetricsFlags(params)...)
 	allFlags = append(allFlags, initWriterFlags(params)...)
@@ -110,6 +131,7 @@ func InitAdminFlags(params *ServiceParameters) []cli.Flag {
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params, ServiceAdmin)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)
+	allFlags = append(allFlags, initAuthFlag(params, AuthDB))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
@@ -131,6 +153,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)
+	allFlags = append(allFlags, initAuthFlag(params, AuthJWT))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
@@ -190,14 +213,6 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Exposed hostname the service uses",
 			Sources:     cli.EnvVars("SERVICE_HOST"),
 			Destination: &params.Service.Host,
-		},
-		&cli.StringFlag{
-			Name:        "auth",
-			Aliases:     []string{"A"},
-			Value:       AuthJWT,
-			Usage:       "Authentication mechanism for the service (jwt|none — `none` requires OSCTRL_INSECURE_NO_AUTH=1)",
-			Sources:     cli.EnvVars("SERVICE_AUTH"),
-			Destination: &params.Service.Auth,
 		},
 		&cli.StringFlag{
 			Name:        "log-level",

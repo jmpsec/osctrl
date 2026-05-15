@@ -250,15 +250,10 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "path can not be empty", http.StatusBadRequest, nil)
 		return
 	}
-	// Validate the path before it's spliced into the osquery SQL via
-	// carves.GenCarveQuery. Without this gate a CarveLevel operator
-	// could inject arbitrary osquery (e.g. `'; SELECT 1; --`) into the
-	// query that gets distributed to every targeted node — pivoting
-	// "carve a file" into "run any SELECT".
-	if !carves.ValidCarvePath(c.Path) {
-		apiErrorResponse(w, "invalid carve path", http.StatusBadRequest, fmt.Errorf("rejected path %q", c.Path))
-		return
-	}
+	// SQL injection on the carves.GenCarveQuery splice is defended at
+	// the splice site (single-quote escape, LIKE pattern escape) — no
+	// allowlist gate here so legitimate paths containing spaces or
+	// non-ASCII characters round-trip correctly.
 	// Make sure the user has permissions to run queries in the environments
 	for _, e := range c.Environments {
 		if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, e) {

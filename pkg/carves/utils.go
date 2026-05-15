@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -87,38 +86,61 @@ func GenCarveName() string {
 	return "carve_" + utils.RandomForNames()
 }
 
-// validCarvePath restricts the characters that can appear in a carve
-// path. The carve string is concatenated into the osquery SQL that
-// every targeted node executes; without this gate a CarveLevel
-// operator could inject arbitrary osquery (e.g. `'; SELECT 1; --`) and
-// pivot from "exfil this path" to "run any SELECT against your nodes".
-//
-// The character class covers realistic carve targets across the three
-// platforms: absolute POSIX paths (Linux/macOS), Windows paths with
-// backslashes and drive letters, and glob wildcards (* and ?). It
-// explicitly excludes single quote, semicolon, and comment markers.
-var validCarvePath = regexp.MustCompile(`^[/A-Za-z0-9._\-\\:*?]+$`)
-
-// ValidCarvePath reports whether s is a safe value to splice into
-// GenCarveQuery. Callers MUST verify before calling GenCarveQuery —
-// the result is interpolated directly into SQL.
-func ValidCarvePath(s string) bool {
-	if s == "" {
-		return false
-	}
-	return validCarvePath.MatchString(s)
+// escapeSQLString returns s with every single quote doubled, so the
+// result is safe to interpolate inside a SQL string literal — osquery
+// (SQLite) follows the standard rule that '' inside a literal is one
+// literal quote, and there is no backslash escape to consider. This
+// is the SQL-injection defense for GenCarveQuery: a path containing
+// `'; DROP TABLE x; --` becomes `''; DROP TABLE x; --`, which the
+// parser sees as the contents of the string literal — there is no
+// way to escape the surrounding quotes.
+func escapeSQLString(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
 }
 
-// Helper to generate the carve query.
+// escapeLikePattern returns s escaped for a SQL LIKE pattern, using
+// `\` as the escape character. Caller MUST emit the resulting query
+// with `ESCAPE '\'`. Order matters: escape the escape char first.
+func escapeLikePattern(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
+}
+
+// globToLike maps the carve-style globs `*` and `?` to LIKE wildcards
+// `%` and `_`, after escaping any literal LIKE metacharacters the
+// path may already contain, then escaping SQL string quotes. The
+// caller MUST emit the resulting pattern with `ESCAPE '\'`.
 //
-// `file` is interpolated into the SQL string verbatim. The caller MUST
-// have validated it via ValidCarvePath beforehand — passing an
-// unvalidated user-controlled value here lets the requesting operator
-// run arbitrary osquery on every targeted host, which is well beyond
-// the "carve a file" capability the endpoint advertises.
+// Order matters: LIKE-escape (which inserts `\`) runs before the
+// glob mapping (so existing `%`/`_` stay literal), and SQL-quote
+// escaping runs last so doubled quotes are not themselves escaped
+// by the LIKE pass.
+func globToLike(s string) string {
+	s = escapeLikePattern(s)
+	s = strings.ReplaceAll(s, "*", "%")
+	s = strings.ReplaceAll(s, "?", "_")
+	s = escapeSQLString(s)
+	return s
+}
+
+// GenCarveQuery builds the osquery SQL that selects matching `carves`
+// rows on every targeted node. The carve `file` is treated as an
+// untrusted SQL string literal: single quotes are doubled so a
+// CarveLevel operator cannot break out of the literal to pivot from
+// "carve this path" into arbitrary SELECTs (e.g. `'; SELECT 1; --`).
+//
+// In glob mode `*` and `?` map to LIKE wildcards `%` and `_`, with
+// any pre-existing `%`, `_`, or `\` in the path escaped via `ESCAPE '\'`
+// so they are treated as literals.
+//
+// Paths containing spaces (e.g. `C:\Program Files\...`,
+// `/Library/Application Support/...`) and any UTF-8 characters are
+// supported.
 func GenCarveQuery(file string, glob bool) string {
 	if glob {
-		return "SELECT * FROM carves WHERE carve=1 AND path LIKE '" + file + "';"
+		return "SELECT * FROM carves WHERE carve=1 AND path LIKE '" + globToLike(file) + "' ESCAPE '\\';"
 	}
-	return "SELECT * FROM carves WHERE carve=1 AND path = '" + file + "';"
+	return "SELECT * FROM carves WHERE carve=1 AND path = '" + escapeSQLString(file) + "';"
 }
