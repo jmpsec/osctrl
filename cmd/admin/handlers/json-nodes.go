@@ -120,14 +120,14 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 			log.Err(err).Msg("error counting search nodes")
 			return
 		}
-		nodesSlice, err = h.Nodes.SearchByEnvPage(env.Name, searchValue, target, hours, start, length, colName, desc)
+		nodesSlice, err = h.Nodes.SearchByEnvPage(env.Name, searchValue, target, hours, start, length, colName, desc) //nolint:staticcheck // SA1019: intentional legacy admin caller; new SPA uses GetByEnvPaged
 		if err != nil {
 			log.Err(err).Msg("error searching nodes page")
 			return
 		}
 	} else {
 		filteredCount = totalCount
-		nodesSlice, err = h.Nodes.GetByEnvPage(env.Name, target, hours, start, length, colName, desc)
+		nodesSlice, err = h.Nodes.GetByEnvPage(env.Name, target, hours, start, length, colName, desc) //nolint:staticcheck // SA1019: intentional legacy admin caller; new SPA uses GetByEnvPaged
 		if err != nil {
 			log.Err(err).Msg("error getting nodes page")
 			return

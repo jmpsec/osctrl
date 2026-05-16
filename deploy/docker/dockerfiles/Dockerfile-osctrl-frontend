@@ -1,0 +1,41 @@
+# Multi-stage Dockerfile for osctrl-frontend.
+#
+# Stage 1: build the Vite bundle.
+# Stage 2: ship via nginx:alpine using the example reverse-proxy config.
+#
+# Build from the repo root:
+#   docker build -t osctrl-frontend \
+#     -f deploy/docker/dockerfiles/Dockerfile-osctrl-frontend .
+#
+# Run (pointing /api/* at a colocated osctrl-api):
+#   docker run -d --name osctrl-frontend --network osctrl \
+#     -p 443:443 -v $(pwd)/tls:/etc/ssl/private:ro osctrl-frontend
+
+# -------- Stage 1: build --------
+FROM node:20-alpine AS build
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+
+# Install with npm ci when a lockfile exists; fall back to npm install otherwise.
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
+    else npm install --no-audit --no-fund; fi
+
+COPY frontend/ ./
+
+RUN npm run build
+
+# -------- Stage 2: nginx --------
+FROM nginx:alpine
+
+# Drop the default site so our config wins.
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+COPY --from=build /app/frontend/dist /usr/share/nginx/osctrl-frontend
+COPY deploy/nginx/frontend.conf.example /etc/nginx/conf.d/osctrl-frontend.conf
+
+# nginx logs to stdout/stderr by default in this base image.
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

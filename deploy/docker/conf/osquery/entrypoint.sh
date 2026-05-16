@@ -30,6 +30,15 @@ if [ ! -f "/etc/osquery/osquery.secret" ]; then
   /opt/osctrl/bin/osctrl-cli --db env node-actions --name "${ENV_NAME}" show-flags > /etc/osquery/osquery.flags
   sed -i "s#__SECRET_FILE__#/etc/osquery/osquery.secret#g" /etc/osquery/osquery.flags
   echo "--tls_server_certs=/etc/osquery/osctrl.crt" >> /etc/osquery/osquery.flags
+  # On multi-container dev hosts the default --host_identifier=uuid makes
+  # every container share the kernel UUID and enroll as the same node.
+  # Even --host_identifier=instance can collide because the instance UUID
+  # is written to the data volume which a stale image might pre-populate.
+  # Force a stable per-container identifier from the container's hostname
+  # (Docker assigns a unique 12-hex-char hostname per container).
+  sed -i "/--host_identifier=/d" /etc/osquery/osquery.flags
+  echo "--host_identifier=specified" >> /etc/osquery/osquery.flags
+  echo "--specified_identifier=$(hostname)" >> /etc/osquery/osquery.flags
 fi
 
 # Run Osquery

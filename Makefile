@@ -11,6 +11,8 @@ ADMIN_DIR = cmd/admin
 ADMIN_NAME = osctrl-admin
 ADMIN_CODE = ${ADMIN_DIR:=/*.go}
 
+FRONTEND_DIR = frontend
+
 API_DIR = cmd/api
 API_NAME = osctrl-api
 API_CODE = ${API_DIR:=/*.go}
@@ -27,7 +29,7 @@ DIST = dist
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
 BUILD_ARGS = -ldflags "-s -w -X main.buildCommit=$(shell git rev-parse HEAD) -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-.PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist
+.PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
 
 # Build code according to caller OS and architecture
 build:
@@ -74,6 +76,31 @@ cli:
 # Build the CLI statically
 cli-static:
 	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
+
+# ---------------------------------------------------------------------------
+# React admin frontend (Vite + TypeScript SPA, served by nginx)
+# ---------------------------------------------------------------------------
+
+# Install JS deps (use ci when a lockfile is present, install otherwise).
+frontend-install:
+	cd $(FRONTEND_DIR) && \
+		if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
+		else npm install --no-audit --no-fund; fi
+
+# Local dev server (Vite on :5173, proxies /api → :8081).
+frontend-dev:
+	cd $(FRONTEND_DIR) && npm run dev
+
+# Run vitest + tsc.
+frontend-test:
+	cd $(FRONTEND_DIR) && npm test && npm run check
+
+# Build the production bundle into frontend/dist/.
+frontend-build:
+	cd $(FRONTEND_DIR) && npm run build
+
+# One-shot: install + build (used by CI / Docker builds).
+frontend: frontend-install frontend-build
 
 # Clean the dist directory
 clean-dist:

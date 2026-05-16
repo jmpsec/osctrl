@@ -3,11 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
-	"gorm.io/gorm"
 )
 
 // ContextValue to hold session data in the context
@@ -24,19 +22,6 @@ const (
 	contextAPI string = "osctrl-api-context"
 	ctxUser    string = "user"
 )
-
-// Function to retrieve the query log by name
-func postgresQueryLogs(db *gorm.DB, name string) (APIQueryData, error) {
-	var logs []logging.OsqueryQueryData
-	data := make(APIQueryData)
-	if err := db.Where("name = ?", name).Find(&logs).Error; err != nil {
-		return data, err
-	}
-	for _, l := range logs {
-		data[l.UUID] = l.Data
-	}
-	return data, nil
-}
 
 // Helper to handle API error responses
 func apiErrorResponse(w http.ResponseWriter, msg string, code int, err error) {

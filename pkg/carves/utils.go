@@ -56,8 +56,16 @@ func GenerateArchiveName(carve CarvedFile) string {
 
 // Function to check if data is compressed using zstd
 // https://github.com/facebook/zstd
+//
+// Returns false on inputs shorter than the 4-byte zstd magic — callers
+// may feed arbitrary node-controlled bytes, so the length check is the
+// only thing preventing a slice-bounds panic that would crash the
+// service.
 func CheckCompressionRaw(data []byte) bool {
-	return bytes.Equal(data[:4], CompressionHeader)
+	if len(data) < len(CompressionHeader) {
+		return false
+	}
+	return bytes.Equal(data[:len(CompressionHeader)], CompressionHeader)
 }
 
 // Function to check if a block data is compressed using zstd

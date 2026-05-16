@@ -1,0 +1,123 @@
+# osctrl-frontend — example nginx reverse-proxy config
+#
+# Serves the React SPA static bundle from /usr/share/nginx/osctrl-frontend/
+# and forwards /api/* to osctrl-api on port 8081. Single TLS cert, cookies
+# kept SameSite=Lax so the SPA's HttpOnly osctrl_token cookie flows.
+#
+# Adjust:
+#   - server_name          to your hostname
+#   - root                 to wherever you copied frontend/dist/
+#   - upstream osctrl_api  to your osctrl-api endpoint(s)
+#   - ssl_certificate*     to your real certs
+#
+# This file is meant to be referenced — drop into /etc/nginx/conf.d/, edit,
+# `nginx -t`, then reload.
+
+upstream osctrl_api {
+    server osctrl-api:8081;
+    keepalive 16;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name osctrl.example.com;
+
+    ssl_certificate     /etc/ssl/certs/osctrl.crt;
+    ssl_certificate_key /etc/ssl/private/osctrl.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    # Baseline security headers. `always` makes them
+    # apply to non-2xx responses too, so error pages aren't a downgrade
+    # bypass. Monaco needs 'unsafe-inline' for runtime style injection;
+    # blob: in script-src covers Monaco's web-worker bootstrap.
+    #
+    # IMPORTANT: nginx's ngx_http_headers_module does NOT inherit
+    # add_header into a child `location` block that has any add_header
+    # of its own. Every location below that declares add_header MUST
+    # re-emit this full set — otherwise that response path silently
+    # ships without the security headers. The directives are duplicated
+    # below rather than abstracted via include to keep this example file
+    # self-contained.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+
+    root /usr/share/nginx/osctrl-frontend;
+    index index.html;
+
+    # Long-cache the immutable hashed assets Vite emits.
+    # add_header below must re-state every server-level header.
+    location ^~ /assets/ {
+        access_log off;
+        expires 30d;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        try_files $uri =404;
+    }
+
+    # Self-hosted Monaco runtime. Long-cache like /assets.
+    location ^~ /monaco/ {
+        access_log off;
+        expires 30d;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        try_files $uri =404;
+    }
+
+    # Reverse-proxy /api/* to osctrl-api.
+    # IMPORTANT: keep the Set-Cookie attributes as the API emits them
+    # (HttpOnly osctrl_token + non-HttpOnly osctrl_csrf, SameSite=Lax).
+    # Do NOT strip the cookie path / SameSite — proxy_cookie_path / proxy_cookie_flags
+    # are NOT used so the cookies arrive at the browser untouched.
+    # add_header below must re-state every server-level header — this is the
+    # highest-stakes path and must NOT ship without CSP / HSTS.
+    location /api/ {
+        proxy_pass http://osctrl_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+
+        # CSV exports, log streams, and carve archives can be large.
+        proxy_buffering off;
+        client_max_body_size 64m;
+    }
+
+    # SPA fallback — everything else returns index.html so TanStack Router
+    # client-side routing works on deep-links and reloads.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Redirect HTTP → HTTPS.
+server {
+    listen 80;
+    server_name osctrl.example.com;
+    return 301 https://$host$request_uri;
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Self-hosted Monaco bundle copied at build time from node_modules.
+# Keeps git size sane (15 MiB of generated code); regenerated via the
+# prebuild script. ( — CSP requires self-hosted monaco.)
+public/monaco/

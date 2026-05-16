@@ -476,7 +476,7 @@ type EnvActivityBucketRow struct {
 // in-process histogram over GetEnvSince.
 func (m *AuditLogManager) GetEnvActivityBucketed(envID uint, since time.Time, bucketSeconds int) ([]EnvActivityBucketRow, error) {
 	var dialect string
-	switch m.DB.Dialector.Name() {
+	switch m.DB.Name() {
 	case "postgres":
 		dialect = fmt.Sprintf("(floor(extract(epoch from created_at) / %d) * %d)::bigint", bucketSeconds, bucketSeconds)
 	case "mysql":
