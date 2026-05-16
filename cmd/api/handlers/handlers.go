@@ -11,6 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -36,6 +37,7 @@ type HandlersApi struct {
 	ApiConfig       *config.APIConfiguration
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
+	OsqueryTables   []types.OsqueryTable
 	OsqueryValues   config.YAMLConfigurationOsquery
 }
 
@@ -112,9 +114,16 @@ func WithAuditLog(auditLog *auditlog.AuditLogManager) HandlersOption {
 		h.AuditLog = auditLog
 	}
 }
+
 func WithOsqueryValues(values config.YAMLConfigurationOsquery) HandlersOption {
 	return func(h *HandlersApi) {
 		h.OsqueryValues = values
+	}
+}
+
+func WithOsqueryTables(tables []types.OsqueryTable) HandlersOption {
+	return func(h *HandlersApi) {
+		h.OsqueryTables = tables
 	}
 }
 

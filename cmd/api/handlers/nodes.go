@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -26,7 +28,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -43,9 +45,8 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting node", http.StatusBadRequest, nil)
 		return
 	}
-	// Get node by identifier
-	// FIXME keep a cache of nodes by node identifier
-	node, err := h.Nodes.GetByIdentifier(nodeVar)
+	// Get node by identifier, scoped to this environment
+	node, err := h.Nodes.GetByIdentifierEnv(nodeVar, env.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
@@ -56,8 +57,11 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug().Msgf("Returned node %s", nodeVar)
 	h.AuditLog.NodeAction(ctx[ctxUser], "viewed node "+nodeVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	// Serialize and serve JSON
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, node)
+	// Project to the SPA-facing view that surfaces parsed-and-sanitized
+	// enrichment fields (CPU cores, BIOS, hardware vendor/model) parsed from
+	// the otherwise-hidden RawEnrollment blob. The enroll_secret inside that
+	// blob is intentionally NOT in the projection — see pkg/types/node_view.go.
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ProjectNode(node))
 }
 
 // ActiveNodesHandler - GET Handler for active JSON nodes
@@ -73,7 +77,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -84,20 +88,21 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get nodes
-	nodes, err := h.Nodes.Gets(nodes.ActiveNodes, 24)
+	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
+	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.ActiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if len(nodes) == 0 {
+	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned active nodes")
 	h.AuditLog.NodeAction(ctx[ctxUser], "viewed active nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodeList)
 }
 
 // InactiveNodesHandler - GET Handler for inactive JSON nodes
@@ -113,7 +118,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -124,20 +129,21 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get nodes
-	nodes, err := h.Nodes.Gets(nodes.InactiveNodes, 24)
+	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
+	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.InactiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if len(nodes) == 0 {
+	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned inactive nodes")
 	h.AuditLog.NodeAction(ctx[ctxUser], "viewed inactive nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodeList)
 }
 
 // AllNodesHandler - GET Handler for all JSON nodes
@@ -153,7 +159,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		return
@@ -164,20 +170,20 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get nodes
-	nodes, err := h.Nodes.Gets(nodes.AllNodes, 0)
+	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
+	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.AllNodes, 0)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if len(nodes) == 0 {
+	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
 		return
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned all nodes")
 	h.AuditLog.NodeAction(ctx[ctxUser], "viewed all nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodes)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, nodeList)
 }
 
 // DeleteNodeHandler - POST Handler to delete single node
@@ -193,7 +199,7 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -237,7 +243,7 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, nil)
 		return
@@ -251,7 +257,11 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.ApiNodeTagRequest
 	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+	if t.UUID == "" || t.Tag == "" {
+		apiErrorResponse(w, "uuid and tag are required", http.StatusBadRequest, nil)
 		return
 	}
 	// Get node by UUID
@@ -309,4 +319,123 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 	h.AuditLog.NodeAction(ctx[ctxUser], "looked up node "+l.Identifier, strings.Split(r.RemoteAddr, ":")[0], n.ID)
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, n)
+}
+
+// NodesPagedHandler returns paginated, sorted, searchable nodes for an env.
+// This is the canonical endpoint consumed by the React admin SPA.
+//
+// Query params:
+//
+//	status:    "all" | "active" | "inactive" (default "all")
+//	q:         free-text search (case-insensitive partial match on uuid,
+//	           hostname, localname, ip, username, osquery_user, platform, version)
+//	sort:      one of nodes.SortableColumns keys (default "lastseen")
+//	dir:       "asc" | "desc" (default "desc" for lastseen, "asc" otherwise)
+//	page:      1-indexed page number (default 1)
+//	page_size: 1..500 (default 50)
+func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) {
+	// Debug HTTP if enabled
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// env from URL path
+	envVar := r.PathValue("env")
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		// try by name for callers that pass an env name (legacy compat)
+		envByName, err2 := h.Envs.GetByName(envVar)
+		if err2 != nil {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+			return
+		}
+		env = envByName
+	}
+
+	// auth context — user
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+
+	// params
+	q := r.URL.Query()
+	status := q.Get("status")
+	if status == "" {
+		status = "all"
+	}
+	switch status {
+	case "all", "active", "inactive":
+	default:
+		apiErrorResponse(w, "invalid status (all|active|inactive)", http.StatusBadRequest, nil)
+		return
+	}
+	search := q.Get("q")
+	dirParam := strings.ToLower(q.Get("dir"))
+	sortCol := q.Get("sort")
+	var desc bool
+	switch dirParam {
+	case "asc":
+		desc = false
+	case "desc":
+		desc = true
+	default:
+		// No explicit direction: default to desc for time-based columns,
+		// asc for everything else. Matches OpenAPI default of "desc" for
+		// the most common SPA sort (lastseen).
+		switch sortCol {
+		case "", "lastseen", "firstseen":
+			desc = true
+		default:
+			desc = false
+		}
+	}
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+
+	// Platform bucket filter — empty string disables. Validated inside
+	// applyPlatformBucket: unknown buckets become no-ops. We do still allow
+	// the explicit value "other" so the SPA can offer an "Other" chip for
+	// platforms that don't fit linux/darwin/windows.
+	platformBucket := strings.ToLower(strings.TrimSpace(q.Get("platform")))
+	switch platformBucket {
+	case "", "linux", "darwin", "windows", "other":
+		// allowed
+	default:
+		apiErrorResponse(w, "invalid platform (linux|darwin|windows|other)", http.StatusBadRequest, nil)
+		return
+	}
+
+	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	pageData, err := h.Nodes.GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket)
+	if err != nil {
+		apiErrorResponse(w, "failed to query nodes", http.StatusInternalServerError, err)
+		return
+	}
+
+	// Normalize page/pageSize back so the client sees what was actually applied.
+	if pageSize <= 0 {
+		pageSize = 50
+	} else if pageSize > 500 {
+		pageSize = 500
+	}
+	if page <= 0 {
+		page = 1
+	}
+	totalPages := int((pageData.TotalItems + int64(pageSize) - 1) / int64(pageSize))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	log.Debug().Msgf("Returned paged nodes for env %s page %d", env.Name, page)
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed paged nodes", strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.NodesPagedResponse{
+		// ProjectNodes adds the parsed `system_info` enrichment block per row.
+		// The enroll_secret inside RawEnrollment is intentionally excluded.
+		Items:      types.ProjectNodes(pageData.Items),
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: pageData.TotalItems,
+		TotalPages: totalPages,
+	})
 }

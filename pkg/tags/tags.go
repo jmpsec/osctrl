@@ -3,6 +3,7 @@ package tags
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/rs/zerolog/log"
@@ -46,19 +47,26 @@ const (
 	TagCustomTag string = TagTypeTagStr
 )
 
-// AdminTag to hold all tags
+// AdminTag to hold all tags.
+//
+// Explicit JSON tags so /api/v1/tags responses match the SPA's snake_case
+// contract. Fields are equivalent to embedding gorm.Model; we expand them
+// so we can attach json tags to ID/CreatedAt/UpdatedAt/DeletedAt.
 type AdminTag struct {
-	gorm.Model
-	Name          string `gorm:"index"`
-	Description   string
-	Color         string
-	Icon          string
-	CreatedBy     string
-	CustomTag     string
-	AutoTag       bool
-	EnvironmentID uint
-	TagType       uint
-	Cohort        bool
+	ID            uint           `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	Name          string         `gorm:"index" json:"name"`
+	Description   string         `json:"description"`
+	Color         string         `json:"color"`
+	Icon          string         `json:"icon"`
+	CreatedBy     string         `json:"created_by"`
+	CustomTag     string         `json:"custom_tag"`
+	AutoTag       bool           `json:"auto_tag"`
+	EnvironmentID uint           `json:"environment_id"`
+	TagType       uint           `json:"tag_type"`
+	Cohort        bool           `json:"cohort"`
 }
 
 // AdminTagForNode to check if this tag is used for an specific node

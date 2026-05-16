@@ -76,7 +76,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment by UUID
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -186,7 +186,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -256,7 +256,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -317,7 +317,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -417,7 +417,7 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	// Get environment by name
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -506,6 +506,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// Validate the optional client-supplied UUID strictly.
+		//
 		//   - utils.CheckUUID delegates to google/uuid Parse, accepting only
 		//     canonical UUIDs. EnvUUIDFilter alone is `^[a-z0-9-]+$`, which
 		//     would have happily accepted "-", "a", "deadbeef", etc.

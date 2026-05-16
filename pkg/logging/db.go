@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -215,6 +216,233 @@ func (logDB *LoggerDB) ResultLogsLimit(uuid, environment string, limit int) ([]O
 		return logs, err
 	}
 	return logs, nil
+}
+
+// GetNodeLogs retrieves recent log entries for a single node (status or result).
+// logType must be "status" or "result". Results are ordered by created_at DESC.
+// If since is non-zero only entries created strictly after that time are returned.
+// limit is clamped to [1, 1000].
+//
+// search is an optional free-text filter (substring, case-insensitive). It
+// runs as a `LIKE` against the human-readable text columns of the row:
+//   - status: line + message + filename
+//   - result: name + action + columns (the serialized JSON of matched fields)
+//
+// Empty search disables the filter — same behavior as a missing param.
+//
+// The `LIKE` is unindexed today. If the result_data / status_data tables
+// grow large enough to make this slow, an operator-side workaround is to
+// narrow `since` first, which keeps the matched row count small.
+func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	uuid = strings.ToUpper(uuid)
+	// Escape SQL LIKE wildcards in the user input so a literal '%' in a
+	// pasted token doesn't match more than intended. GORM auto-escapes the
+	// quote+backslash but not the wildcard metacharacters.
+	likeNeedle := ""
+	if search != "" {
+		needle := strings.ReplaceAll(search, `\`, `\\`)
+		needle = strings.ReplaceAll(needle, `%`, `\%`)
+		needle = strings.ReplaceAll(needle, `_`, `\_`)
+		likeNeedle = "%" + needle + "%"
+	}
+
+	var result []map[string]any
+
+	switch logType {
+	case types.StatusLog:
+		var rows []OsqueryStatusData
+		q := db.Where("uuid = ? AND environment = ?", uuid, env)
+		if !since.IsZero() {
+			q = q.Where("created_at > ?", since)
+		}
+		if likeNeedle != "" {
+			// LOWER() so the search is case-insensitive. The needle is
+			// already plain-text; lowercasing both sides handles UTF-8
+			// only weakly (no Unicode case-folding) but is good enough
+			// for the IR/incident use case which is mostly ASCII tokens.
+			lowerNeedle := strings.ToLower(likeNeedle)
+			q = q.Where(
+				"LOWER(line) LIKE ? OR LOWER(message) LIKE ? OR LOWER(filename) LIKE ?",
+				lowerNeedle, lowerNeedle, lowerNeedle,
+			)
+		}
+		if err := q.Order("created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			result = append(result, map[string]any{
+				"id":          r.ID,
+				"created_at":  r.CreatedAt,
+				"uuid":        r.UUID,
+				"environment": r.Environment,
+				"line":        r.Line,
+				"message":     r.Message,
+				"version":     r.Version,
+				"filename":    r.Filename,
+				"severity":    r.Severity,
+			})
+		}
+	case types.ResultLog:
+		var rows []OsqueryResultData
+		q := db.Where("uuid = ? AND environment = ?", uuid, env)
+		if !since.IsZero() {
+			q = q.Where("created_at > ?", since)
+		}
+		if likeNeedle != "" {
+			lowerNeedle := strings.ToLower(likeNeedle)
+			q = q.Where(
+				"LOWER(name) LIKE ? OR LOWER(action) LIKE ? OR LOWER(columns) LIKE ?",
+				lowerNeedle, lowerNeedle, lowerNeedle,
+			)
+		}
+		if err := q.Order("created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			result = append(result, map[string]any{
+				"id":          r.ID,
+				"created_at":  r.CreatedAt,
+				"uuid":        r.UUID,
+				"environment": r.Environment,
+				"name":        r.Name,
+				"action":      r.Action,
+				"epoch":       r.Epoch,
+				"columns":     r.Columns,
+				"counter":     r.Counter,
+			})
+		}
+	default:
+		return nil, fmt.Errorf("invalid log type: %s", logType)
+	}
+
+	return result, nil
+}
+
+// GetNodeStatusTimestamps and GetNodeResultTimestamps return just the
+// CreatedAt column for every status/result log row a given node has shipped
+// since `since`. Used by the per-node activity heatmap so it can bucket on
+// the API side without dragging the row bodies across the wire.
+//
+// Returning a slice of timestamps (rather than int64 epochs) keeps the
+// downstream bucketing arithmetic in Go's time domain, which is what the
+// rest of cmd/api/handlers/stats.go uses.
+func GetNodeStatusTimestamps(db *gorm.DB, env, uuid string, since time.Time) ([]time.Time, error) {
+	uuid = strings.ToUpper(uuid)
+	var ts []time.Time
+	err := db.Model(&OsqueryStatusData{}).
+		Where("uuid = ? AND environment = ? AND created_at >= ?", uuid, env, since).
+		Pluck("created_at", &ts).Error
+	return ts, err
+}
+
+func GetNodeResultTimestamps(db *gorm.DB, env, uuid string, since time.Time) ([]time.Time, error) {
+	uuid = strings.ToUpper(uuid)
+	var ts []time.Time
+	err := db.Model(&OsqueryResultData{}).
+		Where("uuid = ? AND environment = ? AND created_at >= ?", uuid, env, since).
+		Pluck("created_at", &ts).Error
+	return ts, err
+}
+
+// GetNodeStatusBucketed returns per-bucket row counts for `uuid` in `env`
+// since `since`, with buckets aligned to `bucketSeconds`. The SQL pushes the
+// histogram into the database (one GROUP BY) instead of shipping every
+// timestamp to the API process — orders of magnitude less wire traffic on
+// chatty nodes.
+func GetNodeStatusBucketed(db *gorm.DB, env, uuid string, since time.Time, bucketSeconds int) ([]dbutil.BucketedRow, error) {
+	uuid = strings.ToUpper(uuid)
+	expr := dbutil.BucketExpr(db, "created_at", bucketSeconds)
+	var rows []dbutil.BucketedRow
+	err := db.Model(&OsqueryStatusData{}).
+		Select(expr+" AS bucket_start, COUNT(*) AS cnt").
+		Where("uuid = ? AND environment = ? AND created_at >= ?", uuid, env, since).
+		Group("bucket_start").
+		Scan(&rows).Error
+	return rows, err
+}
+
+// GetNodeResultBucketed mirrors GetNodeStatusBucketed for osquery_result_data.
+func GetNodeResultBucketed(db *gorm.DB, env, uuid string, since time.Time, bucketSeconds int) ([]dbutil.BucketedRow, error) {
+	uuid = strings.ToUpper(uuid)
+	expr := dbutil.BucketExpr(db, "created_at", bucketSeconds)
+	var rows []dbutil.BucketedRow
+	err := db.Model(&OsqueryResultData{}).
+		Select(expr+" AS bucket_start, COUNT(*) AS cnt").
+		Where("uuid = ? AND environment = ? AND created_at >= ?", uuid, env, since).
+		Group("bucket_start").
+		Scan(&rows).Error
+	return rows, err
+}
+
+// GetQueryResults retrieves rows of query result data (one per node) for a single query name.
+// Results are ordered by created_at ASC (oldest first — query results are append-only).
+// If since is non-zero only rows created strictly after that time are returned.
+// page is 1-indexed; pageSize is clamped to [1, 1000]; pageSize <= 0 defaults to 100.
+// Returns the page items, total matching rows, and any error.
+func GetQueryResults(db *gorm.DB, name string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	if pageSize > 1000 {
+		pageSize = 1000
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+
+	q := db.Model(&OsqueryQueryData{}).Where("name = ?", name)
+	if !since.IsZero() {
+		q = q.Where("created_at > ?", since)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var rows []OsqueryQueryData
+	if err := q.Order("created_at ASC").Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+	out := make([]map[string]any, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, map[string]any{
+			"id":          r.ID,
+			"created_at":  r.CreatedAt,
+			"uuid":        r.UUID,
+			"environment": r.Environment,
+			"name":        r.Name,
+			"data":        r.Data,
+			"status":      r.Status,
+		})
+	}
+	return out, total, nil
+}
+
+// StreamQueryResults invokes fn for each row of query result data for `name`, ordered by created_at ASC.
+// Rows are read via a cursor so memory usage stays bounded — used by the CSV exporter.
+// fn may return an error to stop iteration; that error is returned by StreamQueryResults.
+func StreamQueryResults(db *gorm.DB, name string, fn func(OsqueryQueryData) error) error {
+	rows, err := db.Model(&OsqueryQueryData{}).Where("name = ?", name).Order("created_at ASC").Rows()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r OsqueryQueryData
+		if err := db.ScanRows(rows, &r); err != nil {
+			return err
+		}
+		if err := fn(r); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // CleanStatusLogs will delete old status logs

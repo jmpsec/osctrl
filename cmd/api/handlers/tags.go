@@ -38,26 +38,25 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
 }
 
-// TagEnvHandler - GET Handler to return one tag for one environment as JSON
+// TagEnvHandler - GET Handler to return one tag for one environment as JSON.
+// Permission is scoped to env.UUID admin so non-super operators with admin
+// rights on this specific environment can view its tags.
 func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		return
 	}
-	// Extract tag name
 	tagVar := r.PathValue("name")
 	if tagVar == "" {
 		apiErrorResponse(w, "error getting tag name", http.StatusBadRequest, nil)
 		return
 	}
-	// Get environment by UUID
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -66,38 +65,33 @@ func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get tag
 	exist, tag := h.Tags.ExistsGet(tagVar, env.ID)
 	if !exist {
-		apiErrorResponse(w, "error getting tag", http.StatusInternalServerError, err)
+		apiErrorResponse(w, "tag not found", http.StatusNotFound, nil)
 		return
 	}
-	// Serialize and serve JSON
 	log.Debug().Msg("Returned tag")
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tag)
 }
 
-// TagsEnvHandler - GET Handler to return tags for one environment as JSON
+// TagsEnvHandler - GET Handler to return tags for one environment as JSON.
+// Permission is scoped to env.UUID admin (see TagEnvHandler note).
 func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
-	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		return
 	}
-	// Get environment by UUID
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -106,38 +100,39 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Get tags
-	tags, err := h.Tags.GetByEnv(env.ID)
+	tagList, err := h.Tags.GetByEnv(env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting tags", http.StatusInternalServerError, err)
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msgf("Returned %d tags", len(tags))
+	// Empty list is a valid state — never return 404 on listing.
+	if tagList == nil {
+		tagList = []tags.AdminTag{}
+	}
+	log.Debug().Msgf("Returned %d tags", len(tagList))
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tags)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, tagList)
 }
 
-// TagsActionHandler - POST Handler to create, update or delete tags
+// TagsActionHandler - POST Handler to create / update / delete tags. The
+// action arrives as a URL path segment (legacy contract retained because
+// Track 6 doesn't introduce new tag routes); body validation surfaces 400
+// on parse error and 409 on duplicate-name conflicts.
 func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) {
-	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Extract environment
 	envVar := r.PathValue("env")
 	if envVar == "" {
 		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
 		return
 	}
-	// Get environment by UUID
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.Envs.Get(envVar)
 	if err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
@@ -146,37 +141,42 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	// Extract action
 	actionVar := r.PathValue("action")
 	if actionVar == "" {
 		apiErrorResponse(w, "error getting action", http.StatusBadRequest, nil)
 		return
 	}
 	var t types.ApiTagsRequest
-	// Parse request JSON body
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+	if t.Name == "" {
+		apiErrorResponse(w, "tag name can not be empty", http.StatusBadRequest, nil)
 		return
 	}
 	var returnData string
 	switch actionVar {
 	case tags.ActionAdd:
 		if h.Tags.ExistsByEnv(t.Name, env.ID) {
-			apiErrorResponse(w, "error adding tag", http.StatusInternalServerError, fmt.Errorf("tag %s already exists", t.Name))
+			apiErrorResponse(w, "tag with that name already exists in this environment", http.StatusConflict, nil)
 			return
 		}
 		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[ctxUser], env.ID, false, t.TagType, t.Custom); err != nil {
-			apiErrorResponse(w, "error with new tag", http.StatusInternalServerError, err)
+			apiErrorResponse(w, "error creating tag", http.StatusInternalServerError, err)
 			return
 		}
 		returnData = "tag added successfully"
 	case tags.ActionEdit:
+		if !h.Tags.ExistsByEnv(t.Name, env.ID) {
+			apiErrorResponse(w, "tag not found", http.StatusNotFound, nil)
+			return
+		}
 		tag, err := h.Tags.Get(t.Name, env.ID)
 		if err != nil {
 			apiErrorResponse(w, "error getting tag", http.StatusInternalServerError, err)
@@ -218,13 +218,19 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		returnData = "tag updated successfully"
 	case tags.ActionRemove:
+		if !h.Tags.ExistsByEnv(t.Name, env.ID) {
+			apiErrorResponse(w, "tag not found", http.StatusNotFound, nil)
+			return
+		}
 		if err := h.Tags.DeleteGet(t.Name, env.ID); err != nil {
 			apiErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
 			return
 		}
 		returnData = "tag removed successfully"
+	default:
+		apiErrorResponse(w, "invalid action", http.StatusBadRequest, nil)
+		return
 	}
-	// Serialize and serve JSON
 	log.Debug().Msgf("Returned [%s]", returnData)
 	h.AuditLog.TagAction(ctx[ctxUser], actionVar+" tag "+t.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})

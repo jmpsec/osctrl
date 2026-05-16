@@ -37,14 +37,14 @@ func setupTestData(t *testing.T, db *gorm.DB) (*queries.Queries, []nodes.Osquery
 
 	// Create test nodes
 	testNodes := []nodes.OsqueryNode{
-		{Model: gorm.Model{ID: 1}},
-		{Model: gorm.Model{ID: 2}},
-		{Model: gorm.Model{ID: 3}},
+		{ID: 1},
+		{ID: 2},
+		{ID: 3},
 	}
 
 	// Create test query
 	testQuery := &queries.DistributedQuery{
-		Model:         gorm.Model{ID: 1},
+		ID:            1,
 		Name:          "test_query",
 		Query:         "SELECT * FROM osquery_info;",
 		EnvironmentID: 1,
@@ -169,6 +169,25 @@ func TestCreateNodeQueries(t *testing.T) {
 		err := q.CreateNodeQueries([]uint{}, query.ID)
 		assert.Error(t, err, "CreateNodeQueries should return an error with empty node list")
 	})
+}
+
+func TestQuerySortableColumnsAllowlist(t *testing.T) {
+	if _, ok := queries.QuerySortableColumns["unknown"]; ok {
+		t.Error("unknown should not be allowed")
+	}
+	if _, ok := queries.QuerySortableColumns[""]; ok {
+		t.Error("empty key should not be allowed")
+	}
+	if _, ok := queries.QuerySortableColumns["DROP TABLE"]; ok {
+		t.Error("SQL fragment should not be allowed")
+	}
+	// Spot-check what the SPA depends on.
+	if queries.QuerySortableColumns["name"] != "name" {
+		t.Error("name → name")
+	}
+	if queries.QuerySortableColumns["created"] != "created_at" {
+		t.Error("created → created_at")
+	}
 }
 
 func TestSetNodeQueriesAsExpired(t *testing.T) {

@@ -4,10 +4,29 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
+
+// QueryListPage is the canonical paginated-list result for queries.
+type QueryListPage struct {
+	Items      []DistributedQuery
+	TotalItems int64
+}
+
+// QuerySortableColumns is the closed set of columns external callers may sort by.
+// Enforced in GetByEnvTargetPaged. Mirrors the SortableColumns convention from pkg/nodes.
+var QuerySortableColumns = map[string]string{
+	"name":       "name",
+	"creator":    "creator",
+	"created":    "created_at",
+	"type":       "type",
+	"expected":   "expected",
+	"executions": "executions",
+	"errors":     "errors",
+}
 
 const (
 	// QueryTargetPlatform defines platform as target
@@ -65,27 +84,36 @@ const (
 	DistributedQueryStatusExpired   string = "expired"
 )
 
-// DistributedQuery as abstraction of a distributed query
+// DistributedQuery as abstraction of a distributed query.
+//
+// Explicit JSON tags (rather than relying on Go's default-PascalCase
+// behavior or an external view projection) so /api/v1/queries and
+// /api/v1/carves responses match the SPA's snake_case contract directly.
+// Fields here are equivalent to embedding gorm.Model — same schema and
+// soft-delete semantics — just with field-level json tags.
 type DistributedQuery struct {
-	gorm.Model
-	Name          string `gorm:"not null;unique;index"`
-	Creator       string
-	Query         string
-	Expected      int
-	Executions    int
-	Errors        int
-	Active        bool
-	Hidden        bool
-	Protected     bool
-	Completed     bool
-	Deleted       bool
-	Expired       bool
-	Type          string
-	Path          string
-	EnvironmentID uint
-	ExtraData     string
-	Expiration    time.Time
-	Target        string
+	ID            uint           `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	Name          string         `gorm:"not null;unique;index" json:"name"`
+	Creator       string         `json:"creator"`
+	Query         string         `json:"query"`
+	Expected      int            `json:"expected"`
+	Executions    int            `json:"executions"`
+	Errors        int            `json:"errors"`
+	Active        bool           `json:"active"`
+	Hidden        bool           `json:"hidden"`
+	Protected     bool           `json:"protected"`
+	Completed     bool           `json:"completed"`
+	Deleted       bool           `json:"deleted"`
+	Expired       bool           `json:"expired"`
+	Type          string         `json:"type"`
+	Path          string         `json:"path"`
+	EnvironmentID uint           `json:"environment_id"`
+	ExtraData     string         `json:"extra_data"`
+	Expiration    time.Time      `json:"expiration"`
+	Target        string         `json:"target"`
 }
 
 // NodeQuery links a node to a query
@@ -285,6 +313,35 @@ func (q *Queries) Get(name string, envid uint) (DistributedQuery, error) {
 		return query, err
 	}
 	return query, nil
+}
+
+// GetNodeQueryTimestamps returns just the CreatedAt of every node_query row
+// where this node was the target, since the cutoff. Used by the per-node
+// activity heatmap.
+//
+// Pluck-style — drags only one column across the wire so the heatmap stays
+// cheap when nodes have many tens of thousands of distributed queries.
+func (q *Queries) GetNodeQueryTimestamps(nodeID uint, since time.Time) ([]time.Time, error) {
+	var ts []time.Time
+	err := q.DB.Model(&NodeQuery{}).
+		Where("node_id = ? AND created_at >= ?", nodeID, since).
+		Pluck("created_at", &ts).Error
+	return ts, err
+}
+
+// GetNodeQueryBucketed returns per-bucket row counts for node_queries
+// targeting `nodeID`, since `since`. Same bucketing semantics as the
+// logging-package variants — see pkg/dbutil.BucketExpr for the dialect
+// branching.
+func (q *Queries) GetNodeQueryBucketed(nodeID uint, since time.Time, bucketSeconds int) ([]dbutil.BucketedRow, error) {
+	expr := dbutil.BucketExpr(q.DB, "created_at", bucketSeconds)
+	var rows []dbutil.BucketedRow
+	err := q.DB.Model(&NodeQuery{}).
+		Select(expr+" AS bucket_start, COUNT(*) AS cnt").
+		Where("node_id = ? AND created_at >= ?", nodeID, since).
+		Group("bucket_start").
+		Scan(&rows).Error
+	return rows, err
 }
 
 // Complete to mark query as completed
@@ -516,4 +573,75 @@ func (q *Queries) SetNodeQueriesAsExpired(queryID uint) error {
 	}
 
 	return nil
+}
+
+// GetByEnvTargetPaged returns a page of queries for an env + target,
+// with optional free-text search on name/creator/query, optional sort, and
+// canonical pagination. qtype: StandardQueryType or CarveQueryType.
+//
+// page is 1-indexed. pageSize is clamped to [1, 500] with default 50.
+func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, page, pageSize int, sortColumn string, desc bool) (QueryListPage, error) {
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 500 {
+		pageSize = 500
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+
+	dbCol, ok := QuerySortableColumns[sortColumn]
+	if !ok || sortColumn == "" {
+		dbCol = "created_at"
+		desc = true
+	}
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	orderExpr := fmt.Sprintf("%s %s", dbCol, dir)
+
+	db := q.DB.Model(&DistributedQuery{}).Where("environment_id = ? AND type = ?", envID, qtype)
+	// Apply the same target filtering as Gets():
+	switch target {
+	case TargetActive:
+		db = db.Where("active = ? AND completed = ? AND deleted = ? AND expired = ?", true, false, false, false)
+	case TargetCompleted:
+		db = db.Where("active = ? AND completed = ? AND deleted = ? AND expired = ?", false, true, false, false)
+	case TargetHiddenCompleted:
+		db = db.Where("active = ? AND completed = ? AND deleted = ? AND hidden = ?", false, true, false, true)
+	case TargetAllFull:
+		db = db.Where("deleted = ?", false)
+	case TargetAll:
+		db = db.Where("deleted = ? AND hidden = ?", false, false)
+	case TargetDeleted:
+		db = db.Where("deleted = ?", true)
+	case TargetHidden:
+		db = db.Where("deleted = ? AND hidden = ?", false, true)
+	case TargetExpired:
+		db = db.Where("active = ? AND expired = ? AND deleted = ?", false, true, false)
+	case TargetSaved:
+		// Saved queries are not yet implemented as a separate table (Track 4 will).
+		// Mirror Gets() semantics by returning zero rows here.
+		db = db.Where("1 = 0")
+	default:
+		return QueryListPage{}, fmt.Errorf("invalid target %q", target)
+	}
+
+	if search != "" {
+		like := "%" + search + "%"
+		db = db.Where("name LIKE ? OR creator LIKE ? OR query LIKE ?", like, like, like)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return QueryListPage{}, err
+	}
+	var items []DistributedQuery
+	if err := db.Order(orderExpr).Offset(offset).Limit(pageSize).Find(&items).Error; err != nil {
+		return QueryListPage{}, err
+	}
+	return QueryListPage{Items: items, TotalItems: total}, nil
 }

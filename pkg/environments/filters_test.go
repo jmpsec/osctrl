@@ -167,28 +167,35 @@ func TestEnvNameFilter(t *testing.T) {
 		input    string
 		expected bool
 	}{
-		// Valid inputs
+		// Valid inputs — lowercase only. Names are canonicalized to
+		// lowercase before validation, so any uppercase input here is
+		// only legitimate if it slipped past handler normalization,
+		// which the regex correctly rejects.
 		{"valid lowercase", "myenv", true},
-		{"valid uppercase", "MYENV", true},
-		{"valid mixed case", "MyEnv", true},
 		{"valid with numbers", "env123", true},
 		{"valid with dash", "my-env", true},
 		{"valid with underscore", "my_env", true},
 		{"valid complex lowercase", "my_env-123", true},
-		{"valid complex mixed", "My_Env-123", true},
-		{"valid complex uppercase", "MY_ENV-123", true},
 		{"valid single char lowercase", "a", true},
-		{"valid single char uppercase", "A", true},
 		{"valid number only", "123", true},
 		{"valid dashes only", "---", true},
 		{"valid underscores only", "___", true},
-		{"valid start with uppercase", "Production", true},
 		{"valid start with number", "1env", true},
-		{"valid CamelCase", "ProductionEnv", true},
 		{"valid snake_case", "production_env", true},
 		{"valid kebab-case", "production-env", true},
-		{"valid SCREAMING_SNAKE_CASE", "PRODUCTION_ENV", true},
-		{"valid all caps with dash", "PROD-ENV", true},
+
+		// Uppercase / mixed-case is now invalid — handlers lowercase
+		// before calling EnvNameFilter, and this regex is the defense
+		// for any path that bypasses that normalization.
+		{"invalid uppercase", "MYENV", false},
+		{"invalid mixed case", "MyEnv", false},
+		{"invalid complex mixed", "My_Env-123", false},
+		{"invalid complex uppercase", "MY_ENV-123", false},
+		{"invalid single char uppercase", "A", false},
+		{"invalid start with uppercase", "Production", false},
+		{"invalid CamelCase", "ProductionEnv", false},
+		{"invalid SCREAMING_SNAKE_CASE", "PRODUCTION_ENV", false},
+		{"invalid all caps with dash", "PROD-ENV", false},
 
 		// Invalid inputs
 		{"invalid space", "my env", false},
@@ -307,7 +314,7 @@ func TestVerifyEnvFilters(t *testing.T) {
 		// Valid combinations
 		{
 			name:     "all valid",
-			envName:  "Production",
+			envName:  "production",
 			icon:     "server",
 			sType:    "osquery",
 			hostname: "prod.example.com",
@@ -330,12 +337,17 @@ func TestVerifyEnvFilters(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "all valid uppercase name",
+			// Uppercase env name is now rejected by VerifyEnvFilters —
+			// names are persisted lowercase to avoid the `Dev` vs `dev`
+			// edge case. Hostname can still be uppercase (DNS labels
+			// are case-insensitive per RFC 4343 but mixed case is
+			// commonly used in display).
+			name:     "uppercase env name rejected",
 			envName:  "PRODUCTION",
 			icon:     "icon",
 			sType:    "osquery",
 			hostname: "HOST",
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "all valid with numbers",

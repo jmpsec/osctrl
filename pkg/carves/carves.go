@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -251,6 +252,31 @@ func (c *Carves) GetNodeCarves(uuid string) ([]CarvedFile, error) {
 		return carves, err
 	}
 	return carves, nil
+}
+
+// GetNodeCarveTimestamps returns CreatedAt of every CarvedFile row from this
+// node since the cutoff. Used by the per-node activity heatmap so it can
+// bucket without dragging the full carve metadata.
+func (c *Carves) GetNodeCarveTimestamps(uuid string, since time.Time) ([]time.Time, error) {
+	var ts []time.Time
+	err := c.DB.Model(&CarvedFile{}).
+		Where("uuid = ? AND created_at >= ?", uuid, since).
+		Pluck("created_at", &ts).Error
+	return ts, err
+}
+
+// GetNodeCarveBucketed returns per-bucket row counts for carved_files
+// rows produced by `uuid`. Same bucketing semantics as the logging-package
+// variants — see pkg/dbutil.BucketExpr.
+func (c *Carves) GetNodeCarveBucketed(uuid string, since time.Time, bucketSeconds int) ([]dbutil.BucketedRow, error) {
+	expr := dbutil.BucketExpr(c.DB, "created_at", bucketSeconds)
+	var rows []dbutil.BucketedRow
+	err := c.DB.Model(&CarvedFile{}).
+		Select(expr+" AS bucket_start, COUNT(*) AS cnt").
+		Where("uuid = ? AND created_at >= ?", uuid, since).
+		Group("bucket_start").
+		Scan(&rows).Error
+	return rows, err
 }
 
 // ChangeStatus to change the status of a carve

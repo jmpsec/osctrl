@@ -56,17 +56,23 @@ func (db *DBManager) GetDB() (*gorm.DB, error) {
 	var dbConn *gorm.DB
 	var err error
 
+	// TranslateError lets handlers use errors.Is(err, gorm.ErrDuplicatedKey)
+	// across drivers instead of string-matching the underlying SQLSTATE
+	// or driver error text. Required by the env-name uniqueness path in
+	// cmd/api/handlers/environments* and by pkg/queries/saved.go.
+	gormConfig := &gorm.Config{TranslateError: true}
+
 	// Select the appropriate driver based on database type
 	switch db.Config.Type {
 	case DBTypePostgres:
-		dbConn, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+		dbConn, err = gorm.Open(postgres.Open(db.DSN), gormConfig)
 	case DBTypeMySQL:
-		dbConn, err = gorm.Open(mysql.Open(db.DSN), &gorm.Config{})
+		dbConn, err = gorm.Open(mysql.Open(db.DSN), gormConfig)
 	case DBTypeSQLite:
-		dbConn, err = gorm.Open(sqlite.Open(db.DSN), &gorm.Config{})
+		dbConn, err = gorm.Open(sqlite.Open(db.DSN), gormConfig)
 	default:
 		// Default to postgres if type not specified
-		dbConn, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{})
+		dbConn, err = gorm.Open(postgres.Open(db.DSN), gormConfig)
 	}
 	if err != nil {
 		return nil, err

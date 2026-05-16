@@ -2,10 +2,112 @@ package auditlog
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
+
+// LogTypes - allowlist of valid log_type filter values. Used by the
+// paginated filter to reject arbitrary integers (defense in depth — the
+// underlying column is uint so junk values just match nothing, but we
+// surface a 400 to the SPA instead of an empty response).
+var LogTypes = map[uint]struct{}{
+	LogTypeLogin:       {},
+	LogTypeLogout:      {},
+	LogTypeNode:        {},
+	LogTypeQuery:       {},
+	LogTypeCarve:       {},
+	LogTypeTag:         {},
+	LogTypeEnvironment: {},
+	LogTypeSetting:     {},
+	LogTypeVisit:       {},
+	LogTypeUser:        {},
+}
+
+// PageFilter describes the inputs accepted by GetPaged.
+//
+// All string fields are case-insensitive partial matches except Service
+// which is an exact match (services are a tiny fixed set: tls / admin /
+// osctrl-api). EnvID == 0 means "no env filter" (NOT "the no-environment
+// rows" — use a dedicated convention if that's ever needed). LogType == 0
+// means "no type filter". Since / Until are RFC3339 timestamps; either may
+// be the zero value to mean unset.
+type PageFilter struct {
+	Service  string
+	Username string
+	LogType  uint
+	EnvID    uint
+	Since    time.Time
+	Until    time.Time
+	Page     int
+	PageSize int
+}
+
+// GetPaged returns audit logs filtered + paginated. Ordering is fixed at
+// created_at DESC so the SPA always shows newest first.
+//
+// Returns (rows, totalItems, error). On the filtered count the package
+// computes that with the same WHERE clause (one extra COUNT round-trip).
+func (m *AuditLogManager) GetPaged(f PageFilter) ([]AuditLog, int64, error) {
+	if f.PageSize <= 0 {
+		f.PageSize = 50
+	}
+	if f.PageSize > 500 {
+		f.PageSize = 500
+	}
+	if f.Page < 1 {
+		f.Page = 1
+	}
+
+	q := m.DB.Model(&AuditLog{})
+	if f.Service != "" {
+		q = q.Where("service = ?", f.Service)
+	}
+	if f.Username != "" {
+		// case-insensitive partial match via LOWER(username) LIKE ...
+		q = q.Where("LOWER(username) LIKE ?", "%"+lowerLike(f.Username)+"%")
+	}
+	if f.LogType > 0 {
+		q = q.Where("log_type = ?", f.LogType)
+	}
+	if f.EnvID > 0 {
+		q = q.Where("environment_id = ?", f.EnvID)
+	}
+	if !f.Since.IsZero() {
+		q = q.Where("created_at >= ?", f.Since)
+	}
+	if !f.Until.IsZero() {
+		q = q.Where("created_at <= ?", f.Until)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("count AuditLog %w", err)
+	}
+
+	var rows []AuditLog
+	offset := (f.Page - 1) * f.PageSize
+	if err := q.Order("created_at desc").Limit(f.PageSize).Offset(offset).Find(&rows).Error; err != nil {
+		return nil, 0, fmt.Errorf("paged AuditLog %w", err)
+	}
+	return rows, total, nil
+}
+
+// lowerLike normalizes a user-supplied search fragment for LIKE matching:
+// strip surrounding whitespace and lowercase. The handler is responsible
+// for callers — we do not lift restrictions or accept regex.
+func lowerLike(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
 
 const (
 	// Log types
@@ -176,6 +278,18 @@ func (m *AuditLogManager) NewCarve(username, path, ip string, envID uint) {
 	}
 }
 
+// SavedQueryAction - create new saved-query action audit log entry
+// (create / update / delete operations on the saved_queries table).
+func (m *AuditLogManager) SavedQueryAction(username, action, ip string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("user %s performed saved-query action: %s", username, action)
+	if err := m.CreateNew(username, line, ip, LogTypeQuery, SeverityInfo, envID); err != nil {
+		log.Err(err).Msg("error creating saved-query audit log")
+	}
+}
+
 // QueryAction - create new query action audit log entry
 func (m *AuditLogManager) QueryAction(username, action, ip string, envID uint) {
 	if !m.Enabled {
@@ -329,6 +443,56 @@ func (m *AuditLogManager) GetByEnv(envID uint) ([]AuditLog, error) {
 		return logs, fmt.Errorf("get AuditLog by env %w", err)
 	}
 	return logs, nil
+}
+
+// GetEnvSince — returns every audit row for the env since the given cutoff,
+// log_type + created_at only (Pluck-style). Used by the activity heatmap so
+// the dashboard can render a 24-hour fleet-activity strip without scanning
+// the full audit_logs table. Smaller fields than GetByEnv to keep the
+// payload tiny — 24 hours of a busy env is still small enough to ship to
+// the SPA, but trimming to two columns keeps the SQL fast.
+func (m *AuditLogManager) GetEnvSince(envID uint, since time.Time) ([]AuditLog, error) {
+	var logs []AuditLog
+	if err := m.DB.
+		Select("id, log_type, created_at").
+		Where("environment_id = ? AND created_at >= ?", envID, since).
+		Order("created_at asc").
+		Find(&logs).Error; err != nil {
+		return logs, fmt.Errorf("get AuditLog since %w", err)
+	}
+	return logs, nil
+}
+
+// EnvActivityBucketRow is one (bucket_start, log_type, count) row returned
+// from the bucketed env-activity query.
+type EnvActivityBucketRow struct {
+	BucketStart int64 `gorm:"column:bucket_start"`
+	LogType     uint  `gorm:"column:log_type"`
+	Cnt         int64 `gorm:"column:cnt"`
+}
+
+// GetEnvActivityBucketed — returns audit-log counts grouped by bucket and
+// log_type for one env, pushing the binning into SQL. Replaces the
+// in-process histogram over GetEnvSince.
+func (m *AuditLogManager) GetEnvActivityBucketed(envID uint, since time.Time, bucketSeconds int) ([]EnvActivityBucketRow, error) {
+	var dialect string
+	switch m.DB.Dialector.Name() {
+	case "postgres":
+		dialect = fmt.Sprintf("(floor(extract(epoch from created_at) / %d) * %d)::bigint", bucketSeconds, bucketSeconds)
+	case "mysql":
+		dialect = fmt.Sprintf("(FLOOR(UNIX_TIMESTAMP(created_at) / %d) * %d)", bucketSeconds, bucketSeconds)
+	default:
+		dialect = fmt.Sprintf("(CAST(strftime('%%s', created_at) AS INTEGER) / %d * %d)", bucketSeconds, bucketSeconds)
+	}
+	var rows []EnvActivityBucketRow
+	if err := m.DB.Model(&AuditLog{}).
+		Select(dialect+" AS bucket_start, log_type, COUNT(*) AS cnt").
+		Where("environment_id = ? AND created_at >= ?", envID, since).
+		Group("bucket_start, log_type").
+		Scan(&rows).Error; err != nil {
+		return rows, fmt.Errorf("env-activity bucketed: %w", err)
+	}
+	return rows, nil
 }
 
 // GetByType - get audit logs by type and environment
