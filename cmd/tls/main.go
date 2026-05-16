@@ -327,8 +327,18 @@ func osctrlService() {
 	// chain. Audit-log on rejection so SoC tooling can alert. The audit
 	// helper takes the env name from the path lazily — we don't know the
 	// env at this layer.
+	//
+	// The {env} path segment matches any non-slash string, so a sprayer
+	// could stuff arbitrary text into audit_logs.line by hitting
+	// /<junk>/enroll. Validate it as a UUID here (EnrollHandler itself
+	// validates the same way before any other audit write); rejected
+	// segments are logged as "<invalid>" so SoC tooling still sees the
+	// activity without the table getting polluted.
 	enrollRateLimit := enrollLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
 		envName := r.PathValue("env")
+		if !utils.CheckUUID(envName) {
+			envName = "<invalid>"
+		}
 		auditLog.FailedEnroll(key, envName, "rate limit exceeded", 0)
 	})
 	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, enrollRateLimit(handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler))))
