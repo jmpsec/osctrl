@@ -35,7 +35,11 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
-	body.Name = strings.TrimSpace(body.Name)
+	// Names are persisted lowercase so `Dev` and `dev` collide on the
+	// uniqueIndex and so name-based lookups across the codebase don't
+	// need to special-case casing. Filter validation runs against the
+	// canonical form.
+	body.Name = strings.ToLower(strings.TrimSpace(body.Name))
 	body.Hostname = strings.TrimSpace(body.Hostname)
 	if !environments.VerifyEnvFilters(body.Name, body.Icon, body.Type, body.Hostname) {
 		apiErrorResponse(w, "invalid name, hostname, type, or icon", http.StatusBadRequest, nil)
@@ -60,6 +64,15 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 	}
 	env.Flags = flags
 	if err := h.Envs.Create(&env); err != nil {
+		// Race fallback: the Exists() check above is best-effort; if a
+		// concurrent request inserted the same name between that check
+		// and this Create, the uniqueIndex on tls_environments.name
+		// raises gorm.ErrDuplicatedKey. Return 409 instead of 500 so
+		// the SPA can distinguish the collision from a real DB error.
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			apiErrorResponse(w, "environment with that name already exists", http.StatusConflict, err)
+			return
+		}
 		apiErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 		return
 	}
@@ -133,16 +146,19 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 	//
 	patch := map[string]interface{}{}
 	if body.Name != nil {
-		n := strings.TrimSpace(*body.Name)
+		// Persist env names lowercased — see EnvironmentCreateHandler for
+		// the reasoning. Filter validation runs against the canonical
+		// form so the regex character-class still matches.
+		n := strings.ToLower(strings.TrimSpace(*body.Name))
 		if !environments.EnvNameFilter(n) {
 			apiErrorResponse(w, "invalid environment name", http.StatusBadRequest, fmt.Errorf("rejected name %q", *body.Name))
 			return
 		}
 		if n != env.Name {
-			// Reject a rename that would collide with an existing env.
-			// Mirrors the create-path uniqueness check; without this gate
-			// PATCH would silently produce two environments with the same
-			// name, which downstream lookups by name handle inconsistently.
+			// Pre-flight: reject a rename that would collide with an
+			// existing env (best-effort, common case). The uniqueIndex
+			// on tls_environments.name is the actual source of truth and
+			// catches the TOCTOU race below.
 			if h.Envs.Exists(n) {
 				apiErrorResponse(w, "environment already exists", http.StatusConflict, fmt.Errorf("environment %s already exists", n))
 				return
@@ -188,6 +204,15 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := h.Envs.DB.Model(&env).Updates(patch).Error; err != nil {
+		// Race fallback for the rename path: a concurrent PATCH could
+		// have inserted the same target name between our Exists() check
+		// above and this UPDATE. uniqueIndex catches it; translate to
+		// 409 so the SPA can distinguish the collision from a real DB
+		// error.
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			apiErrorResponse(w, "environment already exists", http.StatusConflict, err)
+			return
+		}
 		apiErrorResponse(w, "error updating environment", http.StatusInternalServerError, err)
 		return
 	}
@@ -304,7 +329,14 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 		apiErrorResponse(w, "error parsing PATCH body", http.StatusBadRequest, err)
 		return
 	}
-	// Validate every supplied section is parseable JSON before writing any.
+	// Validate every supplied section is parseable JSON, and canonicalize
+	// each value (trim whitespace, "" → "{}") into `normalized` so the
+	// persistence calls below share the same source of truth as the
+	// validation. Without this, the validator accepts an empty string
+	// (treating it as "{}") while the update calls below would still
+	// write the original empty string to the DB — downstream parsers
+	// (osquery config generation, admin JSON view) trip on the empty
+	// string and behave inconsistently with the validated shape.
 	sections := map[string]*string{
 		"options":    body.Options,
 		"schedule":   body.Schedule,
@@ -313,11 +345,11 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 		"atc":        body.ATC,
 		"flags":      body.Flags,
 	}
+	normalized := map[string]string{}
 	for name, val := range sections {
 		if val == nil {
 			continue
 		}
-		// Empty string isn't valid JSON; treat as the empty object.
 		s := strings.TrimSpace(*val)
 		if s == "" {
 			s = "{}"
@@ -327,39 +359,40 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 			apiErrorResponse(w, fmt.Sprintf("section %q is not valid JSON: %s", name, err.Error()), http.StatusBadRequest, err)
 			return
 		}
+		normalized[name] = s
 	}
-	if body.Options != nil {
-		if err := h.Envs.UpdateOptions(envVar, *body.Options); err != nil {
+	if v, ok := normalized["options"]; ok {
+		if err := h.Envs.UpdateOptions(envVar, v); err != nil {
 			apiErrorResponse(w, "error updating options", http.StatusInternalServerError, err)
 			return
 		}
 	}
-	if body.Schedule != nil {
-		if err := h.Envs.UpdateSchedule(envVar, *body.Schedule); err != nil {
+	if v, ok := normalized["schedule"]; ok {
+		if err := h.Envs.UpdateSchedule(envVar, v); err != nil {
 			apiErrorResponse(w, "error updating schedule", http.StatusInternalServerError, err)
 			return
 		}
 	}
-	if body.Packs != nil {
-		if err := h.Envs.UpdatePacks(envVar, *body.Packs); err != nil {
+	if v, ok := normalized["packs"]; ok {
+		if err := h.Envs.UpdatePacks(envVar, v); err != nil {
 			apiErrorResponse(w, "error updating packs", http.StatusInternalServerError, err)
 			return
 		}
 	}
-	if body.Decorators != nil {
-		if err := h.Envs.UpdateDecorators(envVar, *body.Decorators); err != nil {
+	if v, ok := normalized["decorators"]; ok {
+		if err := h.Envs.UpdateDecorators(envVar, v); err != nil {
 			apiErrorResponse(w, "error updating decorators", http.StatusInternalServerError, err)
 			return
 		}
 	}
-	if body.ATC != nil {
-		if err := h.Envs.UpdateATC(envVar, *body.ATC); err != nil {
+	if v, ok := normalized["atc"]; ok {
+		if err := h.Envs.UpdateATC(envVar, v); err != nil {
 			apiErrorResponse(w, "error updating atc", http.StatusInternalServerError, err)
 			return
 		}
 	}
-	if body.Flags != nil {
-		if err := h.Envs.DB.Model(&env).Update("flags", *body.Flags).Error; err != nil {
+	if v, ok := normalized["flags"]; ok {
+		if err := h.Envs.DB.Model(&env).Update("flags", v).Error; err != nil {
 			apiErrorResponse(w, "error updating flags", http.StatusInternalServerError, err)
 			return
 		}

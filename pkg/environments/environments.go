@@ -58,7 +58,7 @@ type TLSEnvironment struct {
 	UpdatedAt        time.Time      `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
 	UUID             string         `gorm:"index" json:"uuid"`
-	Name             string         `json:"name"`
+	Name             string         `gorm:"uniqueIndex:idx_tls_environments_name" json:"name"`
 	Hostname         string         `json:"hostname"`
 	Secret           string         `json:"secret"`
 	EnrollSecretPath string         `json:"enroll_secret_path"`

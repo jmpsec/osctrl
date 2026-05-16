@@ -3,8 +3,13 @@ package environments
 import "regexp"
 
 const (
-	iconRegex     string = `^[a-z0-9_-]+$`
-	nameRegex     string = `^[a-zA-Z0-9_-]+$`
+	iconRegex string = `^[a-z0-9_-]+$`
+	// nameRegex is lowercase-only on purpose. Names are persisted in
+	// lowercase canonical form so the uniqueIndex on tls_environments.name
+	// collides `Dev` and `dev` as the same environment. Handlers that
+	// accept user input lowercase before validation; this regex catches
+	// any caller that forgets to do so.
+	nameRegex     string = `^[a-z0-9_-]+$`
 	hostnameRegex string = `^[a-zA-Z0-9.\-]+$`
 	uuidRegex     string = `^[a-z0-9-]+$`
 	envOsquery    string = "osquery"
