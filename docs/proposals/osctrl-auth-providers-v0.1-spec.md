@@ -391,6 +391,45 @@ customer who runs osctrl federated against their IdP.
 - **IdP-initiated login**: not in v1 for either OIDC or SAML. Adds complexity (URL parameter validation, env disambiguation) for marginal user benefit.
 - **Account linking**: if a user logs in via OIDC with username "alice" but also has an osctrl password-auth user "alice", v1 just uses the matching row. No separate "OIDC identities" table. If conflicts emerge in practice we add linking.
 
+## Backwards compatibility for cmd/admin
+
+The `auth/01-oidc-provider` branch refactors legacy admin to consume
+`pkg/auth/oidc`. Compatibility audit:
+
+### Preserved (zero behavior change)
+
+- YAML config schema (`YAMLConfigurationOIDC`): unchanged.
+- CLI flags: unchanged.
+- Routes (`/login`, `/oidc/callback`): unchanged. Path constants
+  (`oidcCallbackPath = "/oidc/callback"`) preserved verbatim so
+  existing IdP-side redirect-URI registrations don't break.
+- Session cookie (post-login): unchanged.
+- `pkg/users` and session-manager API: unchanged.
+- DB schema: unchanged (this branch).
+- JIT-provisioning policy (zero env permissions on first login).
+- Required-groups gate semantics.
+
+### Breaks made backwards-compatible via shim
+
+- **Username regex**: pre-refactor cmd/admin didn't validate
+  `preferred_username` against any character class. The new
+  `pkg/auth/oidc.sanitizeUsername` enforces `[a-zA-Z0-9_-]{1,64}`.
+  Deployments where the IdP emits email-format usernames (e.g.,
+  `alice@example.com`) would break under strict validation.
+  Mitigated by `Config.LegacyPermissiveUsername`: when true, the
+  regex is bypassed but TrimSpace + empty-check stay (audit-log
+  poisoning T26 partially defended). cmd/admin sets it true;
+  cmd/api leaves it false (strict default).
+
+### Accepted minor break
+
+- **State cookie name** changes from `osctrl-admin-oidc-state` (encoded
+  via gorilla/securecookie) to `osctrl_auth_state` (HMAC JWT).
+  Operators mid-OIDC-login at the exact moment of a deploy will
+  see one "forbidden" redirect and need to retry once. Self-healing
+  on retry. No data corruption, no security implication, no
+  long-lived effect. Documented here so it's not a surprise.
+
 ## Risks and open questions
 
 1. **Encryption key management**: deriving the secret-encryption key from the JWT secret is convenient but means rotating the JWT secret invalidates all stored OIDC client secrets. Real fix is a separate `OSCTRL_SECRET_KEY` env var. v1 uses JWT-derived for simplicity; document the limitation.

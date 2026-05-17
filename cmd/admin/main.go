@@ -112,9 +112,6 @@ var (
 	samlData       samlThings
 )
 
-// OIDC runtime, populated when service.auth == oidc.
-var oidcRT *oidcRuntime
-
 // Valid values for auth in configuration
 var validAuth = map[string]bool{
 	config.AuthDB:   true,
@@ -285,7 +282,7 @@ func osctrlAdminService() {
 	if flagParams.Service.Auth == config.AuthOIDC {
 		log.Debug().Msg("OIDC enabled for authentication")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		oidcRT, err = initOIDC(ctx, *flagParams.OIDC)
+		err = initOIDC(ctx, *flagParams.OIDC)
 		cancel()
 		if err != nil {
 			log.Fatal().Msgf("Can not initialize OIDC: %s", err)
