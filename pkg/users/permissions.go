@@ -198,6 +198,41 @@ func (m *UserManager) ChangeAccess(username, environment string, access EnvAcces
 	return nil
 }
 
+// ChangeAccessAll applies the same EnvAccess to every environment in
+// envUUIDs. Returns the count of envs successfully updated. On the
+// first error, aborts and returns the partial count + the error —
+// callers should treat any non-nil error as "operator must retry."
+//
+// Why partial-count-on-error instead of full rollback: the existing
+// ChangeAccess path is itself non-transactional (four sequential
+// SetEnvLevel writes, each a separate UPDATE). A "transactional
+// bulk" would need a much deeper refactor of SetEnvLevel to take a
+// tx handle. For an MVP "give alice access to all envs" workflow,
+// the partial-success-on-error semantics are acceptable: the
+// SPA reports "N of M succeeded, retry?" and re-running is
+// idempotent — re-applying the same access to an env is a no-op
+// rewrite of the same rows.
+//
+// envUUIDs is a slice of environment identifiers as they appear in
+// user_permissions.environment (which is the env UUID — the column
+// is named "environment" but holds the UUID; see ChangeAccess).
+// Callers (cmd/api handler) must enumerate envs upfront and pass
+// the UUID list; this package doesn't reach into the environments
+// table directly to keep the dependency arrow clean.
+func (m *UserManager) ChangeAccessAll(username string, envUUIDs []string, access EnvAccess) (int, error) {
+	if !m.Exists(username) {
+		return 0, fmt.Errorf("user %s does not exist", username)
+	}
+	updated := 0
+	for _, env := range envUUIDs {
+		if err := m.ChangeAccess(username, env, access); err != nil {
+			return updated, fmt.Errorf("error setting access for env %s - %w", env, err)
+		}
+		updated++
+	}
+	return updated, nil
+}
+
 // SetEnvUser to change the user access for a user and environment
 func (m *UserManager) SetEnvUser(username, environment string, user bool) error {
 	return m.SetEnvLevel(username, environment, UserLevel, user)

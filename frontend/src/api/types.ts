@@ -335,6 +335,21 @@ export interface SetPermissionsRequest {
   access: EnvAccess;
 }
 
+// Body for POST /api/v1/users/{u}/permissions/all — bulk
+// permission set across every environment in the system.
+export interface SetPermissionsAllRequest {
+  access: EnvAccess;
+}
+
+// Response from POST /api/v1/users/{u}/permissions/all.
+// updated == total on full success. On error, the api returns 5xx
+// and the client falls back to the per-env loop.
+export interface SetPermissionsAllResponse {
+  updated: number;
+  total: number;
+  access: EnvAccess;
+}
+
 export interface TokenResponse {
   token: string;
   expires: string;

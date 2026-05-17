@@ -554,6 +554,9 @@ func osctrlAPIService() {
 		"POST "+_apiPath(apiUsersPath)+"/{username}/permissions",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SetUserPermissionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/{username}/permissions/all",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SetUserPermissionsAllHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/token/refresh",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.RefreshUserTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
