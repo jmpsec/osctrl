@@ -569,6 +569,15 @@ over HTTP. Validate manually via a real browser:
   must front osctrl-api with TLS regardless (the `Secure` flag on
   every cookie already mandates this).
 
-- **No id_token signing alg differences.** Auth0 issues RS256
-  id_tokens by default, same as Keycloak. The `go-oidc` verifier
-  handles both transparently via JWKS.
+- **Default signing alg is HS256 — must be switched to RS256.**
+  Contrary to first impression, Auth0's "Regular Web Application"
+  template DEFAULTS to HS256 (symmetric, using client_secret as the
+  HMAC key). `go-oidc` rejects HS256 because the verifier checks
+  signatures via JWKS, not a shared secret — and that rejection is
+  correct (HS256 means client compromise == arbitrary token mint).
+  Operators MUST switch the app's "JsonWebToken Signature Algorithm"
+  to RS256: Applications → osctrl-api → Advanced Settings → OAuth
+  → Algorithm = RS256. Via API: `PATCH /api/v2/clients/{id}` with
+  body `{"jwt_configuration":{"alg":"RS256"}}`. Failure mode without
+  this: `oidc: id_token verification failed: oidc: malformed jwt:
+  unexpected signature algorithm "HS256"`.
