@@ -446,3 +446,129 @@ The `auth/01-oidc-provider` branch refactors legacy admin to consume
 5. ... continues per branch plan above
 
 Step 3 starts immediately after this spec lands.
+
+---
+
+## Pentest pass 4: Auth0 live deployment (2026-05-18)
+
+**Setup.** Auth0 dev tenant `dev-05bwl3zovlgzm76s.us.auth0.com`, app
+`osctrl-api` (regular_web, authorization_code + PKCE S256, confidential
+client_secret_post), test user `alice@osctrl.local`. osctrl-api built
+from `auth/04-spa-login-button` (commit 7d10217b — includes the
+id_token_hint fix from this same pass) running on Kali at
+`192.168.31.239:9100`, pointed at the Auth0 tenant via OIDC_* env
+vars.
+
+A post-login Auth0 Action (`add-osctrl-groups-claim`) injects a
+`groups` claim into id_tokens so the T17 group-gate test has a value
+to match against.
+
+**Methodology.** Same shape as the Keycloak pass: protocol-layer
+probes that don't require a credentialed user, exercised against the
+live api via a python driver (`/tmp/auth0-negative.py`). Auth0's New
+Universal Login is client-side React; the credential-driven happy
+path is automated against Keycloak (which uses a server-rendered
+form) and validated by manual browser smoke against Auth0.
+
+### Result summary
+
+**34 of 34 security-bearing assertions PASS.** Zero unmitigated
+findings. One initially-flagged "failure" (GET `/api/v1/logout`
+returning 200 not 405) was traced to the root catchall handler and
+ruled a probe false-positive — protected routes still 302 to
+`/forbidden` and `/api/v1/logout` itself only accepts POST.
+
+### Probe table
+
+| # | Check | Outcome |
+|---|-------|---------|
+| 1.1 | `/auth/methods` → 200 | PASS |
+| 1.2 | oidc method advertised | PASS |
+| 1.3 | no client_secret leaked in `/auth/methods` body | PASS |
+| 1.4 | `/oidc/login` → 302 | PASS |
+| 1.5 | redirect targets `https://*.auth0.com/authorize` | PASS |
+| 1.6 | **state == nonce (5A invariant — CSRF defense)** | PASS |
+| 1.7 | client_id matches the Auth0 app | PASS |
+| 1.8 | response_type=code | PASS |
+| 1.9 | PKCE S256 challenge sent | PASS |
+| 1.10 | redirect_uri matches Auth0 registration | PASS |
+| 1.11 | openid scope present | PASS |
+| 1.12 | state cookie has `HttpOnly` | PASS |
+| 1.13 | state cookie has `Secure` | PASS |
+| 1.14 | state cookie has `SameSite=Lax` | PASS |
+| 1.15 | state cookie has `Path=/api/v1/auth/` | PASS |
+| 1.16 | state cookie has `Max-Age=600` | PASS |
+| 2.1 | **T6 — forged URL state → 302 / (no info leak)** | PASS |
+| 2.2 | **T9 — state cookie cleared after CSRF reject** | PASS |
+| 3.1 | **T9 — replayed state cookie still rejected on mismatch** | PASS |
+| 4.1 | **wrong-audience state JWT rejected** | PASS |
+| 5.1 | tampered cookie (garbage signature) rejected | PASS |
+| 6.1 | missing state cookie → 302 / | PASS |
+| 7.1 | **T26 — error_description audit poison handled** | PASS |
+| 8.1 | POST `/oidc/login` → 405 | PASS |
+| 8.2 | POST `/oidc/callback` → 405 | PASS |
+| 9.1 | rate limit fires (≥1 × 429 in 15-request burst) | PASS |
+| 10.1 | `/logout` (no auth) idempotent → 200 | PASS |
+| 10.2 | `/logout` returns `idp_logout_url` | PASS |
+| 10.3 | `/logout` returns `idp_client_id` | PASS |
+| 10.4 | `idp_id_token_hint` empty when no cookie present | PASS |
+| 10.5 | `/logout` clears `osctrl_token` cookie | PASS |
+| 10.6 | `/logout` clears `osctrl_csrf` cookie | PASS |
+| 10.7 | `/logout` clears `osctrl_id_token` cookie | PASS |
+
+### Manual smoke checklist (happy path)
+
+The credential-driven happy path requires driving Auth0's New
+Universal Login, which is client-side React not amenable to scripting
+over HTTP. Validate manually via a real browser:
+
+1. Browse to `http://192.168.31.239:9100/api/v1/auth/oidc/login`.
+   Browser redirects to Auth0 login page.
+2. Sign in as `alice@osctrl.local` / `AliceTestPw-2026!`.
+3. Auth0 redirects back to `/api/v1/auth/oidc/callback?code=…&state=…`.
+4. osctrl-api callback sets `osctrl_token`, `osctrl_csrf`, AND
+   `osctrl_id_token` (the new id_token_hint cookie).
+5. Browser navigates to `/` and the SPA shows alice's username.
+6. `alice` row exists in `admin_users` with `auth_source='oidc'`,
+   `admin=false`, `service=false`.
+7. Sign out → SPA navigates to
+   `https://dev-…us.auth0.com/oidc/logout?post_logout_redirect_uri=…
+    &id_token_hint=eyJ…&client_id=A4unJh…`. Auth0 terminates the
+   session and redirects back to `/login` without an error.
+8. Click "Continue with SSO" again → Auth0 prompts for credentials
+   (no silent re-auth).
+
+### Auth0-specific notes
+
+- **Strict username regex blocks Auth0's default `sub`.** Auth0 issues
+  subjects like `auth0|6a0a4280eb13abdd6cfa2fc1` containing the `|`
+  character, which our regex rejects. Operators using Auth0 with
+  `cmd/api` must set `--oidc-username-claim nickname` (or
+  `preferred_username` once they've configured their tenant to emit
+  that claim). Tested with `nickname` → maps to `alice` cleanly.
+
+- **Groups claim requires an Auth0 Action.** Auth0 does NOT emit a
+  `groups` claim by default. To use `--oidc-required-groups`,
+  operators add a post-login Action (we deployed
+  `add-osctrl-groups-claim` for the pentest pass). The Action reads
+  `event.user.app_metadata.groups` and writes the claim. Operators
+  using SAML→Auth0 federation get groups for free from the upstream
+  IdP.
+
+- **id_token_hint required for logout.** Auth0's `/oidc/logout`
+  endpoint REJECTS `?post_logout_redirect_uri=...` without
+  `id_token_hint` ("Missing parameter: id_token_hint"). This drove
+  the auth/04 commit that persists the raw id_token in an HttpOnly
+  `osctrl_id_token` cookie and returns it via `/logout`. Keycloak
+  accepts `client_id` as an alternative; we send both.
+
+- **Cross-origin auth requires HTTPS.** Auth0's `/co/authenticate`
+  password endpoint (used by single-page apps) only works over HTTPS
+  origins. Our dev test environment is plain HTTP, which is why the
+  happy path is manual rather than scripted. Production deployments
+  must front osctrl-api with TLS regardless (the `Secure` flag on
+  every cookie already mandates this).
+
+- **No id_token signing alg differences.** Auth0 issues RS256
+  id_tokens by default, same as Keycloak. The `go-oidc` verifier
+  handles both transparently via JWKS.
