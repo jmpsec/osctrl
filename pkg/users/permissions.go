@@ -1,6 +1,7 @@
 package users
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -253,10 +254,42 @@ func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) erro
 	return m.SetEnvLevel(username, environment, AdminLevel, admin)
 }
 
-// SetEnvLevel to change the access for a user
+// SetEnvLevel changes the (username, environment, level) permission
+// row's access_value, or creates it if no row exists yet. The upsert
+// branch is what makes ChangeAccess work for a user who has never
+// had any permission rows in this env — historically a
+// "GetPermission record not found" was returned as an error here,
+// which made the single-env Save button (and now the bulk-grant
+// endpoint) fail on first use.
+//
+// Notes:
+//
+//   - GORM's `errors.Is(err, gorm.ErrRecordNotFound)` is the
+//     canonical check; the .Error() string is also "record not
+//     found" but we don't string-match.
+//   - EnvironmentID is set to 0 on insert. The numeric FK isn't
+//     used by any read path (GetAccess / GetEnvAccess switch on
+//     AccessType + Environment string), and the existing
+//     GenUserPermission helper also leaves it zero. Consistent.
+//   - granted_by is unset on insert via this path — there's no
+//     caller-side "who granted" context at SetEnvLevel's layer.
+//     The audit log captures the granting operator at the handler.
 func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
 	perm, err := m.GetPermission(username, environment, level)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create the row instead of erroring out.
+			row := UserPermission{
+				Username:    username,
+				Environment: environment,
+				AccessType:  int(level),
+				AccessValue: value,
+			}
+			if cerr := m.DB.Create(&row).Error; cerr != nil {
+				return fmt.Errorf("error creating permission row for %s/%s - %w", username, environment, cerr)
+			}
+			return nil
+		}
 		return fmt.Errorf("error getting permissions for %s/%s - %w", username, environment, err)
 	}
 	m.DB.Model(&perm).Updates(map[string]interface{}{
