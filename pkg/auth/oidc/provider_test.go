@@ -195,11 +195,12 @@ func goodState() auth.State {
 }
 
 // fakeCallback constructs the *http.Request that HandleCallback
-// receives. The state query param echoes the cookie's EnvUUID, the
-// code param matches what the IdP expects.
-func fakeCallback(envUUID, code string) *http.Request {
+// receives. The state query param echoes the cookie's Nonce (the
+// load-bearing CSRF defense; see Provider.LoginURL). The code param
+// matches what the IdP expects.
+func fakeCallback(stateParam, code string) *http.Request {
 	q := url.Values{}
-	q.Set("state", envUUID)
+	q.Set("state", stateParam)
 	q.Set("code", code)
 	req := httptest.NewRequest(http.MethodGet, "/cb?"+q.Encode(), nil)
 	return req
@@ -217,7 +218,7 @@ func TestHandleCallbackHappy(t *testing.T) {
 	}
 
 	state := goodState()
-	identity, err := p.HandleCallback(context.Background(), fakeCallback(state.EnvUUID, "code-happy"), state)
+	identity, err := p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-happy"), state)
 	if err != nil {
 		t.Fatalf("HandleCallback: %v", err)
 	}
@@ -248,7 +249,7 @@ func TestT1ForgedSignature(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-forged"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-forged"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -269,7 +270,7 @@ func TestT2WrongIssuer(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-iss"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-iss"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -290,7 +291,7 @@ func TestT3WrongAudience(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-aud"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-aud"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -311,7 +312,7 @@ func TestT4Expired(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-exp"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-exp"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -332,26 +333,32 @@ func TestNonceMismatch(t *testing.T) {
 	state := goodState()
 	state.Nonce = "n-different"
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback(state.EnvUUID, "code-nonce"), state)
+	_, err = p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-nonce"), state)
 	if !errors.Is(err, ErrNonceMismatch) {
 		t.Fatalf("expected ErrNonceMismatch, got %v", err)
 	}
 }
 
-// === Threat T18: state mismatch (env replay) ===
+// === Threat T6: CSRF / state-param tampering ===
 //
-// State cookie says env A; callback URL's state parameter says env B.
+// State cookie carries Nonce "n-default" (set by IssueStateCookie at
+// /login). The attacker crafts a callback URL with a forged state
+// parameter. Because the value is unguessable (256-bit cryptorandom),
+// the attacker cannot produce a callback URL the verifier accepts.
+// HandleCallback rejects with ErrStateMismatch BEFORE any token-
+// exchange happens.
 
-func TestT18StateEnvMismatch(t *testing.T) {
+func TestT6CSRFStateTampering(t *testing.T) {
 	idp := newFakeIdP(t)
-	idp.nextCode = "code-env"
+	idp.nextCode = "code-csrf"
 	p, err := NewOIDCProvider(context.Background(), goodConfig(idp))
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 	stateInCookie := auth.State{EnvUUID: "env-A", Nonce: "n-default"}
-	// URL state param echoes env-B
-	req := fakeCallback("env-B", "code-env")
+	// Attacker-controlled URL: state param is anything except the
+	// nonce baked into the victim's cookie.
+	req := fakeCallback("attacker-supplied-state", "code-csrf")
 	_, err = p.HandleCallback(context.Background(), req, stateInCookie)
 	if !errors.Is(err, ErrStateMismatch) {
 		t.Fatalf("expected ErrStateMismatch, got %v", err)
@@ -391,8 +398,11 @@ func TestMissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
+	// State param matches the cookie's Nonce so we reach the
+	// missing-code check (step 3) rather than failing at the
+	// state-param check (step 2).
 	q := url.Values{}
-	q.Set("state", "env-uuid-1234")
+	q.Set("state", "n-default")
 	// no code
 	req := httptest.NewRequest(http.MethodGet, "/cb?"+q.Encode(), nil)
 	_, err = p.HandleCallback(context.Background(), req, goodState())
@@ -415,7 +425,7 @@ func TestT10PKCEVerifierMissing(t *testing.T) {
 	}
 	// State has EnvUUID + Nonce but NO Verifier.
 	state := auth.State{EnvUUID: "env-uuid-1234", Nonce: "n-default"}
-	_, err = p.HandleCallback(context.Background(), fakeCallback(state.EnvUUID, "code-pkce"), state)
+	_, err = p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-pkce"), state)
 	if !errors.Is(err, ErrStateMismatch) {
 		t.Fatalf("expected ErrStateMismatch (pkce verifier missing), got %v", err)
 	}
@@ -434,7 +444,7 @@ func TestT17RequiredGroupMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-group"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group"), goodState())
 	if !errors.Is(err, ErrGroupNotAllowed) {
 		t.Fatalf("expected ErrGroupNotAllowed, got %v", err)
 	}
@@ -452,7 +462,7 @@ func TestRequiredGroupSatisfied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	identity, err := p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-group-ok"), goodState())
+	identity, err := p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group-ok"), goodState())
 	if err != nil {
 		t.Fatalf("HandleCallback: %v", err)
 	}
@@ -476,7 +486,7 @@ func TestT17GroupsClaimMalformed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-group-bad"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group-bad"), goodState())
 	if !errors.Is(err, ErrGroupNotAllowed) {
 		t.Fatalf("expected ErrGroupNotAllowed for malformed group claim, got %v", err)
 	}
@@ -512,7 +522,7 @@ func TestLegacyPermissiveUsernameAccepts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewOIDCProvider: %v", err)
 			}
-			identity, err := p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-perm"), goodState())
+			identity, err := p.HandleCallback(context.Background(), fakeCallback("n-default", "code-perm"), goodState())
 			if err != nil {
 				t.Fatalf("LegacyPermissiveUsername should accept %q, got %v", u, err)
 			}
@@ -540,7 +550,7 @@ func TestLegacyPermissiveUsernameRejectsEmpty(t *testing.T) {
 	}
 	// With preferred_username = "   ", pickUsername returns "   ",
 	// which TrimSpace reduces to "" — must be rejected.
-	_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-empty"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-empty"), goodState())
 	if !errors.Is(err, ErrUsernameInvalid) {
 		t.Fatalf("expected ErrUsernameInvalid on whitespace-only username, got %v", err)
 	}
@@ -570,7 +580,7 @@ func TestT23UsernameInjection(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewOIDCProvider: %v", err)
 			}
-			_, err = p.HandleCallback(context.Background(), fakeCallback("env-uuid-1234", "code-inj"), goodState())
+			_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-inj"), goodState())
 			if !errors.Is(err, ErrUsernameInvalid) {
 				t.Fatalf("expected ErrUsernameInvalid for %q, got %v", badUsername, err)
 			}
@@ -619,8 +629,14 @@ func TestLoginURLValidatesState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoginURL: %v", err)
 	}
-	if !strings.Contains(url, "state=env-A") {
-		t.Errorf("LoginURL should embed env in state param: %s", url)
+	// The OAuth2 state parameter must carry the Nonce (not the
+	// EnvUUID). This is what HandleCallback validates on return,
+	// and what makes the CSRF defense load-bearing.
+	if !strings.Contains(url, "state=n-1") {
+		t.Errorf("LoginURL should embed Nonce in state param: %s", url)
+	}
+	if strings.Contains(url, "state=env-A") {
+		t.Errorf("LoginURL must NOT use EnvUUID as the OAuth2 state param: %s", url)
 	}
 	if !strings.Contains(url, "nonce=n-1") {
 		t.Errorf("LoginURL should embed nonce: %s", url)
