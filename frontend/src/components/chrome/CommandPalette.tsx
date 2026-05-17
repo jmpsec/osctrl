@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '$/lib/cn';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { listEnvironments, type TLSEnvironment } from '$/api/environments';
+import { getMe } from '$/api/users';
 import { isAuthenticated } from '$/api/client';
 
 type CommandKind = 'page' | 'env' | 'action';
@@ -30,14 +31,23 @@ interface CommandItem {
   run: () => void;
 }
 
-const STATIC_PAGES: { label: string; to: string; hint?: string; aliases?: string[] }[] = [
+// requires: 'admin' hides the entry from non-super-admin operators.
+// Pages without a requires field show to everyone. The SideNav uses the
+// same gating logic — keep both in sync when adding new admin-only
+// surfaces. The command palette is UI-only defense-in-depth; the
+// server-side handler is still the authoritative gate (an operator
+// could type the URL manually and would get 403/redirect from the
+// data fetch).
+const STATIC_PAGES: { label: string; to: string; hint?: string; aliases?: string[]; requires?: 'admin' }[] = [
   { label: 'Dashboard', to: '/_app/', hint: 'Cross-env summary' },
-  { label: 'Operators', to: '/_app/users', hint: 'Users + permissions', aliases: ['users', 'permissions'] },
+  { label: 'Operators', to: '/_app/users', hint: 'Users + permissions', aliases: ['users', 'permissions'], requires: 'admin' },
   { label: 'Profile', to: '/_app/profile', hint: 'My account' },
-  { label: 'Environments', to: '/_app/environments', hint: 'Create / edit envs' },
-  { label: 'Settings · admin', to: '/_app/settings/admin', aliases: ['settings'] },
-  { label: 'Settings · tls', to: '/_app/settings/tls' },
-  { label: 'Settings · osctrl-api', to: '/_app/settings/api' },
+  { label: 'Environments', to: '/_app/environments', hint: 'Create / edit envs', requires: 'admin' },
+  { label: 'Settings · admin', to: '/_app/settings/admin', aliases: ['settings'], requires: 'admin' },
+  { label: 'Settings · tls', to: '/_app/settings/tls', requires: 'admin' },
+  { label: 'Settings · osctrl-api', to: '/_app/settings/api', requires: 'admin' },
+  // Audit Trail is visible to everyone — non-admins see only their
+  // own activity (api force-clamps the username filter server-side).
   { label: 'Audit Trail', to: '/_app/audit', hint: 'Filtered log read' },
 ];
 
@@ -60,6 +70,18 @@ export function CommandPalette({
     staleTime: 60_000,
   });
 
+  // Pull the viewer to gate admin-only static pages + env-config
+  // entries. Non-admins shouldn't see commands for surfaces they
+  // can't actually reach. The "Edit config" env entry also gates on
+  // env.admin (env-scoped admin) — same logic the SideNav applies.
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    enabled: open && isAuthenticated(),
+    staleTime: 5 * 60_000,
+  });
+  const isSuperAdmin = me?.admin === true;
+
   // Reset filter and selection each time we open.
   useEffect(() => {
     if (open) {
@@ -71,6 +93,7 @@ export function CommandPalette({
   const items = useMemo<CommandItem[]>(() => {
     const out: CommandItem[] = [];
     for (const p of STATIC_PAGES) {
+      if (p.requires === 'admin' && !isSuperAdmin) continue;
       const aliases = [p.label.toLowerCase(), ...(p.aliases ?? [])].join(' ');
       out.push({
         id: `page:${p.to}`,
@@ -85,6 +108,10 @@ export function CommandPalette({
       });
     }
     for (const e of envs as TLSEnvironment[]) {
+      // The /environments list endpoint already filters server-side
+      // to envs the user has access to, so every entry here is a
+      // legitimate "Go to env" target. No additional gate needed
+      // for the goto entry.
       out.push({
         id: `env:${e.uuid}`,
         kind: 'env',
@@ -96,20 +123,26 @@ export function CommandPalette({
           onOpenChange(false);
         },
       });
-      out.push({
-        id: `env-config:${e.uuid}`,
-        kind: 'action',
-        label: `Edit config · ${e.name}`,
-        hint: 'osquery config sections',
-        haystack: `${e.name.toLowerCase()} config options schedule packs`,
-        run: () => {
-          void navigate({ to: `/_app/env/${e.uuid}/config` });
-          onOpenChange(false);
-        },
-      });
+      // "Edit config" is admin-tier — gate on super-admin OR
+      // env-scoped admin. Without this, a non-admin would see a
+      // command that 403s on the config page's data fetch.
+      const envAdmin = isSuperAdmin || me?.permissions?.[e.uuid]?.admin === true;
+      if (envAdmin) {
+        out.push({
+          id: `env-config:${e.uuid}`,
+          kind: 'action',
+          label: `Edit config · ${e.name}`,
+          hint: 'osquery config sections',
+          haystack: `${e.name.toLowerCase()} config options schedule packs`,
+          run: () => {
+            void navigate({ to: `/_app/env/${e.uuid}/config` });
+            onOpenChange(false);
+          },
+        });
+      }
     }
     return out;
-  }, [envs, navigate, onOpenChange]);
+  }, [envs, navigate, onOpenChange, isSuperAdmin, me]);
 
   const filtered = useMemo(() => {
     const tokens = filter

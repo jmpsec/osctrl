@@ -260,20 +260,22 @@ export function SideNav() {
             Enrollment
           </NavItem>
         )}
-        {isSuperAdmin && (
-          <NavItem
-            active={isAuditActive}
-            to="/_app/audit"
-            icon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
-              </svg>
-            }
-          >
-            Audit Trail
-          </NavItem>
-        )}
+        {/* Audit Trail is visible to everyone. Super-admins see all
+            operator activity; non-admins see only their own (the api
+            force-clamps the username filter to the requester
+            server-side). The label changes to reflect that scope. */}
+        <NavItem
+          active={isAuditActive}
+          to="/_app/audit"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
+            </svg>
+          }
+        >
+          {isSuperAdmin ? 'Audit Trail' : 'My Activity'}
+        </NavItem>
       </nav>
 
       {/* Environments section */}
