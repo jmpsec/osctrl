@@ -40,7 +40,6 @@ function parseList(raw: string): string[] {
  */
 export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
   const [uuidRaw, setUuidRaw] = useState(value.uuids.join(', '));
-  const [hostRaw, setHostRaw] = useState(value.hosts.join(', '));
 
   const { data: envTags } = useQuery({
     queryKey: ['tags', env],
@@ -82,19 +81,10 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
     setUuidRaw(raw);
     onChange({ ...value, uuids: parseList(raw) });
   }
-  function commitHosts(raw: string) {
-    setHostRaw(raw);
-    onChange({ ...value, hosts: parseList(raw) });
-  }
   function removeUuid(u: string) {
     const next = value.uuids.filter((x) => x !== u);
     setUuidRaw(next.join(', '));
     onChange({ ...value, uuids: next });
-  }
-  function removeHost(h: string) {
-    const next = value.hosts.filter((x) => x !== h);
-    setHostRaw(next.join(', '));
-    onChange({ ...value, hosts: next });
   }
 
   const totalSelectors =
@@ -168,15 +158,14 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
         )}
       </div>
 
-      {/* ── Node UUIDs — typeahead over enrolled nodes ────────────────
-          As the operator types, suggestions matching either the UUID
-          or the hostname appear inline below the input. Clicking a
-          suggestion commits the UUID to value.uuids (chips render
-          via the existing ChipList). Free-text + comma still works
-          — onBlur parses whatever's typed, so an operator pasting a
-          UUID not in the current page still gets it added. */}
+      {/* ── Nodes — typeahead by hostname or UUID, commits as UUID ──
+          One picker for both lookup modes. Typing matches against
+          BOTH the UUID and the hostname; selecting a row commits
+          the node's UUID to value.uuids. The wire format stays
+          UUID-based (immutable, unambiguous); we just don't make
+          the operator know that. */}
       <div>
-        <SectionLabel>Node UUIDs</SectionLabel>
+        <SectionLabel>Nodes</SectionLabel>
         <TypeaheadInput
           inputId="target-uuids"
           value={uuidRaw}
@@ -191,34 +180,14 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
             setUuidRaw(next.join(', '));
             onChange({ ...value, uuids: next });
           }}
-          placeholder="type uuid or hostname"
-        />
-        {value.uuids.length > 0 && (
-          <ChipList items={value.uuids} onRemove={removeUuid} mono />
-        )}
-      </div>
-
-      {/* ── Hostnames — same typeahead, picks hostname into hosts ──── */}
-      <div>
-        <SectionLabel>Hostnames</SectionLabel>
-        <TypeaheadInput
-          inputId="target-hosts"
-          value={hostRaw}
-          onChange={setHostRaw}
-          onBlur={commitHosts}
-          allNodes={allNodes}
-          selected={value.hosts}
-          searchKey="hostname"
-          onPick={(host) => {
-            if (value.hosts.includes(host)) return;
-            const next = [...value.hosts, host];
-            setHostRaw(next.join(', '));
-            onChange({ ...value, hosts: next });
-          }}
           placeholder="type hostname or uuid"
         />
-        {value.hosts.length > 0 && (
-          <ChipList items={value.hosts} onRemove={removeHost} mono />
+        {value.uuids.length > 0 && (
+          <NodeChipList
+            uuids={value.uuids}
+            allNodes={allNodes}
+            onRemove={removeUuid}
+          />
         )}
       </div>
 
@@ -397,6 +366,53 @@ function ChipList({
           </button>
         </span>
       ))}
+    </div>
+  );
+}
+
+// NodeChipList renders selected node UUIDs as hostname-labeled chips
+// (with the UUID prefix in muted text alongside) so the operator sees
+// who they actually targeted, not a row of opaque hex strings. Wire
+// format stays UUID-based; this is presentation only.
+function NodeChipList({
+  uuids,
+  allNodes,
+  onRemove,
+}: {
+  uuids: string[];
+  allNodes: { uuid: string; hostname: string }[];
+  onRemove: (uuid: string) => void;
+}) {
+  const lookup = new Map<string, string>();
+  for (const n of allNodes) lookup.set(n.uuid, n.hostname);
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {uuids.map((u) => {
+        const host = lookup.get(u);
+        return (
+          <span
+            key={u}
+            className={cn(
+              'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px]',
+              'bg-[color:var(--signal)]/10 text-[color:var(--signal-bright,var(--signal))]',
+              'border border-[color:var(--signal)]/30 font-mono-tabular',
+            )}
+            title={u}
+          >
+            <span className="truncate max-w-[120px]">
+              {host ?? u.slice(0, 8) + (u.length > 8 ? '…' : '')}
+            </span>
+            <button
+              type="button"
+              onClick={() => onRemove(u)}
+              aria-label={`Remove ${host ?? u}`}
+              className="text-[color:var(--text-3)] hover:text-[color:var(--danger)] transition-colors"
+            >
+              ×
+            </button>
+          </span>
+        );
+      })}
     </div>
   );
 }
