@@ -28,8 +28,9 @@ const httpExchangeTimeout = 30 * time.Second
 var (
 	// ErrStateMismatch covers any mismatch between the State the
 	// caller transported (cookie) and the parameters the IdP
-	// returned (query). Covers env mismatch (T18), state-param
-	// mismatch (T6), nonce mismatch (T1 adjacent).
+	// returned (query). Specifically, the OAuth2 state-param check
+	// (T6, CSRF). The id_token nonce check has its own sentinel
+	// (ErrNonceMismatch).
 	ErrStateMismatch = errors.New("oidc: state mismatch")
 
 	// ErrIdPError is returned when the IdP itself signaled an
@@ -121,11 +122,22 @@ func (p *Provider) Type() string { return auth.TypeOIDC }
 // (optionally) PKCE verifier that HandleCallback will validate
 // against the IdP's response.
 //
-// The state string parameter to the authorize endpoint is set to
-// the EnvUUID concatenated with the Nonce, so the IdP's verbatim
-// echo on callback gives the handler a hint about which env to
-// resolve the provider for. The handler still verifies the cookie's
-// State.EnvUUID separately as the authoritative source.
+// The OAuth2 state parameter sent in the authorize URL is set to
+// state.Nonce (a 256-bit cryptorandom value), NOT to State.EnvUUID.
+// This is the load-bearing CSRF defense: an attacker cannot guess
+// the value, so they cannot craft a callback URL that the verifier
+// would accept. The OIDC nonce parameter (separate from OAuth2 state)
+// carries the same value into the id_token, where go-oidc.Verifier
+// checks it as the protocol's replay-defense layer. Same value
+// transported via two protocol parameters — both must match the
+// cookie's nonce for HandleCallback to succeed.
+//
+// State.EnvUUID is informational only at this layer: it must be
+// non-empty (so the state cookie has stable shape) but its value
+// isn't checked against anything in the callback URL. Callers that
+// want env-scoping above the protocol layer use the EnvUUID
+// out-of-band (legacy admin sets it to "admin"; cmd/api sets it to
+// "global" or similar; whatever the operator-side code wants).
 func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, error) {
 	if state.EnvUUID == "" {
 		return "", fmt.Errorf("oidc: LoginURL: empty State.EnvUUID")
@@ -133,18 +145,6 @@ func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, erro
 	if state.Nonce == "" {
 		return "", fmt.Errorf("oidc: LoginURL: empty State.Nonce")
 	}
-	// We pass State.Nonce to the IdP via the OIDC nonce parameter
-	// (NOT the OAuth2 state parameter). The OAuth2 state parameter
-	// is the EnvUUID — verified against the cookie's EnvUUID on
-	// return. Two reasons for this split:
-	//
-	//   - The OIDC nonce is what go-oidc.Verifier checks against
-	//     the id_token's nonce claim. That's the protocol's
-	//     replay-defense layer.
-	//   - The OAuth2 state parameter is what we receive verbatim
-	//     in the callback URL. Tying it to EnvUUID lets us
-	//     short-circuit cross-env replay (threat T18) even if the
-	//     cookie is somehow forwarded.
 	opts := []oauth2.AuthCodeOption{gooidc.Nonce(state.Nonce)}
 	if p.cfg.UsePKCE {
 		if state.Verifier == "" {
@@ -152,14 +152,14 @@ func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, erro
 		}
 		opts = append(opts, oauth2.S256ChallengeOption(state.Verifier))
 	}
-	return p.oauth2.AuthCodeURL(state.EnvUUID, opts...), nil
+	return p.oauth2.AuthCodeURL(state.Nonce, opts...), nil
 }
 
 // HandleCallback consumes the callback request and returns a
 // ResolvedIdentity. Validates, in order:
 //
 //  1. r.URL contains no `error` parameter (ErrIdPError)
-//  2. `state` query param matches state.EnvUUID (ErrStateMismatch — T18)
+//  2. `state` query param matches state.Nonce (ErrStateMismatch — T6, CSRF)
 //  3. `code` query param non-empty (ErrMissingCode)
 //  4. If PKCE enabled, state.Verifier non-empty (T10 defense in depth;
 //     LoginURL already enforces it)
@@ -167,7 +167,7 @@ func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, erro
 //  6. id_token present on token response (ErrIDTokenVerify)
 //  7. id_token signature + iss + aud + exp + nbf all valid via
 //     go-oidc.Verifier.Verify (ErrIDTokenVerify; covers T1-T5)
-//  8. id_token nonce matches state.Nonce (ErrNonceMismatch)
+//  8. id_token nonce matches state.Nonce (ErrNonceMismatch — T1 narrow)
 //  9. Required-groups gate satisfied if configured (ErrGroupNotAllowed — T17)
 // 10. Resolved username passes sanitizeUsername (ErrUsernameInvalid — T23)
 //
@@ -187,8 +187,11 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %s", ErrIdPError, e)
 	}
 
-	// (2) State parameter must echo the EnvUUID.
-	if got := r.URL.Query().Get("state"); got != state.EnvUUID {
+	// (2) State parameter must echo the cookie's Nonce. This is the
+	// load-bearing CSRF check: an unguessable 256-bit value tied to
+	// the browser via a signed cookie. Only a browser that received
+	// our IssueStateCookie response can satisfy it.
+	if got := r.URL.Query().Get("state"); got != state.Nonce {
 		return auth.ResolvedIdentity{}, ErrStateMismatch
 	}
 
