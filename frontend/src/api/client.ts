@@ -166,6 +166,36 @@ export async function listLoginEnvironments(): Promise<LoginEnvironment[]> {
   return (await res.json()) as LoginEnvironment[];
 }
 
+// AuthMethod mirrors the API's AuthMethod shape. `type` is the
+// discriminator; the SPA renders a different control per type.
+//   "password" — the existing username/password form
+//   "oidc"     — a "Continue with SSO" button linking to LoginURL
+//
+// Order is "password first" per the API contract.
+export type AuthMethod = {
+  type: 'password' | 'oidc';
+  loginUrl: string;
+};
+
+// listAuthMethods asks the API which auth surfaces are available for
+// this deployment. Used by the login page to decide whether to render
+// the SSO button alongside the password form.
+//
+// Unauthenticated; uses the same direct-fetch shape as
+// listLoginEnvironments so it can't trigger the apiFetch 401-redirect
+// loop on the login page.
+export async function listAuthMethods(): Promise<AuthMethod[]> {
+  const res = await fetch('/api/v1/auth/methods', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load auth methods (HTTP ${res.status})`);
+  }
+  const body = (await res.json()) as { methods: AuthMethod[] };
+  return body.methods ?? [];
+}
+
 export function logout(): void {
   csrfTokenInMemory = null;
   // no server-side logout endpoint today — just clear local state
