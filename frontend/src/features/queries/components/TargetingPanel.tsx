@@ -177,7 +177,11 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
           onPick={(uuid) => {
             if (value.uuids.includes(uuid)) return;
             const next = [...value.uuids, uuid];
-            setUuidRaw(next.join(', '));
+            // Trailing ", " puts the cursor in the right place to
+            // start typing the next token. endsWithComma in the
+            // picker keeps the suggestion list open so the operator
+            // can keep clicking without re-focusing.
+            setUuidRaw(next.join(', ') + ', ');
             onChange({ ...value, uuids: next });
           }}
           placeholder="type hostname or uuid"
@@ -237,22 +241,34 @@ function TypeaheadInput({
     return segs[segs.length - 1]!.trim().toLowerCase();
   }, [value]);
 
+  // endsWithComma tells the picker "operator just finished a token
+  // and is ready to type another". In that state we show the top-8
+  // unselected nodes so the operator can keep picking without
+  // typing — same affordance as a multi-select dropdown.
+  const endsWithComma = /,[\s]*$/.test(value);
+
   const filtered = useMemo(() => {
-    if (!focused || !lastToken) return [];
+    if (!focused) return [];
     const sel = new Set(selected);
-    return allNodes
-      .filter((n) => {
-        const k = searchKey === 'uuid' ? n.uuid : n.hostname;
-        if (sel.has(k)) return false;
+    const unselected = allNodes.filter((n) => {
+      const k = searchKey === 'uuid' ? n.uuid : n.hostname;
+      return !sel.has(k);
+    });
+    // No active token but trailing comma → show top 8 to invite
+    // another pick. No token AND no comma → show nothing (avoid
+    // dropdown opening on an empty unfocused-then-clicked input).
+    if (!lastToken) {
+      return endsWithComma ? unselected.slice(0, 8) : [];
+    }
+    return unselected
+      .filter((n) =>
         // Match against BOTH uuid and hostname — operator typing
         // "web" in the UUID field still finds web-01.
-        return (
-          n.uuid.toLowerCase().includes(lastToken) ||
-          n.hostname.toLowerCase().includes(lastToken)
-        );
-      })
+        n.uuid.toLowerCase().includes(lastToken) ||
+        n.hostname.toLowerCase().includes(lastToken),
+      )
       .slice(0, 8);
-  }, [focused, lastToken, allNodes, selected, searchKey]);
+  }, [focused, lastToken, endsWithComma, allNodes, selected, searchKey]);
 
   return (
     <div className="relative">
