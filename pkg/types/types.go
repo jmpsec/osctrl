@@ -308,6 +308,19 @@ type SetPermissionsAllRequest struct {
 	Access EnvAccessView `json:"access"`
 }
 
+// GetPermissionsResponse is what
+// GET /api/v1/users/{username}/permissions returns.
+//
+// Permissions maps env UUID → EnvAccessView. An env with no
+// permission rows for the user is OMITTED — the SPA treats absence
+// as "no access yet" (the default zero-value EnvAccess). Returning
+// every env even with all-false rows would bloat responses for
+// tenants with hundreds of envs without adding signal.
+type GetPermissionsResponse struct {
+	Username    string                   `json:"username"`
+	Permissions map[string]EnvAccessView `json:"permissions"`
+}
+
 // SetPermissionsAllResponse is what
 // POST /api/v1/users/{username}/permissions/all returns.
 //

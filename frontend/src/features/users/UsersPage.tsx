@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listUsers,
+  getUserPermissions,
   setUserPermissions,
   setUserPermissionsAllSafe,
   refreshUserToken,
@@ -43,6 +44,10 @@ export function UsersPage() {
 
   function invalidate() {
     void qc.invalidateQueries({ queryKey: ['users'] });
+    // Also invalidate the per-user permissions cache so the next
+    // open of the Permissions modal sees fresh data instead of
+    // whatever was loaded the first time.
+    void qc.invalidateQueries({ queryKey: ['user-permissions'] });
     void refetch();
   }
 
@@ -245,6 +250,36 @@ function PermissionsModal({
     staleTime: 60_000,
     retry: 1,
   });
+
+  // Pull the target user's CURRENT permission map so the modal can
+  // prefill the access checkboxes with what's already in the DB.
+  // Without this the modal opened with a fresh {user:true,...}
+  // default — re-saving silently overwrote any prior grants the
+  // operator might not have remembered to leave alone.
+  //
+  // Refetch when the modal opens (queryKey includes user.username).
+  // staleTime=0 so we always see the latest state when the modal is
+  // re-opened after a save.
+  const { data: existingPerms } = useQuery({
+    queryKey: ['user-permissions', user.username],
+    queryFn: () => getUserPermissions(user.username),
+    staleTime: 0,
+  });
+
+  // When the operator picks an env in the dropdown, sync the
+  // checkboxes to the user's existing access for that env. An env
+  // with no rows in existingPerms.permissions falls back to a
+  // zero-value EnvAccess (everything false) so the modal shows
+  // "this user has no access here yet" honestly.
+  useEffect(() => {
+    if (!envUuid) return;
+    const found = existingPerms?.permissions?.[envUuid];
+    if (found) {
+      setAccess(found);
+    } else {
+      setAccess({ user: false, query: false, carve: false, admin: false });
+    }
+  }, [envUuid, existingPerms]);
 
   const mutation = useMutation({
     mutationFn: () => {

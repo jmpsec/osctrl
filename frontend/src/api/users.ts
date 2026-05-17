@@ -2,6 +2,7 @@ import { apiFetch, ApiError } from './client';
 import type {
   AdminUser,
   EnvAccess,
+  GetPermissionsResponse,
   SetPermissionsAllResponse,
   SetPermissionsRequest,
   TokenResponse,
@@ -16,6 +17,13 @@ export function listUsers(): Promise<AdminUser[]> {
 /** GET /api/v1/users/{username} — single user (super-admin). */
 export function getUser(username: string): Promise<AdminUser> {
   return apiFetch<AdminUser>(`/api/v1/users/${encodeURIComponent(username)}`);
+}
+
+/** GET /api/v1/users/{username}/permissions — full env→access map. */
+export function getUserPermissions(username: string): Promise<GetPermissionsResponse> {
+  return apiFetch<GetPermissionsResponse>(
+    `/api/v1/users/${encodeURIComponent(username)}/permissions`,
+  );
 }
 
 /** POST /api/v1/users/{username}/permissions — replace per-env access. */
