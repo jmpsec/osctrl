@@ -394,6 +394,12 @@ func osctrlAPIService() {
 	// render an "OIDC" button alongside the password form. Read-only,
 	// no secrets in the response, pre-auth rate limit.
 	muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/methods", preAuthRateLimit(http.HandlerFunc(handlersApi.AuthMethodsHandler)))
+	// Logout: unauthenticated by design — an expired-token user
+	// must be able to log out without first re-authenticating.
+	// Server-side cookie expiry + APIToken revocation happen here.
+	// Worst case if forged: invalidates the legitimate user's
+	// token, which is exactly what logout should do.
+	muxAPI.Handle("POST "+_apiPath("/logout"), preAuthRateLimit(http.HandlerFunc(handlersApi.LogoutHandler)))
 	// OIDC login + callback. Registered ONLY when --oidc-enabled is
 	// set, so a misconfigured deploy doesn't expose 500-returning
 	// stubs. The handlers themselves also guard with `oidcProvider
