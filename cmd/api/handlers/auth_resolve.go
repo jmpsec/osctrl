@@ -69,6 +69,10 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 	if err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: new user: %v", ErrAuthUserRejected, err)
 	}
+	// Tag the row as JIT-provisioned via OIDC so the Users page can
+	// display an "OIDC" badge. Purely informational; the auth flow
+	// itself doesn't gate on this field.
+	u.AuthSource = "oidc"
 	if err := h.Users.Create(u); err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: create user: %v", ErrAuthUserRejected, err)
 	}

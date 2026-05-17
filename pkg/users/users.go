@@ -40,6 +40,15 @@ type AdminUser struct {
 	LastAccess    time.Time
 	LastTokenUse  time.Time
 	EnvironmentID uint
+	// AuthSource records HOW this user authenticates. Empty/""
+	// means password (the legacy and default path). Set to "oidc"
+	// when the row was JIT-provisioned by the federated-login
+	// callback. The field is informational — operators see it on
+	// the Users page so they can distinguish SSO-only rows from
+	// dual-auth rows. The Login flow itself doesn't gate on it
+	// (an OIDC user with a password set later can log in either
+	// way, by design).
+	AuthSource string
 }
 
 // TokenClaims to hold user claims when using JWT
