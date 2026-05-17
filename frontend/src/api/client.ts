@@ -234,8 +234,15 @@ export async function listAuthMethods(): Promise<AuthMethod[]> {
 // teardown to terminate the IdP's session cookie too; without that,
 // the next "Continue with SSO" silently re-auths against the
 // still-valid IdP session.
+//
+// idp_client_id is the OIDC client_id; the SPA appends it to the
+// end-session URL alongside post_logout_redirect_uri. Keycloak 26+
+// requires either id_token_hint OR client_id when a redirect URI is
+// supplied; we use the client_id path so we don't have to persist
+// raw id_tokens client-side.
 export type LogoutResponse = {
   idp_logout_url?: string;
+  idp_client_id?: string;
 };
 
 // logout tears down both the SPA session AND, when available, the
@@ -260,6 +267,7 @@ export async function logout(): Promise<void> {
   csrfTokenInMemory = null;
 
   let idpLogoutUrl = '';
+  let idpClientId = '';
   try {
     const res = await fetch('/api/v1/logout', {
       method: 'POST',
@@ -269,6 +277,7 @@ export async function logout(): Promise<void> {
     if (res.ok) {
       const body = (await res.json()) as LogoutResponse;
       idpLogoutUrl = body.idp_logout_url ?? '';
+      idpClientId = body.idp_client_id ?? '';
     }
   } catch {
     // Network blip — fall through to client-only cleanup.
@@ -284,14 +293,24 @@ export async function logout(): Promise<void> {
 
   if (idpLogoutUrl) {
     // Build the post-logout redirect URL — back to the SPA's /login.
-    // Most IdPs require the parameter; Keycloak requires the URL be
-    // pre-registered as a valid post-logout redirect in the client
-    // config. If it isn't registered, the IdP shows its own "logged
-    // out" page; the user can navigate back manually.
+    // Keycloak 26+ requires EITHER id_token_hint OR client_id when
+    // post_logout_redirect_uri is set. We use client_id (received
+    // from the api in the same response) to avoid persisting raw
+    // id_tokens client-side. The redirect URI must be pre-
+    // registered as a valid post-logout redirect on the client; the
+    // dev compose stack does this in Keycloak's
+    // post.logout.redirect.uris attribute on the osctrl-api client.
+    //
+    // If the api didn't return client_id (older build / missing
+    // config), we still navigate but omit the parameter and let
+    // Keycloak's error page guide the operator.
     const postLogout = `${window.location.origin}/login`;
+    const params = new URLSearchParams({ post_logout_redirect_uri: postLogout });
+    if (idpClientId) {
+      params.set('client_id', idpClientId);
+    }
     const sep = idpLogoutUrl.includes('?') ? '&' : '?';
-    const url = `${idpLogoutUrl}${sep}post_logout_redirect_uri=${encodeURIComponent(postLogout)}`;
-    window.location.href = url;
+    window.location.href = `${idpLogoutUrl}${sep}${params.toString()}`;
     return;
   }
   // No IdP logout to do; just bounce to /login. The router will see
