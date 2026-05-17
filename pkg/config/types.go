@@ -261,6 +261,11 @@ type YAMLConfigurationSAML struct {
 
 // YAMLConfigurationOIDC to keep all OIDC details for auth
 type YAMLConfigurationOIDC struct {
+	// Enabled gates the federated-login surface on osctrl-api.
+	// Defaults false. legacy osctrl-admin ignores this field (it
+	// uses --auth=oidc instead) so adding it does not affect any
+	// existing operator deployment.
+	Enabled        bool     `yaml:"enabled"        mapstructure:"enabled"`
 	IssuerURL      string   `yaml:"issuerUrl"      mapstructure:"issuerUrl"`
 	ClientID       string   `yaml:"clientId"       mapstructure:"clientId"`
 	ClientSecret   string   `yaml:"clientSecret"   mapstructure:"clientSecret"`

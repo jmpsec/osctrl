@@ -136,6 +136,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
+	allFlags = append(allFlags, initOIDCFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
@@ -641,6 +642,12 @@ func initJWTFlags(params *ServiceParameters) []cli.Flag {
 // initOIDCFlags initializes OIDC flags
 func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "oidc-enabled",
+			Usage:       "Enable the federated-login surface on osctrl-api (osctrl-admin uses --auth=oidc instead and ignores this flag)",
+			Sources:     cli.EnvVars("OIDC_ENABLED"),
+			Destination: &params.OIDC.Enabled,
+		},
 		&cli.StringFlag{
 			Name:        "oidc-issuer-url",
 			Usage:       "OIDC issuer URL (the realm root, /.well-known/openid-configuration is appended automatically)",
