@@ -4,9 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listUsers,
   setUserPermissions,
+  setUserPermissionsAllSafe,
   refreshUserToken,
   deleteUserToken,
 } from '$/api/users';
+import type { BulkSetReport } from '$/api/users';
+import { listEnvironments } from '$/api/environments';
 import { AuthError, ApiError } from '$/api/client';
 import type { AdminUser, EnvAccess, TokenResponse } from '$/api/types';
 import { formatRelative } from '$/lib/time';
@@ -230,6 +233,19 @@ function PermissionsModal({
   });
   const [err, setErr] = useState<string | null>(null);
 
+  // Pull the env list so we can render a dropdown of name → uuid
+  // mappings. Falls back to a free-text input on query error so an
+  // operator can still type a UUID manually if the env-list endpoint
+  // is flaky. The user opening this modal is necessarily a super-
+  // admin (UsersPage gates on admin-level), so /api/v1/environments
+  // is reachable.
+  const { data: envs, isLoading: envsLoading, error: envsError } = useQuery({
+    queryKey: ['environments-for-permissions'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   const mutation = useMutation({
     mutationFn: () => {
       const trimmed = envUuid.trim();
@@ -253,6 +269,33 @@ function PermissionsModal({
     },
   });
 
+  // Bulk-apply state. Two-step UX: first click reveals a confirmation
+  // pane ("This will apply to N environments — continue?"), second
+  // click fires setUserPermissionsAllSafe. The confirmation
+  // intentionally NOT a window.confirm — the modal is already a
+  // dialog, so a native confirm would be a dialog inside a dialog.
+  const [bulkConfirm, setBulkConfirm] = useState<boolean>(false);
+  const [bulkReport, setBulkReport] = useState<BulkSetReport | null>(null);
+  const bulkMutation = useMutation({
+    mutationFn: () => {
+      const envUuids = (envs ?? []).map((e) => e.uuid);
+      return setUserPermissionsAllSafe(user.username, access, envUuids);
+    },
+    onSuccess: (report) => {
+      setBulkReport(report);
+      if (report.failed.length === 0) {
+        onSaved();
+      }
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Bulk apply failed');
+    },
+  });
+
   return (
     <ModalShell
       title={`Permissions for ${user.username}`}
@@ -268,22 +311,60 @@ function PermissionsModal({
       >
         <div>
           <label htmlFor="perm-env-uuid" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-            Environment UUID
+            Environment
           </label>
-          <input
-            id="perm-env-uuid"
-            type="text"
-            value={envUuid}
-            onChange={(e) => setEnvUuid(e.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
-            className={cn(
-              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
-              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-            )}
-          />
+          {envsError ? (
+            // Fall back to free-text UUID input on env-list error so an
+            // operator is never blocked from setting permissions by a
+            // flaky /environments endpoint.
+            <>
+              <input
+                id="perm-env-uuid"
+                type="text"
+                value={envUuid}
+                onChange={(e) => setEnvUuid(e.target.value)}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                className={cn(
+                  'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                  'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                )}
+              />
+              <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+                Couldn't load environments — paste a UUID manually.
+              </p>
+            </>
+          ) : (
+            <select
+              id="perm-env-uuid"
+              value={envUuid}
+              onChange={(e) => setEnvUuid(e.target.value)}
+              disabled={envsLoading}
+              className={cn(
+                'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                'disabled:opacity-60',
+              )}
+            >
+              <option value="">
+                {envsLoading ? 'Loading environments…' : 'Select an environment'}
+              </option>
+              {envs?.map((e) => (
+                // value is the UUID — that's what setUserPermissions
+                // expects on the wire and what the backend's
+                // /users/{u}/permissions handler matches against.
+                // The visible label is the human name so operators
+                // pick by what they know.
+                <option key={e.uuid} value={e.uuid}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          )}
           <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
-            Environment-list dropdown arrives with (Environments CRUD).
+            Permissions are env-scoped — repeat this form to grant access in
+            multiple environments.
           </p>
         </div>
 
@@ -319,7 +400,28 @@ function PermissionsModal({
           </p>
         )}
 
-        <div className="flex items-center justify-end gap-2 pt-2">
+        {/* Bulk-apply result panel. Hidden until bulkMutation completes. */}
+        {bulkReport && (
+          <div
+            role="status"
+            className={cn(
+              'text-xs px-3 py-2 rounded-md',
+              bulkReport.failed.length === 0
+                ? 'text-[color:var(--success)] bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.08)]'
+                : 'text-[color:var(--warning)] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.08)]',
+            )}
+          >
+            Applied access to {bulkReport.succeeded} of {bulkReport.total} environments
+            {bulkReport.usedBulkEndpoint ? ' (bulk endpoint)' : ' (per-env fallback)'}.
+            {bulkReport.failed.length > 0 && (
+              <span className="block mt-1">
+                {bulkReport.failed.length} failed — re-run to retry or set individually.
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
           <button
             type="button"
             onClick={onClose}
@@ -327,6 +429,38 @@ function PermissionsModal({
           >
             Cancel
           </button>
+          {/* "Apply to all environments" button. Two-step:
+              first click → confirmation pill; second click → fire.
+              Disabled when env-list query is loading or in error
+              state (we have no UUIDs to enumerate). */}
+          {bulkConfirm ? (
+            <button
+              type="button"
+              disabled={bulkMutation.isPending}
+              onClick={() => bulkMutation.mutate()}
+              className={cn(
+                'px-3 py-1.5 text-xs font-medium rounded-md',
+                'bg-[color:var(--warning)] text-black hover:opacity-90',
+                'transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              title={`Will apply the selected access to all ${envs?.length ?? 0} environments`}
+            >
+              {bulkMutation.isPending
+                ? `Applying to ${envs?.length ?? 0}…`
+                : `Confirm: apply to all ${envs?.length ?? 0} envs`}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!envs || envs.length === 0 || envsLoading}
+              onClick={() => setBulkConfirm(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Grant the selected access to every environment in the system"
+            >
+              Apply to all envs…
+            </button>
+          )}
           <button
             type="submit"
             disabled={mutation.isPending}

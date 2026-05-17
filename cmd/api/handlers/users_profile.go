@@ -105,6 +105,109 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, body.Access)
 }
 
+// SetUserPermissionsAllHandler - POST /api/v1/users/{username}/permissions/all
+//
+// Bulk variant of SetUserPermissionsHandler: applies the same EnvAccess
+// shape to every environment that exists at request time. Body:
+// { access: { user, query, carve, admin } }. Returns
+// { updated, total, access } on success.
+//
+// Same authn/authz posture as the per-env handler: requires super-admin
+// (AdminLevel, NoEnvironment). Same lockout guards:
+//
+//   - Super-admins cannot self-demote via this endpoint.
+//   - The last super-admin cannot be demoted under any path.
+//
+// "All current envs" semantics: enumeration happens server-side at
+// request time. Envs created LATER do not inherit; the operator
+// re-applies as needed. See SetPermissionsAllRequest godoc.
+func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	username := r.PathValue("username")
+	if username == "" {
+		apiErrorResponse(w, "missing username", http.StatusBadRequest, nil)
+		return
+	}
+	if !h.Users.Exists(username) {
+		apiErrorResponse(w, "user not found", http.StatusNotFound, nil)
+		return
+	}
+
+	var body types.SetPermissionsAllRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+
+	access := users.EnvAccess{
+		User:  body.Access.User,
+		Query: body.Access.Query,
+		Carve: body.Access.Carve,
+		Admin: body.Access.Admin,
+	}
+
+	// Lockout guards — identical to SetUserPermissionsHandler.
+	// Without these, the bulk endpoint would be a privilege-
+	// escalation hole (an operator could write !admin to ALL envs
+	// and lock the last super-admin out everywhere in a single
+	// call).
+	if username == ctx[ctxUser] && !access.Admin {
+		apiErrorResponse(w, "super-admins cannot self-demote via this endpoint", http.StatusForbidden, nil)
+		return
+	}
+	if !access.Admin && h.Users.IsAdmin(username) {
+		count, cerr := h.Users.CountAdmins()
+		if cerr != nil {
+			apiErrorResponse(w, "error checking admin count", http.StatusInternalServerError, cerr)
+			return
+		}
+		if count <= 1 {
+			apiErrorResponse(w, "refusing to demote the last super-admin", http.StatusConflict, fmt.Errorf("only %d admin user(s) remain", count))
+			return
+		}
+	}
+
+	envs, err := h.Envs.All()
+	if err != nil {
+		apiErrorResponse(w, "error enumerating environments", http.StatusInternalServerError, err)
+		return
+	}
+	uuids := make([]string, 0, len(envs))
+	for _, e := range envs {
+		uuids = append(uuids, e.UUID)
+	}
+
+	updated, err := h.Users.ChangeAccessAll(username, uuids, access)
+	if err != nil {
+		// ChangeAccessAll returns a partial count on error. We
+		// surface that to the operator so they know how many envs
+		// succeeded before the abort. The HTTP status still has to
+		// be 500 — the whole request did not complete.
+		apiErrorResponse(w,
+			fmt.Sprintf("error setting permissions (%d of %d envs updated before failure)", updated, len(uuids)),
+			http.StatusInternalServerError, err)
+		return
+	}
+
+	h.AuditLog.Permissions(ctx[ctxUser],
+		fmt.Sprintf("set %s on ALL %d envs u=%v q=%v c=%v a=%v",
+			username, updated, access.User, access.Query, access.Carve, access.Admin),
+		strings.Split(r.RemoteAddr, ":")[0], 0)
+	log.Debug().Msgf("permissions updated for user %s on all %d envs", username, updated)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.SetPermissionsAllResponse{
+		Updated: updated,
+		Total:   len(uuids),
+		Access:  body.Access,
+	})
+}
+
 // RefreshUserTokenHandler - POST /api/v1/users/{username}/token/refresh
 //
 // Generates a new JWT for the target user, persists it as the user's

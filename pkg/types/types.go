@@ -296,6 +296,32 @@ type SetPermissionsRequest struct {
 	Access  EnvAccessView `json:"access"`
 }
 
+// SetPermissionsAllRequest is the body for
+// POST /api/v1/users/{username}/permissions/all — sets the same access
+// shape across every environment currently in the system. No env_uuid;
+// the server enumerates envs server-side.
+//
+// "All current envs" semantics: this applies to the env list at the
+// time the request is handled. Envs created LATER do not inherit; the
+// operator re-applies as needed.
+type SetPermissionsAllRequest struct {
+	Access EnvAccessView `json:"access"`
+}
+
+// SetPermissionsAllResponse is what
+// POST /api/v1/users/{username}/permissions/all returns.
+//
+// Updated is the count of environments where the user's permissions
+// were successfully (re-)written. Total is the count of envs the
+// server iterated. On the happy path Updated == Total; if any single
+// env's write failed mid-iteration the handler aborts the transaction
+// and returns 5xx — partial-success is not exposed.
+type SetPermissionsAllResponse struct {
+	Updated int           `json:"updated"`
+	Total   int           `json:"total"`
+	Access  EnvAccessView `json:"access"`
+}
+
 // TokenResponse is returned by POST /api/v1/users/{username}/token/refresh
 // and by login. The Token is shown ONCE to the operator (so they can copy it
 // for CLI use); it isn't returned by any GET endpoint after refresh.
