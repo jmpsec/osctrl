@@ -16,6 +16,56 @@ import (
 
 const tokenRefreshDefaultHours = 24
 
+// GetUserPermissionsHandler - GET /api/v1/users/{username}/permissions
+//
+// Returns the target user's current permission map: env UUID →
+// {user, query, carve, admin}. Envs with no permission rows are
+// omitted (treated as "no access" by the SPA). Requires super-admin
+// (AdminLevel, NoEnvironment).
+//
+// Used by the Permissions modal to prefill checkboxes with the
+// user's existing access for the selected env, so the operator
+// sees current state before making changes — no more accidentally
+// overwriting (user:true, query:true) by re-saving the modal's
+// default of (user:true, query:false).
+func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	username := r.PathValue("username")
+	if username == "" {
+		apiErrorResponse(w, "missing username", http.StatusBadRequest, nil)
+		return
+	}
+	if !h.Users.Exists(username) {
+		apiErrorResponse(w, "user not found", http.StatusNotFound, nil)
+		return
+	}
+	access, err := h.Users.GetAccess(username)
+	if err != nil {
+		apiErrorResponse(w, "error getting permissions", http.StatusInternalServerError, err)
+		return
+	}
+	out := make(map[string]types.EnvAccessView, len(access))
+	for envUUID, ea := range access {
+		out[envUUID] = types.EnvAccessView{
+			User:  ea.User,
+			Query: ea.Query,
+			Carve: ea.Carve,
+			Admin: ea.Admin,
+		}
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.GetPermissionsResponse{
+		Username:    username,
+		Permissions: out,
+	})
+}
+
 // SetUserPermissionsHandler - POST /api/v1/users/{username}/permissions
 //
 // Body: { env_uuid, access: { user, query, carve, admin } }. Replaces the

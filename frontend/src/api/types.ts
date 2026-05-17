@@ -335,6 +335,14 @@ export interface SetPermissionsRequest {
   access: EnvAccess;
 }
 
+// Response from GET /api/v1/users/{u}/permissions. Maps env UUID
+// to the user's current EnvAccess; envs with no rows are omitted
+// (treated as no access — the zero-value EnvAccess).
+export interface GetPermissionsResponse {
+  username: string;
+  permissions: Record<string, EnvAccess>;
+}
+
 // Body for POST /api/v1/users/{u}/permissions/all — bulk
 // permission set across every environment in the system.
 export interface SetPermissionsAllRequest {
