@@ -345,15 +345,23 @@ type TokenResponse struct {
 
 // UserMeResponse is the SPA-canonical projection of the currently-authenticated
 // user. Used by GET /api/v1/users/me.
+//
+// Permissions is the env-UUID → EnvAccess map for THIS user. Drives
+// the SPA's nav-gating: items the operator has no access to are
+// hidden from the SideNav. Super-admins (Admin=true) bypass the
+// per-env check at the server layer, so the SPA hides nothing for
+// them. Envs with no permission rows are omitted from the map; the
+// SPA treats absence as "no access" (zero-value EnvAccess).
 type UserMeResponse struct {
-	Username    string    `json:"username"`
-	Email       string    `json:"email"`
-	Fullname    string    `json:"fullname"`
-	Admin       bool      `json:"admin"`
-	Service     bool      `json:"service"`
-	UUID        string    `json:"uuid"`
-	TokenExpire time.Time `json:"token_expire"`
-	LastAccess  time.Time `json:"last_access"`
+	Username    string                   `json:"username"`
+	Email       string                   `json:"email"`
+	Fullname    string                   `json:"fullname"`
+	Admin       bool                     `json:"admin"`
+	Service     bool                     `json:"service"`
+	UUID        string                   `json:"uuid"`
+	TokenExpire time.Time                `json:"token_expire"`
+	LastAccess  time.Time                `json:"last_access"`
+	Permissions map[string]EnvAccessView `json:"permissions"`
 }
 
 // UserMePatchRequest is the body for PATCH /api/v1/users/me — operators can
