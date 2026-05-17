@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auth"
 	authoidc "github.com/jmpsec/osctrl/pkg/auth/oidc"
@@ -201,6 +202,27 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		// honest answer.
 		return
 	}
+
+	// Persist the raw id_token in an HttpOnly cookie so the logout
+	// handler can return it as id_token_hint on RP-initiated
+	// logout. Okta REQUIRES the hint on /v1/logout; Keycloak accepts
+	// either id_token_hint OR client_id. Keeping the cookie HttpOnly
+	// + Secure means JS can't read the IdP token — it travels only
+	// browser→our /logout endpoint, never to the SPA's JS bundle.
+	// Path=/api/v1/auth/ scopes it to auth endpoints, matching the
+	// state cookie's scope.
+	if identity.IDToken != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "osctrl_id_token",
+			Value:    identity.IDToken,
+			Path:     "/api/v1/auth/",
+			MaxAge:   int(8 * time.Hour / time.Second),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	if h.AuditLog != nil {
 		h.AuditLog.NewLogin(user.Username, utils.GetIP(r))
 	}
