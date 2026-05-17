@@ -117,6 +117,27 @@ func NewOIDCProvider(ctx context.Context, cfg Config) (*Provider, error) {
 // Type identifies this provider as OIDC.
 func (p *Provider) Type() string { return auth.TypeOIDC }
 
+// EndSessionURL returns the IdP's RP-initiated logout endpoint URL,
+// or "" if the IdP didn't advertise one in its discovery document.
+// Callers append `?post_logout_redirect_uri=...&id_token_hint=...`
+// when they redirect the user — Keycloak and most IdPs accept those
+// query params per the OIDC RP-Initiated Logout spec.
+//
+// Best-effort: a discovery doc without end_session_endpoint yields
+// an empty string, and the caller falls back to client-only cookie
+// clearing (no IdP session termination).
+func (p *Provider) EndSessionURL() string {
+	var claims struct {
+		EndSessionEndpoint string `json:"end_session_endpoint"`
+	}
+	// p.provider.Claims unmarshals the cached discovery doc; this
+	// is a memory read, not a network call.
+	if err := p.provider.Claims(&claims); err != nil {
+		return ""
+	}
+	return claims.EndSessionEndpoint
+}
+
 // LoginURL builds the authorize-endpoint URL that the user's browser
 // should be redirected to. The state argument carries the nonce and
 // (optionally) PKCE verifier that HandleCallback will validate

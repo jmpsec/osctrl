@@ -196,8 +196,75 @@ export async function listAuthMethods(): Promise<AuthMethod[]> {
   return body.methods ?? [];
 }
 
-export function logout(): void {
+// Response shape from POST /api/v1/logout. idpLogoutUrl is non-empty
+// when the api has an OIDC provider configured and the IdP advertised
+// an end_session_endpoint. The SPA navigates to it after the local
+// teardown to terminate the IdP's session cookie too; without that,
+// the next "Continue with SSO" silently re-auths against the
+// still-valid IdP session.
+export type LogoutResponse = {
+  idp_logout_url?: string;
+};
+
+// logout tears down both the SPA session AND, when available, the
+// IdP session. Two-step:
+//
+//   1. POST /api/v1/logout — server expires both cookies via
+//      Set-Cookie headers (only the server can clear the HttpOnly
+//      osctrl_token cookie) AND clears the user's APIToken in the
+//      DB so any still-cached copy of the JWT fails the auth check
+//      on its next use.
+//
+//   2. If the response includes idp_logout_url, navigate to it —
+//      Keycloak (and most IdPs) accept ?post_logout_redirect_uri=...
+//      to bounce back. Without this, ?signed-in-as-X persists in the
+//      IdP and the next SSO click silently logs the user back in.
+//
+// Best-effort: a network failure during step 1 still proceeds to the
+// in-memory clear + /login redirect. Worst case: server-side
+// revocation didn't happen and the operator's JWT remains valid
+// until its exp — they can re-click logout once connectivity returns.
+export async function logout(): Promise<void> {
   csrfTokenInMemory = null;
-  // no server-side logout endpoint today — just clear local state
-  // and let the cookies expire naturally
+
+  let idpLogoutUrl = '';
+  try {
+    const res = await fetch('/api/v1/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const body = (await res.json()) as LogoutResponse;
+      idpLogoutUrl = body.idp_logout_url ?? '';
+    }
+  } catch {
+    // Network blip — fall through to client-only cleanup.
+  }
+
+  // Defense-in-depth: clear the SPA-readable cookie locally too.
+  // Server-side Set-Cookie should have done this, but if the POST
+  // failed we still want primeCsrfFromCookie() on the next load
+  // to see no cookie.
+  if (typeof document !== 'undefined') {
+    document.cookie = 'osctrl_csrf=; Path=/; Max-Age=0; SameSite=Lax';
+  }
+
+  if (idpLogoutUrl) {
+    // Build the post-logout redirect URL — back to the SPA's /login.
+    // Most IdPs require the parameter; Keycloak requires the URL be
+    // pre-registered as a valid post-logout redirect in the client
+    // config. If it isn't registered, the IdP shows its own "logged
+    // out" page; the user can navigate back manually.
+    const postLogout = `${window.location.origin}/login`;
+    const sep = idpLogoutUrl.includes('?') ? '&' : '?';
+    const url = `${idpLogoutUrl}${sep}post_logout_redirect_uri=${encodeURIComponent(postLogout)}`;
+    window.location.href = url;
+    return;
+  }
+  // No IdP logout to do; just bounce to /login. The router will see
+  // isAuthenticated() === false and render the login form.
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
 }
