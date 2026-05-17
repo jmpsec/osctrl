@@ -34,7 +34,7 @@ func TestPickUsername(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.configClaim, func(t *testing.T) {
-			got := pickUsername(claims, tc.configClaim)
+			got := pickUsername(claims, nil, tc.configClaim)
 			if got != tc.want {
 				t.Fatalf("pickUsername(%q): got %q want %q", tc.configClaim, got, tc.want)
 			}
@@ -50,9 +50,44 @@ func TestPickUsernameAbsentClaim(t *testing.T) {
 		Subject: "sub-uuid-1234",
 		// PreferredUsername intentionally empty
 	}
-	got := pickUsername(claims, DefaultUsernameClaim)
+	got := pickUsername(claims, nil, DefaultUsernameClaim)
 	if got != "sub-uuid-1234" {
 		t.Fatalf("absent claim should fall back to sub, got %q", got)
+	}
+}
+
+// TestPickUsernameCustomClaim — covers the Auth0 / Entra / Okta case
+// where the operator picks a non-standard claim (e.g. "nickname",
+// "upn", "login"). The typed struct doesn't have a field for it, so
+// pickUsername must fall through to the raw claim map.
+func TestPickUsernameCustomClaim(t *testing.T) {
+	claims := idTokenClaims{Subject: "auth0|hex123"}
+	raw := map[string]any{
+		"sub":      "auth0|hex123",
+		"nickname": "alice",
+		"upn":      "alice@corp.local",
+	}
+	if got := pickUsername(claims, raw, "nickname"); got != "alice" {
+		t.Errorf("nickname pick: got %q want alice", got)
+	}
+	if got := pickUsername(claims, raw, "upn"); got != "alice@corp.local" {
+		t.Errorf("upn pick: got %q want alice@corp.local", got)
+	}
+	// Configured claim absent from raw → fall back to subject.
+	if got := pickUsername(claims, raw, "missing_claim"); got != "auth0|hex123" {
+		t.Errorf("missing claim fallback: got %q want subject", got)
+	}
+	// Non-string value (array, object) is skipped → fall back to sub.
+	rawBad := map[string]any{
+		"nickname": []string{"alice", "bob"},
+	}
+	if got := pickUsername(claims, rawBad, "nickname"); got != "auth0|hex123" {
+		t.Errorf("non-string custom claim should fall back to sub, got %q", got)
+	}
+	// nil raw map (claims decode failed) → fall back to sub for
+	// custom claims (typed fields still work; tested elsewhere).
+	if got := pickUsername(claims, nil, "nickname"); got != "auth0|hex123" {
+		t.Errorf("nil raw map should fall back to sub, got %q", got)
 	}
 }
 

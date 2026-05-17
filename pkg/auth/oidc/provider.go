@@ -263,6 +263,14 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	if err := idToken.Claims(&claims); err != nil {
 		return auth.ResolvedIdentity{}, fmt.Errorf("%w: claims decode: %v", ErrIDTokenVerify, err)
 	}
+	// Also decode into a generic map so pickUsername can look up
+	// custom claim names like "nickname" (Auth0) or "upn" (Entra)
+	// that aren't on idTokenClaims. Non-fatal: an empty raw map
+	// simply means pickUsername falls back to the typed fields.
+	var raw map[string]any
+	if err := idToken.Claims(&raw); err != nil {
+		raw = nil
+	}
 
 	// (9) Required-groups gate.
 	if len(p.cfg.RequiredGroups) > 0 {
@@ -272,7 +280,7 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	}
 
 	// Resolve preferred username from configured claim.
-	username := pickUsername(claims, p.cfg.effectiveUsernameClaim())
+	username := pickUsername(claims, raw, p.cfg.effectiveUsernameClaim())
 	if username == "" {
 		// Should be impossible after a successful verify (sub is
 		// always present), but belt and braces.
@@ -314,15 +322,10 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	// surface the groups for downstream use.
 	groups := decodeGroups(idToken, p.cfg.effectiveGroupsClaim())
 
-	// Raw claims for downstream debugging. The map is not
-	// authoritative — callers must read from the typed fields
-	// (Subject, PreferredUsername, etc.) to ensure validation has
-	// passed.
-	var raw map[string]any
-	if err := idToken.Claims(&raw); err != nil {
-		raw = nil // non-fatal, the typed claims are authoritative
-	}
-
+	// raw was already decoded above for pickUsername; reuse it as
+	// the ResolvedIdentity's debugging map. Callers must read from
+	// the typed fields (Subject, PreferredUsername, etc.) to ensure
+	// validation has passed.
 	return auth.ResolvedIdentity{
 		Subject:           claims.Subject,
 		PreferredUsername: clean,
