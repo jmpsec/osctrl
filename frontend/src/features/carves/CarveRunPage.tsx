@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { runCarve } from '$/api/carves';
 import { AuthError } from '$/api/client';
 import { listCarveSamples, type CarveSample } from '$/api/samples';
-import { TargetSelector } from '$/components/forms/TargetSelector';
 import type { TargetSelection } from '$/components/forms/TargetSelector';
+import { TargetingPanel } from '$/features/queries/components/TargetingPanel';
 import { StickyFooter } from '$/features/queries/components/StickyFooter';
 import { cn } from '$/lib/cn';
 
@@ -140,8 +140,19 @@ export function CarveRunPage() {
       </div>
 
       {/* ── Scroll container ──────────────────────────────────────────── */}
+      {/* Two-column grid mirroring QueryRunPage: form on the left
+          (2/3 width on lg), sticky Targeting on the right (1/3).
+          Keeps carves/new and queries/new visually parallel since
+          they're functionally siblings. */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className="px-6 py-6 space-y-5 max-w-3xl mx-auto">
+        <div
+          className={cn(
+            'grid gap-6 p-6',
+            'lg:grid-cols-3 max-w-[1400px] mx-auto',
+          )}
+        >
+          {/* ── Left: path + samples + expiration ─────────────────── */}
+          <div className="lg:col-span-2 space-y-5">
 
           {/* ── Path Hero Strip ──────────────────────────────────────── */}
           <section
@@ -286,17 +297,6 @@ export function CarveRunPage() {
             </section>
           )}
 
-          {/* ── Targeting ─────────────────────────────────────────────── */}
-          <section
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 py-4"
-            aria-label="Target nodes"
-          >
-            <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)] mb-3">
-              Target nodes
-            </h2>
-            <TargetSelector value={target} onChange={setTarget} env={env} />
-          </section>
-
           {/* ── Expiration ────────────────────────────────────────────── */}
           <section
             className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 py-4"
@@ -331,6 +331,20 @@ export function CarveRunPage() {
               })}
             </div>
           </section>
+
+          </div>
+          {/* ── Right: targeting (sticky) ─────────────────────────── */}
+          <aside
+            aria-label="Targeting"
+            className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 lg:self-start"
+          >
+            <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
+              <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)] mb-3">
+                Target
+              </h2>
+              <TargetingPanel value={target} onChange={setTarget} env={env} />
+            </section>
+          </aside>
 
         </div>
       </div>
