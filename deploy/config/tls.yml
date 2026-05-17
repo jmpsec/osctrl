@@ -10,7 +10,14 @@ service:
   host: osctrl.net
   # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
   auth: none
-  auditLog: false
+  auditLog: true
+  # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers
+  # utils.GetIP will trust. osctrl-tls is typically internet-facing for
+  # osquery node enrollment; keep empty unless you operate it behind a
+  # trusted reverse proxy that forwards client IPs. Empty (default)
+  # prevents header-spoofed enroll-rate-limit bypass and audit-log
+  # poisoning.
+  trustedProxies: ""
 
 # Database configuration
 db:

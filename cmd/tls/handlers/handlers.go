@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -63,6 +64,7 @@ type HandlersTLS struct {
 	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
+	AuditLog        *auditlog.AuditLogManager
 }
 
 // TLSResponse to be returned to requests
@@ -180,6 +182,14 @@ func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) Option {
 	}
 }
 
+// WithAuditLog passes the audit-log manager so the TLS service can record
+// failed enrollment attempts for SoC alerting.
+func WithAuditLog(al *auditlog.AuditLogManager) Option {
+	return func(h *HandlersTLS) {
+		h.AuditLog = al
+	}
+}
+
 // CreateHandlersTLS to initialize the TLS handlers struct
 func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	h := &HandlersTLS{}
@@ -188,6 +198,11 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	}
 	if h.Envs != nil {
 		h.EnvCache = environments.NewEnvCache(*h.Envs)
+	}
+	if h.AuditLog == nil {
+		// Defensive — handlers call h.AuditLog.FailedEnroll(...). Disabled
+		// manager is a no-op so we don't have to nil-check at every site.
+		h.AuditLog = &auditlog.AuditLogManager{Enabled: false}
 	}
 	return h
 }
