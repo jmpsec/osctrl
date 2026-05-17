@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/types"
-	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -34,15 +32,24 @@ func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
-		return
-	}
+	requester := ctx[ctxUser]
+	// Super-admins see all operator activity. Non-admins see only
+	// their OWN activity — the username filter is force-clamped to
+	// the requester regardless of what the client sends. Without
+	// this clamp, a non-admin could iterate usernames manually and
+	// effectively page through other operators' activity. Defense-
+	// in-depth at the handler layer; the SPA also hides the
+	// username filter input for non-admins, but the server is the
+	// authoritative gate.
+	isSuperAdmin := h.Users.IsAdmin(requester)
 
 	q := r.URL.Query()
 	filter := auditlog.PageFilter{
 		Service:  strings.TrimSpace(q.Get("service")),
 		Username: strings.TrimSpace(q.Get("username")),
+	}
+	if !isSuperAdmin {
+		filter.Username = requester
 	}
 	if v := q.Get("type"); v != "" {
 		n, err := strconv.ParseUint(v, 10, 32)
