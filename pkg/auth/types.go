@@ -113,6 +113,13 @@ type ResolvedIdentity struct {
 	// validation layer. Always nil for SAML when it lands; OIDC sets
 	// it after id_token verification.
 	Raw map[string]any
+
+	// IDToken is the raw, signed id_token bytes the IdP returned.
+	// Already verified at this point (sig + iss + aud + exp + nonce
+	// checks all passed). The caller's only legitimate use is
+	// id_token_hint on RP-initiated logout — DO NOT use it as an
+	// authentication credential anywhere else. Empty for SAML.
+	IDToken string
 }
 
 // State is the per-login data the caller must round-trip from

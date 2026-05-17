@@ -330,6 +330,12 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 		Name:              fullname,
 		Groups:            groups,
 		Raw:               raw,
+		// rawIDToken was already verified above (step 7 — sig, iss,
+		// aud, exp, nbf, nonce). Surfacing it here so the handler
+		// can use it as id_token_hint on RP-initiated logout. Okta
+		// requires this for /v1/logout; Keycloak accepts it as an
+		// alternative to client_id.
+		IDToken: rawIDToken,
 	}, nil
 }
 

@@ -235,14 +235,18 @@ export async function listAuthMethods(): Promise<AuthMethod[]> {
 // the next "Continue with SSO" silently re-auths against the
 // still-valid IdP session.
 //
-// idp_client_id is the OIDC client_id; the SPA appends it to the
-// end-session URL alongside post_logout_redirect_uri. Keycloak 26+
-// requires either id_token_hint OR client_id when a redirect URI is
-// supplied; we use the client_id path so we don't have to persist
-// raw id_tokens client-side.
+// idp_client_id — Keycloak accepts client_id alongside
+// post_logout_redirect_uri as an alternative to id_token_hint.
+//
+// idp_id_token_hint — Okta REQUIRES id_token_hint when chaining a
+// post-logout redirect; without it, /v1/logout returns "Missing
+// parameter: id_token_hint". The api stashes the raw id_token in an
+// HttpOnly cookie at callback and returns it here. The SPA forwards
+// both parameters; whichever the IdP needs, it'll use.
 export type LogoutResponse = {
   idp_logout_url?: string;
   idp_client_id?: string;
+  idp_id_token_hint?: string;
 };
 
 // logout tears down both the SPA session AND, when available, the
@@ -268,6 +272,7 @@ export async function logout(): Promise<void> {
 
   let idpLogoutUrl = '';
   let idpClientId = '';
+  let idpIdTokenHint = '';
   try {
     const res = await fetch('/api/v1/logout', {
       method: 'POST',
@@ -278,6 +283,7 @@ export async function logout(): Promise<void> {
       const body = (await res.json()) as LogoutResponse;
       idpLogoutUrl = body.idp_logout_url ?? '';
       idpClientId = body.idp_client_id ?? '';
+      idpIdTokenHint = body.idp_id_token_hint ?? '';
     }
   } catch {
     // Network blip — fall through to client-only cleanup.
@@ -306,7 +312,15 @@ export async function logout(): Promise<void> {
     // Keycloak's error page guide the operator.
     const postLogout = `${window.location.origin}/login`;
     const params = new URLSearchParams({ post_logout_redirect_uri: postLogout });
+    if (idpIdTokenHint) {
+      // Okta requires id_token_hint when chaining a redirect.
+      // Keycloak accepts it too. Send it whenever we have one.
+      params.set('id_token_hint', idpIdTokenHint);
+    }
     if (idpClientId) {
+      // Keycloak accepts client_id as an alternative when no
+      // id_token_hint is available. Harmless when id_token_hint
+      // is also set — most IdPs honor whichever they recognize.
       params.set('client_id', idpClientId);
     }
     const sep = idpLogoutUrl.includes('?') ? '&' : '?';
