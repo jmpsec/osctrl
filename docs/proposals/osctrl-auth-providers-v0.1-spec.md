@@ -581,3 +581,174 @@ over HTTP. Validate manually via a real browser:
   body `{"jwt_configuration":{"alg":"RS256"}}`. Failure mode without
   this: `oidc: id_token verification failed: oidc: malformed jwt:
   unexpected signature algorithm "HS256"`.
+
+---
+
+## SAML 2.0 provider design (`auth/05-saml-provider`)
+
+OIDC ships in `auth/00`–`auth/04`. SAML 2.0 Web Browser SSO Profile
+is the second federated protocol we support. This section captures
+the design decisions, the threat catalogue, and the deferred-to-v2
+list before implementation begins.
+
+### Library choice
+
+`github.com/crewjam/saml v0.5.1` — already pinned in `go.mod` and
+used by `cmd/admin` for legacy SAML support. Battle-tested in many
+Go services, MIT-licensed, handles XMLDSig correctly. We use the
+lower-level `samlsp.ServiceProvider` directly (NOT the high-level
+`samlsp.New()` middleware) because cmd/api issues its own JWT
+cookies after the SAML round-trip — parallel to how the OIDC
+provider does it, and parallel to the existing protocol-neutral
+`auth_resolve.go` + `auth_jwt.go` helpers.
+
+### Design decisions
+
+**D1. Cookie strategy.** Reuse the existing `pkg/auth.State` cookie
+(HMAC JWT, audience `osctrl-auth-state`) for CSRF defense. The
+nonce field is round-tripped through SAML's RelayState, verified
+on the ACS callback. Mints the same `osctrl_token` + `osctrl_csrf`
+cookies after success — the SPA's auth-check logic doesn't care
+which protocol generated the session. `osctrl_id_token` (used for
+OIDC RP-initiated logout) is not applicable to SAML; the cookie is
+skipped for SAML logins and the `LogoutResponse.IdPIDTokenHint`
+field stays empty.
+
+**D2. SP-initiated only in v1.** IdP-initiated flows (where the
+user starts at a corporate portal and is POSTed directly to our
+ACS) are convenient for some operators but break the InResponseTo
+correlation we rely on for replay defense. Documented limitation;
+operators with corporate portals fall back to bookmarking the SP-
+initiated login URL.
+
+**D3. No Single Logout (SLO) in v1.** SAML's SLO is famously broken
+across IdPs — half the implementations don't support it correctly
+and the ones that do disagree on the bindings. Logout on the SP
+clears osctrl cookies + APIToken; the IdP session keeps running
+until its own timeout. Documented limitation; operators concerned
+about IdP session lifetime tune the IdP-side timeout.
+
+**D4. SP metadata served at `/api/v1/auth/saml/metadata`.** GET
+returns the SP-side XML metadata (entity ID, ACS URL, certificate
+descriptors). IdP admins paste this URL into their IdP-side SP
+config; the IdP auto-discovers our endpoints. Without this, every
+IdP admin would hand-craft the SP config.
+
+**D5. No AuthnRequest signing in v1.** Signing requires us to ship
+an SP signing cert+key pair, which is operationally annoying for
+deployments. The library default (unsigned AuthnRequests, signed
+responses required) is sufficient — an attacker who forges an
+AuthnRequest still needs the IdP's private key to forge the
+signed response.
+
+**D6. Global, single IdP per deployment.** Same shape as OIDC:
+one SAML IdP configured via flags/YAML, applies deployment-wide.
+Per-env IdP routing is deferred to v2 (same rationale as the OIDC
+pivot).
+
+**D7. AuthMethods response.** `/api/v1/auth/methods` returns a list
+of objects each with `type` ("password" | "oidc" | "saml") and
+`loginUrl`. SPA renders one button per advertised type. For v1 the
+labels are hardcoded ("Sign in", "Continue with SSO (OIDC)",
+"Continue with SSO (SAML)"); a per-provider `displayName` field
+can be added later if operators ask for it.
+
+### Configuration surface
+
+`pkg/config.YAMLConfigurationSAML` (already exists for cmd/admin;
+extended here):
+
+| Field | Purpose |
+|---|---|
+| `Enabled` | Gate that turns on the routes + Init at startup |
+| `IDPMetadataURL` | URL to IdP-side XML metadata document |
+| `IDPMetadataXML` | Alternative to URL: paste the raw XML |
+| `EntityID` | Our SP entity ID (defaults to the metadata URL) |
+| `ACSURL` | Where the IdP POSTs SAMLResponse (`/api/v1/auth/saml/acs`) |
+| `UsernameAttribute` | SAML attribute name to use as username (default: NameID) |
+| `GroupsAttribute` | SAML attribute name carrying group memberships |
+| `RequiredGroups` | At least one must be present in the assertion |
+| `JITProvision` | Auto-create AdminUser rows on first login |
+| `RequireAssertionSigned` | Default true; rejects unsigned assertions |
+| `ReplayWindowMinutes` | NotOnOrAfter clock skew tolerance (default 5) |
+
+CLI flags mirror these with `--saml-*` prefixes.
+
+### Threat catalogue (SAML-specific, layered onto OIDC's T1–T32)
+
+| ID | Threat | Defense |
+|----|--------|---------|
+| **S1** | **XML Signature Wrapping (XSW)** — assertion forgery where the legitimate signature is preserved but the verifier reads claims from a different node than the one the signature covers. The category-killer of SAML implementations. | `crewjam/saml`'s reference resolution verifies signature against the SAME node that claims are extracted from. Regression test constructs XSW payloads (8 known variants) and asserts each is rejected. |
+| **S2** | **Unsigned assertion accepted.** | `RequireAssertionSigned=true` (always on). Probe: strip `<ds:Signature>` from a valid response → reject. |
+| **S3** | **Assertion replay** within validity window. | crewjam ships a `ReplayDetector` (LRU on assertion ID). We enable it with a 24h window. Probe: replay the same SAMLResponse → second time rejected. |
+| **S4** | **Audience confusion** — assertion meant for a different SP. | `AudienceRestriction` checked against our EntityID. Probe: forge `<saml:Audience>` to a different SP → reject. |
+| **S5** | **Clock-skew abuse** — assertion outside NotBefore/NotOnOrAfter window. | Library check with ±60s default; we set `ReplayWindowMinutes=5`. Probe: replay an assertion 10 minutes old → reject. |
+| **S6** | **SubjectConfirmationData.Recipient mismatch** — relay attack where assertion meant for SP A gets POSTed to SP B. | Library verifies Recipient against ACS URL. Probe: POST SAMLResponse with `Recipient=http://attacker.example/` → reject. |
+| **S7** | **InResponseTo replay/forgery** — SP-initiated flow's response correlation. | RelayState cookie carries the AuthnRequest ID; ACS verifies the assertion's `InResponseTo` against the cookie. Probe: POST ACS with no prior cookie → reject. |
+| **S8** | **Algorithm downgrade** — SignatureMethod set to a weak alg (MD5, SHA1). | Library rejects weak algs by default. We pin RSA-SHA256 minimum via `SignatureMethod` config. Probe: forge SignatureMethod="...rsa-sha1" → reject. |
+| **S9** | **XXE in XML parser.** | Go's `encoding/xml` is XXE-immune by default. crewjam uses standard parsers. Probe: SAMLResponse with `<!DOCTYPE ...>` entity → reject (parser ignores entities). |
+| **S10** | **RelayState injection** — open-redirect or audit-poison via the server-opaque RelayState parameter. | RelayState carries our HMAC `auth.State` JWT (audience `osctrl-auth-state`). Garbage RelayState fails JWT parse; tampered RelayState fails HMAC; legit RelayState that doesn't match the cookie's nonce is rejected like OIDC's T6 CSRF. Probe: forge RelayState with attacker-chosen nonce → reject. |
+| **S11** | **Encrypted assertions** (deferred). | Not supported in v1. Operators requiring `<saml:EncryptedAssertion>` (some private-cloud IdPs) must keep using legacy admin until v2 ships encryption support. Documented limitation. |
+
+Plus the OIDC-shared threats that map cleanly:
+- T6 CSRF → RelayState round-trip (replaces OAuth2 state)
+- T9 single-use cookie → ClearStateCookie on ACS
+- T17 group gate → reads `GroupsAttribute` from AttributeStatement
+- T18 cross-env replay → RelayState carries env UUID, ACS verifies
+- T23 username injection → sanitizeUsername reused
+- T26 audit-log poisoning → IdP `<samlp:StatusMessage>` never echoed
+- T31 timing-oracle → every rejection redirects to `/` with no detail
+
+### Implementation plan
+
+**Step 1 — `pkg/auth/saml/` package** (~400 LOC + tests):
+- `config.go` — Config struct, `Validate()`.
+- `provider.go` — Provider implementing `auth.Provider`. Internally
+  builds a `samlsp.ServiceProvider`. `LoginURL` returns IdP SSO URL
+  with `RelayState=<state cookie value>`. `HandleCallback` parses
+  the POST body's `SAMLResponse`, calls `sp.ParseResponse`, extracts
+  username + groups, returns `auth.ResolvedIdentity`.
+- `claims.go` — `pickSAMLUsername(assertion, attributeName)`,
+  `hasSAMLRequiredGroup(assertion, attribute, required)`.
+- Tests: XSW regression suite, replay test, audience test, recipient
+  test, alg-downgrade test, unsigned-assertion test. crewjam's
+  internal test helpers provide a working signer.
+
+**Step 2 — `cmd/api/handlers/auth_saml.go`** (~180 LOC):
+- `InitSAML(ctx, cfg)` — builds provider, stashes in package global.
+- `SAMLLoginHandler` (GET) — mints state cookie, redirects.
+- `SAMLACSHandler` (POST) — parses + verifies, resolves user via
+  `resolveFederatedUser`, issues session JWTs via
+  `userJWTSessionTokens`. Mirror of `OIDCCallbackHandler` but for
+  the POST-body wire shape.
+- `SAMLMetadataHandler` (GET) — returns SP metadata XML.
+
+**Step 3 — `cmd/api/main.go` routes**:
+- `GET  /api/v1/auth/saml/login`     (loginRateLimit)
+- `POST /api/v1/auth/saml/acs`       (preAuthRateLimit, NO CSRF — IdP doesn't have our token)
+- `GET  /api/v1/auth/saml/metadata`  (preAuthRateLimit)
+
+**Step 4 — `cmd/api/handlers/auth_methods.go`** — append SAML
+method when configured.
+
+**Step 5 — `pkg/config/types.go` + `flags.go`** — extend
+YAMLConfigurationSAML, add `initSAMLFlags(params)` for cmd/api.
+
+**Step 6 — SPA `LoginPage.tsx`** — render SAML button when present
+in `/auth/methods` response.
+
+**Step 7 — Live pentest**:
+- Add SAML client to Keycloak's `osctrl` realm via admin API.
+- Drive the negative-path probes through curl/python (same shape
+  as OIDC pentest pass).
+- Document results in this spec as "Pentest pass 5: SAML
+  (Keycloak)" and "Pentest pass 6: SAML (Auth0)".
+
+### What's deferred to v2
+
+- Encrypted assertions (`<saml:EncryptedAssertion>`).
+- IdP-initiated flows (no AuthnRequest from us).
+- Single Logout (SLO).
+- AuthnRequest signing (SP private key + cert).
+- Multiple SAML providers per deployment.
+- Per-env IdP routing (matches the OIDC v1 limitation).
