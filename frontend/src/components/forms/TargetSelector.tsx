@@ -22,21 +22,19 @@ interface TargetSelectorProps {
   env?: string;
 }
 
-function parseList(raw: string): string[] {
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 /**
  * Multi-target picker used on query-run and carve-run forms.
- * Sub-sections: Nodes (searchable combobox of UUID+hostname),
- * Platforms (chips), Tags (chips, env-scoped), Hostnames (free-text
- * for not-yet-enrolled hosts).
+ * Sub-sections:
+ *   - Nodes (searchable combobox; matches UUID or hostname,
+ *     commits as UUID — the wire format)
+ *   - Platforms (chip toggles)
+ *   - Tags (env-scoped chip toggles)
+ *
+ * The hostnames-as-free-text section was dropped: the node combobox
+ * already supports lookup by hostname, so a separate input added no
+ * capability — only confusion about which field to type into.
  */
 export function TargetSelector({ value, onChange, className, env }: TargetSelectorProps) {
-  const [hostRaw, setHostRaw] = useState(value.hosts.join(', '));
   const [nodeFilter, setNodeFilter] = useState('');
 
   // Env-scoped tags. If env is omitted we don't render the picker as enabled.
@@ -117,11 +115,6 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
       ? value.tags.filter((x) => x !== name)
       : [...value.tags, name];
     onChange({ ...value, tags: next });
-  }
-
-  function commitHosts(raw: string) {
-    setHostRaw(raw);
-    onChange({ ...value, hosts: parseList(raw) });
   }
 
   return (
@@ -294,29 +287,6 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
         )}
       </div>
 
-      {/* Hostnames */}
-      <div>
-        <label
-          htmlFor="target-hosts"
-          className="block text-xs font-medium text-[color:var(--text-2)] mb-1"
-        >
-          Hostnames
-          <span className="ml-1 text-[color:var(--text-3)] font-normal">(comma-separated)</span>
-        </label>
-        <input
-          id="target-hosts"
-          type="text"
-          value={hostRaw}
-          onChange={(e) => setHostRaw(e.target.value)}
-          onBlur={(e) => commitHosts(e.target.value)}
-          placeholder="e.g. web-01, db-02"
-          className={cn(
-            'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
-            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-          )}
-        />
-      </div>
     </div>
   );
 }
