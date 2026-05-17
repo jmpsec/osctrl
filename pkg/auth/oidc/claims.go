@@ -47,7 +47,21 @@ var usernameAllowed = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 //
 // Sanitization happens at the boundary in HandleCallback after this
 // returns; pickUsername itself doesn't validate, only selects.
-func pickUsername(c idTokenClaims, claim string) string {
+//
+// Lookup order:
+//
+//  1. The typed struct fields (preferred_username, email, sub) are
+//     consulted FIRST — they're already validated as strings by
+//     the id_token JSON decoder.
+//  2. If the configured claim isn't one of those three, the raw
+//     claim map is consulted. Any string value found there is
+//     accepted; non-string values (arrays, objects) fall through.
+//     This is the path used by IdPs that publish custom claims like
+//     `nickname` (Auth0) or `upn` (Entra ID).
+//  3. Fallback to subject when nothing matched. Subject is always
+//     present on a verified id_token.
+func pickUsername(c idTokenClaims, raw map[string]any, claim string) string {
+	// Fast path: the standard claims we have typed access to.
 	switch claim {
 	case DefaultUsernameClaim:
 		if c.PreferredUsername != "" {
@@ -60,10 +74,17 @@ func pickUsername(c idTokenClaims, claim string) string {
 	case "sub":
 		return c.Subject
 	}
-	// Unknown or empty claim, or the configured claim was absent on
-	// the id_token. Subject is always present on a verified id_token
-	// (the OIDC spec mandates it; verification would have failed
-	// otherwise).
+	// Generic path: any other configured claim name. Pull from the
+	// raw claim map; accept only string values (arrays/objects can't
+	// be a username and would crash the regex check anyway).
+	if raw != nil && claim != "" {
+		if v, ok := raw[claim]; ok {
+			if s, ok := v.(string); ok && s != "" {
+				return s
+			}
+		}
+	}
+	// Fallback: subject is guaranteed-present on a verified id_token.
 	return c.Subject
 }
 
