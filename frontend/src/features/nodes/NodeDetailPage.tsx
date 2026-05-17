@@ -613,26 +613,31 @@ export function NodeDetailPage() {
                 {node.uuid}
               </p>
             </div>
-            {/* Single-node action toolbar — Archive + Refresh + Delete */}
+            {/* Single-node action toolbar — Archive + Refresh + Delete.
+                Archive routes through the same DELETE endpoint with
+                archive=true, which the server gates on env-admin —
+                so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                aria-label="Archive this node"
-                onClick={() => {
-                  // TODO: POST /api/v1/nodes/{env}/delete with { uuid, archive: true }
-                  // Awaits the bulk-action archive endpoint contract in pkg/nodes.
-                }}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded',
-                  'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                  'bg-[color:var(--bg-2)]',
-                  'hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)]',
-                  'transition-colors',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                )}
-              >
-                Archive
-              </button>
+              {canDeleteNode && (
+                <button
+                  type="button"
+                  aria-label="Archive this node"
+                  onClick={() => {
+                    // TODO: POST /api/v1/nodes/{env}/delete with { uuid, archive: true }
+                    // Awaits the bulk-action archive endpoint contract in pkg/nodes.
+                  }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'bg-[color:var(--bg-2)]',
+                    'hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  Archive
+                </button>
+              )}
 
               {/* Refresh — no API endpoint yet. Pure visual placeholder with a
                   CSS hover tooltip explaining that one-shot config refresh
