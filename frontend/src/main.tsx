@@ -5,6 +5,14 @@ import { RouterProvider } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { loader as monacoLoader } from '@monaco-editor/react'
 import { router } from './router'
+import { primeCsrfFromCookie } from './api/client'
+
+// Seed the in-memory CSRF token from the osctrl_csrf cookie BEFORE the
+// router runs its beforeLoad guards. Required for the OIDC flow: the
+// federated callback ends with a server 302 to "/", the SPA boots
+// fresh, and isAuthenticated() would otherwise return false even
+// though the auth cookies are present.
+primeCsrfFromCookie()
 
 // Point the Monaco loader at the self-hosted bundle under /monaco/vs so
 // the editor obeys the CSP `script-src 'self' blob:; connect-src 'self'`
