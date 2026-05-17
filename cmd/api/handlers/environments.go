@@ -149,28 +149,49 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envMap)
 }
 
-// EnvironmentsHandler - GET Handler to return all environments as JSON
+// EnvironmentsHandler - GET Handler to return all environments as JSON.
+//
+// Super-admins see every env; non-super-admins get the subset where
+// their EnvAccess.User OR EnvAccess.Admin is true (the read-surface
+// gate elsewhere in the API). The previous super-admin-only gate
+// meant a non-super-admin user with valid env permissions couldn't
+// even populate the SPA's env switcher — their nav read "No
+// environments configured" even though they had access to envs.
 func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
-		return
-	}
-	// Get platforms
+	requester := ctx[ctxUser]
 	envAll, err := h.Envs.All()
 	if err != nil {
 		apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 		return
 	}
-	// Serialize and serve JSON
-	log.Debug().Msg("Returned environments")
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envAll)
+	var out []environments.TLSEnvironment
+	if h.Users.IsAdmin(requester) {
+		out = envAll
+	} else {
+		access, gerr := h.Users.GetAccess(requester)
+		if gerr != nil {
+			// Treat as "no access" and return [] — fail closed.
+			access = nil
+		}
+		for _, e := range envAll {
+			ea := access[e.UUID]
+			if ea.User || ea.Admin {
+				out = append(out, e)
+			}
+		}
+	}
+	if out == nil {
+		// Marshal as [] not null for the SPA.
+		out = []environments.TLSEnvironment{}
+	}
+	log.Debug().Msgf("Returned %d environment(s) to %s", len(out), requester)
+	h.AuditLog.Visit(requester, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
 // EnvEnrollHandler - GET Handler to return node enrollment values (secret, certificate, one-liner) for an environment as JSON

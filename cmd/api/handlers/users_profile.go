@@ -347,6 +347,22 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
 		return
 	}
+	// Pull the user's permission map so the SPA can hide nav items
+	// the operator has no access to. GetAccess errors are non-fatal
+	// — we still return the profile; the SPA falls back to "no
+	// per-env access known yet" and shows nothing env-scoped, which
+	// is the safe default.
+	perms := make(map[string]types.EnvAccessView)
+	if access, gerr := h.Users.GetAccess(requester); gerr == nil {
+		for env, ea := range access {
+			perms[env] = types.EnvAccessView{
+				User:  ea.User,
+				Query: ea.Query,
+				Carve: ea.Carve,
+				Admin: ea.Admin,
+			}
+		}
+	}
 	resp := types.UserMeResponse{
 		Username:    user.Username,
 		Email:       user.Email,
@@ -356,6 +372,7 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 		UUID:        user.UUID,
 		TokenExpire: user.TokenExpire,
 		LastAccess:  user.LastAccess,
+		Permissions: perms,
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
