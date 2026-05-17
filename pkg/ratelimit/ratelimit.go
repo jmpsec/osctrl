@@ -137,8 +137,21 @@ func (l *Limiter) HTTPMiddleware(keyFn func(*http.Request) string, onReject func
 	}
 }
 
-// KeyByIP is a convenience keyFn for IP-based rate limiting. Honors
-// X-Real-IP / X-Forwarded-For via utils.GetIP.
+// KeyByIP is a convenience keyFn for IP-based rate limiting. Returns
+// the direct connection peer's IP via utils.RemoteIP, NEVER the value
+// from X-Forwarded-For or X-Real-IP.
+//
+// Why not utils.GetIP: when --trusted-proxies is configured GetIP walks
+// the X-Forwarded-For chain right-to-left and returns the first
+// untrusted hop. Most edge proxies (nginx default, ELB, Cloudflare)
+// *append* to X-Forwarded-For rather than replacing it, so an attacker
+// who sets X-Forwarded-For: 1.2.3.4 in their request gets that value
+// echoed back as the right-most-untrusted hop. Rotating header values
+// then cycles bucket keys and defeats the rate limit (pentest finding).
+//
+// Keying on the TCP peer the trusted proxy itself terminates against
+// closes the bypass: that address is determined by the proxy's
+// network position and is unspoofable from the client side.
 func KeyByIP(r *http.Request) string {
-	return utils.GetIP(r)
+	return utils.RemoteIP(r)
 }
