@@ -26,9 +26,16 @@ var oidcProvider *authoidc.Provider
 // time InitOIDC runs. Held separately so the request hot-path never
 // reaches back into the Config struct (which is by-value-copied into
 // the Provider, with no public accessors).
+//
+// oidcClientID is the IdP-registered client_id; the logout flow
+// echoes it back to the SPA so the browser can append it to the
+// IdP's end-session URL (Keycloak 26+ requires it alongside
+// post_logout_redirect_uri). Not a secret — it's already in every
+// authorize URL the SPA renders.
 var (
 	oidcJITProvision bool
 	oidcUsePKCE      bool
+	oidcClientID     string
 )
 
 // InitOIDC constructs the global OIDC provider for osctrl-api from the
@@ -63,6 +70,7 @@ func InitOIDC(ctx context.Context, cfg config.YAMLConfigurationOIDC) error {
 	oidcProvider = p
 	oidcJITProvision = cfg.JITProvision
 	oidcUsePKCE = cfg.UsePKCE
+	oidcClientID = cfg.ClientID
 	return nil
 }
 

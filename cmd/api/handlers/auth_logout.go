@@ -13,8 +13,18 @@ import (
 // SPA navigates the browser there to terminate the IdP session.
 // Empty means client-only cleanup; the IdP session (if any) keeps
 // running until its own TTL.
+//
+// IdPClientID is the OIDC client_id registered with the IdP. The
+// SPA appends it as ?client_id=... when navigating to the IdP's
+// end-session endpoint — Keycloak 26+ requires EITHER id_token_hint
+// OR client_id alongside post_logout_redirect_uri. Persisting
+// id_tokens client-side is privacy-sensitive (they contain claims
+// like email), so we use the client_id path. The value is not a
+// secret — it's already in every authorize URL the SPA sends users
+// to, so exposing it here is just plumbing.
 type LogoutResponse struct {
 	IdPLogoutURL string `json:"idp_logout_url,omitempty"`
+	IdPClientID  string `json:"idp_client_id,omitempty"`
 }
 
 // LogoutHandler — POST /api/v1/logout.
@@ -94,6 +104,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	resp := LogoutResponse{}
 	if oidcProvider != nil {
 		resp.IdPLogoutURL = oidcProvider.EndSessionURL()
+		resp.IdPClientID = oidcClientID
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
