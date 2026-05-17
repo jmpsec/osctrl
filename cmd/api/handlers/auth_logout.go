@@ -74,11 +74,19 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Best-effort APIToken revocation. We have to recover the
-	// username; the cleanest source is the JWT cookie.
+	// username; the cleanest source is the JWT cookie. authenticated
+	// is set true when the caller presented a syntactically-valid
+	// JWT — we use it below to decide whether to surface the IdP
+	// fields. Anonymous callers (no/invalid token) get an empty
+	// LogoutResponse so a drive-by curl cannot scrape the IdP
+	// tenant URL + client_id without an actual session to terminate
+	// (pentest finding: unauthenticated IdP metadata disclosure).
+	var authenticated bool
 	tokenCookie, err := r.Cookie("osctrl_token")
 	if err == nil && tokenCookie.Value != "" && len(h.JWTSecret) > 0 {
 		claims, valid := h.Users.CheckToken(string(h.JWTSecret), tokenCookie.Value)
 		if valid {
+			authenticated = true
 			if cerr := h.Users.ClearToken(claims.Username); cerr != nil {
 				// Non-fatal — we still want to clear the
 				// client-side cookies and return the IdP URL.
@@ -129,8 +137,13 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	// Surface IdP fields ONLY when the caller had a valid session.
+	// Without this gate, an unauthenticated curl could harvest the
+	// OIDC tenant URL + client_id (pentest finding). The legitimate
+	// SPA always has a JWT cookie when it calls /logout, so this
+	// gate doesn't affect normal flows.
 	resp := LogoutResponse{}
-	if oidcProvider != nil {
+	if authenticated && oidcProvider != nil {
 		resp.IdPLogoutURL = oidcProvider.EndSessionURL()
 		resp.IdPClientID = oidcClientID
 		resp.IdPIDTokenHint = idTokenHint
