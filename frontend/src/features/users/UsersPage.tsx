@@ -166,6 +166,14 @@ export function UsersPage() {
                         OIDC
                       </span>
                     )}
+                    {u.auth_source === 'saml' && (
+                      <span
+                        className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.10)] text-[color:var(--info)] uppercase tracking-wider"
+                        title="JIT-provisioned via federated login (SAML)"
+                      >
+                        SAML
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 tnum text-xs text-[color:var(--text-2)] text-right">
                     <span title={u.last_access}>{formatRelative(u.last_access)}</span>

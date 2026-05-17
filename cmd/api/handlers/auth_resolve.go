@@ -41,7 +41,7 @@ var ErrAuthUserRejected = errors.New("auth: identity cannot be resolved to an Ad
 // enough. This is the legacy admin's behavior; it matches existing
 // operator expectations and avoids needing a new table. The
 // trade-off is documented in the spec.
-func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitProvision bool) (users.AdminUser, error) {
+func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitProvision bool, authSource string) (users.AdminUser, error) {
 	if identity.PreferredUsername == "" {
 		// Defensive — sanitizeUsername in pkg/auth/oidc already
 		// catches empty values, but never trust upstream.
@@ -55,7 +55,7 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 	}
 	// JIT: build a NON-admin, NON-service AdminUser. The empty
 	// password means CheckLoginCredentials can never authenticate
-	// this user via /login — they MUST come back through the OIDC
+	// this user via /login — they MUST come back through the SSO
 	// flow. Operators may set a password later via the user-mgmt
 	// API if they want a dual-auth account.
 	u, err := h.Users.New(
@@ -69,10 +69,10 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 	if err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: new user: %v", ErrAuthUserRejected, err)
 	}
-	// Tag the row as JIT-provisioned via OIDC so the Users page can
-	// display an "OIDC" badge. Purely informational; the auth flow
-	// itself doesn't gate on this field.
-	u.AuthSource = "oidc"
+	// Tag the row with the provider type (oidc / saml) so the Users
+	// page can display the right badge. Purely informational; the auth
+	// flow itself doesn't gate on this field.
+	u.AuthSource = authSource
 	if err := h.Users.Create(u); err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: create user: %v", ErrAuthUserRejected, err)
 	}
