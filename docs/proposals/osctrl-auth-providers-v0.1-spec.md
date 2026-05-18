@@ -744,6 +744,82 @@ in `/auth/methods` response.
 - Document results in this spec as "Pentest pass 5: SAML
   (Keycloak)" and "Pentest pass 6: SAML (Auth0)".
 
+## Pentest pass 5: SAML (Keycloak) (2026-05-18)
+
+Live deployment: dockerized osctrl on Kali (192.168.31.239:8088) +
+Keycloak 26.0 SAML client registered with EntityID =
+`http://192.168.31.239:8088/api/v1/auth/saml/metadata`, signing
+RSA-SHA256, both Response and Assertion signed,
+WantAssertionsSigned advertised in SP metadata. Test user alice
+(`alice@osctrl.local` / `alice-test-pw-2026`) already in the realm
+from OIDC pass 3.
+
+**Baseline (happy path).** Full SP-initiated SSO completed
+end-to-end:
+- `GET /api/v1/auth/saml/login` → 302 to Keycloak SAML SSO with
+  `SAMLRequest=...&RelayState=<OAuthState>`
+- Keycloak login form → credentials POST → 200 auto-submit form
+  with signed `SAMLResponse` for our ACS
+- `POST /api/v1/auth/saml/acs` → 302 / with `osctrl_token` +
+  `osctrl_csrf` cookies set
+
+**Defense-in-depth wire check.** The HMAC state cookie carries
+independent `nonce` + `os` (OAuthState) values (per the May-2026
+split). The wire-visible RelayState matches the cookie's `os`,
+NOT `nonce`. Audience pinned to `osctrl-auth-state`.
+
+**Negative-path probe matrix — 41/41 PASS.**
+
+| Threat | Probe | Result |
+|--------|-------|--------|
+| S1 XSW v1 (sibling-before) | inject attacker assertion before signed one | reject, no token |
+| S1 XSW v2 (wrapped-outer)  | wrap signed assertion in outer assertion | reject, no token |
+| S1 XSW v3 (duplicated)     | duplicate signed assertion with attacker NameID | reject, no token |
+| S1 XSW v4 (post-signature) | inject assertion after `<ds:Signature>` | reject, no token |
+| S2 unsigned response | strip all `<ds:Signature>` elements | reject, no token |
+| S3 replay            | re-POST same SAMLResponse with fresh state cookie | reject (replay cache on Assertion ID), no token |
+| S4 audience confusion | rewrite `<saml:Audience>` to attacker SP | reject, no token |
+| S5 clock-skew abuse  | rewrite `NotOnOrAfter` to 2020-01-01 | reject, no token |
+| S6 Recipient mismatch | rewrite SubjectConfirmation `Recipient` to attacker URL | reject, no token |
+| S7 InResponseTo correlation | implemented via state-cookie round-trip; baseline confirms | enforced |
+| S8 alg-downgrade SHA1 | rewrite SignatureMethod to rsa-sha1 | reject, no token |
+| S9 XXE | `<!DOCTYPE>` with `SYSTEM "file:///etc/passwd"` entity | no crash, reject |
+| S10 RelayState injection | swap RelayState for attacker-controlled value | reject |
+| S10 RelayState replay | ACS POST with no prior state cookie | reject |
+| Issuer tamper | rewrite `<saml:Issuer>` to attacker IdP | reject (signature breaks) |
+| NameID tamper (admin elevation) | rewrite `NameID` to `admin` | reject (signature breaks) |
+| State-cookie replay | re-POST with already-consumed cookie | reject |
+| SP-metadata posture | `WantAssertionsSigned="true"`, ACS HTTP-POST binding, no sha1 in supported algs | confirmed |
+| State-cookie posture | `aud=osctrl-auth-state`, HttpOnly, scoped `/api/v1/auth/`, 10-min TTL | confirmed |
+
+**Defects uncovered + closed in-pass:**
+
+- **S7 was effectively broken before this pass.** ParseResponse was
+  invoked with `possibleRequestIDs=nil`, which crewjam reads as
+  "reject any response carrying InResponseTo" — i.e. every
+  legitimate Keycloak/Auth0 response. The first baseline failed
+  with `InResponseTo does not match any of the possible request
+  IDs (expected [])`. Fix landed in commit `a88992f6`: round-trip
+  the AuthnRequest ID through the HMAC state cookie's
+  `saml_rid` claim and pass `[]string{state.SAMLRequestID}` to
+  ParseResponse. Defense now real: an attacker without the cookie
+  can't satisfy InResponseTo.
+- **Private-error diagnosability**: crewjam's
+  `InvalidResponseError.Error()` returns the opaque
+  "Authentication failed" but `.PrivateErr` carries the real
+  cause. Provider now surfaces PrivateErr at WARN. Same commit.
+
+Test drivers saved on Kali:
+- `/tmp/saml-pentest-unauth.py` — 15 unauth probes (S2 metadata,
+  S7 missing-cookie, S9 XXE, S10 RelayState mismatch, state-cookie
+  defense-in-depth assertions)
+- `/tmp/saml-pentest-signed.py` — 26 signed-assertion probes (S1
+  XSW × 4, S2 unsigned, S3 replay, S4 audience, S5 clock skew,
+  S6 Recipient, S8 alg downgrade, plus Issuer + NameID tamper)
+- `/tmp/saml-capture-response.py` — drives Keycloak login as alice,
+  captures the signed SAMLResponse into `/tmp/saml-cap.json` for
+  the mutator probes
+
 ### What's deferred to v2
 
 - Encrypted assertions (`<saml:EncryptedAssertion>`).
