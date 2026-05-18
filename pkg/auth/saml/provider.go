@@ -2,17 +2,22 @@ package saml
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	crewjam "github.com/crewjam/saml"
+	dsig "github.com/russellhaering/goxmldsig"
 	"github.com/rs/zerolog/log"
 
 	"github.com/jmpsec/osctrl/pkg/auth"
@@ -126,12 +131,27 @@ func NewSAMLProvider(ctx context.Context, cfg Config) (*Provider, error) {
 		AcsURL:      *acsURL,
 		MetadataURL: *metadataURL,
 		IDPMetadata: idpMetadata,
-		// We deliberately do NOT set SignatureMethod — that would
-		// enable AuthnRequest signing, which we've explicitly
-		// deferred to v2 (decision D5 in the spec). Most IdPs
-		// accept unsigned AuthnRequests when the SP is registered
-		// with a known EntityID + ACS URL.
+		// SignatureMethod is set below when SigningCertPath +
+		// SigningKeyPath are configured. Setting it enables
+		// AuthnRequest signing and makes Metadata() advertise
+		// AuthnRequestsSigned="true" (crewjam's behavior in
+		// service_provider.go L187: `len(sp.SignatureMethod) > 0`).
+		// When unset, the SP runs unsigned (the v1 default; the
+		// realistic attack surface is limited by the HMAC state
+		// cookie binding the response to a specific browser).
 		AuthnNameIDFormat: crewjam.UnspecifiedNameIDFormat,
+	}
+	// Load signing keypair if configured. This enables both
+	// AuthnRequest signing and signed SP metadata, closing the
+	// downgrade-attack vector on the outbound redirect chain.
+	if cfg.SigningCertPath != "" && cfg.SigningKeyPath != "" {
+		key, cert, err := loadSPKeyPair(cfg.SigningCertPath, cfg.SigningKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("saml: load SP signing keypair: %w", err)
+		}
+		sp.Key = key
+		sp.Certificate = cert
+		sp.SignatureMethod = dsig.RSASHA256SignatureMethod
 	}
 	if cfg.ForceAuthn {
 		// crewjam takes a *bool so it can distinguish unset from
@@ -430,4 +450,60 @@ func fetchIDPMetadata(parentCtx context.Context, metadataURL string) (*crewjam.E
 		return nil, err
 	}
 	return parseMetadataXML(body)
+}
+
+// loadSPKeyPair reads PEM-encoded cert + private key from disk and
+// returns them in the shape crewjam.ServiceProvider expects: a
+// *rsa.PrivateKey and a parsed *x509.Certificate.
+//
+// The key file must be RSA PKCS#1 ("-----BEGIN RSA PRIVATE KEY-----")
+// or PKCS#8 ("-----BEGIN PRIVATE KEY-----"). Both are commonly
+// produced by openssl/cert-manager/cfssl; both are accepted.
+//
+// Errors include the file path in the message so operators can find
+// the wrong file from logs alone.
+func loadSPKeyPair(certPath, keyPath string) (*rsa.PrivateKey, *x509.Certificate, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read cert %s: %w", certPath, err)
+	}
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil || certBlock.Type != "CERTIFICATE" {
+		return nil, nil, fmt.Errorf("cert %s: missing CERTIFICATE PEM block", certPath)
+	}
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse cert %s: %w", certPath, err)
+	}
+
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read key %s: %w", keyPath, err)
+	}
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return nil, nil, fmt.Errorf("key %s: not PEM-encoded", keyPath)
+	}
+
+	var key *rsa.PrivateKey
+	switch keyBlock.Type {
+	case "RSA PRIVATE KEY":
+		key, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		var anyKey any
+		anyKey, err = x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if err == nil {
+			var ok bool
+			key, ok = anyKey.(*rsa.PrivateKey)
+			if !ok {
+				return nil, nil, fmt.Errorf("key %s: PKCS#8 key is not RSA (crewjam requires RSA)", keyPath)
+			}
+		}
+	default:
+		return nil, nil, fmt.Errorf("key %s: unsupported PEM type %q (want RSA PRIVATE KEY or PRIVATE KEY)", keyPath, keyBlock.Type)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse key %s: %w", keyPath, err)
+	}
+	return key, cert, nil
 }

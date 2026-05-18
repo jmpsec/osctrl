@@ -275,6 +275,14 @@ type YAMLConfigurationSAML struct {
 	// emailAddress NameID format which fails our strict sanitizer,
 	// so operators point this at "nickname" instead.
 	UsernameAttribute string `yaml:"usernameAttribute" mapstructure:"usernameAttribute"`
+	// SigningCertPath + SigningKeyPath are PEM file paths to the
+	// SP's signing certificate + RSA private key. When BOTH are
+	// set, the provider signs every outbound AuthnRequest with
+	// RSA-SHA256 and advertises AuthnRequestsSigned="true" in SP
+	// metadata. The IdP-side SAML client must be configured to
+	// require client signatures and to trust this cert.
+	SigningCertPath string `yaml:"signingCertPath" mapstructure:"signingCertPath"`
+	SigningKeyPath  string `yaml:"signingKeyPath"  mapstructure:"signingKeyPath"`
 	// ForceAuthn defaults true on osctrl-api. Setting it false lets
 	// "Continue with SAML" silently re-authenticate against an
 	// existing IdP SSO cookie, which most operators perceive as
