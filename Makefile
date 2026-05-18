@@ -251,7 +251,7 @@ endif
 ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
 	$(error Missing TLS private key file)
 endif
-	docker-compose -f docker-compose-dev.yml build --provenance=false
+	docker compose -f docker compose-dev.yml build --provenance=false
 
 # Build and run dev docker containers
 make docker_dev:
@@ -260,14 +260,14 @@ make docker_dev:
 
 # Run docker containers
 docker_dev_up:
-	docker-compose -f docker-compose-dev.yml up
+	docker compose -f docker compose-dev.yml up
 
 up-backend:
-	docker-compose -f docker-compose-dev.yml up osctrl-postgres osctrl-redis
+	docker compose -f docker compose-dev.yml up osctrl-postgres osctrl-redis
 
 # Takes down docker containers
 docker_dev_down:
-	docker-compose -f docker-compose-dev.yml down
+	docker compose -f docker compose-dev.yml down
 
 # Deletes all osctrl docker images and volumes
 docker_dev_clean:
@@ -276,19 +276,19 @@ docker_dev_clean:
 
 # Rebuild only the TLS server
 docker_dev_rebuild_tls:
-	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(TLS_NAME)
+	docker compose -f docker compose-dev.yml up --force-recreate --no-deps -d --build $(TLS_NAME)
 
 # Rebuild only the Admin server
 docker_dev_rebuild_admin:
-	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(ADMIN_NAME)
+	docker compose -f docker compose-dev.yml up --force-recreate --no-deps -d --build $(ADMIN_NAME)
 
 # Rebuild only the CLI
 docker_dev_rebuild_cli:
-	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(CLI_NAME)
+	docker compose -f docker compose-dev.yml up --force-recreate --no-deps -d --build $(CLI_NAME)
 
 # Rebuild only the API server
 docker_dev_rebuild_api:
-	docker-compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
+	docker compose -f docker compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
 
 # Deploy osctrl in a single server using the provision.sh script
 provision_dev:
