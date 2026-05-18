@@ -61,8 +61,8 @@
     "jsdom": "^25",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite": "^7",
-    "vitest": "^2"
+    "vite": "^8",
+    "vitest": "^4"
   },
   "overrides": {
     "dompurify": "^3.4.3"
