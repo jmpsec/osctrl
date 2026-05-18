@@ -4,6 +4,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { listNodes, type NodePlatform } from '$/api/nodes';
 import { getStats, getNodeActivityBatch, type NodeActivityBucket } from '$/api/stats';
 import { listEnvTags, tagNode } from '$/api/tags';
+import { getMe } from '$/api/users';
+import { listEnvironments } from '$/api/environments';
 import { AuthError } from '$/api/client';
 import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag } from '$/api/types';
 import { formatRelative, formatBytes, isWithinHours } from '$/lib/time';
@@ -355,6 +357,26 @@ export function NodesTablePage() {
     });
     setSelectedUuids(new Set());
   }
+
+  // Server requires AdminLevel on the env for node deletion; mirror
+  // that gate in the UI so non-admins don't see a button that 403s.
+  // Super-admins always pass; env-scoped admins get it for their
+  // env. Same logic used in NodeDetailPage's single-node delete.
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
+  });
+  const { data: envsForPerms } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envUuidForPerms = envsForPerms?.find((e) => e.name === env)?.uuid;
+  const canDeleteNodes =
+    me?.admin === true ||
+    (envUuidForPerms !== undefined &&
+      me?.permissions?.[envUuidForPerms]?.admin === true);
 
   const queryKey = ['nodes', env, { status, q, sort, dir, page, pageSize, platform }] as const;
 
@@ -814,16 +836,18 @@ export function NodesTablePage() {
           >
             Tag…
           </button>
-          <button
-            type="button"
-            aria-label="Delete selected nodes"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
-            onClick={() => {
-              // TODO: wire delete mutation when DeleteNodeHandler integration tests are written
-            }}
-          >
-            Delete…
-          </button>
+          {canDeleteNodes && (
+            <button
+              type="button"
+              aria-label="Delete selected nodes"
+              className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
+              onClick={() => {
+                // TODO: wire delete mutation when DeleteNodeHandler integration tests are written
+              }}
+            >
+              Delete…
+            </button>
+          )}
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"

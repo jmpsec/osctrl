@@ -40,6 +40,15 @@ type AdminUser struct {
 	LastAccess    time.Time
 	LastTokenUse  time.Time
 	EnvironmentID uint
+	// AuthSource records HOW this user authenticates. Empty/""
+	// means password (the legacy and default path). Set to "oidc"
+	// when the row was JIT-provisioned by the federated-login
+	// callback. The field is informational — operators see it on
+	// the Users page so they can distinguish SSO-only rows from
+	// dual-auth rows. The Login flow itself doesn't gate on it
+	// (an OIDC user with a password set later can log in either
+	// way, by design).
+	AuthSource string
 }
 
 // TokenClaims to hold user claims when using JWT
@@ -97,6 +106,33 @@ func (u *UserManager) WithJWT(jwtconfig *config.YAMLConfigurationJWT) *UserManag
 // 2026 commodity-CPU recommendation; bcrypt.DefaultCost is 10.
 const BcryptCost = 12
 
+// dummyHash is a bcrypt hash generated at package init with the current
+// BcryptCost, used by CheckLoginCredentials's unknown-user path to keep
+// the wall-clock time of "valid user, wrong password" and "no such
+// user" indistinguishable. Without it, the DB-miss short-circuit
+// returned in 15-25ms while the valid-user path ran bcrypt at ~300ms,
+// giving an attacker a 10–15× timing oracle for username enumeration
+// (pentest finding). The hash content doesn't matter; CompareHashAndPassword
+// always returns ErrMismatchedHashAndPassword for a non-matching
+// password, but the comparison burns the bcrypt-cost work regardless.
+//
+// We compute at init rather than per-call: GenerateFromPassword is
+// expensive (the same ~300ms we're amortizing) and produces hashes
+// non-deterministically (salted), so re-using a single hash is fine
+// and avoids a fresh cost on every unknown-user attempt.
+var dummyHash []byte
+
+func init() {
+	// Failure here would mean bcrypt is unusable on this platform —
+	// the application can't authenticate anyone anyway. Log and
+	// proceed with a nil dummyHash; CheckLoginCredentials handles
+	// the nil case below.
+	h, err := bcrypt.GenerateFromPassword([]byte("osctrl-timing-equalizer-dummy"), BcryptCost)
+	if err == nil {
+		dummyHash = h
+	}
+}
+
 // HashTextWithSalt to hash text before store it
 func (m *UserManager) HashTextWithSalt(text string) (string, error) {
 	saltedBytes := []byte(text)
@@ -123,6 +159,21 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	// Check if we should include service users
 	user, err := m.Get(username)
 	if err != nil {
+		// Username-enumeration timing-leak defense: run a bcrypt
+		// compare against the precomputed dummyHash so this branch
+		// burns the same wall-clock time as the valid-user path's
+		// CompareHashAndPassword below. Without this, the DB-miss
+		// short-circuit returned ~15-25ms vs ~300ms for valid users,
+		// letting an attacker enumerate which usernames exist on the
+		// system by measuring response time. The result is
+		// discarded — we always return failure here.
+		//
+		// dummyHash will be nil only if bcrypt init failed (platform
+		// crypto broken); in that case there's nothing useful we can
+		// do to equalize timing, so skip and accept the leak.
+		if dummyHash != nil {
+			_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
+		}
 		return false, AdminUser{}
 	}
 	// Check for hash matching

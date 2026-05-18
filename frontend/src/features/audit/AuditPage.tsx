@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -6,6 +6,7 @@ import {
   LOG_TYPE_LABELS,
   type AuditLogsQuery,
 } from '$/api/audit';
+import { getMe } from '$/api/users';
 import { AuthError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
@@ -29,6 +30,18 @@ const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 export function AuditPage() {
   const search = useSearch({ from: '/_app/audit' });
   const navigate = useNavigate({ from: '/_app/audit' });
+
+  // Resolve the viewer. Super-admins see the full audit trail and
+  // the username filter; non-admins see only their own activity
+  // (the api force-clamps the username filter server-side) and
+  // shouldn't see the username input — typing other usernames
+  // would be a no-op and just confuse the operator.
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
+  });
+  const isSuperAdmin = me?.admin === true;
 
   const service: string = search.service ?? '';
   const username: string = search.username ?? '';
@@ -67,7 +80,13 @@ export function AuditPage() {
     });
   }
 
-  const apiQuery: AuditLogsQuery = {
+  // Memoize apiQuery so its identity is stable across renders. TanStack
+  // Query 5 hashes queryKey structurally so this should not matter in
+  // theory, but in practice a parent re-render that rebuilds this
+  // object can interact badly with React StrictMode's double-invoke
+  // and trigger refetch storms. Pin the identity to keep the query
+  // referentially stable.
+  const apiQuery: AuditLogsQuery = useMemo(() => ({
     service: service || undefined,
     username: username || undefined,
     type: type > 0 ? type : undefined,
@@ -76,12 +95,19 @@ export function AuditPage() {
     until: until || undefined,
     page,
     page_size: pageSize,
-  };
+  }), [service, username, type, envUuid, since, until, page, pageSize]);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['audit-logs', apiQuery],
     queryFn: () => listAuditLogs(apiQuery),
-    staleTime: 10_000,
+    // 30s staleness window — audit log isn't a real-time feed; the
+    // SPA's refetch-on-mount / focus is enough freshness, and a
+    // longer window blunts any remaining re-render storm.
+    staleTime: 30_000,
+    // refetchOnWindowFocus stays on (default true) so reopening the
+    // tab after time away gives fresh data, but inside a stable focus
+    // session we don't re-query.
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 
@@ -124,10 +150,12 @@ export function AuditPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
-          Audit Trail
+          {isSuperAdmin ? 'Audit Trail' : 'My Activity'}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          Every state-changing API call writes one row.
+          {isSuperAdmin
+            ? 'Every state-changing API call writes one row.'
+            : 'Your activity history. State-changing API calls you make appear here.'}
         </p>
         {isFetching && !isLoading && (
           <span
@@ -171,19 +199,25 @@ export function AuditPage() {
           </select>
         </FilterField>
 
-        <FilterField id="f-username" label="Username">
-          <input
-            id="f-username"
-            type="text"
-            value={usernameDraft}
-            placeholder="partial match"
-            onChange={(e) => setUsernameDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') applyFilters();
-            }}
-            className={inputClass}
-          />
-        </FilterField>
+        {/* Username filter is super-admin-only. Non-admins are
+            force-clamped to their own activity server-side; showing
+            the input would let them type other names that have no
+            effect — confusing. */}
+        {isSuperAdmin && (
+          <FilterField id="f-username" label="Username">
+            <input
+              id="f-username"
+              type="text"
+              value={usernameDraft}
+              placeholder="partial match"
+              onChange={(e) => setUsernameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyFilters();
+              }}
+              className={inputClass}
+            />
+          </FilterField>
+        )}
 
         <FilterField id="f-env" label="Env UUID">
           <input

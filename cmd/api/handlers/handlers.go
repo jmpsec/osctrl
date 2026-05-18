@@ -39,6 +39,25 @@ type HandlersApi struct {
 	DebugHTTPConfig *config.YAMLConfigurationDebug
 	OsqueryTables   []types.OsqueryTable
 	OsqueryValues   config.YAMLConfigurationOsquery
+	// JWTSecret is the HMAC key used by pkg/auth state-cookie
+	// helpers. Populated via WithJWTSecret at handler init. Same
+	// bytes the Users manager signs user JWTs with; the auth
+	// state-cookie code uses audience claims to segregate uses.
+	JWTSecret []byte
+	// OIDCEnabled is the global toggle for federated login on
+	// osctrl-api. When true, /api/v1/auth/methods advertises OIDC
+	// and the OIDC login/callback routes initiate the federated
+	// flow. When false, only password auth is offered. OIDC is
+	// global because osctrl-api is a single-tenant API surface;
+	// per-env identity provider config (if ever needed) would
+	// belong on the operator layer, not here.
+	OIDCEnabled bool
+	// SAMLEnabled is the SAML analogue of OIDCEnabled. Same
+	// semantics: global, single-tenant, advertised through
+	// /api/v1/auth/methods. OIDC and SAML can both be on
+	// simultaneously — the SPA renders one button per advertised
+	// method.
+	SAMLEnabled bool
 }
 
 type HandlersOption func(*HandlersApi)
@@ -146,6 +165,36 @@ func WithDebugHTTP(cfg *config.YAMLConfigurationDebug) HandlersOption {
 			}
 			h.DebugHTTP = l
 		}
+	}
+}
+
+// WithJWTSecret attaches the HMAC key for auth state-cookie signing.
+// MUST be the same secret pkg/users uses for user JWTs; the
+// audience claim ("osctrl-auth-state" vs "osctrl-api") segregates
+// the two purposes so sharing the underlying secret is safe.
+func WithJWTSecret(secret []byte) HandlersOption {
+	return func(h *HandlersApi) {
+		h.JWTSecret = secret
+	}
+}
+
+// WithOIDC toggles the global OIDC routes and the
+// /api/v1/auth/methods response. Pass true at startup when the
+// operator has configured an OIDC provider. When false,
+// /api/v1/auth/methods returns password-only so the SPA renders
+// the password form alone.
+func WithOIDC(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.OIDCEnabled = enabled
+	}
+}
+
+// WithSAML toggles the global SAML routes and the
+// /api/v1/auth/methods response. SAML analogue of WithOIDC; the
+// two can be enabled simultaneously.
+func WithSAML(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.SAMLEnabled = enabled
 	}
 }
 

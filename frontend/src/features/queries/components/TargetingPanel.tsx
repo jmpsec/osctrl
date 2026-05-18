@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listEnvTags } from '$/api/tags';
+import { listNodes } from '$/api/nodes';
 import { cn } from '$/lib/cn';
 import type { TargetSelection } from '$/components/forms/TargetSelector';
 
@@ -39,7 +40,6 @@ function parseList(raw: string): string[] {
  */
 export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
   const [uuidRaw, setUuidRaw] = useState(value.uuids.join(', '));
-  const [hostRaw, setHostRaw] = useState(value.hosts.join(', '));
 
   const { data: envTags } = useQuery({
     queryKey: ['tags', env],
@@ -47,6 +47,25 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
     enabled: !!env,
     staleTime: 60_000,
   });
+
+  // Enrolled nodes for typeahead suggestions on the UUID and hostname
+  // fields. pageSize=500 caps how many we list inline; operators with
+  // more than that should use Platforms/Tags chips above.
+  const { data: nodeResp } = useQuery({
+    queryKey: ['nodes-for-target', env],
+    queryFn: () =>
+      listNodes({ env, page: 1, pageSize: 500, status: 'all' }),
+    enabled: !!env,
+    staleTime: 30_000,
+  });
+  const allNodes = useMemo(
+    () =>
+      (nodeResp?.items ?? []).map((n) => ({
+        uuid: n.uuid,
+        hostname: n.hostname || n.localname || n.uuid,
+      })),
+    [nodeResp],
+  );
 
   function togglePlatform(p: PlatformId) {
     const has = value.platforms.includes(p);
@@ -62,19 +81,10 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
     setUuidRaw(raw);
     onChange({ ...value, uuids: parseList(raw) });
   }
-  function commitHosts(raw: string) {
-    setHostRaw(raw);
-    onChange({ ...value, hosts: parseList(raw) });
-  }
   function removeUuid(u: string) {
     const next = value.uuids.filter((x) => x !== u);
     setUuidRaw(next.join(', '));
     onChange({ ...value, uuids: next });
-  }
-  function removeHost(h: string) {
-    const next = value.hosts.filter((x) => x !== h);
-    setHostRaw(next.join(', '));
-    onChange({ ...value, hosts: next });
   }
 
   const totalSelectors =
@@ -148,52 +158,184 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
         )}
       </div>
 
-      {/* ── UUIDs ─────────────────────────────────────────────────────── */}
+      {/* ── Nodes — typeahead by hostname or UUID, commits as UUID ──
+          One picker for both lookup modes. Typing matches against
+          BOTH the UUID and the hostname; selecting a row commits
+          the node's UUID to value.uuids. The wire format stays
+          UUID-based (immutable, unambiguous); we just don't make
+          the operator know that. */}
       <div>
-        <SectionLabel>Node UUIDs</SectionLabel>
-        <input
-          id="target-uuids"
-          type="text"
+        <SectionLabel>Nodes</SectionLabel>
+        <TypeaheadInput
+          inputId="target-uuids"
           value={uuidRaw}
-          onChange={(e) => setUuidRaw(e.target.value)}
-          onBlur={(e) => commitUuids(e.target.value)}
-          placeholder="comma-separated"
-          className={cn(
-            'w-full px-2.5 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
-            'font-mono-tabular',
-            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-          )}
+          onChange={setUuidRaw}
+          onBlur={commitUuids}
+          allNodes={allNodes}
+          selected={value.uuids}
+          searchKey="uuid"
+          onPick={(uuid) => {
+            if (value.uuids.includes(uuid)) return;
+            const next = [...value.uuids, uuid];
+            // Trailing ", " puts the cursor in the right place to
+            // start typing the next token. endsWithComma in the
+            // picker keeps the suggestion list open so the operator
+            // can keep clicking without re-focusing.
+            setUuidRaw(next.join(', ') + ', ');
+            onChange({ ...value, uuids: next });
+          }}
+          placeholder="type hostname or uuid"
         />
         {value.uuids.length > 0 && (
-          <ChipList items={value.uuids} onRemove={removeUuid} mono />
-        )}
-      </div>
-
-      {/* ── Hostnames ─────────────────────────────────────────────────── */}
-      <div>
-        <SectionLabel>Hostnames</SectionLabel>
-        <input
-          id="target-hosts"
-          type="text"
-          value={hostRaw}
-          onChange={(e) => setHostRaw(e.target.value)}
-          onBlur={(e) => commitHosts(e.target.value)}
-          placeholder="comma-separated"
-          className={cn(
-            'w-full px-2.5 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
-            'font-mono-tabular',
-            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-          )}
-        />
-        {value.hosts.length > 0 && (
-          <ChipList items={value.hosts} onRemove={removeHost} mono />
+          <NodeChipList
+            uuids={value.uuids}
+            allNodes={allNodes}
+            onRemove={removeUuid}
+          />
         )}
       </div>
 
       {/* ── Preview ───────────────────────────────────────────────────── */}
       <TargetPreview value={value} total={totalSelectors} />
+    </div>
+  );
+}
+
+// TypeaheadInput is the per-field input + inline suggestion list used
+// for UUIDs and Hostnames. As the operator types, it matches the
+// trailing token (after the last comma) against the env's node list
+// by both UUID and hostname — so typing "web" finds web-01 even
+// inside the UUID field, and typing a UUID prefix finds it inside
+// the Hostname field. Clicking a suggestion commits via onPick.
+// onBlur still fires through commitUuids/commitHosts so a paste of
+// a value the picker didn't surface still works.
+function TypeaheadInput({
+  inputId,
+  value,
+  onChange,
+  onBlur,
+  allNodes,
+  selected,
+  searchKey,
+  onPick,
+  placeholder,
+}: {
+  inputId: string;
+  value: string;
+  onChange: (next: string) => void;
+  onBlur: (raw: string) => void;
+  allNodes: { uuid: string; hostname: string }[];
+  selected: string[];
+  searchKey: 'uuid' | 'hostname';
+  onPick: (key: string) => void;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  // The token we filter against is the substring after the LAST
+  // comma (so multi-target paste works: "abc, web-".prefix matches
+  // "web-01"). Empty token shows no suggestions — we don't want a
+  // 500-row dropdown on focus.
+  const lastToken = useMemo(() => {
+    const segs = value.split(',');
+    return segs[segs.length - 1]!.trim().toLowerCase();
+  }, [value]);
+
+  // endsWithComma tells the picker "operator just finished a token
+  // and is ready to type another". In that state we show the top-8
+  // unselected nodes so the operator can keep picking without
+  // typing — same affordance as a multi-select dropdown.
+  const endsWithComma = /,[\s]*$/.test(value);
+
+  const filtered = useMemo(() => {
+    if (!focused) return [];
+    const sel = new Set(selected);
+    const unselected = allNodes.filter((n) => {
+      const k = searchKey === 'uuid' ? n.uuid : n.hostname;
+      return !sel.has(k);
+    });
+    // No active token but trailing comma → show top 8 to invite
+    // another pick. No token AND no comma → show nothing (avoid
+    // dropdown opening on an empty unfocused-then-clicked input).
+    if (!lastToken) {
+      return endsWithComma ? unselected.slice(0, 8) : [];
+    }
+    return unselected
+      .filter((n) =>
+        // Match against BOTH uuid and hostname — operator typing
+        // "web" in the UUID field still finds web-01.
+        n.uuid.toLowerCase().includes(lastToken) ||
+        n.hostname.toLowerCase().includes(lastToken),
+      )
+      .slice(0, 8);
+  }, [focused, lastToken, endsWithComma, allNodes, selected, searchKey]);
+
+  return (
+    <div className="relative">
+      <input
+        id={inputId}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        // Delay blur so mousedown on a suggestion fires before the
+        // suggestion list unmounts. 120ms is the same duration the
+        // rest of the SPA uses for state transitions.
+        onBlur={(e) => {
+          const raw = e.target.value;
+          setTimeout(() => {
+            setFocused(false);
+            onBlur(raw);
+          }, 120);
+        }}
+        placeholder={placeholder}
+        className={cn(
+          'w-full px-2.5 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
+          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
+          'font-mono-tabular',
+          'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+        )}
+        autoComplete="off"
+      />
+      {filtered.length > 0 && (
+        <div
+          role="listbox"
+          className={cn(
+            'absolute z-10 mt-1 w-full max-h-48 overflow-auto rounded-md',
+            'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+            'shadow-lg',
+          )}
+        >
+          {filtered.map((n) => {
+            const key = searchKey === 'uuid' ? n.uuid : n.hostname;
+            return (
+              <button
+                key={n.uuid}
+                type="button"
+                // onMouseDown (not onClick) so we fire BEFORE the
+                // input's blur registers — otherwise the suggestion
+                // list unmounts before the click lands.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onPick(key);
+                }}
+                className={cn(
+                  'w-full text-left px-2.5 py-1 text-xs',
+                  'hover:bg-[color:var(--bg-1)] transition-colors',
+                  'focus:outline focus:outline-2 focus:outline-[color:var(--signal)] focus:bg-[color:var(--bg-1)]',
+                )}
+              >
+                <span className="font-mono-tabular text-[color:var(--text-1)]">
+                  {n.hostname}
+                </span>
+                <span className="ml-2 font-mono-tabular text-[color:var(--text-3)] text-[10px]">
+                  {n.uuid.slice(0, 12)}…
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -240,6 +382,53 @@ function ChipList({
           </button>
         </span>
       ))}
+    </div>
+  );
+}
+
+// NodeChipList renders selected node UUIDs as hostname-labeled chips
+// (with the UUID prefix in muted text alongside) so the operator sees
+// who they actually targeted, not a row of opaque hex strings. Wire
+// format stays UUID-based; this is presentation only.
+function NodeChipList({
+  uuids,
+  allNodes,
+  onRemove,
+}: {
+  uuids: string[];
+  allNodes: { uuid: string; hostname: string }[];
+  onRemove: (uuid: string) => void;
+}) {
+  const lookup = new Map<string, string>();
+  for (const n of allNodes) lookup.set(n.uuid, n.hostname);
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {uuids.map((u) => {
+        const host = lookup.get(u);
+        return (
+          <span
+            key={u}
+            className={cn(
+              'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px]',
+              'bg-[color:var(--signal)]/10 text-[color:var(--signal-bright,var(--signal))]',
+              'border border-[color:var(--signal)]/30 font-mono-tabular',
+            )}
+            title={u}
+          >
+            <span className="truncate max-w-[120px]">
+              {host ?? u.slice(0, 8) + (u.length > 8 ? '…' : '')}
+            </span>
+            <button
+              type="button"
+              onClick={() => onRemove(u)}
+              aria-label={`Remove ${host ?? u}`}
+              className="text-[color:var(--text-3)] hover:text-[color:var(--danger)] transition-colors"
+            >
+              ×
+            </button>
+          </span>
+        );
+      })}
     </div>
   );
 }

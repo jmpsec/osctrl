@@ -103,6 +103,97 @@ func TestCheckLoginCredentials(t *testing.T) {
 	assert.Equal(t, false, user.Service)
 }
 
+// TestCheckLoginCredentials_UnknownUserStillReturnsFalse confirms that
+// the dummyHash compare introduced for timing-leak defense does NOT
+// accidentally turn an unknown-user request into a successful login.
+// The compare result must be discarded; the function returns false.
+func TestCheckLoginCredentials_UnknownUserStillReturnsFalse(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("doesNotExist", 1).
+		WillReturnError(gorm.ErrRecordNotFound)
+
+	access, user := manager.CheckLoginCredentials("doesNotExist", "any-password")
+	assert.Equal(t, false, access)
+	assert.Equal(t, AdminUser{}, user)
+}
+
+// TestCheckLoginCredentials_TimingEqualization asserts the
+// username-enumeration timing defense: the wall-clock time of
+// "valid user, wrong password" (real bcrypt compare) and "unknown
+// user" (dummy bcrypt compare) must be within 2× of each other.
+//
+// Before the fix the ratio was ~10–15× (pentest finding: 15-25ms vs
+// 300ms). The threshold is loose enough that GC pauses or scheduler
+// jitter on CI won't flake the test, but tight enough that a
+// regression (e.g. someone deletes the dummyHash compare) jumps the
+// ratio well past 2× and fails the test.
+//
+// Skipped under -short because the bcrypt-cost-12 hash budgets ~300ms
+// per call and the test runs N iterations.
+func TestCheckLoginCredentials_TimingEqualization(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing measurement; skipped under -short")
+	}
+	manager, mock := setupTestManager(t)
+	hashed, err := manager.HashPasswordWithSalt("realPassword")
+	assert.NoError(t, err)
+
+	const iters = 4
+	// Each iteration burns ~300ms of bcrypt work × 2 paths × iters,
+	// so the test runs in ~2-3 seconds locally.
+	for i := 0; i < iters; i++ {
+		// valid-user-wrong-password path
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+			WithArgs("knownUser", 1).
+			WillReturnRows(sqlmock.NewRows([]string{"email", "username", "pass_hash", "admin", "environment_id", "service"}).
+				AddRow("aa@bb.com", "knownUser", hashed, true, 1, false))
+		// unknown-user path
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+			WithArgs("unknownUser", 1).
+			WillReturnError(gorm.ErrRecordNotFound)
+	}
+
+	knownTimes := make([]time.Duration, iters)
+	unknownTimes := make([]time.Duration, iters)
+	for i := 0; i < iters; i++ {
+		t0 := time.Now()
+		manager.CheckLoginCredentials("knownUser", "wrong-password")
+		knownTimes[i] = time.Since(t0)
+		t1 := time.Now()
+		manager.CheckLoginCredentials("unknownUser", "wrong-password")
+		unknownTimes[i] = time.Since(t1)
+	}
+
+	medKnown := median(knownTimes)
+	medUnknown := median(unknownTimes)
+	ratio := float64(medKnown) / float64(medUnknown)
+	if ratio < 1 {
+		ratio = 1 / ratio
+	}
+	t.Logf("known=%v unknown=%v ratio=%.2fx", medKnown, medUnknown, ratio)
+	if ratio > 2.0 {
+		t.Errorf("timing-leak regression: known=%v unknown=%v ratio=%.2fx (want < 2.0x)", medKnown, medUnknown, ratio)
+	}
+}
+
+// median returns the median of a slice of durations. Robust to a single
+// GC pause or scheduling stutter that would skew the mean.
+func median(xs []time.Duration) time.Duration {
+	cp := make([]time.Duration, len(xs))
+	copy(cp, xs)
+	// insertion sort — tiny inputs
+	for i := 1; i < len(cp); i++ {
+		for j := i; j > 0 && cp[j-1] > cp[j]; j-- {
+			cp[j-1], cp[j] = cp[j], cp[j-1]
+		}
+	}
+	return cp[len(cp)/2]
+}
+
 func TestCreateCheckToken(t *testing.T) {
 	manager, _ := setupTestManager(t)
 	conf := config.YAMLConfigurationJWT{
@@ -166,8 +257,8 @@ func TestCreateUser(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID).
+		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id","auth_source") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID, user.AuthSource).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	err := manager.Create(user)

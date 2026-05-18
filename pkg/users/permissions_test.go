@@ -148,6 +148,71 @@ func TestCreatePermissions(t *testing.T) {
 	assert.Equal(t, "testEnv", perm2.Environment)
 }
 
+// TestChangeAccessAllRejectsUnknownUser verifies that the bulk
+// permission-write path fails closed when the target user doesn't
+// exist. Without this guard, the bulk endpoint could silently
+// "succeed" for nonexistent usernames (Updated=0, error=nil) and
+// the operator wouldn't know their typo created no permissions.
+func TestChangeAccessAllRejectsUnknownUser(t *testing.T) {
+	manager, mock := setupTestManagerForPermissions(t)
+	// Exists() runs SELECT count(*) FROM admin_users WHERE username=?
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).
+		WithArgs("ghost").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	updated, err := manager.ChangeAccessAll("ghost", []string{"env-A", "env-B"}, EnvAccess{User: true})
+	assert.Error(t, err)
+	assert.Equal(t, 0, updated)
+}
+
+// TestSetEnvLevelCreatesRowWhenAbsent guards the upsert fix: for a
+// (user, env, level) triplet that has never had a permission row,
+// SetEnvLevel must INSERT instead of returning "record not found".
+// Pre-fix, both the single-env Save button and the bulk-grant
+// endpoint were broken for any user with no prior permissions in the
+// target env — the modal would show "error setting permissions" on
+// the very first grant.
+func TestSetEnvLevelCreatesRowWhenAbsent(t *testing.T) {
+	manager, mock := setupTestManagerForPermissions(t)
+	// GetPermission first calls Exists(username) — return 1 (user exists).
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).
+		WithArgs("alice").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	// Then the SELECT for the existing perm row returns no rows.
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "user_permissions" WHERE (username = $1 AND environment = $2 AND access_type = $3) AND "user_permissions"."deleted_at" IS NULL ORDER BY "user_permissions"."id" LIMIT $4`)).
+		WithArgs("alice", "env-uuid-1", int(UserLevel), 1).
+		WillReturnError(gorm.ErrRecordNotFound)
+	// Upsert branch: INSERT a fresh row.
+	mock.ExpectBegin()
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(789))
+	mock.ExpectCommit()
+
+	err := manager.SetEnvLevel("alice", "env-uuid-1", UserLevel, true)
+	assert.NoError(t, err)
+}
+
+// TestChangeAccessAllEmptyEnvList covers the boundary: caller passes
+// an empty UUID slice. Returns (0, nil) — vacuously successful. This
+// matters because the handler enumerates envs server-side; on a
+// brand-new install with zero environments, the bulk endpoint should
+// 200 with updated=0, not error.
+func TestChangeAccessAllEmptyEnvList(t *testing.T) {
+	manager, mock := setupTestManagerForPermissions(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT count(*) FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL`)).
+		WithArgs("alice").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+	updated, err := manager.ChangeAccessAll("alice", []string{}, EnvAccess{})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, updated)
+}
+
 func TestGenEnvUserAccess(t *testing.T) {
 	manager, _ := setupTestManagerForPermissions(t)
 	envs := []string{"env1", "env2"}

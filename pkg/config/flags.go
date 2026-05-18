@@ -136,6 +136,8 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
+	allFlags = append(allFlags, initOIDCFlags(params)...)
+	allFlags = append(allFlags, initSAMLFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
@@ -641,6 +643,12 @@ func initJWTFlags(params *ServiceParameters) []cli.Flag {
 // initOIDCFlags initializes OIDC flags
 func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "oidc-enabled",
+			Usage:       "Enable the federated-login surface on osctrl-api (osctrl-admin uses --auth=oidc instead and ignores this flag)",
+			Sources:     cli.EnvVars("OIDC_ENABLED"),
+			Destination: &params.OIDC.Enabled,
+		},
 		&cli.StringFlag{
 			Name:        "oidc-issuer-url",
 			Usage:       "OIDC issuer URL (the realm root, /.well-known/openid-configuration is appended automatically)",
@@ -726,6 +734,70 @@ func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Enable PKCE (S256) for the OIDC Authorization Code flow",
 			Sources:     cli.EnvVars("OIDC_USE_PKCE"),
 			Destination: &params.OIDC.UsePKCE,
+		},
+	}
+}
+
+// initSAMLFlags initializes SAML flags for osctrl-api. Mirrors the OIDC
+// flag shape — operators flip --saml-enabled, point us at the IdP's
+// metadata URL, and the rest comes from the metadata document (signing
+// keys, SSO endpoint, etc.).
+func initSAMLFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "saml-enabled",
+			Usage:       "Enable the SAML 2.0 federated-login surface on osctrl-api (osctrl-admin uses --auth=saml instead and ignores this flag)",
+			Sources:     cli.EnvVars("SAML_ENABLED"),
+			Destination: &params.SAML.Enabled,
+		},
+		&cli.StringFlag{
+			Name:        "saml-idp-metadata-url",
+			Usage:       "URL to the IdP's SAML metadata document — fetched once at startup, signing certs + SSO endpoint discovered from it",
+			Sources:     cli.EnvVars("SAML_IDP_METADATA_URL"),
+			Destination: &params.SAML.MetaDataURL,
+		},
+		&cli.StringFlag{
+			Name:        "saml-entity-id",
+			Usage:       "SP entity ID — what the IdP knows us by (conventionally the metadata URL)",
+			Sources:     cli.EnvVars("SAML_ENTITY_ID"),
+			Destination: &params.SAML.EntityID,
+		},
+		&cli.StringFlag{
+			Name:        "saml-acs-url",
+			Usage:       "Assertion Consumer Service URL — where the IdP POSTs SAMLResponse (must end with /api/v1/auth/saml/acs)",
+			Sources:     cli.EnvVars("SAML_ACS_URL"),
+			Destination: &params.SAML.ACSURL,
+		},
+		&cli.BoolFlag{
+			Name:        "saml-jit-provision",
+			Usage:       "Auto-create osctrl users on first SAML login (as non-admin)",
+			Sources:     cli.EnvVars("SAML_JIT_PROVISION"),
+			Destination: &params.SAML.JITProvision,
+		},
+		&cli.StringFlag{
+			Name:        "saml-username-attribute",
+			Usage:       "SAML attribute (Name or FriendlyName) whose value becomes the osctrl username; empty = use NameID verbatim",
+			Sources:     cli.EnvVars("SAML_USERNAME_ATTRIBUTE"),
+			Destination: &params.SAML.UsernameAttribute,
+		},
+		&cli.StringFlag{
+			Name:        "saml-signing-cert",
+			Usage:       "Path to PEM cert used to sign outbound AuthnRequests (paired with --saml-signing-key); empty disables AuthnRequest signing",
+			Sources:     cli.EnvVars("SAML_SIGNING_CERT"),
+			Destination: &params.SAML.SigningCertPath,
+		},
+		&cli.StringFlag{
+			Name:        "saml-signing-key",
+			Usage:       "Path to PEM RSA private key used to sign outbound AuthnRequests (paired with --saml-signing-cert)",
+			Sources:     cli.EnvVars("SAML_SIGNING_KEY"),
+			Destination: &params.SAML.SigningKeyPath,
+		},
+		&cli.BoolFlag{
+			Name:        "saml-force-authn",
+			Usage:       "Force re-authentication at the IdP on every SAML login (defaults true; SLO substitute since v1 has no SAML SLO)",
+			Sources:     cli.EnvVars("SAML_FORCE_AUTHN"),
+			Destination: &params.SAML.ForceAuthn,
+			Value:       true,
 		},
 	}
 }

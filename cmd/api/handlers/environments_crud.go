@@ -16,6 +16,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Defaults for the optional fields on POST /api/v1/environments.
+// Operators can still PATCH either after creation.
+const (
+	defaultEnvIcon = "server"
+	defaultEnvType = "osquery"
+)
+
 // EnvironmentCreateHandler - POST /api/v1/environments
 //
 // Body: { name, hostname, type? }. Generates a UUID, defaults config /
@@ -41,8 +48,36 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 	// canonical form.
 	body.Name = strings.ToLower(strings.TrimSpace(body.Name))
 	body.Hostname = strings.TrimSpace(body.Hostname)
-	if !environments.VerifyEnvFilters(body.Name, body.Icon, body.Type, body.Hostname) {
-		apiErrorResponse(w, "invalid name, hostname, type, or icon", http.StatusBadRequest, nil)
+	body.Icon = strings.TrimSpace(body.Icon)
+	body.Type = strings.TrimSpace(body.Type)
+	// icon and type are optional at create-time; default both to sane
+	// values when the caller leaves them blank. The legacy "all four
+	// must validate together" check rejected every SPA create because
+	// the frontend doesn't expose an icon field. Operators can still
+	// edit either via PATCH after creation.
+	if body.Icon == "" {
+		body.Icon = defaultEnvIcon
+	}
+	if body.Type == "" {
+		body.Type = defaultEnvType
+	}
+	// Validate the (now-defaulted) fields individually so the error
+	// message identifies the specific field that failed, instead of
+	// lumping all four together.
+	if !environments.EnvNameFilter(body.Name) {
+		apiErrorResponse(w, "invalid environment name (lowercase letters, digits, dash, underscore)", http.StatusBadRequest, nil)
+		return
+	}
+	if !environments.HostnameFilter(body.Hostname) {
+		apiErrorResponse(w, "invalid hostname", http.StatusBadRequest, nil)
+		return
+	}
+	if !environments.EnvTypeFilter(body.Type) {
+		apiErrorResponse(w, "invalid environment type", http.StatusBadRequest, nil)
+		return
+	}
+	if !environments.IconFilter(body.Icon) {
+		apiErrorResponse(w, "invalid icon", http.StatusBadRequest, nil)
 		return
 	}
 	if h.Envs.Exists(body.Name) {

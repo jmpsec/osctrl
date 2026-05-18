@@ -100,6 +100,11 @@ const (
 	apiStatsPath = "/stats"
 	// API osquery path
 	apiOsqueryPath = "/osquery"
+	// API auth methods / federated login path. Global (no
+	// {env}) because OIDC on osctrl-api is a single, deployment-
+	// wide identity surface; env scoping happens at the user-
+	// permissions layer, not the auth layer.
+	apiAuthPath = "/auth"
 )
 
 // Global variables
@@ -159,6 +164,8 @@ func init() {
 		DB:      &config.YAMLConfigurationDB{},
 		Redis:   &config.YAMLConfigurationRedis{},
 		JWT:     &config.YAMLConfigurationJWT{},
+		OIDC:    &config.YAMLConfigurationOIDC{},
+		SAML:    &config.YAMLConfigurationSAML{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
 		Logger: &config.YAMLConfigurationLogger{
@@ -313,6 +320,32 @@ func osctrlAPIService() {
 	}
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
+	// Initialize the global OIDC provider BEFORE constructing the
+	// handlers struct. We need to fail fast if --oidc-enabled is set
+	// but discovery fails — running an SPA login page that links to a
+	// broken IdP route is worse than refusing to start.
+	if flagParams.OIDC != nil && flagParams.OIDC.Enabled {
+		log.Info().Msg("OIDC enabled — discovering provider")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := handlers.InitOIDC(ctx, *flagParams.OIDC); err != nil {
+			cancel()
+			log.Fatal().Err(err).Msg("Can not initialize OIDC")
+		}
+		cancel()
+	}
+	// Same fail-fast posture for SAML — refuse to start if metadata
+	// fetch fails so we never serve an SPA login button that links
+	// to a broken /auth/saml/login route.
+	if flagParams.SAML != nil && flagParams.SAML.Enabled {
+		log.Info().Msg("SAML enabled — fetching IdP metadata")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := handlers.InitSAML(ctx, *flagParams.SAML, flagParams.SAML.EntityID, flagParams.SAML.ACSURL); err != nil {
+			cancel()
+			log.Fatal().Err(err).Msg("Can not initialize SAML")
+		}
+		cancel()
+	}
+
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
@@ -329,6 +362,9 @@ func osctrlAPIService() {
 		handlers.WithDebugHTTP(flagParams.Debug),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithOsqueryValues(*flagParams.Osquery),
+		handlers.WithJWTSecret([]byte(flagParams.JWT.JWTSecret)),
+		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
+		handlers.WithSAML(flagParams.SAML != nil && flagParams.SAML.Enabled),
 	)
 
 	// ///////////////////////// API
@@ -356,18 +392,54 @@ func osctrlAPIService() {
 	loginRateLimit := loginLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
-	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
-	// Read-only pre-auth endpoints (env list for the login picker, sample
-	// query/carve starter packs). These reveal no secrets and aren't a
-	// brute-force vector, so they get a much more permissive limiter — the
-	// SPA legitimately fetches them on every login-page render, and React
-	// strict-mode / browser reloads easily exceed a 10/min budget. We still
-	// rate-limit to block low-effort scanning probes, just at 60/min/IP.
+	// Credentials-only login (no env path-param). Matches legacy
+	// admin's posture. Env picking happens post-login via the
+	// existing env switcher in the SPA. Pre-May 2026 the route was
+	// POST /login/{env} with a GET /login/environments sibling; both
+	// leaked env enumeration to anonymous callers.
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath), loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
+	// preAuthRateLimit covers the remaining read-only pre-auth
+	// surface (auth-methods discovery, logout). 60/min/IP is loose
+	// enough that React strict-mode reloads don't trip it but tight
+	// enough to throttle scanning probes.
 	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
-	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
+	// Auth-methods discovery: the SPA polls this to decide whether to
+	// render an "OIDC" button alongside the password form. Read-only,
+	// no secrets in the response, pre-auth rate limit.
+	muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/methods", preAuthRateLimit(http.HandlerFunc(handlersApi.AuthMethodsHandler)))
+	// Logout: unauthenticated by design — an expired-token user
+	// must be able to log out without first re-authenticating.
+	// Server-side cookie expiry + APIToken revocation happen here.
+	// Worst case if forged: invalidates the legitimate user's
+	// token, which is exactly what logout should do.
+	muxAPI.Handle("POST "+_apiPath("/logout"), preAuthRateLimit(http.HandlerFunc(handlersApi.LogoutHandler)))
+	// OIDC login + callback. Registered ONLY when --oidc-enabled is
+	// set, so a misconfigured deploy doesn't expose 500-returning
+	// stubs. The handlers themselves also guard with `oidcProvider
+	// == nil` for defense in depth, but route-level gating keeps the
+	// public route table accurate.
+	//
+	// The login endpoint shares the strict login rate limit (10/min/IP)
+	// with the password endpoint — both are credential surfaces from
+	// the attacker's POV. Callback uses the looser pre-auth limit
+	// because it carries IdP-signed material and is harder to spam
+	// usefully.
+	if flagParams.OIDC != nil && flagParams.OIDC.Enabled {
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/login", loginRateLimit(http.HandlerFunc(handlersApi.OIDCLoginHandler)))
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/callback", preAuthRateLimit(http.HandlerFunc(handlersApi.OIDCCallbackHandler)))
+	}
+	// SAML routes follow the OIDC posture: gated by --saml-enabled, login
+	// on the strict limiter, ACS on the looser limiter (the SAMLResponse
+	// is IdP-signed so spamming the endpoint without a real assertion
+	// gets rejected at the crypto layer anyway), metadata pre-auth and
+	// public by design (SP metadata is meant to be machine-readable for
+	// IdP-side registration).
+	if flagParams.SAML != nil && flagParams.SAML.Enabled {
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/saml/login", loginRateLimit(http.HandlerFunc(handlersApi.SAMLLoginHandler)))
+		muxAPI.Handle("POST "+_apiPath(apiAuthPath)+"/saml/acs", preAuthRateLimit(http.HandlerFunc(handlersApi.SAMLACSHandler)))
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/saml/metadata", preAuthRateLimit(http.HandlerFunc(handlersApi.SAMLMetadataHandler)))
+	}
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(
@@ -426,6 +498,14 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
+		// Sample-templates library (post-auth). Was pre-auth until a
+		// pentest finding (May 2026) called out that the response
+		// fingerprints the deployment as osctrl and leaks the
+		// SQL-template starter library — both of which are useless
+		// to anonymous callers and useful only to attackers.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QuerySamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -471,6 +551,14 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.OsqueryTablesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: carves by environment
 	if flagParams.Osquery.Carve {
+		// Sample carve-targets library (post-auth). Was pre-auth
+		// until a pentest finding (May 2026) called out that the
+		// response is a shopping list of high-value exfiltration
+		// paths (/etc/passwd, \Windows\System32\config\SAM, etc.)
+		// that anonymous callers have no legitimate reason to see.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveSamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -510,8 +598,14 @@ func osctrlAPIService() {
 		"GET "+_apiPath(apiUsersPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
+		"GET "+_apiPath(apiUsersPath)+"/{username}/permissions",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.GetUserPermissionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/permissions",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SetUserPermissionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiUsersPath)+"/{username}/permissions/all",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SetUserPermissionsAllHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/token/refresh",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.RefreshUserTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
