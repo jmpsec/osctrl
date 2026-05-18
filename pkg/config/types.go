@@ -249,13 +249,25 @@ type YAMLConfigurationJWT struct {
 
 // YAMLConfigurationSAML to keep all SAML details for auth
 type YAMLConfigurationSAML struct {
+	// Enabled gates the SAML federated-login surface on osctrl-api.
+	// Defaults false. The legacy osctrl-admin ignores this field
+	// (it uses --auth=saml instead) so adding it does not affect
+	// existing operator deployments.
+	Enabled bool `yaml:"enabled"        mapstructure:"enabled"`
+	// EntityID is the SP entity identifier — what the IdP knows us
+	// by. Conventionally the metadata URL.
+	EntityID string `yaml:"entityId"       mapstructure:"entityId"`
+	// ACSURL is the Assertion Consumer Service URL — where the IdP
+	// POSTs the SAMLResponse. Must match the value registered with
+	// the IdP. Ends with /api/v1/auth/saml/acs.
+	ACSURL       string `yaml:"acsUrl"         mapstructure:"acsUrl"`
 	CertPath     string `yaml:"certPath"`
 	KeyPath      string `yaml:"keyPath"`
 	MetaDataURL  string `yaml:"metadataUrl"`
 	RootURL      string `yaml:"rootUrl"`
 	LoginURL     string `yaml:"loginUrl"`
 	LogoutURL    string `yaml:"logoutUrl"`
-	JITProvision bool   `yaml:"jitProvision"`
+	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
 	SPInitiated  bool   `yaml:"spInitiated"`
 }
 

@@ -52,6 +52,12 @@ type HandlersApi struct {
 	// per-env identity provider config (if ever needed) would
 	// belong on the operator layer, not here.
 	OIDCEnabled bool
+	// SAMLEnabled is the SAML analogue of OIDCEnabled. Same
+	// semantics: global, single-tenant, advertised through
+	// /api/v1/auth/methods. OIDC and SAML can both be on
+	// simultaneously — the SPA renders one button per advertised
+	// method.
+	SAMLEnabled bool
 }
 
 type HandlersOption func(*HandlersApi)
@@ -180,6 +186,15 @@ func WithJWTSecret(secret []byte) HandlersOption {
 func WithOIDC(enabled bool) HandlersOption {
 	return func(h *HandlersApi) {
 		h.OIDCEnabled = enabled
+	}
+}
+
+// WithSAML toggles the global SAML routes and the
+// /api/v1/auth/methods response. SAML analogue of WithOIDC; the
+// two can be enabled simultaneously.
+func WithSAML(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.SAMLEnabled = enabled
 	}
 }
 

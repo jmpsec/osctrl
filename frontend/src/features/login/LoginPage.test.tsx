@@ -87,7 +87,7 @@ describe('LoginPage SSO surface', () => {
     expect(screen.queryByRole('link', { name: /sso/i })).not.toBeInTheDocument();
   });
 
-  it('renders the SSO button when oidc method is advertised', async () => {
+  it('renders the OIDC button when oidc method is advertised', async () => {
     mockListMethods.mockResolvedValue([
       { type: 'password', loginUrl: '/api/v1/login' },
       { type: 'oidc', loginUrl: '/api/v1/auth/oidc/login' },
@@ -95,12 +95,44 @@ describe('LoginPage SSO surface', () => {
 
     renderWithProviders();
 
-    const ssoLink = await screen.findByRole('link', { name: /continue with sso/i });
-    expect(ssoLink).toBeInTheDocument();
-    expect(ssoLink).toHaveAttribute('href', '/api/v1/auth/oidc/login');
+    const oidcLink = await screen.findByRole('link', { name: /continue with oidc/i });
+    expect(oidcLink).toBeInTheDocument();
+    expect(oidcLink).toHaveAttribute('href', '/api/v1/auth/oidc/login');
+    // SAML button must NOT be rendered when only OIDC is advertised.
+    expect(screen.queryByRole('link', { name: /continue with saml/i })).not.toBeInTheDocument();
   });
 
-  it('hides the SSO button when methods endpoint errors', async () => {
+  it('renders the SAML button when saml method is advertised', async () => {
+    mockListMethods.mockResolvedValue([
+      { type: 'password', loginUrl: '/api/v1/login' },
+      { type: 'saml', loginUrl: '/api/v1/auth/saml/login' },
+    ]);
+
+    renderWithProviders();
+
+    const samlLink = await screen.findByRole('link', { name: /continue with saml/i });
+    expect(samlLink).toBeInTheDocument();
+    expect(samlLink).toHaveAttribute('href', '/api/v1/auth/saml/login');
+    // OIDC button must NOT be rendered when only SAML is advertised.
+    expect(screen.queryByRole('link', { name: /continue with oidc/i })).not.toBeInTheDocument();
+  });
+
+  it('renders BOTH OIDC and SAML buttons when both methods are advertised', async () => {
+    mockListMethods.mockResolvedValue([
+      { type: 'password', loginUrl: '/api/v1/login' },
+      { type: 'oidc', loginUrl: '/api/v1/auth/oidc/login' },
+      { type: 'saml', loginUrl: '/api/v1/auth/saml/login' },
+    ]);
+
+    renderWithProviders();
+
+    const oidcLink = await screen.findByRole('link', { name: /continue with oidc/i });
+    const samlLink = await screen.findByRole('link', { name: /continue with saml/i });
+    expect(oidcLink).toHaveAttribute('href', '/api/v1/auth/oidc/login');
+    expect(samlLink).toHaveAttribute('href', '/api/v1/auth/saml/login');
+  });
+
+  it('hides the SSO buttons when methods endpoint errors', async () => {
     mockListMethods.mockRejectedValue(new Error('boom'));
 
     renderWithProviders();
@@ -109,8 +141,9 @@ describe('LoginPage SSO surface', () => {
       expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
     });
 
-    // The methods query failed; SSO surface must be hidden, password
+    // The methods query failed; both SSO surfaces must be hidden, password
     // form must still work.
-    expect(screen.queryByRole('link', { name: /sso/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /continue with oidc/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /continue with saml/i })).not.toBeInTheDocument();
   });
 });

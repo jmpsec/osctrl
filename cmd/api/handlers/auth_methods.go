@@ -58,5 +58,11 @@ func (h *HandlersApi) AuthMethodsHandler(w http.ResponseWriter, r *http.Request)
 			LoginURL: "/api/v1/auth/oidc/login",
 		})
 	}
+	if h.SAMLEnabled {
+		methods = append(methods, AuthMethod{
+			Type:     "saml",
+			LoginURL: "/api/v1/auth/saml/login",
+		})
+	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, AuthMethodsResponse{Methods: methods})
 }
