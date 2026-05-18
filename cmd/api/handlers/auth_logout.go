@@ -89,25 +89,12 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// LogoutResponse so a drive-by curl cannot scrape the IdP
 	// tenant URL + client_id without an actual session to terminate
 	// (pentest finding: unauthenticated IdP metadata disclosure).
-	//
-	// userAuthSource carries the value of AdminUser.AuthSource — set
-	// to "oidc" or "saml" by JIT-provisioning, empty for password-
-	// auth users. We use it below to pick the right IdP-side logout
-	// flow (or skip it entirely for password users) so we don't send
-	// a SAML user to the OIDC end-session URL with a stale
-	// id_token_hint.
-	var (
-		authenticated  bool
-		userAuthSource string
-	)
+	var authenticated bool
 	tokenCookie, err := r.Cookie("osctrl_token")
 	if err == nil && tokenCookie.Value != "" && len(h.JWTSecret) > 0 {
 		claims, valid := h.Users.CheckToken(string(h.JWTSecret), tokenCookie.Value)
 		if valid {
 			authenticated = true
-			if exists, u := h.Users.ExistsGet(claims.Username); exists {
-				userAuthSource = u.AuthSource
-			}
 			if cerr := h.Users.ClearToken(claims.Username); cerr != nil {
 				// Non-fatal — we still want to clear the
 				// client-side cookies and return the IdP URL.
@@ -158,9 +145,24 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// Surface IdP fields based on which provider issued the current
-	// session. Anonymous callers always get the empty response
-	// (pentest finding T-IDP-DISCLOSURE: no IdP scrape without auth).
+	// Surface IdP fields based on which protocol issued the ACTIVE
+	// session — NOT what protocol JIT-provisioned the AdminUser row.
+	// AdminUser.AuthSource is a creation-time stamp (drives the badge
+	// on /_app/users) and is wrong for this decision: a user who was
+	// JIT-provisioned via OIDC can log in via SAML later, and we must
+	// honor the current protocol, not the historical one. Otherwise
+	// SAML-session users get sent to the OIDC end-session URL with a
+	// missing/stale id_token_hint and Keycloak/Auth0 either errors or
+	// shows a confusing "are you sure?" page (pentest finding 2026-05-18).
+	//
+	// The protocol signal is the osctrl_id_token cookie, set ONLY by
+	// the OIDC callback (auth_oidc.go OIDCCallbackHandler). SAML and
+	// password flows never touch it. So:
+	//   id_token cookie present + valid token → OIDC session
+	//   id_token cookie absent → SAML or password session
+	//
+	// Anonymous callers always get the empty response (pentest
+	// T-IDP-DISCLOSURE: no IdP scrape without auth).
 	//
 	// OIDC users → emit the OIDC end-session URL, client_id, and
 	//   id_token_hint so the SPA can chain a clean RP-initiated
@@ -168,18 +170,29 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// SAML users → emit auth_source="saml" so the SPA knows to skip
 	//   the IdP-side logout and just bounce to /login. SAML SLO is
 	//   deferred to v2 per docs/proposals/osctrl-auth-providers-v0.1
-	//   §"What's deferred"; sending a SAML user to the OIDC
-	//   end-session URL with a stale (or wrong-protocol) id_token_hint
-	//   was the symptom that surfaced this bug — Keycloak rejects
-	//   the request and the user lands on an error page.
+	//   §"What's deferred"; SAML_FORCE_AUTHN=true is the v1 substitute
+	//   for the silent-reauth UX problem.
 	// Password users → empty response, SPA bounces to /login.
 	resp := LogoutResponse{}
 	if authenticated {
-		resp.AuthSource = userAuthSource
-		if userAuthSource == "oidc" && oidcProvider != nil {
+		// idTokenHint != "" iff the OIDC callback set the cookie AND
+		// it hasn't been cleared since. That's the cleanest signal of
+		// "current session came from OIDC."
+		isOIDCSession := idTokenHint != ""
+		switch {
+		case isOIDCSession && oidcProvider != nil:
+			resp.AuthSource = "oidc"
 			resp.IdPLogoutURL = oidcProvider.EndSessionURL()
 			resp.IdPClientID = oidcClientID
 			resp.IdPIDTokenHint = idTokenHint
+		case !isOIDCSession && samlProvider != nil:
+			// SAML session (or password, but password doesn't set
+			// any provider cookies either — distinguishing the two
+			// requires more wire data than we currently track, and
+			// for logout purposes the behavior is identical: bounce
+			// to /login, no IdP-side termination).
+			resp.AuthSource = "saml"
+			// No IdP fields — SAML SLO deferred to v2.
 		}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)

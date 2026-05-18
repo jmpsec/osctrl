@@ -170,8 +170,12 @@ func TestOIDCLoginRedirectsToIdP(t *testing.T) {
 			if !c.Secure {
 				t.Error("state cookie must be Secure")
 			}
-			if c.SameSite != http.SameSiteLaxMode {
-				t.Errorf("state cookie SameSite: got %v want Lax", c.SameSite)
+			if c.SameSite != http.SameSiteNoneMode {
+				// May 2026: state cookie was loosened from Lax to None
+				// so SAML POST-binding ACS works. CSRF still bound to
+				// the unguessable OAuthState in the JWT body — see
+				// pkg/auth/state.go IssueStateCookie comment.
+				t.Errorf("state cookie SameSite: got %v want None", c.SameSite)
 			}
 		}
 	}

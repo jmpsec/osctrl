@@ -362,7 +362,7 @@ func TestParseLegacyCookieWithoutOAuthState(t *testing.T) {
 	}
 }
 
-// Cookie attributes (HttpOnly + Secure + SameSite=Lax + path scope)
+// Cookie attributes (HttpOnly + Secure + SameSite=None + path scope)
 // are part of the security contract — verify them on every issue.
 func TestCookieAttributes(t *testing.T) {
 	s := freshState(t)
@@ -384,8 +384,14 @@ func TestCookieAttributes(t *testing.T) {
 	if !c.Secure {
 		t.Error("Secure must be true")
 	}
-	if c.SameSite != http.SameSiteLaxMode {
-		t.Errorf("SameSite: got %v want Lax", c.SameSite)
+	// SameSite=None is required so the cookie accompanies the SAML
+	// HTTP-POST binding's cross-site POST from the IdP back to our
+	// ACS. The CSRF defense doesn't depend on SameSite — it lives
+	// in the unguessable OAuthState bound into the JWT body — so
+	// loosening Lax→None is a no-op for security and load-bearing
+	// for SAML correctness.
+	if c.SameSite != http.SameSiteNoneMode {
+		t.Errorf("SameSite: got %v want None", c.SameSite)
 	}
 	if c.Path != StateCookiePath {
 		t.Errorf("Path: got %q want %q", c.Path, StateCookiePath)
