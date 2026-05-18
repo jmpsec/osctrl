@@ -911,19 +911,6 @@ function DeleteUserModal({
     },
   });
 
-  // Belt-and-braces confirmation: even with the modal's visual
-  // confirm step, fire a browser-native window.confirm before the
-  // mutation actually runs. Cheap insurance against any future
-  // accidental-fire path (focused button + keystroke, autofocus,
-  // etc.) since "user deleted by mistake" is non-recoverable.
-  function confirmDelete() {
-    const ok = window.confirm(
-      `Permanently delete operator "${user.username}"?\n\nThis cannot be undone.`,
-    );
-    if (!ok) return;
-    mutation.mutate();
-  }
-
   return (
     <ModalShell
       title={`Delete operator — ${user.username}`}
@@ -962,7 +949,7 @@ function DeleteUserModal({
           <button
             type="button"
             disabled={mutation.isPending}
-            onClick={confirmDelete}
+            onClick={() => mutation.mutate()}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
               'bg-[color:var(--danger)] text-white hover:opacity-90',
