@@ -1,6 +1,8 @@
 package users
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -188,7 +190,13 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	return true, user
 }
 
-// CreateToken to create a new JWT token for a given user
+// CreateToken to create a new JWT token for a given user. Stamps a random
+// jti (JWT ID) on every token so two issuances for the same user — even in
+// the same second with the same expiry — produce distinct token strings.
+// Without the jti, claims are deterministic (username + ExpiresAt + Issuer)
+// and HMAC-SHA256 is deterministic for the same key+payload: re-issuing in
+// the same second would return the same bytes, silently undoing token
+// rotation. The jti is a 16-byte random hex string.
 func (m *UserManager) CreateToken(username, issuer string, expHours int) (string, time.Time, error) {
 	if m.JWTConfig == nil {
 		return "", time.Time{}, fmt.Errorf("CreateToken called on UserManager without JWT config — caller must initialize via WithJWT")
@@ -198,12 +206,18 @@ func (m *UserManager) CreateToken(username, issuer string, expHours int) (string
 		tDuration = time.Duration(m.JWTConfig.HoursToExpire)
 	}
 	expirationTime := time.Now().Add(time.Hour * tDuration)
+	jtiBytes := make([]byte, 16)
+	if _, err := cryptorand.Read(jtiBytes); err != nil {
+		return "", time.Time{}, fmt.Errorf("error generating jti: %w", err)
+	}
+	jti := hex.EncodeToString(jtiBytes)
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    issuer,
+			ID:        jti,
 		},
 	}
 	// Declare the token with the algorithm used for signing, and the claims

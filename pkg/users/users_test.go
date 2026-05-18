@@ -581,3 +581,51 @@ func timingMedian(xs []time.Duration) time.Duration {
 	}
 	return cp[len(cp)/2]
 }
+
+// TestCreateTokenIsNonDeterministic locks in the jti-claim defense against
+// silent token-rotation failure. Without a per-token nonce, two CreateToken
+// calls for the same user in the same second produce identical JWT strings
+// (HMAC-SHA256 is deterministic; the only varying claim was ExpiresAt at
+// 1s resolution). That would mean LoginHandler's "mint fresh + UpdateToken"
+// rotation silently no-ops on rapid re-login — the stored APIToken is
+// "rotated" to the same value, so a stolen copy of the previous token
+// keeps validating against the unchanged stored value.
+//
+// The fix is the jti claim in CreateToken (16 random bytes hex). This test
+// pins it: two successive issuances MUST produce distinct token strings.
+func TestCreateTokenIsNonDeterministic(t *testing.T) {
+	manager, _ := setupTestManager(t)
+	t1, _, err1 := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err1)
+	t2, _, err2 := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err2)
+	if t1 == t2 {
+		t.Fatalf("CreateToken returned identical strings on successive calls — jti claim missing or zero")
+	}
+}
+
+// TestCreateTokenStampsJTI explicitly inspects the parsed claims to confirm
+// the jti field is set and that two issuances carry different jti values.
+// Belt-and-braces on top of TestCreateTokenIsNonDeterministic: if a future
+// contributor changes the claims shape such that uniqueness comes from a
+// different field, this test still asserts the jti they may have removed.
+func TestCreateTokenStampsJTI(t *testing.T) {
+	manager, _ := setupTestManager(t)
+	secret := "test-secret-must-be-at-least-32-bytes-long"
+
+	t1, _, err := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err)
+	c1, ok := manager.CheckToken(secret, t1)
+	assert.True(t, ok)
+	assert.NotEmpty(t, c1.ID, "first token has empty jti")
+
+	t2, _, err := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err)
+	c2, ok := manager.CheckToken(secret, t2)
+	assert.True(t, ok)
+	assert.NotEmpty(t, c2.ID, "second token has empty jti")
+
+	if c1.ID == c2.ID {
+		t.Fatalf("jti collision across two CreateToken calls: %q", c1.ID)
+	}
+}
