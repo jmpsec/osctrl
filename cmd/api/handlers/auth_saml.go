@@ -42,6 +42,7 @@ func InitSAML(ctx context.Context, cfg config.YAMLConfigurationSAML, entityID, a
 		IDPMetadataURL:         cfg.MetaDataURL,
 		EntityID:               entityID,
 		ACSURL:                 acsURL,
+		UsernameAttribute:      cfg.UsernameAttribute,
 		JITProvision:           cfg.JITProvision,
 		ForceAuthn:             cfg.ForceAuthn,
 		RequireAssertionSigned: true,

@@ -268,6 +268,13 @@ type YAMLConfigurationSAML struct {
 	LoginURL     string `yaml:"loginUrl"`
 	LogoutURL    string `yaml:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
+	// UsernameAttribute names the SAML attribute (by Name or
+	// FriendlyName) whose value becomes the osctrl username.
+	// Empty means "use the NameID verbatim" — fine for Keycloak
+	// where NameID is the username, but Auth0 typically emits an
+	// emailAddress NameID format which fails our strict sanitizer,
+	// so operators point this at "nickname" instead.
+	UsernameAttribute string `yaml:"usernameAttribute" mapstructure:"usernameAttribute"`
 	// ForceAuthn defaults true on osctrl-api. Setting it false lets
 	// "Continue with SAML" silently re-authenticate against an
 	// existing IdP SSO cookie, which most operators perceive as
