@@ -138,10 +138,24 @@ type State struct {
 
 	// Nonce is a 256-bit cryptorandom value. For OIDC, this is
 	// embedded in the authorize URL via the `nonce` parameter and
-	// must match the `nonce` claim on the returned id_token. Other
-	// protocols may or may not use it; the field is always
-	// populated regardless.
+	// must match the `nonce` claim on the returned id_token. SAML
+	// does not use Nonce (it has no equivalent protocol slot).
+	//
+	// Defense-in-depth invariant: Nonce and OAuthState MUST be
+	// independent random values, NOT the same value. Earlier
+	// versions reused a single random value for both slots; a
+	// pentest finding (May 2026) called out that a leak of either
+	// — e.g. `state` ending up in a Referer log — would
+	// simultaneously compromise the other. Two independent values
+	// mean two independent leak surfaces.
 	Nonce string
+
+	// OAuthState is the OAuth2 / SAML RelayState parameter. For
+	// OIDC, this is what the callback's `state` query param must
+	// echo (CSRF defense — threat T6). For SAML, this is the
+	// RelayState the ACS POST must echo (threat S10). Always a
+	// 256-bit cryptorandom value, INDEPENDENT of Nonce.
+	OAuthState string
 
 	// Verifier is the PKCE code_verifier (RFC 7636) when the
 	// provider has PKCE enabled. Empty otherwise. The callback

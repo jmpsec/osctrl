@@ -23,14 +23,19 @@ func freshState(t *testing.T) State {
 	if err != nil {
 		t.Fatalf("NewNonce: %v", err)
 	}
+	oauthState, err := NewNonce()
+	if err != nil {
+		t.Fatalf("NewNonce: %v", err)
+	}
 	verifier, err := NewNonce()
 	if err != nil {
 		t.Fatalf("NewNonce: %v", err)
 	}
 	return State{
-		EnvUUID:  "dev-uuid-1234",
-		Nonce:    nonce,
-		Verifier: verifier,
+		EnvUUID:    "dev-uuid-1234",
+		Nonce:      nonce,
+		OAuthState: oauthState,
+		Verifier:   verifier,
 	}
 }
 
@@ -272,7 +277,7 @@ func TestStateAlgNoneRejected(t *testing.T) {
 // would defeat the cross-env mismatch defense (threat T18).
 func TestIssueRejectsEmptyEnv(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := IssueStateCookie(rec, testSecret, State{Nonce: "n-1234"})
+	err := IssueStateCookie(rec, testSecret, State{Nonce: "n-1234", OAuthState: "s-1234"})
 	if err == nil {
 		t.Fatal("expected error on empty EnvUUID")
 	}
@@ -283,9 +288,77 @@ func TestIssueRejectsEmptyEnv(t *testing.T) {
 // defense in the protocol.
 func TestIssueRejectsEmptyNonce(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234"})
+	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", OAuthState: "s-1234"})
 	if err == nil {
 		t.Fatal("expected error on empty Nonce")
+	}
+}
+
+// Missing OAuthState — the OAuth2 / SAML RelayState slot — would
+// collapse the CSRF defense, the pre-May-2026 implementation's whole
+// problem. IssueStateCookie must refuse.
+func TestIssueRejectsEmptyOAuthState(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", Nonce: "n-1234"})
+	if err == nil {
+		t.Fatal("expected error on empty OAuthState")
+	}
+}
+
+// Defense-in-depth: refuse to issue a cookie that has OAuthState ==
+// Nonce. The whole point of splitting them is that they're
+// independent random values; allowing a caller to alias them would
+// mask a regression that re-introduces the pre-May-2026 problem.
+func TestIssueRejectsAliasedNonceAndOAuthState(t *testing.T) {
+	rec := httptest.NewRecorder()
+	same := "this-is-the-same-value-on-both-slots"
+	err := IssueStateCookie(rec, testSecret, State{
+		EnvUUID:    "dev-uuid-1234",
+		Nonce:      same,
+		OAuthState: same,
+	})
+	if err == nil {
+		t.Fatal("expected error when OAuthState == Nonce (must be independent values)")
+	}
+}
+
+// Backward-compat round trip: a legacy stateClaims emitted by
+// pre-split servers (no `os` claim) must parse cleanly and the
+// returned State.OAuthState must fall back to the Nonce value. This
+// keeps in-flight logins from breaking at upgrade time.
+func TestParseLegacyCookieWithoutOAuthState(t *testing.T) {
+	// Hand-roll a state cookie like the pre-split code would have
+	// emitted — populate the typed claims but with OAuthState
+	// blank (the `os` field omits with omitempty).
+	now := time.Now().UTC()
+	claims := stateClaims{
+		EnvUUID: "dev-uuid-1234",
+		Nonce:   "legacy-nonce-value",
+		// OAuthState deliberately empty
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    stateJWTIssuer,
+			Audience:  jwt.ClaimStrings{stateJWTAudience},
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(StateCookieTTL)),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := tok.SignedString(testSecret)
+	if err != nil {
+		t.Fatalf("sign legacy cookie: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/callback", nil)
+	req.AddCookie(&http.Cookie{Name: StateCookieName, Value: signed})
+	got, err := ParseStateCookie(req, testSecret)
+	if err != nil {
+		t.Fatalf("legacy cookie should parse, got %v", err)
+	}
+	if got.Nonce != "legacy-nonce-value" {
+		t.Errorf("Nonce: got %q want legacy-nonce-value", got.Nonce)
+	}
+	if got.OAuthState != "legacy-nonce-value" {
+		t.Errorf("OAuthState fallback: got %q want legacy-nonce-value", got.OAuthState)
 	}
 }
 

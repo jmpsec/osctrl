@@ -113,10 +113,10 @@ func newTestHandlers() *HandlersApi {
 // to the IdP's authorize endpoint with the right OAuth2 + OIDC
 // parameters.
 //
-// The state parameter must equal the nonce parameter (the 5A fix
-// — see pkg/auth/oidc/provider.go). If a future refactor decouples
-// them, the CSRF defense becomes guessable; this test guards that
-// invariant at the wire level.
+// The state and nonce parameters must be INDEPENDENT random values
+// (May 2026 split — defense in depth so that a leak of either
+// doesn't compromise the other). An earlier revision asserted the
+// opposite; that was the 5A invariant, which has been replaced.
 func TestOIDCLoginRedirectsToIdP(t *testing.T) {
 	idp := newFakeIdP(t)
 	initOIDCWithFake(t, idp, false)
@@ -150,8 +150,8 @@ func TestOIDCLoginRedirectsToIdP(t *testing.T) {
 	if nonce == "" {
 		t.Error("nonce query param missing")
 	}
-	if state != nonce {
-		t.Errorf("state must equal nonce (5A CSRF invariant): state=%q nonce=%q", state, nonce)
+	if state == nonce {
+		t.Errorf("state and nonce must be INDEPENDENT values (May 2026 defense-in-depth split), got both=%q", state)
 	}
 	if q.Get("client_id") != "osctrl-api-test" {
 		t.Errorf("client_id: got %q want %q", q.Get("client_id"), "osctrl-api-test")

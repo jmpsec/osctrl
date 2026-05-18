@@ -99,9 +99,18 @@ func oidcLoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "oidc nonce error", http.StatusInternalServerError)
 		return
 	}
+	// Independent random value for the OAuth2 `state` parameter
+	// (defense-in-depth split — May 2026 pentest finding).
+	oauthState, err := auth.NewNonce()
+	if err != nil {
+		log.Err(err).Msg("oidc: state gen failed")
+		http.Error(w, "oidc state error", http.StatusInternalServerError)
+		return
+	}
 	state := auth.State{
-		EnvUUID: "admin", // legacy admin is single-tenant; no env scoping
-		Nonce:   nonce,
+		EnvUUID:    "admin", // legacy admin is single-tenant; no env scoping
+		Nonce:      nonce,
+		OAuthState: oauthState,
 	}
 	if oidcProvider != nil && shouldUsePKCE() {
 		verifier, err := auth.NewNonce()
