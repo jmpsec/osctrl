@@ -198,6 +198,23 @@ export function deleteUser(username: string): Promise<{ data: string }> {
   );
 }
 
+/** POST /api/v1/users/{username}/edit — reset another user's password
+ * (super-admin only). The legacy UserActionHandler edit case accepts a
+ * `password` field and calls h.Users.ChangePassword. Other fields in the
+ * edit body (email, fullname, admin, service) are NOT included here —
+ * password reset is its own flow.
+ */
+export function adminResetUserPassword(username: string, newPassword: string): Promise<{ data: string }> {
+  return apiFetch<{ data: string }>(
+    `/api/v1/users/${encodeURIComponent(username)}/edit`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password: newPassword }),
+    },
+  );
+}
+
 /** POST /api/v1/users/{username}/token/refresh — mint a new API token. */
 export function refreshUserToken(username: string): Promise<TokenResponse> {
   return apiFetch<TokenResponse>(
