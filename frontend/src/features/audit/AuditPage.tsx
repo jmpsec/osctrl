@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -80,7 +80,13 @@ export function AuditPage() {
     });
   }
 
-  const apiQuery: AuditLogsQuery = {
+  // Memoize apiQuery so its identity is stable across renders. TanStack
+  // Query 5 hashes queryKey structurally so this should not matter in
+  // theory, but in practice a parent re-render that rebuilds this
+  // object can interact badly with React StrictMode's double-invoke
+  // and trigger refetch storms. Pin the identity to keep the query
+  // referentially stable.
+  const apiQuery: AuditLogsQuery = useMemo(() => ({
     service: service || undefined,
     username: username || undefined,
     type: type > 0 ? type : undefined,
@@ -89,12 +95,19 @@ export function AuditPage() {
     until: until || undefined,
     page,
     page_size: pageSize,
-  };
+  }), [service, username, type, envUuid, since, until, page, pageSize]);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['audit-logs', apiQuery],
     queryFn: () => listAuditLogs(apiQuery),
-    staleTime: 10_000,
+    // 30s staleness window — audit log isn't a real-time feed; the
+    // SPA's refetch-on-mount / focus is enough freshness, and a
+    // longer window blunts any remaining re-render storm.
+    staleTime: 30_000,
+    // refetchOnWindowFocus stays on (default true) so reopening the
+    // tab after time away gives fresh data, but inside a stable focus
+    // session we don't re-query.
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 
