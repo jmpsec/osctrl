@@ -8,11 +8,18 @@ import (
 )
 
 // LogoutResponse is the JSON payload returned by POST /api/v1/logout.
-// IdPLogoutURL is non-empty when an OIDC provider is configured AND
-// advertised an end_session_endpoint in its discovery document — the
-// SPA navigates the browser there to terminate the IdP session.
-// Empty means client-only cleanup; the IdP session (if any) keeps
-// running until its own TTL.
+//
+// AuthSource carries which provider issued the active session
+// ("oidc" / "saml" / ""). The SPA uses it to decide which
+// IdP-logout flow to run — sending a SAML user to the OIDC
+// end-session URL with a stale id_token_hint just produces a
+// confusing Keycloak error page.
+//
+// IdPLogoutURL is non-empty when AuthSource=="oidc" AND the OIDC
+// provider advertised an end_session_endpoint in its discovery
+// document — the SPA navigates the browser there to terminate the
+// IdP session. Empty for SAML users (SLO deferred to v2 per spec)
+// and for password users.
 //
 // IdPClientID is the OIDC client_id registered with the IdP. Some
 // IdPs (Keycloak) accept it as an alternative to id_token_hint
@@ -29,6 +36,7 @@ import (
 // before terminating the session, so this is safe to expose to the
 // browser (we set it back into the URL the browser navigates to).
 type LogoutResponse struct {
+	AuthSource     string `json:"auth_source,omitempty"`
 	IdPLogoutURL   string `json:"idp_logout_url,omitempty"`
 	IdPClientID    string `json:"idp_client_id,omitempty"`
 	IdPIDTokenHint string `json:"idp_id_token_hint,omitempty"`
@@ -81,12 +89,25 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// LogoutResponse so a drive-by curl cannot scrape the IdP
 	// tenant URL + client_id without an actual session to terminate
 	// (pentest finding: unauthenticated IdP metadata disclosure).
-	var authenticated bool
+	//
+	// userAuthSource carries the value of AdminUser.AuthSource — set
+	// to "oidc" or "saml" by JIT-provisioning, empty for password-
+	// auth users. We use it below to pick the right IdP-side logout
+	// flow (or skip it entirely for password users) so we don't send
+	// a SAML user to the OIDC end-session URL with a stale
+	// id_token_hint.
+	var (
+		authenticated  bool
+		userAuthSource string
+	)
 	tokenCookie, err := r.Cookie("osctrl_token")
 	if err == nil && tokenCookie.Value != "" && len(h.JWTSecret) > 0 {
 		claims, valid := h.Users.CheckToken(string(h.JWTSecret), tokenCookie.Value)
 		if valid {
 			authenticated = true
+			if exists, u := h.Users.ExistsGet(claims.Username); exists {
+				userAuthSource = u.AuthSource
+			}
 			if cerr := h.Users.ClearToken(claims.Username); cerr != nil {
 				// Non-fatal — we still want to clear the
 				// client-side cookies and return the IdP URL.
@@ -137,16 +158,29 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// Surface IdP fields ONLY when the caller had a valid session.
-	// Without this gate, an unauthenticated curl could harvest the
-	// OIDC tenant URL + client_id (pentest finding). The legitimate
-	// SPA always has a JWT cookie when it calls /logout, so this
-	// gate doesn't affect normal flows.
+	// Surface IdP fields based on which provider issued the current
+	// session. Anonymous callers always get the empty response
+	// (pentest finding T-IDP-DISCLOSURE: no IdP scrape without auth).
+	//
+	// OIDC users → emit the OIDC end-session URL, client_id, and
+	//   id_token_hint so the SPA can chain a clean RP-initiated
+	//   logout that also terminates the Keycloak/Auth0 SP session.
+	// SAML users → emit auth_source="saml" so the SPA knows to skip
+	//   the IdP-side logout and just bounce to /login. SAML SLO is
+	//   deferred to v2 per docs/proposals/osctrl-auth-providers-v0.1
+	//   §"What's deferred"; sending a SAML user to the OIDC
+	//   end-session URL with a stale (or wrong-protocol) id_token_hint
+	//   was the symptom that surfaced this bug — Keycloak rejects
+	//   the request and the user lands on an error page.
+	// Password users → empty response, SPA bounces to /login.
 	resp := LogoutResponse{}
-	if authenticated && oidcProvider != nil {
-		resp.IdPLogoutURL = oidcProvider.EndSessionURL()
-		resp.IdPClientID = oidcClientID
-		resp.IdPIDTokenHint = idTokenHint
+	if authenticated {
+		resp.AuthSource = userAuthSource
+		if userAuthSource == "oidc" && oidcProvider != nil {
+			resp.IdPLogoutURL = oidcProvider.EndSessionURL()
+			resp.IdPClientID = oidcClientID
+			resp.IdPIDTokenHint = idTokenHint
+		}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }

@@ -43,6 +43,7 @@ func InitSAML(ctx context.Context, cfg config.YAMLConfigurationSAML, entityID, a
 		EntityID:               entityID,
 		ACSURL:                 acsURL,
 		JITProvision:           cfg.JITProvision,
+		ForceAuthn:             cfg.ForceAuthn,
 		RequireAssertionSigned: true,
 	})
 	if err != nil {

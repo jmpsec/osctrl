@@ -794,6 +794,13 @@ func initSAMLFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SAML_JIT_PROVISION"),
 			Destination: &params.SAML.JITProvision,
 		},
+		&cli.BoolFlag{
+			Name:        "saml-force-authn",
+			Usage:       "Force re-authentication at the IdP on every SAML login (defaults true; SLO substitute since v1 has no SAML SLO)",
+			Sources:     cli.EnvVars("SAML_FORCE_AUTHN"),
+			Destination: &params.SAML.ForceAuthn,
+			Value:       true,
+		},
 	}
 }
 

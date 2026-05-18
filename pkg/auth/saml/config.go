@@ -103,6 +103,20 @@ type Config struct {
 	// first successful login. Matches the OIDC field semantics.
 	JITProvision bool
 
+	// ForceAuthn, when true, sets ForceAuthn="true" on every
+	// AuthnRequest we emit. Keycloak / Auth0 / Okta will then
+	// re-prompt the user for credentials even if their IdP-side SSO
+	// cookie is still alive. Without this, clicking "Continue with
+	// SAML" after a logout silently re-authenticates against the
+	// existing IdP session — which feels like the logout didn't
+	// work even though the SP session was properly cleared.
+	//
+	// This is the v1 pragmatic substitute for proper SAML SLO (which
+	// is deferred to v2). Operators who want the silent-reauth UX
+	// can flip this off, with the trade-off that logout will only
+	// affect the SP session.
+	ForceAuthn bool
+
 	// RequireAssertionSigned MUST be true for production deployments.
 	// crewjam's default is true; we expose the field to make the
 	// invariant visible in config files. Setting false disables S2
