@@ -379,17 +379,16 @@ func osctrlAPIService() {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
-	// Read-only pre-auth endpoints (env list for the login picker, sample
-	// query/carve starter packs). These reveal no secrets and aren't a
-	// brute-force vector, so they get a much more permissive limiter — the
-	// SPA legitimately fetches them on every login-page render, and React
-	// strict-mode / browser reloads easily exceed a 10/min budget. We still
-	// rate-limit to block low-effort scanning probes, just at 60/min/IP.
+	// Read-only pre-auth endpoints (env list for the login picker). The
+	// env list is the one piece of data the login page legitimately needs
+	// before the user has a session, so it stays pre-auth — rate-limited
+	// at 60/min/IP to block low-effort scanning probes. React strict-mode
+	// / browser reloads easily exceed 10/min during normal use, so the
+	// preAuth budget is more permissive than the credential-spray budget
+	// on /login.
 	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
 	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
 	// Auth-methods discovery: the SPA polls this to decide whether to
 	// render an "OIDC" button alongside the password form. Read-only,
 	// no secrets in the response, pre-auth rate limit.
@@ -473,6 +472,14 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
+		// Sample-templates library (post-auth). Was pre-auth until a
+		// pentest finding (May 2026) called out that the response
+		// fingerprints the deployment as osctrl and leaks the
+		// SQL-template starter library — both of which are useless
+		// to anonymous callers and useful only to attackers.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QuerySamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -518,6 +525,14 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.OsqueryTablesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: carves by environment
 	if flagParams.Osquery.Carve {
+		// Sample carve-targets library (post-auth). Was pre-auth
+		// until a pentest finding (May 2026) called out that the
+		// response is a shopping list of high-value exfiltration
+		// paths (/etc/passwd, \Windows\System32\config\SAM, etc.)
+		// that anonymous callers have no legitimate reason to see.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveSamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
