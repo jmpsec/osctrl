@@ -73,8 +73,9 @@ func TestProvider_MetadataParses(t *testing.T) {
 func TestProvider_LoginURL_HappyPath(t *testing.T) {
 	p := testProvider(t)
 	got, err := p.LoginURL(context.Background(), auth.State{
-		EnvUUID: "global",
-		Nonce:   "test-nonce-32-bytes-of-entropy",
+		EnvUUID:    "global",
+		Nonce:      "n-test-32-bytes-of-entropy",
+		OAuthState: "s-test-32-bytes-of-entropy",
 	})
 	if err != nil {
 		t.Fatalf("LoginURL: %v", err)
@@ -90,25 +91,25 @@ func TestProvider_LoginURL_HappyPath(t *testing.T) {
 	if u.Query().Get("SAMLRequest") == "" {
 		t.Errorf("LoginURL missing SAMLRequest param: %s", got)
 	}
-	// RelayState must echo the nonce.
-	if got := u.Query().Get("RelayState"); got != "test-nonce-32-bytes-of-entropy" {
-		t.Errorf("RelayState should equal nonce, got %q", got)
+	// RelayState must echo OAuthState (NOT Nonce — May 2026 split).
+	if got := u.Query().Get("RelayState"); got != "s-test-32-bytes-of-entropy" {
+		t.Errorf("RelayState should equal OAuthState, got %q", got)
 	}
 }
 
 func TestProvider_LoginURL_RejectsEmptyEnv(t *testing.T) {
 	p := testProvider(t)
-	_, err := p.LoginURL(context.Background(), auth.State{Nonce: "nonce"})
+	_, err := p.LoginURL(context.Background(), auth.State{OAuthState: "s-x"})
 	if err == nil {
 		t.Fatal("empty EnvUUID should error")
 	}
 }
 
-func TestProvider_LoginURL_RejectsEmptyNonce(t *testing.T) {
+func TestProvider_LoginURL_RejectsEmptyOAuthState(t *testing.T) {
 	p := testProvider(t)
 	_, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "global"})
 	if err == nil {
-		t.Fatal("empty Nonce should error")
+		t.Fatal("empty OAuthState should error")
 	}
 }
 
@@ -126,7 +127,7 @@ func TestHandleCallback_StateMismatch(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err := p.HandleCallback(context.Background(), r,
-		auth.State{EnvUUID: "global", Nonce: "the-real-nonce"})
+		auth.State{EnvUUID: "global", Nonce: "n-the-real-nonce", OAuthState: "the-real-nonce"})
 	if err != ErrStateMismatch {
 		t.Errorf("expected ErrStateMismatch, got %v", err)
 	}
@@ -145,7 +146,7 @@ func TestHandleCallback_MissingSAMLResponse(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err := p.HandleCallback(context.Background(), r,
-		auth.State{EnvUUID: "global", Nonce: "the-real-nonce"})
+		auth.State{EnvUUID: "global", Nonce: "n-the-real-nonce", OAuthState: "the-real-nonce"})
 	if err != ErrMissingSAMLResponse {
 		t.Errorf("expected ErrMissingSAMLResponse, got %v", err)
 	}
@@ -165,7 +166,7 @@ func TestHandleCallback_GarbageSAMLResponse(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err := p.HandleCallback(context.Background(), r,
-		auth.State{EnvUUID: "global", Nonce: "the-real-nonce"})
+		auth.State{EnvUUID: "global", Nonce: "n-the-real-nonce", OAuthState: "the-real-nonce"})
 	if err == nil {
 		t.Fatal("garbage SAMLResponse should error")
 	}

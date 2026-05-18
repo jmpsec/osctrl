@@ -157,10 +157,17 @@ func (p *Provider) Metadata() ([]byte, error) {
 }
 
 // LoginURL builds the IdP SSO URL the user's browser should be
-// redirected to. The state's Nonce travels as RelayState — the IdP
+// redirected to. state.OAuthState travels as RelayState — the IdP
 // echoes it back on the ACS POST verbatim, and HandleCallback
 // validates the echo against the state cookie. This is the SAML
 // equivalent of the OAuth2 state parameter.
+//
+// SAML has no protocol slot equivalent to the OIDC nonce, so
+// state.Nonce is unused here. We still REQUIRE it to be present so
+// the State invariant (Nonce and OAuthState are independent random
+// values) holds uniformly across providers — a caller that fills
+// only OAuthState would mask a subtle bug if the deployment later
+// added a second provider.
 //
 // state.Verifier is unused for SAML (no PKCE equivalent in the SAML
 // Web Browser SSO profile); we accept it for interface uniformity
@@ -169,10 +176,10 @@ func (p *Provider) LoginURL(_ context.Context, state auth.State) (string, error)
 	if state.EnvUUID == "" {
 		return "", fmt.Errorf("saml: LoginURL: empty State.EnvUUID")
 	}
-	if state.Nonce == "" {
-		return "", fmt.Errorf("saml: LoginURL: empty State.Nonce")
+	if state.OAuthState == "" {
+		return "", fmt.Errorf("saml: LoginURL: empty State.OAuthState")
 	}
-	u, err := p.sp.MakeRedirectAuthenticationRequest(state.Nonce)
+	u, err := p.sp.MakeRedirectAuthenticationRequest(state.OAuthState)
 	if err != nil {
 		return "", fmt.Errorf("saml: MakeRedirectAuthenticationRequest: %w", err)
 	}
@@ -203,10 +210,10 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 		return auth.ResolvedIdentity{}, ErrMissingSAMLResponse
 	}
 
-	// (2) RelayState must echo the state cookie's nonce. Load-bearing
-	// CSRF defense — an attacker without our state cookie cannot mint
-	// a RelayState that survives this check.
-	if got := r.PostForm.Get("RelayState"); got != state.Nonce {
+	// (2) RelayState must echo state.OAuthState. Load-bearing CSRF
+	// defense — an attacker without our state cookie cannot mint a
+	// RelayState that survives this check.
+	if got := r.PostForm.Get("RelayState"); got != state.OAuthState {
 		return auth.ResolvedIdentity{}, ErrStateMismatch
 	}
 
