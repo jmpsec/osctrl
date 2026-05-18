@@ -186,6 +186,26 @@ func init() {
 	flags = config.InitAdminFlags(flagParams)
 }
 
+// noDirListing wraps an http.Handler (typically http.FileServer) and
+// rejects requests whose URL path ends in "/" — i.e. any path that
+// would resolve to a directory and trigger Go's default autoindex
+// behavior. Legitimate file requests (paths to .css/.js/.svg/etc)
+// are passed through unchanged.
+//
+// 404 instead of 403 because the autoindex was the only signal that
+// the directory existed in the first place; returning 403 would
+// confirm "yes, there IS something at /static/img/" — which the
+// 404 hides.
+func noDirListing(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // Retrieve latest release information and compare
 func checkLatestRelease() {
 	log.Info().Msg("Checking for the latest release...")
@@ -399,8 +419,15 @@ func osctrlAdminService() {
 	adminMux.HandleFunc("GET "+forbiddenPath, handlersAdmin.ForbiddenHandler)
 	// Admin: favicon
 	adminMux.HandleFunc("GET "+faviconPath, handlersAdmin.FaviconHandler)
-	// Admin: static
-	adminMux.Handle("GET /static/", http.StripPrefix("/static", http.FileServer(http.Dir(flagParams.Admin.StaticDir))))
+	// Admin: static — wrap http.FileServer to suppress directory
+	// listings. Go's FileServer enables autoindex by default, so a
+	// pentest probe of GET /static/ would return an HTML listing of
+	// css/, fonts/, img/, js/ — a free recon gift to any vuln
+	// scanner. Rejecting paths that end in "/" turns those probes
+	// into 404s; legitimate file requests (e.g. /static/css/app.css)
+	// are unaffected. Defense lives at the Go handler because the
+	// fronting nginx (osctrl-nginx-dev) only proxies, doesn't serve.
+	adminMux.Handle("GET /static/", http.StripPrefix("/static", noDirListing(http.FileServer(http.Dir(flagParams.Admin.StaticDir)))))
 	// Admin: background image
 	adminMux.HandleFunc("GET /background-image", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, flagParams.Admin.BackgroundImage)
