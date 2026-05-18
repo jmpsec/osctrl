@@ -121,56 +121,159 @@ changelog:
       - Merge branch
 
 dockers:
+  # osctrl-tls — amd64
   - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:latest"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
     dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
     use: buildx
+    goarch: amd64
     skip_push: false
     build_flag_templates:
-      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
+      - "--platform=linux/amd64"
     extra_files:
       - dist/osctrl-tls-linux-amd64
-      - dist/osctrl-tls-linux-arm64
-
+  # osctrl-tls — arm64
   - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:latest"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
     use: buildx
+    goarch: arm64
     skip_push: false
     build_flag_templates:
-      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
+      - "--platform=linux/arm64"
+    extra_files:
+      - dist/osctrl-tls-linux-arm64
+
+  # osctrl-admin — amd64
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
+    use: buildx
+    goarch: amd64
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/amd64"
     extra_files:
       - dist/osctrl-admin-linux-amd64
+      - cmd/admin/templates
+      - cmd/admin/static
+      - deploy/osquery/data
+  # osctrl-admin — arm64
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
+    use: buildx
+    goarch: arm64
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/arm64"
+    extra_files:
       - dist/osctrl-admin-linux-arm64
       - cmd/admin/templates
       - cmd/admin/static
       - deploy/osquery/data
 
+  # osctrl-api — amd64
   - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:latest"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
     dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
     use: buildx
+    goarch: amd64
     skip_push: false
     build_flag_templates:
-      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
+      - "--platform=linux/amd64"
     extra_files:
       - dist/osctrl-api-linux-amd64
-      - dist/osctrl-api-linux-arm64
-
+  # osctrl-api — arm64
   - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:latest"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
     use: buildx
+    goarch: arm64
     skip_push: false
     build_flag_templates:
-      - "--platform={{ if .IsSnapshot }}linux/amd64{{ else }}linux/amd64,linux/arm64{{ end }}"
+      - "--platform=linux/arm64"
+    extra_files:
+      - dist/osctrl-api-linux-arm64
+
+  # osctrl-cli — amd64
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
+    use: buildx
+    goarch: amd64
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/amd64"
     extra_files:
       - dist/osctrl-cli-linux-amd64
+  # osctrl-cli — arm64
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
+    use: buildx
+    goarch: arm64
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/arm64"
+    extra_files:
       - dist/osctrl-cli-linux-arm64
+
+# docker_manifests fuses per-arch images into a single multi-arch manifest
+# list that `docker pull <image>:<tag>` resolves to the right arch
+# automatically. Without this section, the previous `dockers:` blocks were
+# trying to write a manifest list directly from a single buildx invocation,
+# which the default Docker exporter does not support — that was the
+# `docker exporter does not currently support exporting manifest lists`
+# error on every tagged release back to v0.4.8.
+#
+# skip_push gates the manifest combine on snapshot builds: snapshots
+# don't push individual per-arch images either, so there'd be nothing
+# to combine into a list.
+docker_manifests:
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:latest"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:latest"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:latest"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:latest"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
 
 docker_signs:
   - artifacts: all
