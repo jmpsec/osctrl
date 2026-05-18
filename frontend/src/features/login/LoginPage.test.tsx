@@ -12,9 +12,8 @@ import {
 import { LoginPage } from './LoginPage';
 import type { AuthMethod } from '$/api/client';
 
-// Tests pin the SSO button's behavior — the rest of the page (env
-// dropdown, password form) is exercised manually and via e2e. We
-// specifically guard:
+// Tests pin the SSO button's behavior — the password form is exercised
+// manually and via e2e. We specifically guard:
 //
 //  1. SSO button is HIDDEN when /api/v1/auth/methods returns only
 //     password. A regression here would land an unreachable button
@@ -29,13 +28,11 @@ import type { AuthMethod } from '$/api/client';
 //     break the flow because the OAuth2 callback redirects, and
 //     browsers don't follow cross-origin redirects on XHR.
 
-const mockListEnvs = vi.fn();
 const mockListMethods = vi.fn<() => Promise<AuthMethod[]>>();
 
 vi.mock('$/api/client', async () => {
   return {
     login: vi.fn(),
-    listLoginEnvironments: () => mockListEnvs(),
     listAuthMethods: () => mockListMethods(),
   };
 });
@@ -72,7 +69,6 @@ function renderWithProviders() {
 describe('LoginPage SSO surface', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListEnvs.mockResolvedValue([{ uuid: 'env-1', name: 'prod' }]);
   });
 
   it('hides the SSO button when only password method is advertised', async () => {

@@ -88,13 +88,6 @@ type ApiLoginRequest struct {
 	ExpHours int    `json:"exp_hours"`
 }
 
-// LoginEnvironment is the pre-auth-safe projection of an environment returned
-// by GET /api/v1/login/environments. UUID + name only — every other field
-// stays behind auth.
-type LoginEnvironment struct {
-	UUID string `json:"uuid"`
-	Name string `json:"name"`
-}
 
 // ApiErrorResponse to be returned to API requests with the error message
 type ApiErrorResponse struct {

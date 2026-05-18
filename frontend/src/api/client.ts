@@ -152,8 +152,8 @@ interface LegacyApiError {
   code?: string;
 }
 
-export async function login(env: string, body: LoginRequest): Promise<LoginResponse> {
-  const res = await fetch(`/api/v1/login/${encodeURIComponent(env)}`, {
+export async function login(body: LoginRequest): Promise<LoginResponse> {
+  const res = await fetch('/api/v1/login', {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -171,31 +171,6 @@ export async function login(env: string, body: LoginRequest): Promise<LoginRespo
   // We only need the CSRF token for subsequent mutating requests.
   setCsrfToken(data.csrf_token);
   return data;
-}
-
-/** Shape returned by GET /api/v1/login/environments — pre-auth, name+uuid only. */
-export interface LoginEnvironment {
-  uuid: string;
-  name: string;
-}
-
-/**
- * Pre-auth env list for the login screen dropdown.
- *
- * Does NOT go through apiFetch / the auth-aware client wrappers because:
- *   - The endpoint is intentionally unauthenticated.
- *   - The 401-→-redirect-to-login behaviour those wrappers add would create a
- *     redirect loop if it ever returned 401 (it can't, but: belt-and-braces).
- */
-export async function listLoginEnvironments(): Promise<LoginEnvironment[]> {
-  const res = await fetch('/api/v1/login/environments', {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to load environments (HTTP ${res.status})`);
-  }
-  return (await res.json()) as LoginEnvironment[];
 }
 
 // AuthMethod mirrors the API's AuthMethod shape. `type` is the

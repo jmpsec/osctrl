@@ -378,17 +378,18 @@ func osctrlAPIService() {
 	loginRateLimit := loginLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
-	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
-	// Read-only pre-auth endpoints (env list for the login picker). The
-	// env list is the one piece of data the login page legitimately needs
-	// before the user has a session, so it stays pre-auth — rate-limited
-	// at 60/min/IP to block low-effort scanning probes. React strict-mode
-	// / browser reloads easily exceed 10/min during normal use, so the
-	// preAuth budget is more permissive than the credential-spray budget
-	// on /login.
+	// Credentials-only login (no env path-param). Matches legacy
+	// admin's posture. Env picking happens post-login via the
+	// existing env switcher in the SPA. Pre-May 2026 the route was
+	// POST /login/{env} with a GET /login/environments sibling; both
+	// leaked env enumeration to anonymous callers.
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath), loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
+	// preAuthRateLimit covers the remaining read-only pre-auth
+	// surface (auth-methods discovery, logout). 60/min/IP is loose
+	// enough that React strict-mode reloads don't trip it but tight
+	// enough to throttle scanning probes.
 	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
-	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
 	// Auth-methods discovery: the SPA polls this to decide whether to
 	// render an "OIDC" button alongside the password form. Read-only,
 	// no secrets in the response, pre-auth rate limit.
