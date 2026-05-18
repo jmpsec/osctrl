@@ -133,6 +133,12 @@ func NewSAMLProvider(ctx context.Context, cfg Config) (*Provider, error) {
 		// with a known EntityID + ACS URL.
 		AuthnNameIDFormat: crewjam.UnspecifiedNameIDFormat,
 	}
+	if cfg.ForceAuthn {
+		// crewjam takes a *bool so it can distinguish unset from
+		// explicit false. Use a local var of the right shape.
+		v := true
+		sp.ForceAuthn = &v
+	}
 
 	return &Provider{
 		cfg:         cfg,

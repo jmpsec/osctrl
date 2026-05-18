@@ -268,7 +268,13 @@ type YAMLConfigurationSAML struct {
 	LoginURL     string `yaml:"loginUrl"`
 	LogoutURL    string `yaml:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
-	SPInitiated  bool   `yaml:"spInitiated"`
+	// ForceAuthn defaults true on osctrl-api. Setting it false lets
+	// "Continue with SAML" silently re-authenticate against an
+	// existing IdP SSO cookie, which most operators perceive as
+	// "logout didn't work" — see auth_logout.go comment for the v1
+	// rationale.
+	ForceAuthn  bool `yaml:"forceAuthn"      mapstructure:"forceAuthn"`
+	SPInitiated bool `yaml:"spInitiated"`
 }
 
 // YAMLConfigurationOIDC to keep all OIDC details for auth
