@@ -173,17 +173,50 @@ func (p *Provider) Metadata() ([]byte, error) {
 // Web Browser SSO profile); we accept it for interface uniformity
 // but ignore it.
 func (p *Provider) LoginURL(_ context.Context, state auth.State) (string, error) {
+	url, _, err := p.loginURLAndRequestID(state)
+	return url, err
+}
+
+// LoginURLWithRequestID is the SAML-specific variant of LoginURL that
+// ALSO returns the AuthnRequest ID. Callers (cmd/api SAMLLoginHandler)
+// must store this ID in the state cookie (auth.State.SAMLRequestID) so
+// HandleCallback can pass it back to ParseResponse as the expected
+// InResponseTo. crewjam.ParseResponse with possibleRequestIDs=nil
+// REJECTS responses carrying any InResponseTo at all — which is every
+// Keycloak/Auth0 SP-initiated response, since IdPs always echo the
+// AuthnRequest ID. Without this dance, the only options are reject-all
+// (status quo before May 2026 fix) or accept-any (S7 defense gone).
+//
+// Round-tripping the ID through the HMAC-signed state cookie ties the
+// expected InResponseTo to this specific browser session — an attacker
+// without the cookie cannot forge a response that satisfies the check.
+func (p *Provider) LoginURLWithRequestID(state auth.State) (loginURL string, requestID string, err error) {
+	return p.loginURLAndRequestID(state)
+}
+
+func (p *Provider) loginURLAndRequestID(state auth.State) (string, string, error) {
 	if state.EnvUUID == "" {
-		return "", fmt.Errorf("saml: LoginURL: empty State.EnvUUID")
+		return "", "", fmt.Errorf("saml: LoginURL: empty State.EnvUUID")
 	}
 	if state.OAuthState == "" {
-		return "", fmt.Errorf("saml: LoginURL: empty State.OAuthState")
+		return "", "", fmt.Errorf("saml: LoginURL: empty State.OAuthState")
 	}
-	u, err := p.sp.MakeRedirectAuthenticationRequest(state.OAuthState)
+	// Build the AuthnRequest ourselves so we can grab its ID. This is
+	// what crewjam.MakeRedirectAuthenticationRequest does internally,
+	// minus the throwaway-the-ID step.
+	req, err := p.sp.MakeAuthenticationRequest(
+		p.sp.GetSSOBindingLocation(crewjam.HTTPRedirectBinding),
+		crewjam.HTTPRedirectBinding,
+		crewjam.HTTPPostBinding,
+	)
 	if err != nil {
-		return "", fmt.Errorf("saml: MakeRedirectAuthenticationRequest: %w", err)
+		return "", "", fmt.Errorf("saml: MakeAuthenticationRequest: %w", err)
 	}
-	return u.String(), nil
+	u, err := req.Redirect(state.OAuthState, p.sp)
+	if err != nil {
+		return "", "", fmt.Errorf("saml: AuthnRequest.Redirect: %w", err)
+	}
+	return u.String(), req.ID, nil
 }
 
 // HandleCallback consumes the SAML ACS POST and returns a
@@ -219,17 +252,31 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 
 	// (3) crewjam handles XML parsing, signature verification, all
 	// timestamp checks, audience restriction, recipient match, and
-	// InResponseTo. We pass no possibleRequestIDs because we don't
-	// (yet) track outstanding AuthnRequest IDs — InResponseTo
-	// validation is "if present, must match one of the IDs we have."
-	// Empty list means crewjam accepts unsolicited responses, which
-	// is the SP-initiated-only profile we documented. The state-cookie
-	// CSRF check above still binds the response to a specific browser.
-	assertion, err := p.sp.ParseResponse(r, nil)
+	// InResponseTo. We pass state.SAMLRequestID as the single
+	// expected request-ID so crewjam can verify InResponseTo against
+	// the AuthnRequest we minted at LoginURL time. The ID rode in via
+	// the HMAC-signed state cookie, so an attacker who can't forge
+	// the cookie can't satisfy this check — threat S7 defense.
+	//
+	// Empty state.SAMLRequestID (legacy cookies issued before the
+	// May-2026 fix landed) means we accept any InResponseTo for
+	// backward compat. The state-cookie nonce/OAuthState match is the
+	// load-bearing CSRF check; InResponseTo is defense-in-depth.
+	var possibleRequestIDs []string
+	if state.SAMLRequestID != "" {
+		possibleRequestIDs = []string{state.SAMLRequestID}
+	}
+	assertion, err := p.sp.ParseResponse(r, possibleRequestIDs)
 	if err != nil {
-		// crewjam returns a wrapped error with detailed reasons.
-		// Log the detail server-side but return only the sentinel.
-		log.Warn().Err(err).Msg("saml: ParseResponse failed")
+		// crewjam wraps the real cause in InvalidResponseError.PrivateErr
+		// and returns the opaque "Authentication failed" from Error(). Log
+		// the PrivateErr at WARN so operators can diagnose IdP / cert /
+		// audience mismatches; the client still sees only the sentinel.
+		logEvent := log.Warn().Err(err)
+		if ire, ok := err.(*crewjam.InvalidResponseError); ok && ire != nil && ire.PrivateErr != nil {
+			logEvent = logEvent.AnErr("private", ire.PrivateErr)
+		}
+		logEvent.Msg("saml: ParseResponse failed")
 		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %v", ErrParseResponse, err)
 	}
 
