@@ -1,6 +1,6 @@
 # osctrl Changelog
 
-## 🔖 Release [0.5.1](https://github.com/jmpsec/osctrl/releases/tag/v0.5.1)
+## 🔖 Release [0.5.2](https://github.com/jmpsec/osctrl/releases/tag/v0.5.2)
 
 ### 🚨 Breaking Changes
 

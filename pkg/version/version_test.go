@@ -37,9 +37,9 @@ func TestVersionDataURL(t *testing.T) {
 func TestVersionDataJSONTags(t *testing.T) {
 	data := VersionData{
 		OsqueryVersion:   "5.23.0",
-		LatestRelease:    "0.5.1",
-		SuggestedRelease: "0.5.1",
-		MoreInformation:  "https://docs.example.com/releases/0.5.1",
+		LatestRelease:    "0.5.2",
+		SuggestedRelease: "0.5.2",
+		MoreInformation:  "https://docs.example.com/releases/0.5.2",
 	}
 
 	encoded, err := json.Marshal(data)
@@ -65,7 +65,7 @@ func TestRetrieveVersionDataSuccess(t *testing.T) {
 			assert.Equal(t, VersionDataURL, req.URL.String())
 			assert.NotNil(t, req.Context())
 
-			payload := `{"latestRelease":"0.5.1","osqueryVersion":"5.23.0","suggestedRelease":"0.5.1","moreInformation":"https://docs.example.com/releases/0.5.1"}`
+			payload := `{"latestRelease":"0.5.2","osqueryVersion":"5.23.0","suggestedRelease":"0.5.2","moreInformation":"https://docs.example.com/releases/0.5.2"}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(strings.NewReader(payload)),
@@ -77,10 +77,10 @@ func TestRetrieveVersionDataSuccess(t *testing.T) {
 	data, err := RetrieveVersionData(VersionDataURL)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
-	assert.Equal(t, "0.5.1", data.LatestRelease)
+	assert.Equal(t, "0.5.2", data.LatestRelease)
 	assert.Equal(t, "5.23.0", data.OsqueryVersion)
-	assert.Equal(t, "0.5.1", data.SuggestedRelease)
-	assert.Equal(t, "https://docs.example.com/releases/0.5.1", data.MoreInformation)
+	assert.Equal(t, "0.5.2", data.SuggestedRelease)
+	assert.Equal(t, "https://docs.example.com/releases/0.5.2", data.MoreInformation)
 }
 
 func TestRetrieveVersionDataUnexpectedStatus(t *testing.T) {
