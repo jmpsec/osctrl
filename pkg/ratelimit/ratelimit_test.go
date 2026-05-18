@@ -106,3 +106,77 @@ func TestBucketCapOverflow(t *testing.T) {
 		t.Fatalf("bucket map exceeded cap: size=%d, cap=2", size)
 	}
 }
+
+// TestKeyByIPIgnoresForwardingHeaders is the regression for the
+// pentest finding: rotating X-Forwarded-For / X-Real-IP must NOT
+// produce different rate-limit keys. The key always derives from the
+// TCP peer (RemoteAddr) so an attacker behind an edge proxy that
+// appends rather than replaces the XFF chain cannot rotate buckets
+// per request to defeat the limiter.
+func TestKeyByIPIgnoresForwardingHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		xff  string
+		xrip string
+	}{
+		{"no headers", "", ""},
+		{"single XFF", "1.2.3.4", ""},
+		{"chained XFF", "1.2.3.4, 5.6.7.8, 9.10.11.12", ""},
+		{"X-Real-IP", "", "98.76.54.32"},
+		{"both", "1.2.3.4", "98.76.54.32"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/login", nil)
+			r.RemoteAddr = "203.0.113.5:54321"
+			if tc.xff != "" {
+				r.Header.Set("X-Forwarded-For", tc.xff)
+			}
+			if tc.xrip != "" {
+				r.Header.Set("X-Real-IP", tc.xrip)
+			}
+			got := KeyByIP(r)
+			if got != "203.0.113.5" {
+				t.Fatalf("KeyByIP should ignore forwarding headers, got %q want 203.0.113.5", got)
+			}
+		})
+	}
+}
+
+// TestMiddlewareXFFRotationDoesNotBypass is the end-to-end form of the
+// regression: even when an attacker rotates X-Forwarded-For across
+// requests from the same TCP peer, the limiter must still rate-limit
+// after `burst` requests.
+func TestMiddlewareXFFRotationDoesNotBypass(t *testing.T) {
+	l := New(2, time.Second, time.Minute) // burst=2
+	called := 0
+	h := l.HTTPMiddleware(KeyByIP, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called++
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	doReq := func(xff string) int {
+		r := httptest.NewRequest(http.MethodPost, "/login", nil)
+		r.RemoteAddr = "203.0.113.5:1234" // same TCP peer every time
+		r.Header.Set("X-Forwarded-For", xff)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+
+	// Burst of 2 — both allowed.
+	for i := 0; i < 2; i++ {
+		if got := doReq("attacker-spoof-" + string(rune('A'+i))); got != http.StatusOK {
+			t.Fatalf("request %d should pass within burst, got %d", i+1, got)
+		}
+	}
+	// Burst exhausted. Attacker rotates XFF; should still be 429.
+	for i := 0; i < 5; i++ {
+		code := doReq("attacker-rotated-" + string(rune('A'+i)))
+		if code != http.StatusTooManyRequests {
+			t.Fatalf("attacker XFF rotation must not bypass limiter (req %d got %d)", i+1, code)
+		}
+	}
+	if called != 2 {
+		t.Fatalf("inner handler called %d times, want 2 (only the burst)", called)
+	}
+}

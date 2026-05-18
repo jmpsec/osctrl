@@ -229,6 +229,27 @@ func remoteIP(r *http.Request) string {
 	return host
 }
 
+// RemoteIP returns the direct connection peer's IP, ignoring every
+// forwarding header. Unlike GetIP, this never trusts X-Forwarded-For
+// or X-Real-IP even when --trusted-proxies is configured.
+//
+// Use RemoteIP for any key that an attacker could weaponize by
+// rotating header values — chiefly rate-limit bucket keys. A typical
+// edge proxy (nginx, ELB, Cloudflare with default settings) appends
+// to X-Forwarded-For rather than replacing it, so when GetIP walks
+// right-to-left looking for the first untrusted hop it lands on an
+// attacker-controlled value. RemoteIP defeats that bypass by keying
+// on the TCP peer the trusted proxy itself terminates against, which
+// the attacker cannot influence.
+//
+// Use GetIP for audit-log fields and anything where the operator
+// wants to see the "real" client IP even though it transits a proxy.
+// The trade-off is documented: audit accuracy vs. rate-limit
+// authenticity.
+func RemoteIP(r *http.Request) string {
+	return remoteIP(r)
+}
+
 // GetIP returns the client IP for r. When trusted-proxies are configured
 // AND r.RemoteAddr's IP is inside one of them, the right-most untrusted
 // hop from X-Forwarded-For (or X-Real-IP) is used (per RFC 7239 §5.2 the
