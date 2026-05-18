@@ -165,6 +165,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initJWTFlags(params)...)
 	allFlags = append(allFlags, initOIDCFlags(params)...)
+	allFlags = append(allFlags, initSAMLFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
@@ -753,6 +754,45 @@ func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Enable PKCE (S256) for the OIDC Authorization Code flow",
 			Sources:     cli.EnvVars("OIDC_USE_PKCE"),
 			Destination: &params.OIDC.UsePKCE,
+		},
+	}
+}
+
+// initSAMLFlags initializes SAML flags for osctrl-api. Mirrors the OIDC
+// flag shape — operators flip --saml-enabled, point us at the IdP's
+// metadata URL, and the rest comes from the metadata document (signing
+// keys, SSO endpoint, etc.).
+func initSAMLFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "saml-enabled",
+			Usage:       "Enable the SAML 2.0 federated-login surface on osctrl-api (osctrl-admin uses --auth=saml instead and ignores this flag)",
+			Sources:     cli.EnvVars("SAML_ENABLED"),
+			Destination: &params.SAML.Enabled,
+		},
+		&cli.StringFlag{
+			Name:        "saml-idp-metadata-url",
+			Usage:       "URL to the IdP's SAML metadata document — fetched once at startup, signing certs + SSO endpoint discovered from it",
+			Sources:     cli.EnvVars("SAML_IDP_METADATA_URL"),
+			Destination: &params.SAML.MetaDataURL,
+		},
+		&cli.StringFlag{
+			Name:        "saml-entity-id",
+			Usage:       "SP entity ID — what the IdP knows us by (conventionally the metadata URL)",
+			Sources:     cli.EnvVars("SAML_ENTITY_ID"),
+			Destination: &params.SAML.EntityID,
+		},
+		&cli.StringFlag{
+			Name:        "saml-acs-url",
+			Usage:       "Assertion Consumer Service URL — where the IdP POSTs SAMLResponse (must end with /api/v1/auth/saml/acs)",
+			Sources:     cli.EnvVars("SAML_ACS_URL"),
+			Destination: &params.SAML.ACSURL,
+		},
+		&cli.BoolFlag{
+			Name:        "saml-jit-provision",
+			Usage:       "Auto-create osctrl users on first SAML login (as non-admin)",
+			Sources:     cli.EnvVars("SAML_JIT_PROVISION"),
+			Destination: &params.SAML.JITProvision,
 		},
 	}
 }

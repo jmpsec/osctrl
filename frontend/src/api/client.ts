@@ -169,11 +169,14 @@ export async function listLoginEnvironments(): Promise<LoginEnvironment[]> {
 // AuthMethod mirrors the API's AuthMethod shape. `type` is the
 // discriminator; the SPA renders a different control per type.
 //   "password" — the existing username/password form
-//   "oidc"     — a "Continue with SSO" button linking to LoginURL
+//   "oidc"     — a "Continue with SSO (OIDC)" button linking to LoginURL
+//   "saml"     — a "Continue with SSO (SAML)" button linking to LoginURL
 //
-// Order is "password first" per the API contract.
+// Order is "password first" per the API contract. OIDC and SAML can
+// both be advertised simultaneously when the deployment has both
+// providers enabled — the SPA renders one button per method.
 export type AuthMethod = {
-  type: 'password' | 'oidc';
+  type: 'password' | 'oidc' | 'saml';
   loginUrl: string;
 };
 
