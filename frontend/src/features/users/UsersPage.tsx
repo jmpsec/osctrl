@@ -10,6 +10,7 @@ import {
   deleteUserToken,
   createUser,
   deleteUser,
+  adminResetUserPassword,
   getMe,
 } from '$/api/users';
 import type { BulkSetReport } from '$/api/users';
@@ -27,7 +28,8 @@ type ModalMode =
   | { kind: 'permissions'; user: AdminUser }
   | { kind: 'token'; user: AdminUser }
   | { kind: 'create' }
-  | { kind: 'delete'; user: AdminUser };
+  | { kind: 'delete'; user: AdminUser }
+  | { kind: 'reset-pw'; user: AdminUser };
 
 export function UsersPage() {
   const navigate = useNavigate();
@@ -214,6 +216,13 @@ export function UsersPage() {
                     >
                       Token…
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setModal({ kind: 'reset-pw', user: u })}
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                    >
+                      Reset password…
+                    </button>
                     {me?.username !== u.username && (
                       <button
                         type="button"
@@ -254,6 +263,13 @@ export function UsersPage() {
           user={modal.user}
           onClose={() => setModal({ kind: 'closed' })}
           onDeleted={invalidate}
+        />
+      )}
+      {modal.kind === 'reset-pw' && (
+        <ResetPasswordModal
+          user={modal.user}
+          onClose={() => setModal({ kind: 'closed' })}
+          onSaved={() => setModal({ kind: 'closed' })}
         />
       )}
     </div>
@@ -895,6 +911,19 @@ function DeleteUserModal({
     },
   });
 
+  // Belt-and-braces confirmation: even with the modal's visual
+  // confirm step, fire a browser-native window.confirm before the
+  // mutation actually runs. Cheap insurance against any future
+  // accidental-fire path (focused button + keystroke, autofocus,
+  // etc.) since "user deleted by mistake" is non-recoverable.
+  function confirmDelete() {
+    const ok = window.confirm(
+      `Permanently delete operator "${user.username}"?\n\nThis cannot be undone.`,
+    );
+    if (!ok) return;
+    mutation.mutate();
+  }
+
   return (
     <ModalShell
       title={`Delete operator — ${user.username}`}
@@ -933,7 +962,7 @@ function DeleteUserModal({
           <button
             type="button"
             disabled={mutation.isPending}
-            onClick={() => mutation.mutate()}
+            onClick={confirmDelete}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
               'bg-[color:var(--danger)] text-white hover:opacity-90',
@@ -944,6 +973,126 @@ function DeleteUserModal({
           </button>
         </div>
       </div>
+    </ModalShell>
+  );
+}
+
+// ====================================================================
+// ResetPasswordModal — super-admin "set someone else's password"
+// flow. Posts to UserActionHandler's edit case which calls
+// h.Users.ChangePassword. The user themself can still self-change
+// at /_app/profile with their old password; this is the operator-
+// recovery path for "alice forgot her password."
+// ====================================================================
+function ResetPasswordModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (password !== confirm) throw new Error('Passwords do not match.');
+      if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+      return adminResetUserPassword(user.username, password);
+    },
+    onSuccess: () => {
+      onSaved();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Password change failed');
+    },
+  });
+
+  return (
+    <ModalShell
+      title={`Reset password — ${user.username}`}
+      titleId="reset-pw-modal-title"
+      onClose={onClose}
+    >
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          setErr(null);
+          mutation.mutate();
+        }}
+        className="space-y-3"
+      >
+        <p className="text-xs text-[color:var(--text-3)]">
+          Setting a new password for{' '}
+          <strong className="text-[color:var(--text-1)]">{user.username}</strong>.
+          The user will need to log in with the new password; any existing API
+          tokens stay valid until explicitly revoked.
+        </p>
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
+            New password
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+            required
+            minLength={8}
+            placeholder="At least 8 characters"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
+            Confirm new password
+          </label>
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+
+        {err && (
+          <p
+            role="alert"
+            className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-2 rounded-md"
+          >
+            {err}
+          </p>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || !password || !confirm}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {mutation.isPending ? 'Saving…' : 'Set password'}
+          </button>
+        </div>
+      </form>
     </ModalShell>
   );
 }
