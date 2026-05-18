@@ -800,6 +800,18 @@ func initSAMLFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SAML_USERNAME_ATTRIBUTE"),
 			Destination: &params.SAML.UsernameAttribute,
 		},
+		&cli.StringFlag{
+			Name:        "saml-signing-cert",
+			Usage:       "Path to PEM cert used to sign outbound AuthnRequests (paired with --saml-signing-key); empty disables AuthnRequest signing",
+			Sources:     cli.EnvVars("SAML_SIGNING_CERT"),
+			Destination: &params.SAML.SigningCertPath,
+		},
+		&cli.StringFlag{
+			Name:        "saml-signing-key",
+			Usage:       "Path to PEM RSA private key used to sign outbound AuthnRequests (paired with --saml-signing-cert)",
+			Sources:     cli.EnvVars("SAML_SIGNING_KEY"),
+			Destination: &params.SAML.SigningKeyPath,
+		},
 		&cli.BoolFlag{
 			Name:        "saml-force-authn",
 			Usage:       "Force re-authentication at the IdP on every SAML login (defaults true; SLO substitute since v1 has no SAML SLO)",

@@ -103,6 +103,29 @@ type Config struct {
 	// first successful login. Matches the OIDC field semantics.
 	JITProvision bool
 
+	// SigningCertPath + SigningKeyPath are PEM paths to the SP's
+	// signing certificate + private key. When both are set, the
+	// provider signs every outbound AuthnRequest with RSA-SHA256,
+	// advertises AuthnRequestsSigned="true" in SP metadata, and
+	// includes the public cert in the metadata's KeyDescriptor.
+	//
+	// Threat closed by signing: an attacker who can MITM the
+	// browser→IdP redirect chain (malicious extension, hostile
+	// network) cannot tamper with the AuthnRequest's fields
+	// (ForceAuthn, AssertionConsumerServiceURL, etc) without
+	// invalidating the signature — the IdP's verification rejects
+	// the mutated request. Without signing the realistic attack
+	// surface is narrow (the HMAC state cookie binds the eventual
+	// response back to the same browser, so the attacker can't
+	// redirect responses to themselves) but downgrade attacks on
+	// the request itself become impossible.
+	//
+	// Empty values disable signing (D5 in the spec — v1 default
+	// for operators who don't want to manage an SP signing key).
+	// Production deployments should set them.
+	SigningCertPath string
+	SigningKeyPath  string
+
 	// ForceAuthn, when true, sets ForceAuthn="true" on every
 	// AuthnRequest we emit. Keycloak / Auth0 / Okta will then
 	// re-prompt the user for credentials even if their IdP-side SSO
@@ -173,6 +196,12 @@ func (c Config) Validate() error {
 	}
 	if c.ReplayWindow < 0 {
 		return errors.New("saml: ReplayWindow must be non-negative (minutes)")
+	}
+	// Both signing fields must be set together or both unset. A
+	// half-configured pair (e.g. cert path set, key path empty) is
+	// always a config typo, not a deliberate state.
+	if (c.SigningCertPath == "") != (c.SigningKeyPath == "") {
+		return errors.New("saml: SigningCertPath and SigningKeyPath must both be set or both be empty")
 	}
 	return nil
 }
