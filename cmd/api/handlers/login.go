@@ -19,41 +19,66 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	// Extract environment
+	// Extract environment. A missing env path-param still flows through
+	// the normal failure path below so a probe of POST /api/v1/login//
+	// returns the same opaque response as a successful URL with bad
+	// creds; pre-May 2026 a missing env returned 400 with a distinct
+	// "error with environment" message which let an attacker tell
+	// "you used the wrong URL shape" apart from "you used a valid env
+	// name but wrong creds."
 	envVar := r.PathValue("env")
-	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		return
-	}
-	// Resolve environment by name OR UUID. The SPA login form lets users type
-	// the env name ("dev", "prod") because UUIDs are not memorable; the API
-	// must accept either. Get() uses `name = ? OR uuid = ?` so both shapes
-	// resolve to the same row. A miss returns 404, not 500.
-	env, err := h.Envs.Get(envVar)
-	if err != nil {
-		apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
-		return
-	}
 	var l types.ApiLoginRequest
-	// Parse request JSON body
+	// Parse request JSON body. Body-parse failures are honest 4xx —
+	// they cannot be used to enumerate env names (the failure mode is
+	// independent of envVar).
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
-		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	// Check credentials. Audit-log every credential failure so SoC tooling
-	// has a stream to alert on (brute-force, password spray). The IP comes
-	// from utils.GetIP so X-Real-IP / X-Forwarded-For behind a reverse
-	// proxy is honored.
+	// Resolve environment by name OR UUID. The SPA login form lets users
+	// type the env name ("dev", "prod") because UUIDs are not memorable;
+	// the API must accept either. Get() uses `name = ? OR uuid = ?` so
+	// both shapes resolve to the same row.
+	//
+	// Env-not-found and bad-credentials and missing-env-permission ALL
+	// produce the SAME response: 403 "invalid credentials". Pre-May 2026
+	// the three paths had distinct status codes / messages, letting an
+	// anonymous attacker enumerate valid env names by observing 404 vs
+	// 403, and then enumerate valid usernames by observing which
+	// (env+username) pair got "no access" vs "invalid credentials".
+	// We always run CheckLoginCredentials first so the bcrypt-cost
+	// timing equalization (see pkg/users.dummyHash) also covers the
+	// env-miss branch — without it, env-miss would short-circuit at
+	// 5ms while bad-creds takes ~210ms (10–40× timing oracle on env
+	// existence). The actual env row, if any, is looked up only after
+	// credentials pass; the failure path doesn't care.
 	access, user := h.Users.CheckLoginCredentials(l.Username, l.Password)
 	if !access {
+		// Audit-log distinguishes the cause server-side so SoC tooling
+		// still gets actionable signal; the client always sees the
+		// same opaque error.
 		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), "invalid credentials")
-		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, err)
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
 		return
 	}
-	// Check if user has access to this environment
+	if envVar == "" {
+		// Missing env path-param: indistinguishable from bad creds
+		// to the client. Internal log records the cause.
+		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), "missing env in URL")
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		// Non-existent env: same opaque response. Logged distinctly.
+		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), fmt.Sprintf("env not found: %q", envVar))
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
+		return
+	}
+	// Env exists and creds passed. Check env permission.
 	if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.UUID) {
 		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), fmt.Sprintf("no admin access to env %s", env.UUID))
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
 		return
 	}
 	// Decide whether to reuse the stored token or mint a fresh one. Re-issue
