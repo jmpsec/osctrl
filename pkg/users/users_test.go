@@ -490,3 +490,142 @@ func TestClearTokenAlsoClearsCSRF(t *testing.T) {
 	err := manager.ClearToken("bob")
 	assert.NoError(t, err)
 }
+
+// TestCheckLoginCredentials_UnknownUserStillReturnsFalse confirms that
+// the dummyHash compare introduced for timing-leak defense does NOT
+// accidentally turn an unknown-user request into a successful login.
+// The compare result must be discarded; the function returns false.
+func TestCheckLoginCredentials_UnknownUserStillReturnsFalse(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("doesNotExist", 1).
+		WillReturnError(gorm.ErrRecordNotFound)
+
+	access, user := manager.CheckLoginCredentials("doesNotExist", "any-password")
+	assert.Equal(t, false, access)
+	assert.Equal(t, AdminUser{}, user)
+}
+
+// TestCheckLoginCredentials_TimingEqualization asserts the
+// username-enumeration timing defense: the wall-clock time of
+// "valid user, wrong password" (real bcrypt compare) and "unknown
+// user" (dummy bcrypt compare) must be within 2x of each other.
+//
+// Before the fix the ratio was ~10-15x (pentest finding: 15-25ms vs
+// 300ms). The threshold is loose enough that GC pauses or scheduler
+// jitter on CI won't flake the test, but tight enough that a
+// regression (e.g. someone deletes the dummyHash compare) jumps the
+// ratio well past 2x and fails the test.
+//
+// Skipped under -short because the bcrypt-cost-12 hash budgets ~300ms
+// per call and the test runs N iterations.
+func TestCheckLoginCredentials_TimingEqualization(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing measurement; skipped under -short")
+	}
+	manager, mock := setupTestManager(t)
+	hashed, err := manager.HashPasswordWithSalt("realPassword")
+	assert.NoError(t, err)
+
+	const iters = 4
+	// Each iteration burns ~300ms of bcrypt work x 2 paths x iters,
+	// so the test runs in ~2-3 seconds locally.
+	for i := 0; i < iters; i++ {
+		// valid-user-wrong-password path
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+			WithArgs("knownUser", 1).
+			WillReturnRows(sqlmock.NewRows([]string{"email", "username", "pass_hash", "admin", "environment_id", "service"}).
+				AddRow("aa@bb.com", "knownUser", hashed, true, 1, false))
+		// unknown-user path
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+			WithArgs("unknownUser", 1).
+			WillReturnError(gorm.ErrRecordNotFound)
+	}
+
+	knownTimes := make([]time.Duration, iters)
+	unknownTimes := make([]time.Duration, iters)
+	for i := 0; i < iters; i++ {
+		t0 := time.Now()
+		manager.CheckLoginCredentials("knownUser", "wrong-password")
+		knownTimes[i] = time.Since(t0)
+		t1 := time.Now()
+		manager.CheckLoginCredentials("unknownUser", "wrong-password")
+		unknownTimes[i] = time.Since(t1)
+	}
+
+	medKnown := timingMedian(knownTimes)
+	medUnknown := timingMedian(unknownTimes)
+	ratio := float64(medKnown) / float64(medUnknown)
+	if ratio < 1 {
+		ratio = 1 / ratio
+	}
+	t.Logf("known=%v unknown=%v ratio=%.2fx", medKnown, medUnknown, ratio)
+	if ratio > 2.0 {
+		t.Errorf("timing-leak regression: known=%v unknown=%v ratio=%.2fx (want < 2.0x)", medKnown, medUnknown, ratio)
+	}
+}
+
+// timingMedian returns the median of a slice of durations. Robust to a
+// single GC pause or scheduling stutter that would skew the mean.
+func timingMedian(xs []time.Duration) time.Duration {
+	cp := make([]time.Duration, len(xs))
+	copy(cp, xs)
+	// insertion sort — tiny inputs
+	for i := 1; i < len(cp); i++ {
+		for j := i; j > 0 && cp[j-1] > cp[j]; j-- {
+			cp[j-1], cp[j] = cp[j], cp[j-1]
+		}
+	}
+	return cp[len(cp)/2]
+}
+
+// TestCreateTokenIsNonDeterministic locks in the jti-claim defense against
+// silent token-rotation failure. Without a per-token nonce, two CreateToken
+// calls for the same user in the same second produce identical JWT strings
+// (HMAC-SHA256 is deterministic; the only varying claim was ExpiresAt at
+// 1s resolution). That would mean LoginHandler's "mint fresh + UpdateToken"
+// rotation silently no-ops on rapid re-login — the stored APIToken is
+// "rotated" to the same value, so a stolen copy of the previous token
+// keeps validating against the unchanged stored value.
+//
+// The fix is the jti claim in CreateToken (16 random bytes hex). This test
+// pins it: two successive issuances MUST produce distinct token strings.
+func TestCreateTokenIsNonDeterministic(t *testing.T) {
+	manager, _ := setupTestManager(t)
+	t1, _, err1 := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err1)
+	t2, _, err2 := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err2)
+	if t1 == t2 {
+		t.Fatalf("CreateToken returned identical strings on successive calls — jti claim missing or zero")
+	}
+}
+
+// TestCreateTokenStampsJTI explicitly inspects the parsed claims to confirm
+// the jti field is set and that two issuances carry different jti values.
+// Belt-and-braces on top of TestCreateTokenIsNonDeterministic: if a future
+// contributor changes the claims shape such that uniqueness comes from a
+// different field, this test still asserts the jti they may have removed.
+func TestCreateTokenStampsJTI(t *testing.T) {
+	manager, _ := setupTestManager(t)
+	secret := "test-secret-must-be-at-least-32-bytes-long"
+
+	t1, _, err := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err)
+	c1, ok := manager.CheckToken(secret, t1)
+	assert.True(t, ok)
+	assert.NotEmpty(t, c1.ID, "first token has empty jti")
+
+	t2, _, err := manager.CreateToken("alice", "osctrl-api", 1)
+	assert.NoError(t, err)
+	c2, ok := manager.CheckToken(secret, t2)
+	assert.True(t, ok)
+	assert.NotEmpty(t, c2.ID, "second token has empty jti")
+
+	if c1.ID == c2.ID {
+		t.Fatalf("jti collision across two CreateToken calls: %q", c1.ID)
+	}
+}

@@ -56,31 +56,26 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
 		return
 	}
-	// Decide whether to reuse the stored token or mint a fresh one. Re-issue
-	// when there's no token, when the stored token has already expired (the
-	// reuse path used to return 500 "token already expired" — a regression
-	// that locked users out after their first session expired), or when the
-	// stored token is within 60s of expiring so we don't hand out something
-	// that will fail mid-request.
-	var tokenExp time.Time
-	now := time.Now()
-	const freshnessWindow = 60 * time.Second
-	needsRefresh := user.APIToken == "" || user.TokenExpire.Before(now.Add(freshnessWindow))
-	if needsRefresh {
-		var token string
-		token, tokenExp, err = h.Users.CreateToken(l.Username, h.ServiceName, l.ExpHours)
-		if err != nil {
-			apiErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-			return
-		}
-		if err = h.Users.UpdateToken(l.Username, token, tokenExp); err != nil {
-			apiErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
-			return
-		}
-		user.APIToken = token
-	} else {
-		tokenExp = user.TokenExpire
+	// Always mint a fresh JWT on successful login and overwrite the stored
+	// APIToken. The auth middleware in cmd/api/auth.go compares every
+	// presented JWT against the stored APIToken (constant-time), so once
+	// UpdateToken overwrites, any previously-issued JWT for this user
+	// immediately fails 401 — even though it is still cryptographically
+	// valid against the secret. This is the revocation primitive that
+	// makes re-login (and logout, below) capable of invalidating a
+	// stolen token. The previous "reuse if >60s of life left" optimisation
+	// silently undid that revocation: re-login from a new device returned
+	// the SAME JWT, leaving the stolen copy valid.
+	token, tokenExp, err := h.Users.CreateToken(l.Username, h.ServiceName, l.ExpHours)
+	if err != nil {
+		apiErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
+		return
 	}
+	if err = h.Users.UpdateToken(l.Username, token, tokenExp); err != nil {
+		apiErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
+		return
+	}
+	user.APIToken = token
 	// Generate a CSRF token: 16 random bytes encoded as 32 hex chars.
 	// This cookie is NOT HttpOnly so the SPA can read it and echo it back
 	// via the X-CSRF-Token header on mutating requests.

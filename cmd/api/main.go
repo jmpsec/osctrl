@@ -357,17 +357,16 @@ func osctrlAPIService() {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
-	// Read-only pre-auth endpoints (env list for the login picker, sample
-	// query/carve starter packs). These reveal no secrets and aren't a
-	// brute-force vector, so they get a much more permissive limiter — the
-	// SPA legitimately fetches them on every login-page render, and React
-	// strict-mode / browser reloads easily exceed a 10/min budget. We still
-	// rate-limit to block low-effort scanning probes, just at 60/min/IP.
+	// Read-only pre-auth endpoints (env list for the login picker).
+	// The env list is the one piece of data the login page legitimately
+	// needs before the user has a session, so it stays pre-auth —
+	// rate-limited at 60/min/IP to block low-effort scanning probes.
+	// React strict-mode / browser reloads easily exceed 10/min during
+	// normal use, so the preAuth budget is more permissive than the
+	// credential-spray budget on /login.
 	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
 	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiQueriesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.QuerySamplesHandler)))
-	muxAPI.Handle("GET "+_apiPath(apiCarvesPath)+"/samples", preAuthRateLimit(http.HandlerFunc(handlersApi.CarveSamplesHandler)))
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(
@@ -426,6 +425,15 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
+		// Sample-templates library (post-auth). Pre-auth exposure
+		// of the SQL-template starter pack uniquely fingerprints
+		// the deployment as osctrl and reveals operator-internal
+		// data to anonymous callers; both are useless to the
+		// SPA's only legitimate consumer (the post-login
+		// queries/new form) at pre-auth time.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiQueriesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.QuerySamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiQueriesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AllQueriesShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -471,6 +479,14 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.OsqueryTablesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: carves by environment
 	if flagParams.Osquery.Carve {
+		// Sample carve-targets library (post-auth). The carve-path
+		// list is a shopping list of high-value exfiltration
+		// locations (/etc/passwd, \Windows\System32\config\SAM,
+		// browser keychains, etc.) that anonymous callers have no
+		// legitimate reason to see.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/samples",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveSamplesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

@@ -1,6 +1,8 @@
 package users
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -97,6 +99,33 @@ func (u *UserManager) WithJWT(jwtconfig *config.YAMLConfigurationJWT) *UserManag
 // 2026 commodity-CPU recommendation; bcrypt.DefaultCost is 10.
 const BcryptCost = 12
 
+// dummyHash is a bcrypt hash generated at package init with the current
+// BcryptCost, used by CheckLoginCredentials's unknown-user path to keep
+// the wall-clock time of "valid user, wrong password" and "no such
+// user" indistinguishable. Without it, the DB-miss short-circuit
+// returned in 15-25 ms while the valid-user path ran bcrypt at ~300 ms,
+// giving an attacker a ~10x timing oracle for username enumeration.
+// The hash content doesn't matter; CompareHashAndPassword always
+// returns ErrMismatchedHashAndPassword for a non-matching password,
+// but the comparison burns the bcrypt-cost work regardless.
+//
+// We compute at init rather than per-call: GenerateFromPassword is
+// expensive (the same ~300ms we're amortizing) and produces hashes
+// non-deterministically (salted), so re-using a single hash is fine
+// and avoids a fresh cost on every unknown-user attempt.
+var dummyHash []byte
+
+func init() {
+	// Failure here would mean bcrypt is unusable on this platform —
+	// the application can't authenticate anyone anyway. Log and
+	// proceed with a nil dummyHash; CheckLoginCredentials handles
+	// the nil case below.
+	h, err := bcrypt.GenerateFromPassword([]byte("osctrl-timing-equalizer-dummy"), BcryptCost)
+	if err == nil {
+		dummyHash = h
+	}
+}
+
 // HashTextWithSalt to hash text before store it
 func (m *UserManager) HashTextWithSalt(text string) (string, error) {
 	saltedBytes := []byte(text)
@@ -123,6 +152,21 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	// Check if we should include service users
 	user, err := m.Get(username)
 	if err != nil {
+		// Username-enumeration timing-leak defense: run a bcrypt
+		// compare against the precomputed dummyHash so this branch
+		// burns the same wall-clock time as the valid-user path's
+		// CompareHashAndPassword below. Without this, the DB-miss
+		// short-circuit returned ~15-25ms vs ~300ms for valid users,
+		// letting an attacker enumerate which usernames exist on the
+		// system by measuring response time. The result is
+		// discarded — we always return failure here.
+		//
+		// dummyHash will be nil only if bcrypt init failed (platform
+		// crypto broken); in that case there's nothing useful we can
+		// do to equalize timing, so skip and accept the leak.
+		if dummyHash != nil {
+			_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
+		}
 		return false, AdminUser{}
 	}
 	// Check for hash matching
@@ -146,7 +190,13 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	return true, user
 }
 
-// CreateToken to create a new JWT token for a given user
+// CreateToken to create a new JWT token for a given user. Stamps a random
+// jti (JWT ID) on every token so two issuances for the same user — even in
+// the same second with the same expiry — produce distinct token strings.
+// Without the jti, claims are deterministic (username + ExpiresAt + Issuer)
+// and HMAC-SHA256 is deterministic for the same key+payload: re-issuing in
+// the same second would return the same bytes, silently undoing token
+// rotation. The jti is a 16-byte random hex string.
 func (m *UserManager) CreateToken(username, issuer string, expHours int) (string, time.Time, error) {
 	if m.JWTConfig == nil {
 		return "", time.Time{}, fmt.Errorf("CreateToken called on UserManager without JWT config — caller must initialize via WithJWT")
@@ -156,12 +206,18 @@ func (m *UserManager) CreateToken(username, issuer string, expHours int) (string
 		tDuration = time.Duration(m.JWTConfig.HoursToExpire)
 	}
 	expirationTime := time.Now().Add(time.Hour * tDuration)
+	jtiBytes := make([]byte, 16)
+	if _, err := cryptorand.Read(jtiBytes); err != nil {
+		return "", time.Time{}, fmt.Errorf("error generating jti: %w", err)
+	}
+	jti := hex.EncodeToString(jtiBytes)
 	// Create the JWT claims, which includes the username, level and expiry time
 	claims := &TokenClaims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    issuer,
+			ID:        jti,
 		},
 	}
 	// Declare the token with the algorithm used for signing, and the claims
