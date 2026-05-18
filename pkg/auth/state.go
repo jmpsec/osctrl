@@ -66,10 +66,18 @@ var (
 
 // stateClaims is the JWT body for the state cookie. Wrapping
 // jwt.RegisteredClaims gives us iss/aud/exp/nbf/iat for free.
+//
+// Backward compatibility: older state cookies issued before the
+// state/nonce split do not carry the OAuthState claim. ParseStateCookie
+// MUST tolerate that and fall back to the Nonce value for OAuthState
+// in those cases — otherwise an in-flight login at upgrade time would
+// fail with ErrStateInvalid. The transition window is bounded by the
+// 10-minute StateCookieTTL.
 type stateClaims struct {
-	EnvUUID  string `json:"env"`
-	Nonce    string `json:"nonce"`
-	Verifier string `json:"v,omitempty"`
+	EnvUUID    string `json:"env"`
+	Nonce      string `json:"nonce"`
+	OAuthState string `json:"os,omitempty"`
+	Verifier   string `json:"v,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -97,11 +105,23 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 	if state.Nonce == "" {
 		return fmt.Errorf("auth: IssueStateCookie: empty Nonce")
 	}
+	if state.OAuthState == "" {
+		return fmt.Errorf("auth: IssueStateCookie: empty OAuthState")
+	}
+	if state.OAuthState == state.Nonce {
+		// Defense in depth: refuse to encode a State that would
+		// reuse a single random value across both protocol slots,
+		// even if a caller accidentally aliased them. The pentest
+		// finding that triggered the split (May 2026) called this
+		// out specifically.
+		return fmt.Errorf("auth: IssueStateCookie: OAuthState and Nonce must be independent values")
+	}
 	now := time.Now().UTC()
 	claims := stateClaims{
-		EnvUUID:  state.EnvUUID,
-		Nonce:    state.Nonce,
-		Verifier: state.Verifier,
+		EnvUUID:    state.EnvUUID,
+		Nonce:      state.Nonce,
+		OAuthState: state.OAuthState,
+		Verifier:   state.Verifier,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    stateJWTIssuer,
 			Audience:  jwt.ClaimStrings{stateJWTAudience},
@@ -186,10 +206,20 @@ func ParseStateCookie(r *http.Request, secret []byte) (State, error) {
 	if strings.TrimSpace(claims.EnvUUID) == "" || strings.TrimSpace(claims.Nonce) == "" {
 		return State{}, ErrStateInvalid
 	}
+	// Backward-compat: legacy cookies issued before the state/nonce
+	// split lack the `os` claim. Fall back to Nonce so an in-flight
+	// login at upgrade time still completes; the upgraded provider
+	// will issue split cookies on the next login. The transition
+	// window is bounded by StateCookieTTL (10 minutes).
+	oauthState := claims.OAuthState
+	if oauthState == "" {
+		oauthState = claims.Nonce
+	}
 	return State{
-		EnvUUID:  claims.EnvUUID,
-		Nonce:    claims.Nonce,
-		Verifier: claims.Verifier,
+		EnvUUID:    claims.EnvUUID,
+		Nonce:      claims.Nonce,
+		OAuthState: oauthState,
+		Verifier:   claims.Verifier,
 	}, nil
 }
 

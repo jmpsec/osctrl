@@ -110,9 +110,20 @@ func (h *HandlersApi) OIDCLoginHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "oidc nonce error", http.StatusInternalServerError, err)
 		return
 	}
+	// Independent random value for the OAuth2 `state` parameter.
+	// Keeping it distinct from the OIDC `nonce` is the
+	// defense-in-depth split mandated after the May 2026 pentest
+	// finding: a leak of either via Referer / log / proxy buffer
+	// must not compromise the other.
+	oauthState, err := auth.NewNonce()
+	if err != nil {
+		apiErrorResponse(w, "oidc state error", http.StatusInternalServerError, err)
+		return
+	}
 	state := auth.State{
-		EnvUUID: "api", // osctrl-api is single-tenant for OIDC; sentinel value only
-		Nonce:   nonce,
+		EnvUUID:    "api", // osctrl-api is single-tenant for OIDC; sentinel value only
+		Nonce:      nonce,
+		OAuthState: oauthState,
 	}
 	if oidcUsePKCE {
 		verifier, err := auth.NewNonce()

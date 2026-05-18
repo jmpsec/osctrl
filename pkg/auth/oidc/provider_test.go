@@ -187,10 +187,13 @@ func goodConfig(idp *fakeIdP) Config {
 // goodState returns a State that lines up with the IdP's defaults.
 // EnvUUID + Nonce are what HandleCallback validates against; we use
 // "n-default" to match the IdP's default nonce claim.
+// OAuthState is an independent random value — required as of the
+// May 2026 split.
 func goodState() auth.State {
 	return auth.State{
-		EnvUUID: "env-uuid-1234",
-		Nonce:   "n-default",
+		EnvUUID:    "env-uuid-1234",
+		Nonce:      "n-default",
+		OAuthState: "s-default",
 	}
 }
 
@@ -218,7 +221,7 @@ func TestHandleCallbackHappy(t *testing.T) {
 	}
 
 	state := goodState()
-	identity, err := p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-happy"), state)
+	identity, err := p.HandleCallback(context.Background(), fakeCallback(state.OAuthState, "code-happy"), state)
 	if err != nil {
 		t.Fatalf("HandleCallback: %v", err)
 	}
@@ -249,7 +252,7 @@ func TestT1ForgedSignature(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-forged"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-forged"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -270,7 +273,7 @@ func TestT2WrongIssuer(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-iss"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-iss"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -291,7 +294,7 @@ func TestT3WrongAudience(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-aud"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-aud"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -312,7 +315,7 @@ func TestT4Expired(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-exp"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-exp"), goodState())
 	if !errors.Is(err, ErrIDTokenVerify) {
 		t.Fatalf("expected ErrIDTokenVerify, got %v", err)
 	}
@@ -332,8 +335,10 @@ func TestNonceMismatch(t *testing.T) {
 	}
 	state := goodState()
 	state.Nonce = "n-different"
-
-	_, err = p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-nonce"), state)
+	// state.OAuthState stays valid so the OAuth2-state check passes
+	// and the nonce-mismatch path is reached (the id_token's nonce
+	// claim says "n-default", we expect "n-different").
+	_, err = p.HandleCallback(context.Background(), fakeCallback(state.OAuthState, "code-nonce"), state)
 	if !errors.Is(err, ErrNonceMismatch) {
 		t.Fatalf("expected ErrNonceMismatch, got %v", err)
 	}
@@ -355,9 +360,9 @@ func TestT6CSRFStateTampering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	stateInCookie := auth.State{EnvUUID: "env-A", Nonce: "n-default"}
+	stateInCookie := auth.State{EnvUUID: "env-A", Nonce: "n-default", OAuthState: "s-secret-value"}
 	// Attacker-controlled URL: state param is anything except the
-	// nonce baked into the victim's cookie.
+	// OAuthState baked into the victim's cookie.
 	req := fakeCallback("attacker-supplied-state", "code-csrf")
 	_, err = p.HandleCallback(context.Background(), req, stateInCookie)
 	if !errors.Is(err, ErrStateMismatch) {
@@ -398,11 +403,11 @@ func TestMissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	// State param matches the cookie's Nonce so we reach the
+	// State param matches the cookie's OAuthState so we reach the
 	// missing-code check (step 3) rather than failing at the
 	// state-param check (step 2).
 	q := url.Values{}
-	q.Set("state", "n-default")
+	q.Set("state", "s-default")
 	// no code
 	req := httptest.NewRequest(http.MethodGet, "/cb?"+q.Encode(), nil)
 	_, err = p.HandleCallback(context.Background(), req, goodState())
@@ -423,9 +428,9 @@ func TestT10PKCEVerifierMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	// State has EnvUUID + Nonce but NO Verifier.
-	state := auth.State{EnvUUID: "env-uuid-1234", Nonce: "n-default"}
-	_, err = p.HandleCallback(context.Background(), fakeCallback(state.Nonce, "code-pkce"), state)
+	// State has EnvUUID + Nonce + OAuthState but NO Verifier.
+	state := auth.State{EnvUUID: "env-uuid-1234", Nonce: "n-default", OAuthState: "s-default"}
+	_, err = p.HandleCallback(context.Background(), fakeCallback(state.OAuthState, "code-pkce"), state)
 	if !errors.Is(err, ErrStateMismatch) {
 		t.Fatalf("expected ErrStateMismatch (pkce verifier missing), got %v", err)
 	}
@@ -444,7 +449,7 @@ func TestT17RequiredGroupMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-group"), goodState())
 	if !errors.Is(err, ErrGroupNotAllowed) {
 		t.Fatalf("expected ErrGroupNotAllowed, got %v", err)
 	}
@@ -462,7 +467,7 @@ func TestRequiredGroupSatisfied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	identity, err := p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group-ok"), goodState())
+	identity, err := p.HandleCallback(context.Background(), fakeCallback("s-default", "code-group-ok"), goodState())
 	if err != nil {
 		t.Fatalf("HandleCallback: %v", err)
 	}
@@ -486,7 +491,7 @@ func TestT17GroupsClaimMalformed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-group-bad"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-group-bad"), goodState())
 	if !errors.Is(err, ErrGroupNotAllowed) {
 		t.Fatalf("expected ErrGroupNotAllowed for malformed group claim, got %v", err)
 	}
@@ -522,7 +527,7 @@ func TestLegacyPermissiveUsernameAccepts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewOIDCProvider: %v", err)
 			}
-			identity, err := p.HandleCallback(context.Background(), fakeCallback("n-default", "code-perm"), goodState())
+			identity, err := p.HandleCallback(context.Background(), fakeCallback("s-default", "code-perm"), goodState())
 			if err != nil {
 				t.Fatalf("LegacyPermissiveUsername should accept %q, got %v", u, err)
 			}
@@ -550,7 +555,7 @@ func TestLegacyPermissiveUsernameRejectsEmpty(t *testing.T) {
 	}
 	// With preferred_username = "   ", pickUsername returns "   ",
 	// which TrimSpace reduces to "" — must be rejected.
-	_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-empty"), goodState())
+	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-empty"), goodState())
 	if !errors.Is(err, ErrUsernameInvalid) {
 		t.Fatalf("expected ErrUsernameInvalid on whitespace-only username, got %v", err)
 	}
@@ -580,7 +585,7 @@ func TestT23UsernameInjection(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewOIDCProvider: %v", err)
 			}
-			_, err = p.HandleCallback(context.Background(), fakeCallback("n-default", "code-inj"), goodState())
+			_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-inj"), goodState())
 			if !errors.Is(err, ErrUsernameInvalid) {
 				t.Fatalf("expected ErrUsernameInvalid for %q, got %v", badUsername, err)
 			}
@@ -611,7 +616,7 @@ func TestNewOIDCProviderDiscoveryFails(t *testing.T) {
 	}
 }
 
-// === LoginURL: enforces non-empty State.EnvUUID + Nonce ===
+// === LoginURL: enforces non-empty State.EnvUUID + Nonce + OAuthState ===
 
 func TestLoginURLValidatesState(t *testing.T) {
 	idp := newFakeIdP(t)
@@ -625,15 +630,25 @@ func TestLoginURLValidatesState(t *testing.T) {
 	if _, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "x"}); err == nil {
 		t.Error("expected error on empty Nonce")
 	}
-	url, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1"})
+	if _, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "x", Nonce: "n-1"}); err == nil {
+		t.Error("expected error on empty OAuthState")
+	}
+	// Defense-in-depth: same-value reuse must be rejected.
+	if _, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "x", Nonce: "same", OAuthState: "same"}); err == nil {
+		t.Error("expected error when OAuthState == Nonce")
+	}
+	url, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1", OAuthState: "s-1"})
 	if err != nil {
 		t.Fatalf("LoginURL: %v", err)
 	}
-	// The OAuth2 state parameter must carry the Nonce (not the
-	// EnvUUID). This is what HandleCallback validates on return,
-	// and what makes the CSRF defense load-bearing.
-	if !strings.Contains(url, "state=n-1") {
-		t.Errorf("LoginURL should embed Nonce in state param: %s", url)
+	// OAuth2 state parameter must carry OAuthState, NOT Nonce
+	// (May 2026 split). This is what HandleCallback validates on
+	// return, and what makes the CSRF defense load-bearing.
+	if !strings.Contains(url, "state=s-1") {
+		t.Errorf("LoginURL should embed OAuthState in state param: %s", url)
+	}
+	if strings.Contains(url, "state=n-1") {
+		t.Errorf("LoginURL must NOT use Nonce as the OAuth2 state param (defense-in-depth split): %s", url)
 	}
 	if strings.Contains(url, "state=env-A") {
 		t.Errorf("LoginURL must NOT use EnvUUID as the OAuth2 state param: %s", url)
@@ -655,11 +670,11 @@ func TestLoginURLPKCERequired(t *testing.T) {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
 	// PKCE on, but no Verifier in State → reject at LoginURL.
-	if _, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1"}); err == nil {
+	if _, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1", OAuthState: "s-1"}); err == nil {
 		t.Error("expected error: pkce verifier required")
 	}
 	// PKCE on + Verifier present → URL includes code_challenge.
-	u, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1", Verifier: "v-1234567890123456789012345678901234567890123"})
+	u, err := p.LoginURL(context.Background(), auth.State{EnvUUID: "env-A", Nonce: "n-1", OAuthState: "s-1", Verifier: "v-1234567890123456789012345678901234567890123"})
 	if err != nil {
 		t.Fatalf("LoginURL: %v", err)
 	}

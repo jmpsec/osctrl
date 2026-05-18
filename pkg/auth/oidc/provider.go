@@ -139,32 +139,44 @@ func (p *Provider) EndSessionURL() string {
 }
 
 // LoginURL builds the authorize-endpoint URL that the user's browser
-// should be redirected to. The state argument carries the nonce and
-// (optionally) PKCE verifier that HandleCallback will validate
-// against the IdP's response.
+// should be redirected to. The state argument carries TWO independent
+// random values plus the optional PKCE verifier; HandleCallback
+// validates each against the corresponding protocol slot.
 //
-// The OAuth2 state parameter sent in the authorize URL is set to
-// state.Nonce (a 256-bit cryptorandom value), NOT to State.EnvUUID.
-// This is the load-bearing CSRF defense: an attacker cannot guess
-// the value, so they cannot craft a callback URL that the verifier
-// would accept. The OIDC nonce parameter (separate from OAuth2 state)
-// carries the same value into the id_token, where go-oidc.Verifier
-// checks it as the protocol's replay-defense layer. Same value
-// transported via two protocol parameters — both must match the
-// cookie's nonce for HandleCallback to succeed.
+// Slot 1: OAuth2 `state` query parameter ← state.OAuthState. Echoed
+// verbatim by the IdP onto the callback URL; HandleCallback checks
+// it as the CSRF defense (threat T6). An attacker who has not seen
+// the state cookie cannot mint a callback URL whose `state` echoes
+// what HandleCallback expects.
+//
+// Slot 2: OIDC `nonce` query parameter ← state.Nonce. Embedded in
+// the id_token's `nonce` claim by the IdP; go-oidc.Verifier exposes
+// it after signature verification and HandleCallback compares it to
+// state.Nonce (threats T1, T9 — id_token replay defense).
+//
+// Why two independent values: a leak of either via a Referer header,
+// access log, or proxy buffer must NOT compromise the other. Reusing
+// a single random value across both slots (the pre-May-2026
+// implementation) collapsed both defenses to one leak surface.
 //
 // State.EnvUUID is informational only at this layer: it must be
 // non-empty (so the state cookie has stable shape) but its value
 // isn't checked against anything in the callback URL. Callers that
 // want env-scoping above the protocol layer use the EnvUUID
 // out-of-band (legacy admin sets it to "admin"; cmd/api sets it to
-// "global" or similar; whatever the operator-side code wants).
+// "api" / "global"; whatever the operator-side code wants).
 func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, error) {
 	if state.EnvUUID == "" {
 		return "", fmt.Errorf("oidc: LoginURL: empty State.EnvUUID")
 	}
 	if state.Nonce == "" {
 		return "", fmt.Errorf("oidc: LoginURL: empty State.Nonce")
+	}
+	if state.OAuthState == "" {
+		return "", fmt.Errorf("oidc: LoginURL: empty State.OAuthState")
+	}
+	if state.OAuthState == state.Nonce {
+		return "", fmt.Errorf("oidc: LoginURL: OAuthState and Nonce must be independent values")
 	}
 	opts := []oauth2.AuthCodeOption{gooidc.Nonce(state.Nonce)}
 	if p.cfg.UsePKCE {
@@ -173,7 +185,7 @@ func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, erro
 		}
 		opts = append(opts, oauth2.S256ChallengeOption(state.Verifier))
 	}
-	return p.oauth2.AuthCodeURL(state.Nonce, opts...), nil
+	return p.oauth2.AuthCodeURL(state.OAuthState, opts...), nil
 }
 
 // HandleCallback consumes the callback request and returns a
@@ -208,11 +220,13 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %s", ErrIdPError, e)
 	}
 
-	// (2) State parameter must echo the cookie's Nonce. This is the
-	// load-bearing CSRF check: an unguessable 256-bit value tied to
-	// the browser via a signed cookie. Only a browser that received
-	// our IssueStateCookie response can satisfy it.
-	if got := r.URL.Query().Get("state"); got != state.Nonce {
+	// (2) `state` query param must echo state.OAuthState (NOT
+	// state.Nonce — these are independent values since May 2026,
+	// when a pentest finding required defense-in-depth split). This
+	// is the OAuth2 CSRF check: an unguessable 256-bit value tied
+	// to the browser via the signed cookie. Only a browser that
+	// received our IssueStateCookie response can satisfy it.
+	if got := r.URL.Query().Get("state"); got != state.OAuthState {
 		return auth.ResolvedIdentity{}, ErrStateMismatch
 	}
 
