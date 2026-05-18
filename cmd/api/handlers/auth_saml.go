@@ -99,13 +99,18 @@ func (h *HandlersApi) SAMLLoginHandler(w http.ResponseWriter, r *http.Request) {
 		Nonce:      nonce,
 		OAuthState: oauthState,
 	}
-	if err := auth.IssueStateCookie(w, h.JWTSecret, state); err != nil {
-		apiErrorResponse(w, "saml state cookie error", http.StatusInternalServerError, err)
-		return
-	}
-	loginURL, err := samlProvider.LoginURL(r.Context(), state)
+	// Build the IdP URL FIRST so we can capture the AuthnRequest ID;
+	// then issue the cookie with that ID baked in. The ID rides back
+	// via state.SAMLRequestID on the ACS POST so ParseResponse can
+	// match InResponseTo against it (threat S7).
+	loginURL, requestID, err := samlProvider.LoginURLWithRequestID(state)
 	if err != nil {
 		apiErrorResponse(w, "saml login url error", http.StatusInternalServerError, err)
+		return
+	}
+	state.SAMLRequestID = requestID
+	if err := auth.IssueStateCookie(w, h.JWTSecret, state); err != nil {
+		apiErrorResponse(w, "saml state cookie error", http.StatusInternalServerError, err)
 		return
 	}
 	http.Redirect(w, r, loginURL, http.StatusFound)

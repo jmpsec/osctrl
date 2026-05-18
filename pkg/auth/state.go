@@ -74,10 +74,11 @@ var (
 // fail with ErrStateInvalid. The transition window is bounded by the
 // 10-minute StateCookieTTL.
 type stateClaims struct {
-	EnvUUID    string `json:"env"`
-	Nonce      string `json:"nonce"`
-	OAuthState string `json:"os,omitempty"`
-	Verifier   string `json:"v,omitempty"`
+	EnvUUID       string `json:"env"`
+	Nonce         string `json:"nonce"`
+	OAuthState    string `json:"os,omitempty"`
+	Verifier      string `json:"v,omitempty"`
+	SAMLRequestID string `json:"saml_rid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -118,10 +119,11 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 	}
 	now := time.Now().UTC()
 	claims := stateClaims{
-		EnvUUID:    state.EnvUUID,
-		Nonce:      state.Nonce,
-		OAuthState: state.OAuthState,
-		Verifier:   state.Verifier,
+		EnvUUID:       state.EnvUUID,
+		Nonce:         state.Nonce,
+		OAuthState:    state.OAuthState,
+		Verifier:      state.Verifier,
+		SAMLRequestID: state.SAMLRequestID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    stateJWTIssuer,
 			Audience:  jwt.ClaimStrings{stateJWTAudience},
@@ -216,10 +218,11 @@ func ParseStateCookie(r *http.Request, secret []byte) (State, error) {
 		oauthState = claims.Nonce
 	}
 	return State{
-		EnvUUID:    claims.EnvUUID,
-		Nonce:      claims.Nonce,
-		OAuthState: oauthState,
-		Verifier:   claims.Verifier,
+		EnvUUID:       claims.EnvUUID,
+		Nonce:         claims.Nonce,
+		OAuthState:    oauthState,
+		Verifier:      claims.Verifier,
+		SAMLRequestID: claims.SAMLRequestID,
 	}, nil
 }
 
