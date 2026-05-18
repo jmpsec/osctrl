@@ -146,6 +146,58 @@ export async function setUserPermissionsAllSafe(
   };
 }
 
+/** Payload accepted by the backend's UserActionHandler "add"/"remove" cases. */
+export interface CreateUserBody {
+  username: string;
+  password: string;
+  email?: string;
+  fullname?: string;
+  admin?: boolean;
+  service?: boolean;
+}
+
+/** POST /api/v1/users/{username}/add — create a new operator (super-admin only).
+ *
+ * The api accepts the username in BOTH the URL and the body; they must match
+ * (UserActionHandler validates this). We send the canonical lowercase form
+ * in the URL and a verbatim copy in the body.
+ */
+export function createUser(body: CreateUserBody): Promise<{ data: string }> {
+  return apiFetch<{ data: string }>(
+    `/api/v1/users/${encodeURIComponent(body.username)}/add`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: body.username,
+        password: body.password,
+        email: body.email ?? '',
+        fullname: body.fullname ?? '',
+        admin: body.admin ?? false,
+        service: body.service ?? false,
+        environments: [],
+      }),
+    },
+  );
+}
+
+/** POST /api/v1/users/{username}/remove — delete an operator (super-admin only).
+ *
+ * The api refuses to delete the current operator (self-deletion is blocked
+ * server-side in UserActionHandler). Frontend should also hide the delete
+ * affordance on the row for the logged-in user.
+ */
+export function deleteUser(username: string): Promise<{ data: string }> {
+  return apiFetch<{ data: string }>(
+    `/api/v1/users/${encodeURIComponent(username)}/remove`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    },
+  );
+}
+
 /** POST /api/v1/users/{username}/token/refresh — mint a new API token. */
 export function refreshUserToken(username: string): Promise<TokenResponse> {
   return apiFetch<TokenResponse>(

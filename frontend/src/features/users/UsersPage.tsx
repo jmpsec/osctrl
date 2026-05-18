@@ -8,6 +8,9 @@ import {
   setUserPermissionsAllSafe,
   refreshUserToken,
   deleteUserToken,
+  createUser,
+  deleteUser,
+  getMe,
 } from '$/api/users';
 import type { BulkSetReport } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
@@ -22,7 +25,9 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 type ModalMode =
   | { kind: 'closed' }
   | { kind: 'permissions'; user: AdminUser }
-  | { kind: 'token'; user: AdminUser };
+  | { kind: 'token'; user: AdminUser }
+  | { kind: 'create' }
+  | { kind: 'delete'; user: AdminUser };
 
 export function UsersPage() {
   const navigate = useNavigate();
@@ -33,6 +38,15 @@ export function UsersPage() {
     queryKey: ['users'],
     queryFn: () => listUsers(),
     staleTime: 30_000,
+  });
+
+  // Need the current operator's username so the delete button can be
+  // suppressed on their own row (server-side guard also rejects
+  // self-delete with 400, but hiding the button avoids surprise).
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
   });
 
   if (isError && error instanceof AuthError) {
@@ -57,9 +71,16 @@ export function UsersPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Operators
         </h1>
-        <p className="text-xs text-[color:var(--text-3)]">
+        <p className="text-xs text-[color:var(--text-3)] flex-1">
           Super-admin view. Per-env permissions and API token management.
         </p>
+        <button
+          type="button"
+          onClick={() => setModal({ kind: 'create' })}
+          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+        >
+          + Add user
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto min-h-0">
@@ -193,6 +214,15 @@ export function UsersPage() {
                     >
                       Token…
                     </button>
+                    {me?.username !== u.username && (
+                      <button
+                        type="button"
+                        onClick={() => setModal({ kind: 'delete', user: u })}
+                        className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.10)] transition-colors"
+                      >
+                        Delete…
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -211,6 +241,19 @@ export function UsersPage() {
         <TokenModal
           user={modal.user}
           onClose={() => setModal({ kind: 'closed' })}
+        />
+      )}
+      {modal.kind === 'create' && (
+        <CreateUserModal
+          onClose={() => setModal({ kind: 'closed' })}
+          onCreated={invalidate}
+        />
+      )}
+      {modal.kind === 'delete' && (
+        <DeleteUserModal
+          user={modal.user}
+          onClose={() => setModal({ kind: 'closed' })}
+          onDeleted={invalidate}
         />
       )}
     </div>
@@ -645,6 +688,260 @@ function TokenModal({
               Delete token…
             </button>
           )}
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+// ====================================================================
+// CreateUserModal — super-admin "Add user" form (username/email/
+// fullname/password + admin/service flags). Posts to the legacy
+// UserActionHandler add path. Closes + invalidates the user list on
+// success.
+// ====================================================================
+function CreateUserModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [fullname, setFullname] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      // Match the same character class the backend enforces on
+      // federated logins (pkg/auth.sanitizeUsername:
+      // ^[a-zA-Z0-9_-]{1,64}$). The password-create flow doesn't
+      // strictly enforce this server-side at create time, but
+      // pre-validating client-side prevents creating users that
+      // can't be addressed via the URL-encoded paths the rest of
+      // the API uses.
+      const trimmed = username.trim();
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(trimmed)) {
+        throw new Error(
+          'Username must be 1-64 chars, letters/digits/dash/underscore only.',
+        );
+      }
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters.');
+      }
+      return createUser({
+        username: trimmed,
+        password,
+        email: email.trim(),
+        fullname: fullname.trim(),
+        admin: isAdmin,
+      });
+    },
+    onSuccess: () => {
+      onCreated();
+      onClose();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      // ApiError surfaces the server-side message verbatim
+      // ("user X already exists", validation failures, etc.).
+      setErr(e instanceof Error ? e.message : 'Create failed');
+    },
+  });
+
+  return (
+    <ModalShell title="Add operator" titleId="create-user-modal-title" onClose={onClose}>
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          setErr(null);
+          mutation.mutate();
+        }}
+        className="space-y-3"
+      >
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
+            Username <span className="text-[color:var(--danger)]">*</span>
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+            required
+            placeholder="e.g. alice"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
+            Password <span className="text-[color:var(--danger)]">*</span>
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            placeholder="At least 8 characters"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="optional"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
+            Full name
+          </label>
+          <input
+            type="text"
+            value={fullname}
+            onChange={(e) => setFullname(e.target.value)}
+            placeholder="optional"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-[color:var(--text-1)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+            className="accent-[color:var(--signal)]"
+          />
+          <span>
+            Super-admin{' '}
+            <span className="text-[color:var(--text-3)]">
+              (full access across all environments)
+            </span>
+          </span>
+        </label>
+
+        {err && (
+          <p
+            role="alert"
+            className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-2 rounded-md"
+          >
+            {err}
+          </p>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || !username || !password}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {mutation.isPending ? 'Creating…' : 'Create operator'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+// ====================================================================
+// DeleteUserModal — confirmation step + server call. Server-side
+// guard already prevents self-deletion; we additionally hide the
+// Delete button on the current operator's row.
+// ====================================================================
+function DeleteUserModal({
+  user,
+  onClose,
+  onDeleted,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [err, setErr] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => deleteUser(user.username),
+    onSuccess: () => {
+      onDeleted();
+      onClose();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Delete failed');
+    },
+  });
+
+  return (
+    <ModalShell
+      title={`Delete operator — ${user.username}`}
+      titleId="delete-user-modal-title"
+      onClose={onClose}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-[color:var(--text-1)]">
+          This will permanently remove <strong>{user.username}</strong> and all
+          their per-environment permissions. The user&apos;s API token (if any)
+          will stop working immediately.
+        </p>
+        <p className="text-xs text-[color:var(--text-3)]">
+          Federated identities (OIDC/SAML) will be re-JIT-provisioned with zero
+          permissions on next login if you have JIT enabled. To prevent
+          re-login, also disable the identity at your IdP.
+        </p>
+
+        {err && (
+          <p
+            role="alert"
+            className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-2 rounded-md"
+          >
+            {err}
+          </p>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'bg-[color:var(--danger)] text-white hover:opacity-90',
+              'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {mutation.isPending ? 'Deleting…' : `Delete ${user.username}`}
+          </button>
         </div>
       </div>
     </ModalShell>
