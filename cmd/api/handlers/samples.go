@@ -11,13 +11,14 @@ import (
 // QuerySamplesHandler - GET /api/v1/queries/samples
 //
 // Returns the static starter library of osquery SQL templates so the SPA's
-// queries/new form can populate its QuickTemplates row. Intentionally
-// unauthenticated: the samples are read-only data shipped with the binary,
-// they aren't tenant- or env-scoped, and exposing them pre-auth lets the
-// login screen lazy-load them without circular dependencies.
+// queries/new form can populate its QuickTemplates row. Authenticated.
 //
-// Shares the per-IP loginRateLimit registered in main.go so this endpoint
-// can't be turned into a low-effort scanning probe.
+// History: an earlier revision exposed this pre-auth on the rationale that
+// the data is static and ships with the binary. Even read-only data
+// fingerprints the deployment as osctrl and reveals the SQL-template
+// starter pack to anonymous callers — neither of which the only
+// consumer (the post-login queries/new form) requires at pre-auth time.
+// Moved behind handlerAuthCheck in cmd/api/main.go.
 func (h *HandlersApi) QuerySamplesHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -28,8 +29,10 @@ func (h *HandlersApi) QuerySamplesHandler(w http.ResponseWriter, r *http.Request
 // CarveSamplesHandler - GET /api/v1/carves/samples
 //
 // Returns the static starter library of common carve-target file paths
-// (e.g., /etc/passwd, C:\Windows\System32\config\SAM). Same auth posture as
-// QuerySamplesHandler: pre-auth, rate-limited.
+// (e.g., /etc/passwd, C:\Windows\System32\config\SAM). Same auth posture
+// as QuerySamplesHandler. The path list is the set of high-value
+// exfiltration locations osctrl is provisioned to carve; surfacing it
+// to anonymous callers was a free recon gift to attackers.
 func (h *HandlersApi) CarveSamplesHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
