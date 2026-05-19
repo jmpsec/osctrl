@@ -17,6 +17,38 @@ export function isAuthenticated(): boolean {
   return csrfTokenInMemory !== null;
 }
 
+// primeCsrfFromCookie reads osctrl_csrf out of document.cookie and seeds
+// csrfTokenInMemory. Called once on app boot (main.tsx). Necessary
+// because the federated-login (OIDC) flow finishes with a server-side
+// 302 to "/" — the SPA bootstraps fresh, the in-memory CSRF token is
+// null even though the cookie IS set, so isAuthenticated() would
+// incorrectly return false and the router would bounce to /login.
+//
+// The password-login path goes through login() below, which calls
+// setCsrfToken() directly from the JSON response body. The cookie is
+// the same value; reading either source yields the same result.
+//
+// osctrl_csrf is intentionally NOT HttpOnly (the SPA needs to read it
+// for X-CSRF-Token headers). osctrl_token IS HttpOnly and is not read
+// here — its presence is inferred from osctrl_csrf via the dual-cookie
+// pattern the API uses.
+export function primeCsrfFromCookie(): void {
+  // No-op during SSR / non-browser environments.
+  if (typeof document === 'undefined') {
+    return;
+  }
+  for (const c of document.cookie.split(';')) {
+    const [rawName, ...rest] = c.trim().split('=');
+    if (rawName === 'osctrl_csrf' && rest.length > 0) {
+      const value = rest.join('=');
+      if (value !== '') {
+        csrfTokenInMemory = value;
+      }
+      return;
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Typed error classes
 // ---------------------------------------------------------------------------
