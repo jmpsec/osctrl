@@ -1,4 +1,3 @@
-import { useRouter } from '@tanstack/react-router';
 import { cn } from '$/lib/cn';
 import { DropdownMenu } from '$/components/primitives/DropdownMenu';
 import { logout } from '$/api/client';
@@ -16,12 +15,18 @@ function getInitials(name: string): string {
 }
 
 export function UserMenu({ username = 'admin' }: UserMenuProps) {
-  const router = useRouter();
   const initials = getInitials(username);
 
   function handleLogout() {
-    logout();
-    void router.navigate({ to: '/login' });
+    // logout() owns the navigation. It POSTs to /api/v1/logout
+    // (clears server-side cookies + revokes APIToken), then
+    // either redirects to the IdP's end-session endpoint (which
+    // in turn bounces to /login) OR straight to /login when no
+    // IdP is configured. We do NOT chain a router.navigate here:
+    // logout() may set window.location.href to a cross-origin
+    // URL (Keycloak), and racing with TanStack Router would
+    // either no-op or cause a tab flash.
+    void logout();
   }
 
   return (

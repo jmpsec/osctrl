@@ -495,4 +495,9 @@ type AdminUserView struct {
 	UUID          string    `json:"uuid"`
 	TokenExpire   time.Time `json:"token_expire"`
 	EnvironmentID uint      `json:"environment_id"`
+	// AuthSource is empty for the password-login path (the default)
+	// and "oidc" for users JIT-provisioned through the federated
+	// callback. Surfaced so the SPA Users page can show an "OIDC"
+	// badge alongside the existing admin/service labels.
+	AuthSource string `json:"auth_source"`
 }

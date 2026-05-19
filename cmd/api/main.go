@@ -100,6 +100,11 @@ const (
 	apiStatsPath = "/stats"
 	// API osquery path
 	apiOsqueryPath = "/osquery"
+	// API auth methods / federated login path. Global (no
+	// {env}) because OIDC on osctrl-api is a single, deployment-
+	// wide identity surface; env scoping happens at the user-
+	// permissions layer, not the auth layer.
+	apiAuthPath = "/auth"
 )
 
 // Global variables
@@ -159,6 +164,7 @@ func init() {
 		DB:      &config.YAMLConfigurationDB{},
 		Redis:   &config.YAMLConfigurationRedis{},
 		JWT:     &config.YAMLConfigurationJWT{},
+		OIDC:    &config.YAMLConfigurationOIDC{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
 		Logger: &config.YAMLConfigurationLogger{
@@ -313,6 +319,20 @@ func osctrlAPIService() {
 	}
 	// Initialize Admin handlers before router
 	log.Info().Msg("Initializing handlers")
+	// Initialize the global OIDC provider BEFORE constructing the
+	// handlers struct. We need to fail fast if --oidc-enabled is set
+	// but discovery fails — running an SPA login page that links to a
+	// broken IdP route is worse than refusing to start.
+	if flagParams.OIDC != nil && flagParams.OIDC.Enabled {
+		log.Info().Msg("OIDC enabled — discovering provider")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := handlers.InitOIDC(ctx, *flagParams.OIDC); err != nil {
+			cancel()
+			log.Fatal().Err(err).Msg("Can not initialize OIDC")
+		}
+		cancel()
+	}
+
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
@@ -329,6 +349,8 @@ func osctrlAPIService() {
 		handlers.WithDebugHTTP(flagParams.Debug),
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithOsqueryValues(*flagParams.Osquery),
+		handlers.WithJWTSecret([]byte(flagParams.JWT.JWTSecret)),
+		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
 	)
 
 	// ///////////////////////// API
@@ -367,6 +389,31 @@ func osctrlAPIService() {
 	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
 	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
+	// Auth-methods discovery: the SPA polls this to decide whether to
+	// render an "OIDC" button alongside the password form. Read-only,
+	// no secrets in the response, pre-auth rate limit.
+	muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/methods", preAuthRateLimit(http.HandlerFunc(handlersApi.AuthMethodsHandler)))
+	// Logout: unauthenticated by design — an expired-token user
+	// must be able to log out without first re-authenticating.
+	// Server-side cookie expiry + APIToken revocation happen here.
+	// Worst case if forged: invalidates the legitimate user's
+	// token, which is exactly what logout should do.
+	muxAPI.Handle("POST "+_apiPath("/logout"), preAuthRateLimit(http.HandlerFunc(handlersApi.LogoutHandler)))
+	// OIDC login + callback. Registered ONLY when --oidc-enabled is
+	// set, so a misconfigured deploy doesn't expose 500-returning
+	// stubs. The handlers themselves also guard with `oidcProvider
+	// == nil` for defense in depth, but route-level gating keeps the
+	// public route table accurate.
+	//
+	// The login endpoint shares the strict login rate limit (10/min/IP)
+	// with the password endpoint — both are credential surfaces from
+	// the attacker's POV. Callback uses the looser pre-auth limit
+	// because it carries IdP-signed material and is harder to spam
+	// usefully.
+	if flagParams.OIDC != nil && flagParams.OIDC.Enabled {
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/login", loginRateLimit(http.HandlerFunc(handlersApi.OIDCLoginHandler)))
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/callback", preAuthRateLimit(http.HandlerFunc(handlersApi.OIDCCallbackHandler)))
+	}
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth
 	muxAPI.Handle(

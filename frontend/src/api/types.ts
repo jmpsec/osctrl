@@ -318,6 +318,9 @@ export interface AdminUser {
   last_access: string;
   last_token_use: string;
   environment_id: number;
+  // Empty / undefined for the password-login path (default).
+  // "oidc" for users JIT-provisioned through the federated callback.
+  auth_source?: string;
 }
 
 export interface EnvAccess {

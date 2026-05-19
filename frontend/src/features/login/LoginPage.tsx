@@ -9,7 +9,7 @@ import { Logo } from '$/components/atoms/Logo';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
-import { login, listLoginEnvironments } from '$/api/client';
+import { login, listLoginEnvironments, listAuthMethods } from '$/api/client';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -35,6 +35,18 @@ export function LoginPage() {
     staleTime: 5 * 60_000,
     retry: 1,
   });
+
+  // Available auth methods. Drives whether to render the "Continue with SSO"
+  // button below the password form. On error we just hide the button and let
+  // the password form stand alone — a flaky methods endpoint should never
+  // block password login.
+  const { data: authMethods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: () => listAuthMethods(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const oidcMethod = authMethods?.find((m) => m.type === 'oidc');
 
   const {
     register,
@@ -224,6 +236,43 @@ export function LoginPage() {
           >
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
+
+          {/* SSO surface — rendered only when the API advertises an "oidc"
+              method via /api/v1/auth/methods. Native <a> rather than the
+              Button component because this is a full-page navigation (the
+              browser MUST follow the 302 chain to the IdP and back); a
+              fetch/XHR call would defeat the redirect flow. We style it to
+              match Button variant="secondary" size="lg" so the visual rhythm
+              stays consistent with the primary submit. */}
+          {oidcMethod && (
+            <>
+              <div className="relative my-4 flex items-center">
+                <div className="flex-grow border-t border-[color:var(--border)]" />
+                <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
+                  or
+                </span>
+                <div className="flex-grow border-t border-[color:var(--border)]" />
+              </div>
+              <a
+                href={oidcMethod.loginUrl}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2',
+                  'px-4 py-2.5 rounded-md text-sm font-medium',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'text-[color:var(--text-1)]',
+                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
+                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
+                  'transition-colors duration-150',
+                )}
+              >
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Continue with SSO
+              </a>
+            </>
+          )}
         </form>
       </div>
     </div>
