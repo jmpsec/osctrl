@@ -244,13 +244,18 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		exist, user := h.Users.ExistsGet(u.Username)
 		if exist {
-			if err := h.Users.Delete(user.Username); err != nil {
-				apiErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
-				return
-			}
-			// Delete permissions
+			// Order matters: clear permissions BEFORE deleting the
+			// user. DeleteAllPermissions has an Exists() check at the
+			// top of pkg/users.DeleteAllPermissions; if we delete the
+			// user first, that check fails and we leak orphaned
+			// permission rows. Both calls are idempotent so doing it
+			// in this order is also safe to retry.
 			if err := h.Users.DeleteAllPermissions(user.Username); err != nil {
 				apiErrorResponse(w, "error removing user permissions", http.StatusInternalServerError, err)
+				return
+			}
+			if err := h.Users.Delete(user.Username); err != nil {
+				apiErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
 				return
 			}
 		}

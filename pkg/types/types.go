@@ -300,6 +300,45 @@ type SetPermissionsRequest struct {
 	Access  EnvAccessView `json:"access"`
 }
 
+// SetPermissionsAllRequest is the body for
+// POST /api/v1/users/{username}/permissions/all — sets the same access
+// shape across every environment currently in the system. No env_uuid;
+// the server enumerates envs server-side.
+//
+// "All current envs" semantics: this applies to the env list at the
+// time the request is handled. Envs created LATER do not inherit; the
+// operator re-applies as needed.
+type SetPermissionsAllRequest struct {
+	Access EnvAccessView `json:"access"`
+}
+
+// GetPermissionsResponse is what
+// GET /api/v1/users/{username}/permissions returns.
+//
+// Permissions maps env UUID → EnvAccessView. An env with no
+// permission rows for the user is OMITTED — the SPA treats absence
+// as "no access yet" (the default zero-value EnvAccess). Returning
+// every env even with all-false rows would bloat responses for
+// tenants with hundreds of envs without adding signal.
+type GetPermissionsResponse struct {
+	Username    string                   `json:"username"`
+	Permissions map[string]EnvAccessView `json:"permissions"`
+}
+
+// SetPermissionsAllResponse is what
+// POST /api/v1/users/{username}/permissions/all returns.
+//
+// Updated is the count of environments where the user's permissions
+// were successfully (re-)written. Total is the count of envs the
+// server iterated. On the happy path Updated == Total; if any single
+// env's write failed mid-iteration the handler aborts the transaction
+// and returns 5xx — partial-success is not exposed.
+type SetPermissionsAllResponse struct {
+	Updated int           `json:"updated"`
+	Total   int           `json:"total"`
+	Access  EnvAccessView `json:"access"`
+}
+
 // TokenResponse is returned by POST /api/v1/users/{username}/token/refresh
 // and by login. The Token is shown ONCE to the operator (so they can copy it
 // for CLI use); it isn't returned by any GET endpoint after refresh.
@@ -310,15 +349,23 @@ type TokenResponse struct {
 
 // UserMeResponse is the SPA-canonical projection of the currently-authenticated
 // user. Used by GET /api/v1/users/me.
+//
+// Permissions is the env-UUID → EnvAccess map for THIS user. Drives
+// the SPA's nav-gating: items the operator has no access to are
+// hidden from the SideNav. Super-admins (Admin=true) bypass the
+// per-env check at the server layer, so the SPA hides nothing for
+// them. Envs with no permission rows are omitted from the map; the
+// SPA treats absence as "no access" (zero-value EnvAccess).
 type UserMeResponse struct {
-	Username    string    `json:"username"`
-	Email       string    `json:"email"`
-	Fullname    string    `json:"fullname"`
-	Admin       bool      `json:"admin"`
-	Service     bool      `json:"service"`
-	UUID        string    `json:"uuid"`
-	TokenExpire time.Time `json:"token_expire"`
-	LastAccess  time.Time `json:"last_access"`
+	Username    string                   `json:"username"`
+	Email       string                   `json:"email"`
+	Fullname    string                   `json:"fullname"`
+	Admin       bool                     `json:"admin"`
+	Service     bool                     `json:"service"`
+	UUID        string                   `json:"uuid"`
+	TokenExpire time.Time                `json:"token_expire"`
+	LastAccess  time.Time                `json:"last_access"`
+	Permissions map[string]EnvAccessView `json:"permissions"`
 }
 
 // UserMePatchRequest is the body for PATCH /api/v1/users/me — operators can

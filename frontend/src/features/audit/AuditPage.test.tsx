@@ -24,6 +24,24 @@ vi.mock('$/api/audit', async () => {
   };
 });
 
+// AuditPage queries /api/v1/users/me to decide whether to show the
+// Username filter input (super-admins only). Tests run a super-admin
+// to keep the existing happy-path assertions valid.
+vi.mock('$/api/users', () => ({
+  getMe: () =>
+    Promise.resolve({
+      username: 'admin',
+      email: '',
+      fullname: 'admin',
+      admin: true,
+      service: false,
+      uuid: 'aaaa',
+      token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+      last_access: new Date().toISOString(),
+      permissions: {},
+    }),
+}));
+
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
   AuthError: class AuthError extends Error {

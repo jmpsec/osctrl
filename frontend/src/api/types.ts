@@ -336,6 +336,29 @@ export interface SetPermissionsRequest {
   access: EnvAccess;
 }
 
+// Response from GET /api/v1/users/{u}/permissions. Maps env UUID
+// to the user's current EnvAccess; envs with no rows are omitted
+// (treated as no access — the zero-value EnvAccess).
+export interface GetPermissionsResponse {
+  username: string;
+  permissions: Record<string, EnvAccess>;
+}
+
+// Body for POST /api/v1/users/{u}/permissions/all — bulk
+// permission set across every environment in the system.
+export interface SetPermissionsAllRequest {
+  access: EnvAccess;
+}
+
+// Response from POST /api/v1/users/{u}/permissions/all.
+// updated == total on full success. On error, the api returns 5xx
+// and the client falls back to the per-env loop.
+export interface SetPermissionsAllResponse {
+  updated: number;
+  total: number;
+  access: EnvAccess;
+}
+
 export interface TokenResponse {
   token: string;
   expires: string;
@@ -350,6 +373,10 @@ export interface UserMeResponse {
   uuid: string;
   token_expire: string;
   last_access: string;
+  // env UUID → EnvAccess for the CURRENT user. Drives the SideNav's
+  // per-env gating. Envs the user has no rows in are omitted; treat
+  // absence as "no access" (zero-value EnvAccess).
+  permissions: Record<string, EnvAccess>;
 }
 
 // ---------------------------------------------------------------------------

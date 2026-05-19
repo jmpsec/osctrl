@@ -1,6 +1,7 @@
 package users
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -198,6 +199,41 @@ func (m *UserManager) ChangeAccess(username, environment string, access EnvAcces
 	return nil
 }
 
+// ChangeAccessAll applies the same EnvAccess to every environment in
+// envUUIDs. Returns the count of envs successfully updated. On the
+// first error, aborts and returns the partial count + the error —
+// callers should treat any non-nil error as "operator must retry."
+//
+// Why partial-count-on-error instead of full rollback: the existing
+// ChangeAccess path is itself non-transactional (four sequential
+// SetEnvLevel writes, each a separate UPDATE). A "transactional
+// bulk" would need a much deeper refactor of SetEnvLevel to take a
+// tx handle. For an MVP "give alice access to all envs" workflow,
+// the partial-success-on-error semantics are acceptable: the
+// SPA reports "N of M succeeded, retry?" and re-running is
+// idempotent — re-applying the same access to an env is a no-op
+// rewrite of the same rows.
+//
+// envUUIDs is a slice of environment identifiers as they appear in
+// user_permissions.environment (which is the env UUID — the column
+// is named "environment" but holds the UUID; see ChangeAccess).
+// Callers (cmd/api handler) must enumerate envs upfront and pass
+// the UUID list; this package doesn't reach into the environments
+// table directly to keep the dependency arrow clean.
+func (m *UserManager) ChangeAccessAll(username string, envUUIDs []string, access EnvAccess) (int, error) {
+	if !m.Exists(username) {
+		return 0, fmt.Errorf("user %s does not exist", username)
+	}
+	updated := 0
+	for _, env := range envUUIDs {
+		if err := m.ChangeAccess(username, env, access); err != nil {
+			return updated, fmt.Errorf("error setting access for env %s - %w", env, err)
+		}
+		updated++
+	}
+	return updated, nil
+}
+
 // SetEnvUser to change the user access for a user and environment
 func (m *UserManager) SetEnvUser(username, environment string, user bool) error {
 	return m.SetEnvLevel(username, environment, UserLevel, user)
@@ -218,10 +254,42 @@ func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) erro
 	return m.SetEnvLevel(username, environment, AdminLevel, admin)
 }
 
-// SetEnvLevel to change the access for a user
+// SetEnvLevel changes the (username, environment, level) permission
+// row's access_value, or creates it if no row exists yet. The upsert
+// branch is what makes ChangeAccess work for a user who has never
+// had any permission rows in this env — historically a
+// "GetPermission record not found" was returned as an error here,
+// which made the single-env Save button (and now the bulk-grant
+// endpoint) fail on first use.
+//
+// Notes:
+//
+//   - GORM's `errors.Is(err, gorm.ErrRecordNotFound)` is the
+//     canonical check; the .Error() string is also "record not
+//     found" but we don't string-match.
+//   - EnvironmentID is set to 0 on insert. The numeric FK isn't
+//     used by any read path (GetAccess / GetEnvAccess switch on
+//     AccessType + Environment string), and the existing
+//     GenUserPermission helper also leaves it zero. Consistent.
+//   - granted_by is unset on insert via this path — there's no
+//     caller-side "who granted" context at SetEnvLevel's layer.
+//     The audit log captures the granting operator at the handler.
 func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
 	perm, err := m.GetPermission(username, environment, level)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create the row instead of erroring out.
+			row := UserPermission{
+				Username:    username,
+				Environment: environment,
+				AccessType:  int(level),
+				AccessValue: value,
+			}
+			if cerr := m.DB.Create(&row).Error; cerr != nil {
+				return fmt.Errorf("error creating permission row for %s/%s - %w", username, environment, cerr)
+			}
+			return nil
+		}
 		return fmt.Errorf("error getting permissions for %s/%s - %w", username, environment, err)
 	}
 	m.DB.Model(&perm).Updates(map[string]interface{}{

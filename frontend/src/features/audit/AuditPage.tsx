@@ -6,6 +6,7 @@ import {
   LOG_TYPE_LABELS,
   type AuditLogsQuery,
 } from '$/api/audit';
+import { getMe } from '$/api/users';
 import { AuthError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
@@ -29,6 +30,18 @@ const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 export function AuditPage() {
   const search = useSearch({ from: '/_app/audit' });
   const navigate = useNavigate({ from: '/_app/audit' });
+
+  // Resolve the viewer. Super-admins see the full audit trail and
+  // the username filter; non-admins see only their own activity
+  // (the api force-clamps the username filter server-side) and
+  // shouldn't see the username input — typing other usernames
+  // would be a no-op and just confuse the operator.
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
+  });
+  const isSuperAdmin = me?.admin === true;
 
   const service: string = search.service ?? '';
   const username: string = search.username ?? '';
@@ -124,10 +137,12 @@ export function AuditPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
-          Audit Trail
+          {isSuperAdmin ? 'Audit Trail' : 'My Activity'}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          Every state-changing API call writes one row.
+          {isSuperAdmin
+            ? 'Every state-changing API call writes one row.'
+            : 'Your activity history. State-changing API calls you make appear here.'}
         </p>
         {isFetching && !isLoading && (
           <span
@@ -171,19 +186,25 @@ export function AuditPage() {
           </select>
         </FilterField>
 
-        <FilterField id="f-username" label="Username">
-          <input
-            id="f-username"
-            type="text"
-            value={usernameDraft}
-            placeholder="partial match"
-            onChange={(e) => setUsernameDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') applyFilters();
-            }}
-            className={inputClass}
-          />
-        </FilterField>
+        {/* Username filter is super-admin-only. Non-admins are
+            force-clamped to their own activity server-side; showing
+            the input would let them type other names that have no
+            effect — confusing. */}
+        {isSuperAdmin && (
+          <FilterField id="f-username" label="Username">
+            <input
+              id="f-username"
+              type="text"
+              value={usernameDraft}
+              placeholder="partial match"
+              onChange={(e) => setUsernameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyFilters();
+              }}
+              className={inputClass}
+            />
+          </FilterField>
+        )}
 
         <FilterField id="f-env" label="Env UUID">
           <input

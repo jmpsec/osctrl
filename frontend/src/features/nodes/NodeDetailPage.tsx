@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getNode, listNodeLogs } from '$/api/nodes';
+import { getMe } from '$/api/users';
+import { listEnvironments } from '$/api/environments';
 import {
   getNodeActivity,
   ACTIVITY_INTERVALS,
@@ -520,6 +522,25 @@ export function NodeDetailPage() {
     staleTime: 10_000,
   });
 
+  // Decide whether to show destructive actions (Delete). The server
+  // requires AdminLevel on the env for DELETE; we mirror that gate
+  // in the UI so non-admins don't see a button that would 403.
+  // Super-admins bypass; env-scoped admins get it on their env(s).
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
+  });
+  const { data: envs } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envUuid = envs?.find((e) => e.name === env)?.uuid;
+  const canDeleteNode =
+    me?.admin === true ||
+    (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
+
   // Node-scoped activity heatmap — only fetched while the Activity tab is the
   // active panel, so flipping between Details/Status/Result doesn't keep a
   // dormant 30s polling timer alive in the background.
@@ -645,22 +666,24 @@ export function NodeDetailPage() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                aria-label="Delete this node"
-                onClick={() => {
-                  // TODO: open delete confirmation modal (polish)
-                }}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded',
-                  'border border-[color:var(--danger)] text-[color:var(--danger)]',
-                  'hover:bg-[color:var(--danger)] hover:text-white',
-                  'transition-colors',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                )}
-              >
-                Delete
-              </button>
+              {canDeleteNode && (
+                <button
+                  type="button"
+                  aria-label="Delete this node"
+                  onClick={() => {
+                    // TODO: open delete confirmation modal (polish)
+                  }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--danger)] text-[color:var(--danger)]',
+                    'hover:bg-[color:var(--danger)] hover:text-white',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </>
         ) : isError ? (
