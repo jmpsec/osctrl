@@ -399,7 +399,9 @@ function set_motd_centos() {
 function install_go_26() {
   local __version="1.26.3"
   local __arch="$(uname -i)"
-  if [[ "$__arch" == "aarch64" ]]; then
+  if [[ "$__arch" == "x86_64" ]]; then
+    __arch="amd64"
+  elif [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
   fi
   local __file="go$__version.linux-$__arch.tar.gz"
@@ -441,7 +443,9 @@ function install_go_26() {
 # Install yq from releases (https://github.com/mikefarah/yq)
 function install_yq() {
   local __arch="$(uname -i)"
-  if [[ "$__arch" == "aarch64" ]]; then
+  if [[ "$__arch" == "x86_64" ]]; then
+    __arch="amd64"
+  elif [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
   fi
   local __file="yq_linux_$__arch"
