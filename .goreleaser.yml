@@ -141,6 +141,7 @@ dockers:
     skip_push: false
     build_flag_templates:
       - "--platform=linux/arm64"
+      - "--build-arg=GOARCH=arm64"
     extra_files:
       - dist/osctrl-tls-linux-arm64
 
@@ -167,6 +168,7 @@ dockers:
     skip_push: false
     build_flag_templates:
       - "--platform=linux/arm64"
+      - "--build-arg=GOARCH=arm64"
     extra_files:
       - dist/osctrl-admin-linux-arm64
       - cmd/admin/templates
@@ -193,6 +195,7 @@ dockers:
     skip_push: false
     build_flag_templates:
       - "--platform=linux/arm64"
+      - "--build-arg=GOARCH=arm64"
     extra_files:
       - dist/osctrl-api-linux-arm64
 
@@ -216,6 +219,7 @@ dockers:
     skip_push: false
     build_flag_templates:
       - "--platform=linux/arm64"
+      - "--build-arg=GOARCH=arm64"
     extra_files:
       - dist/osctrl-cli-linux-arm64
 
