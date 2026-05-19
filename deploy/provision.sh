@@ -41,7 +41,7 @@
 #   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle
 #   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt
 #   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt
-#   -s PATH     --source PATH   Path to code. Default is ~/osctrl
+#   -s PATH     --source PATH   Path to code. Default is auto-detected from script location
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
 #   -n          --nginx         Install and configure nginx as TLS termination
 #   -P          --postgres      Install and configure PostgreSQL as backend
@@ -112,7 +112,7 @@ function usage() {
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
   printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt\n"
   printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt\n"
-  printf "  -s PATH     --source PATH \tPath to code. Default is ~/osctrl\n"
+  printf "  -s PATH     --source PATH \tPath to code. Default is auto-detected from script location\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
   printf "  -P          --postgres \tInstall and configure PostgreSQL as backend\n"
@@ -161,7 +161,7 @@ POSTGRES=false
 REDIS=false
 UPGRADE=false
 BRANCH="main"
-SOURCE_PATH=~/osctrl
+SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
 OSQUERY_VERSION="5.23.0"
