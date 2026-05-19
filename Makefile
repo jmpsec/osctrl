@@ -240,16 +240,23 @@ docker_dev_shell_postgres:
 docker_dev_shell_redis:
 	docker exec -it osctrl-redis-dev /bin/sh
 
+# Generate self-signed TLS certificates for docker dev environment
+docker_dev_certs:
+	openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+		-keyout deploy/docker/conf/tls/osctrl.key \
+		-out deploy/docker/conf/tls/osctrl.crt \
+		-config deploy/docker/conf/tls/openssl.cnf
+
 # Build dev docker containers and run them (also generates new certificates)
 docker_dev_build:
 ifeq (,$(wildcard ./.env))
-	$(error Missing .env file)
+	$(error Missing .env file. Run: cp .env.example .env)
 endif
 ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.crt))
-	$(error Missing TLS certificate file)
+	$(error Missing TLS certificate file. Run: make docker_dev_certs)
 endif
 ifeq (,$(wildcard ./deploy/docker/conf/tls/osctrl.key))
-	$(error Missing TLS private key file)
+	$(error Missing TLS private key file. Run: make docker_dev_certs)
 endif
 	docker compose -f docker-compose-dev.yml build --provenance=false
 
