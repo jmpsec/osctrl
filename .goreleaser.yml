@@ -182,6 +182,9 @@ docker_signs:
 
 nfpms:
   - id: osctrl-tls
+    ids:
+      - osctrl-tls
+    package_name: osctrl-tls
     maintainer: jmpsec/osctrl
     description: osctrl TLS component
     homepage: https://github.com/jmpsec/osctrl
@@ -199,6 +202,9 @@ nfpms:
           preremove: deploy/cicd/deb/pre-remove.sh
 
   - id: osctrl-admin
+    ids:
+      - osctrl-admin
+    package_name: osctrl-admin
     maintainer: jmpsec/osctrl
     description: osctrl Admin component
     homepage: https://github.com/jmpsec/osctrl
@@ -216,6 +222,9 @@ nfpms:
           preremove: deploy/cicd/deb/pre-remove.sh
 
   - id: osctrl-api
+    ids:
+      - osctrl-api
+    package_name: osctrl-api
     maintainer: jmpsec/osctrl
     description: osctrl API component
     homepage: https://github.com/jmpsec/osctrl
@@ -233,6 +242,9 @@ nfpms:
           preremove: deploy/cicd/deb/pre-remove.sh
 
   - id: osctrl-cli
+    ids:
+      - osctrl-cli
+    package_name: osctrl-cli
     maintainer: jmpsec/osctrl
     description: osctrl CLI component
     homepage: https://github.com/jmpsec/osctrl
