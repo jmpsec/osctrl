@@ -196,7 +196,7 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	user, err := h.resolveFederatedUser(identity, oidcJITProvision)
+	user, err := h.resolveFederatedUser(identity, oidcJITProvision, auth.TypeOIDC)
 	if err != nil {
 		// resolveFederatedUser already wraps with ErrAuthUserRejected.
 		log.Warn().Err(err).Str("preferred_username", identity.PreferredUsername).Msg("oidc: user resolution failed")

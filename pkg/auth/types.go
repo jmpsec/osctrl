@@ -165,6 +165,15 @@ type State struct {
 	// Empty Verifier with a PKCE-enabled provider MUST cause
 	// HandleCallback to reject — see threat T10.
 	Verifier string
+
+	// SAMLRequestID is the AuthnRequest ID minted at LoginURL time,
+	// round-tripped through the state cookie, and passed back to
+	// ParseResponse as the expected InResponseTo. Closes threat S7
+	// (InResponseTo replay/forgery) — without it, crewjam either
+	// rejects every response (when nil is passed) or accepts any
+	// InResponseTo (when an empty slice is passed). Always empty
+	// for OIDC; populated for SAML SP-initiated flows.
+	SAMLRequestID string
 }
 
 // IsZero reports whether the State is the zero value, useful for

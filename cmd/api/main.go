@@ -165,6 +165,7 @@ func init() {
 		Redis:   &config.YAMLConfigurationRedis{},
 		JWT:     &config.YAMLConfigurationJWT{},
 		OIDC:    &config.YAMLConfigurationOIDC{},
+		SAML:    &config.YAMLConfigurationSAML{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
 		Logger: &config.YAMLConfigurationLogger{
@@ -332,6 +333,18 @@ func osctrlAPIService() {
 		}
 		cancel()
 	}
+	// Same fail-fast posture for SAML — refuse to start if metadata
+	// fetch fails so we never serve an SPA login button that links
+	// to a broken /auth/saml/login route.
+	if flagParams.SAML != nil && flagParams.SAML.Enabled {
+		log.Info().Msg("SAML enabled — fetching IdP metadata")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := handlers.InitSAML(ctx, *flagParams.SAML, flagParams.SAML.EntityID, flagParams.SAML.ACSURL); err != nil {
+			cancel()
+			log.Fatal().Err(err).Msg("Can not initialize SAML")
+		}
+		cancel()
+	}
 
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
@@ -351,6 +364,7 @@ func osctrlAPIService() {
 		handlers.WithOsqueryValues(*flagParams.Osquery),
 		handlers.WithJWTSecret([]byte(flagParams.JWT.JWTSecret)),
 		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
+		handlers.WithSAML(flagParams.SAML != nil && flagParams.SAML.Enabled),
 	)
 
 	// ///////////////////////// API
@@ -413,6 +427,17 @@ func osctrlAPIService() {
 	if flagParams.OIDC != nil && flagParams.OIDC.Enabled {
 		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/login", loginRateLimit(http.HandlerFunc(handlersApi.OIDCLoginHandler)))
 		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/oidc/callback", preAuthRateLimit(http.HandlerFunc(handlersApi.OIDCCallbackHandler)))
+	}
+	// SAML routes follow the OIDC posture: gated by --saml-enabled, login
+	// on the strict limiter, ACS on the looser limiter (the SAMLResponse
+	// is IdP-signed so spamming the endpoint without a real assertion
+	// gets rejected at the crypto layer anyway), metadata pre-auth and
+	// public by design (SP metadata is meant to be machine-readable for
+	// IdP-side registration).
+	if flagParams.SAML != nil && flagParams.SAML.Enabled {
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/saml/login", loginRateLimit(http.HandlerFunc(handlersApi.SAMLLoginHandler)))
+		muxAPI.Handle("POST "+_apiPath(apiAuthPath)+"/saml/acs", preAuthRateLimit(http.HandlerFunc(handlersApi.SAMLACSHandler)))
+		muxAPI.Handle("GET "+_apiPath(apiAuthPath)+"/saml/metadata", preAuthRateLimit(http.HandlerFunc(handlersApi.SAMLMetadataHandler)))
 	}
 	// ///////////////////////// AUTHENTICATED
 	// API: check auth

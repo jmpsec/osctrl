@@ -319,7 +319,8 @@ export interface AdminUser {
   last_token_use: string;
   environment_id: number;
   // Empty / undefined for the password-login path (default).
-  // "oidc" for users JIT-provisioned through the federated callback.
+  // "oidc" or "saml" for users JIT-provisioned through the federated
+  // callback. Used by UsersPage to render the OIDC/SAML badge.
   auth_source?: string;
 }
 

@@ -249,14 +249,47 @@ type YAMLConfigurationJWT struct {
 
 // YAMLConfigurationSAML to keep all SAML details for auth
 type YAMLConfigurationSAML struct {
+	// Enabled gates the SAML federated-login surface on osctrl-api.
+	// Defaults false. The legacy osctrl-admin ignores this field
+	// (it uses --auth=saml instead) so adding it does not affect
+	// existing operator deployments.
+	Enabled bool `yaml:"enabled"        mapstructure:"enabled"`
+	// EntityID is the SP entity identifier — what the IdP knows us
+	// by. Conventionally the metadata URL.
+	EntityID string `yaml:"entityId"       mapstructure:"entityId"`
+	// ACSURL is the Assertion Consumer Service URL — where the IdP
+	// POSTs the SAMLResponse. Must match the value registered with
+	// the IdP. Ends with /api/v1/auth/saml/acs.
+	ACSURL       string `yaml:"acsUrl"         mapstructure:"acsUrl"`
 	CertPath     string `yaml:"certPath"`
 	KeyPath      string `yaml:"keyPath"`
 	MetaDataURL  string `yaml:"metadataUrl"`
 	RootURL      string `yaml:"rootUrl"`
 	LoginURL     string `yaml:"loginUrl"`
 	LogoutURL    string `yaml:"logoutUrl"`
-	JITProvision bool   `yaml:"jitProvision"`
-	SPInitiated  bool   `yaml:"spInitiated"`
+	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
+	// UsernameAttribute names the SAML attribute (by Name or
+	// FriendlyName) whose value becomes the osctrl username.
+	// Empty means "use the NameID verbatim" — fine for Keycloak
+	// where NameID is the username, but Auth0 typically emits an
+	// emailAddress NameID format which fails our strict sanitizer,
+	// so operators point this at "nickname" instead.
+	UsernameAttribute string `yaml:"usernameAttribute" mapstructure:"usernameAttribute"`
+	// SigningCertPath + SigningKeyPath are PEM file paths to the
+	// SP's signing certificate + RSA private key. When BOTH are
+	// set, the provider signs every outbound AuthnRequest with
+	// RSA-SHA256 and advertises AuthnRequestsSigned="true" in SP
+	// metadata. The IdP-side SAML client must be configured to
+	// require client signatures and to trust this cert.
+	SigningCertPath string `yaml:"signingCertPath" mapstructure:"signingCertPath"`
+	SigningKeyPath  string `yaml:"signingKeyPath"  mapstructure:"signingKeyPath"`
+	// ForceAuthn defaults true on osctrl-api. Setting it false lets
+	// "Continue with SAML" silently re-authenticate against an
+	// existing IdP SSO cookie, which most operators perceive as
+	// "logout didn't work" — see auth_logout.go comment for the v1
+	// rationale.
+	ForceAuthn  bool `yaml:"forceAuthn"      mapstructure:"forceAuthn"`
+	SPInitiated bool `yaml:"spInitiated"`
 }
 
 // YAMLConfigurationOIDC to keep all OIDC details for auth

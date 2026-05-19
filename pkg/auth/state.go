@@ -74,10 +74,11 @@ var (
 // fail with ErrStateInvalid. The transition window is bounded by the
 // 10-minute StateCookieTTL.
 type stateClaims struct {
-	EnvUUID    string `json:"env"`
-	Nonce      string `json:"nonce"`
-	OAuthState string `json:"os,omitempty"`
-	Verifier   string `json:"v,omitempty"`
+	EnvUUID       string `json:"env"`
+	Nonce         string `json:"nonce"`
+	OAuthState    string `json:"os,omitempty"`
+	Verifier      string `json:"v,omitempty"`
+	SAMLRequestID string `json:"saml_rid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -118,10 +119,11 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 	}
 	now := time.Now().UTC()
 	claims := stateClaims{
-		EnvUUID:    state.EnvUUID,
-		Nonce:      state.Nonce,
-		OAuthState: state.OAuthState,
-		Verifier:   state.Verifier,
+		EnvUUID:       state.EnvUUID,
+		Nonce:         state.Nonce,
+		OAuthState:    state.OAuthState,
+		Verifier:      state.Verifier,
+		SAMLRequestID: state.SAMLRequestID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    stateJWTIssuer,
 			Audience:  jwt.ClaimStrings{stateJWTAudience},
@@ -137,6 +139,25 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 		// malformed claims, and we control the struct.
 		return fmt.Errorf("auth: state JWT sign: %w", err)
 	}
+	// SameSite=None is required so the cookie survives a cross-site
+	// POST from the IdP back to our ACS. SAML's HTTP-POST binding
+	// has the IdP POST the SAMLResponse to our /auth/saml/acs from
+	// auth0.com / keycloak.example.com — a cross-site POST that
+	// SameSite=Lax cookies do NOT accompany. OIDC's redirect-style
+	// callback is a top-level GET so Lax would have worked there,
+	// but we use the same cookie for both protocols and SAML's
+	// constraint dominates.
+	//
+	// CSRF defense doesn't depend on SameSite. The state cookie's
+	// value is bound to the unguessable OAuthState in the JWT body,
+	// which the IdP must echo as RelayState. An attacker who can't
+	// see the cookie can't satisfy that check — same posture as
+	// the OAuth2 state parameter pre-SameSite era.
+	//
+	// Secure=true is mandatory when SameSite=None (browsers reject
+	// the cookie otherwise). In dev (HTTP) modern browsers downgrade
+	// silently for non-Secure origins; production deployments MUST
+	// front the api with TLS.
 	http.SetCookie(w, &http.Cookie{
 		Name:     StateCookieName,
 		Value:    signed,
@@ -144,7 +165,7 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 		MaxAge:   int(StateCookieTTL.Seconds()),
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 	return nil
 }
@@ -216,10 +237,11 @@ func ParseStateCookie(r *http.Request, secret []byte) (State, error) {
 		oauthState = claims.Nonce
 	}
 	return State{
-		EnvUUID:    claims.EnvUUID,
-		Nonce:      claims.Nonce,
-		OAuthState: oauthState,
-		Verifier:   claims.Verifier,
+		EnvUUID:       claims.EnvUUID,
+		Nonce:         claims.Nonce,
+		OAuthState:    oauthState,
+		Verifier:      claims.Verifier,
+		SAMLRequestID: claims.SAMLRequestID,
 	}, nil
 }
 
@@ -236,7 +258,12 @@ func ClearStateCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		// Match IssueStateCookie's SameSite=None so the browser
+		// recognizes the delete as targeting the same cookie. A
+		// mismatch here is harmless in practice (the cookie's
+		// MaxAge=-1 still expires it) but matching avoids edge
+		// cases in stricter browsers.
+		SameSite: http.SameSiteNoneMode,
 	})
 }
 

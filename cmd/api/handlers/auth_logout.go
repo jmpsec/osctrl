@@ -8,11 +8,18 @@ import (
 )
 
 // LogoutResponse is the JSON payload returned by POST /api/v1/logout.
-// IdPLogoutURL is non-empty when an OIDC provider is configured AND
-// advertised an end_session_endpoint in its discovery document — the
-// SPA navigates the browser there to terminate the IdP session.
-// Empty means client-only cleanup; the IdP session (if any) keeps
-// running until its own TTL.
+//
+// AuthSource carries which provider issued the active session
+// ("oidc" / "saml" / ""). The SPA uses it to decide which
+// IdP-logout flow to run — sending a SAML user to the OIDC
+// end-session URL with a stale id_token_hint just produces a
+// confusing Keycloak error page.
+//
+// IdPLogoutURL is non-empty when AuthSource=="oidc" AND the OIDC
+// provider advertised an end_session_endpoint in its discovery
+// document — the SPA navigates the browser there to terminate the
+// IdP session. Empty for SAML users (SLO deferred to v2 per spec)
+// and for password users.
 //
 // IdPClientID is the OIDC client_id registered with the IdP. Some
 // IdPs (Keycloak) accept it as an alternative to id_token_hint
@@ -29,6 +36,7 @@ import (
 // before terminating the session, so this is safe to expose to the
 // browser (we set it back into the URL the browser navigates to).
 type LogoutResponse struct {
+	AuthSource     string `json:"auth_source,omitempty"`
 	IdPLogoutURL   string `json:"idp_logout_url,omitempty"`
 	IdPClientID    string `json:"idp_client_id,omitempty"`
 	IdPIDTokenHint string `json:"idp_id_token_hint,omitempty"`
@@ -137,16 +145,55 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// Surface IdP fields ONLY when the caller had a valid session.
-	// Without this gate, an unauthenticated curl could harvest the
-	// OIDC tenant URL + client_id (pentest finding). The legitimate
-	// SPA always has a JWT cookie when it calls /logout, so this
-	// gate doesn't affect normal flows.
+	// Surface IdP fields based on which protocol issued the ACTIVE
+	// session — NOT what protocol JIT-provisioned the AdminUser row.
+	// AdminUser.AuthSource is a creation-time stamp (drives the badge
+	// on /_app/users) and is wrong for this decision: a user who was
+	// JIT-provisioned via OIDC can log in via SAML later, and we must
+	// honor the current protocol, not the historical one. Otherwise
+	// SAML-session users get sent to the OIDC end-session URL with a
+	// missing/stale id_token_hint and Keycloak/Auth0 either errors or
+	// shows a confusing "are you sure?" page (pentest finding 2026-05-18).
+	//
+	// The protocol signal is the osctrl_id_token cookie, set ONLY by
+	// the OIDC callback (auth_oidc.go OIDCCallbackHandler). SAML and
+	// password flows never touch it. So:
+	//   id_token cookie present + valid token → OIDC session
+	//   id_token cookie absent → SAML or password session
+	//
+	// Anonymous callers always get the empty response (pentest
+	// T-IDP-DISCLOSURE: no IdP scrape without auth).
+	//
+	// OIDC users → emit the OIDC end-session URL, client_id, and
+	//   id_token_hint so the SPA can chain a clean RP-initiated
+	//   logout that also terminates the Keycloak/Auth0 SP session.
+	// SAML users → emit auth_source="saml" so the SPA knows to skip
+	//   the IdP-side logout and just bounce to /login. SAML SLO is
+	//   deferred to v2 per docs/proposals/osctrl-auth-providers-v0.1
+	//   §"What's deferred"; SAML_FORCE_AUTHN=true is the v1 substitute
+	//   for the silent-reauth UX problem.
+	// Password users → empty response, SPA bounces to /login.
 	resp := LogoutResponse{}
-	if authenticated && oidcProvider != nil {
-		resp.IdPLogoutURL = oidcProvider.EndSessionURL()
-		resp.IdPClientID = oidcClientID
-		resp.IdPIDTokenHint = idTokenHint
+	if authenticated {
+		// idTokenHint != "" iff the OIDC callback set the cookie AND
+		// it hasn't been cleared since. That's the cleanest signal of
+		// "current session came from OIDC."
+		isOIDCSession := idTokenHint != ""
+		switch {
+		case isOIDCSession && oidcProvider != nil:
+			resp.AuthSource = "oidc"
+			resp.IdPLogoutURL = oidcProvider.EndSessionURL()
+			resp.IdPClientID = oidcClientID
+			resp.IdPIDTokenHint = idTokenHint
+		case !isOIDCSession && samlProvider != nil:
+			// SAML session (or password, but password doesn't set
+			// any provider cookies either — distinguishing the two
+			// requires more wire data than we currently track, and
+			// for logout purposes the behavior is identical: bounce
+			// to /login, no IdP-side termination).
+			resp.AuthSource = "saml"
+			// No IdP fields — SAML SLO deferred to v2.
+		}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }

@@ -47,6 +47,8 @@ export function LoginPage() {
     retry: 1,
   });
   const oidcMethod = authMethods?.find((m) => m.type === 'oidc');
+  const samlMethod = authMethods?.find((m) => m.type === 'saml');
+  const hasSSO = oidcMethod || samlMethod;
 
   const {
     register,
@@ -237,41 +239,61 @@ export function LoginPage() {
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
 
-          {/* SSO surface — rendered only when the API advertises an "oidc"
-              method via /api/v1/auth/methods. Native <a> rather than the
-              Button component because this is a full-page navigation (the
-              browser MUST follow the 302 chain to the IdP and back); a
-              fetch/XHR call would defeat the redirect flow. We style it to
-              match Button variant="secondary" size="lg" so the visual rhythm
-              stays consistent with the primary submit. */}
+          {/* SSO surface — rendered when the API advertises any SSO method
+              via /api/v1/auth/methods. Native <a> rather than the Button
+              component because this is a full-page navigation (the browser
+              MUST follow the 302 chain to the IdP and back); a fetch/XHR
+              call would defeat the redirect flow. Multiple SSO buttons
+              stack vertically with a single "or" divider above. */}
+          {hasSSO && (
+            <div className="relative my-4 flex items-center">
+              <div className="flex-grow border-t border-[color:var(--border)]" />
+              <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
+                or
+              </span>
+              <div className="flex-grow border-t border-[color:var(--border)]" />
+            </div>
+          )}
           {oidcMethod && (
-            <>
-              <div className="relative my-4 flex items-center">
-                <div className="flex-grow border-t border-[color:var(--border)]" />
-                <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
-                  or
-                </span>
-                <div className="flex-grow border-t border-[color:var(--border)]" />
-              </div>
-              <a
-                href={oidcMethod.loginUrl}
-                className={cn(
-                  'inline-flex w-full items-center justify-center gap-2',
-                  'px-4 py-2.5 rounded-md text-sm font-medium',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                  'text-[color:var(--text-1)]',
-                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
-                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
-                  'transition-colors duration-150',
-                )}
-              >
-                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Continue with SSO
-              </a>
-            </>
+            <a
+              href={oidcMethod.loginUrl}
+              className={cn(
+                'inline-flex w-full items-center justify-center gap-2',
+                'px-4 py-2.5 rounded-md text-sm font-medium',
+                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                'text-[color:var(--text-1)]',
+                'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
+                'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
+                'transition-colors duration-150',
+              )}
+            >
+              <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Continue with OIDC
+            </a>
+          )}
+          {samlMethod && (
+            <a
+              href={samlMethod.loginUrl}
+              className={cn(
+                'inline-flex w-full items-center justify-center gap-2',
+                'px-4 py-2.5 rounded-md text-sm font-medium',
+                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                'text-[color:var(--text-1)]',
+                'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
+                'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
+                'transition-colors duration-150',
+                oidcMethod && 'mt-2',
+              )}
+            >
+              <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Continue with SAML
+            </a>
           )}
         </form>
       </div>
