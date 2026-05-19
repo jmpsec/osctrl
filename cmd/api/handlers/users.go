@@ -160,7 +160,26 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		}
-		access := h.Users.GenEnvUserAccess(envs, true, (u.Admin), (u.Admin), (u.Admin))
+		// Determine per-level access. When fine-grained fields are
+		// provided, use them; otherwise fall back to the legacy
+		// behavior where admin implies all access levels.
+		userAcc := true
+		queryAcc := u.Admin
+		carveAcc := u.Admin
+		adminAcc := u.Admin
+		if u.UserAccess != nil {
+			userAcc = *u.UserAccess
+		}
+		if u.QueryAccess != nil {
+			queryAcc = *u.QueryAccess
+		}
+		if u.CarveAccess != nil {
+			carveAcc = *u.CarveAccess
+		}
+		if u.AdminAccess != nil {
+			adminAcc = *u.AdminAccess
+		}
+		access := h.Users.GenEnvUserAccess(envs, userAcc, queryAcc, carveAcc, adminAcc)
 		perms := h.Users.GenPermissions(u.Username, ctx[ctxUser], access)
 		if err := h.Users.CreatePermissions(perms); err != nil {
 			apiErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)

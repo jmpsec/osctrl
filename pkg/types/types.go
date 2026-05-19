@@ -170,6 +170,10 @@ type ApiUserRequest struct {
 	NotService   bool     `json:"not_service"`
 	API          bool     `json:"api"`
 	Environments []string `json:"environments"`
+	UserAccess   *bool    `json:"user_access,omitempty"`
+	QueryAccess  *bool    `json:"query_access,omitempty"`
+	CarveAccess  *bool    `json:"carve_access,omitempty"`
+	AdminAccess  *bool    `json:"admin_access,omitempty"`
 }
 
 // NodesPagedResponse is the SPA-canonical paginated response for GET /api/v1/nodes/{env}.
