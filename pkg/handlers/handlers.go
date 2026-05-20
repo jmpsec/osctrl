@@ -30,6 +30,23 @@ type Managers struct {
 func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.DistributedQuery) ([]uint, error) {
 	var expected []uint
 	targetNodesID := []uint{}
+	// When no targets are specified, default to all active nodes in the environment
+	noTargets := len(data.Envs) == 0 && len(data.Platforms) == 0 &&
+		len(data.UUIDs) == 0 && len(data.Hosts) == 0 && len(data.Tags) == 0
+	if noTargets {
+		env, err := manager.Envs.GetByID(data.EnvID)
+		if err != nil {
+			return targetNodesID, fmt.Errorf("error getting environment by ID: %w", err)
+		}
+		allNodes, err := manager.Nodes.GetByEnv(env.UUID, nodes.ActiveNodes, data.InactiveHours)
+		if err != nil {
+			return targetNodesID, fmt.Errorf("error getting all active nodes: %w", err)
+		}
+		for _, n := range allNodes {
+			targetNodesID = append(targetNodesID, n.ID)
+		}
+		return targetNodesID, nil
+	}
 	// Environments target
 	if len(data.Envs) > 0 {
 		expected = []uint{}
