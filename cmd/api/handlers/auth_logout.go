@@ -138,7 +138,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_id_token",
 		Value:    "",
-		Path:     "/api/v1/auth/",
+		Path:     "/api/v1/",
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,
