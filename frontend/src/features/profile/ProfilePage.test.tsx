@@ -107,8 +107,10 @@ describe('ProfilePage', () => {
     await waitFor(() => {
       expect(screen.getByText('alice')).toBeInTheDocument();
     });
-    const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
-    expect(email.value).toBe('alice@example.com');
+    await waitFor(() => {
+      const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
+      expect(email.value).toBe('alice@example.com');
+    });
   });
 
   it('rejects mismatching new passwords client-side', async () => {
