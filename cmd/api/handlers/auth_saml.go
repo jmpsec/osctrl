@@ -23,7 +23,16 @@ var samlProvider *authsaml.Provider
 
 // samlJITProvision mirrors the config flag at InitSAML time so the
 // request hot-path doesn't reach back into the Config struct.
-var samlJITProvision bool
+//
+// samlLogoutURL is the IdP's generic session-termination endpoint
+// (e.g. Auth0's /v2/logout). When set, the logout handler returns it
+// for SAML-session users so the SPA can navigate the browser there
+// and kill the IdP session — preventing silent re-auth on the next
+// "Continue with SSO" click.
+var (
+	samlJITProvision bool
+	samlLogoutURL    string
+)
 
 // InitSAML constructs the global SAML provider for osctrl-api from the
 // YAML/CLI config. Returns a non-nil error on:
@@ -54,6 +63,7 @@ func InitSAML(ctx context.Context, cfg config.YAMLConfigurationSAML, entityID, a
 	}
 	samlProvider = p
 	samlJITProvision = cfg.JITProvision
+	samlLogoutURL = cfg.LogoutURL
 	return nil
 }
 

@@ -220,13 +220,13 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 	// either id_token_hint OR client_id. Keeping the cookie HttpOnly
 	// + Secure means JS can't read the IdP token — it travels only
 	// browser→our /logout endpoint, never to the SPA's JS bundle.
-	// Path=/api/v1/auth/ scopes it to auth endpoints, matching the
-	// state cookie's scope.
+	// Path=/api/v1/ so the cookie is sent on both /api/v1/auth/*
+	// (where it's set) and /api/v1/logout (where it's read).
 	if identity.IDToken != "" {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "osctrl_id_token",
 			Value:    identity.IDToken,
-			Path:     "/api/v1/auth/",
+			Path:     "/api/v1/",
 			MaxAge:   int(8 * time.Hour / time.Second),
 			HttpOnly: true,
 			Secure:   true,

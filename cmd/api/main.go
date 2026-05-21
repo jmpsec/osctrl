@@ -393,6 +393,7 @@ func osctrlAPIService() {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath), loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
 	// Read-only pre-auth endpoints (env list for the login picker).
 	// The env list is the one piece of data the login page legitimately
 	// needs before the user has a session, so it stays pre-auth —

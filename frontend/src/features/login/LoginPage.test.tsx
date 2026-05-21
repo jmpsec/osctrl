@@ -29,13 +29,11 @@ import type { AuthMethod } from '$/api/client';
 //     break the flow because the OAuth2 callback redirects, and
 //     browsers don't follow cross-origin redirects on XHR.
 
-const mockListEnvs = vi.fn();
 const mockListMethods = vi.fn<() => Promise<AuthMethod[]>>();
 
 vi.mock('$/api/client', async () => {
   return {
     login: vi.fn(),
-    listLoginEnvironments: () => mockListEnvs(),
     listAuthMethods: () => mockListMethods(),
   };
 });
@@ -72,7 +70,6 @@ function renderWithProviders() {
 describe('LoginPage SSO surface', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListEnvs.mockResolvedValue([{ uuid: 'env-1', name: 'prod' }]);
   });
 
   it('hides the SSO button when only password method is advertised', async () => {

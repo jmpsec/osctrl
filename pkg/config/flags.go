@@ -819,6 +819,12 @@ func initSAMLFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.SAML.ForceAuthn,
 			Value:       true,
 		},
+		&cli.StringFlag{
+			Name:        "saml-logout-url",
+			Usage:       "IdP session-termination URL for SAML users (e.g. https://tenant.auth0.com/v2/logout) — the logout handler returns it so the SPA can end the IdP session",
+			Sources:     cli.EnvVars("SAML_LOGOUT_URL"),
+			Destination: &params.SAML.LogoutURL,
+		},
 	}
 }
 

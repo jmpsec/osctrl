@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { listCarves } from '$/api/carves';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { listCarves, actOnCarve } from '$/api/carves';
 import { AuthError } from '$/api/client';
 import type {
   CarveTarget,
@@ -55,6 +56,9 @@ export function CarvesListPage() {
 
   const queryKey = ['carves', env, { target, q, sort, dir, page, pageSize }] as const;
 
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: () =>
@@ -72,6 +76,35 @@ export function CarvesListPage() {
     placeholderData: (prev: CarvesPagedResponse | undefined) => prev,
   });
 
+  const bulkMutation = useMutation({
+    mutationFn: async ({
+      names,
+      action,
+    }: {
+      names: string[];
+      action: 'delete' | 'expire' | 'complete';
+    }) => {
+      const results = await Promise.allSettled(
+        names.map((name) => actOnCarve(env, name, action)),
+      );
+      const failedNames = results
+        .map((r, i) => ({ r, name: names[i] }))
+        .filter(({ r }) => r.status === 'rejected')
+        .map(({ name }) => name);
+      if (failedNames.length > 0) {
+        throw new Error(`${failedNames.length} action(s) failed: ${failedNames.join(', ')}`);
+      }
+    },
+    onSuccess: () => {
+      setSelectedNames(new Set());
+      setBulkError(null);
+      void refetch();
+    },
+    onError: (err) => {
+      setBulkError(err instanceof Error ? err.message : 'Bulk action failed');
+    },
+  });
+
   if (isError && error instanceof AuthError) {
     void navigate({ to: '/login' });
     return null;
@@ -85,9 +118,34 @@ export function CarvesListPage() {
     updateSearch({ sort: col, dir: newDir, page: 1 });
   }
 
+  const allVisible = items.map((c) => c.name);
+  const allChecked =
+    allVisible.length > 0 && allVisible.every((name) => selectedNames.has(name));
+  const someChecked = allVisible.some((name) => selectedNames.has(name));
+
+  function toggleAll() {
+    if (allChecked) {
+      setSelectedNames(new Set());
+    } else {
+      setSelectedNames(new Set(allVisible));
+    }
+  }
+
+  function toggleRow(name: string) {
+    setSelectedNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
+        <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
+          Carves
+        </h1>
         <StatusTabs
           tabs={CARVE_STATUS_TABS}
           value={target}
@@ -147,6 +205,16 @@ export function CarvesListPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
+              <th scope="col" className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
+                  onChange={toggleAll}
+                  aria-label="Select all visible carves"
+                  className="accent-[color:var(--signal)]"
+                />
+              </th>
               <SortableHeader
                 column={'name' as CarveSortColumn}
                 label="Name"
@@ -187,11 +255,11 @@ export function CarvesListPage() {
 
           <tbody data-stale={isFetching && !isLoading ? 'true' : undefined}>
             {isLoading &&
-              Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={5} />)}
+              Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -216,7 +284,7 @@ export function CarvesListPage() {
 
             {!isLoading && !isError && items.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -261,8 +329,20 @@ export function CarvesListPage() {
                 return (
                   <tr
                     key={item.name}
-                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                    className={cn(
+                      'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                      selectedNames.has(item.name) && 'bg-[color:var(--signal)]/5',
+                    )}
                   >
+                    <td className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedNames.has(item.name)}
+                        onChange={() => toggleRow(item.name)}
+                        aria-label={`Select ${item.name}`}
+                        className="accent-[color:var(--signal)]"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         to="/_app/env/$env/carves/$name"
@@ -310,6 +390,82 @@ export function CarvesListPage() {
           pageSize={pageSize}
           onPageChange={(p) => updateSearch({ page: p })}
         />
+      )}
+
+      {selectedNames.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-sm font-medium',
+            'z-50',
+          )}
+        >
+          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+            {selectedNames.size} selected
+          </span>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+
+          {bulkError && (
+            <span className="text-xs text-[color:var(--danger)]">{bulkError}</span>
+          )}
+
+          <button
+            type="button"
+            disabled={bulkMutation.isPending}
+            aria-label="Complete selected carves"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={() =>
+              bulkMutation.mutate({
+                names: Array.from(selectedNames),
+                action: 'complete',
+              })
+            }
+          >
+            Complete
+          </button>
+          <button
+            type="button"
+            disabled={bulkMutation.isPending}
+            aria-label="Expire selected carves"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={() =>
+              bulkMutation.mutate({
+                names: Array.from(selectedNames),
+                action: 'expire',
+              })
+            }
+          >
+            Expire
+          </button>
+          <button
+            type="button"
+            disabled={bulkMutation.isPending}
+            aria-label="Delete selected carves"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={() =>
+              bulkMutation.mutate({
+                names: Array.from(selectedNames),
+                action: 'delete',
+              })
+            }
+          >
+            Delete
+          </button>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onClick={() => setSelectedNames(new Set())}
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Clear
+          </button>
+        </div>
       )}
     </div>
   );
