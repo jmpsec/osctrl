@@ -14,25 +14,18 @@ import (
 )
 
 // LoginHandler - POST Handler for API login request
+//
+// Registered on both POST /api/v1/login and POST /api/v1/login/{env}.
+// When {env} is present, the handler additionally verifies that the
+// user has AdminLevel access to that specific environment before
+// issuing a token. When {env} is absent (the SPA's default), the
+// handler authenticates the user and issues a token without an
+// env-scoped permission check — per-request authorization on
+// every subsequent endpoint enforces env access anyway.
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled, never log the body for login
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
-	}
-	// Extract environment
-	envVar := r.PathValue("env")
-	if envVar == "" {
-		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
-		return
-	}
-	// Resolve environment by name OR UUID. The SPA login form lets users type
-	// the env name ("dev", "prod") because UUIDs are not memorable; the API
-	// must accept either. Get() uses `name = ? OR uuid = ?` so both shapes
-	// resolve to the same row. A miss returns 404, not 500.
-	env, err := h.Envs.Get(envVar)
-	if err != nil {
-		apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
-		return
 	}
 	var l types.ApiLoginRequest
 	// Parse request JSON body
@@ -47,14 +40,23 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	access, user := h.Users.CheckLoginCredentials(l.Username, l.Password)
 	if !access {
 		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), "invalid credentials")
-		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, err)
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
 		return
 	}
-	// Check if user has access to this environment
-	if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.UUID) {
-		h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), fmt.Sprintf("no admin access to env %s", env.UUID))
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
-		return
+	// Optional env-scoped permission check (backward compat for CLI callers
+	// that POST to /api/v1/login/{env}).
+	envVar := r.PathValue("env")
+	if envVar != "" {
+		env, err := h.Envs.Get(envVar)
+		if err != nil {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
+			return
+		}
+		if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.UUID) {
+			h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), fmt.Sprintf("no admin access to env %s", env.UUID))
+			apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
+			return
+		}
 	}
 	// Always mint a fresh JWT on successful login and overwrite the stored
 	// APIToken. The auth middleware in cmd/api/auth.go compares every

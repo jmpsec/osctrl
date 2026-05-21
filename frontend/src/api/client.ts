@@ -152,8 +152,8 @@ interface LegacyApiError {
   code?: string;
 }
 
-export async function login(env: string, body: LoginRequest): Promise<LoginResponse> {
-  const res = await fetch(`/api/v1/login/${encodeURIComponent(env)}`, {
+export async function login(body: LoginRequest): Promise<LoginResponse> {
+  const res = await fetch('/api/v1/login', {
     method: 'POST',
     credentials: 'include',
     headers: {
