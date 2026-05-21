@@ -74,6 +74,20 @@ export function runCarve(env: string, body: RunCarveBody): Promise<RunCarveRespo
   );
 }
 
+export type CarveAction = 'delete' | 'expire' | 'complete';
+
+/** POST /api/v1/carves/{env}/{action}/{name} */
+export function actOnCarve(
+  env: string,
+  name: string,
+  action: CarveAction,
+): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(
+    `/api/v1/carves/${encodeURIComponent(env)}/${encodeURIComponent(action)}/${encodeURIComponent(name)}`,
+    { method: 'POST' },
+  );
+}
+
 /**
  * Returns the URL for downloading the reassembled archive of a carve.
  * Use directly as <a href> — the browser handles the file download.
