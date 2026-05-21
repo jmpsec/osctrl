@@ -280,6 +280,7 @@ export type LogoutResponse = {
 export async function logout(): Promise<void> {
   csrfTokenInMemory = null;
 
+  let authSource = '';
   let idpLogoutUrl = '';
   let idpClientId = '';
   let idpIdTokenHint = '';
@@ -291,6 +292,7 @@ export async function logout(): Promise<void> {
     });
     if (res.ok) {
       const body = (await res.json()) as LogoutResponse;
+      authSource = body.auth_source ?? '';
       idpLogoutUrl = body.idp_logout_url ?? '';
       idpClientId = body.idp_client_id ?? '';
       idpIdTokenHint = body.idp_id_token_hint ?? '';
@@ -308,31 +310,27 @@ export async function logout(): Promise<void> {
   }
 
   if (idpLogoutUrl) {
-    // Build the post-logout redirect URL — back to the SPA's /login.
-    // Keycloak 26+ requires EITHER id_token_hint OR client_id when
-    // post_logout_redirect_uri is set. We use client_id (received
-    // from the api in the same response) to avoid persisting raw
-    // id_tokens client-side. The redirect URI must be pre-
-    // registered as a valid post-logout redirect on the client; the
-    // dev compose stack does this in Keycloak's
-    // post.logout.redirect.uris attribute on the osctrl-api client.
-    //
-    // If the api didn't return client_id (older build / missing
-    // config), we still navigate but omit the parameter and let
-    // Keycloak's error page guide the operator.
     const postLogout = `${window.location.origin}/login`;
-    const params = new URLSearchParams({ post_logout_redirect_uri: postLogout });
-    if (idpIdTokenHint) {
-      // Okta requires id_token_hint when chaining a redirect.
-      // Keycloak accepts it too. Send it whenever we have one.
-      params.set('id_token_hint', idpIdTokenHint);
+    const params = new URLSearchParams();
+
+    if (authSource === 'saml') {
+      // SAML IdP logout (e.g. Auth0 /v2/logout) uses `returnTo`
+      // instead of the OIDC `post_logout_redirect_uri`.
+      params.set('returnTo', postLogout);
+      if (idpClientId) {
+        params.set('client_id', idpClientId);
+      }
+    } else {
+      // OIDC RP-initiated logout — standard parameter names.
+      params.set('post_logout_redirect_uri', postLogout);
+      if (idpIdTokenHint) {
+        params.set('id_token_hint', idpIdTokenHint);
+      }
+      if (idpClientId) {
+        params.set('client_id', idpClientId);
+      }
     }
-    if (idpClientId) {
-      // Keycloak accepts client_id as an alternative when no
-      // id_token_hint is available. Harmless when id_token_hint
-      // is also set — most IdPs honor whichever they recognize.
-      params.set('client_id', idpClientId);
-    }
+
     const sep = idpLogoutUrl.includes('?') ? '&' : '?';
     window.location.href = `${idpLogoutUrl}${sep}${params.toString()}`;
     return;

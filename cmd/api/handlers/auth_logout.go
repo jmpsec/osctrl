@@ -186,13 +186,11 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 			resp.IdPClientID = oidcClientID
 			resp.IdPIDTokenHint = idTokenHint
 		case !isOIDCSession && samlProvider != nil:
-			// SAML session (or password, but password doesn't set
-			// any provider cookies either — distinguishing the two
-			// requires more wire data than we currently track, and
-			// for logout purposes the behavior is identical: bounce
-			// to /login, no IdP-side termination).
 			resp.AuthSource = "saml"
-			// No IdP fields — SAML SLO deferred to v2.
+			if samlLogoutURL != "" {
+				resp.IdPLogoutURL = samlLogoutURL
+				resp.IdPClientID = oidcClientID
+			}
 		}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
