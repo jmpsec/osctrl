@@ -312,16 +312,12 @@ export async function logout(): Promise<void> {
   if (idpLogoutUrl) {
     const postLogout = `${window.location.origin}/login`;
     const params = new URLSearchParams();
-
     if (authSource === 'saml') {
-      // SAML IdP logout (e.g. Auth0 /v2/logout) uses `returnTo`
-      // instead of the OIDC `post_logout_redirect_uri`.
       params.set('returnTo', postLogout);
       if (idpClientId) {
         params.set('client_id', idpClientId);
       }
     } else {
-      // OIDC RP-initiated logout — standard parameter names.
       params.set('post_logout_redirect_uri', postLogout);
       if (idpIdTokenHint) {
         params.set('id_token_hint', idpIdTokenHint);

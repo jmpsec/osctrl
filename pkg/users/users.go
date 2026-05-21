@@ -409,6 +409,20 @@ func (m *UserManager) ChangeService(username string, service bool) error {
 	return nil
 }
 
+// ChangeAuthSource to modify the auth_source for a user
+func (m *UserManager) ChangeAuthSource(username, authSource string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %w", err)
+	}
+	if authSource != user.AuthSource {
+		if err := m.DB.Model(&user).Updates(map[string]interface{}{"auth_source": authSource}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // All get all users
 func (m *UserManager) All() ([]AdminUser, error) {
 	var users []AdminUser

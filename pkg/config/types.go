@@ -266,7 +266,7 @@ type YAMLConfigurationSAML struct {
 	MetaDataURL  string `yaml:"metadataUrl"`
 	RootURL      string `yaml:"rootUrl"`
 	LoginURL     string `yaml:"loginUrl"`
-	LogoutURL    string `yaml:"logoutUrl"`
+	LogoutURL    string `yaml:"logoutUrl"       mapstructure:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
 	// UsernameAttribute names the SAML attribute (by Name or
 	// FriendlyName) whose value becomes the osctrl username.

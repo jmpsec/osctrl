@@ -207,11 +207,14 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 // if JITProvision is enabled; reject otherwise. Threat T16, T25.
 func resolveOIDCUser(identity auth.ResolvedIdentity) (users.AdminUser, error) {
 	if exists, existing := adminUsers.ExistsGet(identity.PreferredUsername); exists {
-		if existing.AuthSource != "" && existing.AuthSource != "oidc" {
-			return users.AdminUser{}, fmt.Errorf("username %q belongs to auth source %q, not oidc", identity.PreferredUsername, existing.AuthSource)
-		}
 		if existing.AuthSource == "" {
 			return users.AdminUser{}, fmt.Errorf("username %q is a local account and cannot be claimed by federated login", identity.PreferredUsername)
+		}
+		if existing.AuthSource != "oidc" {
+			if err := adminUsers.ChangeAuthSource(existing.Username, "oidc"); err != nil {
+				return users.AdminUser{}, fmt.Errorf("updating auth source: %w", err)
+			}
+			existing.AuthSource = "oidc"
 		}
 		return existing, nil
 	}
