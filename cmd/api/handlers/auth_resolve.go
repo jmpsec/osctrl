@@ -48,6 +48,14 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 		return users.AdminUser{}, fmt.Errorf("%w: empty username", ErrAuthUserRejected)
 	}
 	if exists, existing := h.Users.ExistsGet(identity.PreferredUsername); exists {
+		if existing.AuthSource != "" && existing.AuthSource != authSource {
+			return users.AdminUser{}, fmt.Errorf("%w: username %q belongs to auth source %q, not %q",
+				ErrAuthUserRejected, identity.PreferredUsername, existing.AuthSource, authSource)
+		}
+		if existing.AuthSource == "" {
+			return users.AdminUser{}, fmt.Errorf("%w: username %q is a local account and cannot be claimed by federated login",
+				ErrAuthUserRejected, identity.PreferredUsername)
+		}
 		return existing, nil
 	}
 	if !jitProvision {

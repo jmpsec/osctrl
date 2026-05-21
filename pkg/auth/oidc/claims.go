@@ -17,6 +17,7 @@ type idTokenClaims struct {
 	Subject           string `json:"sub"`
 	PreferredUsername string `json:"preferred_username"`
 	Email             string `json:"email"`
+	EmailVerified     *bool  `json:"email_verified"`
 	Name              string `json:"name"`
 	GivenName         string `json:"given_name"`
 	FamilyName        string `json:"family_name"`
@@ -68,8 +69,12 @@ func pickUsername(c idTokenClaims, raw map[string]any, claim string) string {
 			return c.PreferredUsername
 		}
 	case "email":
-		if c.Email != "" {
+		if c.Email != "" && c.EmailVerified != nil && *c.EmailVerified {
 			return c.Email
+		}
+		if c.Email != "" && (c.EmailVerified == nil || !*c.EmailVerified) {
+			log.Warn().Msgf("oidc: email claim %q used as username but email_verified is not true — rejecting", c.Email)
+			return c.Subject
 		}
 	case "sub":
 		return c.Subject

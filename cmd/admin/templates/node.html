@@ -564,7 +564,7 @@
               targets: 1,
               render: function (data, type, row, meta) {
                 if (type === 'display') {
-                  return '<pre>' + data + '</pre>';
+                  return '<pre>' + $('<div>').text(data).html() + '</pre>';
                 } else {
                   return data;
                 }

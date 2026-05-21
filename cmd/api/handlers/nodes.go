@@ -216,6 +216,10 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		return
 	}
+	if _, err := h.Nodes.GetByUUIDEnv(n.UUID, env.ID); err != nil {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		return
+	}
 	if err := h.Nodes.ArchiveDeleteByUUID(n.UUID); err != nil {
 		if err.Error() == "record not found" {
 			apiErrorResponse(w, "node not found", http.StatusNotFound, err)

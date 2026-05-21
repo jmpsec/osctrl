@@ -158,6 +158,12 @@ func (m *UserManager) HashPasswordWithSalt(password string) (string, error) {
 // failure is non-fatal — login succeeds even if the rehash write
 // fails (next login retries).
 func (m *UserManager) CheckLoginCredentials(username, password string) (bool, AdminUser) {
+	if password == "" {
+		if dummyHash != nil {
+			_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
+		}
+		return false, AdminUser{}
+	}
 	// Check if we should include service users
 	user, err := m.Get(username)
 	if err != nil {
@@ -309,9 +315,23 @@ func (m *UserManager) Create(user AdminUser) error {
 // New empty user
 func (m *UserManager) New(username, password, email, fullname string, admin, service bool) (AdminUser, error) {
 	if !m.Exists(username) {
-		passhash, err := m.HashPasswordWithSalt(password)
-		if err != nil {
-			return AdminUser{}, err
+		var passhash string
+		if password == "" {
+			randomBytes := make([]byte, 32)
+			if _, err := cryptorand.Read(randomBytes); err != nil {
+				return AdminUser{}, fmt.Errorf("generate random token: %w", err)
+			}
+			h, err := m.HashPasswordWithSalt(hex.EncodeToString(randomBytes))
+			if err != nil {
+				return AdminUser{}, err
+			}
+			passhash = h
+		} else {
+			h, err := m.HashPasswordWithSalt(password)
+			if err != nil {
+				return AdminUser{}, err
+			}
+			passhash = h
 		}
 		return AdminUser{
 			Username: username,

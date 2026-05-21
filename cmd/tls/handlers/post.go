@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -789,6 +790,11 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	blockCarve := false
 	// Check if provided session_id matches with the request_id (carve query name)
 	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
+		if carve.EnvironmentID != env.ID {
+			log.Warn().Msgf("CarveBlockHandler: carve env %d does not match URL env %d", carve.EnvironmentID, env.ID)
+			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.CarveBlockResponse{Success: false})
+			return
+		}
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "CarveBlock").Observe(float64(len(body)))
 		log.Info().Msgf("node %d in %s environment ingested %d bytes for CarveBlockHandler endpoint", carve.NodeID, env.Name, len(body))
@@ -1205,10 +1211,11 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 	confirmed := false
 	integrityCheck := false
 	for _, confEndpoint := range *h.ConfigEndpoints {
-		if confEndpoint.Environment == envVar && confEndpoint.Secret == secretVar {
+		envMatch := confEndpoint.Environment == envVar
+		secretMatch := subtle.ConstantTimeCompare([]byte(confEndpoint.Secret), []byte(secretVar)) == 1
+		if envMatch && secretMatch {
 			confirmed = true
 			integrityCheck = confEndpoint.IntegrityCheck
-			break
 		}
 	}
 	if !confirmed {

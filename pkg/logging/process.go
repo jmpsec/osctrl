@@ -55,10 +55,12 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 	node, err := l.Nodes.GetByKey(queriesWrite.NodeKey)
 	if err != nil {
 		log.Err(err).Msg("error retrieving node")
+		return
 	}
-	// Integrity check
+	// Integrity check — hard reject on env mismatch
 	if envid != node.EnvironmentID {
-		log.Error().Msgf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d]", envid, node.EnvironmentID)
+		log.Error().Msgf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d] — dropping results", envid, node.EnvironmentID)
+		return
 	}
 	// Tap into results so we can update internal metrics
 	for q, r := range queriesWrite.Queries {

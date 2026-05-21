@@ -254,10 +254,9 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// the splice site (single-quote escape, LIKE pattern escape) — no
 	// allowlist gate here so legitimate paths containing spaces or
 	// non-ASCII characters round-trip correctly.
-	// Make sure the user has permissions to run queries in the environments
 	for _, e := range c.Environments {
-		if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, e) {
-			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run queries in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
+		if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, e) {
+			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run carves in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
 			return
 		}
 	}

@@ -110,10 +110,13 @@ func (h *HandlersAdmin) CarvesDownloadHandler(w http.ResponseWriter, r *http.Req
 		log.Info().Msg("empty carve session")
 		return
 	}
-	// Check if carve is archived already
 	carve, err := h.Carves.GetBySession(carveSession)
 	if err != nil {
 		log.Err(err).Msgf("error getting carve")
+		return
+	}
+	if carve.EnvironmentID != env.ID {
+		log.Info().Msgf("carve env %d does not match requested env %d", carve.EnvironmentID, env.ID)
 		return
 	}
 	var archived *carves.CarveResult
