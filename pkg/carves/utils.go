@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -50,7 +51,7 @@ func S3URLtoKey(s3url, bucket string) string {
 // Function to generate a local file for carve archives
 func GenerateArchiveName(carve CarvedFile) string {
 	cPath := strings.ReplaceAll(strings.ReplaceAll(carve.Path, "/", "-"), "\\", "-")
-	return fmt.Sprintf(LocalFile, carve.UUID, carve.SessionID, cPath)
+	return fmt.Sprintf(LocalFile, filepath.Base(carve.UUID), filepath.Base(carve.SessionID), filepath.Base(cPath))
 }
 
 // Function to check if data is compressed using zstd

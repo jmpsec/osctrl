@@ -134,6 +134,9 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 	}
 	var parts []awsTypes.CompletedPart
 	for _, b := range blocks {
+		if b.BlockID < 0 || b.BlockID > 9998 {
+			return nil, fmt.Errorf("block_id %d out of valid range [0, 9998]", b.BlockID)
+		}
 		etag, err := carveS3.Concatenate(S3URLtoKey(b.Data, carveS3.S3Config.Bucket), fkey, b.BlockID+1, uploadOutput.UploadId)
 		if err != nil {
 			return nil, fmt.Errorf("error concatenating - %w", err)

@@ -9,11 +9,14 @@ import (
 // always-available fallback per OIDC spec; tests verify that the
 // pickUsername logic prefers the configured claim when present and
 // falls back to subject otherwise.
+func boolPtr(b bool) *bool { return &b }
+
 func TestPickUsername(t *testing.T) {
 	claims := idTokenClaims{
 		Subject:           "sub-uuid-1234",
 		PreferredUsername: "alice",
 		Email:             "alice@example.com",
+		EmailVerified:     boolPtr(true),
 		Name:              "Alice Tester",
 		GivenName:         "Alice",
 		FamilyName:        "Tester",
@@ -39,6 +42,28 @@ func TestPickUsername(t *testing.T) {
 				t.Fatalf("pickUsername(%q): got %q want %q", tc.configClaim, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestPickUsernameUnverifiedEmail — when email_verified is false or
+// nil, the email claim must NOT be used as a username (audit finding 5).
+func TestPickUsernameUnverifiedEmail(t *testing.T) {
+	unverified := idTokenClaims{
+		Subject:       "sub-uuid-1234",
+		Email:         "alice@example.com",
+		EmailVerified: boolPtr(false),
+	}
+	got := pickUsername(unverified, nil, "email")
+	if got != "sub-uuid-1234" {
+		t.Fatalf("unverified email should fall back to sub, got %q", got)
+	}
+	nilVerified := idTokenClaims{
+		Subject: "sub-uuid-1234",
+		Email:   "alice@example.com",
+	}
+	got = pickUsername(nilVerified, nil, "email")
+	if got != "sub-uuid-1234" {
+		t.Fatalf("nil email_verified should fall back to sub, got %q", got)
 	}
 }
 

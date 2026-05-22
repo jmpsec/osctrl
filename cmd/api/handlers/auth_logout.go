@@ -90,6 +90,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// tenant URL + client_id without an actual session to terminate
 	// (pentest finding: unauthenticated IdP metadata disclosure).
 	var authenticated bool
+	var userAuthSource string
 	tokenCookie, err := r.Cookie("osctrl_token")
 	if err == nil && tokenCookie.Value != "" && len(h.JWTSecret) > 0 {
 		claims, valid := h.Users.CheckToken(string(h.JWTSecret), tokenCookie.Value)
@@ -99,6 +100,9 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 				// Non-fatal — we still want to clear the
 				// client-side cookies and return the IdP URL.
 				log.Warn().Err(cerr).Str("user", claims.Username).Msg("logout: ClearToken failed")
+			}
+			if exists, u := h.Users.ExistsGet(claims.Username); exists {
+				userAuthSource = u.AuthSource
 			}
 		}
 	}
@@ -159,7 +163,8 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// the OIDC callback (auth_oidc.go OIDCCallbackHandler). SAML and
 	// password flows never touch it. So:
 	//   id_token cookie present + valid token → OIDC session
-	//   id_token cookie absent → SAML or password session
+	//   id_token cookie absent + auth_source="saml" → SAML session
+	//   id_token cookie absent + auth_source="" → password session
 	//
 	// Anonymous callers always get the empty response (pentest
 	// T-IDP-DISCLOSURE: no IdP scrape without auth).
@@ -185,7 +190,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 			resp.IdPLogoutURL = oidcProvider.EndSessionURL()
 			resp.IdPClientID = oidcClientID
 			resp.IdPIDTokenHint = idTokenHint
-		case !isOIDCSession && samlProvider != nil:
+		case !isOIDCSession && samlProvider != nil && userAuthSource == "saml":
 			resp.AuthSource = "saml"
 			if samlLogoutURL != "" {
 				resp.IdPLogoutURL = samlLogoutURL

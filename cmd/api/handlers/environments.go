@@ -169,25 +169,27 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 		return
 	}
-	var out []environments.TLSEnvironment
+	var out []any
 	if h.Users.IsAdmin(requester) {
-		out = envAll
+		for _, e := range envAll {
+			out = append(out, e)
+		}
 	} else {
 		access, gerr := h.Users.GetAccess(requester)
 		if gerr != nil {
-			// Treat as "no access" and return [] — fail closed.
 			access = nil
 		}
 		for _, e := range envAll {
 			ea := access[e.UUID]
-			if ea.User || ea.Admin {
+			if ea.Admin {
 				out = append(out, e)
+			} else if ea.User {
+				out = append(out, projectEnvironmentView(e))
 			}
 		}
 	}
 	if out == nil {
-		// Marshal as [] not null for the SPA.
-		out = []environments.TLSEnvironment{}
+		out = []any{}
 	}
 	log.Debug().Msgf("Returned %d environment(s) to %s", len(out), requester)
 	h.AuditLog.Visit(requester, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)

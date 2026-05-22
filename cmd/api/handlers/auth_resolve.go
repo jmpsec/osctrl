@@ -48,6 +48,18 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 		return users.AdminUser{}, fmt.Errorf("%w: empty username", ErrAuthUserRejected)
 	}
 	if exists, existing := h.Users.ExistsGet(identity.PreferredUsername); exists {
+		if existing.AuthSource == "" {
+			return users.AdminUser{}, fmt.Errorf("%w: username %q is a local account and cannot be claimed by federated login",
+				ErrAuthUserRejected, identity.PreferredUsername)
+		}
+		// Allow cross-protocol federated login (oidc↔saml) — same IdP
+		// may serve both protocols. Update the stamp to the current one.
+		if existing.AuthSource != authSource {
+			if err := h.Users.ChangeAuthSource(existing.Username, authSource); err != nil {
+				return users.AdminUser{}, fmt.Errorf("%w: updating auth source: %v", ErrAuthUserRejected, err)
+			}
+			existing.AuthSource = authSource
+		}
 		return existing, nil
 	}
 	if !jitProvision {
