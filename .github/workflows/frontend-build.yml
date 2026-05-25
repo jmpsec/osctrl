@@ -1,9 +1,9 @@
 name: frontend-build
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 permissions:
   contents: read
 jobs:
