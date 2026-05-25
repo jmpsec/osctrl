@@ -2,7 +2,7 @@ name: Go linting on PRs pushed to osctrl
 
 on:
   pull_request:
-    branches: [main, master, develop]
+    branches: [main, develop]
     paths:
       - "**/*.go"
       - "go.mod"
