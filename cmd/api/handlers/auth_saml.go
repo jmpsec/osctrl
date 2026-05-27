@@ -86,6 +86,21 @@ func InitSAML(ctx context.Context, cfg config.YAMLConfigurationSAML, entityID, a
 // EnvUUID on the State is a fixed sentinel ("api") because osctrl-api
 // is single-tenant for federated login. Matches the OIDC handler's
 // posture.
+// @Summary Start SAML login
+// @Description Redirects the browser to the configured SAML identity provider.
+// @Tags auth
+// @Produce json
+// @Success 200 {string} string
+// @Failure 302 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/saml/login [get]
 func (h *HandlersApi) SAMLLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
@@ -147,6 +162,24 @@ func (h *HandlersApi) SAMLLoginHandler(w http.ResponseWriter, r *http.Request) {
 // Failure paths redirect to "/" too (no error param leak). Server-side
 // log records WHY; client sees a generic outcome. Timing-oracle defense
 // matches the OIDC handler.
+// @Summary Complete SAML login
+// @Description Handles the SAML assertion consumer service callback and creates an API session.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param SAMLResponse formData string false "SAML response assertion"
+// @Param RelayState formData string false "SAML relay state"
+// @Success 200 {string} string
+// @Failure 302 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/saml/acs [post]
 func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
@@ -208,6 +241,20 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 // during the first login attempt.
 //
 // Rate-limited at the route layer like the other unauth endpoints.
+// @Summary Get SAML metadata
+// @Description Returns service provider metadata for SAML identity provider registration.
+// @Tags auth
+// @Produce application/xml
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/saml/metadata [get]
 func (h *HandlersApi) SAMLMetadataHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)

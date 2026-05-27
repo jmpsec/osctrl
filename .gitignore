@@ -85,3 +85,7 @@ tools/bruno/collection.bru
 !CHANGELOG.md
 !SECURITY.md
 !frontend/**/*.md
+
+# Generate swagger files
+cmd/api/docs/swagger.json
+cmd/api/docs/swagger.yaml

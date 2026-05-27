@@ -35,6 +35,27 @@ type NodeLogsResponse struct {
 //
 //	since:  RFC3339 timestamp; entries strictly after this point only
 //	limit:  1..1000 (default 100)
+//
+// @Summary Get node logs
+// @Description Returns recent status or result logs for a node.
+// @Tags logs
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param type path string true "Log type: status or result"
+// @Param uuid path string true "Node UUID"
+// @Param limit query int false "Maximum number of log rows"
+// @Param since query string false "RFC3339 lower bound"
+// @Success 200 {object} NodeLogsResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/logs/{type}/{env}/{uuid} [get]
 func (h *HandlersApi) NodeLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

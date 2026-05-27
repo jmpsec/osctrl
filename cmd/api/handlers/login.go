@@ -22,6 +22,24 @@ import (
 // handler authenticates the user and issues a token without an
 // env-scoped permission check — per-request authorization on
 // every subsequent endpoint enforces env access anyway.
+// @Summary Log in
+// @Description Authenticates an API user and returns a JWT token.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param env path string false "Environment name or UUID"
+// @Param request body types.ApiLoginRequest true "Request body"
+// @Success 200 {object} types.ApiLoginResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/login [post]
+// @Router /api/v1/login/{env} [post]
 func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled, never log the body for login
 	if h.DebugHTTPConfig.EnableHTTP {
