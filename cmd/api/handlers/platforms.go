@@ -36,6 +36,22 @@ func (h *HandlersApi) PlatformsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PlatformsEnvHandler - GET Handler to return platforms for one environment as JSON
+// @Summary List platforms
+// @Description Returns platform counts for an environment.
+// @Tags platforms
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} nodes.PlatformCounts
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/platforms/{env} [get]
 func (h *HandlersApi) PlatformsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

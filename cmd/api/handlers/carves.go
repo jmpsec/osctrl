@@ -47,6 +47,23 @@ func carveFileView(c carves.CarvedFile) types.CarveFileView {
 // Returns the carve query metadata plus the array of per-node CarvedFile rows
 // produced by the carve. Returns 404 when the carve query name does not exist
 // in the environment.
+// @Summary Get file carve
+// @Description Returns a file carve and the files produced by it.
+// @Tags carves
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Carve query name"
+// @Success 200 {object} types.CarveDetailResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env}/{name} [get]
 func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -108,6 +125,23 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Returns carve queries by target. Retained from the legacy contract; the
 // canonical list endpoint is now CarveListHandler at /api/v1/carves/{env}.
+// @Summary List carve queries
+// @Description Returns file carve queries by target and environment.
+// @Tags carves
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param target path string true "Carve target filter"
+// @Success 200 {array} queries.DistributedQuery
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env}/queries/{target} [get]
 func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -151,6 +185,26 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 // Paginated, sorted, searchable list of carve queries (DistributedQuery rows
 // with type=carve). Query params: page, page_size, q, sort, dir, target.
 // Empty result → HTTP 200 with items: [].
+// @Summary List file carves
+// @Description Returns paginated file carves for an environment.
+// @Tags carves
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param q query string false "Search query"
+// @Success 200 {object} types.CarvesPagedResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env} [get]
+// @Router /api/v1/carves/{env}/list [get]
 func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -222,6 +276,24 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CarvesRunHandler - POST /api/v1/carves/{env}
+// @Summary Run file carve
+// @Description Starts a new file carve.
+// @Tags carves
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.ApiDistributedQueryRequest true "Request body"
+// @Success 200 {object} types.ApiQueriesResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env} [post]
 func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -314,6 +386,25 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CarvesActionHandler - POST /api/v1/carves/{env}/{action}/{name}
+// @Summary Execute carve action
+// @Description Deletes, expires, or otherwise acts on a file carve.
+// @Tags carves
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param action path string true "Carve action"
+// @Param name path string true "Carve query name"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env}/{action}/{name} [post]
 func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -394,6 +485,23 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 //     download URL is returned via 302 redirect).
 //
 // Content-Disposition is set to attachment with the carve archive filename.
+// @Summary Download carve archive
+// @Description Downloads the archive for a completed file carve.
+// @Tags carves
+// @Produce application/octet-stream
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Carve query name"
+// @Success 200 {file} file
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/carves/{env}/archive/{name} [get]
 func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

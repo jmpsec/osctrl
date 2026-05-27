@@ -27,6 +27,27 @@ import (
 //
 // Returns the SPA-canonical paginated envelope. The handler audit-logs the
 // visit on success.
+// @Summary List audit logs
+// @Description Returns paginated API audit log entries.
+// @Tags audit
+// @Produce json
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param q query string false "Search query"
+// @Param service query string false "Service filter"
+// @Param username query string false "Username filter"
+// @Param env query string false "Environment filter"
+// @Success 200 {object} types.AuditLogsPagedResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/audit-logs [get]
 func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

@@ -28,6 +28,22 @@ const tokenRefreshDefaultHours = 24
 // sees current state before making changes — no more accidentally
 // overwriting (user:true, query:true) by re-saving the modal's
 // default of (user:true, query:false).
+// @Summary Get user permissions
+// @Description Returns per-environment permissions for a user.
+// @Tags users
+// @Produce json
+// @Param username path string true "Username"
+// @Success 200 {object} types.GetPermissionsResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/permissions [get]
 func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -72,6 +88,24 @@ func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 // target user's per-env access rows. Returns 200 with the new EnvAccess.
 // Requires super-admin (AdminLevel, NoEnvironment) — env-scoped admins can
 // not grant permissions for their environment from this endpoint.
+// @Summary Set user permissions
+// @Description Sets per-environment permissions for a user.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param username path string true "Username"
+// @Param request body types.SetPermissionsRequest true "Request body"
+// @Success 200 {object} types.EnvAccessView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/permissions [post]
 func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -171,6 +205,24 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 // "All current envs" semantics: enumeration happens server-side at
 // request time. Envs created LATER do not inherit; the operator
 // re-applies as needed. See SetPermissionsAllRequest godoc.
+// @Summary Set all user permissions
+// @Description Sets permissions across all environments for a user.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param username path string true "Username"
+// @Param request body types.SetPermissionsAllRequest true "Request body"
+// @Success 200 {object} types.SetPermissionsAllResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/permissions/all [post]
 func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -264,6 +316,23 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 // APIToken (invalidating the previous token), and returns the new token +
 // expiry. Requires super-admin OR the request author asking for their own
 // token. Audit-logged on success.
+// @Summary Refresh user token
+// @Description Refreshes an API token for a user.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param username path string true "Username"
+// @Success 200 {object} types.TokenResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/token/refresh [post]
 func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -303,6 +372,22 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 //
 // Clears the user's APIToken so any existing JWT for them stops working.
 // Requires super-admin OR the user themselves.
+// @Summary Delete user token
+// @Description Deletes an API token for a user.
+// @Tags users
+// @Produce json
+// @Param username path string true "Username"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/token [delete]
 func (h *HandlersApi) DeleteUserTokenHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -336,6 +421,21 @@ func (h *HandlersApi) DeleteUserTokenHandler(w http.ResponseWriter, r *http.Requ
 //
 // Returns the currently authenticated user's profile (sans password hash
 // and API token). Useful for the SPA's Profile page.
+// @Summary Get current user
+// @Description Returns the currently authenticated user profile.
+// @Tags users
+// @Produce json
+// @Success 200 {object} types.UserMeResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/me [get]
 func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -381,6 +481,23 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Updates email and/or fullname for the currently authenticated user. Sends
 // each empty field through unchanged. Returns the updated profile.
+// @Summary Update current user
+// @Description Updates the current user's profile fields.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body types.UserMePatchRequest true "Request body"
+// @Success 200 {object} types.UserMeResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/me [patch]
 func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -430,6 +547,23 @@ func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Changes the currently authenticated user's password. Verifies the
 // current password (bcrypt) before persisting the new hash.
+// @Summary Change current user password
+// @Description Changes the current user's password.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body types.PasswordChangeRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/me/password [post]
 func (h *HandlersApi) MePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

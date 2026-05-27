@@ -66,6 +66,22 @@ type StatsResponse struct {
 //     functions are exercised by existing tests in pkg/queries; a full
 //     integration test would require DB fixture setup that is out of scope
 //     for Track 2.
+//
+// @Summary Get dashboard stats
+// @Description Returns cross-environment dashboard statistics.
+// @Tags stats
+// @Produce json
+// @Success 200 {object} StatsResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats [get]
 func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 	ctxVal := r.Context().Value(ContextKey(contextAPI))
 	if ctxVal == nil {
@@ -204,6 +220,23 @@ var activityIntervalHours = map[string]int{
 // Buckets are emitted contiguously — empty windows return zero rows for
 // that bucket — so the SPA can render the grid without densifying
 // client-side.
+// @Summary Get environment activity
+// @Description Returns activity buckets for an environment.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param hours query int false "Number of hours to include"
+// @Success 200 {object} ActivityBucket
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/{env} [get]
 func (h *HandlersApi) EnvActivityHandler(w http.ResponseWriter, r *http.Request) {
 	ctxVal := r.Context().Value(ContextKey(contextAPI))
 	if ctxVal == nil {
@@ -306,6 +339,24 @@ type NodeActivityBucket struct {
 // tables (see NodeActivityBucket) keyed by the node's UUID — except
 // node_queries which keys by numeric NodeID, looked up once from the
 // resolved node.
+// @Summary Get node activity
+// @Description Returns activity buckets for a node.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuid path string true "Node UUID"
+// @Param hours query int false "Number of hours to include"
+// @Success 200 {object} NodeActivityBucket
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/node/{env}/{uuid} [get]
 func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request) {
 	ctxVal := r.Context().Value(ContextKey(contextAPI))
 	if ctxVal == nil {
@@ -427,6 +478,24 @@ func (h *HandlersApi) computeNodeActivityForNode(
 // Unknown / unauthorized UUIDs are silently omitted from the response
 // (they're treated as "no data"), not 404'd — that lets a single bad UUID
 // in the list not break the whole page render.
+// @Summary Get node activity batch
+// @Description Returns activity buckets for multiple nodes in an environment.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuids query string false "Comma-separated node UUIDs"
+// @Param hours query int false "Number of hours to include"
+// @Success 200 {object} map[string][]NodeActivityBucket
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/node-batch/{env} [get]
 func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Request) {
 	ctxVal := r.Context().Value(ContextKey(contextAPI))
 	if ctxVal == nil {
@@ -523,6 +592,21 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 // Counts include both active and inactive nodes — a node sitting at an old
 // osquery version is still "stale" even if it's offline today, because once
 // it comes back online it'll come back stale.
+// @Summary Get osquery version stats
+// @Description Returns fleet-wide osquery version counts.
+// @Tags stats
+// @Produce json
+// @Success 200 {object} nodes.OsqueryVersionCount
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/osquery-versions [get]
 func (h *HandlersApi) OsqueryVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	ctxVal := r.Context().Value(ContextKey(contextAPI))
 	if ctxVal == nil {

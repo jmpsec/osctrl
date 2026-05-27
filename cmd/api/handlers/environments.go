@@ -64,6 +64,22 @@ func projectEnvironmentView(env environments.TLSEnvironment) types.TLSEnvironmen
 }
 
 // EnvironmentHandler - GET Handler to return one environment by UUID as JSON
+// @Summary Get environment
+// @Description Returns one environment by name or UUID.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} types.TLSEnvironmentView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env} [get]
 func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -106,6 +122,22 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // EnvironmentMapHandler - GET Handler to return one environment as JSON
+// @Summary Map environments
+// @Description Returns an environment lookup map by target key.
+// @Tags environments
+// @Produce json
+// @Param target path string true "Map target: id, name, or uuid"
+// @Success 200 {object} map[string]environments.NameUUID
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/map/{target} [get]
 func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -157,6 +189,21 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 // meant a non-super-admin user with valid env permissions couldn't
 // even populate the SPA's env switcher — their nav read "No
 // environments configured" even though they had access to envs.
+// @Summary List environments
+// @Description Returns environments visible to the authenticated user.
+// @Tags environments
+// @Produce json
+// @Success 200 {array} types.TLSEnvironmentView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments [get]
 func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -197,6 +244,23 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 }
 
 // EnvEnrollHandler - GET Handler to return node enrollment values (secret, certificate, one-liner) for an environment as JSON
+// @Summary Get enrollment values
+// @Description Returns enrollment helper values for an environment.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param target path string true "Enrollment target"
+// @Success 200 {object} types.ApiDataResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env}/enroll/{target} [get]
 func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -267,6 +331,23 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // EnvRemoveHandler - GET Handler to return node removal values for an environment as JSON
+// @Summary Get removal values
+// @Description Returns removal helper values for an environment.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param target path string true "Removal target"
+// @Success 200 {object} types.ApiDataResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env}/remove/{target} [get]
 func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -328,6 +409,25 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // EnvEnrollActionsHandler - POST Handler to perform actions (extend, expire) in enroll values
+// @Summary Execute enrollment action
+// @Description Extends, expires, rotates, or updates enrollment values for an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param action path string true "Enrollment action"
+// @Param request body types.ApiActionsRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env}/enroll/{action} [post]
 func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -428,6 +528,25 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 }
 
 // EnvRemoveActionsHandler - POST Handler to perform actions (extend, expire) in remove values
+// @Summary Execute removal action
+// @Description Extends, expires, rotates, or updates removal values for an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param action path string true "Removal action"
+// @Param request body types.ApiActionsRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env}/remove/{action} [post]
 func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -503,6 +622,23 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 }
 
 // EnvActionsHandler - POST Handler to perform actions (create, delete, edit) on environments
+// @Summary Execute environment action
+// @Description Creates or modifies an environment using the legacy action endpoint.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param request body types.ApiEnvRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/actions [post]
 func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

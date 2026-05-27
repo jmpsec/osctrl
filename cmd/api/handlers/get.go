@@ -9,6 +9,20 @@ import (
 )
 
 // HealthHandler - Handle health requests
+// @Summary API health check
+// @Description Returns the API health response.
+// @Tags system
+// @Produce json
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /health [get]
 func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -19,6 +33,20 @@ func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CheckHandlerNoAuth - Handle unauthenticated check requests
+// @Summary Unauthenticated API check
+// @Description Returns API availability without requiring authentication.
+// @Tags checks
+// @Produce json
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/checks-no-auth [get]
 func (h *HandlersApi) CheckHandlerNoAuth(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -29,6 +57,21 @@ func (h *HandlersApi) CheckHandlerNoAuth(w http.ResponseWriter, r *http.Request)
 }
 
 // CheckHandlerAuth - Handle authenticated check requests
+// @Summary Authenticated API check
+// @Description Returns API availability for an authenticated user.
+// @Tags checks
+// @Produce json
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/checks-auth [get]
 func (h *HandlersApi) CheckHandlerAuth(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -58,6 +101,20 @@ func (h *HandlersApi) CheckHandlerAuth(w http.ResponseWriter, r *http.Request) {
 // Returning 404 here doesn't leak endpoint structure beyond what's
 // already in the public OpenAPI; it just stops the api from silently
 // claiming success on misrouted requests.
+// @Summary API root liveness check
+// @Description Returns the API root liveness response.
+// @Tags system
+// @Produce json
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router / [get]
 func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -71,6 +128,19 @@ func (h *HandlersApi) RootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ErrorHandler - Handle error requests
+// @Summary API error response
+// @Description Returns a generic API error response.
+// @Tags system
+// @Produce json
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {string} string "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /error [get]
 func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -81,6 +151,19 @@ func (h *HandlersApi) ErrorHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ForbiddenHandler - Handle forbidden error requests
+// @Summary API forbidden response
+// @Description Returns a generic forbidden response.
+// @Tags system
+// @Produce json
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {string} string "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /forbidden [get]
 func (h *HandlersApi) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

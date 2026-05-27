@@ -35,6 +35,22 @@ func projectAdminUserView(u users.AdminUser) types.AdminUserView {
 }
 
 // UserHandler - GET Handler for environment users
+// @Summary Get user
+// @Description Returns an API user by username.
+// @Tags users
+// @Produce json
+// @Param username path string true "Username"
+// @Success 200 {object} types.AdminUserView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username} [get]
 func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -67,6 +83,21 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UsersHandler - GET Handler for multiple JSON nodes
+// @Summary List users
+// @Description Returns API users.
+// @Tags users
+// @Produce json
+// @Success 200 {array} types.AdminUserView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users [get]
 func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -100,6 +131,25 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserActionHandler - POST Handler to take actions on a user by username and environment
+// @Summary Execute user action
+// @Description Creates, updates, deletes, or changes flags on a user.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param username path string true "Username"
+// @Param action path string true "User action"
+// @Param request body types.ApiUserRequest true "Request body"
+// @Success 200 {object} types.ApiDataResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/users/{username}/{action} [post]
 func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

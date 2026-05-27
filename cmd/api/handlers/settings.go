@@ -13,6 +13,21 @@ import (
 )
 
 // SettingsHandler - GET Handler for all settings including JSON
+// @Summary List settings
+// @Description Returns settings for all services.
+// @Tags settings
+// @Produce json
+// @Success 200 {array} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings [get]
 func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -37,6 +52,22 @@ func (h *HandlersApi) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SettingsServiceHandler - GET Handler for service specific settings excluding JSON
+// @Summary List service settings
+// @Description Returns settings for a service.
+// @Tags settings
+// @Produce json
+// @Param service path string true "Service name"
+// @Success 200 {array} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings/{service} [get]
 func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -72,6 +103,23 @@ func (h *HandlersApi) SettingsServiceHandler(w http.ResponseWriter, r *http.Requ
 }
 
 // SettingsServiceEnvHandler - GET Handler for service and environment specific settings excluding JSON
+// @Summary List service environment settings
+// @Description Returns settings for a service and environment.
+// @Tags settings
+// @Produce json
+// @Param service path string true "Service name"
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings/{service}/{env} [get]
 func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -126,6 +174,22 @@ func (h *HandlersApi) SettingsServiceEnvHandler(w http.ResponseWriter, r *http.R
 }
 
 // SettingsServiceJSONHandler - GET Handler for service specific settings including JSON
+// @Summary List service JSON settings
+// @Description Returns JSON settings for a service.
+// @Tags settings
+// @Produce json
+// @Param service path string true "Service name"
+// @Success 200 {array} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings/{service}/json [get]
 func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -161,6 +225,23 @@ func (h *HandlersApi) SettingsServiceJSONHandler(w http.ResponseWriter, r *http.
 }
 
 // GET Handler for service and environment specific settings including JSON
+// @Summary List service environment JSON settings
+// @Description Returns JSON settings for a service and environment.
+// @Tags settings
+// @Produce json
+// @Param service path string true "Service name"
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings/{service}/json/{env} [get]
 func (h *HandlersApi) SettingsServiceEnvJSONHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

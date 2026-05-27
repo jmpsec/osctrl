@@ -45,6 +45,20 @@ type AuthMethodsResponse struct {
 // Rate-limited at the route layer (same preAuthRateLimit as the
 // env/sample endpoints) to keep this from being a free metadata
 // scrape vector.
+// @Summary List authentication methods
+// @Description Returns the authentication methods enabled for the API login UI.
+// @Tags auth
+// @Produce json
+// @Success 200 {object} AuthMethodsResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/methods [get]
 func (h *HandlersApi) AuthMethodsHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)

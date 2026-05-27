@@ -36,6 +36,25 @@ func savedQueryView(s queries.SavedQuery) types.SavedQueryView {
 //
 // Paginated, sorted, searchable list of saved queries for an environment.
 // Query params: page, page_size, q (free-text), sort (column key), dir (asc|desc).
+// @Summary List saved queries
+// @Description Returns paginated saved queries for an environment.
+// @Tags saved-queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param q query string false "Search query"
+// @Success 200 {object} types.SavedQueriesPagedResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/saved-queries/{env} [get]
 func (h *HandlersApi) SavedQueriesListHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -101,6 +120,24 @@ func (h *HandlersApi) SavedQueriesListHandler(w http.ResponseWriter, r *http.Req
 //
 // Body: { "name": string, "query": string }. Returns 201 with the created view,
 // 409 if a saved query with that name already exists in the environment.
+// @Summary Create saved query
+// @Description Creates a saved query in an environment.
+// @Tags saved-queries
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.SavedQueryCreateRequest true "Request body"
+// @Success 200 {object} types.SavedQueryView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/saved-queries/{env} [post]
 func (h *HandlersApi) SavedQueryCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -171,6 +208,25 @@ func (h *HandlersApi) SavedQueryCreateHandler(w http.ResponseWriter, r *http.Req
 //
 // Body: { "query": string }. Updates the SQL body only; the original creator
 // is preserved. Returns the updated view.
+// @Summary Update saved query
+// @Description Updates a saved query in an environment.
+// @Tags saved-queries
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Saved query name"
+// @Param request body types.SavedQueryUpdateRequest true "Request body"
+// @Success 200 {object} types.SavedQueryView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/saved-queries/{env}/{name} [patch]
 func (h *HandlersApi) SavedQueryUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -222,6 +278,23 @@ func (h *HandlersApi) SavedQueryUpdateHandler(w http.ResponseWriter, r *http.Req
 }
 
 // SavedQueryDeleteHandler - DELETE /api/v1/saved-queries/{env}/{name}
+// @Summary Delete saved query
+// @Description Deletes a saved query in an environment.
+// @Tags saved-queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Saved query name"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/saved-queries/{env}/{name} [delete]
 func (h *HandlersApi) SavedQueryDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

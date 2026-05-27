@@ -23,6 +23,20 @@ import (
 // Like POST /login/{env}, this lives behind the per-IP rate limit registered
 // in main.go so the endpoint can't be turned into an env-enumeration oracle
 // for brute-force prep beyond the limit.
+// @Summary List login environments
+// @Description Returns pre-auth environment choices for the login UI.
+// @Tags auth
+// @Produce json
+// @Success 200 {array} types.LoginEnvironment
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/login/environments [get]
 func (h *HandlersApi) LoginEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
