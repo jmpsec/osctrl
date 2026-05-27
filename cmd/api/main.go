@@ -793,6 +793,19 @@ func initializeLoggers(cfg config.YAMLConfigurationService) {
 	}
 }
 
+// @title osctrl API
+// @version 0.5.2
+// @description API service for osctrl, a fast and efficient osquery management solution.
+// @termsOfService https://github.com/jmpsec/osctrl
+// @contact.name osctrl
+// @contact.url https://github.com/jmpsec/osctrl
+// @license.name MIT
+// @license.url https://github.com/jmpsec/osctrl/blob/master/LICENSE
+// @BasePath /
+// @schemes http https
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func main() {
 	// Initiate CLI and parse arguments
 	app = &cli.Command{

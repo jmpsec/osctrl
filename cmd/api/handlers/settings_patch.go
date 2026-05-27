@@ -27,6 +27,25 @@ import (
 // applies the matching typed setter. Mismatched payloads return 400. The
 // setting must already exist (creation is the legacy admin's job); a missing
 // setting → 404. Audit-log on success only.
+// @Summary Update setting
+// @Description Updates a mutable setting value.
+// @Tags settings
+// @Accept json
+// @Produce json
+// @Param service path string true "Service name"
+// @Param name path string true "Setting name"
+// @Param request body types.SettingPatchRequest true "Request body"
+// @Success 200 {object} settings.SettingValue
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/settings/{service}/{name} [patch]
 func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

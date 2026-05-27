@@ -16,6 +16,23 @@ import (
 )
 
 // NodeHandler - GET Handler for single JSON nodes
+// @Summary Get node
+// @Description Returns a single enrolled node in an environment.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param node path string true "Node UUID, hostname, or local name"
+// @Success 200 {object} types.NodeView
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/node/{node} [get]
 func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -65,6 +82,22 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ActiveNodesHandler - GET Handler for active JSON nodes
+// @Summary List active nodes
+// @Description Returns active enrolled nodes for an environment.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} nodes.OsqueryNode
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/active [get]
 func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -106,6 +139,22 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // InactiveNodesHandler - GET Handler for inactive JSON nodes
+// @Summary List inactive nodes
+// @Description Returns inactive enrolled nodes for an environment.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} nodes.OsqueryNode
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/inactive [get]
 func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -147,6 +196,22 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // AllNodesHandler - GET Handler for all JSON nodes
+// @Summary List all nodes
+// @Description Returns all enrolled nodes for an environment.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} nodes.OsqueryNode
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/all [get]
 func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -187,6 +252,24 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteNodeHandler - POST Handler to delete single node
+// @Summary Delete node
+// @Description Deletes a node from an environment.
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.ApiNodeGenericRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/delete [post]
 func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -235,6 +318,24 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // TagNodeHandler - POST Handler to tag a node
+// @Summary Tag node
+// @Description Adds or updates a tag on a node.
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.ApiNodeTagRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/tag [post]
 func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -289,6 +390,23 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LookupNodeHandler - POST Handler to lookup a node by identifier
+// @Summary Lookup node
+// @Description Looks up a node by UUID, hostname, or local name.
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param request body types.ApiLookupRequest true "Request body"
+// @Success 200 {object} nodes.OsqueryNode
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/lookup [post]
 func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -337,6 +455,30 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 //	dir:       "asc" | "desc" (default "desc" for lastseen, "asc" otherwise)
 //	page:      1-indexed page number (default 1)
 //	page_size: 1..500 (default 50)
+//
+// @Summary List paginated nodes
+// @Description Returns paginated, filtered, and sorted nodes for an environment.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param q query string false "Search query"
+// @Param status query string false "Node status filter"
+// @Param platform query string false "Platform filter"
+// @Param sort query string false "Sort field"
+// @Param order query string false "Sort order"
+// @Success 200 {object} types.NodesPagedResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env} [get]
 func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

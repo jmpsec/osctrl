@@ -36,6 +36,23 @@ var QueryTargets = map[string]bool{
 }
 
 // QueryShowHandler - GET Handler to return a single query in JSON
+// @Summary Get query
+// @Description Returns a single on-demand query.
+// @Tags queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Query name"
+// @Success 200 {object} queries.DistributedQuery
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env}/{name} [get]
 func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -106,6 +123,24 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // QueriesRunHandler - POST Handler to run a query
+// @Summary Run query
+// @Description Starts a new distributed query.
+// @Tags queries
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.ApiDistributedQueryRequest true "Request body"
+// @Success 200 {object} types.ApiQueriesResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env} [post]
 func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -214,6 +249,25 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // QueriesActionHandler - POST Handler to delete/expire a query
+// @Summary Execute query action
+// @Description Deletes, expires, or otherwise acts on an on-demand query.
+// @Tags queries
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param action path string true "Query action"
+// @Param name path string true "Query name"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env}/{action}/{name} [post]
 func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -282,6 +336,23 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // AllQueriesShowHandler - GET Handler to return all queries in JSON
+// @Summary List queries
+// @Description Returns on-demand queries for an environment.
+// @Tags queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} queries.DistributedQuery
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env} [get]
+// @Router /api/v1/all-queries/{env} [get]
 func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -324,6 +395,28 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 // QueryListHandler - GET Handler to return queries in JSON by target and environment (paginated)
 //
 // Query params: page, page_size, q (free-text search), sort (column key), dir (asc|desc)
+// @Summary List paginated queries
+// @Description Returns paginated on-demand queries by target and environment.
+// @Tags queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param target path string true "Query target filter"
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param q query string false "Search query"
+// @Param sort query string false "Sort field"
+// @Param order query string false "Sort order"
+// @Success 200 {object} types.QueriesPagedResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env}/list/{target} [get]
 func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -414,6 +507,26 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 // Params: page, page_size, since (RFC3339 timestamp; unparseable → ignored)
 //
 // Empty results are a valid state and return HTTP 200 with items: [].
+// @Summary Get query results
+// @Description Returns paginated results for an on-demand query.
+// @Tags queries
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Query name"
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param since query string false "RFC3339 lower bound"
+// @Success 200 {object} types.QueryResultsResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env}/results/{name} [get]
 func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -506,6 +619,23 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 // (The `.csv` lives as a literal path segment before `{name}` because Go's
 // ServeMux grammar requires wildcards to end at `/` or end-of-pattern, so
 // `{name}.csv` is a parse error at registration time.)
+// @Summary Export query results CSV
+// @Description Streams query results as CSV.
+// @Tags queries
+// @Produce text/csv
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Query name"
+// @Success 200 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/queries/{env}/results/csv/{name} [get]
 func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -615,6 +745,21 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 // Path: /api/v1/osquery/tables
 // The schema is global (not env-scoped). Requires any authenticated user.
 // Responses are cache-able for one hour since the schema rarely changes.
+// @Summary List osquery tables
+// @Description Returns the osquery schema table metadata known to the API.
+// @Tags osquery
+// @Produce json
+// @Success 200 {array} types.OsqueryTable
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/osquery/tables [get]
 func (h *HandlersApi) OsqueryTablesHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {

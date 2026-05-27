@@ -93,6 +93,21 @@ func InitOIDC(ctx context.Context, cfg config.YAMLConfigurationOIDC) error {
 // EnvUUID on the State is a fixed sentinel ("api") because osctrl-api
 // has no per-env IdP concept — see auth-providers spec § "OIDC is
 // global." The legacy admin uses "admin" for the same reason.
+// @Summary Start OIDC login
+// @Description Redirects the browser to the configured OIDC identity provider.
+// @Tags auth
+// @Produce json
+// @Success 200 {string} string
+// @Failure 302 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/oidc/login [get]
 func (h *HandlersApi) OIDCLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
@@ -163,6 +178,23 @@ func (h *HandlersApi) OIDCLoginHandler(w http.ResponseWriter, r *http.Request) {
 // server-side log records WHY; the client gets a generic outcome.
 // This is the timing-oracle defense (threat T31): every failure mode
 // produces an indistinguishable client-visible response.
+// @Summary Complete OIDC login
+// @Description Handles the OIDC authorization callback and creates an API session.
+// @Tags auth
+// @Produce json
+// @Param code query string false "OIDC authorization code"
+// @Param state query string false "OIDC state"
+// @Success 200 {string} string
+// @Failure 302 {string} string
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/auth/oidc/callback [get]
 func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)

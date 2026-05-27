@@ -15,6 +15,21 @@ import (
 )
 
 // AllTagsHandler - GET Handler for all JSON tags
+// @Summary List tags
+// @Description Returns tags across environments.
+// @Tags tags
+// @Produce json
+// @Success 200 {array} tags.AdminTag
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/tags [get]
 func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -41,6 +56,23 @@ func (h *HandlersApi) AllTagsHandler(w http.ResponseWriter, r *http.Request) {
 // TagEnvHandler - GET Handler to return one tag for one environment as JSON.
 // Permission is scoped to env.UUID admin so non-super operators with admin
 // rights on this specific environment can view its tags.
+// @Summary Get environment tag
+// @Description Returns one tag by name for an environment.
+// @Tags tags
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param name path string true "Tag name"
+// @Success 200 {object} tags.AdminTag
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/tags/{env}/{name} [get]
 func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
@@ -82,6 +114,22 @@ func (h *HandlersApi) TagEnvHandler(w http.ResponseWriter, r *http.Request) {
 
 // TagsEnvHandler - GET Handler to return tags for one environment as JSON.
 // Permission is scoped to env.UUID admin (see TagEnvHandler note).
+// @Summary List environment tags
+// @Description Returns tags for an environment.
+// @Tags tags
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} tags.AdminTag
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/tags/{env} [get]
 func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -123,6 +171,25 @@ func (h *HandlersApi) TagsEnvHandler(w http.ResponseWriter, r *http.Request) {
 // action arrives as a URL path segment (legacy contract retained because
 // Track 6 doesn't introduce new tag routes); body validation surfaces 400
 // on parse error and 409 on duplicate-name conflicts.
+// @Summary Execute tag action
+// @Description Creates, updates, deletes, or applies tags in an environment.
+// @Tags tags
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param action path string true "Tag action"
+// @Param request body types.ApiTagsRequest true "Request body"
+// @Success 200 {object} types.ApiDataResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/tags/{env}/{action} [post]
 func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

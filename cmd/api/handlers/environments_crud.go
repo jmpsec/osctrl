@@ -22,6 +22,23 @@ import (
 // Body: { name, hostname, type? }. Generates a UUID, defaults config /
 // schedule / packs / decorators / ATC to "{}", and persists the env.
 // Returns 201 with the created TLSEnvironment. Super-admin only.
+// @Summary Create environment
+// @Description Creates an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param request body types.EnvCreateRequest true "Request body"
+// @Success 200 {object} environments.TLSEnvironment
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments [post]
 func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -109,6 +126,24 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 //
 // Updates name / hostname / type / icon / debug_http / accept_enrolls.
 // Other env fields go through the per-section endpoints. Super-admin only.
+// @Summary Update environment
+// @Description Updates an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.EnvUpdateRequest true "Request body"
+// @Success 200 {object} environments.TLSEnvironment
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env} [patch]
 func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -226,6 +261,22 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 // EnvironmentDeleteHandler - DELETE /api/v1/environments/{env}
 //
 // Removes the environment. Super-admin only. Returns 200 with a message.
+// @Summary Delete environment
+// @Description Deletes an environment.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/{env} [delete]
 func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -262,6 +313,22 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 //
 // Returns the env's JSON-shaped config sections (options/schedule/packs/
 // decorators/atc/flags) so the SPA's Monaco editor can render each section.
+// @Summary Get environment config
+// @Description Returns raw osquery config sections for an environment.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} types.EnvConfigResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/config/{env} [get]
 func (h *HandlersApi) EnvironmentConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -302,6 +369,24 @@ func (h *HandlersApi) EnvironmentConfigHandler(w http.ResponseWriter, r *http.Re
 // Body: optional options/schedule/packs/decorators/atc/flags string fields.
 // Each non-nil field is validated as JSON before persisting; an invalid
 // payload is rejected with 400 (no partial writes).
+// @Summary Update environment config
+// @Description Updates raw osquery config sections for an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.EnvConfigPatchRequest true "Request body"
+// @Success 200 {object} types.EnvConfigResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/config/{env} [patch]
 func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -415,6 +500,24 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 //
 // Body: { config_interval?, log_interval?, query_interval? }. Updates the
 // three node-pull intervals atomically. Unsupplied fields are kept.
+// @Summary Update environment intervals
+// @Description Updates osquery interval settings for an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.EnvIntervalsPatchRequest true "Request body"
+// @Success 200 {object} environments.TLSEnvironment
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/intervals/{env} [patch]
 func (h *HandlersApi) EnvironmentIntervalsPatchHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -484,6 +587,24 @@ func (h *HandlersApi) EnvironmentIntervalsPatchHandler(w http.ResponseWriter, r 
 // (extend / expire / rotate / not-expire), accepting one of those actions
 // via JSON body instead of as a path segment. Mirrors the legacy
 // EnvEnrollActionsHandler semantics for both enroll and remove paths.
+// @Summary Update environment expiration
+// @Description Updates enrollment expiration state for an environment.
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param request body types.EnvExpirationPatchRequest true "Request body"
+// @Success 200 {object} environments.TLSEnvironment
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/expiration/{env} [patch]
 func (h *HandlersApi) EnvironmentExpirationPatchHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)

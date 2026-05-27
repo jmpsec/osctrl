@@ -76,6 +76,21 @@ type LogoutResponse struct {
 // "someone forged a logout request" — the only consequence is
 // invalidating the legitimate user's token, which is exactly what
 // logout is supposed to do. No privilege gain.
+// @Summary Log out
+// @Description Clears API session cookies and revokes the active token when present.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} LogoutResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Conflict"
+// @Failure 429 {object} types.ApiErrorResponse "Too many requests"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Router /api/v1/logout [post]
 func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
