@@ -28,8 +28,10 @@ DIST = dist
 
 STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
 BUILD_ARGS = -ldflags "-s -w -X main.buildCommit=$(shell git rev-parse HEAD) -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)"
+SWAG_VERSION ?= v1.16.6
+SWAG = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
 
-.PHONY: build static clean tls admin cli api release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
+.PHONY: build static clean tls admin cli api swagger release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
 
 # Build code according to caller OS and architecture
 build:
@@ -68,6 +70,10 @@ api:
 # Build API statically
 api-static:
 	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(API_NAME) -a $(API_CODE)
+
+# Generate Swagger 2.0 YAML and JSON files from API annotations
+swagger:
+	$(SWAG) init -d $(API_DIR),$(API_DIR)/handlers,pkg/types,pkg/nodes,pkg/queries,pkg/environments,pkg/users,pkg/settings,pkg/tags,pkg/carves -g main.go -o $(API_DIR)/docs --outputTypes yaml,json --parseDependencyLevel 1
 
 # Build the CLI
 cli:
