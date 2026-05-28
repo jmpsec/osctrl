@@ -30,8 +30,9 @@ STATIC_ARGS = -ldflags "-linkmode external -extldflags -static"
 BUILD_ARGS = -ldflags "-s -w -X main.buildCommit=$(shell git rev-parse HEAD) -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)"
 SWAG_VERSION ?= v1.16.6
 SWAG = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+SWAG_OUTPUT_DIR ?= $(API_DIR)/docs
 
-.PHONY: build static clean tls admin cli api swagger release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
+.PHONY: build static clean tls admin cli api swagger openapi openapi-check release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
 
 # Build code according to caller OS and architecture
 build:
@@ -73,7 +74,15 @@ api-static:
 
 # Generate Swagger 2.0 YAML and JSON files from API annotations
 swagger:
-	$(SWAG) init -d $(API_DIR),$(API_DIR)/handlers,pkg/types,pkg/nodes,pkg/queries,pkg/environments,pkg/users,pkg/settings,pkg/tags,pkg/carves -g main.go -o $(API_DIR)/docs --outputTypes yaml,json --parseDependencyLevel 1
+	$(SWAG) init -d $(API_DIR),$(API_DIR)/handlers,pkg/types,pkg/nodes,pkg/queries,pkg/environments,pkg/users,pkg/settings,pkg/tags,pkg/carves -g main.go -o $(SWAG_OUTPUT_DIR) --outputTypes yaml,json --parseDependencyLevel 1
+
+# Generate Swagger 2.0 docs and update the OpenAPI 3 spec
+openapi:
+	./tools/update-openapi.sh
+
+# Verify generated API docs are up to date
+openapi-check:
+	./tools/update-openapi.sh --check
 
 # Build the CLI
 cli:
