@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"strings"
@@ -800,6 +803,74 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msgf("Environment action %s completed: %s", e.Action, msgReturn)
 	h.AuditLog.EnvAction(ctx[ctxUser], e.Action+" - "+e.Name, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+}
+
+// envCertUploadRequest is the body shape for EnvCertUploadHandler. The PEM
+// is sent base64-encoded so the upload survives clients that mangle raw
+// newlines (curl --data, browser fetch with a plain string body, etc.).
+type envCertUploadRequest struct {
+	CertificateB64 string `json:"certificate_b64"`
+}
+
+// EnvCertUploadHandler - POST handler to upload the enrollment certificate
+// for an environment. Body: { "certificate_b64": "<base64 PEM>" }. The PEM
+// must parse as one or more CERTIFICATE blocks and the leaf must be a real
+// x509 cert — we don't accept "looks like base64 of something." Legacy
+// admin's equivalent path skipped this validation; the SPA target gets it
+// so a typo'd paste fails fast instead of breaking enrollment downloads.
+func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
+		return
+	}
+	var req envCertUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+	if req.CertificateB64 == "" {
+		apiErrorResponse(w, "empty certificate", http.StatusBadRequest, nil)
+		return
+	}
+	pemBytes, err := base64.StdEncoding.DecodeString(req.CertificateB64)
+	if err != nil {
+		apiErrorResponse(w, "error decoding certificate", http.StatusBadRequest, err)
+		return
+	}
+	block, _ := pem.Decode(pemBytes)
+	if block == nil || block.Type != "CERTIFICATE" {
+		apiErrorResponse(w, "invalid PEM: no CERTIFICATE block", http.StatusBadRequest, nil)
+		return
+	}
+	if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		apiErrorResponse(w, "invalid x509 certificate", http.StatusBadRequest, err)
+		return
+	}
+	if err := h.Envs.UpdateCertificate(env.UUID, string(pemBytes)); err != nil {
+		apiErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
+		return
+	}
+	log.Debug().Msgf("Certificate updated for environment %s", env.Name)
+	h.AuditLog.EnvAction(ctx[ctxUser], "upload certificate for environment "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "certificate uploaded successfully"})
 }
 
 // substitutePlatformPaths fills the __SECRET_FILE__ / __CERT_FILE__ placeholders
