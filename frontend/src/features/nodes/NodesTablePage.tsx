@@ -533,33 +533,15 @@ export function NodesTablePage() {
       {/* ── QuickFilters chip row ── */}
       <QuickFiltersRow filters={quickFilters} />
 
-      {/* ── Toolbar (status tabs + search + page size) ── */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[color:var(--border)] flex-wrap">
-        {/*
-          Status tabs preserved alongside the QuickFilters row. The chip row
-          is the visually-loud entry point; the status tab triplet stays for
-          keyboard parity, screen-reader users who scan toolbars, and so the
-          existing test fixtures (`getByRole('button', {name: /^active$/i})`)
-          keep finding a match.
-        */}
-        <div className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]">
-          {(['all', 'active', 'inactive'] as NodeStatus[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => updateSearch({ status: s === 'all' ? undefined : s, page: 1 })}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded transition-colors capitalize',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                status === s
-                  ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
-                  : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+      {/* ── Toolbar (page title + search + page size) ──
+          Status tabs used to live here as a backup to the QuickFilters
+          row above. Removed since the QuickFilters row already covers
+          All/Active/Inactive (plus the platform filters) in the same
+          visual format as QueriesListPage.StatusTabs. ── */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
+        <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
+          Nodes
+        </h1>
 
         <div className="flex-1 max-w-xs">
           <SearchInput
