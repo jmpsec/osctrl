@@ -806,11 +806,18 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // EnvConfigurationHandler - GET handler returning the assembled osquery
-// configuration JSON for an environment. Calls RefreshConfiguration so the
-// returned blob reflects the latest options / schedule / packs / decorators /
-// ATC parts, then re-reads the row. Same composition path the TLS endpoint
-// uses to serve agents — useful for operators previewing what the agents
-// will actually receive.
+// configuration JSON for an environment. Returns the stored composed blob
+// (options + schedule + packs + decorators + ATC). The composition is
+// kept up to date by RefreshConfiguration, which fires from every parts
+// mutation (UpdateOptions / UpdateSchedule / UpdatePacks / etc. in
+// pkg/environments/osqueryconf.go), so reading the cached value is
+// safe — the agents see the exact same blob.
+//
+// SECURITY: deliberately a pure read. The first cut of this handler
+// called RefreshConfiguration on every GET, which turned the endpoint
+// into a CSRF-via-GET shape and a hot-loop DB-write hazard when
+// React-Query's stale refetch path hit it. The mutation path on the
+// parts is the canonical place for the recompose.
 func (h *HandlersApi) EnvConfigurationHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
@@ -834,16 +841,7 @@ func (h *HandlersApi) EnvConfigurationHandler(w http.ResponseWriter, r *http.Req
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
-	if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
-		apiErrorResponse(w, "error refreshing configuration", http.StatusInternalServerError, err)
-		return
-	}
-	refreshed, err := h.Envs.Get(env.UUID)
-	if err != nil {
-		apiErrorResponse(w, "error reading configuration", http.StatusInternalServerError, err)
-		return
-	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: refreshed.Configuration})
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: env.Configuration})
 }
 
 // envCertUploadRequest is the body shape for EnvCertUploadHandler. The PEM

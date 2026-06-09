@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -44,7 +45,7 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	var body types.EnvCreateRequest
@@ -149,7 +150,7 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	envVar := r.PathValue("env")
@@ -282,7 +283,7 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
 	envVar := r.PathValue("env")
@@ -348,7 +349,7 @@ func (h *HandlersApi) EnvironmentConfigHandler(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	resp := types.EnvConfigResponse{
@@ -406,7 +407,7 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	var body types.EnvConfigPatchRequest
@@ -537,7 +538,7 @@ func (h *HandlersApi) EnvironmentIntervalsPatchHandler(w http.ResponseWriter, r 
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	var body types.EnvIntervalsPatchRequest
@@ -624,7 +625,7 @@ func (h *HandlersApi) EnvironmentExpirationPatchHandler(w http.ResponseWriter, r
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
 	var body types.EnvExpirationPatchRequest
