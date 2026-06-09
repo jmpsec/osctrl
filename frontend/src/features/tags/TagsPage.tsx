@@ -26,6 +26,12 @@ export function TagsPage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });
 
+  // Multi-select state — matches the dock pattern used on Carves /
+  // Queries / Nodes. Tag names are unique per env so the set keys on
+  // name without needing to thread an id around.
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
   const queryKey = ['tags', env] as const;
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -45,6 +51,81 @@ export function TagsPage() {
   function invalidate() {
     void qc.invalidateQueries({ queryKey: ['tags', env] });
     void refetch();
+  }
+
+  // Header checkbox state — same pattern as CarvesListPage's toggleAll.
+  const allVisibleNames = tags.map((t) => t.name);
+  const allChecked =
+    allVisibleNames.length > 0 &&
+    allVisibleNames.every((n) => selectedNames.has(n));
+  const someChecked = allVisibleNames.some((n) => selectedNames.has(n));
+
+  function toggleAll() {
+    if (allChecked) {
+      setSelectedNames(new Set());
+    } else {
+      setSelectedNames(new Set(allVisibleNames));
+    }
+  }
+
+  function toggleOne(name: string) {
+    setSelectedNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  // Bulk delete — fans out one POST /tags/{env}/remove per name and
+  // collects per-name failures so a partial success still reports
+  // 'deleted 5 of 7; 2 failed' instead of going red on first reject.
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (names: string[]) => {
+      const settled = await Promise.allSettled(
+        names.map((name) =>
+          tagsAction(env, 'remove', { name }),
+        ),
+      );
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      return { total: names.length, failed };
+    },
+    onSuccess: ({ total, failed }) => {
+      setSelectedNames(new Set());
+      if (failed > 0) {
+        setBulkError(`Deleted ${total - failed} of ${total} tag(s); ${failed} failed.`);
+      } else {
+        setBulkError(null);
+      }
+      invalidate();
+    },
+    onError: (err) => {
+      if (err instanceof AuthError) {
+        void navigate({ to: '/login' });
+        return;
+      }
+      setBulkError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Bulk delete failed',
+      );
+    },
+  });
+
+  function handleBulkDelete() {
+    const names = Array.from(selectedNames);
+    if (names.length === 0) return;
+    if (
+      !confirm(
+        `Delete ${names.length} tag${names.length === 1 ? '' : 's'}?\n\nNodes currently carrying the tag will lose it.`,
+      )
+    ) {
+      return;
+    }
+    setBulkError(null);
+    bulkDeleteMut.mutate(names);
   }
 
   return (
@@ -86,6 +167,18 @@ export function TagsPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
+              <th scope="col" className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible tags"
+                  checked={allChecked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someChecked && !allChecked;
+                  }}
+                  onChange={toggleAll}
+                  className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
+                />
+              </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Tag
               </th>
@@ -103,11 +196,11 @@ export function TagsPage() {
           </thead>
           <tbody>
             {isLoading &&
-              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cells={5} />)}
+              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -132,7 +225,7 @@ export function TagsPage() {
 
             {!isLoading && !isError && tags.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -156,11 +249,25 @@ export function TagsPage() {
 
             {!isLoading &&
               !isError &&
-              tags.map((tag) => (
+              tags.map((tag) => {
+                const isSelected = selectedNames.has(tag.name);
+                return (
                 <tr
                   key={tag.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  className={cn(
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    isSelected && 'bg-[color:var(--signal)]/5',
+                  )}
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select tag ${tag.name}`}
+                      checked={isSelected}
+                      onChange={() => toggleOne(tag.name)}
+                      className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
@@ -199,10 +306,80 @@ export function TagsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
           </tbody>
         </table>
       </div>
+
+      {/* Multi-select dock — matches CarvesListPage chrome exactly so
+          every env-scoped list page reads with one bulk-action voice. */}
+      {selectedNames.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-sm font-medium',
+            'z-50',
+          )}
+        >
+          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+            {selectedNames.size} selected
+          </span>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          {bulkError && (
+            <span className="text-xs text-[color:var(--danger)]">{bulkError}</span>
+          )}
+          <button
+            type="button"
+            disabled={bulkDeleteMut.isPending}
+            aria-label="Delete selected tags"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={handleBulkDelete}
+          >
+            {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onClick={() => setSelectedNames(new Set())}
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Bulk-error toast when no selection remains — same pattern as
+          NodesTablePage so the operator sees what happened even after
+          the selection clears. */}
+      {bulkError && selectedNames.size === 0 && (
+        <div
+          role="alert"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--danger)]/40',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-xs text-[color:var(--danger)]',
+          )}
+        >
+          <span>{bulkError}</span>
+          <button
+            type="button"
+            onClick={() => setBulkError(null)}
+            className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {modal.kind === 'create' && (
         <TagFormModal
