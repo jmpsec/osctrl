@@ -157,7 +157,7 @@ export function SideNav() {
           login card because the sidenav rail is narrower (~240px). */}
       <div className="flex flex-col items-center px-2 py-3 mb-4">
         <Logo size={40} decorative />
-        <div className="mt-2 font-display text-lg font-bold tracking-tight text-[color:var(--text-1)] leading-none">
+        <div className="mt-2 font-wordmark text-lg font-bold tracking-tight text-[color:var(--text-1)] leading-none">
           osctrl
         </div>
         <div className="mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] leading-none">
