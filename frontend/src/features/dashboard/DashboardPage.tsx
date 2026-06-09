@@ -403,30 +403,32 @@ function HeroKpi({
     warning: 'bg-[color:var(--warning)]/10 text-[color:var(--warning)] border-[color:var(--warning)]/25',
     danger: 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border-[color:var(--danger)]/25',
   };
-  // Drive the corner halo from the card's semantic tone so each KPI
-  // glows in its own color (queries-success → teal-green, carves-info →
-  // blue, etc). Previously every HeroKpi had the same signal-teal halo
-  // regardless of tone, which made warning/info cards "feel off"
-  // because the badge color and the halo color disagreed.
-  const toneHalo: Record<string, string> = {
-    success: 'rgba(var(--success-r), var(--success-g), var(--success-b), 0.22)',
-    info: 'rgba(var(--info-r), var(--info-g), var(--info-b), 0.22)',
-    warning: 'rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22)',
-    danger: 'rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22)',
+  // Diagonal-sweep gradient background — replaces the previous
+  // absolute-positioned halo blob. linear-gradient(135deg) pours from
+  // the top-left in the card's semantic tone, fading into the regular
+  // --bg-1 surface around 65% so the right half stays a clean reading
+  // surface for the value + delta chip. Stop at 65% (not 100%) because
+  // the value text sits in the lower-right quadrant and needs the flat
+  // surface for contrast.
+  const toneGradient: Record<string, string> = {
+    success:
+      'linear-gradient(135deg, rgba(var(--success-r), var(--success-g), var(--success-b), 0.22) 0%, var(--bg-1) 65%)',
+    info:
+      'linear-gradient(135deg, rgba(var(--info-r), var(--info-g), var(--info-b), 0.22) 0%, var(--bg-1) 65%)',
+    warning:
+      'linear-gradient(135deg, rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22) 0%, var(--bg-1) 65%)',
+    danger:
+      'linear-gradient(135deg, rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22) 0%, var(--bg-1) 65%)',
   };
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+        'relative overflow-hidden rounded-xl border border-[color:var(--border)]',
         'px-5 py-4 flex flex-col h-full min-h-[120px]',
         'transition-shadow duration-[120ms] hover:shadow-[0_0_0_1px_var(--signal)]',
       )}
+      style={{ background: toneGradient[tone] }}
     >
-      <div
-        aria-hidden
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-50"
-        style={{ background: toneHalo[tone] }}
-      />
       <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">{label}</div>
       <div className="text-[11px] text-[color:var(--text-3)] mt-0.5">{description}</div>
       <div className="font-display tabular-nums mt-3 flex items-baseline gap-2 text-[color:var(--text-1)]" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 }}>
