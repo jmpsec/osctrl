@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -293,6 +296,44 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 	if err := h.Users.UpdateToken(username, token, expires); err != nil {
 		apiErrorResponse(w, "error persisting token", http.StatusInternalServerError, err)
 		return
+	}
+	// Self-rotate: the JWT in the caller's osctrl_token cookie was just
+	// invalidated against handlerAuthCheck's APIToken match. Re-issue
+	// the session cookies with the new token (and a fresh CSRF) so the
+	// caller stays logged in. For other-user rotate, the caller's own
+	// session is unaffected — no cookie work needed.
+	if isSelf {
+		csrfBytes := make([]byte, 16)
+		if _, err := rand.Read(csrfBytes); err != nil {
+			apiErrorResponse(w, "error generating csrf token", http.StatusInternalServerError, err)
+			return
+		}
+		csrfToken := hex.EncodeToString(csrfBytes)
+		if err := h.Users.UpdateMetadata(strings.Split(r.RemoteAddr, ":")[0], r.UserAgent(), username, csrfToken); err != nil {
+			apiErrorResponse(w, "error persisting csrf token", http.StatusInternalServerError, err)
+			return
+		}
+		maxAge := int(time.Until(expires).Seconds())
+		if maxAge > 0 {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "osctrl_token",
+				Value:    token,
+				Path:     "/",
+				MaxAge:   maxAge,
+				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			http.SetCookie(w, &http.Cookie{
+				Name:     "osctrl_csrf",
+				Value:    csrfToken,
+				Path:     "/",
+				MaxAge:   maxAge,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+		}
 	}
 	h.AuditLog.NewToken(username, strings.Split(r.RemoteAddr, ":")[0])
 	log.Debug().Msgf("refreshed API token for %s (requested by %s)", username, requester)

@@ -8,7 +8,7 @@ import {
   refreshUserToken,
   deleteUserToken,
 } from '$/api/users';
-import { AuthError, ApiError } from '$/api/client';
+import { AuthError, ApiError, primeCsrfFromCookie } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
@@ -114,6 +114,13 @@ export function ProfilePage() {
       return refreshUserToken(me.username);
     },
     onSuccess: () => {
+      // Self-rotate: the API just re-issued osctrl_token + osctrl_csrf
+      // cookies with the freshly minted JWT. Re-prime the in-memory
+      // CSRF from the new cookie so subsequent X-CSRF-Token headers
+      // carry the rotated value — otherwise the next mutation
+      // (e.g. revoke or password change) sends a stale CSRF and the
+      // server rejects it.
+      primeCsrfFromCookie();
       setTokenErr(null);
       setTokenMsg('Token rotated. Store it now — it will not be shown again.');
       void refetch();
