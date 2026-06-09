@@ -89,3 +89,5 @@ tools/bruno/collection.bru
 # Generate swagger files
 cmd/api/docs/swagger.json
 cmd/api/docs/swagger.yaml
+# Local-only planning / design notes (internal toolchain output)
+docs/superpowers/
