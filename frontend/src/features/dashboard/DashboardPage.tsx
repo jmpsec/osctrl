@@ -404,21 +404,19 @@ function HeroKpi({
     danger: 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border-[color:var(--danger)]/25',
   };
   // Diagonal-sweep gradient background — replaces the previous
-  // absolute-positioned halo blob. linear-gradient(135deg) pours from
-  // the top-left in the card's semantic tone, fading into the regular
-  // --bg-1 surface around 65% so the right half stays a clean reading
-  // surface for the value + delta chip. Stop at 65% (not 100%) because
-  // the value text sits in the lower-right quadrant and needs the flat
-  // surface for contrast.
+  // absolute-positioned halo blob. linear-gradient(225deg) pours from
+  // the top-right in the card's semantic tone, fading into the regular
+  // --bg-1 surface around 65% so the left half (label + description +
+  // value text) sits on a clean reading surface for contrast.
   const toneGradient: Record<string, string> = {
     success:
-      'linear-gradient(135deg, rgba(var(--success-r), var(--success-g), var(--success-b), 0.22) 0%, var(--bg-1) 65%)',
+      'linear-gradient(225deg, rgba(var(--success-r), var(--success-g), var(--success-b), 0.22) 0%, var(--bg-1) 65%)',
     info:
-      'linear-gradient(135deg, rgba(var(--info-r), var(--info-g), var(--info-b), 0.22) 0%, var(--bg-1) 65%)',
+      'linear-gradient(225deg, rgba(var(--info-r), var(--info-g), var(--info-b), 0.22) 0%, var(--bg-1) 65%)',
     warning:
-      'linear-gradient(135deg, rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22) 0%, var(--bg-1) 65%)',
+      'linear-gradient(225deg, rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22) 0%, var(--bg-1) 65%)',
     danger:
-      'linear-gradient(135deg, rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22) 0%, var(--bg-1) 65%)',
+      'linear-gradient(225deg, rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22) 0%, var(--bg-1) 65%)',
   };
   return (
     <div
@@ -529,7 +527,7 @@ function avatarGradient(username: string): string {
   let h = 0;
   for (let i = 0; i < username.length; i++) h = (h * 31 + username.charCodeAt(i)) % 360;
   const h2 = (h + 40) % 360;
-  return `linear-gradient(135deg, hsl(${h},60%,48%), hsl(${h2},70%,38%))`;
+  return `linear-gradient(225deg, hsl(${h},60%,48%), hsl(${h2},70%,38%))`;
 }
 function initials(username: string): string {
   const parts = username.replace(/_/g, ' ').split(/\s+/);
