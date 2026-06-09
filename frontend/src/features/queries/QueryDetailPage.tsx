@@ -169,6 +169,40 @@ export function QueryDetailPage() {
             </pre>
           </div>
         )}
+
+        {/* Targets — creation-time scope (platform / uuid / hostname /
+            tag rows). Matches the legacy admin's Targets table on the
+            query detail page so operators can answer "why didn't host
+            X run this." Empty list rendered as a quiet hint. */}
+        {query && query.targets !== undefined && (
+          <div className="mt-3">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
+              Targets
+            </div>
+            {query.targets.length === 0 ? (
+              <div className="text-xs text-[color:var(--text-3)] italic">
+                No targets recorded.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {query.targets.map((t, i) => (
+                  <span
+                    key={`${t.type}-${t.value}-${i}`}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
+                      'text-[11px] font-mono-tabular',
+                      'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                      'text-[color:var(--text-2)]',
+                    )}
+                  >
+                    <span className="text-[color:var(--text-3)]">{t.type}:</span>
+                    <span className="text-[color:var(--text-1)] font-semibold">{t.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Results section header ── */}
