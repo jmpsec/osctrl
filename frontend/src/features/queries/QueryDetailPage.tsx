@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getQuery, listQueryResults, getQueryResultsCSVUrl } from '$/api/queries';
+import { listNodes } from '$/api/nodes';
 import { AuthError } from '$/api/client';
 import { formatRelative } from '$/lib/time';
 import { cn } from '$/lib/cn';
@@ -17,6 +18,18 @@ function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; exp
   if (q.completed) return <Badge variant="success" label="Completed" />;
   if (q.active) return <Badge variant="info" label="Active" />;
   return <Badge variant="dim" label="Unknown" />;
+}
+
+// osquery distributed result `status` codes:
+//   0 → ok        (query ran, returned rows)
+//   1 → error     (query failed on the agent — usually SQL syntax / table not present)
+//   2 → other     (osquery has used this for transient state in past versions)
+// Anything else gets a neutral "code N" rendering so we don't silently hide it.
+function StatusBadge({ code }: { code: number }) {
+  if (code === 0) return <Badge variant="success" label="ok" />;
+  if (code === 1) return <Badge variant="danger" label="error" />;
+  if (code === 2) return <Badge variant="warning" label="other" />;
+  return <Badge variant="dim" label={`code ${code}`} />;
 }
 
 function Badge({
@@ -68,6 +81,8 @@ export function QueryDetailPage() {
     refetchInterval: 15_000,
   });
 
+  const qc = useQueryClient();
+
   // Paginated query results
   const {
     data: resultsData,
@@ -81,6 +96,22 @@ export function QueryDetailPage() {
     refetchInterval: 15_000,
     enabled: !!query,
   });
+
+  // Nodes lookup map — used to turn the raw uuid on each result row into a
+  // human-friendly hostname. Cached for 60s so result-page renders don't
+  // hammer the nodes endpoint; staler-than-staleTime gets a quiet refetch
+  // on next mount. The nodes query is keyed by env so a small fleet (this
+  // is the dev scope, not multi-tenant) pulls the whole list once.
+  const { data: nodesData } = useQuery({
+    queryKey: ['query-results-nodes-lookup', env],
+    queryFn: () => listNodes({ env, pageSize: 500 }),
+    staleTime: 60_000,
+    enabled: !!query,
+  });
+  const uuidToHostname = new Map<string, string>();
+  for (const n of nodesData?.items ?? []) {
+    uuidToHostname.set(n.uuid, n.hostname || n.localname || n.uuid);
+  }
 
   // Redirect to login on 401
   if ((metaError && metaErr instanceof AuthError) || (resultsError && resultsErr instanceof AuthError)) {
@@ -100,7 +131,13 @@ export function QueryDetailPage() {
   // `{name,version,arch}` per row). Typing as `unknown` keeps us honest; the
   // render path below stringifies anything non-primitive instead of letting
   // React throw error #31 when it sees an object child.
-  const rows: Array<{ id: number; uuid: string; cols: Record<string, unknown> }> = [];
+  const rows: Array<{
+    id: number;
+    uuid: string;
+    createdAt: string;
+    status: number;
+    cols: Record<string, unknown>;
+  }> = [];
   const colSet = new Set<string>();
 
   for (const item of items) {
@@ -111,7 +148,13 @@ export function QueryDetailPage() {
       cols = { data: item.data };
     }
     for (const k of Object.keys(cols)) colSet.add(k);
-    rows.push({ id: item.id, uuid: item.uuid, cols });
+    rows.push({
+      id: item.id,
+      uuid: item.uuid,
+      createdAt: item.created_at,
+      status: item.status,
+      cols,
+    });
   }
   const colHeaders = Array.from(colSet).sort();
 
@@ -215,21 +258,44 @@ export function QueryDetailPage() {
             </span>
           )}
         </h2>
-        {totalItems > 0 && (
-          <a
-            href={csvUrl}
-            download
+        <div className="ml-auto flex items-center gap-2">
+          {/* Refresh button — mirrors the legacy admin's "Refresh table" control.
+              The page also polls every 15s via TanStack Query's refetchInterval,
+              but an explicit button gives operators the same control they had
+              in legacy when watching a long-running distributed query land. */}
+          <button
+            type="button"
+            onClick={() => {
+              void qc.invalidateQueries({ queryKey: ['query', env, name] });
+              void qc.invalidateQueries({ queryKey: ['query-results', env, name] });
+            }}
             className={cn(
-              'ml-auto px-3 py-1 text-xs font-medium rounded-md',
+              'px-3 py-1 text-xs font-medium rounded-md',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
               'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             )}
-            aria-label={`Download CSV of ${name} results`}
+            aria-label="Refresh query results"
+            title="Refresh now"
           >
-            Download CSV
-          </a>
-        )}
+            Refresh
+          </button>
+          {totalItems > 0 && (
+            <a
+              href={csvUrl}
+              download
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded-md',
+                'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              )}
+              aria-label={`Download CSV of ${name} results`}
+            >
+              Download CSV
+            </a>
+          )}
+        </div>
       </div>
 
       {/* ── Results table ── */}
@@ -240,9 +306,15 @@ export function QueryDetailPage() {
               <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
                 <th
                   scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap"
+                >
+                  Created
+                </th>
+                <th
+                  scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
                 >
-                  Node UUID
+                  Node
                 </th>
                 {colHeaders.map((col) => (
                   <th
@@ -253,6 +325,12 @@ export function QueryDetailPage() {
                     {col}
                   </th>
                 ))}
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
+                >
+                  Status
+                </th>
               </tr>
             </thead>
           )}
@@ -261,13 +339,13 @@ export function QueryDetailPage() {
             {/* Loading skeleton */}
             {resultsLoading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonRow key={i} cells={colHeaders.length + 1 || 4} />
+                <SkeletonRow key={i} cells={colHeaders.length + 3 || 4} />
               ))}
 
             {/* Error state */}
             {resultsError && !resultsLoading && (
               <tr>
-                <td colSpan={colHeaders.length + 1 || 4}>
+                <td colSpan={colHeaders.length + 3 || 4}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -300,40 +378,58 @@ export function QueryDetailPage() {
             {/* Data rows */}
             {!resultsLoading &&
               !resultsError &&
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
-                >
-                  <td className="px-4 py-2 font-mono-tabular text-xs text-[color:var(--signal)]">
-                    {row.uuid.slice(0, 8)}
-                    <span className="text-[color:var(--text-3)]">…</span>
-                  </td>
-                  {colHeaders.map((col) => {
-                    // osquery cells can be nested objects (e.g. uptime's
-                    // `{days, hours, minutes, seconds}`), not just strings —
-                    // the typed cast on JSON.parse lies. Coerce non-primitive
-                    // values to a compact JSON string so React renders them
-                    // safely instead of throwing minified error #31.
-                    const raw = row.cols[col];
-                    const display =
-                      raw == null
-                        ? '—'
-                        : typeof raw === 'object'
-                          ? JSON.stringify(raw)
-                          : String(raw);
-                    return (
-                      <td
-                        key={col}
-                        className="px-4 py-2 text-xs text-[color:var(--text-1)] max-w-xs truncate"
-                        title={display}
+              rows.map((row) => {
+                const hostname = uuidToHostname.get(row.uuid);
+                return (
+                  <tr
+                    key={row.id}
+                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  >
+                    <td
+                      className="px-4 py-2 font-mono-tabular text-xs text-[color:var(--text-2)] whitespace-nowrap"
+                      title={row.createdAt}
+                    >
+                      {formatRelative(row.createdAt)}
+                    </td>
+                    <td className="px-4 py-2 font-mono-tabular text-xs">
+                      <Link
+                        to="/_app/env/$env/nodes/$uuid"
+                        params={{ env, uuid: row.uuid }}
+                        className="text-[color:var(--signal)] hover:underline"
+                        title={row.uuid}
                       >
-                        {display}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                        {hostname ?? `${row.uuid.slice(0, 8)}…`}
+                      </Link>
+                    </td>
+                    {colHeaders.map((col) => {
+                      // osquery cells can be nested objects (e.g. uptime's
+                      // `{days, hours, minutes, seconds}`), not just strings —
+                      // the typed cast on JSON.parse lies. Coerce non-primitive
+                      // values to a compact JSON string so React renders them
+                      // safely instead of throwing minified error #31.
+                      const raw = row.cols[col];
+                      const display =
+                        raw == null
+                          ? '—'
+                          : typeof raw === 'object'
+                            ? JSON.stringify(raw)
+                            : String(raw);
+                      return (
+                        <td
+                          key={col}
+                          className="px-4 py-2 text-xs text-[color:var(--text-1)] max-w-xs truncate"
+                          title={display}
+                        >
+                          {display}
+                        </td>
+                      );
+                    })}
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <StatusBadge code={row.status} />
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
