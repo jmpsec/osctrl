@@ -211,7 +211,10 @@ describe('NodesTablePage', () => {
       expect(screen.getByText('web-server-01')).toBeInTheDocument();
     });
 
-    const activeTab = screen.getByRole('button', { name: /^active$/i });
+    // The status filter is now part of QuickFiltersGroup (chip pad)
+    // which exposes itself via aria-label="Filter: Active" rather than
+    // the bare button text 'active' that the old inline status pad used.
+    const activeTab = screen.getByRole('button', { name: /^filter: active/i });
     await user.click(activeTab);
 
     await waitFor(() => {
