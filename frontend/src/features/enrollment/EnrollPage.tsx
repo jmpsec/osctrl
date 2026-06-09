@@ -17,6 +17,7 @@ import { Skeleton } from '$/components/data/Skeleton';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { CertificateCard } from './CertificateCard';
+import { FlagsCard } from './FlagsCard';
 
 /**
  * EnrollPage (v2) — env-scoped node enrollment portal.
@@ -258,6 +259,14 @@ export function EnrollPage() {
               isPending={pkgMut.isPending}
               onSave={(action, body) => pkgMut.mutate({ action, body })}
             />
+          </div>
+
+          {/* Full-width FlagsCard — per-OS flags template with
+              __SECRET_FILE__/__CERT_FILE__ substituted by the backend.
+              Lives outside the not-accepting opacity gate because reading
+              the flags template never depends on enrollment being open. */}
+          <div className="mt-5">
+            <FlagsCard env={env} />
           </div>
         </div>
       </div>
