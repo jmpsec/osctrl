@@ -10,6 +10,9 @@ import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { login, listAuthMethods } from '$/api/client';
+import { toggleTheme, getInitialTheme } from '$/lib/theme';
+import type { Theme } from '$/lib/design-tokens';
+import './login-trace-map.css';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -20,7 +23,12 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const router = useRouter();
+
+  function onToggleTheme() {
+    setTheme(toggleTheme());
+  }
 
   const { data: authMethods } = useQuery({
     queryKey: ['auth-methods'],
@@ -55,15 +63,72 @@ export function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{
-        background:
-          'radial-gradient(900px 600px at 50% 30%, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.07) 0%, transparent 60%), var(--bg-0)',
-      }}
+      className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
+      style={{ background: 'var(--bg-0)' }}
     >
+      {/* ── Trace Map background — three layered elements ──
+          1. Drifting circuit pattern (var(--circuit-url)) — repeats
+             diagonally over 25s, picking up the brand teal at low alpha.
+          2. Scanning spotlight — a bright teal disc that translates
+             across the viewport on a 12s loop, brightening the
+             traces underneath as it passes.
+          3. Static brand halo — radial gradient anchored behind the
+             card so the eye stays on the form.
+          All three layers respect prefers-reduced-motion (see
+          login-trace-map.css below — animations get killed).
+          z-index: 0 = circuit + spotlight, 1 = halo, 5 = card. */}
+      <div
+        aria-hidden
+        className="login-trace-circuit"
+        style={{ position: 'absolute', inset: '-200px', zIndex: 0 }}
+      />
+      <div aria-hidden className="login-trace-spotlight" />
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(900px 600px at 50% 50%, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.12) 0%, transparent 60%)',
+          zIndex: 1,
+        }}
+      />
+
+      {/* Theme toggle — fixed top-right; available pre-auth so operators
+          who land on a system in the wrong theme can flip without
+          logging in. Hugs the same visual language as the rest of the
+          SPA (border + bg-2 hover + teal focus ring). */}
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        className={cn(
+          'absolute top-4 right-4 z-10',
+          'inline-flex items-center justify-center w-9 h-9 rounded-md',
+          'bg-[color:var(--bg-1)]/80 backdrop-blur border border-[color:var(--border)]',
+          'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
+          'hover:border-[color:var(--signal)] transition-colors duration-150',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+          'focus-visible:outline-[color:var(--signal)]',
+        )}
+      >
+        {theme === 'dark' ? (
+          // sun (switch to light)
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+        ) : (
+          // moon (switch to dark)
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        )}
+      </button>
+
       <div
         className={cn(
-          'w-full max-w-sm',
+          'relative z-5 w-full max-w-sm',
           'bg-[color:var(--bg-1)] border border-[color:var(--border)]',
           'rounded-2xl p-8',
           'shadow-[0_10px_28px_rgba(0,0,0,0.32)]'
