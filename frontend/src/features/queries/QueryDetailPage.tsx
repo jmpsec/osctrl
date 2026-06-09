@@ -120,43 +120,58 @@ export function QueryDetailPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Build rows + column union from this page of items
+  // Build rows from this page of items.
+  //
+  // Each item.data is a JSON string of shape
+  //   { name, status, message, result: [{...}, {...}, ...] }
+  // where `result` is the array of row objects the node returned for this
+  // distributed query write. Different nodes (and different runs) may
+  // return different shapes, so we keep each item's result set in its own
+  // nested data table inside the Data cell — same approach as the legacy
+  // admin's queries-logs template. This is much friendlier to the common
+  // case (multi-row tables like `processes` or `apps`) than extruding
+  // every key onto the outer table.
   // ---------------------------------------------------------------------------
   const items = resultsData?.items ?? [];
   const totalItems = resultsData?.total_items ?? 0;
   const totalPages = resultsData?.total_pages ?? 0;
 
-  // Cell values can be nested objects when osquery returns JSON-typed columns
-  // (uptime returns `{days,hours,minutes,seconds}`, some apps tables return
-  // `{name,version,arch}` per row). Typing as `unknown` keeps us honest; the
-  // render path below stringifies anything non-primitive instead of letting
-  // React throw error #31 when it sees an object child.
   const rows: Array<{
     id: number;
     uuid: string;
     createdAt: string;
     status: number;
-    cols: Record<string, unknown>;
+    results: Array<Record<string, unknown>>;
+    parseError: string | null;
   }> = [];
-  const colSet = new Set<string>();
 
   for (const item of items) {
-    let cols: Record<string, unknown> = {};
+    let results: Array<Record<string, unknown>> = [];
+    let parseError: string | null = null;
     try {
-      cols = JSON.parse(item.data) as Record<string, unknown>;
-    } catch {
-      cols = { data: item.data };
+      const parsed = JSON.parse(item.data) as {
+        result?: Array<Record<string, unknown>>;
+      };
+      // osquery distributed writes always wrap rows in `.result`. Tolerate
+      // the older legacy double-encoding by re-parsing once if we got a
+      // string back instead of an object.
+      const inner =
+        typeof parsed === 'string'
+          ? (JSON.parse(parsed) as { result?: Array<Record<string, unknown>> })
+          : parsed;
+      results = Array.isArray(inner?.result) ? inner.result : [];
+    } catch (e) {
+      parseError = e instanceof Error ? e.message : 'parse error';
     }
-    for (const k of Object.keys(cols)) colSet.add(k);
     rows.push({
       id: item.id,
       uuid: item.uuid,
       createdAt: item.created_at,
       status: item.status,
-      cols,
+      results,
+      parseError,
     });
   }
-  const colHeaders = Array.from(colSet).sort();
 
   const csvUrl = getQueryResultsCSVUrl(env, name);
 
@@ -298,54 +313,50 @@ export function QueryDetailPage() {
         </div>
       </div>
 
-      {/* ── Results table ── */}
+      {/* ── Results table ──
+          Three outer columns: Created · Node · Data. The Data cell holds a
+          fully nested table of that result item's rows (one per osquery
+          result row) — same shape as the legacy admin renders, so a
+          processes-table query with 30 rows from one node renders as 30
+          inner rows under one outer row, not 30 outer rows with sparse
+          cells. Status is overlaid on the Created cell as a small badge so
+          we don't sacrifice horizontal room to a near-always-"ok" column. */}
       <div className="flex-1 overflow-auto min-h-0">
         <table className="w-full text-sm border-collapse">
-          {colHeaders.length > 0 && (
-            <thead>
-              <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap"
-                >
-                  Created
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Node
-                </th>
-                {colHeaders.map((col) => (
-                  <th
-                    key={col}
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                  >
-                    {col}
-                  </th>
-                ))}
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Status
-                </th>
-              </tr>
-            </thead>
-          )}
+          <thead>
+            <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
+              <th
+                scope="col"
+                className="w-[160px] px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap"
+              >
+                Created
+              </th>
+              <th
+                scope="col"
+                className="w-[200px] px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
+              >
+                Node
+              </th>
+              <th
+                scope="col"
+                className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
+              >
+                Data
+              </th>
+            </tr>
+          </thead>
 
           <tbody>
             {/* Loading skeleton */}
             {resultsLoading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonRow key={i} cells={colHeaders.length + 3 || 4} />
+                <SkeletonRow key={i} cells={3} />
               ))}
 
             {/* Error state */}
             {resultsError && !resultsLoading && (
               <tr>
-                <td colSpan={colHeaders.length + 3 || 4}>
+                <td colSpan={3}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -362,7 +373,7 @@ export function QueryDetailPage() {
             {/* Empty state (HTTP 200, items: []) */}
             {!resultsLoading && !resultsError && rows.length === 0 && (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={3}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -383,13 +394,16 @@ export function QueryDetailPage() {
                 return (
                   <tr
                     key={row.id}
-                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors align-top"
                   >
                     <td
                       className="px-4 py-2 font-mono-tabular text-xs text-[color:var(--text-2)] whitespace-nowrap"
                       title={row.createdAt}
                     >
-                      {formatRelative(row.createdAt)}
+                      <div className="flex items-center gap-2">
+                        <span>{formatRelative(row.createdAt)}</span>
+                        <StatusBadge code={row.status} />
+                      </div>
                     </td>
                     <td className="px-4 py-2 font-mono-tabular text-xs">
                       <Link
@@ -401,31 +415,8 @@ export function QueryDetailPage() {
                         {hostname ?? `${row.uuid.slice(0, 8)}…`}
                       </Link>
                     </td>
-                    {colHeaders.map((col) => {
-                      // osquery cells can be nested objects (e.g. uptime's
-                      // `{days, hours, minutes, seconds}`), not just strings —
-                      // the typed cast on JSON.parse lies. Coerce non-primitive
-                      // values to a compact JSON string so React renders them
-                      // safely instead of throwing minified error #31.
-                      const raw = row.cols[col];
-                      const display =
-                        raw == null
-                          ? '—'
-                          : typeof raw === 'object'
-                            ? JSON.stringify(raw)
-                            : String(raw);
-                      return (
-                        <td
-                          key={col}
-                          className="px-4 py-2 text-xs text-[color:var(--text-1)] max-w-xs truncate"
-                          title={display}
-                        >
-                          {display}
-                        </td>
-                      );
-                    })}
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <StatusBadge code={row.status} />
+                    <td className="px-4 py-2">
+                      <ResultPayload results={row.results} parseError={row.parseError} />
                     </td>
                   </tr>
                 );
@@ -454,3 +445,97 @@ export function QueryDetailPage() {
 }
 
 export default QueryDetailPage;
+
+// ---------------------------------------------------------------------------
+// ResultPayload — renders one item's `result` array as a compact nested
+// table. Columns are the union of keys across THIS result set so a small
+// query (3 process rows) shows 30 columns and a wide query (apps with 10
+// fields) shows 10 — same shape the legacy admin uses. Object/array cell
+// values get JSON.stringify'd so React doesn't choke on non-primitive
+// children.
+// ---------------------------------------------------------------------------
+function ResultPayload({
+  results,
+  parseError,
+}: {
+  results: Array<Record<string, unknown>>;
+  parseError: string | null;
+}) {
+  if (parseError) {
+    return (
+      <div className="text-xs text-[color:var(--danger)] font-mono-tabular">
+        parse error: {parseError}
+      </div>
+    );
+  }
+  if (results.length === 0) {
+    return (
+      <div className="text-xs text-[color:var(--text-3)] italic">No rows.</div>
+    );
+  }
+  // Union of all keys in this result set, preserving first-seen order so
+  // the most common column (often `pid` / `name`) shows up on the left
+  // without us having to special-case it.
+  const seen = new Set<string>();
+  const cols: string[] = [];
+  for (const r of results) {
+    for (const k of Object.keys(r)) {
+      if (!seen.has(k)) {
+        seen.add(k);
+        cols.push(k);
+      }
+    }
+  }
+  return (
+    <div className="overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]">
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="bg-[color:var(--bg-1)] border-b border-[color:var(--border)]">
+            {cols.map((c) => (
+              <th
+                key={c}
+                scope="col"
+                className={cn(
+                  'px-2 py-1.5 text-left font-mono-tabular font-medium',
+                  'text-[color:var(--text-2)] whitespace-nowrap',
+                )}
+              >
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((row, i) => (
+            <tr
+              key={i}
+              className="border-b border-[color:var(--border)] last:border-b-0"
+            >
+              {cols.map((c) => {
+                const raw = row[c];
+                const display =
+                  raw == null
+                    ? ''
+                    : typeof raw === 'object'
+                      ? JSON.stringify(raw)
+                      : String(raw);
+                return (
+                  <td
+                    key={c}
+                    className={cn(
+                      'px-2 py-1 font-mono-tabular text-[color:var(--text-1)]',
+                      'max-w-[280px] truncate',
+                    )}
+                    title={display}
+                  >
+                    {display}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
