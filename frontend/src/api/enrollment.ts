@@ -22,7 +22,11 @@ import { apiFetch } from './client';
 export type EnrollTarget =
   | 'secret' // raw enroll secret (string)
   | 'cert' // env certificate PEM
-  | 'flags' // raw osquery flags file content
+  | 'flags' // raw osquery flags file content (template — paths unsubstituted)
+  | 'flagsLinux' // flags file with __SECRET_FILE__/__CERT_FILE__ → /etc/osquery/... paths
+  | 'flagsMac' // flags file with paths → /private/var/osquery/...
+  | 'flagsWindows' // flags file with paths → C:\Program Files\osquery\...
+  | 'flagsFreeBSD' // flags file with paths → /usr/local/etc/...
   | 'enroll.sh' // bash one-liner installer
   | 'enroll.ps1'; // powershell one-liner installer
 
@@ -111,6 +115,25 @@ export function removeAction(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// POST /environments/{env}/enroll/cert — upload a replacement enrollment cert.
+// The API validates: base64 → PEM CERTIFICATE block → x509.ParseCertificate.
+// Caller passes the raw PEM as a string; we base64-encode here so JSON-body
+// quoting and newline handling stays clean (raw PEM strings break otherwise).
+// ---------------------------------------------------------------------------
+export function uploadCertificate(env: string, pem: string): Promise<MessageResponse> {
+  // btoa handles ASCII; a PEM is ASCII (base64 + dashes + newlines), so it's safe.
+  const b64 = btoa(pem);
+  return apiFetch<MessageResponse>(
+    `/api/v1/environments/${encodeURIComponent(env)}/enroll/cert`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ certificate_b64: b64 }),
     },
   );
 }

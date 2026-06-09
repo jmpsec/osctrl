@@ -16,6 +16,7 @@ import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
+import { CertificateCard } from './CertificateCard';
 
 /**
  * EnrollPage (v2) — env-scoped node enrollment portal.
@@ -229,6 +230,7 @@ export function EnrollPage() {
                 onAction={(a) => removeMut.mutate(a as RemoveAction)}
                 isPending={removeMut.isPending}
               />
+              <CertificateCard env={env} />
             </aside>
           </div>
 
