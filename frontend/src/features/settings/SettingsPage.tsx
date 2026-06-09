@@ -43,27 +43,12 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {/* Toolbar row — page title only, matching EnvConfigPage's pattern
+          where the section tabs live in their own row underneath. */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Settings
         </h1>
-        <nav aria-label="settings service tabs" className="flex items-center gap-1">
-          {SERVICES.map((s) => (
-            <Link
-              key={s}
-              to="/_app/settings/$service"
-              params={{ service: s }}
-              className={cn(
-                'px-3 py-1.5 text-xs font-mono-tabular rounded-md transition-colors',
-                s === service
-                  ? 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] shadow-[inset_0_-2px_0_var(--signal)]'
-                  : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
-              )}
-            >
-              {s}
-            </Link>
-          ))}
-        </nav>
         {isFetching && !isLoading && (
           <span
             aria-live="polite"
@@ -73,6 +58,35 @@ export function SettingsPage() {
             refreshing…
           </span>
         )}
+      </div>
+
+      {/* Service tabs — same underline TabButton pattern as EnvConfigPage
+          and the EnrollPage v3 reorg, so all the SPA's tabbed config
+          surfaces read with one visual voice. */}
+      <div
+        role="tablist"
+        aria-label="Settings service tabs"
+        className="flex items-center gap-1 px-2 border-b border-[color:var(--border)] overflow-x-auto"
+      >
+        {SERVICES.map((s) => (
+          <Link
+            key={s}
+            to="/_app/settings/$service"
+            params={{ service: s }}
+            role="tab"
+            aria-selected={s === service}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 pt-2 pb-1.5 text-xs whitespace-nowrap',
+              'border-b-2 transition-colors',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              s === service
+                ? 'border-[color:var(--signal)] text-[color:var(--text-1)] font-semibold'
+                : 'border-transparent text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+            )}
+          >
+            osctrl-{s}
+          </Link>
+        ))}
       </div>
 
       <div className="flex-1 overflow-auto min-h-0 p-4">
@@ -194,24 +208,56 @@ function SettingRow({
     },
   });
 
+  // Section-style chrome matching EnvConfigPage: rounded card with a
+  // bg-0 header strip holding name + type chip + info + dirty/save
+  // controls, body underneath. Per-row Save is intentionally preserved
+  // (the settings list is a flat catalogue of unrelated knobs, so
+  // saving the whole list at once would be a worse UX than saving
+  // each one when ready).
   return (
-    <div className="border border-[color:var(--border)] rounded-md p-3 bg-[color:var(--bg-1)]">
-      <div className="flex items-baseline gap-3 mb-2">
-        <span className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
+    <section
+      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+      aria-labelledby={`setting-${setting.Name}-label`}
+    >
+      <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
+        <h2
+          id={`setting-${setting.Name}-label`}
+          className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
+        >
           {setting.Name}
-        </span>
+        </h2>
         <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular text-[color:var(--text-3)] bg-[color:var(--bg-2)]">
           {setting.Type}
         </span>
         {setting.Info && (
-          <span className="text-[10px] text-[color:var(--text-3)]">{setting.Info}</span>
+          <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
+            {setting.Info}
+          </p>
         )}
-        <span className="ml-auto text-[10px] tnum text-[color:var(--text-3)]" title={setting.UpdatedAt}>
+        {!setting.Info && <div className="flex-1" />}
+        {dirty && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
+            pending
+          </span>
+        )}
+        <span className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap" title={setting.UpdatedAt}>
           updated {formatRelative(setting.UpdatedAt)}
         </span>
-      </div>
+        <button
+          type="button"
+          disabled={!dirty || mutation.isPending}
+          onClick={() => mutation.mutate()}
+          className={cn(
+            'text-[10px] px-2 py-0.5 rounded font-medium',
+            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'disabled:opacity-40 disabled:cursor-not-allowed',
+          )}
+        >
+          {mutation.isPending ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save'}
+        </button>
+      </header>
 
-      <div className="flex items-center gap-2">
+      <div className="p-3">
         <SettingInput
           name={setting.Name}
           type={setting.Type}
@@ -222,29 +268,17 @@ function SettingRow({
           onBool={setPendingBool}
           onInt={setPendingInt}
         />
-        <button
-          type="button"
-          disabled={!dirty || mutation.isPending}
-          onClick={() => mutation.mutate()}
-          className={cn(
-            'px-3 py-1.5 text-xs font-medium rounded-md',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-            'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-          )}
-        >
-          {mutation.isPending ? 'Saving…' : savedFlash ? 'Saved' : 'Save'}
-        </button>
-      </div>
 
-      {err && (
-        <p
-          role="alert"
-          className="mt-2 text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-1.5 rounded-md"
-        >
-          {err}
-        </p>
-      )}
-    </div>
+        {err && (
+          <p
+            role="alert"
+            className="mt-2 text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-1.5 rounded-md"
+          >
+            {err}
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -298,7 +332,7 @@ function SettingInput({
           if (!Number.isNaN(v)) onInt(v);
         }}
         className={cn(
-          'flex-1 px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
+          'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
           'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
@@ -313,7 +347,7 @@ function SettingInput({
       value={stringValue}
       onChange={(e) => onString(e.target.value)}
       className={cn(
-        'flex-1 px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
+        'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
         'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
         'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
       )}
