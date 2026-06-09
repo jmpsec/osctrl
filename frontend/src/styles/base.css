@@ -47,19 +47,20 @@ body {
 .osctrl-logo {
   display: block;
 }
-/* Dark theme recolor: invert(100%) flips the lightness so the dark
+/* Dark theme recolor: invert() flips the lightness so the dark
  * outline becomes light against --bg-1, but it would also send the
  * light-blue cabin windows to a muddy orange (#a8c5e8 → #573a17).
  * Chaining hue-rotate(180deg) cancels the hue shift the invert
  * caused, so the windows stay in the cool/blue family while still
  * being light enough to read on dark.
  *
- * Note: written as invert(100%) (not invert(1)) because Tailwind v4's
- * CSS minifier collapsed `invert(1)` to bare `invert()` when chained
- * with hue-rotate — that's invalid CSS and the whole filter rule got
- * dropped silently. The percentage form survives minification. */
+ * Note: Tailwind v4's CSS optimizer collapses both `invert(1)` and
+ * `invert(100%)` to bare `invert()` when chained with hue-rotate,
+ * and `invert()` with no argument is invalid CSS — the whole filter
+ * gets dropped silently. Using 99% is functionally identical to 100%
+ * but is non-default enough that the optimizer keeps the argument. */
 [data-theme="dark"] .osctrl-logo {
-  filter: invert(100%) hue-rotate(180deg);
+  filter: invert(99%) hue-rotate(180deg);
 }
 
 /* SideNav circuit background — the legacy login screen's circuit-trace
