@@ -638,7 +638,7 @@ func osctrlAPIService() {
 		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/{target}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvEnrollHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
-		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/configuration",
+		"GET "+_apiPath(apiEnvironmentsPath)+"/{env}/configuration/assembled",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvConfigurationHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiEnvironmentsPath)+"/{env}/enroll/cert",
