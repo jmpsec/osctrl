@@ -409,7 +409,7 @@ export function NodesTablePage() {
   // uuid and collect per-row failures so a partial success can still
   // surface "deleted 7, failed 2" rather than the whole batch
   // turning red on the first 404.
-  const bulkDeleteMut = useMutation({
+  const bulkArchiveMut = useMutation({
     mutationFn: async (uuids: string[]) => {
       const settled = await Promise.allSettled(
         uuids.map((uuid) => deleteNode(env, uuid)),
@@ -420,24 +420,24 @@ export function NodesTablePage() {
     onSuccess: ({ total, failed }) => {
       setSelectedUuids(new Set());
       if (failed > 0) {
-        setBulkError(`Deleted ${total - failed} of ${total} node(s); ${failed} failed.`);
+        setBulkError(`Archived ${total - failed} of ${total} node(s); ${failed} failed.`);
       } else {
         setBulkError(null);
       }
       void refetch();
     },
     onError: (err) =>
-      setBulkError(err instanceof Error ? err.message : 'Bulk delete failed'),
+      setBulkError(err instanceof Error ? err.message : 'Bulk archive failed'),
   });
 
-  function handleBulkDelete() {
+  function handleBulkArchive() {
     const uuids = Array.from(selectedUuids);
     if (uuids.length === 0) return;
-    if (!confirm(`Delete ${uuids.length} node${uuids.length === 1 ? '' : 's'}?\n\nEach node is snapshotted into the archive table and removed from the active list.`)) {
+    if (!confirm(`Archive ${uuids.length} node${uuids.length === 1 ? '' : 's'}?\n\nEach node is snapshotted into the archive table and removed from the active list. Forensic records are retained.`)) {
       return;
     }
     setBulkError(null);
-    bulkDeleteMut.mutate(uuids);
+    bulkArchiveMut.mutate(uuids);
   }
 
   // Stats — drives the QuickFilters chip counts. Cross-env totals; we surface
@@ -862,16 +862,16 @@ export function NodesTablePage() {
           {canDeleteNodes && (
             <button
               type="button"
-              aria-label="Delete selected nodes"
-              disabled={bulkDeleteMut.isPending}
+              aria-label="Archive selected nodes"
+              disabled={bulkArchiveMut.isPending}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)]',
                 'hover:bg-[color:var(--bg-2)] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
-              onClick={handleBulkDelete}
+              onClick={handleBulkArchive}
             >
-              {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete…'}
+              {bulkArchiveMut.isPending ? 'Archiving…' : 'Archive…'}
             </button>
           )}
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />

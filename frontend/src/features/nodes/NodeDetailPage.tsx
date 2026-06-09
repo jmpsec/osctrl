@@ -541,15 +541,16 @@ export function NodeDetailPage() {
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
 
-  // Archive + delete the current node. The backend's POST /nodes/{env}/delete
-  // handler maps to ArchiveDeleteByUUID, which snapshots into the archive
-  // table THEN removes the live row — so "Archive" and "Delete" are the
-  // same server-side op. We surface both labels because they map to the
-  // legacy admin's two buttons; once we add a true archive-only call to
-  // pkg/nodes, the Archive button can be re-wired to it.
+  // Archive the current node. The backend's POST /nodes/{env}/delete
+  // handler maps to ArchiveDeleteByUUID — it always snapshots into the
+  // archive table BEFORE removing the live row, so every removal goes
+  // through the archive. We deliberately only expose this single op
+  // (no separate hard-delete) so accidental clicks remain forensically
+  // recoverable. Until an /archive page lands the recovery is "query
+  // archive_osquery_nodes" — but the snapshot exists.
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
-  const deleteMut = useMutation({
+  const archiveMut = useMutation({
     mutationFn: () => deleteNode(env, uuid),
     onSuccess: () => {
       setActionError(null);
@@ -564,17 +565,10 @@ export function NodeDetailPage() {
   });
 
   function handleArchive() {
-    if (!confirm(`Archive node ${node?.hostname ?? uuid}?\n\nThe node is snapshotted into the archive table and removed from the active list.`)) {
+    if (!confirm(`Archive node ${node?.hostname ?? uuid}?\n\nThe node is snapshotted into the archive table and removed from the active list. A forensic record is retained.`)) {
       return;
     }
-    deleteMut.mutate();
-  }
-
-  function handleDelete() {
-    if (!confirm(`Delete node ${node?.hostname ?? uuid}?\n\nThis removes the node from the active list. The archive table keeps a snapshot for recovery.`)) {
-      return;
-    }
-    deleteMut.mutate();
+    archiveMut.mutate();
   }
 
   // Node-scoped activity heatmap — only fetched while the Activity tab is the
@@ -654,39 +648,21 @@ export function NodeDetailPage() {
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Single archive action — no separate hard-delete button.
+                  Archive snapshots the node into archive_osquery_nodes
+                  before removing the live row, so every removal is
+                  forensically recoverable. The two-button shape that
+                  used to live here looked like soft vs hard but mapped
+                  to the same backend op, which read as misleading. If
+                  a true hard-delete is ever needed it should land as a
+                  separate package-level call gated behind a stronger
+                  confirmation. */}
               {canDeleteNode && (
                 <button
                   type="button"
                   aria-label="Archive this node"
                   onClick={handleArchive}
-                  disabled={deleteMut.isPending}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'bg-[color:var(--bg-2)]',
-                    'hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
-                >
-                  {deleteMut.isPending ? 'Archiving…' : 'Archive'}
-                </button>
-              )}
-
-              {/* Refresh button intentionally absent — POST
-                  /nodes/{env}/refresh isn't implemented yet. We
-                  used to render a disabled placeholder with a "API
-                  not yet available" tooltip; operators found the
-                  greyed-out button confusing (looked broken).
-                  Restore as a live button when the endpoint lands. */}
-
-              {canDeleteNode && (
-                <button
-                  type="button"
-                  aria-label="Delete this node"
-                  onClick={handleDelete}
-                  disabled={deleteMut.isPending}
+                  disabled={archiveMut.isPending}
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--danger)] text-[color:var(--danger)]',
@@ -696,7 +672,7 @@ export function NodeDetailPage() {
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+                  {archiveMut.isPending ? 'Archiving…' : 'Archive'}
                 </button>
               )}
             </div>
