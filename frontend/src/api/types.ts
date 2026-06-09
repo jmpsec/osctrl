@@ -150,6 +150,17 @@ export interface DistributedQuery {
   extra_data: string;
   expiration: string;
   target: string;
+  /**
+   * Targets the query was launched against — populated by
+   * GET /queries/{env}/{name}; list endpoints leave it out so it may
+   * be undefined depending on the call site.
+   */
+  targets?: QueryTargetRow[];
+}
+
+export interface QueryTargetRow {
+  type: string;
+  value: string;
 }
 
 export interface QueriesPagedResponse {

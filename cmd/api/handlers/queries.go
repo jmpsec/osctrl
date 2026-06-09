@@ -75,10 +75,34 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// Targets — the creation-time scope (platform/uuid/hostname/tag rows
+	// stored in the query_targets table). The legacy admin shows them
+	// in a small Type/Value table on the query detail page; surface
+	// them here so the SPA can render the same. Best-effort: a fetch
+	// error doesn't fail the request — we still return the query.
+	type queryTarget struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	}
+	targets := []queryTarget{}
+	if rows, terr := h.Queries.GetTargets(name); terr == nil {
+		for _, t := range rows {
+			targets = append(targets, queryTarget{Type: t.Type, Value: t.Value})
+		}
+	} else {
+		log.Debug().Err(terr).Msgf("query targets fetch failed for %s", name)
+	}
+	resp := struct {
+		queries.DistributedQuery
+		Targets []queryTarget `json:"targets"`
+	}{
+		DistributedQuery: query,
+		Targets:          targets,
+	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned query %s", name)
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, query)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
 // QueriesRunHandler - POST Handler to run a query
