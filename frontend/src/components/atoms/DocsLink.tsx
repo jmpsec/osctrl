@@ -19,18 +19,26 @@ export function DocsLink({
   label?: string;
   className?: string;
 }) {
-  // Explicit onClick + window.open is belt-and-suspenders: the bare <a
-  // target=_blank> form was rendering as un-clickable in the live build
-  // (suspected nginx CSP rewriting target=_blank into a noop). The
-  // explicit click handler bypasses whatever is interfering and the
-  // anchor still works on middle-click / Cmd+click via its href.
+  // The bare <a target=_blank> form rendered as un-clickable in the live
+  // build (suspected CSP/router interception). First attempt at a fix
+  // used window.open with a 'noopener,noreferrer' feature string as the
+  // 3rd arg — but Chromium treats any non-empty feature string as a
+  // popup request which collapses the target argument, so the new tab
+  // opened to about:blank.
+  //
+  // Correct path: let the <a target=_blank> + rel=noopener noreferrer
+  // do the work via assignment to window.location of an opened tab.
+  // Open with no feature string so target=_blank means "new tab", then
+  // explicitly null the opener for noopener semantics.
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     // Let cmd/ctrl/shift/middle clicks fall through to the browser's
     // own new-tab behaviour. Only the plain left-click goes through
     // our window.open path.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    if (!href) return;
     e.preventDefault();
-    window.open(href, '_blank', 'noopener,noreferrer');
+    const win = window.open(href, '_blank');
+    if (win) win.opener = null;
   }
 
   return (
