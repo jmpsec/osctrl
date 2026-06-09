@@ -744,6 +744,13 @@ func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Reques
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
+	// Cap the request body at 64 KiB. A realistic PEM chain is well under
+	// 16 KiB; nginx alone allows up to 20 MiB and the cert upload is the
+	// worst-case amplifier (one big base64 string blows up ~1.33x on JSON
+	// decode + another 0.75x on base64 decode). 64 KiB leaves headroom
+	// for legitimate multi-cert chains while preventing a privileged
+	// operator account from being turned into an OOM lever.
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req envCertUploadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
@@ -784,10 +791,17 @@ func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Reques
 // drop into /etc/osquery/osctrl-{env}.flags (or the platform equivalent).
 //
 // sep is the path separator the OS uses ("/" for everything except Windows).
+//
+// strings.ReplaceAll is deliberate even though the flag template ships with
+// one occurrence of each placeholder today. If an operator ever edits the
+// template to reference the secret/cert path twice (e.g. an additional
+// --logger_tls_endpoint that needs the same path), the single-replace
+// would silently leave the second placeholder unsubstituted — a footgun
+// that costs a real outage.
 func substitutePlatformPaths(flags, envName, dir, sep string) string {
 	secretPath := dir + sep + "osctrl-" + envName + ".secret"
 	certPath := dir + sep + "osctrl-" + envName + ".crt"
-	out := strings.Replace(flags, "__SECRET_FILE__", secretPath, 1)
-	out = strings.Replace(out, "__CERT_FILE__", certPath, 1)
+	out := strings.ReplaceAll(flags, "__SECRET_FILE__", secretPath)
+	out = strings.ReplaceAll(out, "__CERT_FILE__", certPath)
 	return out
 }

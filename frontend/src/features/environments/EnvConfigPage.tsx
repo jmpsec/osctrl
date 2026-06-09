@@ -74,6 +74,15 @@ const SECTIONS: {
   },
 ];
 
+// Names that JavaScript treats specially on an object literal. Assigning
+// to `__proto__` mutates the prototype chain instead of creating an own
+// property, so the surrounding JSON.stringify silently drops the entry —
+// confusing UX, and a real prototype-pollution bug waiting to happen if
+// someone copies the AddOptionForm / AddScheduledQueryForm pattern into a
+// path that reads off `parsed` later. Rejected up front by both inline
+// forms below.
+const RESERVED_OPTION_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function EnvConfigPage() {
   const { env } = useParams({ from: '/_app/env/$env/config' });
   const navigate = useNavigate({ from: '/_app/env/$env/config' });
@@ -759,6 +768,10 @@ function AddOptionForm({
       setErr('Option name is required.');
       return;
     }
+    if (RESERVED_OPTION_NAMES.has(trimmedName)) {
+      setErr(`"${trimmedName}" is a reserved JavaScript property name and can't be used as an option key.`);
+      return;
+    }
     let parsed: Record<string, unknown>;
     try {
       const obj = JSON.parse(draftValue || '{}') as unknown;
@@ -889,6 +902,10 @@ function AddScheduledQueryForm({
     }
     if (!Number.isFinite(interval) || interval < 1) {
       setErr('Interval must be a positive integer (seconds).');
+      return;
+    }
+    if (RESERVED_OPTION_NAMES.has(trimmedName)) {
+      setErr(`"${trimmedName}" is a reserved JavaScript property name and can't be used as a query name.`);
       return;
     }
     let parsed: Record<string, unknown>;
