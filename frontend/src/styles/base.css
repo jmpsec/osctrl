@@ -15,15 +15,13 @@ body {
   letter-spacing: -0.015em;
 }
 
-/* Wordmark font — reuse the SPA's display stack (Space Grotesk →
- * system sans) so the "osctrl" wordmark inherits the same typeface
- * as the rest of the brand display copy. Kept as its own class so
- * future tweaks (weight, tracking, etc.) for the wordmark don't
- * leak into other .font-display usages. */
+/* Wordmark font — Bai Jamjuree at 700, loaded from Google Fonts in
+ * index.html. The wordmark is the only surface that uses it; the rest
+ * of the SPA stays on Inter + Space Grotesk + IBM Plex Mono. */
 .font-wordmark {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Bai Jamjuree', 'Space Grotesk', sans-serif;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
 
 .font-mono-tabular {
