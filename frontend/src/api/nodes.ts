@@ -45,6 +45,25 @@ export function getNode(env: string, uuid: string): Promise<OsqueryNode> {
   );
 }
 
+/**
+ * POST /api/v1/nodes/{env}/delete — archive + delete a node.
+ *
+ * The backend's ArchiveDeleteByUUID always snapshots the node into the
+ * archive table before removing the live row, so the data is recoverable
+ * via the archive tables even though the row disappears from the active
+ * nodes list. AdminLevel-gated server-side.
+ */
+export function deleteNode(env: string, uuid: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(
+    `/api/v1/nodes/${encodeURIComponent(env)}/delete`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uuid }),
+    },
+  );
+}
+
 export function listNodeLogs(
   env: string,
   uuid: string,

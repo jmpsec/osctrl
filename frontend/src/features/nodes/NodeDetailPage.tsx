@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getNode, listNodeLogs } from '$/api/nodes';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getNode, listNodeLogs, deleteNode } from '$/api/nodes';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
@@ -541,6 +541,42 @@ export function NodeDetailPage() {
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
 
+  // Archive + delete the current node. The backend's POST /nodes/{env}/delete
+  // handler maps to ArchiveDeleteByUUID, which snapshots into the archive
+  // table THEN removes the live row — so "Archive" and "Delete" are the
+  // same server-side op. We surface both labels because they map to the
+  // legacy admin's two buttons; once we add a true archive-only call to
+  // pkg/nodes, the Archive button can be re-wired to it.
+  const qc = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const deleteMut = useMutation({
+    mutationFn: () => deleteNode(env, uuid),
+    onSuccess: () => {
+      setActionError(null);
+      // Bust the listing caches so the Nodes table reflects removal
+      // before we land back on it.
+      void qc.invalidateQueries({ queryKey: ['nodes', env] });
+      void qc.invalidateQueries({ queryKey: ['node', env, uuid] });
+      void navigate({ to: '/_app/env/$env/nodes', params: { env } });
+    },
+    onError: (err) =>
+      setActionError(err instanceof Error ? err.message : 'Action failed'),
+  });
+
+  function handleArchive() {
+    if (!confirm(`Archive node ${node?.hostname ?? uuid}?\n\nThe node is snapshotted into the archive table and removed from the active list.`)) {
+      return;
+    }
+    deleteMut.mutate();
+  }
+
+  function handleDelete() {
+    if (!confirm(`Delete node ${node?.hostname ?? uuid}?\n\nThis removes the node from the active list. The archive table keeps a snapshot for recovery.`)) {
+      return;
+    }
+    deleteMut.mutate();
+  }
+
   // Node-scoped activity heatmap — only fetched while the Activity tab is the
   // active panel, so flipping between Details/Status/Result doesn't keep a
   // dormant 30s polling timer alive in the background.
@@ -622,10 +658,8 @@ export function NodeDetailPage() {
                 <button
                   type="button"
                   aria-label="Archive this node"
-                  onClick={() => {
-                    // TODO: POST /api/v1/nodes/{env}/delete with { uuid, archive: true }
-                    // Awaits the bulk-action archive endpoint contract in pkg/nodes.
-                  }}
+                  onClick={handleArchive}
+                  disabled={deleteMut.isPending}
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
@@ -633,9 +667,10 @@ export function NodeDetailPage() {
                     'hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  Archive
+                  {deleteMut.isPending ? 'Archiving…' : 'Archive'}
                 </button>
               )}
 
@@ -650,21 +685,29 @@ export function NodeDetailPage() {
                 <button
                   type="button"
                   aria-label="Delete this node"
-                  onClick={() => {
-                    // TODO: open delete confirmation modal (polish)
-                  }}
+                  onClick={handleDelete}
+                  disabled={deleteMut.isPending}
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--danger)] text-[color:var(--danger)]',
                     'hover:bg-[color:var(--danger)] hover:text-white',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  Delete
+                  {deleteMut.isPending ? 'Deleting…' : 'Delete'}
                 </button>
               )}
             </div>
+            {actionError && (
+              <div
+                role="alert"
+                className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
+              >
+                {actionError}
+              </div>
+            )}
           </>
         ) : isError ? (
           <EmptyState
