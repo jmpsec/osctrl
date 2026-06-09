@@ -15,6 +15,15 @@ body {
   letter-spacing: -0.015em;
 }
 
+/* Wordmark font — Bai Jamjuree, the typeface the legacy osctrl admin
+ * used for its body + brand. We apply it only to the "osctrl" wordmark
+ * (login card + SideNav header) to honor the original visual identity
+ * without changing the rest of the SPA's type system. */
+.font-wordmark {
+  font-family: 'Bai Jamjuree', 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+}
+
 .font-mono-tabular {
   font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;

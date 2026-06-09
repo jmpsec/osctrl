@@ -146,7 +146,7 @@ export function LoginPage() {
             height={48}
             className="osctrl-logo"
           />
-          <div className="mt-3 font-display text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
+          <div className="mt-3 font-wordmark text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
             osctrl
           </div>
           <p className="mt-1 text-xs text-[color:var(--text-3)] font-mono-tabular uppercase tracking-[0.1em]">
