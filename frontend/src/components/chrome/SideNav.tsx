@@ -142,22 +142,26 @@ export function SideNav() {
 
   return (
     <aside
-      className="w-60 shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3"
-      style={{
-        background:
-          'linear-gradient(180deg, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.04) 0%, transparent 280px), var(--bg-0)',
-      }}
+      // The .sidenav-circuit class (base.css) layers the legacy circuit
+      // SVG behind the rail content. Background-image inherits the
+      // brand teal at theme-tuned alpha so dark and light read at
+      // similar density. The teal sheen from the previous background
+      // gradient is preserved via the linear-gradient layered on top
+      // of the SVG — the SVG sits at the bottom of the stack.
+      className="sidenav-circuit w-60 shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3"
     >
-      {/* Wordmark */}
-      <div className="px-2 py-2 flex items-center gap-2.5 mb-4">
-        <Logo size={30} decorative />
-        <div>
-          <div className="font-display text-[15px] font-bold tracking-tight text-[color:var(--text-1)]">
-            osctrl
-          </div>
-          <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)] leading-none mt-0.5">
-            CONTROL
-          </div>
+      {/* Wordmark — mirrors the login card header (stacked logo +
+          "osctrl" wordmark + "OSQUERY CONTROL" tagline) so the brand
+          presentation stays consistent between the unauth surface and
+          the app shell. Font sizes are tuned down a step versus the
+          login card because the sidenav rail is narrower (~240px). */}
+      <div className="flex flex-col items-center px-2 py-3 mb-4">
+        <Logo size={40} decorative />
+        <div className="mt-2 font-display text-lg font-bold tracking-tight text-[color:var(--text-1)] leading-none">
+          osctrl
+        </div>
+        <div className="mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] leading-none">
+          Osquery Control
         </div>
       </div>
 
