@@ -91,9 +91,20 @@ export async function apiFetch<T>(
     headers.set('Accept', 'application/json');
   }
 
-  const csrf = getCsrfToken();
-  if (MUTATING_VERBS.has(method) && csrf) {
-    headers.set('X-CSRF-Token', csrf);
+  if (MUTATING_VERBS.has(method)) {
+    // Belt-and-braces: if the in-memory CSRF is null (we never primed
+    // from the cookie this boot, or a stale clear happened) but the
+    // browser still holds the osctrl_csrf cookie, re-prime now so
+    // mutating requests don't ship without the header. Without this,
+    // a single dropped prime turns every mutation into "csrf token
+    // missing or invalid" until the user logs out and back in.
+    if (!getCsrfToken()) {
+      primeCsrfFromCookie();
+    }
+    const csrf = getCsrfToken();
+    if (csrf) {
+      headers.set('X-CSRF-Token', csrf);
+    }
   }
 
   const res = await fetch(path, {
