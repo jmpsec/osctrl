@@ -233,16 +233,22 @@ function TimeSeriesChart({
           </text>
         ))}
       </g>
-      {/* Stacked layers, bottom-to-top — flat fills */}
+      {/* Stacked layers, bottom-to-top — flat fills.
+          Config uses a chart-local violet instead of --success so it
+          reads distinctly from --signal (queries). Both --signal and
+          --success sit in the green-teal corner of the wheel and at
+          flat 0.65 opacity they merged visually. The category color
+          here is chart-only and does NOT propagate to other places
+          where "config" might have semantic meaning. */}
       <path d={layerPath(enrollTop, zero)} fill="var(--info)" fillOpacity="0.65" />
       <path d={layerPath(carveTop, enrollTop)} fill="var(--warning)" fillOpacity="0.65" />
       <path d={layerPath(queryTop, carveTop)} fill="var(--signal)" fillOpacity="0.65" />
-      <path d={layerPath(configTop, queryTop)} fill="var(--success)" fillOpacity="0.65" />
+      <path d={layerPath(configTop, queryTop)} fill="#a78bfa" fillOpacity="0.65" />
       {/* Top-of-stack outline so the chart has a defined edge */}
       <path
         d={configTop.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ')}
         fill="none"
-        stroke="var(--success)"
+        stroke="#a78bfa"
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
@@ -268,7 +274,7 @@ function TimeSeriesChart({
       </g>
       {/* Legend */}
       <g className="font-mono-tabular" fontSize="11" fontWeight="500">
-        <circle cx={padL + 4} cy={padT - 14} r="3" fill="var(--success)" />
+        <circle cx={padL + 4} cy={padT - 14} r="3" fill="#a78bfa" />
         <text x={padL + 12} y={padT - 10} fill="var(--text-2)">Config</text>
         <circle cx={padL + 70} cy={padT - 14} r="3" fill="var(--signal)" />
         <text x={padL + 78} y={padT - 10} fill="var(--text-2)">Query</text>
