@@ -243,6 +243,14 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		returnData = env.Certificate
 	case settings.DownloadFlags:
 		returnData = env.Flags
+	case settings.DownloadFlagsLinux:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/etc/osquery", "/")
+	case settings.DownloadFlagsMac:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/private/var/osquery", "/")
+	case settings.DownloadFlagsWin:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "C:\\Program Files\\osquery", "\\")
+	case settings.DownloadFlagsFreeBSD:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/usr/local/etc", "/")
 	case environments.EnrollShell:
 		returnData, err = environments.QuickAddOneLinerShell((env.Certificate != ""), env)
 		if err != nil {
@@ -656,4 +664,20 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msgf("Environment action %s completed: %s", e.Action, msgReturn)
 	h.AuditLog.EnvAction(ctx[ctxUser], e.Action+" - "+e.Name, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+}
+
+// substitutePlatformPaths fills the __SECRET_FILE__ / __CERT_FILE__ placeholders
+// in the env.Flags template with the canonical install paths for a given OS.
+// This is the same substitution legacy admin's download path performs (see
+// cmd/admin/handlers/utils.go generateFlags); centralising it here keeps the
+// API's per-OS flag downloads producing the exact bytes operators expect to
+// drop into /etc/osquery/osctrl-{env}.flags (or the platform equivalent).
+//
+// sep is the path separator the OS uses ("/" for everything except Windows).
+func substitutePlatformPaths(flags, envName, dir, sep string) string {
+	secretPath := dir + sep + "osctrl-" + envName + ".secret"
+	certPath := dir + sep + "osctrl-" + envName + ".crt"
+	out := strings.Replace(flags, "__SECRET_FILE__", secretPath, 1)
+	out = strings.Replace(out, "__CERT_FILE__", certPath, 1)
+	return out
 }
