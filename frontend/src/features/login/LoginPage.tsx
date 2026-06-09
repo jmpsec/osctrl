@@ -136,19 +136,15 @@ export function LoginPage() {
         {/* Wordmark */}
         <div className="flex flex-col items-center mb-8">
           {/* Original osctrl tower mark from cmd/admin/static/img/logo.png —
-              the same artwork legacy operators recognise. Inverted in
-              dark mode so the near-black outline reads as light against
-              the dark card; left untouched in light mode where the
-              outline + light-blue cabin windows already pop. */}
+              the same artwork legacy operators recognise. The .osctrl-logo
+              class (base.css) handles the dark-mode invert so this stays
+              in lockstep with every other use of the mark in the app. */}
           <img
             src="/img/osctrl-logo.png"
             alt="osctrl logo"
             width={48}
             height={48}
-            className={cn(
-              'block',
-              theme === 'dark' && 'invert',
-            )}
+            className="osctrl-logo"
           />
           <div className="mt-3 font-display text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
             osctrl
