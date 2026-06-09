@@ -135,17 +135,29 @@ export function LoginPage() {
       >
         {/* Wordmark */}
         <div className="flex flex-col items-center mb-8">
-          {/* Original osctrl tower mark from cmd/admin/static/img/logo.png —
-              the same artwork legacy operators recognise. The .osctrl-logo
-              class (base.css) handles the dark-mode invert so this stays
-              in lockstep with every other use of the mark in the app. */}
-          <img
-            src="/img/osctrl-logo.png"
-            alt="osctrl logo"
-            width={48}
-            height={48}
+          {/* Original osctrl tower mark — two PNG variants ship, light
+              and dark. .osctrl-logo + the inner show/hide rules in
+              base.css pick the right one per theme. Same pattern as
+              the Logo atom uses for the in-app SideNav. */}
+          <span
             className="osctrl-logo"
-          />
+            role="img"
+            aria-label="osctrl logo"
+            style={{ display: 'inline-block', width: 48, height: 48 }}
+          >
+            <img
+              src="/img/osctrl-logo.png"
+              alt=""
+              className="osctrl-logo-light"
+              style={{ display: 'block', width: '100%', height: '100%' }}
+            />
+            <img
+              src="/img/osctrl-logo-dark.png"
+              alt=""
+              className="osctrl-logo-dark"
+              style={{ display: 'block', width: '100%', height: '100%' }}
+            />
+          </span>
           <div className="mt-3 font-wordmark text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
             osctrl
           </div>
