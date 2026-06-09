@@ -47,8 +47,15 @@ body {
 .osctrl-logo {
   display: block;
 }
+/* Dark theme recolor: invert(1) flips the lightness so the dark
+ * outline becomes light against --bg-1, but it would also send the
+ * light-blue cabin windows to a muddy orange (#a8c5e8 → #573a17).
+ * Chaining hue-rotate(180deg) cancels the hue shift the invert
+ * caused, so the windows stay in the cool/blue family while still
+ * being light enough to read on dark. The result is the dark-mode
+ * equivalent of what operators see on the light theme. */
 [data-theme="dark"] .osctrl-logo {
-  filter: invert(1);
+  filter: invert(1) hue-rotate(180deg);
 }
 
 /* SideNav circuit background — the legacy login screen's circuit-trace
