@@ -58,9 +58,26 @@
     transparent 80%
   );
   filter: blur(8px);
+  /* Dark theme: screen blends the teal disc as a brightening highlight
+   * against --bg-0 (#07090c). Visible because there's plenty of room
+   * to brighten. */
   mix-blend-mode: screen;
   pointer-events: none;
   animation: login-trace-scan 12s ease-in-out infinite;
+}
+/* Light theme: screen on a near-white surface produces no visible
+ * brightening — the disc effectively disappears. Switch to multiply
+ * so the disc darkens what it passes over (teal-tinted shadow effect)
+ * and bump opacity so the motion reads at all. */
+[data-theme='light'] .login-trace-spotlight {
+  background: radial-gradient(
+    circle at center,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.65) 0%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.32) 25%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.12) 55%,
+    transparent 80%
+  );
+  mix-blend-mode: multiply;
 }
 
 @keyframes login-trace-drift {
