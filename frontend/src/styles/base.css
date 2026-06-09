@@ -30,6 +30,18 @@ body {
   backdrop-filter: blur(10px);
 }
 
+/* Original osctrl PNG mark — the artwork ships with a near-black outline
+ * and light-blue cabin windows that read naturally on a light background.
+ * Inverted on dark so the outline becomes light against --bg-1. Applied
+ * via the Logo component's `.osctrl-logo` class so every consumer
+ * (SideNav, dev gallery, etc.) inherits theme-awareness for free. */
+.osctrl-logo {
+  display: block;
+}
+[data-theme="dark"] .osctrl-logo {
+  filter: invert(1);
+}
+
 /* --- Status pip pulse (live indicator) --- */
 @keyframes pip-pulse {
   0%   { transform: scale(0.8); opacity: 0.7; }
