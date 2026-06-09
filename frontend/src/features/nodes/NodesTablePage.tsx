@@ -84,41 +84,47 @@ interface QuickFilter {
 }
 
 function QuickFiltersRow({ filters }: { filters: QuickFilter[] }) {
+  // Visual format mirrors the StatusTabs component used on QueriesListPage:
+  // a grey segmented pad with a thin border, individual buttons get the
+  // active state via bg-1 + shadow rather than a pill outline. The option
+  // set, behaviour, and counts are unchanged — only the chrome moved.
   return (
     <div
       role="toolbar"
       aria-label="Quick filters"
-      className="flex items-center gap-1.5 px-4 py-2.5 border-b border-[color:var(--border)] overflow-x-auto"
+      className="flex items-center gap-2 px-4 py-2.5 border-b border-[color:var(--border)] overflow-x-auto"
     >
-      {filters.map((f) => (
-        <button
-          key={f.key}
-          type="button"
-          onClick={f.onClick}
-          aria-pressed={f.active}
-          aria-label={`Filter: ${f.label}${f.count != null ? ` (${f.count})` : ''}`}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full',
-            'text-[11px] font-medium transition-colors duration-[120ms]',
-            'border focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            f.active
-              ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-              : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
-          )}
-        >
-          <span>{f.label}</span>
-          {f.count != null && (
-            <span
-              className={cn(
-                'font-mono-tabular tabular-nums text-[10px]',
-                f.active ? 'text-[color:var(--signal-bright,var(--signal))]' : 'text-[color:var(--text-3)]',
-              )}
-            >
-              {f.count.toLocaleString()}
-            </span>
-          )}
-        </button>
-      ))}
+      <div className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]">
+        {filters.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={f.onClick}
+            aria-pressed={f.active}
+            aria-label={`Filter: ${f.label}${f.count != null ? ` (${f.count})` : ''}`}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1 rounded',
+              'text-xs font-medium transition-colors',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              f.active
+                ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
+                : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
+            )}
+          >
+            <span>{f.label}</span>
+            {f.count != null && (
+              <span
+                className={cn(
+                  'font-mono-tabular tabular-nums text-[10px]',
+                  f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
+                )}
+              >
+                {f.count.toLocaleString()}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
