@@ -241,7 +241,10 @@ function TimeSeriesChart({
   const H = 200;
   const padL = 40;
   const padR = 10;
-  const padT = 30;
+  // padT used to reserve 30px for the now-removed in-chart legend.
+  // Tighten so the chart uses the freed space; the palette/legend
+  // row above the SVG is rendered by DashboardPage.
+  const padT = 10;
   const padB = 30;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
@@ -335,18 +338,9 @@ function TimeSeriesChart({
           );
         })}
       </g>
-      {/* Legend — swatches drive from the same palette as the layers
-          so a remap immediately updates both. */}
-      <g className="font-mono-tabular" fontSize="11" fontWeight="500">
-        <circle cx={padL + 4} cy={padT - 14} r="3" fill={palette.config} />
-        <text x={padL + 12} y={padT - 10} fill="var(--text-2)">Config</text>
-        <circle cx={padL + 70} cy={padT - 14} r="3" fill={palette.query} />
-        <text x={padL + 78} y={padT - 10} fill="var(--text-2)">Query</text>
-        <circle cx={padL + 130} cy={padT - 14} r="3" fill={palette.carve} />
-        <text x={padL + 138} y={padT - 10} fill="var(--text-2)">Carve</text>
-        <circle cx={padL + 190} cy={padT - 14} r="3" fill={palette.enroll} />
-        <text x={padL + 198} y={padT - 10} fill="var(--text-2)">Enroll</text>
-      </g>
+      {/* In-chart SVG legend removed — the always-visible palette row
+          rendered above the chart (DashboardPage) now serves as the
+          legend AND the per-category color picker in one control. */}
     </svg>
   );
 }
@@ -1097,7 +1091,6 @@ export function DashboardPage() {
   });
 
   const [palette, setPaletteEntry, resetPalette] = useChartPalette();
-  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const is401 = isError && error instanceof AuthError;
 
@@ -1353,72 +1346,45 @@ export function DashboardPage() {
               >
                 24 hours
               </button>
-              {/* Palette toggle — opens an inline disclosure with 4
-                  color inputs for the chart's stacked categories. The
-                  state is per-browser; localStorage so it survives a
-                  reload. */}
+            </div>
+          </div>
+          {/* Palette row — always visible. Doubles as the chart's
+              legend (swatch + label per category) and as the per-user
+              color picker. Each swatch is a native <input type="color">
+              bound to localStorage; a Reset link returns to defaults. */}
+          <div className="px-5 pb-2">
+            <div
+              className={cn(
+                'flex items-center gap-3 flex-wrap p-2.5 rounded-md',
+                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                'text-xs text-[color:var(--text-2)]',
+              )}
+            >
+              {(['config', 'query', 'carve', 'enroll'] as ChartCategory[]).map((key) => (
+                <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="color"
+                    value={palette[key]}
+                    onChange={(e) => setPaletteEntry(key, e.target.value)}
+                    className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
+                    aria-label={`${key} color`}
+                  />
+                  <span className="capitalize">{key}</span>
+                </label>
+              ))}
               <button
                 type="button"
-                onClick={() => setPaletteOpen((o) => !o)}
-                aria-expanded={paletteOpen}
-                aria-label="Customize chart colors"
-                title="Customize chart colors"
+                onClick={resetPalette}
                 className={cn(
-                  'ml-2 px-2 py-1 rounded transition-colors duration-[120ms]',
+                  'ml-auto px-2 py-0.5 text-[10px] rounded',
                   'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  'hover:bg-[color:var(--bg-1)]',
                 )}
               >
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="13.5" cy="6.5" r="2.5" />
-                  <circle cx="19" cy="12" r="2.5" />
-                  <circle cx="17" cy="18.5" r="2.5" />
-                  <circle cx="7" cy="17.5" r="2.5" />
-                  <circle cx="5" cy="11" r="2.5" />
-                  <circle cx="9.5" cy="6.5" r="2.5" />
-                  <path d="M12 22a10 10 0 1 1 0-20" />
-                </svg>
+                Reset to defaults
               </button>
             </div>
           </div>
-          {paletteOpen && (
-            <div className="px-5 pb-2">
-              <div
-                className={cn(
-                  'flex items-center gap-3 flex-wrap p-3 rounded-md',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                  'text-xs text-[color:var(--text-2)]',
-                )}
-              >
-                <span className="font-mono-tabular uppercase tracking-[0.1em] text-[10px] text-[color:var(--text-3)] mr-1">
-                  Chart colors
-                </span>
-                {(['config', 'query', 'carve', 'enroll'] as ChartCategory[]).map((key) => (
-                  <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="color"
-                      value={palette[key]}
-                      onChange={(e) => setPaletteEntry(key, e.target.value)}
-                      className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
-                      aria-label={`${key} color`}
-                    />
-                    <span className="capitalize">{key}</span>
-                  </label>
-                ))}
-                <button
-                  type="button"
-                  onClick={resetPalette}
-                  className={cn(
-                    'ml-auto px-2 py-0.5 text-[10px] rounded',
-                    'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-                    'hover:bg-[color:var(--bg-1)]',
-                  )}
-                >
-                  Reset to defaults
-                </button>
-              </div>
-            </div>
-          )}
           <div className="p-5">
             <TimeSeriesChart
               config={fleet24.config}
