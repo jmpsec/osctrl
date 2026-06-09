@@ -18,6 +18,7 @@ import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { CertificateCard } from './CertificateCard';
 import { FlagsCard } from './FlagsCard';
+import { AssembledConfigCard } from './AssembledConfigCard';
 
 /**
  * EnrollPage (v2) — env-scoped node enrollment portal.
@@ -267,6 +268,15 @@ export function EnrollPage() {
               the flags template never depends on enrollment being open. */}
           <div className="mt-5">
             <FlagsCard env={env} />
+          </div>
+
+          {/* Assembled configuration — Monaco read-only viewer of the
+              composed options + schedule + packs + decorators + ATC,
+              same JSON the TLS endpoint serves agents. Sits below
+              FlagsCard so the page's vertical flow is
+              metadata → install assets → flags → config preview. */}
+          <div className="mt-5">
+            <AssembledConfigCard env={env} />
           </div>
         </div>
       </div>
