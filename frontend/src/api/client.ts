@@ -14,6 +14,15 @@ export function getCsrfToken(): string | null {
 }
 
 export function isAuthenticated(): boolean {
+  // Mirror the apiFetch fallback: if memory is empty but the browser
+  // still holds the osctrl_csrf cookie, prime from it before answering
+  // false. Without this, every soft navigation through a route with a
+  // beforeLoad auth guard could bounce a logged-in user to /login the
+  // moment csrfTokenInMemory is reset (e.g., a brief race during token
+  // rotation, or any code path that called setCsrfToken(null)).
+  if (csrfTokenInMemory === null) {
+    primeCsrfFromCookie();
+  }
   return csrfTokenInMemory !== null;
 }
 
