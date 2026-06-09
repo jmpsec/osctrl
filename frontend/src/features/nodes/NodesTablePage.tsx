@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { listNodes, type NodePlatform } from '$/api/nodes';
+import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
 import { getStats, getNodeActivityBatch, type NodeActivityBucket } from '$/api/stats';
 import { listEnvTags, tagNode } from '$/api/tags';
 import { getMe } from '$/api/users';
@@ -347,6 +347,7 @@ export function NodesTablePage() {
 
   const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
   const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   function updateSearch(patch: Record<string, string | number | undefined>) {
     void navigate({
@@ -401,6 +402,43 @@ export function NodesTablePage() {
     refetchInterval: 30_000,
     placeholderData: (prev: NodesPagedResponse | undefined) => prev,
   });
+
+  // Bulk archive + delete the selected nodes. Backend exposes one
+  // per-uuid endpoint (POST /nodes/{env}/delete) which is also the
+  // legacy admin's archive-and-remove op. We fire one request per
+  // uuid and collect per-row failures so a partial success can still
+  // surface "deleted 7, failed 2" rather than the whole batch
+  // turning red on the first 404.
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (uuids: string[]) => {
+      const settled = await Promise.allSettled(
+        uuids.map((uuid) => deleteNode(env, uuid)),
+      );
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      return { total: uuids.length, failed };
+    },
+    onSuccess: ({ total, failed }) => {
+      setSelectedUuids(new Set());
+      if (failed > 0) {
+        setBulkError(`Deleted ${total - failed} of ${total} node(s); ${failed} failed.`);
+      } else {
+        setBulkError(null);
+      }
+      void refetch();
+    },
+    onError: (err) =>
+      setBulkError(err instanceof Error ? err.message : 'Bulk delete failed'),
+  });
+
+  function handleBulkDelete() {
+    const uuids = Array.from(selectedUuids);
+    if (uuids.length === 0) return;
+    if (!confirm(`Delete ${uuids.length} node${uuids.length === 1 ? '' : 's'}?\n\nEach node is snapshotted into the archive table and removed from the active list.`)) {
+      return;
+    }
+    setBulkError(null);
+    bulkDeleteMut.mutate(uuids);
+  }
 
   // Stats — drives the QuickFilters chip counts. Cross-env totals; we surface
   // the per-env subset from data?.total_items when active.
@@ -825,12 +863,15 @@ export function NodesTablePage() {
             <button
               type="button"
               aria-label="Delete selected nodes"
-              className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
-              onClick={() => {
-                // TODO: wire delete mutation when DeleteNodeHandler integration tests are written
-              }}
+              disabled={bulkDeleteMut.isPending}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)]',
+                'hover:bg-[color:var(--bg-2)] transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              onClick={handleBulkDelete}
             >
-              Delete…
+              {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete…'}
             </button>
           )}
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -856,6 +897,31 @@ export function NodesTablePage() {
             void refetch();
           }}
         />
+      )}
+
+      {/* Bulk-action result toast — sits at the bottom centre when no
+          selection exists (so it doesn't overlap the dock toolbar). */}
+      {bulkError && selectedUuids.size === 0 && (
+        <div
+          role="alert"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--danger)]/40',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-xs text-[color:var(--danger)]',
+          )}
+        >
+          <span>{bulkError}</span>
+          <button
+            type="button"
+            onClick={() => setBulkError(null)}
+            className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
