@@ -155,6 +155,70 @@ function InlineSparkline({
 }
 
 // ---------------------------------------------------------------------------
+// Time-series chart category palette.
+// Defaults match what was hard-coded in the chart before this hook landed:
+//   Config = violet  (chart-local, distinct from --signal so it doesn't
+//                     collide with the query series in the green-teal corner)
+//   Query  = signal-teal
+//   Carve  = warning amber
+//   Enroll = info blue
+// Stored in localStorage per-browser so operators can re-map colors to match
+// their mental model (e.g. "Carve is always red for me").
+// ---------------------------------------------------------------------------
+export type ChartCategory = 'config' | 'query' | 'carve' | 'enroll';
+type ChartPalette = Record<ChartCategory, string>;
+
+const DEFAULT_PALETTE: ChartPalette = {
+  config: '#a78bfa', // violet — chart-local, distinct from --signal
+  query:  '#2bc4be', // matches --signal (dark theme)
+  carve:  '#fbbf24', // matches --warning (dark theme)
+  enroll: '#67c0ff', // matches --info (dark theme)
+};
+
+const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
+
+function useChartPalette(): [ChartPalette, (key: ChartCategory, hex: string) => void, () => void] {
+  const [palette, setPalette] = useState<ChartPalette>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PALETTE;
+    try {
+      const stored = window.localStorage.getItem(PALETTE_STORAGE_KEY);
+      if (!stored) return DEFAULT_PALETTE;
+      const parsed = JSON.parse(stored) as Partial<ChartPalette>;
+      // Defensive merge — if the user has only set 2 of 4 keys (e.g. from
+      // an older build that wrote a subset), the missing ones get the
+      // current defaults rather than rendering as undefined.
+      return { ...DEFAULT_PALETTE, ...parsed };
+    } catch {
+      return DEFAULT_PALETTE;
+    }
+  });
+
+  const update = (key: ChartCategory, hex: string) => {
+    setPalette((prev) => {
+      const next = { ...prev, [key]: hex };
+      try {
+        window.localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage blocked — keep the in-memory state; we lose
+        // persistence but don't crash the page.
+      }
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setPalette(DEFAULT_PALETTE);
+    try {
+      window.localStorage.removeItem(PALETTE_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return [palette, update, reset];
+}
+
+// ---------------------------------------------------------------------------
 // Time-series chart — 24h stacked area of audit-log activity, by category.
 // Wired to the env-activity endpoint via aggregateBuckets.
 // ---------------------------------------------------------------------------
@@ -164,12 +228,14 @@ function TimeSeriesChart({
   carve,
   enroll,
   intervalLabel,
+  palette,
 }: {
   config: number[];
   query: number[];
   carve: number[];
   enroll: number[];
   intervalLabel: '24h' | '7d';
+  palette: ChartPalette;
 }) {
   const W = 600;
   const H = 200;
@@ -234,21 +300,18 @@ function TimeSeriesChart({
         ))}
       </g>
       {/* Stacked layers, bottom-to-top — flat fills.
-          Config uses a chart-local violet instead of --success so it
-          reads distinctly from --signal (queries). Both --signal and
-          --success sit in the green-teal corner of the wheel and at
-          flat 0.65 opacity they merged visually. The category color
-          here is chart-only and does NOT propagate to other places
-          where "config" might have semantic meaning. */}
-      <path d={layerPath(enrollTop, zero)} fill="var(--info)" fillOpacity="0.65" />
-      <path d={layerPath(carveTop, enrollTop)} fill="var(--warning)" fillOpacity="0.65" />
-      <path d={layerPath(queryTop, carveTop)} fill="var(--signal)" fillOpacity="0.65" />
-      <path d={layerPath(configTop, queryTop)} fill="#a78bfa" fillOpacity="0.65" />
+          Colors come from the operator-tunable ChartPalette so each
+          band can be remapped. Default mapping matches the previous
+          hard-coded scheme. */}
+      <path d={layerPath(enrollTop, zero)} fill={palette.enroll} fillOpacity="0.65" />
+      <path d={layerPath(carveTop, enrollTop)} fill={palette.carve} fillOpacity="0.65" />
+      <path d={layerPath(queryTop, carveTop)} fill={palette.query} fillOpacity="0.65" />
+      <path d={layerPath(configTop, queryTop)} fill={palette.config} fillOpacity="0.65" />
       {/* Top-of-stack outline so the chart has a defined edge */}
       <path
         d={configTop.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ')}
         fill="none"
-        stroke="#a78bfa"
+        stroke={palette.config}
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
@@ -272,15 +335,16 @@ function TimeSeriesChart({
           );
         })}
       </g>
-      {/* Legend */}
+      {/* Legend — swatches drive from the same palette as the layers
+          so a remap immediately updates both. */}
       <g className="font-mono-tabular" fontSize="11" fontWeight="500">
-        <circle cx={padL + 4} cy={padT - 14} r="3" fill="#a78bfa" />
+        <circle cx={padL + 4} cy={padT - 14} r="3" fill={palette.config} />
         <text x={padL + 12} y={padT - 10} fill="var(--text-2)">Config</text>
-        <circle cx={padL + 70} cy={padT - 14} r="3" fill="var(--signal)" />
+        <circle cx={padL + 70} cy={padT - 14} r="3" fill={palette.query} />
         <text x={padL + 78} y={padT - 10} fill="var(--text-2)">Query</text>
-        <circle cx={padL + 130} cy={padT - 14} r="3" fill="var(--warning)" />
+        <circle cx={padL + 130} cy={padT - 14} r="3" fill={palette.carve} />
         <text x={padL + 138} y={padT - 10} fill="var(--text-2)">Carve</text>
-        <circle cx={padL + 190} cy={padT - 14} r="3" fill="var(--info)" />
+        <circle cx={padL + 190} cy={padT - 14} r="3" fill={palette.enroll} />
         <text x={padL + 198} y={padT - 10} fill="var(--text-2)">Enroll</text>
       </g>
     </svg>
@@ -1032,6 +1096,9 @@ export function DashboardPage() {
     refetchIntervalInBackground: false,
   });
 
+  const [palette, setPaletteEntry, resetPalette] = useChartPalette();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   const is401 = isError && error instanceof AuthError;
 
   const { data: auditData, isLoading: auditLoading } = useQuery({
@@ -1286,8 +1353,72 @@ export function DashboardPage() {
               >
                 24 hours
               </button>
+              {/* Palette toggle — opens an inline disclosure with 4
+                  color inputs for the chart's stacked categories. The
+                  state is per-browser; localStorage so it survives a
+                  reload. */}
+              <button
+                type="button"
+                onClick={() => setPaletteOpen((o) => !o)}
+                aria-expanded={paletteOpen}
+                aria-label="Customize chart colors"
+                title="Customize chart colors"
+                className={cn(
+                  'ml-2 px-2 py-1 rounded transition-colors duration-[120ms]',
+                  'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                )}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="13.5" cy="6.5" r="2.5" />
+                  <circle cx="19" cy="12" r="2.5" />
+                  <circle cx="17" cy="18.5" r="2.5" />
+                  <circle cx="7" cy="17.5" r="2.5" />
+                  <circle cx="5" cy="11" r="2.5" />
+                  <circle cx="9.5" cy="6.5" r="2.5" />
+                  <path d="M12 22a10 10 0 1 1 0-20" />
+                </svg>
+              </button>
             </div>
           </div>
+          {paletteOpen && (
+            <div className="px-5 pb-2">
+              <div
+                className={cn(
+                  'flex items-center gap-3 flex-wrap p-3 rounded-md',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'text-xs text-[color:var(--text-2)]',
+                )}
+              >
+                <span className="font-mono-tabular uppercase tracking-[0.1em] text-[10px] text-[color:var(--text-3)] mr-1">
+                  Chart colors
+                </span>
+                {(['config', 'query', 'carve', 'enroll'] as ChartCategory[]).map((key) => (
+                  <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="color"
+                      value={palette[key]}
+                      onChange={(e) => setPaletteEntry(key, e.target.value)}
+                      className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
+                      aria-label={`${key} color`}
+                    />
+                    <span className="capitalize">{key}</span>
+                  </label>
+                ))}
+                <button
+                  type="button"
+                  onClick={resetPalette}
+                  className={cn(
+                    'ml-auto px-2 py-0.5 text-[10px] rounded',
+                    'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-1)]',
+                  )}
+                >
+                  Reset to defaults
+                </button>
+              </div>
+            </div>
+          )}
           <div className="p-5">
             <TimeSeriesChart
               config={fleet24.config}
@@ -1295,6 +1426,7 @@ export function DashboardPage() {
               carve={fleet24.carve}
               enroll={fleet24.enroll}
               intervalLabel={activityInterval === '7d' ? '7d' : '24h'}
+              palette={palette}
             />
           </div>
         </div>
