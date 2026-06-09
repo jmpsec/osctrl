@@ -669,6 +669,47 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 
+// EnvConfigurationHandler - GET handler returning the assembled osquery
+// configuration JSON for an environment. Calls RefreshConfiguration so the
+// returned blob reflects the latest options / schedule / packs / decorators /
+// ATC parts, then re-reads the row. Same composition path the TLS endpoint
+// uses to serve agents — useful for operators previewing what the agents
+// will actually receive.
+func (h *HandlersApi) EnvConfigurationHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
+		return
+	}
+	if err := h.Envs.RefreshConfiguration(env.UUID); err != nil {
+		apiErrorResponse(w, "error refreshing configuration", http.StatusInternalServerError, err)
+		return
+	}
+	refreshed, err := h.Envs.Get(env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error reading configuration", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: refreshed.Configuration})
+}
+
 // envCertUploadRequest is the body shape for EnvCertUploadHandler. The PEM
 // is sent base64-encoded so the upload survives clients that mangle raw
 // newlines (curl --data, browser fetch with a plain string body, etc.).
