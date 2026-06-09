@@ -214,24 +214,11 @@ function TimeSeriesChart({
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="24-hour fleet activity by category">
-      <defs>
-        <linearGradient id="ts-enroll" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--info)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--info)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-carve" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--warning)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-query" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--signal)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--signal)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-config" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--success)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--success)" stopOpacity="0.18" />
-        </linearGradient>
-      </defs>
+      {/* Flat fills, not gradients. Stacked layers represent additive
+          amounts; gradients made overlapping bands read muddy and
+          inverted the visual hierarchy. Each layer now reads as a
+          solid color band; the per-series top outline + gridlines
+          carry depth. */}
       {/* gridlines */}
       <g stroke="var(--border)" strokeDasharray="2 4" strokeWidth="1">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -246,11 +233,11 @@ function TimeSeriesChart({
           </text>
         ))}
       </g>
-      {/* Stacked layers, bottom-to-top */}
-      <path d={layerPath(enrollTop, zero)} fill="url(#ts-enroll)" />
-      <path d={layerPath(carveTop, enrollTop)} fill="url(#ts-carve)" />
-      <path d={layerPath(queryTop, carveTop)} fill="url(#ts-query)" />
-      <path d={layerPath(configTop, queryTop)} fill="url(#ts-config)" />
+      {/* Stacked layers, bottom-to-top — flat fills */}
+      <path d={layerPath(enrollTop, zero)} fill="var(--info)" fillOpacity="0.65" />
+      <path d={layerPath(carveTop, enrollTop)} fill="var(--warning)" fillOpacity="0.65" />
+      <path d={layerPath(queryTop, carveTop)} fill="var(--signal)" fillOpacity="0.65" />
+      <path d={layerPath(configTop, queryTop)} fill="var(--success)" fillOpacity="0.65" />
       {/* Top-of-stack outline so the chart has a defined edge */}
       <path
         d={configTop.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ')}
