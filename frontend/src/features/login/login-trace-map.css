@@ -24,7 +24,13 @@
  * the actual painting; .login-trace-circuit handles the drift
  * animation on top of it. */
 .login-trace-circuit {
-  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.5);
+  /* The mask SVG is now a solid black silhouette of the circuit. We
+   * paint background-color at the alpha we actually want to see, the
+   * mask cuts away the negative space, and the result is a teal
+   * circuit pattern at exactly the chosen opacity. Earlier the SVG
+   * carried fill-opacity=0.06 which compounded with the mask and
+   * produced a far fainter result than the preview HTML. */
+  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.14);
   -webkit-mask-image: url(/img/circuit.svg);
   mask-image: url(/img/circuit.svg);
   -webkit-mask-repeat: repeat;
@@ -34,7 +40,7 @@
   animation: login-trace-drift 25s linear infinite;
 }
 [data-theme='light'] .login-trace-circuit {
-  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.85);
+  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.32);
 }
 
 .login-trace-spotlight {
