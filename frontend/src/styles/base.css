@@ -1,6 +1,34 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Bai Jamjuree — wordmark font, self-hosted from /fonts/.
+ * Originally loaded from Google Fonts, but Google's font CDN is
+ * blocked by some ad blockers and corporate proxies. Self-hosting
+ * makes the font part of the SPA's own asset bundle so it always
+ * loads. Only the Latin subset at weights 500/600/700 ships —
+ * everything we need for the wordmark, ~36KB total. */
+@font-face {
+  font-family: 'Bai Jamjuree';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/bai-jamjuree-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bai Jamjuree';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/bai-jamjuree-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bai Jamjuree';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/bai-jamjuree-700.woff2') format('woff2');
+}
+
 html,
 body {
   background: var(--bg-0);
