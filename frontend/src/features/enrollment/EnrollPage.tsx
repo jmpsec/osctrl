@@ -19,6 +19,7 @@ import { formatRelative } from '$/lib/time';
 import { CertificateCard } from './CertificateCard';
 import { FlagsCard } from './FlagsCard';
 import { AssembledConfigCard } from './AssembledConfigCard';
+import { DocsLink } from '$/components/atoms/DocsLink';
 
 /**
  * EnrollPage (v3) — tabbed env-scoped enrollment portal.
@@ -256,6 +257,12 @@ export function EnrollPage() {
           {/* ── Install tab ─────────────────────────────────────────── */}
           {pageTab === 'install' && (
             <div role="tabpanel" aria-labelledby="tab-install" className="space-y-5">
+              <div className="flex items-center justify-end -mt-2">
+                <DocsLink
+                  href="https://osquery.readthedocs.io/en/latest/deployment/remote/"
+                  label="enrollment docs"
+                />
+              </div>
               {notAccepting && (
                 <NotAcceptingHint
                   onJumpToLifecycle={() => setPageTab('lifecycle')}
@@ -306,6 +313,16 @@ export function EnrollPage() {
           {/* ── Configuration tab ───────────────────────────────────── */}
           {pageTab === 'configuration' && (
             <div role="tabpanel" aria-labelledby="tab-configuration" className="space-y-5">
+              <div className="flex items-center justify-end -mt-2 gap-3">
+                <DocsLink
+                  href="https://osquery.readthedocs.io/en/latest/installation/cli-flags/"
+                  label="flags docs"
+                />
+                <DocsLink
+                  href="https://osquery.readthedocs.io/en/latest/deployment/configuration/"
+                  label="config docs"
+                />
+              </div>
               <FlagsCard env={env} />
               <AssembledConfigCard env={env} />
             </div>
@@ -314,6 +331,12 @@ export function EnrollPage() {
           {/* ── Lifecycle tab ───────────────────────────────────────── */}
           {pageTab === 'lifecycle' && (
             <div role="tabpanel" aria-labelledby="tab-lifecycle" className="space-y-5">
+              <div className="flex items-center justify-end -mt-2">
+                <DocsLink
+                  href="https://osquery.readthedocs.io/en/latest/deployment/remote/#tls-server"
+                  label="enroll/cert docs"
+                />
+              </div>
               {/* 2-col @ lg: secret cards next to each other; certificate
                   full-width below (Replace textarea needs the room). */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
