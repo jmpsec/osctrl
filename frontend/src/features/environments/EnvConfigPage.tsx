@@ -15,16 +15,63 @@ import { AuthError, ApiError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
+import { DocsLink } from '$/components/atoms/DocsLink';
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
 
-const SECTIONS: { key: SectionKey; label: string; language: string; help: string }[] = [
-  { key: 'options', label: 'Options', language: 'json', help: 'Top-level osquery `options` block.' },
-  { key: 'schedule', label: 'Schedule', language: 'json', help: 'Scheduled query map keyed by name.' },
-  { key: 'packs', label: 'Packs', language: 'json', help: 'Named query packs delivered with the config.' },
-  { key: 'decorators', label: 'Decorators', language: 'json', help: 'Decorator queries that prefix every result.' },
-  { key: 'atc', label: 'ATC', language: 'json', help: 'Auto Table Construction — third-party SQLite virtual tables.' },
-  { key: 'flags', label: 'Flags', language: 'plaintext', help: 'CLI flags appended to osquery on startup.' },
+// docs URLs point at the upstream osquery read-the-docs anchors so an
+// operator can jump from the section header straight to the canonical
+// reference for that part of the config. `latest` is intentional — pinning
+// to a version would drift as osquery releases.
+const SECTIONS: {
+  key: SectionKey;
+  label: string;
+  language: string;
+  help: string;
+  docsUrl: string;
+}[] = [
+  {
+    key: 'options',
+    label: 'Options',
+    language: 'json',
+    help: 'Top-level osquery `options` block.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/installation/cli-flags/#configuration-control-flags',
+  },
+  {
+    key: 'schedule',
+    label: 'Schedule',
+    language: 'json',
+    help: 'Scheduled query map keyed by name.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/deployment/configuration/#schedule',
+  },
+  {
+    key: 'packs',
+    label: 'Packs',
+    language: 'json',
+    help: 'Named query packs delivered with the config.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/deployment/configuration/#query-packs',
+  },
+  {
+    key: 'decorators',
+    label: 'Decorators',
+    language: 'json',
+    help: 'Decorator queries that prefix every result.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/deployment/configuration/#decorator-queries',
+  },
+  {
+    key: 'atc',
+    label: 'ATC',
+    language: 'json',
+    help: 'Auto Table Construction — third-party SQLite virtual tables.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/deployment/configuration/#automatic-table-construction',
+  },
+  {
+    key: 'flags',
+    label: 'Flags',
+    language: 'plaintext',
+    help: 'CLI flags appended to osquery on startup.',
+    docsUrl: 'https://osquery.readthedocs.io/en/latest/installation/cli-flags/',
+  },
 ];
 
 export function EnvConfigPage() {
@@ -262,7 +309,7 @@ export function EnvConfigPage() {
           </>
         )}
 
-        {SECTIONS.map(({ key, label, language, help }) => {
+        {SECTIONS.map(({ key, label, language, help, docsUrl }) => {
           if (activeTab !== key) return null;
           const isDirty = dirty.has(key);
           const before = cfgQuery.data?.[key] ?? '';
@@ -281,6 +328,7 @@ export function EnvConfigPage() {
                 >
                   {label}
                 </h2>
+                <DocsLink href={docsUrl} label={`${label.toLowerCase()} docs`} />
                 <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">{help}</p>
                 {isDirty && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
@@ -313,6 +361,30 @@ export function EnvConfigPage() {
                   Save section
                 </button>
               </header>
+
+              {/* Per-section inline form: Options + Schedule get the
+                  legacy admin's add-row affordance so operators don't
+                  have to know JSON to append a new entry. The forms
+                  parse the current draft, mutate the parsed object,
+                  re-serialize, and stuff it back into the draft state —
+                  same path Save section already validates. */}
+              {key === 'options' && (
+                <AddOptionForm
+                  draftValue={after}
+                  onAdd={(next) =>
+                    setDraft((d) => (d ? { ...d, options: next } : d))
+                  }
+                />
+              )}
+              {key === 'schedule' && (
+                <AddScheduledQueryForm
+                  draftValue={after}
+                  onAdd={(next) =>
+                    setDraft((d) => (d ? { ...d, schedule: next } : d))
+                  }
+                />
+              )}
+
               <CodeEditor
                 aria-labelledby={`section-${key}-label`}
                 value={after}
@@ -654,6 +726,257 @@ function ExpirationCard({
         </p>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AddOptionForm — inline form for the Options section. Lets operators
+// append an option flag (key + typed value) without hand-editing JSON.
+//
+// On Add: parse the current draft as a JSON object, assign the new
+// key with the typed value, re-serialize with 2-space indent so the
+// CodeEditor's formatter doesn't re-pivot the whole document, and
+// push the result back via onAdd. If the draft doesn't parse cleanly
+// we error inline — the operator can fix the JSON manually first,
+// then re-use the form.
+// ---------------------------------------------------------------------------
+function AddOptionForm({
+  draftValue,
+  onAdd,
+}: {
+  draftValue: string;
+  onAdd: (next: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [value, setValue] = useState('');
+  const [type, setType] = useState<'string' | 'integer' | 'boolean'>('string');
+  const [err, setErr] = useState<string | null>(null);
+
+  function handleAdd() {
+    setErr(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErr('Option name is required.');
+      return;
+    }
+    let parsed: Record<string, unknown>;
+    try {
+      const obj = JSON.parse(draftValue || '{}') as unknown;
+      if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+        setErr('Options section is not a JSON object — fix it manually first.');
+        return;
+      }
+      parsed = obj as Record<string, unknown>;
+    } catch {
+      setErr('Options section has invalid JSON — fix it manually first.');
+      return;
+    }
+    let coerced: unknown = value;
+    if (type === 'integer') {
+      const n = Number(value);
+      if (!Number.isFinite(n)) {
+        setErr('Integer value must be a number.');
+        return;
+      }
+      coerced = n;
+    } else if (type === 'boolean') {
+      if (value !== 'true' && value !== 'false') {
+        setErr('Boolean value must be "true" or "false".');
+        return;
+      }
+      coerced = value === 'true';
+    }
+    parsed[trimmedName] = coerced;
+    onAdd(JSON.stringify(parsed, null, 2));
+    setName('');
+    setValue('');
+  }
+
+  return (
+    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)]">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mr-1">
+          Add option
+        </span>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="option_name"
+          className={cn(
+            'flex-1 min-w-[120px] px-2 py-1 rounded text-xs font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          )}
+        />
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as typeof type)}
+          className={cn(
+            'px-2 py-1 rounded text-xs font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-2)]',
+            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          )}
+          aria-label="Option value type"
+        >
+          <option value="string">string</option>
+          <option value="integer">integer</option>
+          <option value="boolean">boolean</option>
+        </select>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={type === 'boolean' ? 'true | false' : type === 'integer' ? '0' : 'value'}
+          className={cn(
+            'flex-1 min-w-[120px] px-2 py-1 rounded text-xs font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          )}
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className={cn(
+            'text-xs px-3 py-1 rounded font-medium',
+            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'transition-colors',
+          )}
+        >
+          Add
+        </button>
+      </div>
+      {err && (
+        <p role="alert" className="mt-1.5 text-[11px] text-[color:var(--danger)]">
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AddScheduledQueryForm — inline form for the Schedule section.
+//
+// Same shape as AddOptionForm but the value is an object
+//   { "name": { "query": "<SQL>", "interval": <int> } }
+// per osquery's schedule format. interval defaults to 60s, matching
+// what the legacy admin's add-row affordance seeded the field with.
+// ---------------------------------------------------------------------------
+function AddScheduledQueryForm({
+  draftValue,
+  onAdd,
+}: {
+  draftValue: string;
+  onAdd: (next: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [query, setQuery] = useState('');
+  const [interval, setInterval] = useState(60);
+  const [err, setErr] = useState<string | null>(null);
+
+  function handleAdd() {
+    setErr(null);
+    const trimmedName = name.trim();
+    const trimmedQuery = query.trim();
+    if (!trimmedName) {
+      setErr('Query name is required.');
+      return;
+    }
+    if (!trimmedQuery) {
+      setErr('Query SQL is required.');
+      return;
+    }
+    if (!Number.isFinite(interval) || interval < 1) {
+      setErr('Interval must be a positive integer (seconds).');
+      return;
+    }
+    let parsed: Record<string, unknown>;
+    try {
+      const obj = JSON.parse(draftValue || '{}') as unknown;
+      if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+        setErr('Schedule section is not a JSON object — fix it manually first.');
+        return;
+      }
+      parsed = obj as Record<string, unknown>;
+    } catch {
+      setErr('Schedule section has invalid JSON — fix it manually first.');
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(parsed, trimmedName)) {
+      setErr(`A query named "${trimmedName}" already exists in the schedule.`);
+      return;
+    }
+    parsed[trimmedName] = { query: trimmedQuery, interval };
+    onAdd(JSON.stringify(parsed, null, 2));
+    setName('');
+    setQuery('');
+    setInterval(60);
+  }
+
+  return (
+    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)] space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+          Add scheduled query
+        </span>
+      </div>
+      <div className="flex items-start gap-2 flex-wrap">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="query_name"
+          className={cn(
+            'w-[180px] px-2 py-1 rounded text-xs font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          )}
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="SELECT … FROM osquery_info;"
+          className={cn(
+            'flex-1 min-w-[220px] px-2 py-1 rounded text-xs font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          )}
+        />
+        <label className="flex items-center gap-1 text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+          interval
+          <input
+            type="number"
+            min={1}
+            value={interval}
+            onChange={(e) => setInterval(Number(e.target.value))}
+            className={cn(
+              'w-16 px-2 py-1 rounded text-xs font-mono-tabular text-center tabular-nums',
+              'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+            )}
+          />
+          s
+        </label>
+        <button
+          type="button"
+          onClick={handleAdd}
+          className={cn(
+            'text-xs px-3 py-1 rounded font-medium',
+            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'transition-colors',
+          )}
+        >
+          Add
+        </button>
+      </div>
+      {err && (
+        <p role="alert" className="text-[11px] text-[color:var(--danger)]">
+          {err}
+        </p>
+      )}
+    </div>
   );
 }
 
