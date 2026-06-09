@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '$/lib/cn';
-import { Logo } from '$/components/atoms/Logo';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
@@ -136,7 +135,21 @@ export function LoginPage() {
       >
         {/* Wordmark */}
         <div className="flex flex-col items-center mb-8">
-          <Logo size={48} />
+          {/* Original osctrl tower mark from cmd/admin/static/img/logo.png —
+              the same artwork legacy operators recognise. Inverted in
+              dark mode so the near-black outline reads as light against
+              the dark card; left untouched in light mode where the
+              outline + light-blue cabin windows already pop. */}
+          <img
+            src="/img/osctrl-logo.png"
+            alt="osctrl logo"
+            width={48}
+            height={48}
+            className={cn(
+              'block',
+              theme === 'dark' && 'invert',
+            )}
+          />
           <div className="mt-3 font-display text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
             osctrl
           </div>
