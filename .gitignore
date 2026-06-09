@@ -85,3 +85,6 @@ tools/bruno/collection.bru
 !CHANGELOG.md
 !SECURITY.md
 !frontend/**/*.md
+
+# Local-only planning / design notes (internal toolchain output)
+docs/superpowers/
