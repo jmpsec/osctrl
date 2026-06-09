@@ -83,48 +83,46 @@ interface QuickFilter {
   onClick: () => void;
 }
 
-function QuickFiltersRow({ filters }: { filters: QuickFilter[] }) {
-  // Visual format mirrors the StatusTabs component used on QueriesListPage:
-  // a grey segmented pad with a thin border, individual buttons get the
-  // active state via bg-1 + shadow rather than a pill outline. The option
-  // set, behaviour, and counts are unchanged — only the chrome moved.
+function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
+  // Same StatusTabs-style segmented pad as before, but without the
+  // surrounding row chrome — meant to slot into the main toolbar
+  // alongside the page title and search box so the whole header reads
+  // as a single line (matches CarvesListPage layout).
   return (
     <div
       role="toolbar"
       aria-label="Quick filters"
-      className="flex items-center gap-2 px-4 py-2.5 border-b border-[color:var(--border)] overflow-x-auto"
+      className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]"
     >
-      <div className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={f.onClick}
-            aria-pressed={f.active}
-            aria-label={`Filter: ${f.label}${f.count != null ? ` (${f.count})` : ''}`}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1 rounded',
-              'text-xs font-medium transition-colors',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-              f.active
-                ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
-                : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
-            )}
-          >
-            <span>{f.label}</span>
-            {f.count != null && (
-              <span
-                className={cn(
-                  'font-mono-tabular tabular-nums text-[10px]',
-                  f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
-                )}
-              >
-                {f.count.toLocaleString()}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {filters.map((f) => (
+        <button
+          key={f.key}
+          type="button"
+          onClick={f.onClick}
+          aria-pressed={f.active}
+          aria-label={`Filter: ${f.label}${f.count != null ? ` (${f.count})` : ''}`}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded',
+            'text-xs font-medium transition-colors',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+            f.active
+              ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
+              : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
+          )}
+        >
+          <span>{f.label}</span>
+          {f.count != null && (
+            <span
+              className={cn(
+                'font-mono-tabular tabular-nums text-[10px]',
+                f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
+              )}
+            >
+              {f.count.toLocaleString()}
+            </span>
+          )}
+        </button>
+      ))}
     </div>
   );
 }
@@ -530,18 +528,17 @@ export function NodesTablePage() {
   // ---------------------------------------------------------------------------
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* ── QuickFilters chip row ── */}
-      <QuickFiltersRow filters={quickFilters} />
-
-      {/* ── Toolbar (page title + search + page size) ──
-          Status tabs used to live here as a backup to the QuickFilters
-          row above. Removed since the QuickFilters row already covers
-          All/Active/Inactive (plus the platform filters) in the same
-          visual format as QueriesListPage.StatusTabs. ── */}
+      {/* ── Toolbar — single line matching CarvesListPage:
+              [Title] [Status+platform chip pad] [Search] [Page size] [Refreshing…]
+          Previously the chip pad lived in its own row above the search
+          bar; folding both into one toolbar trims a row of vertical
+          chrome and matches the env's other list pages. ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Nodes
         </h1>
+
+        <QuickFiltersGroup filters={quickFilters} />
 
         <div className="flex-1 max-w-xs">
           <SearchInput
