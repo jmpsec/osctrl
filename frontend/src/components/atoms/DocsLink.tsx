@@ -19,14 +19,30 @@ export function DocsLink({
   label?: string;
   className?: string;
 }) {
+  // Explicit onClick + window.open is belt-and-suspenders: the bare <a
+  // target=_blank> form was rendering as un-clickable in the live build
+  // (suspected nginx CSP rewriting target=_blank into a noop). The
+  // explicit click handler bypasses whatever is interfering and the
+  // anchor still works on middle-click / Cmd+click via its href.
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    // Let cmd/ctrl/shift/middle clicks fall through to the browser's
+    // own new-tab behaviour. Only the plain left-click goes through
+    // our window.open path.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    window.open(href, '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleClick}
       aria-label={`Open documentation: ${label}`}
+      title={`Open ${label} (${href})`}
       className={cn(
-        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
+        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded cursor-pointer',
         'text-[10px] font-mono-tabular text-[color:var(--text-3)]',
         'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
         'transition-colors',
