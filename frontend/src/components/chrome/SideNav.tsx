@@ -123,6 +123,7 @@ export function SideNav() {
   const carvesPath = `/_app/env/${currentEnv}/carves`;
   const tagsPath = `/_app/env/${currentEnv}/tags`;
   const enrollPath = `/_app/env/${currentEnv}/enroll`;
+  const configPath = `/_app/env/${currentEnv}/config`;
   // Distinguish "/queries" (and its subroutes) from "/saved-queries".
   const isSavedQueriesActive = pathname.startsWith(`/_app/env/${currentEnv}/saved-queries`);
   const isQueriesActive =
@@ -130,6 +131,7 @@ export function SideNav() {
   const isCarvesActive = pathname.startsWith(`/_app/env/${currentEnv}/carves`);
   const isTagsActive = pathname.startsWith(`/_app/env/${currentEnv}/tags`);
   const isEnrollActive = pathname.startsWith(`/_app/env/${currentEnv}/enroll`);
+  const isConfigActive = pathname.startsWith(`/_app/env/${currentEnv}/config`);
   const isUsersActive = pathname.startsWith('/_app/users') || pathname === '/users';
   const isProfileActive = pathname.startsWith('/_app/profile') || pathname === '/profile';
   const isEnvironmentsActive =
@@ -262,6 +264,22 @@ export function SideNav() {
             }
           >
             Enrollment
+          </NavItem>
+        )}
+        {canManageEnv && (
+          <NavItem
+            active={isConfigActive}
+            to={configPath}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                {/* settings-cog glyph — config covers pull intervals,
+                    expiration, and the six osquery config sections. */}
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            }
+          >
+            Configuration
           </NavItem>
         )}
         {/* Audit Trail is visible to everyone. Super-admins see all

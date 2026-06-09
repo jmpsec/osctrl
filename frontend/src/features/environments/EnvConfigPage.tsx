@@ -58,6 +58,13 @@ export function EnvConfigPage() {
     flags: false,
   });
 
+  // Page is tabbed: 'settings' (intervals + expiration) plus one tab per
+  // config SECTION. The "settings" default keeps the slider-based forms
+  // up-front so an operator who lands here to tune pull intervals doesn't
+  // scroll past six 280px Monaco editors first.
+  type TabKey = 'settings' | SectionKey;
+  const [activeTab, setActiveTab] = useState<TabKey>('settings');
+
   useEffect(() => {
     if (cfgQuery.data && draft === null) {
       setDraft(cfgQuery.data);
@@ -204,6 +211,34 @@ export function EnvConfigPage() {
         </div>
       </div>
 
+      {/* ── Tab bar ──
+          Settings tab first (slider-based, no Monaco) so the page loads
+          cheap on first view. Each section tab carries its dirty-state
+          dot so operators can see at a glance which sections have
+          pending edits without clicking through every tab. */}
+      <div
+        role="tablist"
+        aria-label="Configuration sections"
+        className="flex items-center gap-1 px-2 border-b border-[color:var(--border)] overflow-x-auto"
+      >
+        <TabButton
+          id="settings"
+          label="Settings"
+          active={activeTab === 'settings'}
+          onClick={() => setActiveTab('settings')}
+        />
+        {SECTIONS.map(({ key, label }) => (
+          <TabButton
+            key={key}
+            id={key}
+            label={label}
+            active={activeTab === key}
+            dirty={dirty.has(key)}
+            onClick={() => setActiveTab(key)}
+          />
+        ))}
+      </div>
+
       {saveErr && (
         <div className="px-4 py-2 border-b border-[color:var(--border)]">
           <p
@@ -216,13 +251,19 @@ export function EnvConfigPage() {
       )}
 
       <div className="flex-1 overflow-auto min-h-0 p-4 space-y-4">
-        {envInfo && (
-          <IntervalsCard env={env} envInfo={envInfo} qc={qc} />
+        {activeTab === 'settings' && (
+          <>
+            {envInfo && (
+              <IntervalsCard env={env} envInfo={envInfo} qc={qc} />
+            )}
+            {envInfo && (
+              <ExpirationCard env={env} qc={qc} />
+            )}
+          </>
         )}
-        {envInfo && (
-          <ExpirationCard env={env} qc={qc} />
-        )}
+
         {SECTIONS.map(({ key, label, language, help }) => {
+          if (activeTab !== key) return null;
           const isDirty = dirty.has(key);
           const before = cfgQuery.data?.[key] ?? '';
           const after = draft[key];
@@ -230,6 +271,8 @@ export function EnvConfigPage() {
             <section
               key={key}
               className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+              role="tabpanel"
+              aria-labelledby={`tab-${key}`}
             >
               <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
                 <h2
@@ -277,7 +320,7 @@ export function EnvConfigPage() {
                 onChange={(v) =>
                   setDraft((d) => (d ? { ...d, [key]: v } : d))
                 }
-                height="280px"
+                height="420px"
               />
               {isDirty && diffsOpen[key] && (
                 <div className="p-3 border-t border-[color:var(--border)]">
@@ -289,6 +332,52 @@ export function EnvConfigPage() {
         })}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TabButton — underline tab matching the rest of the SPA. Renders a small
+// dot to the right of the label when `dirty` so unsaved edits in non-active
+// sections are visible without switching tabs.
+// ---------------------------------------------------------------------------
+function TabButton({
+  id,
+  label,
+  active,
+  dirty,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  active: boolean;
+  dirty?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={`tab-${id}`}
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-3 pt-2 pb-1.5 text-xs whitespace-nowrap',
+        'border-b-2 transition-colors',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+        active
+          ? 'border-[color:var(--signal)] text-[color:var(--text-1)] font-semibold'
+          : 'border-transparent text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+      )}
+    >
+      {label}
+      {dirty && (
+        <span
+          aria-hidden
+          className="w-1.5 h-1.5 rounded-full bg-[color:var(--warning)]"
+          title="Unsaved changes"
+        />
+      )}
+    </button>
   );
 }
 
@@ -348,10 +437,40 @@ function IntervalsCard({
       <p className="text-[10px] text-[color:var(--text-3)] mb-3">
         How often each node should poll for config / log / query updates (seconds).
       </p>
-      <div className="grid grid-cols-3 gap-3">
-        <IntervalField id="iv-cfg" label="config_interval" value={cfg} onChange={setCfg} />
-        <IntervalField id="iv-log" label="log_interval" value={lg} onChange={setLg} />
-        <IntervalField id="iv-qry" label="query_interval" value={qr} onChange={setQr} />
+      {/* Ranges match the legacy admin's conf.html sliders exactly:
+            Configuration  10–600, step 10
+            Logging        10–600, step 10
+            Query          10–300, step 1
+          Same min/max/step keeps fleets that were tuned on legacy
+          render identically here. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <IntervalField
+          id="iv-cfg"
+          label="Configuration Interval"
+          value={cfg}
+          onChange={setCfg}
+          min={10}
+          max={600}
+          step={10}
+        />
+        <IntervalField
+          id="iv-log"
+          label="Logging Interval"
+          value={lg}
+          onChange={setLg}
+          min={10}
+          max={600}
+          step={10}
+        />
+        <IntervalField
+          id="iv-qry"
+          label="Query Interval"
+          value={qr}
+          onChange={setQr}
+          min={10}
+          max={300}
+          step={1}
+        />
       </div>
 
       {err && (
@@ -381,40 +500,82 @@ function IntervalsCard({
   );
 }
 
+/**
+ * IntervalField — range slider with live numeric readout, mirroring the
+ * legacy admin's conf.html intervals form. min/max/step come from the
+ * caller so different fields can have different ranges (the legacy
+ * template has Query as 10–300 step 1 while Config/Logging are 10–600
+ * step 10). Bounds are also enforced when typing into the number input
+ * so the slider and the number stay in sync.
+ */
 function IntervalField({
   id,
   label,
   value,
   onChange,
+  min,
+  max,
+  step,
 }: {
   id: string;
   label: string;
   value: number;
   onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
 }) {
+  function clamp(v: number) {
+    if (Number.isNaN(v)) return value;
+    return Math.min(max, Math.max(min, v));
+  }
   return (
     <div>
       <label
         htmlFor={id}
-        className="block text-xs font-semibold text-[color:var(--text-2)] mb-1 font-mono-tabular"
+        className="block text-xs font-medium text-[color:var(--text-2)] mb-1.5"
       >
-        {label}
+        {label}:{' '}
+        <span className="font-mono-tabular font-semibold text-[color:var(--text-1)] tabular-nums">
+          {value}
+        </span>{' '}
+        <span className="text-[color:var(--text-3)]">seconds</span>
       </label>
       <input
         id={id}
-        type="number"
-        min={1}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
         value={value}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (!Number.isNaN(v) && v >= 1) onChange(v);
-        }}
+        onChange={(e) => onChange(clamp(Number(e.target.value)))}
         className={cn(
-          'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
-          'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          'w-full accent-[color:var(--signal)] cursor-pointer',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
         )}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={value}
       />
+      <div className="flex items-center justify-between mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+        <span>{min}</span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          className={cn(
+            'w-16 px-1.5 py-0.5 text-[10px] rounded',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'text-[color:var(--text-1)] font-mono-tabular text-center tabular-nums',
+            'focus:outline focus:outline-1 focus:outline-[color:var(--signal)]',
+          )}
+          aria-label={`${label} numeric value`}
+        />
+        <span>{max}</span>
+      </div>
     </div>
   );
 }
