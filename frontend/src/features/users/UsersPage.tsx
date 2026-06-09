@@ -36,6 +36,12 @@ export function UsersPage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });
 
+  // Multi-select state matches the dock pattern used on Tags / Carves /
+  // Nodes — username is the unique key the server uses for /users/{u},
+  // so the set is keyed on username (not id).
+  const [selectedUsernames, setSelectedUsernames] = useState<Set<string>>(new Set());
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: () => listUsers(),
@@ -67,6 +73,84 @@ export function UsersPage() {
     void refetch();
   }
 
+  // Header checkbox state — operates on the deletable subset, since the
+  // current operator's own row can't be selected for deletion. If the
+  // only visible users are non-deletable (e.g. you're the only super-admin)
+  // the header checkbox is disabled rather than misleading.
+  const deletableUsernames = users
+    .filter((u) => u.username !== me?.username)
+    .map((u) => u.username);
+  const allChecked =
+    deletableUsernames.length > 0 &&
+    deletableUsernames.every((n) => selectedUsernames.has(n));
+  const someChecked = deletableUsernames.some((n) => selectedUsernames.has(n));
+
+  function toggleAll() {
+    if (allChecked) {
+      setSelectedUsernames(new Set());
+    } else {
+      setSelectedUsernames(new Set(deletableUsernames));
+    }
+  }
+
+  function toggleOne(username: string) {
+    setSelectedUsernames((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) next.delete(username);
+      else next.add(username);
+      return next;
+    });
+  }
+
+  // Bulk delete — Promise.allSettled over the selected usernames so a
+  // partial 403/404 reports 'deleted N of M; X failed' instead of
+  // hard-failing the whole batch.
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (usernames: string[]) => {
+      const settled = await Promise.allSettled(
+        usernames.map((u) => deleteUser(u)),
+      );
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      return { total: usernames.length, failed };
+    },
+    onSuccess: ({ total, failed }) => {
+      setSelectedUsernames(new Set());
+      if (failed > 0) {
+        setBulkError(`Deleted ${total - failed} of ${total} user(s); ${failed} failed.`);
+      } else {
+        setBulkError(null);
+      }
+      invalidate();
+    },
+    onError: (err) => {
+      if (err instanceof AuthError) {
+        void navigate({ to: '/login' });
+        return;
+      }
+      setBulkError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Bulk delete failed',
+      );
+    },
+  });
+
+  function handleBulkDelete() {
+    const usernames = Array.from(selectedUsernames);
+    if (usernames.length === 0) return;
+    if (
+      !confirm(
+        `Delete ${usernames.length} operator${usernames.length === 1 ? '' : 's'}?\n\nThis revokes their access immediately. Any active sessions stop working on next refresh.`,
+      )
+    ) {
+      return;
+    }
+    setBulkError(null);
+    bulkDeleteMut.mutate(usernames);
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
@@ -89,6 +173,19 @@ export function UsersPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
+              <th scope="col" className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Select all deletable users"
+                  checked={allChecked}
+                  disabled={deletableUsernames.length === 0}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someChecked && !allChecked;
+                  }}
+                  onChange={toggleAll}
+                  className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Username
               </th>
@@ -106,11 +203,11 @@ export function UsersPage() {
           </thead>
           <tbody>
             {isLoading &&
-              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cells={5} />)}
+              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -135,7 +232,7 @@ export function UsersPage() {
 
             {!isLoading && !isError && users.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -151,11 +248,34 @@ export function UsersPage() {
 
             {!isLoading &&
               !isError &&
-              users.map((u) => (
+              users.map((u) => {
+                const isSelf = me?.username === u.username;
+                const isSelected = selectedUsernames.has(u.username);
+                return (
                 <tr
                   key={u.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  className={cn(
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    isSelected && 'bg-[color:var(--signal)]/5',
+                  )}
                 >
+                  <td className="px-4 py-3">
+                    {isSelf ? (
+                      <span
+                        aria-label="You can't select your own account"
+                        title="You can't delete your own account."
+                        className="inline-block w-4 h-4"
+                      />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select user ${u.username}`}
+                        checked={isSelected}
+                        onChange={() => toggleOne(u.username)}
+                        className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-sm font-medium font-mono-tabular text-[color:var(--text-1)]">
                       {u.username}
@@ -234,10 +354,77 @@ export function UsersPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
           </tbody>
         </table>
       </div>
+
+      {/* Multi-select dock — matches CarvesListPage / TagsPage chrome. */}
+      {selectedUsernames.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-sm font-medium',
+            'z-50',
+          )}
+        >
+          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+            {selectedUsernames.size} selected
+          </span>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          {bulkError && (
+            <span className="text-xs text-[color:var(--danger)]">{bulkError}</span>
+          )}
+          <button
+            type="button"
+            disabled={bulkDeleteMut.isPending}
+            aria-label="Delete selected users"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={handleBulkDelete}
+          >
+            {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onClick={() => setSelectedUsernames(new Set())}
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Bulk-error toast after selection clears. */}
+      {bulkError && selectedUsernames.size === 0 && (
+        <div
+          role="alert"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--danger)]/40',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-xs text-[color:var(--danger)]',
+          )}
+        >
+          <span>{bulkError}</span>
+          <button
+            type="button"
+            onClick={() => setBulkError(null)}
+            className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {modal.kind === 'permissions' && (
         <PermissionsModal
