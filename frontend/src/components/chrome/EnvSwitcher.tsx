@@ -14,7 +14,7 @@ import { DropdownMenu } from '$/components/primitives/DropdownMenu';
 import { listEnvironments, type TLSEnvironment } from '$/api/environments';
 import { isAuthenticated } from '$/api/client';
 
-export function EnvSwitcher() {
+export function EnvSwitcher({ compact }: { compact?: boolean } = {}) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const routerState = useRouterState();
@@ -50,36 +50,40 @@ export function EnvSwitcher() {
       <DropdownMenu.Trigger asChild>
         <button
           className={cn(
-            'flex items-center justify-between gap-2 w-full',
+            'flex items-center gap-2 w-full',
+            compact ? 'justify-center' : 'justify-between',
             'px-2 py-1.5 rounded-md text-sm',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
             'transition-colors duration-[120ms] focus-visible:outline focus-visible:outline-2',
             'focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
           )}
           aria-label="Switch environment"
+          title={compact ? `Environment: ${active?.name ?? 'none selected'}` : undefined}
         >
-          <span className="flex items-center gap-2 truncate">
+          <span className={cn('flex items-center gap-2 truncate', compact && 'justify-center')}>
             <span
               className={cn(
-                'inline-block w-[7px] h-[7px] rounded-full',
+                'inline-block w-[7px] h-[7px] rounded-full flex-shrink-0',
                 active?.accept_enrolls
                   ? 'bg-[color:var(--success)]'
                   : 'bg-[color:var(--text-3)]',
               )}
             />
-            <span className="font-medium truncate">
+            <span className={cn('font-medium truncate', compact && 'sr-only')}>
               {active?.name ?? (isLoading ? 'loading…' : 'select environment')}
             </span>
           </span>
-          <svg
-            className="w-3.5 h-3.5 text-[color:var(--text-3)] flex-shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          {!compact && (
+            <svg
+              className="w-3.5 h-3.5 text-[color:var(--text-3)] flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          )}
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="start" className="min-w-[200px]">

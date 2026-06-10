@@ -10,10 +10,21 @@ interface AppShellProps {
   username?: string;
 }
 
+const NAV_COLLAPSED_KEY = 'osctrl.sidenav-collapsed';
+
 export function AppShell({ children, username }: AppShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(
+    () => localStorage.getItem(NAV_COLLAPSED_KEY) === '1',
+  );
   const pathname = useRouterState().location.pathname;
+
+  function toggleNavCollapsed() {
+    const next = !navCollapsed;
+    setNavCollapsed(next);
+    localStorage.setItem(NAV_COLLAPSED_KEY, next ? '1' : '0');
+  }
 
   // Global ⌘K / Ctrl-K toggle. Listener lives at the shell level so any
   // authenticated page can hit it without re-binding. Escape also closes
@@ -40,8 +51,13 @@ export function AppShell({ children, username }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen bg-[color:var(--bg-0)]">
-      {/* Desktop rail — hidden on phones in favor of the drawer below. */}
-      <SideNav className="hidden md:flex" />
+      {/* Desktop rail — hidden on phones in favor of the drawer below.
+          Collapsible to an icon-only strip; preference persists. */}
+      <SideNav
+        className="hidden md:flex"
+        collapsed={navCollapsed}
+        onToggleCollapse={toggleNavCollapsed}
+      />
 
       {/* Mobile off-canvas drawer. Kept mounted so the slide/fade can
           animate both ways; pointer-events gate off interaction while

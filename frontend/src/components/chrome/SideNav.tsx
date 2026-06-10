@@ -12,12 +12,14 @@ interface NavItemProps {
   to?: string;
   href?: string;
   icon: React.ReactNode;
+  collapsed?: boolean;
   children: React.ReactNode;
 }
 
-function NavItem({ active, to, href, icon, children }: NavItemProps) {
+function NavItem({ active, to, href, icon, collapsed, children }: NavItemProps) {
   const className = cn(
     'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
+    collapsed && 'justify-center',
     'transition-colors duration-[120ms] ease-out',
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
     active
@@ -29,16 +31,19 @@ function NavItem({ active, to, href, icon, children }: NavItemProps) {
       : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
   );
 
+  // In collapsed (icon-rail) mode the label moves to a native tooltip +
+  // sr-only text, so the item stays accessible and hover-discoverable.
+  const title = collapsed && typeof children === 'string' ? children : undefined;
   const content = (
     <>
       <span className="w-4 h-4 flex-shrink-0">{icon}</span>
-      {children}
+      <span className={collapsed ? 'sr-only' : undefined}>{children}</span>
     </>
   );
 
   if (to) {
     return (
-      <Link to={to} aria-current={active ? 'page' : undefined} className={className}>
+      <Link to={to} aria-current={active ? 'page' : undefined} className={className} title={title}>
         {content}
       </Link>
     );
@@ -49,6 +54,7 @@ function NavItem({ active, to, href, icon, children }: NavItemProps) {
       href={href ?? '#'}
       aria-current={active ? 'page' : undefined}
       className={className}
+      title={title}
     >
       {content}
     </a>
@@ -63,7 +69,15 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SideNav({ className }: { className?: string } = {}) {
+interface SideNavProps {
+  className?: string;
+  /** Desktop icon-rail mode: labels collapse to tooltips, rail narrows. */
+  collapsed?: boolean;
+  /** Renders the collapse/expand chevron at the rail's foot when provided. */
+  onToggleCollapse?: () => void;
+}
+
+export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps = {}) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const params = useParams({ strict: false });
@@ -151,7 +165,9 @@ export function SideNav({ className }: { className?: string } = {}) {
       // gradient is preserved via the linear-gradient layered on top
       // of the SVG — the SVG sits at the bottom of the stack.
       className={cn(
-        'sidenav-circuit w-60 shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3',
+        'sidenav-circuit shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3',
+        'transition-[width] duration-200 ease-out',
+        collapsed ? 'w-14' : 'w-60',
         className,
       )}
     >
@@ -161,13 +177,17 @@ export function SideNav({ className }: { className?: string } = {}) {
           the app shell. Font sizes are tuned down a step versus the
           login card because the sidenav rail is narrower (~240px). */}
       <div className="flex flex-col items-center px-2 py-3 mb-4">
-        <Logo size={40} decorative />
-        <div className="mt-2 font-wordmark text-lg font-bold tracking-tight text-[color:var(--text-1)] leading-none">
-          osctrl
-        </div>
-        <div className="mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] leading-none">
-          Osquery Control
-        </div>
+        <Logo size={collapsed ? 28 : 40} decorative />
+        {!collapsed && (
+          <>
+            <div className="mt-2 font-wordmark text-lg font-bold tracking-tight text-[color:var(--text-1)] leading-none">
+              osctrl
+            </div>
+            <div className="mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] leading-none">
+              Osquery Control
+            </div>
+          </>
+        )}
       </div>
 
       {/* Overview section.
@@ -176,9 +196,14 @@ export function SideNav({ className }: { className?: string } = {}) {
           user with limited permissions only sees what they can
           actually use. Super-admins bypass every gate (isSuperAdmin
           short-circuits all of them to true above). */}
-      <SectionLabel>Overview</SectionLabel>
+      {collapsed ? (
+        <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
+      ) : (
+        <SectionLabel>Overview</SectionLabel>
+      )}
       <nav className="space-y-0.5 mb-4">
         <NavItem
+          collapsed={collapsed}
           active={isDashboardActive}
           to="/_app/"
           icon={
@@ -191,6 +216,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         </NavItem>
         {canSeeEnv && (
           <NavItem
+            collapsed={collapsed}
             active={isNodesActive}
             to={nodesPath}
             icon={
@@ -205,6 +231,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canQuery && (
           <NavItem
+            collapsed={collapsed}
             active={isQueriesActive}
             to={queriesPath}
             icon={
@@ -218,6 +245,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canQuery && (
           <NavItem
+            collapsed={collapsed}
             active={isSavedQueriesActive}
             to={savedQueriesPath}
             icon={
@@ -231,6 +259,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canCarve && (
           <NavItem
+            collapsed={collapsed}
             active={isCarvesActive}
             to={carvesPath}
             icon={
@@ -244,6 +273,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canManageEnv && (
           <NavItem
+            collapsed={collapsed}
             active={isTagsActive}
             to={tagsPath}
             icon={
@@ -257,6 +287,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canManageEnv && (
           <NavItem
+            collapsed={collapsed}
             active={isEnrollActive}
             to={enrollPath}
             icon={
@@ -271,6 +302,7 @@ export function SideNav({ className }: { className?: string } = {}) {
         )}
         {canManageEnv && (
           <NavItem
+            collapsed={collapsed}
             active={isConfigActive}
             to={configPath}
             icon={
@@ -290,6 +322,7 @@ export function SideNav({ className }: { className?: string } = {}) {
             force-clamps the username filter to the requester
             server-side). The label changes to reflect that scope. */}
         <NavItem
+          collapsed={collapsed}
           active={isAuditActive}
           to="/_app/audit"
           icon={
@@ -304,13 +337,17 @@ export function SideNav({ className }: { className?: string } = {}) {
       </nav>
 
       {/* Environments section */}
-      <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)] select-none">
-          Environments
-        </span>
-      </div>
+      {collapsed ? (
+        <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
+      ) : (
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)] select-none">
+            Environments
+          </span>
+        </div>
+      )}
       <div className="mb-4">
-        <EnvSwitcher />
+        <EnvSwitcher compact={collapsed} />
       </div>
 
       {/* Admin section.
@@ -325,9 +362,14 @@ export function SideNav({ className }: { className?: string } = {}) {
           non-admin case. */}
       {isSuperAdmin ? (
         <>
-          <SectionLabel>Admin</SectionLabel>
+          {collapsed ? (
+            <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
+          ) : (
+            <SectionLabel>Admin</SectionLabel>
+          )}
           <nav className="space-y-0.5">
             <NavItem
+              collapsed={collapsed}
               active={isUsersActive}
               to="/_app/users"
               icon={
@@ -340,6 +382,7 @@ export function SideNav({ className }: { className?: string } = {}) {
               Operators
             </NavItem>
             <NavItem
+              collapsed={collapsed}
               active={isProfileActive}
               to="/_app/profile"
               icon={
@@ -352,6 +395,7 @@ export function SideNav({ className }: { className?: string } = {}) {
               Profile
             </NavItem>
             <NavItem
+              collapsed={collapsed}
               active={isEnvironmentsActive}
               to="/_app/environments"
               icon={
@@ -364,6 +408,7 @@ export function SideNav({ className }: { className?: string } = {}) {
               Environments
             </NavItem>
             <NavItem
+              collapsed={collapsed}
               active={isSettingsActive}
               to="/_app/settings/admin"
               icon={
@@ -379,6 +424,7 @@ export function SideNav({ className }: { className?: string } = {}) {
       ) : (
         <nav className="space-y-0.5">
           <NavItem
+            collapsed={collapsed}
             active={isProfileActive}
             to="/_app/profile"
             icon={
@@ -391,6 +437,35 @@ export function SideNav({ className }: { className?: string } = {}) {
             Profile
           </NavItem>
         </nav>
+      )}
+
+      {/* Collapse toggle — desktop rail only (the mobile drawer never
+          passes onToggleCollapse; it always renders full width). */}
+      {onToggleCollapse && (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          className={cn(
+            'mt-auto flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
+            collapsed && 'justify-center',
+            'text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+            'transition-colors duration-[120ms]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+          )}
+        >
+          <svg
+            className={cn('w-4 h-4 flex-shrink-0 transition-transform duration-200', collapsed && 'rotate-180')}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+          </svg>
+          <span className={collapsed ? 'sr-only' : undefined}>Collapse</span>
+        </button>
       )}
     </aside>
   );
