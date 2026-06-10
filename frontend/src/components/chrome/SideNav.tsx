@@ -165,7 +165,7 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
       // gradient is preserved via the linear-gradient layered on top
       // of the SVG — the SVG sits at the bottom of the stack.
       className={cn(
-        'sidenav-circuit shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3',
+        'sidenav-circuit relative shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3',
         'transition-[width] duration-200 ease-out',
         collapsed ? 'w-14' : 'w-60',
         className,
@@ -440,7 +440,9 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
       )}
 
       {/* Collapse toggle — desktop rail only (the mobile drawer never
-          passes onToggleCollapse; it always renders full width). */}
+          passes onToggleCollapse; it always renders full width).
+          Floats on the rail's right border at mid-height so it's
+          reachable without scrolling regardless of nav length. */}
       {onToggleCollapse && (
         <button
           type="button"
@@ -448,23 +450,24 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
           aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
           title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
           className={cn(
-            'mt-auto flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
-            collapsed && 'justify-center',
-            'text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+            'absolute top-1/2 -translate-y-1/2 -right-3 z-20',
+            'w-6 h-6 rounded-full flex items-center justify-center',
+            'border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+            'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:border-[color:var(--signal)]',
+            'shadow-[0_1px_4px_rgba(0,0,0,0.25)]',
             'transition-colors duration-[120ms]',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
           )}
         >
           <svg
-            className={cn('w-4 h-4 flex-shrink-0 transition-transform duration-200', collapsed && 'rotate-180')}
+            className={cn('w-3.5 h-3.5 transition-transform duration-200', collapsed && 'rotate-180')}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.75"
+            strokeWidth="2"
           >
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+            <path d="M14 17l-5-5 5-5" />
           </svg>
-          <span className={collapsed ? 'sr-only' : undefined}>Collapse</span>
         </button>
       )}
     </aside>
