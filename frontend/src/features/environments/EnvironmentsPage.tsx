@@ -26,6 +26,12 @@ export function EnvironmentsPage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });
 
+  // Multi-select state — matches the dock pattern used on Tags / Carves
+  // / Nodes / Users. Keyed by env name since DELETE /environments/{env}
+  // accepts the name as the path param.
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['environments'],
     queryFn: () => listEnvironments(),
@@ -42,6 +48,80 @@ export function EnvironmentsPage() {
   function invalidate() {
     void qc.invalidateQueries({ queryKey: ['environments'] });
     void refetch();
+  }
+
+  // Header checkbox state — same shape as TagsPage's toggleAll.
+  const allVisibleNames = envs.map((e) => e.name);
+  const allChecked =
+    allVisibleNames.length > 0 &&
+    allVisibleNames.every((n) => selectedNames.has(n));
+  const someChecked = allVisibleNames.some((n) => selectedNames.has(n));
+
+  function toggleAll() {
+    if (allChecked) {
+      setSelectedNames(new Set());
+    } else {
+      setSelectedNames(new Set(allVisibleNames));
+    }
+  }
+
+  function toggleOne(name: string) {
+    setSelectedNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  // Bulk delete — the backend's Environments.Delete is a hard
+  // (unscoped) DB delete with no cascade check, so we surface the
+  // destructive nature in the confirm prompt. Per-name Promise.allSettled
+  // so a failing env doesn't block the rest.
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (names: string[]) => {
+      const settled = await Promise.allSettled(
+        names.map((name) => deleteEnvironment(name)),
+      );
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      return { total: names.length, failed };
+    },
+    onSuccess: ({ total, failed }) => {
+      setSelectedNames(new Set());
+      if (failed > 0) {
+        setBulkError(`Deleted ${total - failed} of ${total} env(s); ${failed} failed.`);
+      } else {
+        setBulkError(null);
+      }
+      invalidate();
+    },
+    onError: (err) => {
+      if (err instanceof AuthError) {
+        void navigate({ to: '/login' });
+        return;
+      }
+      setBulkError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Bulk delete failed',
+      );
+    },
+  });
+
+  function handleBulkDelete() {
+    const names = Array.from(selectedNames);
+    if (names.length === 0) return;
+    if (
+      !confirm(
+        `Delete ${names.length} environment${names.length === 1 ? '' : 's'}?\n\nNodes, queries, carves, and tags scoped to ${names.length === 1 ? 'this env' : 'these envs'} will be orphaned. This is not recoverable.`,
+      )
+    ) {
+      return;
+    }
+    setBulkError(null);
+    bulkDeleteMut.mutate(names);
   }
 
   return (
@@ -83,6 +163,18 @@ export function EnvironmentsPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
+              <th scope="col" className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible environments"
+                  checked={allChecked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someChecked && !allChecked;
+                  }}
+                  onChange={toggleAll}
+                  className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
+                />
+              </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Name
               </th>
@@ -103,11 +195,11 @@ export function EnvironmentsPage() {
           </thead>
           <tbody>
             {isLoading &&
-              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
+              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={7} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -132,7 +224,7 @@ export function EnvironmentsPage() {
 
             {!isLoading && !isError && envs.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -157,11 +249,25 @@ export function EnvironmentsPage() {
 
             {!isLoading &&
               !isError &&
-              envs.map((env) => (
+              envs.map((env) => {
+                const isSelected = selectedNames.has(env.name);
+                return (
                 <tr
                   key={env.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  className={cn(
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    isSelected && 'bg-[color:var(--signal)]/5',
+                  )}
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select environment ${env.name}`}
+                      checked={isSelected}
+                      onChange={() => toggleOne(env.name)}
+                      className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
                       {env.name}
@@ -219,10 +325,77 @@ export function EnvironmentsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
           </tbody>
         </table>
       </div>
+
+      {/* Multi-select dock — matches CarvesListPage / TagsPage / UsersPage. */}
+      {selectedNames.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-sm font-medium',
+            'z-50',
+          )}
+        >
+          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+            {selectedNames.size} selected
+          </span>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          {bulkError && (
+            <span className="text-xs text-[color:var(--danger)]">{bulkError}</span>
+          )}
+          <button
+            type="button"
+            disabled={bulkDeleteMut.isPending}
+            aria-label="Delete selected environments"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            onClick={handleBulkDelete}
+          >
+            {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+          <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onClick={() => setSelectedNames(new Set())}
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Bulk-error toast after selection clears. */}
+      {bulkError && selectedNames.size === 0 && (
+        <div
+          role="alert"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--danger)]/40',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-xs text-[color:var(--danger)]',
+          )}
+        >
+          <span>{bulkError}</span>
+          <button
+            type="button"
+            onClick={() => setBulkError(null)}
+            className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {modal.kind === 'create' && (
         <CreateEnvModal

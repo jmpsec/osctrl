@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getCarve, getCarveArchiveUrl } from '$/api/carves';
+import { listNodes } from '$/api/nodes';
 import { AuthError } from '$/api/client';
 import type { CarveFile } from '$/api/types';
 import { formatRelative } from '$/lib/time';
@@ -51,6 +52,19 @@ export function CarveDetailPage() {
     staleTime: 15_000,
     refetchInterval: 15_000,
   });
+
+  // Nodes lookup so the carve file rows can render hostname → link to the
+  // node detail page, matching the legacy admin's behaviour where the
+  // node column was a hyperlink. Same shape as QueryDetailPage uses.
+  const { data: nodesData } = useQuery({
+    queryKey: ['carve-nodes-lookup', env],
+    queryFn: () => listNodes({ env, pageSize: 500 }),
+    staleTime: 60_000,
+  });
+  const uuidToHostname = new Map<string, string>();
+  for (const n of nodesData?.items ?? []) {
+    uuidToHostname.set(n.uuid, n.hostname || n.localname || n.uuid);
+  }
 
   if (isError && error instanceof AuthError) {
     void navigate({ to: '/login' });
@@ -161,7 +175,7 @@ export function CarveDetailPage() {
                   scope="col"
                   className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
                 >
-                  Node UUID
+                  Node
                 </th>
                 <th
                   scope="col"
@@ -198,8 +212,15 @@ export function CarveDetailPage() {
                     key={f.carve_id || f.session_id}
                     className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
                   >
-                    <td className="px-3 py-2 font-mono-tabular text-xs text-[color:var(--text-1)]">
-                      <span title={f.uuid}>{f.uuid.slice(0, 12)}…</span>
+                    <td className="px-3 py-2 font-mono-tabular text-xs">
+                      <Link
+                        to="/_app/env/$env/nodes/$uuid"
+                        params={{ env, uuid: f.uuid }}
+                        className="text-[color:var(--signal)] hover:underline"
+                        title={f.uuid}
+                      >
+                        {uuidToHostname.get(f.uuid) ?? `${f.uuid.slice(0, 12)}…`}
+                      </Link>
                     </td>
                     <td className="px-3 py-2">
                       <StatusBadge status={f.status} />

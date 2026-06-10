@@ -8,7 +8,7 @@ import {
   refreshUserToken,
   deleteUserToken,
 } from '$/api/users';
-import { AuthError, ApiError } from '$/api/client';
+import { AuthError, ApiError, primeCsrfFromCookie } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
@@ -114,6 +114,13 @@ export function ProfilePage() {
       return refreshUserToken(me.username);
     },
     onSuccess: () => {
+      // Self-rotate: the API just re-issued osctrl_token + osctrl_csrf
+      // cookies with the freshly minted JWT. Re-prime the in-memory
+      // CSRF from the new cookie so subsequent X-CSRF-Token headers
+      // carry the rotated value — otherwise the next mutation
+      // (e.g. revoke or password change) sends a stale CSRF and the
+      // server rejects it.
+      primeCsrfFromCookie();
       setTokenErr(null);
       setTokenMsg('Token rotated. Store it now — it will not be shown again.');
       void refetch();
@@ -150,11 +157,14 @@ export function ProfilePage() {
 
   // Derived display bits for the hero strip.
   const initials = me ? deriveInitials(me.fullname || me.username) : '';
-  const roleLabel = me?.admin ? 'super-admin' : me?.service ? 'service' : 'operator';
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-auto">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
+      {/* ── Page header ──
+          Slim two-line: kicker + h1. The previous subtitle restated
+          what the four cards below already say (account · password ·
+          token · theme) so it's redundant; the kicker plus the cards'
+          own titles carry the same information without the noise. */}
       <div className="px-6 py-4 border-b border-[color:var(--border)]">
         <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
           account · profile
@@ -162,9 +172,6 @@ export function ProfilePage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
           Your profile
         </h1>
-        <p className="text-sm text-[color:var(--text-2)] mt-0.5">
-          Update your contact details, password, API token and theme preference.
-        </p>
       </div>
 
       {/* ── Hero strip ──────────────────────────────────────────────────── */}
@@ -220,7 +227,9 @@ export function ProfilePage() {
             {/* Spacer */}
             <div className="flex-1 min-w-0" />
 
-            {/* Timestamps */}
+            {/* Last access — Token expires used to live here too but it's
+                already shown inside the API token card below; duplicating
+                it in the hero was visual noise. */}
             <div className="flex items-center gap-6 flex-wrap">
               <div>
                 <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5">
@@ -233,278 +242,261 @@ export function ProfilePage() {
                   {formatRelative(me.last_access)}
                 </div>
               </div>
-              <div>
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5">
-                  Token expires
-                </div>
-                <div
-                  className="text-xs tnum text-[color:var(--text-1)]"
-                  title={me.token_expire}
-                >
-                  {formatRelative(me.token_expire)}
-                </div>
-              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Body ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col xl:flex-row gap-6 p-6">
-        {/* ─ Left column: My account ─────────────────────────────────── */}
-        <div className="flex-1 max-w-xl">
-          {isLoading || !me ? (
-            <Panel id="profile-section-title" title="My account">
-              <div className="space-y-4">
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-8 w-32" />
+      {/* ── Body ──
+          Four focused cards in a responsive 2-col grid. The previous
+          single "Security" mega-card stacked password / token / theme
+          / role under one heading, which forced operators to mentally
+          parse hairlines as section dividers. One card per job balances
+          the page and matches the brand kit's "cards differentiate by
+          border + faint bg shift" guidance. Role used to be tacked at
+          the bottom of Security too — the hero badge already shows it,
+          so it's gone from here. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 p-6">
+        {/* ─ Account ─ */}
+        {isLoading || !me ? (
+          <Panel id="profile-section-title" title="Account">
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+          </Panel>
+        ) : (
+          <Panel id="profile-section-title" title="Account">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                profileMutation.mutate();
+              }}
+              className="space-y-4"
+              aria-labelledby="profile-section-title"
+            >
+              <div>
+                <FieldLabel htmlFor="profile-email">Email</FieldLabel>
+                <Input
+                  id="profile-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
               </div>
-            </Panel>
-          ) : (
-            <Panel id="profile-section-title" title="My account">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  profileMutation.mutate();
-                }}
-                className="space-y-4"
-                aria-labelledby="profile-section-title"
-              >
-                <div>
-                  <FieldLabel htmlFor="profile-email">Email</FieldLabel>
-                  <Input
-                    id="profile-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="profile-fullname">Full name</FieldLabel>
-                  <Input
-                    id="profile-fullname"
-                    type="text"
-                    value={fullname}
-                    onChange={(e) => setFullname(e.target.value)}
-                    autoComplete="name"
-                  />
-                </div>
-
-                {profileErr && <Feedback kind="error" message={profileErr} />}
-                {profileOK && <Feedback kind="success" message={profileOK} />}
-
-                <div className="pt-1">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={profileMutation.isPending}
-                  >
-                    {profileMutation.isPending ? 'Saving…' : 'Save changes'}
-                  </Button>
-                </div>
-              </form>
-            </Panel>
-          )}
-        </div>
-
-        {/* ─ Right column: Security ──────────────────────────────────── */}
-        <div className="w-full xl:w-[360px] flex-shrink-0">
-          {isLoading || !me ? (
-            <Panel title="Security">
-              <div className="space-y-4">
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-8 w-32" />
+              <div>
+                <FieldLabel htmlFor="profile-fullname">Full name</FieldLabel>
+                <Input
+                  id="profile-fullname"
+                  type="text"
+                  value={fullname}
+                  onChange={(e) => setFullname(e.target.value)}
+                  autoComplete="name"
+                />
               </div>
-            </Panel>
-          ) : (
-            <Panel title="Security">
-              {/* ── Change password ──────────────────────────────────── */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  passwordMutation.mutate();
-                }}
-                className="space-y-4"
-                aria-label="Change password"
-              >
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
-                  Change password
-                </div>
 
-                <div>
-                  <FieldLabel htmlFor="pwd-current">Current password</FieldLabel>
-                  <Input
-                    id="pwd-current"
-                    type="password"
-                    value={currentPwd}
-                    onChange={(e) => setCurrentPwd(e.target.value)}
-                    autoComplete="current-password"
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="pwd-new">New password</FieldLabel>
-                  <Input
-                    id="pwd-new"
-                    type="password"
-                    value={newPwd}
-                    onChange={(e) => setNewPwd(e.target.value)}
-                    autoComplete="new-password"
-                    minLength={8}
-                  />
-                  <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
-                    Minimum 8 characters.
-                  </p>
-                </div>
-                <div>
-                  <FieldLabel htmlFor="pwd-confirm">Confirm new password</FieldLabel>
-                  <Input
-                    id="pwd-confirm"
-                    type="password"
-                    value={confirmPwd}
-                    onChange={(e) => setConfirmPwd(e.target.value)}
-                    autoComplete="new-password"
-                    minLength={8}
-                  />
-                </div>
+              {profileErr && <Feedback kind="error" message={profileErr} />}
+              {profileOK && <Feedback kind="success" message={profileOK} />}
 
-                {pwdErr && <Feedback kind="error" message={pwdErr} />}
-                {pwdOK && <Feedback kind="success" message={pwdOK} />}
-
-                <div className="pt-1">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={passwordMutation.isPending}
-                  >
-                    {passwordMutation.isPending ? 'Changing…' : 'Change password'}
-                  </Button>
-                </div>
-              </form>
-
-              {/* ── Divider ──────────────────────────────────────────── */}
-              <div className="border-t border-[color:var(--border)] my-5" />
-
-              {/* ── API token ────────────────────────────────────────── */}
-              <div className="space-y-3">
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
-                  API token
-                </div>
-
-                <div
-                  className={cn(
-                    'flex items-center justify-between gap-3 px-3 py-2',
-                    'rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]',
-                  )}
+              <div className="pt-1">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={profileMutation.isPending}
                 >
-                  <span
-                    className="font-mono-tabular text-xs text-[color:var(--text-2)] tracking-wider truncate"
-                    aria-label="Token (masked)"
-                  >
-                    ········••••
-                  </span>
-                  <span
-                    className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tnum whitespace-nowrap"
-                    title={me.token_expire}
-                  >
-                    expires {formatRelative(me.token_expire)}
-                  </span>
-                </div>
+                  {profileMutation.isPending ? 'Saving…' : 'Save changes'}
+                </Button>
+              </div>
+            </form>
+          </Panel>
+        )}
 
-                <p className="text-[10px] text-[color:var(--text-3)] leading-relaxed">
-                  The raw token is never displayed after issuance. Rotate to mint a
-                  new one — the previous token will stop working immediately.
+        {/* ─ Password ─ */}
+        {isLoading || !me ? (
+          <Panel title="Password">
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="Password">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                passwordMutation.mutate();
+              }}
+              className="space-y-4"
+              aria-label="Change password"
+            >
+              <div>
+                <FieldLabel htmlFor="pwd-current">Current password</FieldLabel>
+                <Input
+                  id="pwd-current"
+                  type="password"
+                  value={currentPwd}
+                  onChange={(e) => setCurrentPwd(e.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="pwd-new">New password</FieldLabel>
+                <Input
+                  id="pwd-new"
+                  type="password"
+                  value={newPwd}
+                  onChange={(e) => setNewPwd(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+                  Minimum 8 characters.
                 </p>
-
-                {tokenErr && <Feedback kind="error" message={tokenErr} />}
-                {tokenMsg && <Feedback kind="success" message={tokenMsg} />}
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={rotateMutation.isPending || revokeMutation.isPending}
-                    onClick={() => rotateMutation.mutate()}
-                  >
-                    {rotateMutation.isPending ? 'Rotating…' : 'Rotate token'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    disabled={revokeMutation.isPending || rotateMutation.isPending}
-                    onClick={() => revokeMutation.mutate()}
-                  >
-                    {revokeMutation.isPending ? 'Revoking…' : 'Revoke'}
-                  </Button>
-                </div>
+              </div>
+              <div>
+                <FieldLabel htmlFor="pwd-confirm">Confirm new password</FieldLabel>
+                <Input
+                  id="pwd-confirm"
+                  type="password"
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
               </div>
 
-              {/* ── Divider ──────────────────────────────────────────── */}
-              <div className="border-t border-[color:var(--border)] my-5" />
+              {pwdErr && <Feedback kind="error" message={pwdErr} />}
+              {pwdOK && <Feedback kind="success" message={pwdOK} />}
 
-              {/* ── Preferences ──────────────────────────────────────── */}
-              <div className="space-y-3">
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
-                  Preferences
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs text-[color:var(--text-1)] font-medium">
-                      Color theme
-                    </div>
-                    <div className="text-[10px] text-[color:var(--text-3)]">
-                      Persists across reloads.
-                    </div>
-                  </div>
-
-                  <div
-                    role="group"
-                    aria-label="Toggle color theme"
-                    className={cn(
-                      'flex items-center gap-0.5 p-1 rounded-full',
-                      'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                    )}
-                  >
-                    {(['dark', 'light'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => handleThemeSwitch(t)}
-                        aria-pressed={theme === t}
-                        className={cn(
-                          'px-2.5 py-1 rounded-full text-[11px] font-medium font-mono-tabular uppercase tracking-[0.04em]',
-                          'transition-colors duration-[120ms] ease-out',
-                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
-                          theme === t
-                            ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]'
-                            : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
-                        )}
-                      >
-                        {t.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="pt-1">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={passwordMutation.isPending}
+                >
+                  {passwordMutation.isPending ? 'Changing…' : 'Change password'}
+                </Button>
               </div>
+            </form>
+          </Panel>
+        )}
 
-              {/* ─────────────────────────────────────────────────────── */}
-              <div className="mt-5 text-[10px] text-[color:var(--text-3)]">
-                Role:{' '}
-                <span className="font-mono-tabular text-[color:var(--text-2)]">
-                  {roleLabel}
+        {/* ─ API token ─ */}
+        {isLoading || !me ? (
+          <Panel title="API token">
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-8 w-40" />
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="API token">
+            <div className="space-y-3">
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-3 px-3 py-2',
+                  'rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                )}
+              >
+                <span
+                  className="font-mono-tabular text-xs text-[color:var(--text-2)] tracking-wider truncate"
+                  aria-label="Token (masked)"
+                >
+                  ········••••
+                </span>
+                <span
+                  className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tnum whitespace-nowrap"
+                  title={me.token_expire}
+                >
+                  expires {formatRelative(me.token_expire)}
                 </span>
               </div>
-            </Panel>
-          )}
-        </div>
+
+              <p className="text-[10px] text-[color:var(--text-3)] leading-relaxed">
+                The raw token is never displayed after issuance. Rotate to mint a
+                new one — the previous token will stop working immediately.
+              </p>
+
+              {tokenErr && <Feedback kind="error" message={tokenErr} />}
+              {tokenMsg && <Feedback kind="success" message={tokenMsg} />}
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={rotateMutation.isPending || revokeMutation.isPending}
+                  onClick={() => rotateMutation.mutate()}
+                >
+                  {rotateMutation.isPending ? 'Rotating…' : 'Rotate token'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={revokeMutation.isPending || rotateMutation.isPending}
+                  onClick={() => revokeMutation.mutate()}
+                >
+                  {revokeMutation.isPending ? 'Revoking…' : 'Revoke'}
+                </Button>
+              </div>
+            </div>
+          </Panel>
+        )}
+
+        {/* ─ Preferences ─ */}
+        {isLoading || !me ? (
+          <Panel title="Preferences">
+            <Skeleton className="h-10 w-full" />
+          </Panel>
+        ) : (
+          <Panel title="Preferences">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs text-[color:var(--text-1)] font-medium">
+                  Color theme
+                </div>
+                <div className="text-[10px] text-[color:var(--text-3)]">
+                  Persists across reloads.
+                </div>
+              </div>
+
+              <div
+                role="group"
+                aria-label="Toggle color theme"
+                className={cn(
+                  'flex items-center gap-0.5 p-1 rounded-full',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                )}
+              >
+                {(['dark', 'light'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleThemeSwitch(t)}
+                    aria-pressed={theme === t}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[11px] font-medium font-mono-tabular uppercase tracking-[0.04em]',
+                      'transition-colors duration-[120ms] ease-out',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+                      theme === t
+                        ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]'
+                        : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
+                    )}
+                  >
+                    {t.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Panel>
+        )}
       </div>
     </div>
   );

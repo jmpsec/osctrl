@@ -155,6 +155,70 @@ function InlineSparkline({
 }
 
 // ---------------------------------------------------------------------------
+// Time-series chart category palette.
+// Defaults match what was hard-coded in the chart before this hook landed:
+//   Config = violet  (chart-local, distinct from --signal so it doesn't
+//                     collide with the query series in the green-teal corner)
+//   Query  = signal-teal
+//   Carve  = warning amber
+//   Enroll = info blue
+// Stored in localStorage per-browser so operators can re-map colors to match
+// their mental model (e.g. "Carve is always red for me").
+// ---------------------------------------------------------------------------
+export type ChartCategory = 'config' | 'query' | 'carve' | 'enroll';
+type ChartPalette = Record<ChartCategory, string>;
+
+const DEFAULT_PALETTE: ChartPalette = {
+  config: '#a78bfa', // violet — chart-local, distinct from --signal
+  query:  '#2bc4be', // matches --signal (dark theme)
+  carve:  '#fbbf24', // matches --warning (dark theme)
+  enroll: '#67c0ff', // matches --info (dark theme)
+};
+
+const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
+
+function useChartPalette(): [ChartPalette, (key: ChartCategory, hex: string) => void, () => void] {
+  const [palette, setPalette] = useState<ChartPalette>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PALETTE;
+    try {
+      const stored = window.localStorage.getItem(PALETTE_STORAGE_KEY);
+      if (!stored) return DEFAULT_PALETTE;
+      const parsed = JSON.parse(stored) as Partial<ChartPalette>;
+      // Defensive merge — if the user has only set 2 of 4 keys (e.g. from
+      // an older build that wrote a subset), the missing ones get the
+      // current defaults rather than rendering as undefined.
+      return { ...DEFAULT_PALETTE, ...parsed };
+    } catch {
+      return DEFAULT_PALETTE;
+    }
+  });
+
+  const update = (key: ChartCategory, hex: string) => {
+    setPalette((prev) => {
+      const next = { ...prev, [key]: hex };
+      try {
+        window.localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage blocked — keep the in-memory state; we lose
+        // persistence but don't crash the page.
+      }
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setPalette(DEFAULT_PALETTE);
+    try {
+      window.localStorage.removeItem(PALETTE_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return [palette, update, reset];
+}
+
+// ---------------------------------------------------------------------------
 // Time-series chart — 24h stacked area of audit-log activity, by category.
 // Wired to the env-activity endpoint via aggregateBuckets.
 // ---------------------------------------------------------------------------
@@ -164,18 +228,23 @@ function TimeSeriesChart({
   carve,
   enroll,
   intervalLabel,
+  palette,
 }: {
   config: number[];
   query: number[];
   carve: number[];
   enroll: number[];
   intervalLabel: '24h' | '7d';
+  palette: ChartPalette;
 }) {
   const W = 600;
   const H = 200;
   const padL = 40;
   const padR = 10;
-  const padT = 30;
+  // padT used to reserve 30px for the now-removed in-chart legend.
+  // Tighten so the chart uses the freed space; the palette/legend
+  // row above the SVG is rendered by DashboardPage.
+  const padT = 10;
   const padB = 30;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
@@ -214,24 +283,11 @@ function TimeSeriesChart({
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="24-hour fleet activity by category">
-      <defs>
-        <linearGradient id="ts-enroll" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--info)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--info)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-carve" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--warning)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-query" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--signal)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--signal)" stopOpacity="0.18" />
-        </linearGradient>
-        <linearGradient id="ts-config" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--success)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--success)" stopOpacity="0.18" />
-        </linearGradient>
-      </defs>
+      {/* Flat fills, not gradients. Stacked layers represent additive
+          amounts; gradients made overlapping bands read muddy and
+          inverted the visual hierarchy. Each layer now reads as a
+          solid color band; the per-series top outline + gridlines
+          carry depth. */}
       {/* gridlines */}
       <g stroke="var(--border)" strokeDasharray="2 4" strokeWidth="1">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -246,16 +302,19 @@ function TimeSeriesChart({
           </text>
         ))}
       </g>
-      {/* Stacked layers, bottom-to-top */}
-      <path d={layerPath(enrollTop, zero)} fill="url(#ts-enroll)" />
-      <path d={layerPath(carveTop, enrollTop)} fill="url(#ts-carve)" />
-      <path d={layerPath(queryTop, carveTop)} fill="url(#ts-query)" />
-      <path d={layerPath(configTop, queryTop)} fill="url(#ts-config)" />
+      {/* Stacked layers, bottom-to-top — flat fills.
+          Colors come from the operator-tunable ChartPalette so each
+          band can be remapped. Default mapping matches the previous
+          hard-coded scheme. */}
+      <path d={layerPath(enrollTop, zero)} fill={palette.enroll} fillOpacity="0.65" />
+      <path d={layerPath(carveTop, enrollTop)} fill={palette.carve} fillOpacity="0.65" />
+      <path d={layerPath(queryTop, carveTop)} fill={palette.query} fillOpacity="0.65" />
+      <path d={layerPath(configTop, queryTop)} fill={palette.config} fillOpacity="0.65" />
       {/* Top-of-stack outline so the chart has a defined edge */}
       <path
         d={configTop.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ')}
         fill="none"
-        stroke="var(--success)"
+        stroke={palette.config}
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
@@ -279,17 +338,9 @@ function TimeSeriesChart({
           );
         })}
       </g>
-      {/* Legend */}
-      <g className="font-mono-tabular" fontSize="11" fontWeight="500">
-        <circle cx={padL + 4} cy={padT - 14} r="3" fill="var(--success)" />
-        <text x={padL + 12} y={padT - 10} fill="var(--text-2)">Config</text>
-        <circle cx={padL + 70} cy={padT - 14} r="3" fill="var(--signal)" />
-        <text x={padL + 78} y={padT - 10} fill="var(--text-2)">Query</text>
-        <circle cx={padL + 130} cy={padT - 14} r="3" fill="var(--warning)" />
-        <text x={padL + 138} y={padT - 10} fill="var(--text-2)">Carve</text>
-        <circle cx={padL + 190} cy={padT - 14} r="3" fill="var(--info)" />
-        <text x={padL + 198} y={padT - 10} fill="var(--text-2)">Enroll</text>
-      </g>
+      {/* In-chart SVG legend removed — the always-visible palette row
+          rendered above the chart (DashboardPage) now serves as the
+          legend AND the per-category color picker in one control. */}
     </svg>
   );
 }
@@ -410,19 +461,30 @@ function HeroKpi({
     warning: 'bg-[color:var(--warning)]/10 text-[color:var(--warning)] border-[color:var(--warning)]/25',
     danger: 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border-[color:var(--danger)]/25',
   };
+  // Diagonal-sweep gradient background — replaces the previous
+  // absolute-positioned halo blob. linear-gradient(225deg) pours from
+  // the top-right in the card's semantic tone, fading into the regular
+  // --bg-1 surface around 65% so the left half (label + description +
+  // value text) sits on a clean reading surface for contrast.
+  const toneGradient: Record<string, string> = {
+    success:
+      'linear-gradient(225deg, rgba(var(--success-r), var(--success-g), var(--success-b), 0.22) 0%, var(--bg-1) 65%)',
+    info:
+      'linear-gradient(225deg, rgba(var(--info-r), var(--info-g), var(--info-b), 0.22) 0%, var(--bg-1) 65%)',
+    warning:
+      'linear-gradient(225deg, rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22) 0%, var(--bg-1) 65%)',
+    danger:
+      'linear-gradient(225deg, rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22) 0%, var(--bg-1) 65%)',
+  };
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+        'relative overflow-hidden rounded-xl border border-[color:var(--border)]',
         'px-5 py-4 flex flex-col h-full min-h-[120px]',
         'transition-shadow duration-[120ms] hover:shadow-[0_0_0_1px_var(--signal)]',
       )}
+      style={{ background: toneGradient[tone] }}
     >
-      <div
-        aria-hidden
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-50"
-        style={{ background: 'rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.22)' }}
-      />
       <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">{label}</div>
       <div className="text-[11px] text-[color:var(--text-3)] mt-0.5">{description}</div>
       <div className="font-display tabular-nums mt-3 flex items-baseline gap-2 text-[color:var(--text-1)]" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 }}>
@@ -523,7 +585,7 @@ function avatarGradient(username: string): string {
   let h = 0;
   for (let i = 0; i < username.length; i++) h = (h * 31 + username.charCodeAt(i)) % 360;
   const h2 = (h + 40) % 360;
-  return `linear-gradient(135deg, hsl(${h},60%,48%), hsl(${h2},70%,38%))`;
+  return `linear-gradient(225deg, hsl(${h},60%,48%), hsl(${h2},70%,38%))`;
 }
 function initials(username: string): string {
   const parts = username.replace(/_/g, ' ').split(/\s+/);
@@ -1028,6 +1090,8 @@ export function DashboardPage() {
     refetchIntervalInBackground: false,
   });
 
+  const [palette, setPaletteEntry, resetPalette] = useChartPalette();
+
   const is401 = isError && error instanceof AuthError;
 
   const { data: auditData, isLoading: auditLoading } = useQuery({
@@ -1284,6 +1348,43 @@ export function DashboardPage() {
               </button>
             </div>
           </div>
+          {/* Palette row — always visible. Doubles as the chart's
+              legend (swatch + label per category) and as the per-user
+              color picker. Each swatch is a native <input type="color">
+              bound to localStorage; a Reset link returns to defaults. */}
+          <div className="px-5 pb-2">
+            <div
+              className={cn(
+                'flex items-center gap-3 flex-wrap p-2.5 rounded-md',
+                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                'text-xs text-[color:var(--text-2)]',
+              )}
+            >
+              {(['config', 'query', 'carve', 'enroll'] as ChartCategory[]).map((key) => (
+                <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="color"
+                    value={palette[key]}
+                    onChange={(e) => setPaletteEntry(key, e.target.value)}
+                    className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
+                    aria-label={`${key} color`}
+                  />
+                  <span className="capitalize">{key}</span>
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={resetPalette}
+                className={cn(
+                  'ml-auto px-2 py-0.5 text-[10px] rounded',
+                  'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  'hover:bg-[color:var(--bg-1)]',
+                )}
+              >
+                Reset to defaults
+              </button>
+            </div>
+          </div>
           <div className="p-5">
             <TimeSeriesChart
               config={fleet24.config}
@@ -1291,6 +1392,7 @@ export function DashboardPage() {
               carve={fleet24.carve}
               enroll={fleet24.enroll}
               intervalLabel={activityInterval === '7d' ? '7d' : '24h'}
+              palette={palette}
             />
           </div>
         </div>

@@ -1,0 +1,120 @@
+/* login-trace-map.css — Trace Map background animations for the login
+ * page. Two animated layers:
+ *
+ *   .login-trace-circuit — a tiled circuit-board SVG that scrolls
+ *     diagonally over 25s. The same asset is used in dark and light
+ *     themes; the SVG's fill is hardcoded to the brand teal at a low
+ *     alpha so it reads quietly on either background.
+ *
+ *   .login-trace-spotlight — a single soft-edged teal disc that
+ *     translates around the viewport on a 12s loop. Drives the
+ *     "something is alive here" feeling that the legacy login lacked.
+ *
+ * Both animations are disabled under prefers-reduced-motion so the
+ * page remains accessible per the brand guide motion rules. The
+ * spotlight is rendered with `mix-blend-mode: screen` so it
+ * brightens the circuit pattern beneath instead of stacking on top
+ * as a flat disc — costs almost nothing on modern GPUs.
+ */
+
+/* The circuit SVG is used as a CSS mask so its color and opacity come
+ * from CSS tokens, not the asset itself. Dark theme reads at ~10%
+ * teal alpha (subtle); light theme bumps to ~28% (so the pattern is
+ * legible on the brighter surface). The .circuit-color element does
+ * the actual painting; .login-trace-circuit handles the drift
+ * animation on top of it. */
+.login-trace-circuit {
+  /* The mask SVG is now a solid black silhouette of the circuit. We
+   * paint background-color at the alpha we actually want to see, the
+   * mask cuts away the negative space, and the result is a teal
+   * circuit pattern at exactly the chosen opacity. Earlier the SVG
+   * carried fill-opacity=0.06 which compounded with the mask and
+   * produced a far fainter result than the preview HTML. */
+  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.14);
+  -webkit-mask-image: url(/img/circuit.svg);
+  mask-image: url(/img/circuit.svg);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 200px 200px;
+  mask-size: 200px 200px;
+  animation: login-trace-drift 25s linear infinite;
+}
+[data-theme='light'] .login-trace-circuit {
+  background-color: rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.32);
+}
+
+.login-trace-spotlight {
+  position: absolute;
+  top: -120px;
+  left: -120px;
+  width: 320px;
+  height: 320px;
+  z-index: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.45) 0%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.18) 25%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.06) 55%,
+    transparent 80%
+  );
+  filter: blur(8px);
+  /* Dark theme: screen blends the teal disc as a brightening highlight
+   * against --bg-0 (#07090c). Visible because there's plenty of room
+   * to brighten. */
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: login-trace-scan 12s ease-in-out infinite;
+}
+/* Light theme: screen on a near-white surface produces no visible
+ * brightening — the disc effectively disappears. Switch to multiply
+ * so the disc darkens what it passes over (teal-tinted shadow effect)
+ * and bump opacity so the motion reads at all. */
+[data-theme='light'] .login-trace-spotlight {
+  background: radial-gradient(
+    circle at center,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.65) 0%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.32) 25%,
+    rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.12) 55%,
+    transparent 80%
+  );
+  mix-blend-mode: multiply;
+}
+
+@keyframes login-trace-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 400px 400px;
+  }
+}
+
+/* Move the spotlight disc around the tile. translate3d so the browser
+ * can promote to its own layer for smooth motion on integrated GPUs. */
+@keyframes login-trace-scan {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(60vw, 10vh, 0);
+  }
+  40% {
+    transform: translate3d(80vw, 50vh, 0);
+  }
+  60% {
+    transform: translate3d(20vw, 70vh, 0);
+  }
+  80% {
+    transform: translate3d(5vw, 30vh, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-trace-circuit,
+  .login-trace-spotlight {
+    animation: none !important;
+  }
+}

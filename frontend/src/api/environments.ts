@@ -146,6 +146,20 @@ export function getEnvironmentConfig(env: string): Promise<EnvConfigResponse> {
   );
 }
 
+/**
+ * GET /api/v1/environments/{env}/configuration/assembled
+ *
+ * Returns the env's options + schedule + packs + decorators + ATC
+ * recomposed into the canonical osquery configuration blob — same bytes
+ * the TLS endpoint serves agents. Backend re-runs RefreshConfiguration
+ * before reading, so the result is always fresh.
+ */
+export function getEnvironmentAssembledConfig(env: string): Promise<{ data: string }> {
+  return apiFetch<{ data: string }>(
+    `/api/v1/environments/${encodeURIComponent(env)}/configuration/assembled`,
+  );
+}
+
 /** PATCH /api/v1/environments/config/{env} — atomic JSON-validated patch. */
 export function patchEnvironmentConfig(
   env: string,

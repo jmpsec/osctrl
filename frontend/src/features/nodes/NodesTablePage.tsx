@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { listNodes, type NodePlatform } from '$/api/nodes';
+import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
 import { getStats, getNodeActivityBatch, type NodeActivityBucket } from '$/api/stats';
 import { listEnvTags, tagNode } from '$/api/tags';
 import { getMe } from '$/api/users';
@@ -83,12 +83,16 @@ interface QuickFilter {
   onClick: () => void;
 }
 
-function QuickFiltersRow({ filters }: { filters: QuickFilter[] }) {
+function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
+  // Same StatusTabs-style segmented pad as before, but without the
+  // surrounding row chrome — meant to slot into the main toolbar
+  // alongside the page title and search box so the whole header reads
+  // as a single line (matches CarvesListPage layout).
   return (
     <div
       role="toolbar"
       aria-label="Quick filters"
-      className="flex items-center gap-1.5 px-4 py-2.5 border-b border-[color:var(--border)] overflow-x-auto"
+      className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]"
     >
       {filters.map((f) => (
         <button
@@ -98,12 +102,12 @@ function QuickFiltersRow({ filters }: { filters: QuickFilter[] }) {
           aria-pressed={f.active}
           aria-label={`Filter: ${f.label}${f.count != null ? ` (${f.count})` : ''}`}
           className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full',
-            'text-[11px] font-medium transition-colors duration-[120ms]',
-            'border focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded',
+            'text-xs font-medium transition-colors',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             f.active
-              ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-              : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
+              ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
+              : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
           )}
         >
           <span>{f.label}</span>
@@ -111,7 +115,7 @@ function QuickFiltersRow({ filters }: { filters: QuickFilter[] }) {
             <span
               className={cn(
                 'font-mono-tabular tabular-nums text-[10px]',
-                f.active ? 'text-[color:var(--signal-bright,var(--signal))]' : 'text-[color:var(--text-3)]',
+                f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
               )}
             >
               {f.count.toLocaleString()}
@@ -343,6 +347,7 @@ export function NodesTablePage() {
 
   const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
   const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   function updateSearch(patch: Record<string, string | number | undefined>) {
     void navigate({
@@ -397,6 +402,43 @@ export function NodesTablePage() {
     refetchInterval: 30_000,
     placeholderData: (prev: NodesPagedResponse | undefined) => prev,
   });
+
+  // Bulk archive + delete the selected nodes. Backend exposes one
+  // per-uuid endpoint (POST /nodes/{env}/delete) which is also the
+  // legacy admin's archive-and-remove op. We fire one request per
+  // uuid and collect per-row failures so a partial success can still
+  // surface "deleted 7, failed 2" rather than the whole batch
+  // turning red on the first 404.
+  const bulkArchiveMut = useMutation({
+    mutationFn: async (uuids: string[]) => {
+      const settled = await Promise.allSettled(
+        uuids.map((uuid) => deleteNode(env, uuid)),
+      );
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      return { total: uuids.length, failed };
+    },
+    onSuccess: ({ total, failed }) => {
+      setSelectedUuids(new Set());
+      if (failed > 0) {
+        setBulkError(`Archived ${total - failed} of ${total} node(s); ${failed} failed.`);
+      } else {
+        setBulkError(null);
+      }
+      void refetch();
+    },
+    onError: (err) =>
+      setBulkError(err instanceof Error ? err.message : 'Bulk archive failed'),
+  });
+
+  function handleBulkArchive() {
+    const uuids = Array.from(selectedUuids);
+    if (uuids.length === 0) return;
+    if (!confirm(`Archive ${uuids.length} node${uuids.length === 1 ? '' : 's'}?\n\nEach node is snapshotted into the archive table and removed from the active list. Forensic records are retained.`)) {
+      return;
+    }
+    setBulkError(null);
+    bulkArchiveMut.mutate(uuids);
+  }
 
   // Stats — drives the QuickFilters chip counts. Cross-env totals; we surface
   // the per-env subset from data?.total_items when active.
@@ -524,36 +566,17 @@ export function NodesTablePage() {
   // ---------------------------------------------------------------------------
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* ── QuickFilters chip row ── */}
-      <QuickFiltersRow filters={quickFilters} />
+      {/* ── Toolbar — single line matching CarvesListPage:
+              [Title] [Status+platform chip pad] [Search] [Page size] [Refreshing…]
+          Previously the chip pad lived in its own row above the search
+          bar; folding both into one toolbar trims a row of vertical
+          chrome and matches the env's other list pages. ── */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
+        <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
+          Nodes
+        </h1>
 
-      {/* ── Toolbar (status tabs + search + page size) ── */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[color:var(--border)] flex-wrap">
-        {/*
-          Status tabs preserved alongside the QuickFilters row. The chip row
-          is the visually-loud entry point; the status tab triplet stays for
-          keyboard parity, screen-reader users who scan toolbars, and so the
-          existing test fixtures (`getByRole('button', {name: /^active$/i})`)
-          keep finding a match.
-        */}
-        <div className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]">
-          {(['all', 'active', 'inactive'] as NodeStatus[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => updateSearch({ status: s === 'all' ? undefined : s, page: 1 })}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded transition-colors capitalize',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                status === s
-                  ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
-                  : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <QuickFiltersGroup filters={quickFilters} />
 
         <div className="flex-1 max-w-xs">
           <SearchInput
@@ -839,13 +862,16 @@ export function NodesTablePage() {
           {canDeleteNodes && (
             <button
               type="button"
-              aria-label="Delete selected nodes"
-              className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
-              onClick={() => {
-                // TODO: wire delete mutation when DeleteNodeHandler integration tests are written
-              }}
+              aria-label="Archive selected nodes"
+              disabled={bulkArchiveMut.isPending}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)]',
+                'hover:bg-[color:var(--bg-2)] transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              onClick={handleBulkArchive}
             >
-              Delete…
+              {bulkArchiveMut.isPending ? 'Archiving…' : 'Archive…'}
             </button>
           )}
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -871,6 +897,31 @@ export function NodesTablePage() {
             void refetch();
           }}
         />
+      )}
+
+      {/* Bulk-action result toast — sits at the bottom centre when no
+          selection exists (so it doesn't overlap the dock toolbar). */}
+      {bulkError && selectedUuids.size === 0 && (
+        <div
+          role="alert"
+          className={cn(
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl',
+            'bg-[color:var(--bg-1)] border border-[color:var(--danger)]/40',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.32)]',
+            'text-xs text-[color:var(--danger)]',
+          )}
+        >
+          <span>{bulkError}</span>
+          <button
+            type="button"
+            onClick={() => setBulkError(null)}
+            className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );

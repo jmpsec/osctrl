@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getNode, listNodeLogs } from '$/api/nodes';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getNode, listNodeLogs, deleteNode } from '$/api/nodes';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
@@ -541,6 +541,36 @@ export function NodeDetailPage() {
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
 
+  // Archive the current node. The backend's POST /nodes/{env}/delete
+  // handler maps to ArchiveDeleteByUUID — it always snapshots into the
+  // archive table BEFORE removing the live row, so every removal goes
+  // through the archive. We deliberately only expose this single op
+  // (no separate hard-delete) so accidental clicks remain forensically
+  // recoverable. Until an /archive page lands the recovery is "query
+  // archive_osquery_nodes" — but the snapshot exists.
+  const qc = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const archiveMut = useMutation({
+    mutationFn: () => deleteNode(env, uuid),
+    onSuccess: () => {
+      setActionError(null);
+      // Bust the listing caches so the Nodes table reflects removal
+      // before we land back on it.
+      void qc.invalidateQueries({ queryKey: ['nodes', env] });
+      void qc.invalidateQueries({ queryKey: ['node', env, uuid] });
+      void navigate({ to: '/_app/env/$env/nodes', params: { env } });
+    },
+    onError: (err) =>
+      setActionError(err instanceof Error ? err.message : 'Action failed'),
+  });
+
+  function handleArchive() {
+    if (!confirm(`Archive node ${node?.hostname ?? uuid}?\n\nThe node is snapshotted into the archive table and removed from the active list. A forensic record is retained.`)) {
+      return;
+    }
+    archiveMut.mutate();
+  }
+
   // Node-scoped activity heatmap — only fetched while the Activity tab is the
   // active panel, so flipping between Details/Status/Result doesn't keep a
   // dormant 30s polling timer alive in the background.
@@ -618,53 +648,42 @@ export function NodeDetailPage() {
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Single archive action — no separate hard-delete button.
+                  Archive snapshots the node into archive_osquery_nodes
+                  before removing the live row, so every removal is
+                  forensically recoverable. The two-button shape that
+                  used to live here looked like soft vs hard but mapped
+                  to the same backend op, which read as misleading. If
+                  a true hard-delete is ever needed it should land as a
+                  separate package-level call gated behind a stronger
+                  confirmation. */}
               {canDeleteNode && (
                 <button
                   type="button"
                   aria-label="Archive this node"
-                  onClick={() => {
-                    // TODO: POST /api/v1/nodes/{env}/delete with { uuid, archive: true }
-                    // Awaits the bulk-action archive endpoint contract in pkg/nodes.
-                  }}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'bg-[color:var(--bg-2)]',
-                    'hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
-                >
-                  Archive
-                </button>
-              )}
-
-              {/* Refresh button intentionally absent — POST
-                  /nodes/{env}/refresh isn't implemented yet. We
-                  used to render a disabled placeholder with a "API
-                  not yet available" tooltip; operators found the
-                  greyed-out button confusing (looked broken).
-                  Restore as a live button when the endpoint lands. */}
-
-              {canDeleteNode && (
-                <button
-                  type="button"
-                  aria-label="Delete this node"
-                  onClick={() => {
-                    // TODO: open delete confirmation modal (polish)
-                  }}
+                  onClick={handleArchive}
+                  disabled={archiveMut.isPending}
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--danger)] text-[color:var(--danger)]',
                     'hover:bg-[color:var(--danger)] hover:text-white',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  Delete
+                  {archiveMut.isPending ? 'Archiving…' : 'Archive'}
                 </button>
               )}
             </div>
+            {actionError && (
+              <div
+                role="alert"
+                className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
+              >
+                {actionError}
+              </div>
+            )}
           </>
         ) : isError ? (
           <EmptyState

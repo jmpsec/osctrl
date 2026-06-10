@@ -6,23 +6,45 @@ interface LogoProps {
   decorative?: boolean;
 }
 
+/**
+ * Original osctrl tower mark from cmd/admin/static/img/logo.png — the
+ * artwork legacy operators already recognise. Two PNG variants exist:
+ *
+ *   /img/osctrl-logo.png      — original (dark outline, light-blue
+ *                                cabin windows). Used in light theme.
+ *   /img/osctrl-logo-dark.png — manually recolored (light outline,
+ *                                brand-info blue cabin windows). Used
+ *                                in dark theme.
+ *
+ * The .osctrl-logo CSS rule in base.css shows one or the other based
+ * on data-theme, no JS state needed. This replaces the previous
+ * filter:invert() hack which Tailwind's minifier kept breaking.
+ */
 export function Logo({ size = 32, className, decorative = false }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      className={cn('text-[color:var(--signal)]', className)}
+    <span
+      className={cn('osctrl-logo', className)}
       role={decorative ? undefined : 'img'}
-      aria-hidden={decorative ? true : undefined}
       aria-label={decorative ? undefined : 'osctrl logo'}
+      aria-hidden={decorative ? true : undefined}
+      style={{ display: 'inline-block', width: size, height: size }}
     >
-      <path d="M14 22 Q32 4 50 22" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-      <path d="M20 28 Q32 18 44 28" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-      <circle cx="32" cy="32" r="2" fill="currentColor" />
-      <path d="M20 38 L44 38 L40 46 L24 46 Z" fill="currentColor" />
-      <rect x="29.5" y="46" width="5" height="10" fill="currentColor" rx="1" />
-      <rect x="22" y="56" width="20" height="3" fill="currentColor" rx="1" />
-    </svg>
+      <img
+        src="/img/osctrl-logo.png"
+        width={size}
+        height={size}
+        alt=""
+        className="osctrl-logo-light"
+        style={{ display: 'block', width: '100%', height: '100%' }}
+      />
+      <img
+        src="/img/osctrl-logo-dark.png"
+        width={size}
+        height={size}
+        alt=""
+        className="osctrl-logo-dark"
+        style={{ display: 'block', width: '100%', height: '100%' }}
+      />
+    </span>
   );
 }

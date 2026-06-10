@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"strings"
@@ -243,6 +246,14 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 		returnData = env.Certificate
 	case settings.DownloadFlags:
 		returnData = env.Flags
+	case settings.DownloadFlagsLinux:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/etc/osquery", "/")
+	case settings.DownloadFlagsMac:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/private/var/osquery", "/")
+	case settings.DownloadFlagsWin:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "C:\\Program Files\\osquery", "\\")
+	case settings.DownloadFlagsFreeBSD:
+		returnData = substitutePlatformPaths(env.Flags, env.Name, "/usr/local/etc", "/")
 	case environments.EnrollShell:
 		returnData, err = environments.QuickAddOneLinerShell((env.Certificate != ""), env)
 		if err != nil {
@@ -656,4 +667,141 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msgf("Environment action %s completed: %s", e.Action, msgReturn)
 	h.AuditLog.EnvAction(ctx[ctxUser], e.Action+" - "+e.Name, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
+}
+
+// EnvConfigurationHandler - GET handler returning the assembled osquery
+// configuration JSON for an environment. Returns the stored composed blob
+// (options + schedule + packs + decorators + ATC). The composition is
+// kept up to date by RefreshConfiguration, which fires from every parts
+// mutation (UpdateOptions / UpdateSchedule / UpdatePacks / etc. in
+// pkg/environments/osqueryconf.go), so reading the cached value is
+// safe — the agents see the exact same blob.
+//
+// SECURITY: deliberately a pure read. The first cut of this handler
+// called RefreshConfiguration on every GET, which turned the endpoint
+// into a CSRF-via-GET shape and a hot-loop DB-write hazard when
+// React-Query's stale refetch path hit it. The mutation path on the
+// parts is the canonical place for the recompose.
+func (h *HandlersApi) EnvConfigurationHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: env.Configuration})
+}
+
+// envCertUploadRequest is the body shape for EnvCertUploadHandler. The PEM
+// is sent base64-encoded so the upload survives clients that mangle raw
+// newlines (curl --data, browser fetch with a plain string body, etc.).
+type envCertUploadRequest struct {
+	CertificateB64 string `json:"certificate_b64"`
+}
+
+// EnvCertUploadHandler - POST handler to upload the enrollment certificate
+// for an environment. Body: { "certificate_b64": "<base64 PEM>" }. The PEM
+// must parse as one or more CERTIFICATE blocks and the leaf must be a real
+// x509 cert — we don't accept "looks like base64 of something." Legacy
+// admin's equivalent path skipped this validation; the SPA target gets it
+// so a typo'd paste fails fast instead of breaking enrollment downloads.
+func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error getting environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		if err.Error() == "record not found" {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
+		} else {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		}
+		return
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
+		return
+	}
+	// Cap the request body at 64 KiB. A realistic PEM chain is well under
+	// 16 KiB; nginx alone allows up to 20 MiB and the cert upload is the
+	// worst-case amplifier (one big base64 string blows up ~1.33x on JSON
+	// decode + another 0.75x on base64 decode). 64 KiB leaves headroom
+	// for legitimate multi-cert chains while preventing a privileged
+	// operator account from being turned into an OOM lever.
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	var req envCertUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+	if req.CertificateB64 == "" {
+		apiErrorResponse(w, "empty certificate", http.StatusBadRequest, nil)
+		return
+	}
+	pemBytes, err := base64.StdEncoding.DecodeString(req.CertificateB64)
+	if err != nil {
+		apiErrorResponse(w, "error decoding certificate", http.StatusBadRequest, err)
+		return
+	}
+	block, _ := pem.Decode(pemBytes)
+	if block == nil || block.Type != "CERTIFICATE" {
+		apiErrorResponse(w, "invalid PEM: no CERTIFICATE block", http.StatusBadRequest, nil)
+		return
+	}
+	if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		apiErrorResponse(w, "invalid x509 certificate", http.StatusBadRequest, err)
+		return
+	}
+	if err := h.Envs.UpdateCertificate(env.UUID, string(pemBytes)); err != nil {
+		apiErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
+		return
+	}
+	log.Debug().Msgf("Certificate updated for environment %s", env.Name)
+	h.AuditLog.EnvAction(ctx[ctxUser], "upload certificate for environment "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "certificate uploaded successfully"})
+}
+
+// substitutePlatformPaths fills the __SECRET_FILE__ / __CERT_FILE__ placeholders
+// in the env.Flags template with the canonical install paths for a given OS.
+// This is the same substitution legacy admin's download path performs (see
+// cmd/admin/handlers/utils.go generateFlags); centralising it here keeps the
+// API's per-OS flag downloads producing the exact bytes operators expect to
+// drop into /etc/osquery/osctrl-{env}.flags (or the platform equivalent).
+//
+// sep is the path separator the OS uses ("/" for everything except Windows).
+//
+// strings.ReplaceAll is deliberate even though the flag template ships with
+// one occurrence of each placeholder today. If an operator ever edits the
+// template to reference the secret/cert path twice (e.g. an additional
+// --logger_tls_endpoint that needs the same path), the single-replace
+// would silently leave the second placeholder unsubstituted — a footgun
+// that costs a real outage.
+func substitutePlatformPaths(flags, envName, dir, sep string) string {
+	secretPath := dir + sep + "osctrl-" + envName + ".secret"
+	certPath := dir + sep + "osctrl-" + envName + ".crt"
+	out := strings.ReplaceAll(flags, "__SECRET_FILE__", secretPath)
+	out = strings.ReplaceAll(out, "__CERT_FILE__", certPath)
+	return out
 }
