@@ -63,7 +63,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SideNav() {
+export function SideNav({ className }: { className?: string } = {}) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const params = useParams({ strict: false });
@@ -150,7 +150,10 @@ export function SideNav() {
       // similar density. The teal sheen from the previous background
       // gradient is preserved via the linear-gradient layered on top
       // of the SVG — the SVG sits at the bottom of the stack.
-      className="sidenav-circuit w-60 shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3"
+      className={cn(
+        'sidenav-circuit w-60 shrink-0 flex flex-col border-r border-[color:var(--border)] px-2 py-3',
+        className,
+      )}
     >
       {/* Wordmark — mirrors the login card header (stacked logo +
           "osctrl" wordmark + "OSQUERY CONTROL" tagline) so the brand
