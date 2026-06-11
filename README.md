@@ -31,6 +31,9 @@ With **osctrl** you can:
 - 🗂️ Carve files and directories
 - ⚙️ Scale from **hundreds to hundreds of thousands of nodes**
 
+> [!IMPORTANT]
+> The legacy server-rendered `osctrl-admin` HTML interface will be deprecated soon. The new frontend is the primary operator experience going forward and will receive future UI improvements and features.
+
 > [!WARNING]
 > **osctrl** is a fast evolving project, and while it is already being used in production environments, it is still under active development. Please make sure to read the documentation and understand its current state before deploying it in a critical environment.
 
@@ -47,10 +50,11 @@ You can find the documentation of the project in [https://osctrl.net](https://os
 ```text
 osctrl/
 ├── cmd/                         # Service and CLI entrypoints
-│   ├── admin/                   # osctrl-admin (web UI + admin handlers/templates/static)
+│   ├── admin/                   # osctrl-admin (legacy HTML UI + admin handlers/templates/static)
 │   ├── api/                     # osctrl-api (REST API service)
 │   ├── cli/                     # osctrl-cli (operator CLI)
 │   └── tls/                     # osctrl-tls (osquery remote API endpoint)
+├── frontend/                    # React SPA frontend for the operator UI
 ├── pkg/                         # Shared application packages
 │   ├── auditlog/                # Audit log manager
 │   ├── backend/                 # DB manager/bootstrap
@@ -80,24 +84,51 @@ osctrl/
 
 ```mermaid
 flowchart LR
-    A["osquery Agents"] -->|TLS Remote API| T["osctrl-tls"]
-    O["Operators"] -->|Web UI| W["osctrl-admin"]
-    O -->|CLI| C["osctrl-cli"]
-    O -->|REST| P["osctrl-api"]
+    subgraph Clients["Clients"]
+        Agents["osquery agents"]
+        Ops["Operators"]
+        Tools["Automation / CLI"]
+    end
 
-    W -->|HTTP API| P
-    C -->|HTTP API| P
+    subgraph Interfaces["Interfaces"]
+        Tls["osctrl-tls"]
+        Frontend["osctrl frontend"]
+        Admin["osctrl-admin (legacy HTML UI)"]
+        API["osctrl-api"]
+        CLI["osctrl-cli"]
+    end
 
-    T --> S["Shared Packages (pkg/*)"]
-    W --> S
-    P --> S
-    C --> S
-    C -.->|Direct DB mode| D
+    subgraph Core["Shared backend"]
+        Shared["Shared packages (pkg/*)"]
+    end
 
-    S --> D["PostgreSQL Backend"]
-    S --> R["Redis Cache"]
-    S --> L["Log Destinations (DB, file, S3, Elastic, Splunk, Graylog, Kafka, Kinesis, Logstash)"]
-    S --> F["Carve Storage (DB, local, S3)"]
+    subgraph Data["State and integrations"]
+        DB["PostgreSQL backend"]
+        Redis["Redis cache"]
+        Logs["Log destinations"]
+        Carves["Carve storage"]
+    end
+
+    Agents -->|TLS remote API| Tls
+    Ops -->|Browser UI| Frontend
+    Ops -.->|Legacy browser UI| Admin
+    Tools -->|REST API| API
+    Tools -->|CLI| CLI
+
+    Frontend -->|HTTP API| API
+    Admin -->|HTTP API| API
+    CLI -->|HTTP API| API
+
+    Tls --> Shared
+    API --> Shared
+    Admin --> Shared
+    CLI --> Shared
+
+    Shared --> DB
+    Shared --> Redis
+    Shared --> Logs
+    Shared --> Carves
+    CLI -.->|Direct DB mode| DB
 ```
 
 ## 🛠 Development
@@ -107,6 +138,14 @@ The fastest way to get started with **osctrl** development is by using [Docker](
 ### 🐳 Running osctrl with docker for development
 
 You can use docker to run **osctrl** and all the components are defined in the `docker-compose-dev.yml` that ties all the components together, to serve a functional deployment.
+
+The docker development stack exposes:
+
+- `https://localhost:8444` for the frontend
+- `https://localhost:8443` for the legacy `osctrl-admin` HTML interface
+- `https://localhost:8000` redirecting to HTTPS where applicable
+
+For frontend-only development details, see [frontend/README.md](./frontend/README.md).
 
 Ultimately you can just execute `make docker_dev` and it will automagically build and run `osctrl` locally in docker, for development purposes.
 
@@ -129,6 +168,8 @@ make
 ```
 
 This will compile all the **osctrl** [components](https://osctrl.net/components/) (`osctrl-tls`, `osctrl-admin`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
+
+If you are working on the new operator UI, the frontend SPA lives in `frontend/` and is built separately from the Go binaries.
 
 ## 💬 Slack
 
