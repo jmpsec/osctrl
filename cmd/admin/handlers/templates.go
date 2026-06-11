@@ -56,6 +56,7 @@ func (h *HandlersAdmin) NewTemplateFiles(base string, layoutFilename string) *Te
 		base + "/" + layoutFilename,
 		base + "/components/page-head-" + h.StaticLocation + ".html",
 		base + "/components/page-js-" + h.StaticLocation + ".html",
+		base + "/components/page-banner-deprecation.html",
 		base + "/components/page-header.html",
 		base + "/components/page-aside-left.html",
 		base + "/components/page-aside-right.html",
@@ -74,7 +75,8 @@ func (h *HandlersAdmin) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles(
 		h.TemplatesFolder+"/login.html",
 		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
-		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html")
+		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html",
+		h.TemplatesFolder+"/components/page-banner-deprecation.html")
 	if err != nil {
 		log.Err(err).Msg("error getting login template")
 		return
@@ -201,6 +203,7 @@ func (h *HandlersAdmin) QueryRunGETHandler(w http.ResponseWriter, r *http.Reques
 		h.TemplatesFolder+"/queries-run.html",
 		h.TemplatesFolder+"/components/page-head-"+h.StaticLocation+".html",
 		h.TemplatesFolder+"/components/page-js-"+h.StaticLocation+".html",
+		h.TemplatesFolder+"/components/page-banner-deprecation.html",
 		h.TemplatesFolder+"/components/page-aside-right.html",
 		h.TemplatesFolder+"/components/page-aside-left.html",
 		h.TemplatesFolder+"/components/page-header.html",

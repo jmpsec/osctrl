@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
-	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -106,36 +105,29 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 		return
 	}
 	var filteredCount int64
-	var nodesSlice []nodes.OsqueryNode
 	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
 	// Ordering (DataTables sends order[0][column], order[0][dir])
 	orderColIdxStr := r.URL.Query().Get("order[0][column]")
 	orderDir := r.URL.Query().Get("order[0][dir]")
 	colName := mapDTColumnToDB(orderColIdxStr)
 	desc := (orderDir == "desc")
+	page := 1
+	if length > 0 {
+		page = (start / length) + 1
+	}
+	pageData, err := h.Nodes.GetByEnvPaged(env.Name, target, hours, searchValue, page, length, colName, desc, "")
+	if err != nil {
+		log.Err(err).Msg("error getting nodes page")
+		return
+	}
 	if searchValue != "" {
-		// Count filtered first
-		filteredCount, err = h.Nodes.CountSearchByEnv(env.Name, searchValue, target, hours)
-		if err != nil {
-			log.Err(err).Msg("error counting search nodes")
-			return
-		}
-		nodesSlice, err = h.Nodes.SearchByEnvPage(env.Name, searchValue, target, hours, start, length, colName, desc) //nolint:staticcheck // SA1019: intentional legacy admin caller; new SPA uses GetByEnvPaged
-		if err != nil {
-			log.Err(err).Msg("error searching nodes page")
-			return
-		}
+		filteredCount = pageData.TotalItems
 	} else {
 		filteredCount = totalCount
-		nodesSlice, err = h.Nodes.GetByEnvPage(env.Name, target, hours, start, length, colName, desc) //nolint:staticcheck // SA1019: intentional legacy admin caller; new SPA uses GetByEnvPaged
-		if err != nil {
-			log.Err(err).Msg("error getting nodes page")
-			return
-		}
 	}
 	// Prepare data to be returned
 	nJSON := []NodeJSON{}
-	for _, n := range nodesSlice {
+	for _, n := range pageData.Items {
 		nj := NodeJSON{
 			UUID:      n.UUID,
 			Username:  n.Username,
@@ -168,7 +160,7 @@ func (h *HandlersAdmin) JSONEnvironmentPagingHandler(w http.ResponseWriter, r *h
 // mapDTColumnToDB maps DataTables column index (as string) to actual DB column name.
 // DataTables columns order in the UI:
 // 0 checkbox,1 uuid,2 username(last user),3 localname,4 ip,5 platform,6 version(platform_version),7 osquery,8 lastseen,9 firstseen
-// We only allow ordering on a safe subset of real DB columns.
+// We only allow ordering on the safe sort keys exposed by pkg/nodes.SortableColumns.
 func mapDTColumnToDB(idx string) string {
 	switch idx {
 	case "1":
@@ -178,17 +170,17 @@ func mapDTColumnToDB(idx string) string {
 	case "3":
 		return "localname"
 	case "4":
-		return "ip_address"
+		return "ip"
 	case "5":
 		return "platform"
 	case "6":
-		return "platform_version"
+		return "version"
 	case "7":
-		return "osquery_version"
+		return "osquery"
 	case "8":
-		return "last_seen"
+		return "lastseen"
 	case "9":
-		return "created_at" // first seen
+		return "firstseen"
 	default:
 		return "" // fallback to default ordering in caller
 	}
