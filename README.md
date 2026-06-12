@@ -143,7 +143,6 @@ The docker development stack exposes:
 
 - `https://localhost:8444` for the frontend
 - `https://localhost:8443` for the legacy `osctrl-admin` HTML interface
-- `https://localhost:8000` redirecting to HTTPS where applicable
 
 For frontend-only development details, see [frontend/README.md](./frontend/README.md).
 

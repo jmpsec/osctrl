@@ -5,7 +5,6 @@ services:
     image: nginx:${NGINX_VERSION}
     restart: unless-stopped
     ports:
-      - 8000:80
       - 8443:443
       - 8444:8444
     networks:
