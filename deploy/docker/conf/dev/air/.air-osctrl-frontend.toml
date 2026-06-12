@@ -5,7 +5,7 @@ tmp_dir = "/tmp"
 
 [build]
   bin = "/bin/sh"
-  cmd = "cd /usr/src/app/frontend && npm run build && rm -rf /usr/share/nginx/osctrl-frontend/* && cp -R dist/. /usr/share/nginx/osctrl-frontend/"
+  cmd = "sh /usr/src/app/deploy/docker/conf/dev/air/frontend-dev-build.sh"
   delay = 1000
   exclude_dir = ["tmp", "frontend/dist", "frontend/node_modules"]
   exclude_file = []
