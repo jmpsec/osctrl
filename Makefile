@@ -359,3 +359,11 @@ release-test:
 			$$binary --version || $$binary version || echo "No version flag available"; \
 		fi; \
 	done
+
+# Merge locally develop into main, usually to prepare for release
+develop-merge:
+	git pull
+	git checkout main
+	git pull origin main
+	git merge develop
+	git push origin main
