@@ -90,14 +90,25 @@ jobs:
             done
           }
 
+          resolve_digest() {
+            local image_ref=$1
+            local digest
+
+            digest="$(docker buildx imagetools inspect "${image_ref}" | awk '/Digest:/ {print $2; exit}')"
+            if [ -z "${digest}" ]; then
+              echo "Unable to resolve digest for ${image_ref}" >&2
+              return 1
+            fi
+
+            printf '%s\n' "${digest}"
+          }
+
+          image_tag="${RELEASE_TAG#v}"
+
           for component in tls admin api cli; do
             image="${DOCKER_HUB_ORG}/osctrl-${component}"
-            for tag in "${RELEASE_TAG}" latest; do
-              digest="$(docker buildx imagetools inspect "${image}:${tag}" | awk '/Digest:/ {print $2; exit}')"
-              if [ -z "${digest}" ]; then
-                echo "Unable to resolve digest for ${image}:${tag}"
-                exit 1
-              fi
+            for tag in "${image_tag}" latest; do
+              digest="$(retry 6 resolve_digest "${image}:${tag}")"
 
               retry 3 cosign verify \
                 --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
