@@ -14,6 +14,7 @@ import { ProfilePage } from './ProfilePage';
 import type { UserMeResponse } from '$/api/types';
 
 const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+const mockListEnvironments = vi.fn();
 const mockPatch = vi.fn();
 const mockChange = vi.fn();
 
@@ -26,6 +27,10 @@ vi.mock('$/api/users', () => ({
   setUserPermissions: vi.fn(),
   refreshUserToken: vi.fn(),
   deleteUserToken: vi.fn(),
+}));
+
+vi.mock('$/api/environments', () => ({
+  listEnvironments: () => mockListEnvironments(),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -98,6 +103,7 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockListEnvironments.mockResolvedValue([]);
   });
 
   it('renders the operator profile after loading', async () => {
@@ -111,6 +117,33 @@ describe('ProfilePage', () => {
       const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
       expect(email.value).toBe('alice@example.com');
     });
+    await waitFor(() => {
+      expect(screen.getAllByText('Permissions').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('No environment access.')).toBeInTheDocument();
+  });
+
+  it('renders environment permissions in their own section', async () => {
+    mockGetMe.mockResolvedValue({
+      ...makeMe(),
+      permissions: {
+        envA: { user: true, query: true, carve: false, admin: false },
+        envB: { user: true, query: false, carve: true, admin: true },
+      },
+    });
+    mockListEnvironments.mockResolvedValue([
+      { uuid: 'envA', name: 'production' },
+      { uuid: 'envB', name: 'staging' },
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('production')).toBeInTheDocument();
+    });
+    expect(screen.getByText('staging')).toBeInTheDocument();
+    expect(screen.getAllByText('yes').length).toBe(5);
+    expect(screen.getByText('envA')).toBeInTheDocument();
+    expect(screen.getByText('envB')).toBeInTheDocument();
   });
 
   it('rejects mismatching new passwords client-side', async () => {
