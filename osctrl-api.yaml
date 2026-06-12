@@ -9,7 +9,7 @@ info:
     url: https://github.com/jmpsec/osctrl/blob/master/LICENSE
   termsOfService: https://github.com/jmpsec/osctrl
   title: osctrl API
-  version: 0.5.2
+  version: 0.5.3
 paths:
   /:
     get:
