@@ -8,6 +8,7 @@ import {
   refreshUserToken,
   deleteUserToken,
 } from '$/api/users';
+import { listEnvironments, type TLSEnvironment } from '$/api/environments';
 import { AuthError, ApiError, primeCsrfFromCookie } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
@@ -17,6 +18,7 @@ import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
+import type { EnvAccess } from '$/api/types';
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -49,6 +51,12 @@ export function ProfilePage() {
     queryKey: ['me'],
     queryFn: () => getMe(),
     staleTime: 60_000,
+  });
+  const { data: envs, isLoading: envsLoading } = useQuery({
+    queryKey: ['environments-profile'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+    enabled: !!me,
   });
 
   // Hydrate the form when the profile loads.
@@ -230,9 +238,14 @@ export function ProfilePage() {
             {/* Last access — Token expires used to live here too but it's
                 already shown inside the API token card below; duplicating
                 it in the hero was visual noise. */}
-            <div className="flex items-center gap-6 flex-wrap">
-              <div>
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5">
+            <div className="flex items-stretch gap-3 flex-wrap">
+              <div
+                className={cn(
+                  'min-w-[10rem] px-3 py-2 rounded-lg border border-[color:var(--border)]',
+                  'bg-[color:var(--bg-2)]',
+                )}
+              >
+                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
                   Last access
                 </div>
                 <div
@@ -248,7 +261,7 @@ export function ProfilePage() {
       </div>
 
       {/* ── Body ──
-          Four focused cards in a responsive 2-col grid. The previous
+          Focused panels in a responsive 2-col grid. The previous
           single "Security" mega-card stacked password / token / theme
           / role under one heading, which forced operators to mentally
           parse hairlines as section dividers. One card per job balances
@@ -497,6 +510,25 @@ export function ProfilePage() {
             </div>
           </Panel>
         )}
+
+        {isLoading || !me ? (
+          <Panel title="Permissions" className="lg:col-span-2">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="Permissions" className="lg:col-span-2">
+            <PermissionsTable
+              admin={me.admin}
+              permissions={me.permissions}
+              envs={envs ?? []}
+              envsLoading={envsLoading}
+            />
+          </Panel>
+        )}
       </div>
     </div>
   );
@@ -563,16 +595,19 @@ function Feedback({
 function Panel({
   id,
   title,
+  className,
   children,
 }: {
   id?: string;
   title: string;
+  className?: string;
   children: ReactNode;
 }) {
   return (
     <section
       className={cn(
         'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden',
+        className,
       )}
       aria-labelledby={id}
     >
@@ -634,9 +669,131 @@ function RoleBadge({ admin, service }: { admin: boolean; service: boolean }) {
   );
 }
 
+function PermissionsTable({
+  admin,
+  permissions,
+  envs,
+  envsLoading,
+}: {
+  admin: boolean;
+  permissions: Record<string, EnvAccess>;
+  envs: TLSEnvironment[];
+  envsLoading: boolean;
+}) {
+  const rows = buildPermissionRows(envs, permissions, admin);
+
+  if (envsLoading && envs.length === 0) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return <p className="text-xs text-[color:var(--text-2)]">No environment access.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[30rem] text-sm border-collapse">
+        <thead>
+          <tr className="border-b border-[color:var(--border)]">
+            <th className="px-3 py-2 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+              Environment
+            </th>
+            {PERMISSION_ORDER.map((key) => (
+              <th
+                key={key}
+                className="px-3 py-2 text-center text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+              >
+                {key}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.uuid}
+              className="border-b border-[color:var(--border)] last:border-b-0"
+            >
+              <td className="px-3 py-2">
+                <div className="text-xs text-[color:var(--text-1)]">{row.name}</div>
+                <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+                  {row.uuid}
+                </div>
+              </td>
+              {PERMISSION_ORDER.map((key) => (
+                <td key={key} className="px-3 py-2 text-center">
+                  <PermissionCell enabled={row.access[key]} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PermissionCell({ enabled }: { enabled: boolean }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex min-w-12 items-center justify-center rounded-full border px-2 py-0.5',
+        'text-[10px] font-medium font-mono-tabular uppercase tracking-[0.06em]',
+        enabled
+          ? 'border-[color:var(--signal)]/30 bg-[rgba(var(--signal-r),var(--signal-g),var(--signal-b),0.12)] text-[color:var(--signal)]'
+          : 'border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-3)]',
+      )}
+    >
+      {enabled ? 'yes' : '—'}
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const PERMISSION_ORDER = ['user', 'query', 'carve', 'admin'] as const;
+
+function buildPermissionRows(
+  envs: TLSEnvironment[],
+  permissions: Record<string, EnvAccess>,
+  admin: boolean,
+) {
+  if (admin) {
+    return envs.map((env) => ({
+      uuid: env.uuid,
+      name: env.name,
+      access: { user: true, query: true, carve: true, admin: true },
+    }));
+  }
+
+  const rows = envs
+    .map((env) => ({
+      uuid: env.uuid,
+      name: env.name,
+      access: permissions[env.uuid] ?? {
+        user: false,
+        query: false,
+        carve: false,
+        admin: false,
+      },
+    }))
+    .filter((row) => PERMISSION_ORDER.some((key) => row.access[key]));
+
+  if (rows.length > 0) return rows;
+
+  return Object.entries(permissions).map(([uuid, access]) => ({
+    uuid,
+    name: uuid,
+    access,
+  }));
+}
 
 function deriveInitials(source: string): string {
   const trimmed = source.trim();
