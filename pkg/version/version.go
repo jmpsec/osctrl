@@ -13,7 +13,7 @@ import (
 
 const (
 	// OsctrlVersion to have the version for all components
-	OsctrlVersion = "0.5.2"
+	OsctrlVersion = "0.5.3"
 	// OsqueryVersion to have the version for osquery defined
 	OsqueryVersion = "5.23.0"
 	// VersionDataURL to have the URL to retrieve the latest version for all osctrl components
