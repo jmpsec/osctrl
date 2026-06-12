@@ -175,14 +175,13 @@ services:
   ######################################### osctrl-frontend (React SPA) #########################################
   # Ships the React admin frontend through osctrl-nginx on
   # https://<host>:8444 while remaining internal-only on the docker network.
-  # The frontend container still owns the SPA static serving and /api/*
-  # reverse-proxy to osctrl-api.
+  # The frontend container owns the SPA static serving and /api/*
+  # reverse-proxy to osctrl-api, while air rebuilds dist/ when files in
+  # frontend/ change.
   #
-  # The image is multi-stage: node:20 builds dist/, nginx:alpine serves it
-  # + reverse-proxies /api/* to osctrl-api:9002. No volume mount of the
-  # host tree — changes to frontend/ require
-  # `docker compose build osctrl-frontend` (no hot reload here; use
-  # `npm run dev` directly for that).
+  # Source is bind-mounted into the container. node_modules stays in a
+  # Docker volume so the host mount does not shadow container-installed
+  # dependencies.
   osctrl-frontend:
     container_name: 'osctrl-frontend-dev'
     image: 'osctrl-frontend-dev:${OSCTRL_VERSION}'
@@ -192,6 +191,17 @@ services:
       dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-frontend
     networks:
       - osctrl-dev-backend
+    volumes:
+      - .:/usr/src/app:rw,delegated
+      - frontend-osctrl-dev-node-modules:/usr/src/app/frontend/node_modules
+    develop:
+      watch:
+        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-frontend
+          action: rebuild
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/package-lock.json
+          action: rebuild
     depends_on:
       - osctrl-api
 
@@ -394,6 +404,7 @@ networks:
 volumes:
   postgres-osctrl-dev-db:
   redis-osctrl-dev-data:
+  frontend-osctrl-dev-node-modules:
   osquery-osctrl-dev-1-data:
   osquery-osctrl-dev-1-conf:
   osquery-osctrl-dev-2-data:
