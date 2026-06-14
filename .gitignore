@@ -91,3 +91,7 @@ docs/superpowers/
 # Generate swagger files
 cmd/api/docs/swagger.json
 cmd/api/docs/swagger.yaml
+
+# Tools
+fake_news_report.json
+fake_news_state.json
