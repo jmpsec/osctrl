@@ -12,5 +12,5 @@ osquery.secret
 
 # Fake news files
 fake_news_go/fake_news
-fake_news_go/state.json
+fake_news_go/*.json
 fake_news_go/http_errors.log

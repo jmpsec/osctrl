@@ -1,24 +1,31 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"os"
-	"os/exec"
+	"os/signal"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
+	ui "github.com/gizak/termui/v3"
 	"github.com/google/uuid"
+	internalconfig "github.com/jmpsec/osctrl/tools/fake_news_go/internal/config"
+	internaldiscovery "github.com/jmpsec/osctrl/tools/fake_news_go/internal/discovery"
+	internalmetrics "github.com/jmpsec/osctrl/tools/fake_news_go/internal/metrics"
+	internalmodel "github.com/jmpsec/osctrl/tools/fake_news_go/internal/model"
+	internalosquery "github.com/jmpsec/osctrl/tools/fake_news_go/internal/osquery"
+	internalreport "github.com/jmpsec/osctrl/tools/fake_news_go/internal/report"
+	internalrunner "github.com/jmpsec/osctrl/tools/fake_news_go/internal/runner"
+	internaltransport "github.com/jmpsec/osctrl/tools/fake_news_go/internal/transport"
+	internaltui "github.com/jmpsec/osctrl/tools/fake_news_go/internal/tui"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -36,7 +43,7 @@ const (
 	CONFIG_INTERVAL     = 45
 	QUERY_READ_INTERVAL = 30
 
-	STATE_JSON = "state.json"
+	STATE_JSON = "fake_news_state.json"
 	OSQUERYI   = "osqueryi"
 )
 
@@ -122,17 +129,11 @@ var (
 			stats: make(map[string]*LatencyStats),
 		},
 	}
+
+	osqueryRunner OSQueryRunner = internalosquery.NewDefault(OSQUERYI)
 )
 
-// Node represents a simulated osctrl node
-type Node struct {
-	Target     string `json:"target"`
-	IP         string `json:"ip"`
-	Name       string `json:"name"`
-	Version    string `json:"version"`
-	Identifier string `json:"identifier"`
-	Key        string `json:"key"`
-}
+type Node = internalmodel.Node
 
 // SystemInfo represents system information for enrollment
 type SystemInfo struct {
@@ -267,23 +268,28 @@ type FakeNewsConfig struct {
 	StateFile       string
 }
 
+type runtimeTarget struct {
+	EnvUUID   string
+	Secret    string
+	URL       string
+	StateFile string
+}
+
 // HTTPClient wraps http.Client with custom configuration
 type HTTPClient struct {
-	client *http.Client
+	client *internaltransport.Client
 	debug  bool
+}
+
+type OSQueryRunner interface {
+	RunJSON(query string) ([]map[string]interface{}, error)
 }
 
 // NewHTTPClient creates a new HTTP client
 func NewHTTPClient(debug bool, insecure bool) *HTTPClient {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
-	}
 	return &HTTPClient{
-		client: &http.Client{
-			Transport: tr,
-			Timeout:   30 * time.Second,
-		},
-		debug: debug,
+		client: internaltransport.NewDefault(insecure),
+		debug:  debug,
 	}
 }
 
@@ -299,36 +305,18 @@ func (c *HTTPClient) Post(url string, data interface{}, headers map[string]strin
 		fmt.Printf("DATA: %s\n", string(jsonData))
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	resp, err := c.client.PostJSON(context.Background(), url, data, headers)
 	if err != nil {
 		return 0, nil, err
 	}
-
-	req.Header.Set("Content-Type", "application/json")
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return 0, nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return resp.StatusCode, nil, err
-	}
+	body := resp.RawBody
 
 	if c.debug {
 		fmt.Printf("HTTP %d\n", resp.StatusCode)
 	}
 
-	var result map[string]interface{}
+	result := resp.Body
 	if resp.StatusCode == 200 {
-		if err := json.Unmarshal(body, &result); err != nil {
-			return resp.StatusCode, nil, err
-		}
 		if c.debug {
 			prettyJSON, _ := json.MarshalIndent(result, "", "  ")
 			fmt.Printf("%s\n", string(prettyJSON))
@@ -637,18 +625,7 @@ func generateLogResult(node Node) LogRequest {
 
 // executeOSQuery executes an osquery command
 func executeOSQuery(query string) ([]map[string]interface{}, error) {
-	cmd := exec.Command(OSQUERYI, "--json", query)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	var results []map[string]interface{}
-	if err := json.Unmarshal(output, &results); err != nil {
-		return nil, err
-	}
-
-	return results, nil
+	return osqueryRunner.RunJSON(query)
 }
 
 // generateQueryWriteRequest generates query write request
@@ -1104,6 +1081,12 @@ func (gs *GlobalStats) SetNodeCounts(total, active int) {
 	gs.activeNodes = active
 }
 
+func (gs *GlobalStats) GetNodeCounts() (int, int) {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+	return gs.totalNodes, gs.activeNodes
+}
+
 // printSummary prints a summary of statistics
 func printSummary() {
 	uptime := globalStats.GetUptime()
@@ -1304,20 +1287,7 @@ func logOperationWithURL(opType OperationType, nodeName string, url string, late
 		// Only periodic summaries (handled by summary goroutine)
 		return
 	case VerboseMode:
-		// Original verbose output
-		opNames := map[OperationType]string{
-			EnrollOp:     "enroll",
-			StatusOp:     "status",
-			ResultOp:     "result",
-			ConfigOp:     "config",
-			QueryReadOp:  "query_read",
-			QueryWriteOp: "query_write",
-		}
-		status := "✓"
-		if !success {
-			status = "✗"
-		}
-		fmt.Printf("⏰ %d ms %s %s from %s to %s\n", latency.Milliseconds(), status, opNames[opType], nodeName, url)
+		fmt.Println(internaltui.FormatVerboseLine(operationName(opType), nodeName, url, latency, success))
 	case DashboardMode:
 		// Real-time dashboard (handled by dashboard goroutine)
 		return
@@ -1342,69 +1312,435 @@ func summaryReporter(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// dashboardReporter runs real-time dashboard updates
-func dashboardReporter(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func newGlobalStats() *GlobalStats {
+	return &GlobalStats{
+		startTime: time.Now(),
+		urls: URLStats{
+			stats: make(map[string]*LatencyStats),
+		},
+	}
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			printDashboard()
+func resetGlobalStats() {
+	globalStats = newGlobalStats()
+}
+
+func aggregateSnapshot() internalmetrics.Snapshot {
+	operations := []OperationType{
+		EnrollOp,
+		StatusOp,
+		ResultOp,
+		ConfigOp,
+		QueryReadOp,
+		QueryWriteOp,
+	}
+
+	snapshot := internalmetrics.Snapshot{}
+	var weightedTotal time.Duration
+
+	for _, op := range operations {
+		min, max, avg, p95, p99, count, success, fail := globalStats.GetOperationStats(op).GetStats()
+		if count == 0 {
+			continue
+		}
+
+		snapshot.Count += count
+		snapshot.SuccessCount += success
+		snapshot.FailCount += fail
+		weightedTotal += avg * time.Duration(count)
+
+		if snapshot.Min == 0 || min < snapshot.Min {
+			snapshot.Min = min
+		}
+		if max > snapshot.Max {
+			snapshot.Max = max
+		}
+		if p95 > snapshot.P95 {
+			snapshot.P95 = p95
+		}
+		if p99 > snapshot.P99 {
+			snapshot.P99 = p99
+		}
+	}
+
+	if snapshot.Count > 0 {
+		snapshot.Avg = weightedTotal / time.Duration(snapshot.Count)
+		snapshot.ErrorRate = float64(snapshot.FailCount) / float64(snapshot.Count)
+	}
+
+	return snapshot
+}
+
+func loadOrGenerateNodes(config FakeNewsConfig, r *rand.Rand) ([]Node, error) {
+	if config.StateFile != "" {
+		nodes, err := loadNodesFromFile(config.StateFile)
+		if err == nil && len(nodes) > 0 {
+			return nodes, nil
+		}
+	}
+
+	return generateRandomNodes(config.Nodes, r), nil
+}
+
+func resolveRuntimeTargets(cfg internalconfig.Config) ([]runtimeTarget, error) {
+	if cfg.ShouldDiscoverEnvs() {
+		client := internaldiscovery.NewClient(cfg.APIBaseURL, internaltransport.NewDefault(cfg.Insecure))
+		envs, err := client.Discover(context.Background(), cfg.APIUsername, cfg.APIPassword)
+		if err != nil {
+			return nil, err
+		}
+		targets := make([]runtimeTarget, 0, len(envs))
+		for _, env := range envs {
+			targets = append(targets, runtimeTarget{
+				EnvUUID:   env.UUID,
+				Secret:    env.Secret,
+				URL:       buildEnvURL(cfg.TLSBaseURL, env.UUID),
+				StateFile: deriveStateFile(cfg.StateFile, env.UUID, len(envs)),
+			})
+		}
+		return targets, nil
+	}
+
+	return []runtimeTarget{{
+		EnvUUID:   cfg.EnvUUID,
+		Secret:    cfg.EnrollSecret,
+		URL:       buildEnvURL(cfg.TLSBaseURL, cfg.EnvUUID),
+		StateFile: cfg.StateFile,
+	}}, nil
+}
+
+func buildEnvURL(baseURL, envUUID string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	envUUID = strings.Trim(strings.TrimSpace(envUUID), "/")
+	return baseURL + "/" + envUUID
+}
+
+func buildURLs(envURL string) map[string]string {
+	return map[string]string{
+		"enroll": envURL + TLS_ENROLL,
+		"log":    envURL + TLS_LOG,
+		"config": envURL + TLS_CONFIG,
+		"query":  envURL + TLS_QUERY_READ,
+		"write":  envURL + TLS_QUERY_WRITE,
+	}
+}
+
+func deriveStateFile(stateFile, envUUID string, totalTargets int) string {
+	stateFile = strings.TrimSpace(stateFile)
+	if stateFile == "" || totalTargets <= 1 {
+		return stateFile
+	}
+	ext := filepath.Ext(stateFile)
+	base := strings.TrimSuffix(stateFile, ext)
+	return fmt.Sprintf("%s_%s%s", base, sanitizeFileToken(envUUID), ext)
+}
+
+func sanitizeFileToken(value string) string {
+	var b strings.Builder
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r)
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '-' || r == '_':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	if b.Len() == 0 {
+		return "env"
+	}
+	return b.String()
+}
+
+func operationName(opType OperationType) string {
+	switch opType {
+	case EnrollOp:
+		return "enroll"
+	case StatusOp:
+		return "status"
+	case ResultOp:
+		return "result"
+	case ConfigOp:
+		return "config"
+	case QueryReadOp:
+		return "query-read"
+	case QueryWriteOp:
+		return "query-write"
+	default:
+		return "unknown"
+	}
+}
+
+func operationSnapshots() map[string]internalmetrics.Snapshot {
+	ops := map[string]OperationType{
+		"enroll":      EnrollOp,
+		"status":      StatusOp,
+		"result":      ResultOp,
+		"config":      ConfigOp,
+		"query-read":  QueryReadOp,
+		"query-write": QueryWriteOp,
+	}
+	out := make(map[string]internalmetrics.Snapshot, len(ops))
+	for name, op := range ops {
+		min, max, avg, p95, p99, count, success, fail := globalStats.GetOperationStats(op).GetStats()
+		if count == 0 {
+			continue
+		}
+		out[name] = internalmetrics.Snapshot{
+			Count:        count,
+			SuccessCount: success,
+			FailCount:    fail,
+			ErrorRate:    float64(fail) / float64(count),
+			Min:          min,
+			Max:          max,
+			Avg:          avg,
+			P95:          p95,
+			P99:          p99,
+		}
+	}
+	return out
+}
+
+func endpointSnapshots() map[string]internalmetrics.Snapshot {
+	urlStats := globalStats.GetURLStats()
+	out := make(map[string]internalmetrics.Snapshot, len(urlStats))
+	for url, stats := range urlStats {
+		min, max, avg, p95, p99, count, success, fail := stats.GetStats()
+		if count == 0 {
+			continue
+		}
+		out[url] = internalmetrics.Snapshot{
+			Count:        count,
+			SuccessCount: success,
+			FailCount:    fail,
+			ErrorRate:    float64(fail) / float64(count),
+			Min:          min,
+			Max:          max,
+			Avg:          avg,
+			P95:          p95,
+			P99:          p99,
+		}
+	}
+	return out
+}
+
+type dashboardSession struct {
+	enabled bool
+	events  <-chan ui.Event
+}
+
+func newDashboardSession(enabled bool) (*dashboardSession, error) {
+	if !enabled {
+		return &dashboardSession{}, nil
+	}
+	if err := ui.Init(); err != nil {
+		return nil, err
+	}
+	return &dashboardSession{enabled: true, events: ui.PollEvents()}, nil
+}
+
+func (d *dashboardSession) Close() {
+	if d != nil && d.enabled {
+		ui.Close()
+	}
+}
+
+func (d *dashboardSession) Render(mode string, verdict internalmetrics.Verdict, thresholds internalmetrics.Thresholds, reportPath string, sweep internalmetrics.SweepState) {
+	if d == nil || !d.enabled {
+		return
+	}
+	grid := internaltui.Render(internaltui.ViewModel{
+		Mode:       mode,
+		Verdict:    verdict,
+		Dashboard:  internalmetrics.NewDashboardSnapshot(aggregateSnapshot(), operationSnapshots(), endpointSnapshots(), sweep),
+		Thresholds: thresholds,
+		ReportPath: reportPath,
+		Elapsed:    globalStats.GetUptime(),
+	})
+	width, height := ui.TerminalDimensions()
+	grid.SetRect(0, 0, width, height)
+	ui.Render(grid)
+}
+
+func (d *dashboardSession) Events() <-chan ui.Event {
+	if d == nil {
+		return nil
+	}
+	return d.events
+}
+
+func enrollNodes(client *HTTPClient, nodes []Node, secret string, urls map[string]string, config FakeNewsConfig) {
+	for i := range nodes {
+		if nodes[i].Key == "" {
+			nodes[i].Key = enrollNode(client, nodes[i], secret, urls["enroll"], config)
 		}
 	}
 }
 
-// jsonReporter runs periodic JSON output
-func jsonReporter(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func startTraffic(ctx context.Context, client *HTTPClient, nodes []Node, urls map[string]string, config FakeNewsConfig) {
+	var mutex sync.Mutex
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			printJSONStats()
-		}
+	for i := range nodes {
+		go logStatus(ctx, client, &nodes[i], urls, config.Secret,
+			time.Duration(config.StatusInterval)*time.Second, &mutex, config)
+		go logResult(ctx, client, &nodes[i], urls, config.Secret,
+			time.Duration(config.ResultInterval)*time.Second, &mutex, config)
+		go configRequest(ctx, client, &nodes[i], urls, config.Secret,
+			time.Duration(config.ConfigInterval)*time.Second, &mutex, config)
+		go queryRead(ctx, client, &nodes[i], urls, config.Secret,
+			time.Duration(config.QueryInterval)*time.Second, &mutex, config)
 	}
 }
 
-func main() {
-	// Command line flags
-	var config FakeNewsConfig
+func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client *HTTPClient, targets []runtimeTarget, dashboard *dashboardSession, signals <-chan os.Signal) error {
+	reportPath := "fake_news_report.json"
+	controller := internalrunner.SweepController{
+		Thresholds: internalmetrics.Thresholds{
+			MaxErrorRate: parsedConfig.ErrorThreshold,
+			MaxP95:       parsedConfig.P95Threshold,
+		},
+	}
 
-	flag.StringVar(&config.URL, "url", TLS_URL, "URL for osctrl-tls used to enroll nodes")
-	flag.StringVar(&config.URL, "u", TLS_URL, "URL for osctrl-tls used to enroll nodes")
-	flag.StringVar(&config.Env, "env", "", "Environment UUID for osctrl-tls")
-	flag.StringVar(&config.Secret, "secret", "", "Secret to enroll nodes for osctrl-tls")
-	flag.StringVar(&config.Secret, "s", "", "Secret to enroll nodes for osctrl-tls")
-	flag.IntVar(&config.Nodes, "nodes", 5, "Number of random nodes to simulate")
-	flag.IntVar(&config.Nodes, "n", 5, "Number of random nodes to simulate")
-	flag.IntVar(&config.StatusInterval, "status", LOG_INTERVAL, "Interval in seconds for status requests to osctrl")
-	flag.IntVar(&config.StatusInterval, "S", LOG_INTERVAL, "Interval in seconds for status requests to osctrl")
-	flag.IntVar(&config.ResultInterval, "result", LOG_INTERVAL, "Interval in seconds for result requests to osctrl")
-	flag.IntVar(&config.ResultInterval, "R", LOG_INTERVAL, "Interval in seconds for result requests to osctrl")
-	flag.IntVar(&config.ConfigInterval, "config", CONFIG_INTERVAL, "Interval in seconds for config requests to osctrl")
-	flag.IntVar(&config.ConfigInterval, "c", CONFIG_INTERVAL, "Interval in seconds for config requests to osctrl")
-	flag.IntVar(&config.QueryInterval, "query", QUERY_READ_INTERVAL, "Interval in seconds for query requests to osctrl")
-	flag.IntVar(&config.QueryInterval, "q", QUERY_READ_INTERVAL, "Interval in seconds for query requests to osctrl")
-	flag.BoolVar(&config.Insecure, "insecure", false, "Skip TLS certificate verification")
-	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose output")
-	flag.BoolVar(&config.Verbose, "v", false, "Enable verbose output")
-	flag.StringVar(&config.StateFile, "state", STATE_JSON, "JSON file to persist and resume node state")
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	highestStable := -1
+	firstFailing := -1
+	verdict := internalmetrics.VerdictStable
+	lastTargetNodes := config.Nodes
+	renderTicker := time.NewTicker(250 * time.Millisecond)
+	defer renderTicker.Stop()
 
-	// Output mode flags
-	var outputMode string
-	flag.StringVar(&outputMode, "mode", "summary", "Output mode: quiet, summary, verbose, dashboard, json")
-	flag.IntVar(&config.SummaryInterval, "summary-interval", 30, "Interval in seconds for summary reports")
+	for stage := 0; stage < parsedConfig.SweepStages; stage++ {
+		targetNodes := parsedConfig.SweepStartNodes + (stage * parsedConfig.SweepStepNodes)
+		lastTargetNodes = targetNodes * len(targets)
+		stageConfig := config
+		stageConfig.Nodes = targetNodes
+		resetGlobalStats()
 
-	flag.Parse()
+		stageCtx, cancel := context.WithCancel(context.Background())
+		totalNodes := 0
+		for _, target := range targets {
+			stageConfig.Env = target.EnvUUID
+			stageConfig.Secret = target.Secret
+			stageConfig.URL = target.URL
+			nodes := generateRandomNodes(targetNodes, r)
+			urls := buildURLs(target.URL)
+			enrollNodes(client, nodes, stageConfig.Secret, urls, stageConfig)
+			startTraffic(stageCtx, client, nodes, urls, stageConfig)
+			totalNodes += len(nodes)
+		}
+		globalStats.SetNodeCounts(totalNodes, totalNodes)
+
+		settleUntil := time.Now().Add(parsedConfig.SettleDuration)
+		for time.Now().Before(settleUntil) {
+			select {
+			case <-signals:
+				cancel()
+				return nil
+			case event := <-dashboard.Events():
+				if internaltui.ShouldQuitEvent(event.ID) {
+					cancel()
+					return nil
+				}
+			case <-renderTicker.C:
+				dashboard.Render("sweep", verdict, controller.Thresholds, reportPath, internalmetrics.SweepState{
+					Stage:              stage,
+					HighestStableStage: highestStable,
+					TargetNodes:        targetNodes,
+					SettleRemaining:    time.Until(settleUntil),
+				})
+			}
+		}
+
+		resetGlobalStats()
+		sampleUntil := time.Now().Add(parsedConfig.SampleDuration)
+		for time.Now().Before(sampleUntil) {
+			select {
+			case <-signals:
+				cancel()
+				return nil
+			case event := <-dashboard.Events():
+				if internaltui.ShouldQuitEvent(event.ID) {
+					cancel()
+					return nil
+				}
+			case <-renderTicker.C:
+				dashboard.Render("sweep", verdict, controller.Thresholds, reportPath, internalmetrics.SweepState{
+					Stage:              stage,
+					HighestStableStage: highestStable,
+					TargetNodes:        targetNodes,
+					SampleRemaining:    time.Until(sampleUntil),
+				})
+			}
+		}
+
+		snapshot := aggregateSnapshot()
+		result := controller.EvaluateStages(context.Background(), []internalmetrics.Snapshot{snapshot})
+		cancel()
+
+		if result.FirstFailingStage == 0 {
+			firstFailing = stage
+			verdict = result.FailureReason
+			break
+		}
+
+		highestStable = stage
+	}
+
+	runReport := internalreport.RunReport{
+		Mode:               string(parsedConfig.Mode),
+		HighestStableStage: highestStable,
+		FirstFailingStage:  firstFailing,
+		FailureReason:      verdict,
+		Totals:             aggregateSnapshot(),
+		GeneratedAt:        time.Now().UTC(),
+	}
+	if err := internalreport.WriteJSON(reportPath, runReport); err != nil {
+		return err
+	}
+
+	dashboard.Render("sweep", verdict, controller.Thresholds, reportPath, internalmetrics.SweepState{
+		Stage:              max(firstFailing, 0),
+		HighestStableStage: highestStable,
+		TargetNodes:        lastTargetNodes,
+	})
+	fmt.Println(internalreport.Summary(runReport))
+	return nil
+}
+
+func run() error {
+	parsedConfig, err := internalconfig.Parse(os.Args[1:])
+	if err != nil {
+		return err
+	}
+
+	config := FakeNewsConfig{
+		URL:             parsedConfig.TLSBaseURL,
+		Env:             parsedConfig.EnvUUID,
+		Secret:          parsedConfig.EnrollSecret,
+		Nodes:           parsedConfig.Nodes,
+		StatusInterval:  parsedConfig.StatusInterval,
+		ResultInterval:  parsedConfig.ResultInterval,
+		ConfigInterval:  parsedConfig.ConfigInterval,
+		QueryInterval:   parsedConfig.QueryInterval,
+		Verbose:         parsedConfig.Verbose,
+		Insecure:        parsedConfig.Insecure,
+		SummaryInterval: parsedConfig.SummaryInterval,
+		StateFile:       parsedConfig.StateFile,
+	}
+
+	osqueryRunner = internalosquery.NewDefault(parsedConfig.OSQueryBinary)
+	thresholds := internalmetrics.Thresholds{
+		MaxErrorRate: parsedConfig.ErrorThreshold,
+		MaxP95:       parsedConfig.P95Threshold,
+	}
 
 	// Parse output mode
-	switch strings.ToLower(outputMode) {
+	switch strings.ToLower(parsedConfig.OutputMode) {
 	case "quiet":
 		config.OutputMode = QuietMode
 	case "summary":
@@ -1416,7 +1752,7 @@ func main() {
 	case "json":
 		config.OutputMode = JSONMode
 	default:
-		fmt.Fprintf(os.Stderr, "Error: Invalid output mode '%s'. Valid modes: quiet, summary, verbose, dashboard, json\n", outputMode)
+		fmt.Fprintf(os.Stderr, "Error: Invalid output mode '%s'. Valid modes: quiet, summary, verbose, dashboard, json\n", parsedConfig.OutputMode)
 		os.Exit(1)
 	}
 
@@ -1425,81 +1761,80 @@ func main() {
 		config.OutputMode = VerboseMode
 	}
 
-	// Check required parameters
-	if config.Secret == "" {
-		fmt.Fprintf(os.Stderr, "Error: --secret is required\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-	if config.Env == "" {
-		fmt.Fprintf(os.Stderr, "Error: --environment is required\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-
 	// Append environment to URL if not present
 	if !strings.HasSuffix(config.URL, "/") {
 		config.URL += "/"
-	}
-	if !strings.Contains(config.URL, config.Env) {
-		config.URL += config.Env
 	}
 
 	// Initialize random seed
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// Print configuration
-	fmt.Printf("Using URL %s\n", config.URL)
-	fmt.Printf("Using secret %s\n", config.Secret)
+	dashboard, err := newDashboardSession(config.OutputMode == DashboardMode)
+	if err != nil {
+		return err
+	}
+	defer dashboard.Close()
 
-	// Build URLs
-	urls := map[string]string{
-		"enroll": config.URL + TLS_ENROLL,
-		"log":    config.URL + TLS_LOG,
-		"config": config.URL + TLS_CONFIG,
-		"query":  config.URL + TLS_QUERY_READ,
-		"write":  config.URL + TLS_QUERY_WRITE,
+	targets, err := resolveRuntimeTargets(parsedConfig)
+	if err != nil {
+		return err
+	}
+	totalNodes := len(targets) * config.Nodes
+	globalStats.SetNodeCounts(totalNodes, totalNodes)
+	fmt.Printf("Resolved %d environment target(s)\n", len(targets))
+	for _, target := range targets {
+		fmt.Printf("  - %s -> %s\n", target.EnvUUID, target.URL)
 	}
 
-	// Load or generate nodes
-	var nodes []Node
-	var err error
-
-	// Try to load state first if specified
-	if config.StateFile != "" {
-		fmt.Printf("Attempting to resume state from %s\n", config.StateFile)
-		nodes, err = loadNodesFromFile(config.StateFile)
-		if err == nil && len(nodes) > 0 {
-			fmt.Printf("Resumed %d nodes from state\n", len(nodes))
-		} else {
-			fmt.Printf("No valid state found, generating %d nodes\n", config.Nodes)
-			nodes = generateRandomNodes(config.Nodes, r)
+	if parsedConfig.Mode == internalconfig.ModeSweep {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+		defer signal.Stop(signals)
+		if err := runSweep(parsedConfig, config, NewHTTPClient(config.Verbose, config.Insecure), targets, dashboard, signals); err != nil {
+			return err
 		}
-	}
-
-	if config.Verbose {
-		prettyJSON, _ := json.MarshalIndent(nodes, "", "  ")
-		fmt.Printf("%s\n", string(prettyJSON))
+		return nil
 	}
 
 	// Create HTTP client
 	client := NewHTTPClient(config.Verbose, config.Insecure)
+	type targetRun struct {
+		config FakeNewsConfig
+		nodes  []Node
+	}
+	runs := make([]targetRun, 0, len(targets))
+	for _, target := range targets {
+		targetConfig := config
+		targetConfig.Env = target.EnvUUID
+		targetConfig.Secret = target.Secret
+		targetConfig.URL = target.URL
+		targetConfig.StateFile = target.StateFile
 
-	// Enroll nodes if they have no key
-	for i := range nodes {
-		if nodes[i].Key == "" {
-			fmt.Printf("Enrolling %s as %s\n", nodes[i].Target, nodes[i].Name)
-			nodes[i].Key = enrollNode(client, nodes[i], config.Secret, urls["enroll"], config)
+		nodes, err := loadOrGenerateNodes(targetConfig, r)
+		if err != nil {
+			return err
 		}
+		if config.Verbose {
+			prettyJSON, _ := json.MarshalIndent(nodes, "", "  ")
+			fmt.Printf("%s\n", string(prettyJSON))
+		}
+		enrollNodes(client, nodes, targetConfig.Secret, buildURLs(target.URL), targetConfig)
+		runs = append(runs, targetRun{config: targetConfig, nodes: nodes})
 	}
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
 
 	// Periodically save state if state file is specified
-	if config.StateFile != "" {
-		go func(ctx context.Context) {
+	for _, run := range runs {
+		if run.config.StateFile == "" {
+			continue
+		}
+		go func(ctx context.Context, nodes []Node, stateFile string) {
 			ticker := time.NewTicker(10 * time.Second)
 			defer ticker.Stop()
 			for {
@@ -1507,63 +1842,96 @@ func main() {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					if err := saveNodesToFile(nodes, config.StateFile); err != nil {
+					if err := saveNodesToFile(nodes, stateFile); err != nil {
 						fmt.Printf("Failed to save state: %v\n", err)
 					}
 				}
 			}
-		}(ctx)
+		}(ctx, run.nodes, run.config.StateFile)
 	}
 
-	// Create mutex for thread-safe node updates
-	var mutex sync.Mutex
-
-	// Set node counts in global stats
-	globalStats.SetNodeCounts(len(nodes), len(nodes))
-
-	// Start monitoring goroutines based on output mode
-	switch config.OutputMode {
-	case SummaryMode:
-		go summaryReporter(ctx, time.Duration(config.SummaryInterval)*time.Second)
-	case DashboardMode:
-		go dashboardReporter(ctx, 2*time.Second) // Update every 2 seconds
-	case JSONMode:
-		go jsonReporter(ctx, time.Duration(config.SummaryInterval)*time.Second)
-	}
-
-	// Start concurrent traffic with goroutines
-	for i := range nodes {
-		// Status log goroutine
-		go logStatus(ctx, client, &nodes[i], urls, config.Secret,
-			time.Duration(config.StatusInterval)*time.Second, &mutex, config)
-
-		// Result log goroutine
-		go logResult(ctx, client, &nodes[i], urls, config.Secret,
-			time.Duration(config.ResultInterval)*time.Second, &mutex, config)
-
-		// Config goroutine
-		go configRequest(ctx, client, &nodes[i], urls, config.Secret,
-			time.Duration(config.ConfigInterval)*time.Second, &mutex, config)
-
-		// Query read goroutine
-		go queryRead(ctx, client, &nodes[i], urls, config.Secret,
-			time.Duration(config.QueryInterval)*time.Second, &mutex, config)
+	for _, run := range runs {
+		startTraffic(ctx, client, run.nodes, buildURLs(run.config.URL), run.config)
 	}
 
 	// Print startup message based on output mode
 	switch config.OutputMode {
 	case QuietMode:
-		fmt.Printf("Started %d nodes in quiet mode. Press Ctrl+C to stop.\n", len(nodes))
+		fmt.Printf("Started %d nodes across %d environment(s) in quiet mode. Press Ctrl+C to stop.\n", totalNodes, len(targets))
 	case SummaryMode:
-		fmt.Printf("Started %d nodes with summary reports every %d seconds. Press Ctrl+C to stop.\n", len(nodes), config.SummaryInterval)
+		fmt.Printf("Started %d nodes across %d environment(s) with summary reports every %d seconds. Press Ctrl+C to stop.\n", totalNodes, len(targets), config.SummaryInterval)
 	case VerboseMode:
 		fmt.Println("Started concurrent traffic simulation with verbose output. Press Ctrl+C to stop.")
 	case DashboardMode:
-		fmt.Printf("Started %d nodes with real-time dashboard. Press Ctrl+C to stop.\n", len(nodes))
+		fmt.Printf("Started %d nodes across %d environment(s) with real-time dashboard. Press Ctrl+C to stop.\n", totalNodes, len(targets))
 	case JSONMode:
-		fmt.Printf("Started %d nodes with JSON output every %d seconds. Press Ctrl+C to stop.\n", len(nodes), config.SummaryInterval)
+		fmt.Printf("Started %d nodes across %d environment(s) with JSON output every %d seconds. Press Ctrl+C to stop.\n", totalNodes, len(targets), config.SummaryInterval)
 	}
 
-	// Wait for interrupt signal
-	select {}
+	refreshInterval := 2 * time.Second
+	if config.OutputMode == SummaryMode || config.OutputMode == JSONMode {
+		refreshInterval = time.Duration(config.SummaryInterval) * time.Second
+	}
+	ticker := time.NewTicker(refreshInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-signals:
+			cancel()
+			reportPath := "fake_news_report.json"
+			runReport := internalreport.RunReport{
+				Mode:               string(parsedConfig.Mode),
+				HighestStableStage: 0,
+				FirstFailingStage:  -1,
+				FailureReason:      internalmetrics.VerdictStable,
+				Totals:             aggregateSnapshot(),
+				GeneratedAt:        time.Now().UTC(),
+			}
+			_ = internalreport.WriteJSON(reportPath, runReport)
+			dashboard.Render("steady", internalmetrics.VerdictStable, thresholds, reportPath, internalmetrics.SweepState{
+				TargetNodes: totalNodes,
+			})
+			fmt.Println(internalreport.Summary(runReport))
+			return nil
+		case event := <-dashboard.Events():
+			if !internaltui.ShouldQuitEvent(event.ID) {
+				continue
+			}
+			cancel()
+			reportPath := "fake_news_report.json"
+			runReport := internalreport.RunReport{
+				Mode:               string(parsedConfig.Mode),
+				HighestStableStage: 0,
+				FirstFailingStage:  -1,
+				FailureReason:      internalmetrics.VerdictStable,
+				Totals:             aggregateSnapshot(),
+				GeneratedAt:        time.Now().UTC(),
+			}
+			_ = internalreport.WriteJSON(reportPath, runReport)
+			dashboard.Render("steady", internalmetrics.VerdictStable, thresholds, reportPath, internalmetrics.SweepState{
+				TargetNodes: totalNodes,
+			})
+			fmt.Println(internalreport.Summary(runReport))
+			return nil
+		case <-ticker.C:
+			switch config.OutputMode {
+			case SummaryMode:
+				printSummary()
+			case DashboardMode:
+				dashboard.Render("steady", internalmetrics.VerdictStable, thresholds, "fake_news_report.json", internalmetrics.SweepState{
+					TargetNodes: totalNodes,
+				})
+			case JSONMode:
+				printJSONStats()
+			}
+		}
+	}
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }

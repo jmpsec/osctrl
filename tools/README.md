@@ -64,6 +64,60 @@ The script tests all API endpoints including:
 
 It requires to install [requests](https://pypi.org/project/requests/) with `pip install requests`.
 
+## fake_news_go
+
+Console-native load harness for `osctrl-tls` and `osctrl-api`.
+
+- `steady` mode keeps a fixed load running until interrupted with `Ctrl+C`, `q`, or `Q`
+- `sweep` mode ramps node count by stage and stops on the first threshold breach, or exits early with `Ctrl+C`, `q`, or `Q`
+- `dashboard` display mode renders a dense `termui` terminal dashboard
+- writes `fake_news_report.json` after sweep completion or steady shutdown
+- uses `fake_news_state.json` as the default persisted node-state file
+- can auto-discover environment UUIDs and enroll secrets from `osctrl-api` with `--discover-envs`
+- simulates distributed-query write results internally, without shelling out to `osqueryi`
+
+Quick example:
+
+```shell
+$ go run ./tools/fake_news_go --tls-url http://localhost:9000 --env <env-uuid> --secret <secret> --display-mode dashboard
+```
+
+Automatic discovery from `osctrl-api`:
+
+```shell
+$ go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --api-url http://localhost:9002 \
+  --api-username admin \
+  --api-password admin \
+  --discover-envs \
+  --display-mode dashboard
+```
+
+Mixed TLS + API sweep:
+
+```shell
+$ go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --api-url http://localhost:9002 \
+  --api-username admin \
+  --api-password admin \
+  --env <env-uuid> \
+  --secret <secret> \
+  --mode sweep \
+  --display-mode dashboard
+```
+
+Helper targets from `tools/fake_news_go`:
+
+```shell
+$ make -C tools/fake_news_go dashboard ENV_UUID=<env-uuid> SECRET=<secret>
+$ make -C tools/fake_news_go dashboard DISCOVER_ENVS=1 API_URL=http://localhost:9002 API_USERNAME=admin API_PASSWORD=admin
+$ make -C tools/fake_news_go sweep ENV_UUID=<env-uuid> SECRET=<secret>
+```
+
+See [tools/fake_news_go/README.md](./fake_news_go/README.md) for details.
+
 ## fake_logging.py
 
 Script to simulate HTTP logging services (Graylog, Splunk...) for osctrl and check if logs are being sent. It is just an HTTP catchall service.
@@ -155,5 +209,5 @@ Options:
   -v          Enable verbose mode with 'set -x'
 
 Example:
-  ./build-osctrl-pkg.sh -i osquery_5.23.0.pkg -o osquery-osctrl_5.23.0.pkg
+  ./tools/build-osctrl-pkg.sh -i osquery_5.23.0.pkg -o osquery-osctrl_5.23.0.pkg
 ```

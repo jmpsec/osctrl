@@ -1,162 +1,140 @@
-# Fake News Generator - Go Version
+# fake_news_go
 
-This is a Go implementation of the `fake_news.py` script that simulates load for osctrl using goroutines for concurrent execution.
+`fake_news_go` is a console-native load harness for `osctrl-tls` and `osctrl-api`.
 
-## Features
+It keeps the terminal workflow of the original `fake_news.py`, but adds a structured package layout, testable transport and synthetic query simulation, a `termui` dashboard, and sweep mode for finding a practical limit.
 
-- **Concurrent Execution**: Uses goroutines instead of Python threads for better performance
-- **Node Simulation**: Generates random nodes with different platforms (Ubuntu, CentOS, Debian, FreeBSD, Darwin, Windows)
-- **Multiple Operations**: Simulates status logs, result logs, config requests, and query operations
-- **osquery Integration**: Executes real osquery commands for query responses
-- **JSON Persistence**: Can save/load node configurations to/from JSON files
-- **Command Line Interface**: Full CLI support with all original Python script options
+## 🚦 Modes
 
-## Prerequisites
+- `steady`: fixed node count, continuous traffic, exit with `Ctrl+C`, `q`, or `Q`
+- `sweep`: staged ramp-up, automatic stop when thresholds are crossed, JSON report on completion, exit early with `Ctrl+C`, `q`, or `Q`
 
-- Go 1.19 or later
-- osquery installed and accessible via `osqueryi` command
-- osctrl-tls server running
+## 🎯 Targets
 
-## Installation
+- `osctrl-tls`: enroll, log, config, distributed read, distributed write
+- `osctrl-api`: auth discovery, login environment list, login, `users/me`, environment reads, paged node reads, node detail, settings reads
 
-1. Clone the repository
-2. Install dependencies:
+## 🛠️ Useful flags
 
-   ```bash
-   go mod tidy
-   ```
+- `--tls-url` or legacy `--url`: base URL for `osctrl-tls`
+- `--api-url`: base URL for `osctrl-api`
+- `--api-username`, `--api-password`: credentials for authenticated API scenarios
+- `--discover-envs`: log into `osctrl-api`, resolve every accessible environment UUID plus enroll secret, and start the harness automatically
+- `--env`: environment UUID
+- `--secret`: enroll secret for `osctrl-tls`
+- `--mode`: `steady` or `sweep`
+- `--display-mode`: `quiet`, `summary`, `verbose`, `dashboard`, or `json`
+- `--error-threshold`: stop sweep when error rate exceeds this ratio
+- `--p95-threshold`: stop sweep when p95 exceeds this duration
+- `--sweep-start-nodes`, `--sweep-step-nodes`, `--sweep-stages`
+- `--settle`, `--sample`
+- `--state`: persisted node state file
 
-## Usage
+The harness now simulates distributed query results internally and does not require a local `osqueryi` binary for query-write traffic.
 
-### Basic Usage
+Default runtime files:
+
+- node state: `fake_news_state.json`
+- final report: `fake_news_report.json`
+
+## 🚀 Examples
+
+Helper targets from this directory:
 
 ```bash
-go run tools/fake_news.go --secret YOUR_SECRET
+make dashboard ENV_UUID=YOUR_ENV_UUID SECRET=YOUR_SECRET
+
+make dashboard \
+  DISCOVER_ENVS=1 \
+  API_URL=http://localhost:9002 \
+  API_USERNAME=admin \
+  API_PASSWORD=admin
+
+make sweep ENV_UUID=YOUR_ENV_UUID SECRET=YOUR_SECRET
+
+make clean
+
+make sweep \
+  ENV_UUID=YOUR_ENV_UUID \
+  SECRET=YOUR_SECRET \
+  API_URL=http://localhost:9002 \
+  API_USERNAME=admin \
+  API_PASSWORD=admin
 ```
 
-### Advanced Usage
+Useful helper variables:
+
+- `TLS_URL`
+- `API_URL`
+- `API_USERNAME`
+- `API_PASSWORD`
+- `NODES`
+- `STATE`
+- `REPORT`
+- `SWEEP_START_NODES`
+- `SWEEP_STEP_NODES`
+- `SWEEP_STAGES`
+
+Steady TLS load with dashboard output:
 
 ```bash
-go run tools/fake_news.go \
+go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --env YOUR_ENV_UUID \
   --secret YOUR_SECRET \
+  --nodes 50 \
+  --display-mode dashboard
+```
+
+Automatic environment discovery from `osctrl-api` and immediate startup across every accessible environment:
+
+```bash
+go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --api-url http://localhost:9002 \
+  --api-username admin \
+  --api-password admin \
+  --discover-envs \
+  --nodes 50 \
+  --display-mode dashboard
+```
+
+Mixed TLS + API sweep with automatic stop and JSON report:
+
+```bash
+go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --api-url http://localhost:9002 \
+  --api-username admin \
+  --api-password admin \
   --env YOUR_ENV_UUID \
-  --url http://localhost:9000/ \
-  --nodes 10 \
-  --status 30 \
-  --result 45 \
-  --config 60 \
-  --query 20 \
-  --verbose
+  --secret YOUR_SECRET \
+  --mode sweep \
+  --display-mode dashboard \
+  --sweep-start-nodes 25 \
+  --sweep-step-nodes 25 \
+  --sweep-stages 8 \
+  --error-threshold 0.02 \
+  --p95-threshold 1s \
+  --settle 10s \
+  --sample 20s
 ```
 
-### Command Line Options
+## ✅ Verification
 
-- `--secret, -s`: Secret to enroll nodes for osctrl-tls (required)
-- `--env, -e`: Environment UUID for osctrl-tls (optional)
-- `--url, -u`: URL for osctrl-tls used to enroll nodes (default: http://localhost:9000/)
-- `--nodes, -n`: Number of random nodes to simulate (default: 5)
-- `--status, -S`: Interval in seconds for status requests to osctrl (default: 60)
-- `--result, -R`: Interval in seconds for result requests to osctrl (default: 60)
-- `--config, -c`: Interval in seconds for config requests to osctrl (default: 45)
-- `--query, -q`: Interval in seconds for query requests to osctrl (default: 30)
-- `--state <file>`: JSON file to persist and resume node state. If provided, the program will attempt to load node state from this file on startup and periodically save node state during execution. (default: state.json)
-- `--insecure`: Skip TLS certificate verification
-- `--verbose, -v`: Enable verbose output
-
-### Examples
-
-#### Generate 10 nodes and save configuration
+Focused package verification:
 
 ```bash
-go run tools/fake_news.go --secret mysecret --nodes 10 --state nodes.json
+go test ./tools/fake_news_go/...
 ```
 
-#### Load existing nodes and run simulation
+Dashboard mode uses `termui` and shows:
 
-```bash
-go run tools/fake_news.go --secret mysecret --state nodes.json
-```
+- global totals and latency percentiles
+- per-operation metrics for enroll, status, result, config, query-read, and query-write
+- per-endpoint breakdown
+- sweep stage and threshold state in sweep mode
 
-#### High-frequency simulation with verbose output
+The harness writes `fake_news_report.json` in the current working directory and persists node state to `fake_news_state.json` by default.
 
-```bash
-go run tools/fake_news.go \
-  --secret mysecret \
-  --env YOUR_ENV_UUID \
-  --nodes 20 \
-  --status 10 \
-  --result 15 \
-  --config 20 \
-  --query 5 \
-  --verbose
-```
-
-## Architecture
-
-### Goroutines
-
-The Go version uses goroutines for concurrent execution:
-
-1. **Status Log Goroutine**: Sends status logs for each node
-2. **Result Log Goroutine**: Sends result logs for each node
-3. **Config Goroutine**: Sends config requests for each node
-4. **Query Read Goroutine**: Sends query read requests and spawns query write goroutines
-
-### Key Improvements over Python Version
-
-1. **Better Concurrency**: Goroutines are more efficient than Python threads
-2. **Type Safety**: Strong typing prevents runtime errors
-3. **Better Error Handling**: Comprehensive error handling throughout
-4. **Memory Efficiency**: Lower memory footprint than Python
-5. **Faster Execution**: Go's compiled nature provides better performance
-
-### Data Structures
-
-- `Node`: Represents a simulated osctrl node
-- `SystemInfo`: System information for enrollment
-- `OSQueryInfo`: osquery-specific information
-- `OSVersion`: OS version details for different platforms
-- `HTTPClient`: Custom HTTP client with debug capabilities
-
-## Building
-
-To build a standalone binary:
-
-```bash
-go build -o fake_news tools/fake_news.go
-./fake_news --secret YOUR_SECRET
-```
-
-## Dependencies
-
-- `github.com/google/uuid`: For generating UUIDs
-- Standard Go libraries: `net/http`, `encoding/json`, `os/exec`, etc.
-
-## Error Handling
-
-The Go version includes comprehensive error handling:
-
-- HTTP request failures are logged and operations continue
-- Invalid node responses trigger re-enrollment
-- osquery execution failures are handled gracefully
-- File I/O operations include proper error checking
-
-## Performance
-
-The Go version typically provides:
-
-- 2-3x faster execution compared to Python
-- Lower memory usage
-- Better CPU utilization through efficient goroutines
-- More stable concurrent execution
-
-## Migration from Python
-
-The Go version maintains full compatibility with the Python script:
-
-- Same command line interface
-- Same JSON file formats
-- Same API endpoints and data structures
-- Same simulation behavior
-
-Simply replace `python tools/fake_news.py` with `go run tools/fake_news.go` in your scripts.
+When `--discover-envs` finds more than one environment, state is split per environment automatically, for example `fake_news_state_<env-uuid>.json`.
