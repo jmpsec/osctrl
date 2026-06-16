@@ -43,7 +43,7 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 
 	aggregated := make(map[counterKey]uint32)
 	for _, event := range events {
-		if event.EnvUUID == "" || event.NodeUUID == "" || event.Type >= EventTypeCount {
+		if event.EnvUUID == "" || event.Type >= EventTypeCount {
 			continue
 		}
 
@@ -51,11 +51,20 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 			continue
 		}
 
-		key := counterKey{
-			key:    DayKey(s.prefix, event.EnvUUID, event.NodeUUID, event.At),
-			offset: bitOffset(event.Type, bucketHour(event.At)),
+		offset := bitOffset(event.Type, bucketHour(event.At))
+		if event.NodeUUID != "" {
+			nodeKey := counterKey{
+				key:    DayKey(s.prefix, event.EnvUUID, event.NodeUUID, event.At),
+				offset: offset,
+			}
+			aggregated[nodeKey] += uint32(event.Count)
 		}
-		aggregated[key] += uint32(event.Count)
+
+		envKey := counterKey{
+			key:    EnvDayKey(s.prefix, event.EnvUUID, event.At),
+			offset: offset,
+		}
+		aggregated[envKey] += uint32(event.Count)
 	}
 
 	if len(aggregated) == 0 {
@@ -95,17 +104,7 @@ func (s *RedisStore) ReadSeries(ctx context.Context, envUUID string, nodeUUIDs [
 	pipe := s.client.Pipeline()
 	fetches := make([]dayFetch, 0, len(nodeUUIDs)*days)
 	for _, nodeUUID := range nodeUUIDs {
-		out[nodeUUID] = NodeTileSeries{
-			Start:         start,
-			BucketSeconds: BucketSeconds,
-			Enroll:        make([]uint16, bucketCount),
-			Config:        make([]uint16, bucketCount),
-			Status:        make([]uint16, bucketCount),
-			Result:        make([]uint16, bucketCount),
-			QueryRead:     make([]uint16, bucketCount),
-			QueryWrite:    make([]uint16, bucketCount),
-			Total:         make([]uint16, bucketCount),
-		}
+		out[nodeUUID] = newSeries(start, bucketCount)
 
 		for dayIndex := 0; dayIndex < days; dayIndex++ {
 			day := start.Add(time.Duration(dayIndex) * 24 * time.Hour)
@@ -159,6 +158,80 @@ func (s *RedisStore) ReadSeries(ctx context.Context, envUUID string, nodeUUIDs [
 	}
 
 	return out, nil
+}
+
+// ReadEnvSeries returns a dense environment activity series for the requested day window.
+func (s *RedisStore) ReadEnvSeries(ctx context.Context, envUUID string, end time.Time, days int) (EnvSeries, error) {
+	if days <= 0 {
+		days = 1
+	}
+
+	start := dayStart(end).Add(-time.Duration(days-1) * 24 * time.Hour)
+	bucketCount := days * BucketsPerDay
+	series := newSeries(start, bucketCount)
+
+	pipe := s.client.Pipeline()
+	fetches := make([]*redis.StringCmd, 0, days)
+	for dayIndex := 0; dayIndex < days; dayIndex++ {
+		day := start.Add(time.Duration(dayIndex) * 24 * time.Hour)
+		fetches = append(fetches, pipe.Get(ctx, EnvDayKey(s.prefix, envUUID, day)))
+	}
+
+	if len(fetches) == 0 {
+		return series, nil
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+		return EnvSeries{}, err
+	}
+
+	for dayIndex, cmd := range fetches {
+		blob, err := cmd.Bytes()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return EnvSeries{}, err
+		}
+		if len(blob) == 0 {
+			continue
+		}
+
+		fillSeries(&series, dayIndex*BucketsPerDay, decodeDay(blob))
+	}
+
+	return series, nil
+}
+
+func newSeries(start time.Time, bucketCount int) NodeTileSeries {
+	return NodeTileSeries{
+		Start:         start,
+		BucketSeconds: BucketSeconds,
+		Enroll:        make([]uint16, bucketCount),
+		Config:        make([]uint16, bucketCount),
+		Status:        make([]uint16, bucketCount),
+		Result:        make([]uint16, bucketCount),
+		QueryRead:     make([]uint16, bucketCount),
+		QueryWrite:    make([]uint16, bucketCount),
+		Total:         make([]uint16, bucketCount),
+	}
+}
+
+func fillSeries(series *NodeTileSeries, base int, decoded [EventTypeCount][BucketsPerDay]uint16) {
+	for hour := 0; hour < BucketsPerDay; hour++ {
+		idx := base + hour
+		series.Enroll[idx] = decoded[EventEnroll][hour]
+		series.Config[idx] = decoded[EventConfig][hour]
+		series.Status[idx] = decoded[EventStatus][hour]
+		series.Result[idx] = decoded[EventResult][hour]
+		series.QueryRead[idx] = decoded[EventQueryRead][hour]
+		series.QueryWrite[idx] = decoded[EventQueryWrite][hour]
+		series.Total[idx] = saturatingSum(
+			decoded[EventEnroll][hour],
+			decoded[EventConfig][hour],
+			decoded[EventStatus][hour],
+			decoded[EventResult][hour],
+			decoded[EventQueryRead][hour],
+			decoded[EventQueryWrite][hour],
+		)
+	}
 }
 
 func decodeDay(blob []byte) [EventTypeCount][BucketsPerDay]uint16 {
