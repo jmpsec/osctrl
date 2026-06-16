@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/cmd/tls/handlers"
+	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
@@ -228,6 +229,13 @@ func osctrlService() {
 		flagParams.BatchWriter.WriterBufferSize,
 		*nodesmgr,
 	)
+	log.Info().Msg("Initializing activity writer")
+	activityWriter := handlers.NewActivityWriter(
+		activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour),
+		512,
+		250*time.Millisecond,
+		8192,
+	)
 	// Initialize service metrics
 	log.Info().Msg("Loading service metrics")
 	// Initialize TLS logger
@@ -305,6 +313,7 @@ func osctrlService() {
 		handlers.WithSettingsMap(&settingsmap),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
+		handlers.WithActivityWriter(activityWriter),
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
