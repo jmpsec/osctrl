@@ -25,7 +25,6 @@ services:
         target: /etc/ssl/private/osctrl.key
     depends_on:
       - osctrl-tls
-      - osctrl-admin
       - osctrl-api
       - osctrl-frontend
 
@@ -76,54 +75,54 @@ services:
 
 
   ######################################### osctrl-admin #########################################
-  osctrl-admin:
-    container_name: 'osctrl-admin-dev'
-    image: 'osctrl-admin-dev:${OSCTRL_VERSION}'
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-admin
-      args:
-        GOLANG_VERSION: ${GOLANG_VERSION}
-    environment:
-      #### osctrl-admin configuration settings ####
-      - SERVICE_LISTENER=0.0.0.0
-      - SERVICE_PORT=9001
-      - SERVICE_HOST=0.0.0.0
-      - SERVICE_AUTH=db
-      - JWT_SECRET=${JWT_SECRET}
-      - SERVICE_LOGGER=db
-      - SERVICE_LOG_FORMAT=console
-      - LOGGER_DB_SAME=true
-      - SESSION_KEY=${SESSION_KEY}
-      #### Database settings ####
-      - DB_HOST=osctrl-postgres
-      - DB_NAME=${POSTGRES_DB_NAME}
-      - DB_USER=${POSTGRES_DB_USERNAME}
-      - DB_PASS=${POSTGRES_DB_PASSWORD}
-      #### Redis settings ####
-      - REDIS_HOST=osctrl-redis
-      #### Admin settings ####
-      - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
-      - STATIC_FILES=/usr/src/app/cmd/admin/static
-      - TEMPLATES_DIR=/usr/src/app/cmd/admin/templates
-    networks:
-      - osctrl-dev-backend
-    ports:
-      - 127.0.0.1:9001:9001
-    volumes:
-      - .:/usr/src/app:rw,delegated
-    develop:
-      watch:
-        - path: ./deploy/docker/dockerfiles/Dockerfile-dev-admin
-          action: rebuild
-        - path: ./go.mod
-          action: rebuild
-        - path: ./go.sum
-          action: rebuild
-    depends_on:
-      - osctrl-postgres
-      - osctrl-redis
+  # osctrl-admin:
+  #   container_name: 'osctrl-admin-dev'
+  #   image: 'osctrl-admin-dev:${OSCTRL_VERSION}'
+  #   restart: unless-stopped
+  #   build:
+  #     context: .
+  #     dockerfile: deploy/docker/dockerfiles/Dockerfile-dev-admin
+  #     args:
+  #       GOLANG_VERSION: ${GOLANG_VERSION}
+  #   environment:
+  #     #### osctrl-admin configuration settings ####
+  #     - SERVICE_LISTENER=0.0.0.0
+  #     - SERVICE_PORT=9001
+  #     - SERVICE_HOST=0.0.0.0
+  #     - SERVICE_AUTH=db
+  #     - JWT_SECRET=${JWT_SECRET}
+  #     - SERVICE_LOGGER=db
+  #     - SERVICE_LOG_FORMAT=console
+  #     - LOGGER_DB_SAME=true
+  #     - SESSION_KEY=${SESSION_KEY}
+  #     #### Database settings ####
+  #     - DB_HOST=osctrl-postgres
+  #     - DB_NAME=${POSTGRES_DB_NAME}
+  #     - DB_USER=${POSTGRES_DB_USERNAME}
+  #     - DB_PASS=${POSTGRES_DB_PASSWORD}
+  #     #### Redis settings ####
+  #     - REDIS_HOST=osctrl-redis
+  #     #### Admin settings ####
+  #     - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
+  #     - STATIC_FILES=/usr/src/app/cmd/admin/static
+  #     - TEMPLATES_DIR=/usr/src/app/cmd/admin/templates
+  #   networks:
+  #     - osctrl-dev-backend
+  #   ports:
+  #     - 127.0.0.1:9001:9001
+  #   volumes:
+  #     - .:/usr/src/app:rw,delegated
+  #   develop:
+  #     watch:
+  #       - path: ./deploy/docker/dockerfiles/Dockerfile-dev-admin
+  #         action: rebuild
+  #       - path: ./go.mod
+  #         action: rebuild
+  #       - path: ./go.sum
+  #         action: rebuild
+  #   depends_on:
+  #     - osctrl-postgres
+  #     - osctrl-redis
 
 
   ######################################### osctrl-api #########################################
@@ -146,6 +145,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=db
       - SERVICE_LOG_FORMAT=console
+      #### osquery settings ####
+      - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
