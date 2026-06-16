@@ -7,11 +7,8 @@ TLS_DIR = cmd/tls
 TLS_NAME = osctrl-tls
 TLS_CODE = ${TLS_DIR:=/*.go}
 
-ADMIN_DIR = cmd/admin
-ADMIN_NAME = osctrl-admin
-ADMIN_CODE = ${ADMIN_DIR:=/*.go}
-
 FRONTEND_DIR = frontend
+FRONTEND_NAME = osctrl-frontend
 
 API_DIR = cmd/api
 API_NAME = osctrl-api
@@ -32,19 +29,18 @@ SWAG_VERSION ?= v1.16.6
 SWAG = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
 SWAG_OUTPUT_DIR ?= $(API_DIR)/docs
 
-.PHONY: build static clean tls admin cli api swagger openapi openapi-check release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
+.PHONY: build static clean tls cli api swagger openapi openapi-check release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
 
 # Build code according to caller OS and architecture
 build:
 	make tls
-	make admin
+	make frontend
 	make api
 	make cli
 
 # Build everything statically
 static:
 	make tls-static
-	make admin-static
 	make api-static
 	make cli-static
 
@@ -55,14 +51,6 @@ tls:
 # Build TLS endpoint statically
 tls-static:
 	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(TLS_NAME) -a $(TLS_CODE)
-
-# Build Admin UI
-admin:
-	go build $(BUILD_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) $(ADMIN_CODE)
-
-# Build Admin UI statically
-admin-static:
-	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(ADMIN_NAME) -a $(ADMIN_CODE)
 
 # Build API
 api:
@@ -124,7 +112,6 @@ clean-dist:
 # Delete all compiled binaries
 clean:
 	rm -rf $(OUTPUT)/$(TLS_NAME)
-	rm -rf $(OUTPUT)/$(ADMIN_NAME)
 	rm -rf $(OUTPUT)/$(API_NAME)
 	rm -rf $(OUTPUT)/$(CLI_NAME)
 	make clean-dist
@@ -152,7 +139,6 @@ install:
 	make clean
 	make build
 	make install_tls
-	make install_admin
 	make install_api
 	make install_cli
 
@@ -162,15 +148,6 @@ install_tls:
 	sudo systemctl stop $(TLS_NAME)
 	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)
 	sudo systemctl start $(TLS_NAME)
-
-# Install Admin server and restart service
-# optional DEST=destination_path
-install_admin:
-	sudo systemctl stop $(ADMIN_NAME)
-	sudo cp $(OUTPUT)/$(ADMIN_NAME) $(DEST)
-	sudo rsync -av $(ADMIN_DIR)/templates/ $(DEST)/tmpl_admin
-	sudo rsync -av $(ADMIN_DIR)/static/ $(DEST)/static
-	sudo systemctl start $(ADMIN_NAME)
 
 # Install API server and restart service
 # optional DEST=destination_path
@@ -193,13 +170,13 @@ logs_tls:
 docker_dev_logs_tls:
 	docker logs -f $(TLS_NAME)-dev
 
-# Display systemd logs for Admin server
-logs_admin:
-	sudo journalctl -f -t $(ADMIN_NAME)
+# Display systemd logs for frontend server
+logs_frontend:
+	sudo journalctl -f -t $(FRONTEND_NAME)
 
-# Display docker logs for Admin server
-docker_dev_logs_admin:
-	docker logs -f $(ADMIN_NAME)-dev
+# Display docker logs for frontend server
+docker_dev_logs_frontend:
+	docker logs -f $(FRONTEND_NAME)-dev
 
 # Display systemd logs for API server
 logs_api:
@@ -235,9 +212,9 @@ docker_dev_logs_redis:
 docker_dev_shell_tls:
 	docker exec -it $(TLS_NAME)-dev /bin/bash
 
-# Docker shell into Admin server
-docker_dev_shell_admin:
-	docker exec -it $(ADMIN_NAME)-dev /bin/bash
+# Docker shell into frontend server
+docker_dev_shell_frontend:
+	docker exec -it $(FRONTEND_NAME)-dev /bin/bash
 
 # Docker shell into API server
 docker_dev_shell_api:
@@ -300,9 +277,9 @@ docker_dev_clean:
 docker_dev_rebuild_tls:
 	docker compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(TLS_NAME)
 
-# Rebuild only the Admin server
-docker_dev_rebuild_admin:
-	docker compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(ADMIN_NAME)
+# Rebuild only the frontend server
+docker_dev_rebuild_frontend:
+	docker compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(FRONTEND_NAME)
 
 # Rebuild only the CLI
 docker_dev_rebuild_cli:
