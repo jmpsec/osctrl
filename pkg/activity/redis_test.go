@@ -24,6 +24,12 @@ func TestDayKeyUsesEnvNodeAndUTCDate(t *testing.T) {
 	if got := dayStart(day); !got.Equal(wantDayStart) {
 		t.Fatalf("expected UTC day start %s, got %s", wantDayStart, got)
 	}
+
+	gotEnv := EnvDayKey("nodeact:v1", "ENV1", day)
+	wantEnv := "nodeact:v1:env:ENV1:20260615"
+	if gotEnv != wantEnv {
+		t.Fatalf("expected env key %q, got %q", wantEnv, gotEnv)
+	}
 }
 
 func TestStoreIncrementManyAndReadSeries(t *testing.T) {
@@ -89,6 +95,12 @@ func TestStoreIncrementManyAndReadSeries(t *testing.T) {
 	if got := fake.expireFor("nodeact:v1:ENV1:NODE1:20260615"); got != 24*time.Hour {
 		t.Fatalf("expected 24h TTL for 20260615 key, got %s", got)
 	}
+	if got := fake.expireFor("nodeact:v1:env:ENV1:20260614"); got != 24*time.Hour {
+		t.Fatalf("expected 24h TTL for env 20260614 key, got %s", got)
+	}
+	if got := fake.expireFor("nodeact:v1:env:ENV1:20260615"); got != 24*time.Hour {
+		t.Fatalf("expected 24h TTL for env 20260615 key, got %s", got)
+	}
 
 	empty := out["NODE2"]
 	if len(empty.Total) != 48 {
@@ -98,5 +110,57 @@ func TestStoreIncrementManyAndReadSeries(t *testing.T) {
 		if value != 0 {
 			t.Fatalf("expected NODE2 bucket %d to be zero-filled, got %d", i, value)
 		}
+	}
+}
+
+func TestStoreReadEnvSeries(t *testing.T) {
+	client, fake := newTestRedisClient(t)
+	store := NewRedisStore(client, "nodeact:v1", 7, 24*time.Hour)
+
+	ctx := context.Background()
+	end := time.Date(2026, 6, 15, 23, 50, 0, 0, time.UTC)
+
+	err := store.IncrementMany(ctx, []Event{
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatus, At: time.Date(2026, 6, 15, 11, 20, 0, 0, time.UTC), Count: 2},
+		{EnvUUID: "ENV1", NodeUUID: "NODE2", Type: EventStatus, At: time.Date(2026, 6, 15, 11, 40, 0, 0, time.UTC), Count: 1},
+		{EnvUUID: "ENV1", NodeUUID: "NODE2", Type: EventQueryRead, At: time.Date(2026, 6, 15, 12, 5, 0, 0, time.UTC), Count: 4},
+		{EnvUUID: "ENV1", NodeUUID: "NODE3", Type: EventEnroll, At: time.Date(2026, 6, 15, 12, 10, 0, 0, time.UTC), Count: 1},
+		{EnvUUID: "ENV2", NodeUUID: "NODE9", Type: EventResult, At: time.Date(2026, 6, 15, 12, 10, 0, 0, time.UTC), Count: 7},
+	})
+	if err != nil {
+		t.Fatalf("increment failed: %v", err)
+	}
+
+	series, err := store.ReadEnvSeries(ctx, "ENV1", end, 1)
+	if err != nil {
+		t.Fatalf("read env series failed: %v", err)
+	}
+
+	if len(series.Total) != 24 {
+		t.Fatalf("expected 24 buckets, got %d", len(series.Total))
+	}
+
+	wantStart := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	if !series.Start.Equal(wantStart) {
+		t.Fatalf("expected start %s, got %s", wantStart, series.Start)
+	}
+
+	if series.Status[11] != 3 {
+		t.Fatalf("expected env status bucket 11 to be 3, got %d", series.Status[11])
+	}
+	if series.QueryRead[12] != 4 {
+		t.Fatalf("expected env query-read bucket 12 to be 4, got %d", series.QueryRead[12])
+	}
+	if series.Enroll[12] != 1 {
+		t.Fatalf("expected env enroll bucket 12 to be 1, got %d", series.Enroll[12])
+	}
+	if series.Total[11] != 3 || series.Total[12] != 5 {
+		t.Fatalf("unexpected env totals bucket11=%d bucket12=%d", series.Total[11], series.Total[12])
+	}
+	if series.Result[12] != 0 {
+		t.Fatalf("expected ENV2 result data not to leak into ENV1, got %d", series.Result[12])
+	}
+	if got := fake.expireFor("nodeact:v1:env:ENV1:20260615"); got != 24*time.Hour {
+		t.Fatalf("expected env key TTL to be 24h, got %s", got)
 	}
 }

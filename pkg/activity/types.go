@@ -49,9 +49,17 @@ type NodeTileSeries struct {
 	Total         []uint16  `json:"total"`
 }
 
+// EnvSeries is a dense activity series ready for environment-level graphs.
+type EnvSeries = NodeTileSeries
+
 // DayKey returns the Redis key for one node's UTC activity day blob.
 func DayKey(prefix, envUUID, nodeUUID string, day time.Time) string {
 	return fmt.Sprintf("%s:%s:%s:%s", prefix, envUUID, nodeUUID, day.UTC().Format("20060102"))
+}
+
+// EnvDayKey returns the Redis key for one environment's UTC activity day blob.
+func EnvDayKey(prefix, envUUID string, day time.Time) string {
+	return fmt.Sprintf("%s:env:%s:%s", prefix, envUUID, day.UTC().Format("20060102"))
 }
 
 func bucketHour(t time.Time) int {
