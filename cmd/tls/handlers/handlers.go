@@ -60,6 +60,7 @@ type HandlersTLS struct {
 	SettingsMap     *settings.MapSettings
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
+	ActivityWriter  *activityWriter
 	OsqueryValues   *config.YAMLConfigurationOsquery
 	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
@@ -142,6 +143,13 @@ func WithLogs(logs *logging.LoggerTLS) Option {
 func WithWriteHandler(writeHandler *batchWriter) Option {
 	return func(h *HandlersTLS) {
 		h.WriteHandler = writeHandler
+	}
+}
+
+// WithActivityWriter to pass value as option
+func WithActivityWriter(activityWriter *activityWriter) Option {
+	return func(h *HandlersTLS) {
+		h.ActivityWriter = activityWriter
 	}
 }
 
