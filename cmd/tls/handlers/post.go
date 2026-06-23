@@ -1138,37 +1138,42 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 	var fDesc, fName, fPath string
 	switch packageVar {
 	case settings.PackageDeb:
-		if strings.HasPrefix(env.DebPackage, "http") {
+		if strings.HasPrefix(env.DebPackage, "https://") {
 			http.Redirect(w, r, env.DebPackage, http.StatusFound)
 			return
 		}
 		fDesc = "Enrolling DEB Package for Linux"
 		fName = genPackageFilename(env.Name, settings.PackageDeb, version.OsqueryVersion, version.OsctrlVersion)
-		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.DebPackage)
+		fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, env.DebPackage)
 	case settings.PackageRpm:
-		if strings.HasPrefix(env.RpmPackage, "http") {
+		if strings.HasPrefix(env.RpmPackage, "https://") {
 			http.Redirect(w, r, env.RpmPackage, http.StatusFound)
 			return
 		}
 		fDesc = "Enrolling RPM Package for Linux"
 		fName = genPackageFilename(env.Name, settings.PackageRpm, version.OsqueryVersion, version.OsctrlVersion)
-		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.RpmPackage)
+		fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, env.RpmPackage)
 	case settings.PackagePkg:
-		if strings.HasPrefix(env.PkgPackage, "http") {
+		if strings.HasPrefix(env.PkgPackage, "https://") {
 			http.Redirect(w, r, env.PkgPackage, http.StatusFound)
 			return
 		}
 		fDesc = "Enrolling PKG Package for Mac"
 		fName = genPackageFilename(env.Name, settings.PackagePkg, version.OsqueryVersion, version.OsctrlVersion)
-		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.PkgPackage)
+		fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, env.PkgPackage)
 	case settings.PackageMsi:
-		if strings.HasPrefix(env.MsiPackage, "http") {
+		if strings.HasPrefix(env.MsiPackage, "https://") {
 			http.Redirect(w, r, env.MsiPackage, http.StatusFound)
 			return
 		}
 		fDesc = "Enrolling MSI Package for Windows"
 		fName = genPackageFilename(env.Name, settings.PackageMsi, defOsqueryVersion, version.OsctrlVersion)
-		fPath = fmt.Sprintf("%s/%s/%s", enrollPackagesPath, env.Name, env.MsiPackage)
+		fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, env.MsiPackage)
+	}
+	if err != nil {
+		log.Err(err).Msg("invalid package path")
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
 	}
 	// Initiate download
 	fi, err := os.Stat(fPath)
