@@ -415,6 +415,9 @@ func (environment *EnvManager) UpdateCertificate(idEnv, certificate string) erro
 
 // UpdateDebPackage to update DEB package for an environment
 func (environment *EnvManager) UpdateDebPackage(idEnv, debpackage string) error {
+	if err := ValidatePackageReference(debpackage); err != nil {
+		return fmt.Errorf("UpdateDebPackage %w", err)
+	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("deb_package", debpackage).Error; err != nil {
 		return fmt.Errorf("UpdateDebPackage %w", err)
 	}
@@ -423,6 +426,9 @@ func (environment *EnvManager) UpdateDebPackage(idEnv, debpackage string) error 
 
 // UpdateRpmPackage to update RPM package for an environment
 func (environment *EnvManager) UpdateRpmPackage(idEnv, rpmpackage string) error {
+	if err := ValidatePackageReference(rpmpackage); err != nil {
+		return fmt.Errorf("UpdateRpmPackage %w", err)
+	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("rpm_package", rpmpackage).Error; err != nil {
 		return fmt.Errorf("UpdateRpmPackage %w", err)
 	}
@@ -431,6 +437,9 @@ func (environment *EnvManager) UpdateRpmPackage(idEnv, rpmpackage string) error 
 
 // UpdateMsiPackage to update MSI package for an environment
 func (environment *EnvManager) UpdateMsiPackage(idEnv, msipackage string) error {
+	if err := ValidatePackageReference(msipackage); err != nil {
+		return fmt.Errorf("UpdateMsiPackage %w", err)
+	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("msi_package", msipackage).Error; err != nil {
 		return fmt.Errorf("UpdateMsiPackage %w", err)
 	}
@@ -439,6 +448,9 @@ func (environment *EnvManager) UpdateMsiPackage(idEnv, msipackage string) error 
 
 // UpdatePkgPackage to update PKG package for an environment
 func (environment *EnvManager) UpdatePkgPackage(idEnv, pkgpackage string) error {
+	if err := ValidatePackageReference(pkgpackage); err != nil {
+		return fmt.Errorf("UpdatePkgPackage %w", err)
+	}
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("pkg_package", pkgpackage).Error; err != nil {
 		return fmt.Errorf("UpdatePkgPackage %w", err)
 	}

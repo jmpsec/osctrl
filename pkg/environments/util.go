@@ -3,6 +3,7 @@ package environments
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -49,10 +50,35 @@ func PackageDownloadURL(env TLSEnvironment, pkg string) string {
 	if pkg == "" {
 		return ""
 	}
+	if err := ValidatePackageReference(pkg); err != nil {
+		return ""
+	}
 	if strings.HasPrefix(pkg, "https://") {
 		return pkg
 	}
 	return fmt.Sprintf("https://%s/%s/%s/package/%s", env.Hostname, env.UUID, env.Secret, pkg)
+}
+
+// ValidatePackageReference allows HTTPS package URLs or local package basenames.
+func ValidatePackageReference(pkg string) error {
+	if pkg == "" || strings.HasPrefix(pkg, "https://") {
+		return nil
+	}
+	if pkg == "." || pkg == ".." || filepath.IsAbs(pkg) || strings.ContainsAny(pkg, `/\`) {
+		return fmt.Errorf("invalid package path %q", pkg)
+	}
+	return nil
+}
+
+// PackageFilePath builds the local package path after validating the stored package value.
+func PackageFilePath(packageRoot, envName, pkg string) (string, error) {
+	if err := ValidatePackageReference(pkg); err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(pkg, "https://") {
+		return "", fmt.Errorf("package URL has no local file path")
+	}
+	return filepath.Join(packageRoot, envName, pkg), nil
 }
 
 // EnvironmentFinderID to find the environment and return its name based on the environment ID
