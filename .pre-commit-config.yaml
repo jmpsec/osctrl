@@ -10,6 +10,9 @@ repos:
       - id: check-toml
       - id: check-xml
       - id: detect-aws-credentials
+        # Pass (rather than error) when no ~/.aws/credentials file is present
+        # locally; the hook still scans staged files for leaked AWS keys.
+        args: [--allow-missing-credentials]
       - id: detect-private-key
       - id: check-yaml
       - id: end-of-file-fixer
