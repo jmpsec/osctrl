@@ -23,7 +23,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 // Tabs
 // ---------------------------------------------------------------------------
 
-type Tab = 'details' | 'status-logs' | 'result-logs' | 'activity';
+type Tab = 'details' | 'status-logs' | 'result-logs';
 
 // ---------------------------------------------------------------------------
 // Detail field groups
@@ -494,7 +494,6 @@ const TABS = [
   { id: 'details' as Tab, label: 'Details' },
   { id: 'status-logs' as Tab, label: 'Status logs' },
   { id: 'result-logs' as Tab, label: 'Result logs' },
-  { id: 'activity' as Tab, label: 'Activity' },
 ] as const;
 
 export function NodeDetailPage() {
@@ -571,15 +570,15 @@ export function NodeDetailPage() {
     archiveMut.mutate();
   }
 
-  // Node-scoped activity heatmap — only fetched while the Activity tab is the
-  // active panel, so flipping between Details/Status/Result doesn't keep a
-  // dormant 30s polling timer alive in the background.
+  // Node-scoped activity heatmap — now embedded in the default Details view.
+  // Keep the polling scoped to the Details tab so switching into raw log views
+  // does not leave a background refresh loop running for an off-screen chart.
   const { data: activityBuckets = [], isLoading: activityLoading } = useQuery({
     queryKey: ['node-activity', env, uuid, activityInterval],
     queryFn: () => getNodeActivity(env, uuid, activityInterval),
     staleTime: 30_000,
     refetchInterval: 30_000,
-    enabled: activeTab === 'activity',
+    enabled: activeTab === 'details',
   });
 
   // IR workflow: clicking the 🔍 button on a result-log row hands an operator
@@ -797,6 +796,15 @@ export function NodeDetailPage() {
 
           return (
             <>
+              <div className="mb-5">
+                <NodeActivityHeatmap
+                  interval={activityInterval}
+                  buckets={activityBuckets}
+                  onIntervalChange={setActivityInterval}
+                  isLoading={activityLoading}
+                />
+              </div>
+
               <KvGrid
                 title="Identity"
                 items={[
@@ -883,7 +891,7 @@ export function NodeDetailPage() {
               )}
 
               <KvGrid
-                title="Activity"
+                title="Lifecycle"
                 items={[
                   {
                     label: 'First seen',
@@ -925,15 +933,6 @@ export function NodeDetailPage() {
             uuid={uuid}
             type="result"
             onSearchColumn={onSearchColumn}
-          />
-        )}
-
-        {activeTab === 'activity' && (
-          <NodeActivityHeatmap
-            interval={activityInterval}
-            buckets={activityBuckets}
-            onIntervalChange={setActivityInterval}
-            isLoading={activityLoading}
           />
         )}
       </div>
