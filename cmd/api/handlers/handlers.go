@@ -31,6 +31,7 @@ type HandlersApi struct {
 	Carves          *carves.Carves
 	Settings        *settings.Settings
 	RedisCache      *cache.RedisManager
+	Activity        activityReader
 	ServiceVersion  string
 	ServiceName     string
 	AuditLog        *auditlog.AuditLogManager
@@ -113,6 +114,12 @@ func WithSettings(settings *settings.Settings) HandlersOption {
 func WithCache(rds *cache.RedisManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.RedisCache = rds
+	}
+}
+
+func WithActivityReader(ar activityReader) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Activity = ar
 	}
 }
 

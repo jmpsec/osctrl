@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
+	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
@@ -356,6 +357,7 @@ func osctrlAPIService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithCache(redis),
+		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
@@ -496,6 +498,14 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiStatsPath)+"/activity/node-batch/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: Redis-backed per-node activity series (config + read/write split).
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/node-tiles/{env}/{uuid}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityTilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: Redis-backed per-env activity series.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/env-tiles/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvActivityTilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
 		// Sample-templates library (post-auth). Pre-auth exposure

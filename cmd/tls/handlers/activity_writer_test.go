@@ -120,3 +120,70 @@ func TestActivityWriterDropsWhenQueueIsFullWithoutBlocking(t *testing.T) {
 		t.Fatalf("expected 2 flushed events after dropping one, got %+v", events)
 	}
 }
+
+func TestRecordActivityEmitsTypedEvent(t *testing.T) {
+	store := &recordingActivityStore{notify: make(chan struct{}, 1)}
+	writer := NewActivityWriter(store, 1, time.Second, 4)
+	defer writer.close()
+
+	h := &HandlersTLS{ActivityWriter: writer}
+	h.recordActivity("ENV-UUID", "NODE-UUID", activity.EventConfig)
+
+	select {
+	case <-store.notify:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for activity flush")
+	}
+
+	events := store.snapshot()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	got := events[0]
+	if got.EnvUUID != "ENV-UUID" || got.NodeUUID != "NODE-UUID" || got.Type != activity.EventConfig || got.Count != 1 {
+		t.Fatalf("unexpected event: %+v", got)
+	}
+}
+
+func TestRecordActivityIsNoopWhenNotConfiguredOrMissingIDs(t *testing.T) {
+	store := &recordingActivityStore{notify: make(chan struct{}, 1)}
+	writer := NewActivityWriter(store, 1, time.Second, 4)
+	defer writer.close()
+
+	// Nil handler must not panic.
+	var h *HandlersTLS
+	h.recordActivity("ENV", "NODE", activity.EventStatus)
+
+	// No writer attached -> no event.
+	h = &HandlersTLS{}
+	h.recordActivity("ENV", "NODE", activity.EventStatus)
+
+	// Empty env/node UUID -> no event (would corrupt per-node rollup keys).
+	h = &HandlersTLS{ActivityWriter: writer}
+	h.recordActivity("", "NODE", activity.EventStatus)
+	h.recordActivity("ENV", "", activity.EventStatus)
+
+	if len(store.snapshot()) != 0 {
+		t.Fatalf("expected no events for nil/empty cases, got %d", len(store.snapshot()))
+	}
+}
+
+func TestLogActivityTypeMapping(t *testing.T) {
+	cases := []struct {
+		in   string
+		want activity.EventType
+		ok   bool
+	}{
+		{"status", activity.EventStatus, true},
+		{"result", activity.EventResult, true},
+		{"", 0, false},
+		{"results", 0, false},
+		{"STATUS", 0, false},
+	}
+	for _, c := range cases {
+		got, ok := logActivityType(c.in)
+		if got != c.want || ok != c.ok {
+			t.Fatalf("logActivityType(%q) = (%v, %v), want (%v, %v)", c.in, got, ok, c.want, c.ok)
+		}
+	}
+}

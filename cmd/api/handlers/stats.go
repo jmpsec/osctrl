@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/activity"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/dbutil"
@@ -193,6 +197,17 @@ type ActivityBucket struct {
 // to avoid an under-filled trailing cell.
 type activityPreset struct {
 	bucketSeconds int
+}
+
+// activityAllowedBucketSeconds gates the ?bucket_seconds override on the
+// per-node activity endpoint. The SPA renders a fixed-column heatmap, so it
+// requests window/N bucket sizes that vary per interval (e.g. 450s, 5400s,
+// 12600s). Rather than maintain an ever-growing allowlist, accept any size that
+// is at least 5 minutes — fine enough to be useful, coarse enough that even a
+// 7-day window stays bounded (~2000 buckets max). The handler still requires
+// the size to divide the window evenly, which rejects arbitrary primes.
+func activityAllowedBucketSeconds(v int) bool {
+	return v >= 300
 }
 
 var activityIntervalPresets = map[string]activityPreset{
@@ -401,6 +416,15 @@ func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request
 	}
 	hours := activityIntervalHours[intervalKey]
 	bucketSeconds := preset.bucketSeconds
+	// Optional ?bucket_seconds override lets the SPA align the per-node heatmap
+	// to an hourly grid so it can merge in the Redis-backed config series (which
+	// is hourly). Only accepted when it is one of the preset sizes and divides
+	// the window evenly; anything else falls back to the interval default.
+	if bs := r.URL.Query().Get("bucket_seconds"); bs != "" {
+		if v, err := strconv.Atoi(bs); err == nil && activityAllowedBucketSeconds(v) && hours*3600%v == 0 {
+			bucketSeconds = v
+		}
+	}
 	totalSeconds := hours * 3600
 	nBuckets := totalSeconds / bucketSeconds
 
@@ -620,4 +644,169 @@ func (h *HandlersApi) OsqueryVersionsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Cache-Control", "private, max-age=60")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rows)
+}
+
+// activityReader decouples the tile handlers from the concrete Redis store so
+// they can be unit-tested with a stub. *activity.RedisStore satisfies this.
+type activityReader interface {
+	ReadSeries(ctx context.Context, envUUID string, nodeUUIDs []string, end time.Time, days int) (map[string]activity.NodeTileSeries, error)
+	ReadEnvSeries(ctx context.Context, envUUID string, end time.Time, days int) (activity.EnvSeries, error)
+}
+
+// activityTileDays parses and clamps the ?days query parameter for the
+// tile endpoints. The Redis rollups keep DefaultRetentionDays of history, so
+// anything above that would just return empty trailing buckets. Defaults to
+// 1 day (last 24h) when absent or invalid, matching the SPA's default view.
+func activityTileDays(raw string) int {
+	if raw == "" {
+		return 1
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return 1
+	}
+	if n > activity.DefaultRetentionDays {
+		return activity.DefaultRetentionDays
+	}
+	return n
+}
+
+// NodeActivityTilesHandler — GET /api/v1/stats/activity/node-tiles/{env}/{uuid}?days=N
+//
+// Returns the Redis-backed per-node activity series: hourly counters for
+// enroll / config / status / result / query_read / query_write / total over
+// the last N days (default 1, capped at retention). This is the finer-grained
+// counterpart to the DB-backed NodeActivityHandler: it carries the config and
+// read/write split the DB buckets collapse into a single "query" category, so
+// the SPA can show per-endpoint last-seen activity.
+//
+// Returns 503 when the activity store is not configured (Redis unavailable).
+// @Summary Get per-node activity tiles
+// @Description Returns Redis-backed hourly activity series for a node.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuid path string true "Node UUID"
+// @Param days query int false "Days of history (1-7, default 1)"
+// @Success 200 {object} activity.NodeTileSeries
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/node-tiles/{env}/{uuid} [get]
+func (h *HandlersApi) NodeActivityTilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	uuidVar := r.PathValue("uuid")
+	if envVar == "" || uuidVar == "" {
+		apiErrorResponse(w, "env and uuid required", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
+		return
+	}
+	node, err := h.Nodes.GetByUUID(uuidVar)
+	if err != nil {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		return
+	}
+	if !strings.EqualFold(node.Environment, env.Name) {
+		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+		return
+	}
+	if h.Activity == nil {
+		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+
+	days := activityTileDays(r.URL.Query().Get("days"))
+	series, err := h.Activity.ReadSeries(r.Context(), env.UUID, []string{node.UUID}, time.Now(), days)
+	if err != nil {
+		apiErrorResponse(w, "failed to load activity tiles", http.StatusInternalServerError, err)
+		return
+	}
+
+	out, ok := series[node.UUID]
+	if !ok {
+		// ReadSeries always returns an entry for every requested uuid, but
+		// guard anyway so a future implementation change can't 500 the SPA.
+		out = activity.NodeTileSeries{Start: time.Now(), BucketSeconds: activity.BucketSeconds}
+	}
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
+}
+
+// EnvActivityTilesHandler — GET /api/v1/stats/activity/env-tiles/{env}?days=N
+//
+// Redis-backed environment-level activity series (same shape as the node
+// variant, aggregated across all nodes in the env).
+//
+// Returns 503 when the activity store is not configured (Redis unavailable).
+// @Summary Get environment activity tiles
+// @Description Returns Redis-backed hourly activity series for an environment.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param days query int false "Days of history (1-7, default 1)"
+// @Success 200 {object} activity.EnvSeries
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/env-tiles/{env} [get]
+func (h *HandlersApi) EnvActivityTilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
+		return
+	}
+	if h.Activity == nil {
+		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+
+	days := activityTileDays(r.URL.Query().Get("days"))
+	out, err := h.Activity.ReadEnvSeries(r.Context(), env.UUID, time.Now(), days)
+	if err != nil {
+		apiErrorResponse(w, "failed to load activity tiles", http.StatusInternalServerError, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
