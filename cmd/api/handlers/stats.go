@@ -199,6 +199,19 @@ type activityPreset struct {
 	bucketSeconds int
 }
 
+// activityAllowedBucketSeconds is the set of bucket sizes the SPA may request
+// via ?bucket_seconds on the per-node activity endpoint. Restricted to the
+// preset sizes so an arbitrary value can't trigger an expensive fine-grained
+// histogram or a malformed GROUP BY.
+var activityAllowedBucketSecondsSet = map[int]struct{}{
+	300: {}, 600: {}, 900: {}, 1800: {}, 3600: {}, 7200: {},
+}
+
+func activityAllowedBucketSeconds(v int) bool {
+	_, ok := activityAllowedBucketSecondsSet[v]
+	return ok
+}
+
 var activityIntervalPresets = map[string]activityPreset{
 	"3h":  {bucketSeconds: 5 * 60},   // 36 cells
 	"6h":  {bucketSeconds: 5 * 60},   // 72 cells
@@ -405,6 +418,15 @@ func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request
 	}
 	hours := activityIntervalHours[intervalKey]
 	bucketSeconds := preset.bucketSeconds
+	// Optional ?bucket_seconds override lets the SPA align the per-node heatmap
+	// to an hourly grid so it can merge in the Redis-backed config series (which
+	// is hourly). Only accepted when it is one of the preset sizes and divides
+	// the window evenly; anything else falls back to the interval default.
+	if bs := r.URL.Query().Get("bucket_seconds"); bs != "" {
+		if v, err := strconv.Atoi(bs); err == nil && activityAllowedBucketSeconds(v) && hours*3600%v == 0 {
+			bucketSeconds = v
+		}
+	}
 	totalSeconds := hours * 3600
 	nBuckets := totalSeconds / bucketSeconds
 

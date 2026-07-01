@@ -104,7 +104,7 @@ function makeActivityBuckets(): NodeActivityBucket[] {
       carve: 0,
     },
     {
-      bucket_start: '2026-06-17T10:15:00Z',
+      bucket_start: '2026-06-17T11:00:00Z',
       status: 1,
       result: 2,
       query: 1,
@@ -211,6 +211,7 @@ describe('NodeDetailPage', () => {
         'test-env',
         'abc12345-0000-0000-0000-000000000001',
         '1d',
+        3600,
       );
     });
   });

@@ -115,9 +115,14 @@ export function getNodeActivity(
   env: string,
   uuid: string,
   interval: ActivityInterval = '1d',
+  bucketSeconds?: number,
 ): Promise<NodeActivityBucket[]> {
   const sp = new URLSearchParams();
   sp.set('interval', interval);
+  // Optional hourly override: the per-node heatmap aligns to an hourly grid so
+  // it can merge in the Redis-backed config series (hourly). Omitted for the
+  // Nodes-table sparklines, which keep the interval's native bucket size.
+  if (bucketSeconds) sp.set('bucket_seconds', String(bucketSeconds));
   return apiFetch<NodeActivityBucket[]>(
     `/api/v1/stats/activity/node/${encodeURIComponent(env)}/${encodeURIComponent(uuid)}?${sp.toString()}`,
   );

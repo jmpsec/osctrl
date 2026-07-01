@@ -61,3 +61,22 @@ func TestNodeTileSeriesJSONShape(t *testing.T) {
 		}
 	}
 }
+
+// TestActivityAllowedBucketSeconds locks the set of bucket sizes the SPA may
+// request via ?bucket_seconds. The per-node heatmap relies on 3600 (hourly) to
+// align with the Redis-backed config series; an accidental change to the allow
+// set would silently break that merge.
+func TestActivityAllowedBucketSeconds(t *testing.T) {
+	allowed := []int{300, 600, 900, 1800, 3600, 7200}
+	rejected := []int{0, 1, 60, 120, 1801, 7201, 36000}
+	for _, v := range allowed {
+		if !activityAllowedBucketSeconds(v) {
+			t.Errorf("expected %d to be allowed", v)
+		}
+	}
+	for _, v := range rejected {
+		if activityAllowedBucketSeconds(v) {
+			t.Errorf("expected %d to be rejected", v)
+		}
+	}
+}

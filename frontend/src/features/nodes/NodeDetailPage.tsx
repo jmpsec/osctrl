@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNode, listNodeLogs, deleteNode } from '$/api/nodes';
@@ -25,6 +25,19 @@ import { StatusPip } from '$/components/data/StatusPip';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
+
+// NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
+// status/result/query come from the DB-backed logging buckets (full history,
+// requested at hourly granularity); config comes from the Redis rollup series
+// (hourly, aligned by timestamp). carve is intentionally absent — it is
+// replaced by config, which is the rarer-of-the-two-but-now-tracked endpoint.
+interface NodeHeatmapBucket {
+  bucket_start: string;
+  status: number;
+  result: number;
+  query: number;
+  config: number;
+}
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -580,24 +593,49 @@ export function NodeDetailPage() {
   // Node-scoped activity heatmap — now embedded in the default Details view.
   // Keep the polling scoped to the Details tab so switching into raw log views
   // does not leave a background refresh loop running for an off-screen chart.
+  // DB-backed per-node activity, requested at HOURLY granularity so it can be
+  // merged with the hourly Redis config series below. status/result/query
+  // keep their full history from the logging tables; carve is dropped in
+  // favor of config (see mergeNodeActivityBuckets).
   const { data: activityBuckets = [], isLoading: activityLoading } = useQuery({
     queryKey: ['node-activity', env, uuid, activityInterval],
-    queryFn: () => getNodeActivity(env, uuid, activityInterval),
+    queryFn: () => getNodeActivity(env, uuid, activityInterval, 3600),
     staleTime: 30_000,
     refetchInterval: 30_000,
     enabled: activeTab === 'details',
   });
 
-  // Redis-backed per-endpoint activity series (config + read/write split).
-  // Drives the Endpoint last-seen panel below the heatmap. Hourly buckets
-  // over the last 24h, so last-seen granularity is hourly.
+  // Redis-backed per-endpoint series (config + read/write split). Hourly; the
+  // window tracks the heatmap interval so config aligns with the DB buckets.
+  const daysForInterval = Math.max(
+    1,
+    Math.ceil(NODE_INTERVAL_HOURS[activityInterval] / 24),
+  );
   const { data: activityTiles, isLoading: tilesLoading } = useQuery({
-    queryKey: ['node-activity-tiles', env, uuid],
+    queryKey: ['node-activity-tiles', env, uuid, activityInterval],
+    queryFn: () => getNodeActivityTiles(env, uuid, daysForInterval),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    enabled: activeTab === 'details',
+  });
+
+  // Fixed 24h readout for the per-endpoint last-seen panel (independent of the
+  // heatmap's interval so it always reflects the last day).
+  const { data: activityTiles24h, isLoading: tiles24hLoading } = useQuery({
+    queryKey: ['node-activity-tiles-24h', env, uuid],
     queryFn: () => getNodeActivityTiles(env, uuid, 1),
     staleTime: 30_000,
     refetchInterval: 30_000,
     enabled: activeTab === 'details',
   });
+
+  // Merge the hourly DB buckets (status/result/query, with history) with the
+  // hourly Redis config series (aligned by timestamp) into the grid the
+  // heatmap renders. Config hours outside the Redis window read as 0.
+  const heatmapBuckets = useMemo(
+    () => mergeNodeActivityBuckets(activityBuckets, activityTiles),
+    [activityBuckets, activityTiles],
+  );
 
   // IR workflow: clicking the 🔍 button on a result-log row hands an operator
   // a prefilled query-run form. SQL is best-effort from buildSearchSQL; when
@@ -817,16 +855,16 @@ export function NodeDetailPage() {
               <div className="mb-5">
                 <NodeActivityHeatmap
                   interval={activityInterval}
-                  buckets={activityBuckets}
+                  buckets={heatmapBuckets}
                   onIntervalChange={setActivityInterval}
-                  isLoading={activityLoading}
+                  isLoading={activityLoading || tilesLoading}
                 />
               </div>
 
               <div className="mb-5">
                 <NodeEndpointLastSeen
-                  series={activityTiles}
-                  isLoading={tilesLoading}
+                  series={activityTiles24h}
+                  isLoading={tiles24hLoading}
                 />
               </div>
 
@@ -968,7 +1006,7 @@ export function NodeDetailPage() {
 // ---------------------------------------------------------------------------
 // NodeActivityHeatmap — 4-row strip showing what THIS node has been doing.
 //
-// Rows: status / result / query / carve. Intensity uses per-row quantile
+// Rows: status / result / query / config. Intensity uses per-row quantile
 // breaks over the non-zero values so a single outlier bucket can't wash out
 // the smaller bumps. Hover surfaces the per-bucket counts via the title attr.
 // Same visual contract the env-scoped heatmap used to follow on the Nodes
@@ -979,7 +1017,7 @@ const NODE_ACTIVITY_CATEGORIES = [
   { key: 'status', label: 'status', cssVar: '--info' },
   { key: 'result', label: 'result', cssVar: '--signal' },
   { key: 'query', label: 'query', cssVar: '--success' },
-  { key: 'carve', label: 'carve', cssVar: '--warning' },
+  { key: 'config', label: 'config', cssVar: '--warning' },
 ] as const;
 
 type NodeActivityCategoryKey = (typeof NODE_ACTIVITY_CATEGORIES)[number]['key'];
@@ -994,15 +1032,17 @@ const NODE_INTERVAL_LABEL: Record<ActivityInterval, string> = {
   '7d': 'last 7d',
 };
 
-/** Bucket width (in seconds) the backend uses per interval. Mirrors NodeActivityHandler. */
-const NODE_INTERVAL_BUCKET_SECONDS: Record<ActivityInterval, number> = {
-  '3h': 5 * 60,
-  '6h': 5 * 60,
-  '12h': 10 * 60,
-  '1d': 15 * 60,
-  '2d': 30 * 60,
-  '3d': 45 * 60,
-  '7d': 2 * 60 * 60,
+// Window length (in hours) for each interval. The Redis activity rollups are
+// hourly with DefaultRetentionDays of history, so the per-node heatmap window
+// is expressed in hours and capped by the retention on the backend.
+const NODE_INTERVAL_HOURS: Record<ActivityInterval, number> = {
+  '3h': 3,
+  '6h': 6,
+  '12h': 12,
+  '1d': 24,
+  '2d': 48,
+  '3d': 72,
+  '7d': 168,
 };
 
 function nodeFormatHHMM(iso: string): string {
@@ -1013,8 +1053,38 @@ function nodeFormatHHMM(iso: string): string {
   return `${h}:${m}`;
 }
 
-function nodeMakeIntensityScale(
+// mergeNodeActivityBuckets aligns the hourly Redis config series onto the
+// DB-backed activity grid (status/result/query, requested hourly). Config is
+// matched by absolute hour: each DB bucket's start time maps to the Redis
+// hour that contains it, so the two sources need not share a start boundary.
+// Hours outside the Redis window (e.g. before the rollups began collecting)
+// read as 0 — honest about the fact that config history only exists going
+// forward from when osctrl-tls started emitting activity events.
+function mergeNodeActivityBuckets(
   buckets: NodeActivityBucket[],
+  tiles?: NodeTileSeries,
+): NodeHeatmapBucket[] {
+  const startMs = tiles ? Date.parse(tiles.start) : NaN;
+  const config = tiles?.config;
+  return buckets.map((b) => {
+    let configCount = 0;
+    if (config && config.length > 0 && !Number.isNaN(startMs)) {
+      const bucketMs = Date.parse(b.bucket_start);
+      const idx = Math.floor((bucketMs - startMs) / (tiles!.bucket_seconds * 1000));
+      if (idx >= 0 && idx < config.length) configCount = config[idx];
+    }
+    return {
+      bucket_start: b.bucket_start,
+      status: b.status,
+      result: b.result,
+      query: b.query,
+      config: configCount,
+    };
+  });
+}
+
+function nodeMakeIntensityScale(
+  buckets: NodeHeatmapBucket[],
   key: NodeActivityCategoryKey,
 ): (count: number) => number {
   const nonZero = buckets.map((b) => b[key]).filter((v) => v > 0).sort((a, b) => a - b);
@@ -1043,7 +1113,7 @@ function nodeCellBackground(cssVar: string, step: number): string {
 
 interface NodeActivityHeatmapProps {
   interval: ActivityInterval;
-  buckets: NodeActivityBucket[];
+  buckets: NodeHeatmapBucket[];
   onIntervalChange: (i: ActivityInterval) => void;
   isLoading: boolean;
 }
@@ -1055,17 +1125,23 @@ function NodeActivityHeatmap({
   isLoading,
 }: NodeActivityHeatmapProps) {
   const n = buckets.length;
-  const bucketSeconds = NODE_INTERVAL_BUCKET_SECONDS[interval];
+  const bucketSeconds =
+    n >= 2
+      ? Math.round(
+          (Date.parse(buckets[1].bucket_start) - Date.parse(buckets[0].bucket_start)) /
+            1000,
+        )
+      : 3600;
 
   const scales: Record<NodeActivityCategoryKey, (c: number) => number> = {
     status: nodeMakeIntensityScale(buckets, 'status'),
     result: nodeMakeIntensityScale(buckets, 'result'),
     query: nodeMakeIntensityScale(buckets, 'query'),
-    carve: nodeMakeIntensityScale(buckets, 'carve'),
+    config: nodeMakeIntensityScale(buckets, 'config'),
   };
 
   const totalEvents = buckets.reduce(
-    (sum, b) => sum + b.status + b.result + b.query + b.carve,
+    (sum, b) => sum + b.status + b.result + b.query + b.config,
     0,
   );
   const isEmpty = !isLoading && n > 0 && totalEvents === 0;
@@ -1267,7 +1343,7 @@ function NodeFragmentRow({
 }: {
   label: string;
   cssVar: string;
-  buckets: NodeActivityBucket[];
+  buckets: NodeHeatmapBucket[];
   categoryKey: NodeActivityCategoryKey;
   scale: (c: number) => number;
   isLoading: boolean;
@@ -1298,7 +1374,7 @@ function NodeFragmentRow({
             ).toISOString();
             const title =
               `${nodeFormatHHMM(b.bucket_start)} – ${nodeFormatHHMM(endIso)}\n` +
-              `status ${b.status} · result ${b.result} · query ${b.query} · carve ${b.carve}`;
+              `status ${b.status} · result ${b.result} · query ${b.query} · config ${b.config}`;
             return (
               <span
                 key={i}
