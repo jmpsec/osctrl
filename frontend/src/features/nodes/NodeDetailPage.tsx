@@ -6,9 +6,16 @@ import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
   getNodeActivity,
+  getNodeActivityTiles,
   ACTIVITY_INTERVALS,
   type ActivityInterval,
   type NodeActivityBucket,
+  type NodeTileSeries,
+  type TileCategory,
+  TILE_CATEGORIES,
+  TILE_CATEGORY_LABELS,
+  tileLastSeen,
+  tileCategoryTotal,
 } from '$/api/stats';
 import { AuthError } from '$/api/client';
 import type { NodeLogEntry } from '$/api/types';
@@ -581,6 +588,17 @@ export function NodeDetailPage() {
     enabled: activeTab === 'details',
   });
 
+  // Redis-backed per-endpoint activity series (config + read/write split).
+  // Drives the Endpoint last-seen panel below the heatmap. Hourly buckets
+  // over the last 24h, so last-seen granularity is hourly.
+  const { data: activityTiles, isLoading: tilesLoading } = useQuery({
+    queryKey: ['node-activity-tiles', env, uuid],
+    queryFn: () => getNodeActivityTiles(env, uuid, 1),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    enabled: activeTab === 'details',
+  });
+
   // IR workflow: clicking the 🔍 button on a result-log row hands an operator
   // a prefilled query-run form. SQL is best-effort from buildSearchSQL; when
   // the table can't be guessed the operator edits the placeholder.
@@ -802,6 +820,13 @@ export function NodeDetailPage() {
                   buckets={activityBuckets}
                   onIntervalChange={setActivityInterval}
                   isLoading={activityLoading}
+                />
+              </div>
+
+              <div className="mb-5">
+                <NodeEndpointLastSeen
+                  series={activityTiles}
+                  isLoading={tilesLoading}
                 />
               </div>
 
@@ -1176,6 +1201,53 @@ function NodeActivityHeatmap({
         </div>
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NodeEndpointLastSeen — Redis-backed per-endpoint activity readout that sits
+// under the heatmap. For each osquery endpoint (config / status / result /
+// query read / query write) it shows the event total over the last 24h and the
+// last hour the node touched that endpoint. This is the data the DB buckets
+// collapse: the config fetches and the read/write split are only visible here.
+// ---------------------------------------------------------------------------
+interface NodeEndpointLastSeenProps {
+  series?: NodeTileSeries;
+  isLoading: boolean;
+}
+
+function NodeEndpointLastSeen({ series, isLoading }: NodeEndpointLastSeenProps) {
+  const items: KvItem[] = TILE_CATEGORIES.map((cat: TileCategory) => {
+    const total = series ? tileCategoryTotal(series, cat) : 0;
+    const last = series ? tileLastSeen(series, cat) : null;
+    return {
+      label: TILE_CATEGORY_LABELS[cat],
+      value: isLoading ? (
+        <Skeleton className="h-4 w-24" />
+      ) : (
+        <span className="inline-flex items-baseline gap-2">
+          <span className="font-mono-tabular text-[color:var(--text-1)]">{total}</span>
+          <span className="text-[color:var(--text-3)]">
+            {last ? (
+              <>
+                <span className="text-[color:var(--text-3)]">·</span>{' '}
+                <span title={formatAbsolute(last)}>{formatRelative(last)}</span>
+              </>
+            ) : (
+              '· —'
+            )}
+          </span>
+        </span>
+      ),
+    };
+  });
+
+  return (
+    <KvGrid
+      title="Endpoint activity · last 24h"
+      items={items}
+      cols={3}
+    />
   );
 }
 

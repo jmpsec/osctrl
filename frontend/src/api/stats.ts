@@ -145,3 +145,104 @@ export function getNodeActivityBatch(
     `/api/v1/stats/activity/node-batch/${encodeURIComponent(env)}?${sp.toString()}`,
   );
 }
+
+/**
+ * Redis-backed per-node/env activity series. Hourly u16 counters per event
+ * type over the last N days (default 1 = last 24h). Mirrors
+ * pkg/activity.NodeTileSeries on the Go side.
+ *
+ * This is the finer-grained counterpart to the DB-backed NodeActivityBucket:
+ * it carries the `config` and `query_read`/`query_write` split that the DB
+ * buckets collapse into a single `query` category, so the SPA can surface
+ * per-endpoint last-seen activity (when a node last fetched config, shipped a
+ * status log, returned a query result, etc.). Buckets are contiguous and
+ * pre-densified server-side — empty hours ship 0, not a gap.
+ */
+export interface NodeTileSeries {
+  start: string;
+  bucket_seconds: number;
+  enroll: number[];
+  config: number[];
+  status: number[];
+  result: number[];
+  query_read: number[];
+  query_write: number[];
+  total: number[];
+}
+
+/** Endpoint categories surfaced from the Redis tile series. */
+export type TileCategory =
+  | 'config'
+  | 'status'
+  | 'result'
+  | 'query_read'
+  | 'query_write';
+
+export const TILE_CATEGORIES: TileCategory[] = [
+  'config',
+  'status',
+  'result',
+  'query_read',
+  'query_write',
+];
+
+export const TILE_CATEGORY_LABELS: Record<TileCategory, string> = {
+  config: 'Config',
+  status: 'Status',
+  result: 'Result',
+  query_read: 'Query read',
+  query_write: 'Query write',
+};
+
+export function getNodeActivityTiles(
+  env: string,
+  uuid: string,
+  days = 1,
+): Promise<NodeTileSeries> {
+  const sp = new URLSearchParams();
+  sp.set('days', String(days));
+  return apiFetch<NodeTileSeries>(
+    `/api/v1/stats/activity/node-tiles/${encodeURIComponent(env)}/${encodeURIComponent(uuid)}?${sp.toString()}`,
+  );
+}
+
+export function getEnvActivityTiles(env: string, days = 1): Promise<NodeTileSeries> {
+  const sp = new URLSearchParams();
+  sp.set('days', String(days));
+  return apiFetch<NodeTileSeries>(
+    `/api/v1/stats/activity/env-tiles/${encodeURIComponent(env)}?${sp.toString()}`,
+  );
+}
+
+/**
+ * Derives the "last seen" timestamp for one endpoint category from a tile
+ * series: the start of the most-recent hour bucket with a non-zero count.
+ * Returns null when the node had no activity of that type in the window.
+ * Granularity is hourly (the Redis rollup bucket size).
+ */
+export function tileLastSeen(series: NodeTileSeries, category: TileCategory): string | null {
+  const counts = series[category];
+  if (!counts || counts.length === 0) {
+    return null;
+  }
+  const startMs = Date.parse(series.start);
+  if (Number.isNaN(startMs)) {
+    return null;
+  }
+  for (let i = counts.length - 1; i >= 0; i--) {
+    if (counts[i] > 0) {
+      const ts = startMs + i * series.bucket_seconds * 1000;
+      return new Date(ts).toISOString();
+    }
+  }
+  return null;
+}
+
+/** Total events of one category across the whole series window. */
+export function tileCategoryTotal(series: NodeTileSeries, category: TileCategory): number {
+  const counts = series[category];
+  if (!counts) return 0;
+  let sum = 0;
+  for (const c of counts) sum += c;
+  return sum;
+}

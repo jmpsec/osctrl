@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
 import type { OsqueryNode } from '$/api/types';
-import type { NodeActivityBucket } from '$/api/stats';
+import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
@@ -19,6 +19,7 @@ const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
 const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
+const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
 
 vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
@@ -39,6 +40,7 @@ vi.mock('$/api/stats', async () => {
   return {
     ...actual,
     getNodeActivity: (...args: unknown[]) => mockGetNodeActivity(...(args as [])),
+    getNodeActivityTiles: (...args: unknown[]) => mockGetNodeActivityTiles(...(args as [])),
   };
 });
 
@@ -180,6 +182,17 @@ describe('NodeDetailPage', () => {
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     mockListEnvironments.mockResolvedValue([{ name: 'test-env', uuid: 'env-uuid-1' }]);
     mockGetNodeActivity.mockResolvedValue(makeActivityBuckets());
+    mockGetNodeActivityTiles.mockResolvedValue({
+      start: new Date(Date.now() - 23 * 3600_000).toISOString(),
+      bucket_seconds: 3600,
+      enroll: [],
+      config: [],
+      status: [],
+      result: [],
+      query_read: [],
+      query_write: [],
+      total: [],
+    });
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {

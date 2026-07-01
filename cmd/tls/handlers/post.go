@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -155,6 +156,9 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
+	if !nodeInvalid {
+		h.recordActivity(env.UUID, newNode.UUID, activity.EventEnroll)
+	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
 	if (*h.EnvsMap)[env.Name].DebugHTTP {
@@ -220,6 +224,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
+		h.recordActivity(env.UUID, node.UUID, activity.EventConfig)
 
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
@@ -318,6 +323,9 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "LogHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for LogHandler endpoint", node.UUID, env.Name, len(body))
+		if typ, ok := logActivityType(t.LogType); ok {
+			h.recordActivity(env.UUID, node.UUID, typ)
+		}
 		// Process logs and update metadata
 		go func() {
 			start := time.Now()
@@ -406,6 +414,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
+		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 	} else {
 		log.Err(err).Msg("GetByKey")
 		nodeInvalid = true
@@ -501,6 +510,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
 		// Process submitted results and mark query as processed
+		h.recordActivity(env.UUID, node.UUID, activity.EventQueryWrite)
 		go func() {
 			start := time.Now()
 			h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)

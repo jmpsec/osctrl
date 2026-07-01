@@ -182,3 +182,35 @@ func resetTimer(timer *time.Timer, timeout time.Duration) {
 	}
 	timer.Reset(timeout)
 }
+
+// recordActivity emits one per-endpoint activity counter to the Redis rollup
+// store. It is fire-and-forget: a nil writer, a nil handler, or empty
+// env/node UUIDs are silently skipped so it can never block or fail the
+// request path. The counters feed the per-node/per-env activity heatmaps
+// surfaced in the admin frontend.
+func (h *HandlersTLS) recordActivity(envUUID, nodeUUID string, typ activity.EventType) {
+	if h == nil || h.ActivityWriter == nil || envUUID == "" || nodeUUID == "" {
+		return
+	}
+	h.ActivityWriter.addEvent(activity.Event{
+		EnvUUID:  envUUID,
+		NodeUUID: nodeUUID,
+		Type:     typ,
+		At:       time.Now(),
+		Count:    1,
+	})
+}
+
+// logActivityType maps an osquery log type ("status"/"result") to its
+// activity counter family. Unknown types return ok=false and are not
+// recorded, so a malformed body cannot poison the rollups.
+func logActivityType(logType string) (activity.EventType, bool) {
+	switch logType {
+	case "status":
+		return activity.EventStatus, true
+	case "result":
+		return activity.EventResult, true
+	default:
+		return 0, false
+	}
+}
