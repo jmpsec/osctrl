@@ -483,6 +483,26 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 			return
 		}
 	}
+	// Recompose the assembled `configuration` blob from the (possibly just-
+	// updated) parts. The Update* calls above only write their own column;
+	// without this recompose the env's `configuration` field — which is what
+	// GET .../configuration/assembled returns and what agents receive on
+	// their next /config refresh — stays at the pre-patch value, so edits made
+	// here never show up on the enroll page's Configuration tab. Flags is not
+	// part of the composed osquery config, so a flags-only patch skips it.
+	composedChanged := false
+	for _, k := range []string{"options", "schedule", "packs", "decorators", "atc"} {
+		if _, ok := normalized[k]; ok {
+			composedChanged = true
+			break
+		}
+	}
+	if composedChanged {
+		if err := h.Envs.RefreshConfiguration(envVar); err != nil {
+			apiErrorResponse(w, "error refreshing configuration", http.StatusInternalServerError, err)
+			return
+		}
+	}
 	h.AuditLog.ConfAction(ctx[ctxUser], "config patch on env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	updated, _ := h.Envs.Get(envVar)
 	resp := types.EnvConfigResponse{
