@@ -199,17 +199,15 @@ type activityPreset struct {
 	bucketSeconds int
 }
 
-// activityAllowedBucketSeconds is the set of bucket sizes the SPA may request
-// via ?bucket_seconds on the per-node activity endpoint. Restricted to the
-// preset sizes so an arbitrary value can't trigger an expensive fine-grained
-// histogram or a malformed GROUP BY.
-var activityAllowedBucketSecondsSet = map[int]struct{}{
-	300: {}, 600: {}, 900: {}, 1800: {}, 3600: {}, 7200: {},
-}
-
+// activityAllowedBucketSeconds gates the ?bucket_seconds override on the
+// per-node activity endpoint. The SPA renders a fixed-column heatmap, so it
+// requests window/N bucket sizes that vary per interval (e.g. 450s, 5400s,
+// 12600s). Rather than maintain an ever-growing allowlist, accept any size that
+// is at least 5 minutes — fine enough to be useful, coarse enough that even a
+// 7-day window stays bounded (~2000 buckets max). The handler still requires
+// the size to divide the window evenly, which rejects arbitrary primes.
 func activityAllowedBucketSeconds(v int) bool {
-	_, ok := activityAllowedBucketSecondsSet[v]
-	return ok
+	return v >= 300
 }
 
 var activityIntervalPresets = map[string]activityPreset{

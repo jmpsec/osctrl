@@ -101,3 +101,30 @@ export function formatBytes(n: number | null | undefined): string {
   const formatted = v >= 100 ? Math.round(v).toString() : v.toFixed(1);
   return `${formatted} ${units[i]}`;
 }
+
+/**
+ * Honest "how long ago" for an event whose time is only known to fall within a
+ * fixed-size bucket (e.g. an hourly Redis activity rollup). The timestamp is
+ * the bucket START; the event happened somewhere in [bucketStart, bucketEnd).
+ *
+ * Because the exact instant is unknown, precision is bucket-sized:
+ *   - bucket still open (now < bucketEnd) → "within the last hour"
+ *   - otherwise → whole hours/days since the bucket started, e.g. "3h ago"
+ *
+ * Avoids the false minute precision that formatRelative would imply for a
+ * bucket-aligned timestamp. Returns "—" for invalid/empty input.
+ */
+export function formatBucketAgo(iso: string, bucketSeconds = 3600): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return 'just now';
+  // bucketSeconds is in seconds; the bucket is still open while now falls
+  // within [bucketStart, bucketStart + bucketSeconds).
+  if (diffMs < bucketSeconds * 1000) return 'within the last hour';
+  const hours = Math.floor(diffMs / HOUR);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}

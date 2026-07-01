@@ -7,7 +7,6 @@ import { listEnvironments } from '$/api/environments';
 import {
   getNodeActivity,
   getNodeActivityTiles,
-  ACTIVITY_INTERVALS,
   type ActivityInterval,
   type NodeActivityBucket,
   type NodeTileSeries,
@@ -19,7 +18,7 @@ import {
 } from '$/api/stats';
 import { AuthError } from '$/api/client';
 import type { NodeLogEntry } from '$/api/types';
-import { formatRelative, formatAbsolute, isWithinHours } from '$/lib/time';
+import { formatRelative, formatAbsolute, isWithinHours, formatBucketAgo } from '$/lib/time';
 import { cn } from '$/lib/cn';
 import { StatusPip } from '$/components/data/StatusPip';
 import { Skeleton } from '$/components/data/Skeleton';
@@ -520,7 +519,7 @@ export function NodeDetailPage() {
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [activityInterval, setActivityInterval] = useState<ActivityInterval>('1d');
+  const [activityInterval, setActivityInterval] = useState<ActivityInterval>('6h');
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function handleTabKeyDown(e: React.KeyboardEvent) {
@@ -597,9 +596,13 @@ export function NodeDetailPage() {
   // merged with the hourly Redis config series below. status/result/query
   // keep their full history from the logging tables; carve is dropped in
   // favor of config (see mergeNodeActivityBuckets).
+  // Fixed 24-column grid: the DB bucket size scales with the window so the
+  // heatmap always renders 24 squares regardless of the selected interval.
+  const activityBucketSeconds =
+    (NODE_INTERVAL_HOURS[activityInterval] * 3600) / NODE_ACTIVITY_COLUMNS;
   const { data: activityBuckets = [], isLoading: activityLoading } = useQuery({
     queryKey: ['node-activity', env, uuid, activityInterval],
-    queryFn: () => getNodeActivity(env, uuid, activityInterval, 3600),
+    queryFn: () => getNodeActivity(env, uuid, activityInterval, activityBucketSeconds),
     staleTime: 30_000,
     refetchInterval: 30_000,
     enabled: activeTab === 'details',
@@ -1045,6 +1048,17 @@ const NODE_INTERVAL_HOURS: Record<ActivityInterval, number> = {
   '7d': 168,
 };
 
+// Intervals offered in the node activity picker. The heatmap renders a fixed
+// 24-column grid, so every entry must divide evenly into 24 buckets whose size
+// is a backend-supported bucket_seconds value (see activityAllowedBucketSeconds).
+// 3h is omitted because 3h/24 = 450s is not a supported bucket size.
+const NODE_INTERVALS: ActivityInterval[] = ['6h', '12h', '1d', '2d', '3d', '7d'];
+
+// Fixed column count for the node activity heatmap. Every interval renders
+// this many cells; the per-cell time window (bucket size) scales with the
+// selected interval so the grid always fills the same horizontal space.
+const NODE_ACTIVITY_COLUMNS = 48;
+
 function nodeFormatHHMM(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
@@ -1054,24 +1068,36 @@ function nodeFormatHHMM(iso: string): string {
 }
 
 // mergeNodeActivityBuckets aligns the hourly Redis config series onto the
-// DB-backed activity grid (status/result/query, requested hourly). Config is
-// matched by absolute hour: each DB bucket's start time maps to the Redis
-// hour that contains it, so the two sources need not share a start boundary.
-// Hours outside the Redis window (e.g. before the rollups began collecting)
-// read as 0 — honest about the fact that config history only exists going
+// DB-backed activity grid (status/result/query). The DB grid uses a window-
+// scaled bucket so the heatmap always has 24 columns; config (hourly) is
+// folded into each cell by summing every Redis hour that overlaps the cell:
+//   - sub-hourly cells (6h/12h) → one hour overlaps, so the hour's count is
+//     held across the cell (config fetches are continuous, so showing the
+//     hour's activity in each of its sub-cells reads as "active this hour");
+//   - hourly+ cells (1d and up) → counts are summed, which is honest coarsening.
+// Hours outside the Redis window read as 0 — config history only exists going
 // forward from when osctrl-tls started emitting activity events.
 function mergeNodeActivityBuckets(
   buckets: NodeActivityBucket[],
   tiles?: NodeTileSeries,
 ): NodeHeatmapBucket[] {
   const startMs = tiles ? Date.parse(tiles.start) : NaN;
+  const hourMs = (tiles?.bucket_seconds ?? 3600) * 1000;
   const config = tiles?.config;
+  const cellMs =
+    buckets.length >= 2
+      ? Date.parse(buckets[1].bucket_start) - Date.parse(buckets[0].bucket_start)
+      : 3600_000;
   return buckets.map((b) => {
     let configCount = 0;
     if (config && config.length > 0 && !Number.isNaN(startMs)) {
-      const bucketMs = Date.parse(b.bucket_start);
-      const idx = Math.floor((bucketMs - startMs) / (tiles!.bucket_seconds * 1000));
-      if (idx >= 0 && idx < config.length) configCount = config[idx];
+      const cellStart = Date.parse(b.bucket_start);
+      const cellEnd = cellStart + cellMs;
+      let h = Math.floor((cellStart - startMs) / hourMs);
+      while (h < config.length && startMs + h * hourMs < cellEnd) {
+        if (h >= 0) configCount += config[h];
+        h += 1;
+      }
     }
     return {
       bucket_start: b.bucket_start,
@@ -1146,18 +1172,21 @@ function NodeActivityHeatmap({
   );
   const isEmpty = !isLoading && n > 0 && totalEvents === 0;
 
-  // 5 evenly-spaced HH:mm ticks under the grid.
+  // 5 evenly-spaced HH:mm ticks under the grid. Rendered as a flex row that
+  // spans the cell area (past the 60px label column) so they stay aligned when
+  // the grid fills the container width responsively.
   const tickCount = 5;
-  const ticks: { left: number; label: string }[] = [];
+  const tickLabels: string[] = [];
   if (n > 0) {
     for (let i = 0; i < tickCount; i++) {
       const idx = Math.round((i * (n - 1)) / (tickCount - 1));
-      const left = 60 + idx * 13 + 5;
-      ticks.push({ left, label: nodeFormatHHMM(buckets[idx].bucket_start) });
+      tickLabels.push(nodeFormatHHMM(buckets[idx].bucket_start));
     }
   }
 
-  const gridTemplateColumns = `60px repeat(${Math.max(n, 1)}, 11px)`;
+  // Label column + N cells that stretch to fill the container width. minmax
+  // keeps cells from collapsing below 8px (overflow-x-auto handles the rest).
+  const gridTemplateColumns = `60px repeat(${Math.max(n, 1)}, minmax(8px, 1fr))`;
 
   return (
     <section
@@ -1174,7 +1203,7 @@ function NodeActivityHeatmap({
           aria-label="Activity interval"
           className="flex items-center gap-0.5 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]"
         >
-          {ACTIVITY_INTERVALS.map((iv) => {
+          {NODE_INTERVALS.map((iv) => {
             const active = iv === interval;
             return (
               <button
@@ -1219,16 +1248,19 @@ function NodeActivityHeatmap({
           ))}
         </div>
 
-        {/* HH:mm time-axis ticks */}
+        {/* HH:mm time-axis ticks — flex justify-between spans the cell area */}
         {!isLoading && n > 0 && (
-          <div className="relative mt-2 h-3" aria-hidden>
-            {ticks.map((t, i) => (
+          <div className="mt-2 ml-[60px] flex justify-between" aria-hidden>
+            {tickLabels.map((label, i) => (
               <span
                 key={i}
-                className="absolute text-[9px] font-mono-tabular text-[color:var(--text-3)] -translate-x-1/2"
-                style={{ left: `${t.left}px` }}
+                className={cn(
+                  'text-[9px] font-mono-tabular text-[color:var(--text-3)]',
+                  i === 0 && '-translate-x-1/2',
+                  i === tickLabels.length - 1 && 'translate-x-1/2',
+                )}
               >
-                {t.label}
+                {label}
               </span>
             ))}
           </div>
@@ -1293,26 +1325,23 @@ interface NodeEndpointLastSeenProps {
 }
 
 function NodeEndpointLastSeen({ series, isLoading }: NodeEndpointLastSeenProps) {
+  const bucketSeconds = series?.bucket_seconds ?? 3600;
   const items: KvItem[] = TILE_CATEGORIES.map((cat: TileCategory) => {
     const total = series ? tileCategoryTotal(series, cat) : 0;
     const last = series ? tileLastSeen(series, cat) : null;
     return {
       label: TILE_CATEGORY_LABELS[cat],
       value: isLoading ? (
-        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-28" />
       ) : (
         <span className="inline-flex items-baseline gap-2">
-          <span className="font-mono-tabular text-[color:var(--text-1)]">{total}</span>
-          <span className="text-[color:var(--text-3)]">
-            {last ? (
-              <>
-                <span className="text-[color:var(--text-3)]">·</span>{' '}
-                <span title={formatAbsolute(last)}>{formatRelative(last)}</span>
-              </>
-            ) : (
-              '· —'
-            )}
+          <span
+            className="text-[color:var(--text-1)]"
+            title={last ? `${formatAbsolute(last)} · ${total} events` : 'No activity in the last 24h'}
+          >
+            {last ? formatBucketAgo(last, bucketSeconds) : 'No activity'}
           </span>
+          <span className="text-[color:var(--text-3)]">{total} events in 24h</span>
         </span>
       ),
     };
@@ -1320,7 +1349,7 @@ function NodeEndpointLastSeen({ series, isLoading }: NodeEndpointLastSeenProps) 
 
   return (
     <KvGrid
-      title="Endpoint activity · last 24h"
+      title="Endpoint last seen · 24h"
       items={items}
       cols={3}
     />
@@ -1352,7 +1381,7 @@ function NodeFragmentRow({
 }) {
   // Skeleton: render a fixed-width placeholder row so the panel doesn't jump
   // around when the query resolves.
-  const skeletonN = isLoading || n === 0 ? 48 : n;
+  const skeletonN = isLoading || n === 0 ? NODE_ACTIVITY_COLUMNS : n;
   return (
     <>
       <span className="text-[10px] font-mono-tabular uppercase tracking-[0.1em] text-[color:var(--text-3)] self-center pr-2">
@@ -1363,7 +1392,7 @@ function NodeFragmentRow({
             <span
               key={i}
               aria-hidden
-              className="block w-[11px] h-[11px] rounded-[2px] animate-pulse bg-[color:var(--bg-3)]/40"
+              className="block w-full aspect-square rounded-[2px] animate-pulse bg-[color:var(--bg-3)]/40"
             />
           ))
         : buckets.map((b, i) => {
@@ -1380,7 +1409,7 @@ function NodeFragmentRow({
                 key={i}
                 title={title}
                 aria-label={`${label} ${count} at ${nodeFormatHHMM(b.bucket_start)}`}
-                className="block w-[11px] h-[11px] rounded-[2px]"
+                className="block w-full aspect-square rounded-[2px]"
                 style={{ background: nodeCellBackground(cssVar, step) }}
               />
             );

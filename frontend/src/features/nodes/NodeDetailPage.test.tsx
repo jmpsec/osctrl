@@ -210,8 +210,8 @@ describe('NodeDetailPage', () => {
       expect(mockGetNodeActivity).toHaveBeenCalledWith(
         'test-env',
         'abc12345-0000-0000-0000-000000000001',
-        '1d',
-        3600,
+        '6h',
+        450,
       );
     });
   });

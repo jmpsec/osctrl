@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatRelative } from './time';
+import { formatRelative, formatBucketAgo } from './time';
 
 describe('formatRelative', () => {
   const NOW = new Date('2024-03-14T15:09:26.000Z').getTime();
@@ -65,5 +65,41 @@ describe('formatRelative', () => {
   it('handles exactly 1 day → 1d', () => {
     const iso = new Date(NOW - 86_400_000).toISOString();
     expect(formatRelative(iso)).toBe('1d');
+  });
+});
+
+describe('formatBucketAgo', () => {
+  const NOW = new Date('2024-03-14T15:09:26.000Z').getTime();
+  const HOUR = 3_600_000;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns "within the last hour" while the bucket is still open', () => {
+    // bucket started 30m ago, has 30m left → event could be just now
+    const iso = new Date(NOW - 30 * 60_000).toISOString();
+    expect(formatBucketAgo(iso, 3600)).toBe('within the last hour');
+  });
+
+  it('returns whole hours once the bucket has closed', () => {
+    // bucket started 3h ago (closed) → "3h ago"
+    const iso = new Date(NOW - 3 * HOUR).toISOString();
+    expect(formatBucketAgo(iso, 3600)).toBe('3h ago');
+  });
+
+  it('rolls over to days past 24h', () => {
+    const iso = new Date(NOW - 26 * HOUR).toISOString();
+    expect(formatBucketAgo(iso, 3600)).toBe('1d ago');
+  });
+
+  it('returns "—" for invalid input', () => {
+    expect(formatBucketAgo('', 3600)).toBe('—');
+    expect(formatBucketAgo('not-a-date', 3600)).toBe('—');
   });
 });
