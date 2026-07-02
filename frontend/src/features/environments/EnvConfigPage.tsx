@@ -16,6 +16,7 @@ import { cn } from '$/lib/cn';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
 import { DocsLink } from '$/components/atoms/DocsLink';
+import { AssembledConfigCard } from '$/features/enrollment/AssembledConfigCard';
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
 
@@ -114,11 +115,11 @@ export function EnvConfigPage() {
     flags: false,
   });
 
-  // Page is tabbed: 'settings' (intervals + expiration) plus one tab per
+  // Page is tabbed: 'settings' (intervals + expiration), one tab per
   // config SECTION. The "settings" default keeps the slider-based forms
   // up-front so an operator who lands here to tune pull intervals doesn't
   // scroll past six 280px Monaco editors first.
-  type TabKey = 'settings' | SectionKey;
+  type TabKey = 'settings' | SectionKey | 'assembled';
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
 
   useEffect(() => {
@@ -293,6 +294,17 @@ export function EnvConfigPage() {
             onClick={() => setActiveTab(key)}
           />
         ))}
+        <TabButton
+          id="assembled"
+          label="Full Configuration"
+          active={activeTab === 'assembled'}
+          onClick={() => {
+            if (activeTab === 'assembled') {
+              void qc.invalidateQueries({ queryKey: ['env', env, 'assembled-config'] });
+            }
+            setActiveTab('assembled');
+          }}
+        />
       </div>
 
       {saveErr && (
@@ -316,6 +328,10 @@ export function EnvConfigPage() {
               <ExpirationCard env={env} qc={qc} />
             )}
           </>
+        )}
+
+        {activeTab === 'assembled' && (
+          <AssembledConfigCard env={env} />
         )}
 
         {SECTIONS.map(({ key, label, language, help, docsUrl }) => {
