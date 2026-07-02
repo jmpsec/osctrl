@@ -100,6 +100,7 @@ type NodeEnrichment struct {
 // from it directly.
 type NodeView struct {
 	nodes.OsqueryNode
+	NodeKey    string          `json:"node_key,omitempty"`
 	Enrichment *NodeEnrichment `json:"system_info,omitempty"`
 }
 

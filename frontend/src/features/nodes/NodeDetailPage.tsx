@@ -137,7 +137,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
       label: 'Status',
       value: (
         <span className="inline-flex items-center gap-1.5">
-          <StatusPip variant={isActive ? 'success' : 'dim'} />
+          <StatusPip variant={isActive ? 'success' : 'dim'} live={isActive} />
           <span
             className={cn(
               'text-xs font-medium',
@@ -520,6 +520,8 @@ export function NodeDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('6h');
+  const [copiedNodeKey, setCopiedNodeKey] = useState(false);
+  const [copyNodeKeyError, setCopyNodeKeyError] = useState<string | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function handleTabKeyDown(e: React.KeyboardEvent) {
@@ -587,6 +589,22 @@ export function NodeDetailPage() {
       return;
     }
     archiveMut.mutate();
+  }
+
+  async function handleCopyNodeKey() {
+    if (!node?.node_key) return;
+    try {
+      await navigator.clipboard.writeText(node.node_key);
+      setCopiedNodeKey(true);
+      setCopyNodeKeyError(null);
+      setTimeout(() => setCopiedNodeKey(false), 1500);
+    } catch {
+      setCopyNodeKeyError('Clipboard blocked by browser');
+    }
+  }
+
+  function handleRefresh() {
+    void qc.invalidateQueries({ queryKey: ['node', env, uuid] });
   }
 
   // Node-scoped activity heatmap — now embedded in the default Details view.
@@ -689,10 +707,6 @@ export function NodeDetailPage() {
           </div>
         ) : node ? (
           <>
-            <StatusPip
-              variant={isActive ? 'success' : 'dim'}
-              className="mt-1.5"
-            />
             <div className="flex-1 min-w-0">
               <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight">
                 {node.hostname}
@@ -701,11 +715,41 @@ export function NodeDetailPage() {
                 {node.uuid}
               </p>
             </div>
-            {/* Single-node action toolbar — Archive + Refresh + Delete.
+            {/* Single-node action toolbar — copy node_key, refresh, archive.
                 Archive routes through the same DELETE endpoint with
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {node.node_key && (
+                <button
+                  type="button"
+                  aria-label="Copy node key"
+                  onClick={handleCopyNodeKey}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  {copiedNodeKey ? 'Copied node key' : 'Copy node key'}
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Refresh node"
+                onClick={handleRefresh}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded',
+                  'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                  'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                  'transition-colors',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                )}
+              >
+                Refresh
+              </button>
               {/* Single archive action — no separate hard-delete button.
                   Archive snapshots the node into archive_osquery_nodes
                   before removing the live row, so every removal is
@@ -740,6 +784,14 @@ export function NodeDetailPage() {
                 className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
               >
                 {actionError}
+              </div>
+            )}
+            {copyNodeKeyError && (
+              <div
+                role="alert"
+                className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
+              >
+                {copyNodeKeyError}
               </div>
             )}
           </>
@@ -1067,35 +1119,42 @@ function nodeFormatHHMM(iso: string): string {
   return `${h}:${m}`;
 }
 
-// mergeNodeActivityBuckets aligns the hourly Redis config series onto the
-// DB-backed activity grid (status/result/query). The DB grid uses a window-
-// scaled bucket so the heatmap always has 24 columns; config (hourly) is
-// folded into each cell by summing every Redis hour that overlaps the cell:
+// mergeNodeActivityBuckets aligns the hourly Redis config + query read/write
+// series onto the DB-backed activity grid (status/result/query). The DB grid
+// uses a window-scaled bucket so the heatmap always has 24 columns; the Redis
+// hourly series are folded into each cell by summing every hour that overlaps
+// the cell:
 //   - sub-hourly cells (6h/12h) → one hour overlaps, so the hour's count is
 //     held across the cell (config fetches are continuous, so showing the
 //     hour's activity in each of its sub-cells reads as "active this hour");
 //   - hourly+ cells (1d and up) → counts are summed, which is honest coarsening.
 // Hours outside the Redis window read as 0 — config history only exists going
 // forward from when osctrl-tls started emitting activity events.
-function mergeNodeActivityBuckets(
+export function mergeNodeActivityBuckets(
   buckets: NodeActivityBucket[],
   tiles?: NodeTileSeries,
 ): NodeHeatmapBucket[] {
   const startMs = tiles ? Date.parse(tiles.start) : NaN;
   const hourMs = (tiles?.bucket_seconds ?? 3600) * 1000;
   const config = tiles?.config;
+  const queryRead = tiles?.query_read;
+  const queryWrite = tiles?.query_write;
   const cellMs =
     buckets.length >= 2
       ? Date.parse(buckets[1].bucket_start) - Date.parse(buckets[0].bucket_start)
       : 3600_000;
   return buckets.map((b) => {
     let configCount = 0;
+    let queryCount = b.query;
     if (config && config.length > 0 && !Number.isNaN(startMs)) {
       const cellStart = Date.parse(b.bucket_start);
       const cellEnd = cellStart + cellMs;
       let h = Math.floor((cellStart - startMs) / hourMs);
       while (h < config.length && startMs + h * hourMs < cellEnd) {
-        if (h >= 0) configCount += config[h];
+        if (h >= 0) {
+          configCount += config[h];
+          queryCount += (queryRead?.[h] ?? 0) + (queryWrite?.[h] ?? 0);
+        }
         h += 1;
       }
     }
@@ -1103,7 +1162,7 @@ function mergeNodeActivityBuckets(
       bucket_start: b.bucket_start,
       status: b.status,
       result: b.result,
-      query: b.query,
+      query: queryCount,
       config: configCount,
     };
   });

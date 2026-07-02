@@ -37,6 +37,10 @@ export function StatusPip({ variant, live = false, className }: StatusPipProps) 
         live && 'pip-live',
         className,
       )}
-    />
+    >
+      {live && (
+        <span aria-hidden className="pip-live-ring" />
+      )}
+    </span>
   );
 }
