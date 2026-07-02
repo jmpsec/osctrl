@@ -17,7 +17,7 @@ import (
 
 // NodeHandler - GET Handler for single JSON nodes
 // @Summary Get node
-// @Description Returns a single enrolled node in an environment.
+// @Description Returns a single enrolled node in an environment, including admin-only detail fields.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -52,7 +52,7 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -78,7 +78,9 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// enrichment fields (CPU cores, BIOS, hardware vendor/model) parsed from
 	// the otherwise-hidden RawEnrollment blob. The enroll_secret inside that
 	// blob is intentionally NOT in the projection — see pkg/types/node_view.go.
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ProjectNode(node))
+	view := types.ProjectNode(node)
+	view.NodeKey = node.NodeKey
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, view)
 }
 
 // ActiveNodesHandler - GET Handler for active JSON nodes

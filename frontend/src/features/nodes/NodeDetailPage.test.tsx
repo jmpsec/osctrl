@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -70,6 +71,7 @@ function makeNode(overrides: Partial<OsqueryNode> = {}): OsqueryNode {
     id: 1,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
+    node_key: 'node-key-123',
     uuid: 'abc12345-0000-0000-0000-000000000001',
     platform: 'linux',
     platform_version: '22.04',
@@ -205,6 +207,9 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('tab', { name: 'Activity' })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: /Node activity/i })).toBeInTheDocument();
+    const activePips = screen.getAllByRole('img', { name: 'active' });
+    expect(activePips).toHaveLength(1);
+    expect(activePips[0]).toHaveClass('pip-live');
 
     await waitFor(() => {
       expect(mockGetNodeActivity).toHaveBeenCalledWith(
@@ -214,5 +219,33 @@ describe('NodeDetailPage', () => {
         450,
       );
     });
+  });
+
+  it('copies the node key and refreshes the node view', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      clipboard: { writeText },
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Copy node key' }));
+
+    expect(writeText).toHaveBeenCalledWith('node-key-123');
+    expect(screen.getByText('Copied node key')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Refresh node' }));
+
+    await waitFor(() => {
+      expect(mockGetNode).toHaveBeenCalledTimes(2);
+    });
+
+    vi.unstubAllGlobals();
   });
 });

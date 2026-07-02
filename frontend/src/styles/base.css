@@ -138,6 +138,16 @@ body {
   100% { transform: scale(2.2); opacity: 0; }
 }
 
+.pip-live-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: inherit;
+  opacity: 0;
+  animation: pip-pulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
 /* --- Stale-data shimmer (background refetch in flight) --- */
 @keyframes stale-shimmer {
   0%   { opacity: 1; }
@@ -150,7 +160,7 @@ tbody[data-stale="true"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pip-live::after,
+  .pip-live-ring,
   tbody[data-stale="true"] {
     animation: none;
   }

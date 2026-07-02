@@ -68,6 +68,7 @@ export interface OsqueryNode {
   id: number;
   created_at: string;
   updated_at: string;
+  node_key?: string;
   uuid: string;
   platform: string;
   platform_version: string;
