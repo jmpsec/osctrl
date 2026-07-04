@@ -18,7 +18,8 @@ import {
 } from '$/api/stats';
 import { AuthError } from '$/api/client';
 import type { NodeLogEntry } from '$/api/types';
-import { formatRelative, formatAbsolute, isWithinHours, formatBucketAgo } from '$/lib/time';
+import { formatRelative, formatAbsolute, formatBucketAgo } from '$/lib/time';
+import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
 import { StatusPip } from '$/components/data/StatusPip';
 import { Skeleton } from '$/components/data/Skeleton';
@@ -518,6 +519,7 @@ const TABS = [
 export function NodeDetailPage() {
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
   const navigate = useNavigate();
+  const inactiveHours = useInactiveHours();
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('6h');
   const [copiedNodeKey, setCopiedNodeKey] = useState(false);
@@ -676,7 +678,7 @@ export function NodeDetailPage() {
     return null;
   }
 
-  const isActive = node ? isWithinHours(node.last_seen, 24) : false;
+  const isActive = node ? isNodeActive(node.last_seen, inactiveHours) : false;
 
   return (
     <div className="flex flex-col h-full min-h-0 px-6 py-4 max-w-5xl mx-auto w-full">

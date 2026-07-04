@@ -13,6 +13,7 @@ import {
 import { NodeDetailPage } from './NodeDetailPage';
 import type { OsqueryNode } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
+import type { SettingValue } from '$/api/settings';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
@@ -21,6 +22,7 @@ const mockGetMe = vi.fn<() => Promise<unknown>>();
 const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
 const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
+const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
 
 vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
@@ -44,6 +46,10 @@ vi.mock('$/api/stats', async () => {
     getNodeActivityTiles: (...args: unknown[]) => mockGetNodeActivityTiles(...(args as [])),
   };
 });
+
+vi.mock('$/api/settings', () => ({
+  listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
+}));
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
@@ -195,6 +201,7 @@ describe('NodeDetailPage', () => {
       query_write: [],
       total: [],
     });
+    mockListServiceSettings.mockResolvedValue([]);
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {
@@ -218,6 +225,18 @@ describe('NodeDetailPage', () => {
         '6h',
         450,
       );
+    });
+  });
+
+  it('keeps a node active when it was seen within the backend default 72 hour window', async () => {
+    mockGetNode.mockResolvedValue(
+      makeNode({ last_seen: new Date(Date.now() - 48 * 3600_000).toISOString() }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('Active')).toBeInTheDocument();
     });
   });
 

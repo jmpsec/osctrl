@@ -25,6 +25,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { StatusPip } from '$/components/data/StatusPip';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
+import { DEFAULT_INACTIVE_HOURS, isNodeActive } from '$/lib/node-status';
 
 // ---------------------------------------------------------------------------
 // Aggregated 24h activity series, derived from the env-activity endpoint.
@@ -1089,6 +1090,7 @@ export function DashboardPage() {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+  const inactiveHours = data?.inactive_hours ?? DEFAULT_INACTIVE_HOURS;
 
   const [palette, setPaletteEntry, resetPalette] = useChartPalette();
 
@@ -1265,8 +1267,6 @@ export function DashboardPage() {
     activeQueriesPerEnv.length > 0 &&
     activeQueriesPerEnv.some((r) => r.isLoading);
 
-  const ACTIVE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
-
   return (
     <div className="flex flex-col gap-5 px-6 py-6 max-w-[1400px] mx-auto w-full">
 
@@ -1430,7 +1430,7 @@ export function DashboardPage() {
                 polarity="up-good"
               />
               <KpiCard
-                label="Inactive ≥ 24h"
+                label={`Inactive ≥ ${inactiveHours}h`}
                 value={data?.inactive_nodes ?? 0}
                 sparkline={fleet12.config}
                 halo="warning"
@@ -1701,8 +1701,7 @@ export function DashboardPage() {
               </div>
             ) : (
               recentNodes.items.map((node) => {
-                const isActive =
-                  Date.now() - new Date(node.last_seen).getTime() < ACTIVE_THRESHOLD_MS;
+                const isActive = isNodeActive(node.last_seen, inactiveHours);
                 return (
                   <EnrollRow
                     key={node.uuid}

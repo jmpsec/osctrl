@@ -13,14 +13,20 @@ import {
 import { NodesTablePage } from './NodesTablePage';
 import { nodesSearchSchema } from '$/routes/_app/env/$env/nodes';
 import type { NodesPagedResponse } from '$/api/types';
+import type { SettingValue } from '$/api/settings';
 
 // ---------------------------------------------------------------------------
 // Mock the nodes API module
 // ---------------------------------------------------------------------------
 const mockListNodes = vi.fn<() => Promise<NodesPagedResponse>>();
+const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
 
 vi.mock('$/api/nodes', () => ({
   listNodes: (...args: unknown[]) => mockListNodes(...(args as [])),
+}));
+
+vi.mock('$/api/settings', () => ({
+  listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -146,6 +152,7 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('NodesTablePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockListServiceSettings.mockResolvedValue([]);
   });
 
   it('renders node rows after loading', async () => {
@@ -236,5 +243,26 @@ describe('NodesTablePage', () => {
     const link = screen.getByRole('link', { name: 'web-server-01' });
     expect(link).toBeInTheDocument();
     expect(link.getAttribute('href')).toContain('nodes');
+  });
+
+  it('shows a node as active when it was seen within the backend default 72 hour window', async () => {
+    mockListNodes.mockResolvedValue(
+      makeResponse({
+        items: [
+          {
+            ...makeResponse().items[0],
+            last_seen: new Date(Date.now() - 48 * 3600_000).toISOString(),
+          },
+        ],
+      }),
+    );
+    const router = makeTestRouter();
+    renderWithProviders(router);
+
+    await waitFor(() => {
+      expect(screen.getByText('web-server-01')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('active')).toBeInTheDocument();
   });
 });

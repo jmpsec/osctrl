@@ -163,6 +163,8 @@ func TestCreateNodeQueries(t *testing.T) {
 	assert.Len(t, nodeQueries, 2, "Expected 2 node queries to be created")
 	assert.Equal(t, nodeIDs[0], nodeQueries[0].NodeID, "First NodeID does not match expected value")
 	assert.Equal(t, nodeIDs[1], nodeQueries[1].NodeID, "Second NodeID does not match expected value")
+	assert.Equal(t, queries.DistributedQueryStatusPending, nodeQueries[0].Status, "First node query should be pending so tls/read can deliver it")
+	assert.Equal(t, queries.DistributedQueryStatusPending, nodeQueries[1].Status, "Second node query should be pending so tls/read can deliver it")
 
 	// Test error handling
 	t.Run("EmptyNodeList", func(t *testing.T) {
