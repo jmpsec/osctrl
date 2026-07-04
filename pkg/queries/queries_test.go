@@ -47,6 +47,7 @@ func setupTestData(t *testing.T, db *gorm.DB) (*queries.Queries, []nodes.Osquery
 		ID:            1,
 		Name:          "test_query",
 		Query:         "SELECT * FROM osquery_info;",
+		Active:        true,
 		EnvironmentID: 1,
 		Expiration:    time.Now().Add(24 * time.Hour),
 	}
@@ -144,6 +145,33 @@ func TestUpdateQueryStatus(t *testing.T) {
 			assert.Equal(t, tc.expected, updatedNodeQuery.Status, "Status does not match expected value")
 		})
 	}
+}
+
+func TestUpdateQueryStatusCompletesParentQueryWhenAllTargetsFinish(t *testing.T) {
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+
+	relations := []queries.NodeQuery{
+		{NodeID: nodes[0].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending},
+		{NodeID: nodes[1].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending},
+	}
+	for _, relation := range relations {
+		require.NoError(t, db.Create(&relation).Error)
+	}
+
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[0].ID, 0))
+
+	var afterFirst queries.DistributedQuery
+	require.NoError(t, db.First(&afterFirst, query.ID).Error)
+	assert.False(t, afterFirst.Completed, "query should remain incomplete while one target is still pending")
+	assert.True(t, afterFirst.Active, "query should remain active while one target is still pending")
+
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[1].ID, 0))
+
+	var afterSecond queries.DistributedQuery
+	require.NoError(t, db.First(&afterSecond, query.ID).Error)
+	assert.True(t, afterSecond.Completed, "query should be marked completed when all targets are terminal")
+	assert.False(t, afterSecond.Active, "query should no longer be active when all targets are terminal")
 }
 
 func TestCreateNodeQueries(t *testing.T) {

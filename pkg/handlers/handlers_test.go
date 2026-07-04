@@ -61,3 +61,40 @@ func TestCreateQueryCarveWithoutTargetsIncludesAllEnvironmentNodes(t *testing.T)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []uint{1, 2}, targetNodesID)
 }
+
+func TestBuildQueryTargetRecordsWithoutTargetsUsesEnvironment(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	envs := environments.CreateEnvironment(db)
+	env := envs.Empty("dev", "dev.example.com")
+	require.NoError(t, envs.Create(&env))
+
+	targets, err := BuildQueryTargetRecords(
+		ProcessingQuery{EnvID: env.ID},
+		Managers{Envs: envs},
+	)
+	require.NoError(t, err)
+	require.Equal(t, []QueryTargetRecord{{Type: nodes.EnvironmentSelector, Value: env.Name}}, targets)
+}
+
+func TestBuildQueryTargetRecordsPreservesExplicitTargets(t *testing.T) {
+	targets, err := BuildQueryTargetRecords(
+		ProcessingQuery{
+			Envs:      []string{"prod"},
+			Platforms: []string{"linux"},
+			UUIDs:     []string{"UUID-1"},
+			Hosts:     []string{"host-1"},
+			Tags:      []string{"critical"},
+		},
+		Managers{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, []QueryTargetRecord{
+		{Type: nodes.EnvironmentSelector, Value: "prod"},
+		{Type: nodes.PlatformSelector, Value: "linux"},
+		{Type: "uuid", Value: "UUID-1"},
+		{Type: "host", Value: "host-1"},
+		{Type: "tag", Value: "critical"},
+	}, targets)
+}

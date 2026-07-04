@@ -237,6 +237,17 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
+	targetRows, err := handlers.BuildQueryTargetRecords(data, manager)
+	if err != nil {
+		apiErrorResponse(w, "error creating query targets", http.StatusInternalServerError, err)
+		return
+	}
+	for _, target := range targetRows {
+		if err := h.Queries.CreateTarget(newQuery.Name, target.Type, target.Value); err != nil {
+			apiErrorResponse(w, "error creating query targets", http.StatusInternalServerError, err)
+			return
+		}
+	}
 	// Update value for expected
 	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
 		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)

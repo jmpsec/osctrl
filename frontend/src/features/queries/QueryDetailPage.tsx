@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getQuery, listQueryResults, getQueryResultsCSVUrl } from '$/api/queries';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getQuery, listQueryResults, getQueryResultsCSVUrl, actOnQuery } from '$/api/queries';
 import { listNodes } from '$/api/nodes';
 import { AuthError } from '$/api/client';
 import { formatRelative } from '$/lib/time';
@@ -82,6 +82,14 @@ export function QueryDetailPage() {
   });
 
   const qc = useQueryClient();
+  const completeMutation = useMutation({
+    mutationFn: () => actOnQuery(env, name, 'complete'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['query', env, name] });
+      void qc.invalidateQueries({ queryKey: ['query-results', env, name] });
+      void qc.invalidateQueries({ queryKey: ['queries', env] });
+    },
+  });
 
   // Paginated query results
   const {
@@ -217,6 +225,25 @@ export function QueryDetailPage() {
             {query.expiration && !query.expiration.startsWith('0001') && (
               <span>Expires: <strong className="text-[color:var(--text-1)]" title={query.expiration}>{formatRelative(query.expiration)}</strong></span>
             )}
+          </div>
+        )}
+
+        {query && !query.completed && !query.deleted && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => completeMutation.mutate()}
+              disabled={completeMutation.isPending}
+              className={cn(
+                'px-3 py-1.5 text-xs font-medium rounded-md',
+                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              aria-label="Complete query"
+            >
+              {completeMutation.isPending ? 'Completing…' : 'Complete query'}
+            </button>
           </div>
         )}
 
