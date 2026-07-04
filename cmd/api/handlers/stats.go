@@ -45,6 +45,7 @@ type StatsResponse struct {
 	TotalNodes    int64 `json:"total_nodes"`
 	ActiveNodes   int64 `json:"active_nodes"`
 	InactiveNodes int64 `json:"inactive_nodes"`
+	InactiveHours int64 `json:"inactive_hours"`
 	// TotalActiveQueries counts standard query-type active queries (excludes carves).
 	TotalActiveQueries int `json:"total_active_queries"`
 	// TotalActiveCarves counts active carve-type queries.
@@ -102,7 +103,10 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
-	out := StatsResponse{Environments: make([]EnvStats, 0, len(allEnvs))}
+	out := StatsResponse{
+		InactiveHours: hours,
+		Environments:  make([]EnvStats, 0, len(allEnvs)),
+	}
 
 	for _, e := range allEnvs {
 		// Filter to envs the user can actually see.

@@ -18,6 +18,7 @@ const STUB_RESPONSE: StatsResponse = {
   total_nodes: 10,
   active_nodes: 7,
   inactive_nodes: 3,
+  inactive_hours: 72,
   total_active_queries: 2,
   total_active_carves: 1,
   platform_counts: { linux: 6, darwin: 2, windows: 2, other: 0 },

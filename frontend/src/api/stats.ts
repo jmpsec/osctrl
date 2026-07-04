@@ -29,6 +29,7 @@ export interface StatsResponse {
   total_nodes: number;
   active_nodes: number;
   inactive_nodes: number;
+  inactive_hours: number;
   total_active_queries: number;
   total_active_carves: number;
   /** Cross-env aggregate (sum of every env.platform_counts the user can see). */

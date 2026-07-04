@@ -8,7 +8,8 @@ import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import { AuthError } from '$/api/client';
 import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag } from '$/api/types';
-import { formatRelative, formatBytes, isWithinHours } from '$/lib/time';
+import { formatRelative, formatBytes } from '$/lib/time';
+import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { SkeletonRow } from '$/components/data/Skeleton';
@@ -336,6 +337,7 @@ export function NodesTablePage() {
   const { env } = useParams({ from: '/_app/env/$env/nodes' });
   const search = useSearch({ from: '/_app/env/$env/nodes' });
   const navigate = useNavigate({ from: '/_app/env/$env/nodes' });
+  const inactiveHours = useInactiveHours();
 
   const status: NodeStatus = search.status ?? 'all';
   const q: string = search.q ?? '';
@@ -754,7 +756,7 @@ export function NodesTablePage() {
             {!isLoading &&
               !isError &&
               nodes.map((node) => {
-                const isActive = isWithinHours(node.last_seen, 24);
+                const isActive = isNodeActive(node.last_seen, inactiveHours);
                 const isSelected = selectedUuids.has(node.uuid);
 
                 return (

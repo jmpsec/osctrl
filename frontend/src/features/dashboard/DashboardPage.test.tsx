@@ -53,6 +53,7 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
     total_nodes: 10,
     active_nodes: 7,
     inactive_nodes: 3,
+    inactive_hours: 72,
     total_active_queries: 2,
     total_active_carves: 1,
     platform_counts: { linux: 6, darwin: 2, windows: 2, other: 0 },
@@ -171,9 +172,18 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Active Nodes')).toBeInTheDocument());
 
-    expect(screen.getByText('Inactive ≥ 24h')).toBeInTheDocument();
+    expect(screen.getByText('Inactive ≥ 72h')).toBeInTheDocument();
     expect(screen.getByText('Active Queries')).toBeInTheDocument();
     expect(screen.getByText('Forensic Carves')).toBeInTheDocument();
+  });
+
+  it('uses the backend stats threshold for inactive labeling', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse({ inactive_hours: 168 }));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Active Nodes')).toBeInTheDocument());
+
+    expect(screen.getByText('Inactive ≥ 168h')).toBeInTheDocument();
   });
 
   it('renders one tile per environment', async () => {

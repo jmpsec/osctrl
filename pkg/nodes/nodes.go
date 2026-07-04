@@ -278,7 +278,10 @@ func (n *NodeManager) SearchByField(fieldType, term, target string, hours int64,
 func (n *NodeManager) GetByPlatform(envID uint, platform, target string, hours int64) ([]OsqueryNode, error) {
 	var nodes []OsqueryNode
 	// Build query with base condition
-	query := n.DB.Where("platform = ? AND environment_id = ?", platform, envID)
+	query := n.DB.Where("environment_id = ?", envID)
+	if platform != AllNodes {
+		query = query.Where("platform = ?", platform)
+	}
 	// Apply active/inactive filtering
 	query = ApplyNodeTarget(query, target, hours)
 	// Execute query

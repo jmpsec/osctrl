@@ -1,6 +1,13 @@
 package nodes
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
 
 // TestSortableColumnsAllowlist verifies that every entry in SortableColumns
 // maps to a non-empty database column name and that the SPA-critical keys
@@ -74,4 +81,24 @@ func TestSafeOrderExpr(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetByPlatformAllReturnsAllPlatformNodes(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	manager := CreateNodes(db)
+	now := time.Now()
+	nodes := []OsqueryNode{
+		{UUID: "NODE-1", Platform: "linux", EnvironmentID: 7, LastSeen: now},
+		{UUID: "NODE-2", Platform: "windows", EnvironmentID: 7, LastSeen: now},
+		{UUID: "NODE-3", Platform: "darwin", EnvironmentID: 99, LastSeen: now},
+	}
+	for _, node := range nodes {
+		require.NoError(t, db.Create(&node).Error)
+	}
+
+	got, err := manager.GetByPlatform(7, AllNodes, ActiveNodes, 24)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
 }
