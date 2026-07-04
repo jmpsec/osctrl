@@ -14,6 +14,39 @@ import { Pagination } from '$/components/data/Pagination';
 import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 
+function QueryStatusBadge({
+  q,
+}: {
+  q: { active: boolean; completed: boolean; expired: boolean; deleted: boolean };
+}) {
+  if (q.deleted) return <ListBadge variant="danger" label="Deleted" />;
+  if (q.expired) return <ListBadge variant="warning" label="Expired" />;
+  if (q.completed) return <ListBadge variant="success" label="Completed" />;
+  if (q.active) return <ListBadge variant="info" label="Active" />;
+  return <ListBadge variant="dim" label="Unknown" />;
+}
+
+function ListBadge({
+  variant,
+  label,
+}: {
+  variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
+  label: string;
+}) {
+  const cls = {
+    success:
+      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
+    warning:
+      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
+    danger:
+      'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
+    info: 'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
+    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
+  }[variant];
+
+  return <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cls)}>{label}</span>;
+}
+
 // ---------------------------------------------------------------------------
 // Status tabs config
 // ---------------------------------------------------------------------------
@@ -181,6 +214,22 @@ export function QueriesListPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'border border-[color:var(--border)] text-[color:var(--text-2)]',
+              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+            aria-label="Refresh queries"
+          >
+            Refresh
+          </button>
+
           {/* New query button */}
           <Link
             to="/_app/env/$env/queries/new"
@@ -260,6 +309,12 @@ export function QueriesListPage() {
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
               >
+                Status
+              </th>
+              <th
+                scope="col"
+                className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
+              >
                 Type
               </th>
               <SortableHeader
@@ -283,12 +338,12 @@ export function QueriesListPage() {
           <tbody data-stale={isFetching && !isLoading ? 'true' : undefined}>
             {/* Loading skeleton */}
             {isLoading &&
-              Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
+              Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={7} />)}
 
             {/* Error state */}
             {isError && !isLoading && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -314,7 +369,7 @@ export function QueriesListPage() {
             {/* Empty state */}
             {!isLoading && !isError && items.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -376,7 +431,7 @@ export function QueriesListPage() {
                       />
                     </td>
 
-                    {/* Name — link-blue, navigates to detail */}
+                    {/* Query text — link-blue, navigates to detail by internal name */}
                     <td className="px-4 py-3">
                       <Link
                         to="/_app/env/$env/queries/$name"
@@ -386,14 +441,20 @@ export function QueriesListPage() {
                           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                           'rounded text-sm font-medium font-mono-tabular',
                         )}
+                        title={item.query}
                       >
-                        {item.name}
+                        {item.query}
                       </Link>
                     </td>
 
                     {/* Creator */}
                     <td className="px-4 py-3 text-[color:var(--text-2)] text-xs">
                       {item.creator}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <QueryStatusBadge q={item} />
                     </td>
 
                     {/* Type chip */}

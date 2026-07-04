@@ -167,18 +167,30 @@ describe('QueriesListPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('q_test_0001')).toBeInTheDocument();
+      expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
     });
 
     expect(screen.getByText('admin')).toBeInTheDocument();
     expect(screen.getByText('query')).toBeInTheDocument();
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(1);
+  });
+
+  it('renders completed status for completed queries', async () => {
+    mockListQueries.mockResolvedValue(
+      makeResponse({ items: [makeQuery({ active: false, completed: true })] }),
+    );
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument();
+    });
   });
 
   it('shows skeleton rows while loading', () => {
     mockListQueries.mockReturnValue(new Promise(() => {}));
     renderWithProviders(makeTestRouter());
     // Data row should not be present while loading
-    expect(screen.queryByText('q_test_0001')).not.toBeInTheDocument();
+    expect(screen.queryByText('SELECT * FROM osquery_info;')).not.toBeInTheDocument();
   });
 
   it('shows empty state when API returns no items', async () => {
@@ -198,7 +210,7 @@ describe('QueriesListPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('q_test_0001')).toBeInTheDocument();
+      expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
     });
 
     const activeTab = screen.getByRole('tab', { name: /^Active$/i });
@@ -217,7 +229,7 @@ describe('QueriesListPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('q_test_0001')).toBeInTheDocument();
+      expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
     });
 
     const checkbox = screen.getByRole('checkbox', { name: /select query q_test_0001/i });
@@ -235,11 +247,28 @@ describe('QueriesListPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('q_test_0001')).toBeInTheDocument();
+      expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
     });
 
-    const link = screen.getByRole('link', { name: 'q_test_0001' });
+    const link = screen.getByRole('link', { name: 'SELECT * FROM osquery_info;' });
     expect(link).toBeInTheDocument();
     expect(link.getAttribute('href')).toContain('queries');
+  });
+
+  it('refresh button refetches the queries table', async () => {
+    const user = userEvent.setup();
+    mockListQueries.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
+    });
+
+    const callsBeforeRefresh = mockListQueries.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Refresh queries' }));
+
+    await waitFor(() => {
+      expect(mockListQueries.mock.calls.length).toBeGreaterThan(callsBeforeRefresh);
+    });
   });
 });

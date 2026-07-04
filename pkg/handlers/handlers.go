@@ -26,6 +26,11 @@ type Managers struct {
 	Tags  *tags.TagManager
 }
 
+type QueryTargetRecord struct {
+	Type  string
+	Value string
+}
+
 // CreateQueryCarve - Create On-demand Query or Carve, to be used in osctrl-admin or osctrl-api
 func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.DistributedQuery) ([]uint, error) {
 	var expected []uint
@@ -127,4 +132,32 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		targetNodesID = utils.Intersect(targetNodesID, expected)
 	}
 	return targetNodesID, nil
+}
+
+func BuildQueryTargetRecords(data ProcessingQuery, manager Managers) ([]QueryTargetRecord, error) {
+	targets := []QueryTargetRecord{}
+	appendTargets := func(targetType string, values []string) {
+		for _, value := range values {
+			if value != "" {
+				targets = append(targets, QueryTargetRecord{Type: targetType, Value: value})
+			}
+		}
+	}
+
+	appendTargets(nodes.EnvironmentSelector, data.Envs)
+	appendTargets(nodes.PlatformSelector, data.Platforms)
+	appendTargets("uuid", data.UUIDs)
+	appendTargets("host", data.Hosts)
+	appendTargets("tag", data.Tags)
+
+	if len(targets) > 0 {
+		return targets, nil
+	}
+
+	env, err := manager.Envs.GetByID(data.EnvID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting environment by ID: %w", err)
+	}
+
+	return []QueryTargetRecord{{Type: nodes.EnvironmentSelector, Value: env.Name}}, nil
 }

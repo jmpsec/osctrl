@@ -560,6 +560,18 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
 		return err
 	}
+
+	var pending int64
+	if err := q.DB.Model(&NodeQuery{}).
+		Where("query_id = ? AND status = ?", query.ID, DistributedQueryStatusPending).
+		Count(&pending).Error; err != nil {
+		return err
+	}
+	if pending == 0 {
+		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
