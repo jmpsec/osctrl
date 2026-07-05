@@ -277,12 +277,24 @@ type CarveFileView struct {
 	CompletedAt     time.Time `json:"completed_at"`
 }
 
+// QueryTargetView is the SPA-facing shape for stored distributed-query targets.
+type QueryTargetView struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// DistributedQueryView augments a query row with its recorded targets.
+type DistributedQueryView struct {
+	queries.DistributedQuery
+	Targets []QueryTargetView `json:"targets"`
+}
+
 // CarveDetailResponse is the SPA-canonical response for
 // GET /api/v1/carves/{env}/{name}. It pairs the carve QUERY metadata with
 // the per-node CarvedFile rows produced by the carve.
 type CarveDetailResponse struct {
-	Query queries.DistributedQuery `json:"query"`
-	Files []CarveFileView          `json:"files"`
+	Query DistributedQueryView `json:"query"`
+	Files []CarveFileView      `json:"files"`
 }
 
 // EnvAccessView mirrors users.EnvAccess but lives in the types package so

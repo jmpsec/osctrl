@@ -174,6 +174,32 @@ func TestUpdateQueryStatusCompletesParentQueryWhenAllTargetsFinish(t *testing.T)
 	assert.False(t, afterSecond.Active, "query should no longer be active when all targets are terminal")
 }
 
+func TestUpdateQueryStatusDoesNotAutoCompleteCarveWhenAllTargetsFinish(t *testing.T) {
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+
+	query.Type = queries.CarveQueryType
+	query.Active = true
+	query.Completed = false
+	require.NoError(t, db.Save(&query).Error)
+
+	relations := []queries.NodeQuery{
+		{NodeID: nodes[0].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending},
+		{NodeID: nodes[1].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending},
+	}
+	for _, relation := range relations {
+		require.NoError(t, db.Create(&relation).Error)
+	}
+
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[0].ID, 0))
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[1].ID, 0))
+
+	var updated queries.DistributedQuery
+	require.NoError(t, db.First(&updated, query.ID).Error)
+	assert.False(t, updated.Completed, "carves should not be auto-completed when node query delivery finishes")
+	assert.True(t, updated.Active, "carves should remain active until the carve flow itself is completed")
+}
+
 func TestCreateNodeQueries(t *testing.T) {
 	db := testDB(t)
 	q, nodes, query := setupTestData(t, db)

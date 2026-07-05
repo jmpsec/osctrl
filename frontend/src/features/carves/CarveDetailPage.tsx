@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getCarve, getCarveArchiveUrl } from '$/api/carves';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getCarve, getCarveArchiveUrl, actOnCarve } from '$/api/carves';
 import { listNodes } from '$/api/nodes';
 import { AuthError } from '$/api/client';
 import type { CarveFile } from '$/api/types';
@@ -42,6 +42,10 @@ function formatBytes(n: number): string {
   return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+function hasRealTimestamp(value?: string): boolean {
+  return typeof value === 'string' && value.length > 0 && !value.startsWith('0001-01-01');
+}
+
 export function CarveDetailPage() {
   const { env, name } = useParams({ from: '/_app/env/$env/carves/$name' });
   const navigate = useNavigate({ from: '/_app/env/$env/carves/$name' });
@@ -51,6 +55,14 @@ export function CarveDetailPage() {
     queryFn: () => getCarve(env, name),
     staleTime: 15_000,
     refetchInterval: 15_000,
+  });
+  const qc = useQueryClient();
+  const completeMutation = useMutation({
+    mutationFn: () => actOnCarve(env, name, 'complete'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['carve', env, name] });
+      void qc.invalidateQueries({ queryKey: ['carves', env] });
+    },
   });
 
   // Nodes lookup so the carve file rows can render hostname → link to the
@@ -119,6 +131,55 @@ export function CarveDetailPage() {
             </dl>
           )}
         </div>
+
+        {query && !query.completed && !query.deleted && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => completeMutation.mutate()}
+              disabled={completeMutation.isPending}
+              className={cn(
+                'px-3 py-1.5 text-xs font-medium rounded-md',
+                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              aria-label="Complete carve"
+            >
+              {completeMutation.isPending ? 'Completing…' : 'Complete carve'}
+            </button>
+          </div>
+        )}
+
+        {query && query.targets !== undefined && (
+          <div className="mt-3">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
+              Targets
+            </div>
+            {query.targets.length === 0 ? (
+              <div className="text-xs text-[color:var(--text-3)] italic">
+                No targets recorded.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {query.targets.map((t, i) => (
+                  <span
+                    key={`${t.type}-${t.value}-${i}`}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
+                      'text-[11px] font-mono-tabular',
+                      'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                      'text-[color:var(--text-2)]',
+                    )}
+                  >
+                    <span className="text-[color:var(--text-3)]">{t.type}:</span>
+                    <span className="text-[color:var(--text-1)] font-semibold">{t.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="px-6 py-4 flex-1 min-h-0 overflow-auto">
@@ -232,7 +293,11 @@ export function CarveDetailPage() {
                       {f.completed_blocks}/{f.total_blocks}
                     </td>
                     <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right">
-                      <span title={f.completed_at}>{formatRelative(f.completed_at)}</span>
+                      {hasRealTimestamp(f.completed_at) ? (
+                        <span title={f.completed_at}>{formatRelative(f.completed_at)}</span>
+                      ) : (
+                        <span>—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       {canDownload ? (

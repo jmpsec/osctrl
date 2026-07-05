@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -129,10 +130,10 @@ describe('CarvesListPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('carve_abcdef')).toBeInTheDocument();
+      expect(screen.getByText('/etc/hosts')).toBeInTheDocument();
     });
     expect(screen.getByText('analyst')).toBeInTheDocument();
-    expect(screen.getByText('/etc/hosts')).toBeInTheDocument();
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(1);
   });
 
   it('shows the empty state with a "Start first carve" CTA when none exist', async () => {
@@ -170,5 +171,33 @@ describe('CarvesListPage', () => {
     expect(args.target).toBe('active');
     expect(args.sort).toBe('name');
     expect(args.dir).toBe('asc');
+  });
+
+  it('refresh button refetches the carves table', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('/etc/hosts')).toBeInTheDocument();
+    });
+
+    const callsBeforeRefresh = mockList.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Refresh carves' }));
+
+    await waitFor(() => {
+      expect(mockList.mock.calls.length).toBeGreaterThan(callsBeforeRefresh);
+    });
+  });
+
+  it('renders pending status when a carve has been picked up but not completed', async () => {
+    mockList.mockResolvedValue(
+      makeResponse({ items: [makeCarve({ carve_status: 'PENDING' } as Partial<DistributedQuery>)] }),
+    );
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('Pending')).toBeInTheDocument();
+    });
   });
 });
