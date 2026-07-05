@@ -222,9 +222,17 @@ export function QueryDetailPage() {
             </span>
             <span>Type: <strong className="text-[color:var(--text-1)]">{query.type}</strong></span>
             <span>Created: <strong className="text-[color:var(--text-1)]" title={query.created_at}>{formatRelative(query.created_at)}</strong></span>
-            {query.expiration && !query.expiration.startsWith('0001') && (
-              <span>Expires: <strong className="text-[color:var(--text-1)]" title={query.expiration}>{formatRelative(query.expiration)}</strong></span>
-            )}
+            <span>
+              Expires:{' '}
+              <strong
+                className="text-[color:var(--text-1)]"
+                title={query.expiration && !query.expiration.startsWith('0001') ? query.expiration : 'no expiration'}
+              >
+                {query.expiration && !query.expiration.startsWith('0001')
+                  ? formatRelative(query.expiration)
+                  : 'never'}
+              </strong>
+            </span>
           </div>
         )}
 

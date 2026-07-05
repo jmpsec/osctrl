@@ -168,6 +168,53 @@ describe('CarveDetailPage', () => {
     expect(screen.getByText('test-env')).toBeInTheDocument();
   });
 
+  it('shows carve summary, per-file block/size/path columns and expiration', async () => {
+    mockGetCarve.mockResolvedValue(
+      makeCarveDetail({
+        query: makeQuery({ expiration: '0001-01-01T00:00:00Z' }),
+        files: [
+          makeFile({
+            carve_size: 4096,
+            block_size: 1024,
+            total_blocks: 4,
+            completed_blocks: 4,
+            status: 'COMPLETED',
+            archived: true,
+          }),
+          makeFile({
+            carve_size: 8192,
+            block_size: 1024,
+            total_blocks: 8,
+            completed_blocks: 3,
+            uuid: 'node-2',
+            path: '/etc/passwd',
+            status: 'IN PROGRESS',
+            archived: false,
+            session_id: 'session-2',
+          }),
+        ],
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+
+    // The carve loads — wait for the summary band (unique), not the path,
+    // which now also appears in each file row.
+    await screen.findByText('Total size');
+
+    // Summary band: 2 files (1 archived), total 12 KB, 7/12 blocks.
+    expect(screen.getByText('Files')).toBeInTheDocument();
+    // 'Blocks' appears both as the summary label and the table column header.
+    expect(screen.getAllByText('Blocks').length).toBeGreaterThanOrEqual(2);
+    // 'never' shown for the no-expiration carve.
+    expect(screen.getByText('Expires')).toBeInTheDocument();
+    expect(screen.getByText('never')).toBeInTheDocument();
+    // Per-file path + archived columns render; max block size is surfaced
+    // in the summary band rather than a redundant per-row column.
+    expect(screen.getByText('/etc/passwd')).toBeInTheDocument();
+    expect(screen.getByText('Max block size')).toBeInTheDocument();
+    expect(screen.getByText('Archived')).toBeInTheDocument();
+  });
+
   it('renders a Refresh button that reloads the carve', async () => {
     const user = userEvent.setup();
     renderWithProviders(makeTestRouter());

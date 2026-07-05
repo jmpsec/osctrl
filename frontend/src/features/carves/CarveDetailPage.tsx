@@ -128,6 +128,12 @@ export function CarveDetailPage() {
                 <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Created</dt>
                 <dd title={query.created_at}>{formatRelative(query.created_at)}</dd>
               </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Expires</dt>
+                <dd title={hasRealTimestamp(query.expiration) ? query.expiration : 'no expiration'}>
+                  {hasRealTimestamp(query.expiration) ? formatRelative(query.expiration) : 'never'}
+                </dd>
+              </div>
             </dl>
           )}
         </div>
@@ -228,6 +234,13 @@ export function CarveDetailPage() {
           </div>
         </div>
 
+        {/* Summary band — aggregate carve/block/size/file counts so an
+           operator can take in the carve's state at a glance without
+           summing the table rows. Skipped while loading or on error. */}
+        {!isLoading && !isError && query && (
+          <CarveSummary files={files} archivableCount={archivableFiles.length} />
+        )}
+
         {isLoading && (
           <p className="text-xs text-[color:var(--text-3)]">Loading…</p>
         )}
@@ -265,40 +278,18 @@ export function CarveDetailPage() {
         )}
 
         {!isLoading && !isError && files.length > 0 && (
-          <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto rounded-md border border-[color:var(--border)]">
+          <table className="w-full text-sm border-collapse min-w-[820px]">
             <thead>
               <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)]">
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Node
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Size
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Blocks
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
-                >
-                  Completed
-                </th>
-                <th scope="col" className="px-3 py-2 w-1" />
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Node</th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Path</th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Size</th>
+                <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Blocks</th>
+                <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Completed</th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Archived</th>
+                <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide whitespace-nowrap">Download</th>
               </tr>
             </thead>
             <tbody>
@@ -309,7 +300,7 @@ export function CarveDetailPage() {
                     key={f.carve_id || f.session_id}
                     className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
                   >
-                    <td className="px-3 py-2 font-mono-tabular text-xs">
+                    <td className="px-3 py-2 font-mono-tabular text-xs whitespace-nowrap">
                       <Link
                         to="/_app/env/$env/nodes/$uuid"
                         params={{ env, uuid: f.uuid }}
@@ -319,20 +310,30 @@ export function CarveDetailPage() {
                         {uuidToHostname.get(f.uuid) ?? `${f.uuid.slice(0, 12)}…`}
                       </Link>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 font-mono-tabular text-xs text-[color:var(--text-2)] max-w-[220px] truncate" title={f.path || '—'}>
+                      {f.path || '—'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
                       <StatusBadge status={f.status} />
                     </td>
-                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right">
+                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right whitespace-nowrap" title={`${f.carve_size} B`}>
                       {formatBytes(f.carve_size)}
                     </td>
-                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right">
+                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right whitespace-nowrap">
                       {f.completed_blocks}/{f.total_blocks}
                     </td>
-                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right">
+                    <td className="px-3 py-2 text-xs tnum text-[color:var(--text-2)] text-right whitespace-nowrap">
                       {hasRealTimestamp(f.completed_at) ? (
                         <span title={f.completed_at}>{formatRelative(f.completed_at)}</span>
                       ) : (
                         <span>—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs whitespace-nowrap">
+                      {f.archived ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]">yes</span>
+                      ) : (
+                        <span className="text-[color:var(--text-3)]">no</span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -357,6 +358,7 @@ export function CarveDetailPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
 
         {files.length === 1 && archivableFiles.length === 1 && (
@@ -380,6 +382,48 @@ export function CarveDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// CarveSummary — compact aggregate strip above the carved-files table.
+// Surfaces the total carve size, block progress, file count, and archived
+// count so an operator can read the carve's state at a glance instead of
+// scanning every row. Pure derived view — no fetching.
+function CarveSummary({
+  files,
+  archivableCount,
+}: {
+  files: CarveFile[];
+  archivableCount: number;
+}) {
+  let totalSize = 0;
+  let totalBlocks = 0;
+  let completedBlocks = 0;
+  let maxBlockSize = 0;
+  for (const f of files) {
+    totalSize += f.carve_size || 0;
+    totalBlocks += f.total_blocks || 0;
+    completedBlocks += f.completed_blocks || 0;
+    if ((f.block_size || 0) > maxBlockSize) maxBlockSize = f.block_size || 0;
+  }
+  const stats: { label: string; value: string; sub?: string }[] = [
+    { label: 'Files', value: String(files.length), sub: `${archivableCount} archived` },
+    { label: 'Total size', value: formatBytes(totalSize) },
+    { label: 'Blocks', value: `${completedBlocks}/${totalBlocks}`, sub: totalBlocks > 0 ? `${Math.round((completedBlocks / totalBlocks) * 100)}%` : undefined },
+    { label: 'Max block size', value: formatBytes(maxBlockSize) },
+  ];
+  return (
+    <dl className="grid grid-cols-4 gap-px bg-[color:var(--border)] border border-[color:var(--border)] rounded-md overflow-hidden mb-3">
+      {stats.map((st) => (
+        <div key={st.label} className="bg-[color:var(--bg-1)] px-3 py-2">
+          <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">{st.label}</dt>
+          <dd className="text-sm font-mono-tabular text-[color:var(--text-1)] tnum mt-0.5">
+            {st.value}
+            {st.sub && <span className="ml-1.5 text-[10px] text-[color:var(--text-3)] font-normal">{st.sub}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
