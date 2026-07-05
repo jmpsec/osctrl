@@ -151,6 +151,7 @@ export interface DistributedQuery {
   extra_data: string;
   expiration: string;
   target: string;
+  carve_status?: string;
   /**
    * Targets the query was launched against — populated by
    * GET /queries/{env}/{name}; list endpoints leave it out so it may

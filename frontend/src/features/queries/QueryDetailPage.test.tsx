@@ -138,6 +138,26 @@ describe('QueryDetailPage', () => {
     });
   });
 
+  it('Refresh button reloads the query and its results (refresh everything)', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(makeTestRouter());
+
+    // Initial load fires both the query and its results.
+    await screen.findByText('SELECT 1;');
+    const initialQueries = mockGetQuery.mock.calls.length;
+    const initialResults = mockListQueryResults.mock.calls.length;
+    expect(initialQueries).toBeGreaterThanOrEqual(1);
+    expect(initialResults).toBeGreaterThanOrEqual(1);
+
+    // The Refresh button invalidates everything, so both fetch again.
+    const refresh = await screen.findByRole('button', { name: 'Refresh query results' });
+    await user.click(refresh);
+    await waitFor(() => {
+      expect(mockGetQuery.mock.calls.length).toBeGreaterThan(initialQueries);
+      expect(mockListQueryResults.mock.calls.length).toBeGreaterThan(initialResults);
+    });
+  });
+
   it('hides the complete button for completed queries', async () => {
     mockGetQuery.mockResolvedValue(makeQuery({ active: false, completed: true }));
     renderWithProviders(makeTestRouter());

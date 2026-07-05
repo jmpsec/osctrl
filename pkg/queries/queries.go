@@ -114,6 +114,7 @@ type DistributedQuery struct {
 	ExtraData     string         `json:"extra_data"`
 	Expiration    time.Time      `json:"expiration"`
 	Target        string         `json:"target"`
+	CarveStatus   string         `gorm:"-" json:"carve_status,omitempty"`
 }
 
 // NodeQuery links a node to a query
@@ -567,7 +568,11 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 		Count(&pending).Error; err != nil {
 		return err
 	}
-	if pending == 0 {
+	// Standard distributed queries are complete once every targeted node has
+	// reached a terminal node_query status. Carves use the same delivery
+	// mechanism, but the actual file transfer continues after query delivery, so
+	// they must not be auto-completed here.
+	if pending == 0 && query.Type != CarveQueryType {
 		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
 			return err
 		}

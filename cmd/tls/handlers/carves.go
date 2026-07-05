@@ -7,6 +7,36 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func (h *HandlersTLS) syncCompletedCarveQuery(sessionID string) error {
+	carve, err := h.Carves.GetBySession(sessionID)
+	if err != nil {
+		return err
+	}
+
+	query, err := h.Queries.Get(carve.QueryName, carve.EnvironmentID)
+	if err != nil {
+		return err
+	}
+	if query.Completed || query.Deleted || query.Expired {
+		return nil
+	}
+
+	files, err := h.Carves.GetByQuery(carve.QueryName, carve.EnvironmentID)
+	if err != nil {
+		return err
+	}
+	if query.Expected <= 0 || len(files) < query.Expected {
+		return nil
+	}
+	for _, file := range files {
+		if file.Status != carves.StatusCompleted {
+			return nil
+		}
+	}
+
+	return h.Queries.Complete(carve.QueryName, carve.EnvironmentID)
+}
+
 // ProcessCarveWrite - Function to process the scheduling of file carves from a node
 func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName, nodeKey, environment string) error {
 	// Retrieve node
@@ -85,6 +115,8 @@ func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment
 		}
 		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
 			log.Err(err).Msg("error completing carve")
+		} else if err := h.syncCompletedCarveQuery(req.SessionID); err != nil {
+			log.Err(err).Msg("error syncing completed carve query")
 		}
 	} else {
 		if err := h.Carves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {

@@ -19,6 +19,44 @@ import { Pagination } from '$/components/data/Pagination';
 import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 
+function CarveStatusBadge({
+  q,
+}: {
+  q: { active: boolean; completed: boolean; expired: boolean; deleted: boolean; carve_status?: string };
+}) {
+  if (q.carve_status === 'PENDING') return <ListBadge variant="warning" label="Pending" />;
+  if (q.carve_status === 'COMPLETED') return <ListBadge variant="success" label="Completed" />;
+  if (q.carve_status === 'EXPIRED') return <ListBadge variant="warning" label="Expired" />;
+  if (q.carve_status === 'DELETED') return <ListBadge variant="danger" label="Deleted" />;
+  if (q.carve_status === 'ACTIVE') return <ListBadge variant="info" label="Active" />;
+  if (q.deleted) return <ListBadge variant="danger" label="Deleted" />;
+  if (q.expired) return <ListBadge variant="warning" label="Expired" />;
+  if (q.completed) return <ListBadge variant="success" label="Completed" />;
+  if (q.active) return <ListBadge variant="info" label="Active" />;
+  return <ListBadge variant="dim" label="Unknown" />;
+}
+
+function ListBadge({
+  variant,
+  label,
+}: {
+  variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
+  label: string;
+}) {
+  const cls = {
+    success:
+      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
+    warning:
+      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
+    danger:
+      'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
+    info: 'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
+    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
+  }[variant];
+
+  return <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cls)}>{label}</span>;
+}
+
 const CARVE_STATUS_TABS: StatusTab<CarveTarget>[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
@@ -161,6 +199,22 @@ export function CarvesListPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'border border-[color:var(--border)] text-[color:var(--text-2)]',
+              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+            aria-label="Refresh carves"
+          >
+            Refresh
+          </button>
+
           <Link
             to="/_app/env/$env/carves/new"
             params={{ env }}
@@ -217,7 +271,14 @@ export function CarvesListPage() {
               </th>
               <SortableHeader
                 column={'name' as CarveSortColumn}
-                label="Name"
+                label="Path"
+                currentSort={sort}
+                currentDir={dir}
+                onSortChange={handleSortChange}
+              />
+              <SortableHeader
+                column={'creator' as CarveSortColumn}
+                label="Creator"
                 currentSort={sort}
                 currentDir={dir}
                 onSortChange={handleSortChange}
@@ -226,15 +287,8 @@ export function CarvesListPage() {
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide"
               >
-                Path
+                Status
               </th>
-              <SortableHeader
-                column={'creator' as CarveSortColumn}
-                label="Creator"
-                currentSort={sort}
-                currentDir={dir}
-                onSortChange={handleSortChange}
-              />
               <SortableHeader
                 column={'executions' as CarveSortColumn}
                 label="Progress"
@@ -351,20 +405,16 @@ export function CarvesListPage() {
                           'text-sm font-medium font-mono-tabular text-[color:var(--text-link)]',
                           'hover:underline',
                         )}
+                        title={item.path || item.name}
                       >
-                        {item.name}
+                        {item.path || item.name}
                       </Link>
-                    </td>
-                    <td className="px-4 py-3 max-w-md">
-                      <code
-                        className="block truncate font-mono-tabular text-xs text-[color:var(--text-2)]"
-                        title={item.path}
-                      >
-                        {item.path || '—'}
-                      </code>
                     </td>
                     <td className="px-4 py-3 text-[color:var(--text-2)] text-xs">
                       {item.creator}
+                    </td>
+                    <td className="px-4 py-3">
+                      <CarveStatusBadge q={item} />
                     </td>
                     <td className="px-4 py-3 text-xs tnum text-[color:var(--text-2)]">
                       <span title={`${item.executions}/${item.expected} (errors: ${item.errors})`}>

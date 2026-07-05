@@ -307,10 +307,11 @@ export function QueryDetailPage() {
               in legacy when watching a long-running distributed query land. */}
           <button
             type="button"
-            onClick={() => {
-              void qc.invalidateQueries({ queryKey: ['query', env, name] });
-              void qc.invalidateQueries({ queryKey: ['query-results', env, name] });
-            }}
+            // Refresh everything: the query, its results, the queries list,
+            // and any other live data on the page (stats, activity) — so an
+            // operator watching a query land gets a fully fresh view, not just
+            // the results table.
+            onClick={() => void qc.invalidateQueries()}
             className={cn(
               'px-3 py-1 text-xs font-medium rounded-md',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',

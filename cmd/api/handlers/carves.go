@@ -23,6 +23,33 @@ import (
 	"gorm.io/gorm"
 )
 
+func deriveCarveStatus(query queries.DistributedQuery, files []carves.CarvedFile) string {
+	if query.Deleted {
+		return "DELETED"
+	}
+	if query.Expired {
+		return "EXPIRED"
+	}
+	if query.Completed {
+		return "COMPLETED"
+	}
+	if len(files) == 0 {
+		return "ACTIVE"
+	}
+
+	allCompleted := query.Expected > 0 && len(files) >= query.Expected
+	for _, file := range files {
+		if file.Status != carves.StatusCompleted {
+			allCompleted = false
+			break
+		}
+	}
+	if allCompleted {
+		return "COMPLETED"
+	}
+	return "PENDING"
+}
+
 // carveFileView projects a CarvedFile row into the SPA-canonical envelope.
 // time.Time stays as time.Time so JSON-encoded output is RFC3339.
 func carveFileView(c carves.CarvedFile) types.CarveFileView {
@@ -115,7 +142,22 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		views = append(views, carveFileView(f))
 	}
 
-	resp := types.CarveDetailResponse{Query: q, Files: views}
+	targets := []types.QueryTargetView{}
+	if rows, terr := h.Queries.GetTargets(name); terr == nil {
+		for _, t := range rows {
+			targets = append(targets, types.QueryTargetView{Type: t.Type, Value: t.Value})
+		}
+	} else {
+		log.Debug().Err(terr).Msgf("carve targets fetch failed for %s", name)
+	}
+
+	resp := types.CarveDetailResponse{
+		Query: types.DistributedQueryView{
+			DistributedQuery: q,
+			Targets:          targets,
+		},
+		Files: views,
+	}
 	log.Debug().Msgf("Returned carve %s (%d files)", name, len(views))
 	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
@@ -259,6 +301,14 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 	if items == nil {
 		items = []queries.DistributedQuery{}
 	}
+	for i := range items {
+		files, ferr := h.Carves.GetByQuery(items[i].Name, env.ID)
+		if ferr != nil {
+			apiErrorResponse(w, "error getting carve files", http.StatusInternalServerError, ferr)
+			return
+		}
+		items[i].CarveStatus = deriveCarveStatus(items[i], files)
+	}
 	var totalPages int
 	if result.TotalItems > 0 {
 		totalPages = int((result.TotalItems + int64(pageSize) - 1) / int64(pageSize))
@@ -373,6 +423,17 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
 			log.Err(err).Msgf("error creating node queries for carve %s", newQuery.Name)
 			apiErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
+			return
+		}
+	}
+	targetRows, err := handlers.BuildQueryTargetRecords(data, manager)
+	if err != nil {
+		apiErrorResponse(w, "error creating carve targets", http.StatusInternalServerError, err)
+		return
+	}
+	for _, target := range targetRows {
+		if err := h.Queries.CreateTarget(newQuery.Name, target.Type, target.Value); err != nil {
+			apiErrorResponse(w, "error creating carve targets", http.StatusInternalServerError, err)
 			return
 		}
 	}
