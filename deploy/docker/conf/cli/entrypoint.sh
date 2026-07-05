@@ -5,21 +5,24 @@ CERT_FILE="${CERT_FILE:=/opt/osctrl/config/osctrl.crt}"
 HOST="${HOST:=nginx}"
 OSCTRL_USER="${OSCTRL_USER:=admin}"
 OSCTRL_PASS="${OSCTRL_PASS:=admin}"
+LOGGING_INTERVAL="${LOGGING_INTERVAL:=90}"
+CONFIG_INTERVAL="${CONFIG_INTERVAL:=60}"
+QUERY_INTERVAL="${QUERY_INTERVAL:=30}"
 WAIT="${WAIT:=5}"
 
-######################################### OSCTRL_PASS #########################################
+######################################### OSCTRL_PASS ##############################################
 if [[ -n "$OSCTRL_PASS_FILE" ]]; then
   OSCTRL_PASS=$(cat ${OSCTRL_PASS_FILE})
 fi
 
-######################################### Wait until DB is up #########################################
+######################################### Wait until DB is up ######################################
 until /opt/osctrl/bin/osctrl-cli check-db
 do
   echo "DB is not ready"
   sleep $WAIT
 done
 
-######################################### Create environment #########################################
+######################################### Create environment #######################################
 /opt/osctrl/bin/osctrl-cli --db env add \
   --name "${ENV_NAME}" \
   --hostname "${HOST}" \
@@ -30,7 +33,33 @@ else
   echo "Environment ${ENV_NAME} exists"
 fi
 
-######################################### Create admin user #########################################
+######################################### Adjust intervals #########################################
+
+/opt/osctrl/bin/osctrl-cli --db env update \
+  --name "${ENV_NAME}" \
+  --logging "${LOGGING_INTERVAL}" \
+  --config "${CONFIG_INTERVAL}" \
+  --query "${QUERY_INTERVAL}"
+if [ $? -eq 0 ]; then
+  echo "Adjusted intervals for ${ENV_NAME}"
+else
+  echo "Something happened with the intervals for ${ENV_NAME}"
+fi
+
+######################################### Add scheduled query ######################################
+
+/opt/osctrl/bin/osctrl-cli --db env add-scheduled-query \
+  --name "${ENV_NAME}" \
+  --query-name "uptime" \
+  --query "SELECT * FROM uptime;" \
+  --interval "60"
+if [ $? -eq 0 ]; then
+  echo "Added query to schedule in ${ENV_NAME}"
+else
+  echo "Something happened adding query to schedule in ${ENV_NAME}"
+fi
+
+######################################### Create admin user ########################################
 /opt/osctrl/bin/osctrl-cli --db user add \
   --admin \
   --username "${OSCTRL_USER}" \
