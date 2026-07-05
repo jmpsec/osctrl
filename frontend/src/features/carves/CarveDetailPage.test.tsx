@@ -168,6 +168,22 @@ describe('CarveDetailPage', () => {
     expect(screen.getByText('test-env')).toBeInTheDocument();
   });
 
+  it('renders a Refresh button that reloads the carve', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(makeTestRouter());
+
+    // The carve loads on mount.
+    await screen.findByText('/etc/hosts');
+    expect(mockGetCarve).toHaveBeenCalledTimes(1);
+
+    // The Refresh button (mirrors the query detail page) re-fetches.
+    const refresh = await screen.findByRole('button', { name: 'Refresh carved files' });
+    await user.click(refresh);
+    await waitFor(() => {
+      expect(mockGetCarve).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('does not render a fake completion date for scheduled files', async () => {
     mockGetCarve.mockResolvedValue(makeCarveDetail({ files: [makeFile()] }));
     mockListNodes.mockResolvedValue({

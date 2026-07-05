@@ -50,7 +50,7 @@ export function CarveDetailPage() {
   const { env, name } = useParams({ from: '/_app/env/$env/carves/$name' });
   const navigate = useNavigate({ from: '/_app/env/$env/carves/$name' });
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['carve', env, name],
     queryFn: () => getCarve(env, name),
     staleTime: 15_000,
@@ -183,14 +183,50 @@ export function CarveDetailPage() {
       </div>
 
       <div className="px-6 py-4 flex-1 min-h-0 overflow-auto">
-        <h2 className="text-sm font-semibold text-[color:var(--text-1)] mb-3">
-          Carved files ({files.length})
-          {completedFiles.length > 0 && (
-            <span className="ml-2 text-xs text-[color:var(--text-3)] font-normal">
-              · {completedFiles.length} completed
-            </span>
-          )}
-        </h2>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-[color:var(--text-1)]">
+            Carved files ({files.length})
+            {completedFiles.length > 0 && (
+              <span className="ml-2 text-xs text-[color:var(--text-3)] font-normal">
+                · {completedFiles.length} completed
+              </span>
+            )}
+          </h2>
+          <div className="ml-auto flex items-center gap-2">
+            {/* Refresh button — mirrors the query detail page. Reloads the
+            carve, its carved files, the carves list, and the node lookup so
+            an operator watching blocks land can pull the latest state now
+            instead of waiting for the 15s poll. */}
+            <button
+              type="button"
+              onClick={() => {
+                void qc.invalidateQueries({ queryKey: ["carve", env, name] });
+                void qc.invalidateQueries({ queryKey: ["carves", env] });
+                void qc.invalidateQueries({ queryKey: ["carve-nodes-lookup", env] });
+              }}
+              disabled={isFetching}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded-md',
+                'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              aria-label="Refresh carved files"
+              title="Refresh now"
+            >
+              Refresh
+            </button>
+            {isFetching && !isLoading && (
+              <span
+                aria-live="polite"
+                className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              >
+                refreshing…
+              </span>
+            )}
+          </div>
+        </div>
 
         {isLoading && (
           <p className="text-xs text-[color:var(--text-3)]">Loading…</p>
