@@ -138,6 +138,14 @@ describe('QueryDetailPage', () => {
     });
   });
 
+  it('shows the expiration the query was created with (never for no-expiration)', async () => {
+    // Default makeQuery has a zero/0001 expiration — render as 'never'.
+    renderWithProviders(makeTestRouter());
+    await screen.findByText('SELECT 1;');
+    expect(screen.getByText(/Expires:/)).toBeInTheDocument();
+    expect(screen.getByText('never')).toBeInTheDocument();
+  });
+
   it('Refresh button reloads the query and its results (refresh everything)', async () => {
     const user = userEvent.setup();
     renderWithProviders(makeTestRouter());
