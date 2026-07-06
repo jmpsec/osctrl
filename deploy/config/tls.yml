@@ -160,3 +160,8 @@ debug:
   enableHttp: false
   httpFile: ./debug-http-tls.log
   showBody: false
+  # When non-empty, only dump requests from the osquery node whose UUID
+  # (or enroll host_identifier) matches this value (case-insensitive).
+  # Empty dumps every request when enableHttp is true. Useful to isolate
+  # one host's traffic on a busy server.
+  hostIdentifier: ""

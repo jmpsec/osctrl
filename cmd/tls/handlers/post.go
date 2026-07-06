@@ -103,7 +103,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -120,6 +120,13 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msg("error parsing POST body")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
+	}
+	// Per-host filtered HTTP debug dump. In legacy (no-filter) mode the
+	// top-of-handler dump already covered this request. For enroll the
+	// host identifier is the osquery host_identifier; it becomes the
+	// node UUID (uppercased) once the node is created.
+	if h.shouldDebugHTTP(t.HostIdentifier) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	// Check if received secret is valid
 	var nodeKey string
@@ -190,7 +197,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP for environment
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -209,7 +216,17 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// We need to update the node info in another go routine
-	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+	node, nodeErr := h.Nodes.GetByKey(t.NodeKey)
+	matchedUUID := ""
+	if nodeErr == nil {
+		matchedUUID = node.UUID
+	}
+	// Per-host filtered HTTP debug dump. Legacy (no-filter) mode already
+	// dumped this request at the top of the handler.
+	if h.shouldDebugHTTP(matchedUUID) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
+	}
+	if nodeErr == nil {
 		// Check if node belongs to the environment
 		if node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
@@ -282,7 +299,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	// Debug HTTP here so the body will be uncompressed
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Extract POST body and decode JSON
@@ -310,7 +327,17 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeInvalid bool
 	var response types.LogResponse
 	// Check if provided node_key is valid and if so, update node
-	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+	node, nodeErr := h.Nodes.GetByKey(t.NodeKey)
+	matchedUUID := ""
+	if nodeErr == nil {
+		matchedUUID = node.UUID
+	}
+	// Per-host filtered HTTP debug dump. Legacy (no-filter) mode already
+	// dumped this request at the top of the handler.
+	if h.shouldDebugHTTP(matchedUUID) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
+	}
+	if nodeErr == nil {
 		// Check if node belongs to the environment
 		if node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
@@ -367,7 +394,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -389,7 +416,17 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	var response interface{}
 	qs := make(queries.QueryReadQueries)
 	// Check if provided node_key is valid and if so, update node
-	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+	node, nodeErr := h.Nodes.GetByKey(t.NodeKey)
+	matchedUUID := ""
+	if nodeErr == nil {
+		matchedUUID = node.UUID
+	}
+	// Per-host filtered HTTP debug dump. Legacy (no-filter) mode already
+	// dumped this request at the top of the handler.
+	if h.shouldDebugHTTP(matchedUUID) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
+	}
+	if nodeErr == nil {
 		// Check if node belongs to the environment
 		if node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
@@ -416,7 +453,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 	} else {
-		log.Err(err).Msg("GetByKey")
+		log.Err(nodeErr).Msg("GetByKey")
 		nodeInvalid = true
 		accelerate = false
 	}
@@ -456,7 +493,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -477,7 +514,17 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	var nodeInvalid bool
 	var response types.QueryWriteResponse
 	// Check if provided node_key is valid and if so, update node
-	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+	node, nodeErr := h.Nodes.GetByKey(t.NodeKey)
+	matchedUUID := ""
+	if nodeErr == nil {
+		matchedUUID = node.UUID
+	}
+	// Per-host filtered HTTP debug dump. Legacy (no-filter) mode already
+	// dumped this request at the top of the handler.
+	if h.shouldDebugHTTP(matchedUUID) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
+	}
+	if nodeErr == nil {
 		// Check if node belongs to the environment
 		if node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
@@ -551,7 +598,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve type of script
@@ -624,7 +671,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve type of script
@@ -699,7 +746,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -721,7 +768,17 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	var carveSessionID string
 	var response types.CarveInitResponse
 	// Check if provided node_key is valid and if so, update node
-	if node, err := h.Nodes.GetByKey(t.NodeKey); err == nil {
+	node, nodeErr := h.Nodes.GetByKey(t.NodeKey)
+	matchedUUID := ""
+	if nodeErr == nil {
+		matchedUUID = node.UUID
+	}
+	// Per-host filtered HTTP debug dump. Legacy (no-filter) mode already
+	// dumped this request at the top of the handler.
+	if h.shouldDebugHTTP(matchedUUID) {
+		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
+	}
+	if nodeErr == nil {
 		// Check if node belongs to the environment
 		if node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
@@ -779,7 +836,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -846,7 +903,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -907,7 +964,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -962,7 +1019,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -1054,7 +1111,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		actionVar += environments.PowershellTarget
 	}
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body
@@ -1114,7 +1171,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Debug HTTP if enabled
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Retrieve package
@@ -1245,7 +1302,7 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	// Debug HTTP
-	if h.DebugHTTPConfig.EnableHTTP {
+	if h.debugHTTPAll() {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	// Decode read POST body. Even though we cap the *decompressed*

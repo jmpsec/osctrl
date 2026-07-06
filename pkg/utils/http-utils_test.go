@@ -3,8 +3,10 @@ package utils
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -208,4 +210,47 @@ func TestSetTrustedProxiesIgnoresInvalid(t *testing.T) {
 	if got := GetIP(req); got != "203.0.113.5" {
 		t.Errorf("partial CIDR set: got %q, want %q", got, "203.0.113.5")
 	}
+}
+
+// TestDebugHTTPDumpWithBody verifies the bytes-based dump helper used on
+// the per-host-filtered debug path. It must serialize a request whose body
+// has already been read into a []byte, include the body when showBody is
+// true, surface the "No Body" marker when false, and never touch the
+// original (already-consumed) request stream.
+func TestDebugHTTPDumpWithBody(t *testing.T) {
+	body := []byte(`{"node_key":"abc","host_identifier":"host-1"}`)
+
+	withLogger := func(t *testing.T, showBody bool) string {
+		var buf bufWriter
+		logger := newZerologLogger(&buf)
+		req := httptest.NewRequest("POST", "/env/enroll", nil)
+		req.Header.Set("Content-Type", "application/json")
+		DebugHTTPDumpWithBody(&logger, req, body, showBody)
+		return buf.String()
+	}
+
+	t.Run("show body", func(t *testing.T) {
+		out := withLogger(t, true)
+		assert.Contains(t, out, "POST /env/enroll")
+		assert.Contains(t, out, "host_identifier")
+		assert.Contains(t, out, "node_key")
+		assert.NotContains(t, out, "No Body")
+	})
+
+	t.Run("omit body", func(t *testing.T) {
+		out := withLogger(t, false)
+		assert.Contains(t, out, "POST /env/enroll")
+		assert.Contains(t, out, "No Body")
+		assert.NotContains(t, out, "node_key")
+	})
+}
+
+// bufWriter is a minimal io.Writer backing a zerolog logger for tests.
+type bufWriter struct{ b strings.Builder }
+
+func (w *bufWriter) Write(p []byte) (int, error) { return w.b.Write(p) }
+func (w *bufWriter) String() string              { return w.b.String() }
+
+func newZerologLogger(w *bufWriter) zerolog.Logger {
+	return zerolog.New(w)
 }

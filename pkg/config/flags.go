@@ -959,6 +959,13 @@ func initDebugFlags(params *ServiceParameters, service string) []cli.Flag {
 			Sources:     cli.EnvVars("HTTP_DEBUG_SHOW_BODY"),
 			Destination: &params.Debug.ShowBody,
 		},
+		&cli.StringFlag{
+			Name:        "http-debug-host",
+			Value:       "",
+			Usage:       "Only dump HTTP requests from the osquery node with this UUID / host_identifier (case-insensitive). Empty dumps everything when --enable-http-debug is set.",
+			Sources:     cli.EnvVars("HTTP_DEBUG_HOST"),
+			Destination: &params.Debug.TargetHostIdentifier,
+		},
 	}
 }
 
