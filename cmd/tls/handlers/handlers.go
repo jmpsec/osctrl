@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
@@ -213,6 +214,43 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 		h.AuditLog = &auditlog.AuditLogManager{Enabled: false}
 	}
 	return h
+}
+
+// shouldDebugHTTP reports whether a request whose originating node UUID is
+// `uuid` should be dumped to the debug HTTP log. It encodes the per-host
+// filter introduced to make debug HTTP usable on busy servers:
+//
+//   - EnableHTTP off → never dump.
+//   - TargetHostIdentifier empty → this returns false; the legacy "dump
+//     everything" path is handled inline at the top of each handler
+//     (gated on `TargetHostIdentifier == ""`), so non-empty-filter mode
+//     stays byte-for-byte identical to the previous behavior.
+//   - TargetHostIdentifier set → dump only when uuid matches, case-
+//     insensitively. A zero uuid (failed node lookup / invalid key) never
+//     matches, so anonymous or malformed traffic is excluded from the
+//     filtered dump — which is the intent.
+//
+// Node UUIDs are stored uppercase and the osquery host_identifier may
+// arrive in any case, so EqualFold is used on both sides.
+func (h *HandlersTLS) shouldDebugHTTP(uuid string) bool {
+	if h.DebugHTTPConfig == nil || !h.DebugHTTPConfig.EnableHTTP {
+		return false
+	}
+	if h.DebugHTTPConfig.TargetHostIdentifier == "" {
+		return false
+	}
+	return uuid != "" && strings.EqualFold(uuid, h.DebugHTTPConfig.TargetHostIdentifier)
+}
+
+// debugHTTPAll reports whether the legacy "dump every request" path
+// should run at the top of a handler. It is true only when HTTP debug is
+// enabled and no per-host filter is configured; in that mode behavior is
+// identical to the previous implementation (full dump before the body is
+// parsed, including malformed bodies). When a filter is set this returns
+// false and the handler instead dumps only matching requests after the
+// node has been identified, via shouldDebugHTTP + DebugHTTPDumpWithBody.
+func (h *HandlersTLS) debugHTTPAll() bool {
+	return h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP && h.DebugHTTPConfig.TargetHostIdentifier == ""
 }
 
 func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {

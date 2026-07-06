@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -155,6 +156,24 @@ func DebugHTTP(r *http.Request, showBody bool) string {
 // DebugHTTPDump - Helper for debugging purposes and dump a full HTTP request
 func DebugHTTPDump(l *zerolog.Logger, r *http.Request, showBody bool) {
 	l.Log().Msg(DebugHTTP(r, showBody))
+}
+
+// DebugHTTPDumpWithBody is the variant to use when the request body has
+// already been read into memory (for example by the handler's readBody).
+// It re-wraps the already-buffered bytes onto r.Body so the existing
+// httputil-based dump (DebugHTTP) can serialize the full request without
+// re-reading the original stream. This is the helper to call on hot paths
+// where a host filter decides, after the body has been parsed, whether
+// paying the dump cost is worth it — the non-matching path never calls
+// it, and the matching path only re-serializes the bytes it already has.
+//
+// r.Body is mutated as a side effect; callers must not read r.Body again
+// after this (handlers use the buffered []byte they already have).
+func DebugHTTPDumpWithBody(l *zerolog.Logger, r *http.Request, body []byte, showBody bool) {
+	if body != nil {
+		r.Body = io.NopCloser(bytes.NewReader(body))
+	}
+	DebugHTTPDump(l, r, showBody)
 }
 
 // trustedProxies is the global set of CIDRs whose X-Real-IP /

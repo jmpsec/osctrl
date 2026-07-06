@@ -231,6 +231,14 @@ type YAMLConfigurationDebug struct {
 	EnableHTTP bool   `yaml:"enableHttp"`
 	HTTPFile   string `yaml:"httpFile"`
 	ShowBody   bool   `yaml:"showBody"`
+	// TargetHostIdentifier, when non-empty, restricts the HTTP debug dump
+	// to requests coming from the osquery node whose UUID (uppercase) or
+	// enroll host_identifier matches this value (case-insensitive). When
+	// empty, every request is dumped as long as EnableHTTP is true — the
+	// legacy behavior. Endpoints that identify a node (enroll, config,
+	// log, queryRead, queryWrite, carveInit) can match; pre-enroll /
+	// no-node endpoints are skipped while a filter is set.
+	TargetHostIdentifier string `yaml:"hostIdentifier"`
 }
 
 // YAMLConfigurationWriter to hold the DB batch writer configuration values
