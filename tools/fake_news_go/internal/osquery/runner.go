@@ -95,7 +95,7 @@ func simulateRows(query string) []map[string]interface{} {
 		return []map[string]interface{}{
 			{
 				"name":    "osqueryd",
-				"version": "5.23.0",
+				"version": "5.23.1",
 				"pid":     "4242",
 			},
 		}

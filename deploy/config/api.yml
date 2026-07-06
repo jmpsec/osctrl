@@ -48,8 +48,8 @@ redis:
 
 # Osquery nodes configuration
 osquery:
-  version: 5.23.0
-  tablesFile: ./data/5.23.0.json
+  version: 5.23.1
+  tablesFile: ./data/5.23.1.json
   logger: true
   config: true
   query: true
