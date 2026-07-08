@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNode, listNodeLogs, deleteNode } from '$/api/nodes';
@@ -517,6 +518,7 @@ const TABS = [
 ] as const;
 
 export function NodeDetailPage() {
+  usePageTitle('Node');
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
   const navigate = useNavigate();
   const inactiveHours = useInactiveHours();

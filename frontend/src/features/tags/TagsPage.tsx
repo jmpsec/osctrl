@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listEnvTags, tagsAction } from '$/api/tags';
@@ -21,6 +22,7 @@ const DEFAULT_ICON = 'fas fa-tag';
 const TAG_TYPE_REGULAR = 6; // mirrors pkg/tags.TagTypeTag
 
 export function TagsPage() {
+  usePageTitle('Tags');
   const { env } = useParams({ from: '/_app/env/$env/tags' });
   const navigate = useNavigate({ from: '/_app/env/$env/tags' });
   const qc = useQueryClient();

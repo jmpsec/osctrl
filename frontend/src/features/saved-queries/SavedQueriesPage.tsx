@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -33,6 +34,7 @@ type ModalMode =
   | { kind: 'delete'; query: SavedQuery };
 
 export function SavedQueriesPage() {
+  usePageTitle('Saved Queries');
   const { env } = useParams({ from: '/_app/env/$env/saved-queries' });
   const search = useSearch({ from: '/_app/env/$env/saved-queries' });
   const navigate = useNavigate({ from: '/_app/env/$env/saved-queries' });

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
@@ -58,6 +59,7 @@ type PageTab = 'install' | 'configuration' | 'lifecycle';
 type DataResult = UseQueryResult<{ data: string }, Error>;
 
 export function EnrollPage() {
+  usePageTitle('Enroll');
   const { env } = useParams({ from: '/_app/env/$env/enroll' });
   const navigate = useNavigate({ from: '/_app/env/$env/enroll' });
   const qc = useQueryClient();

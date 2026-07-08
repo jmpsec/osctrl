@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { getStats, getOsqueryVersionCounts, getEnvActivity } from '$/api/stats';
@@ -1084,6 +1085,7 @@ function RecentlySeenNodesTable({
 // Main page
 // ---------------------------------------------------------------------------
 export function DashboardPage() {
+  usePageTitle('Dashboard');
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['stats'],
     queryFn: getStats,

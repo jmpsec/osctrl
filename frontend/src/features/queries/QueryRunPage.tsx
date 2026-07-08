@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router';
 import { runQuery } from '$/api/queries';
 import { createSavedQuery } from '$/api/saved-queries';
@@ -20,6 +21,7 @@ const EMPTY_TARGET: TargetSelection = {
 };
 
 export function QueryRunPage() {
+  usePageTitle('New Query');
   const { env } = useParams({ from: '/_app/env/$env/queries/new' });
   const navigate = useNavigate({ from: '/_app/env/$env/queries/new' });
   const search = useSearch({ from: '/_app/env/$env/queries/new' });
