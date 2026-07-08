@@ -236,6 +236,12 @@ func init() {
 	// Initialize CLI flags commands
 	commands = []*cli.Command{
 		{
+			Name:    "shell",
+			Aliases: []string{"console", "interactive", "repl"},
+			Usage:   "Interactive shell session (Metasploit-style) — access nodes, queries, carves, ...",
+			Action:  cliWrapper(runShell),
+		},
+		{
 			Name:   "audit-logs",
 			Usage:  "Get all audit logs for actions performed in osctrl",
 			Action: cliWrapper(auditLogs),
