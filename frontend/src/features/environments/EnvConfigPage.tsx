@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -85,6 +86,7 @@ const SECTIONS: {
 const RESERVED_OPTION_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function EnvConfigPage() {
+  usePageTitle('Configuration');
   const { env } = useParams({ from: '/_app/env/$env/config' });
   const navigate = useNavigate({ from: '/_app/env/$env/config' });
   const qc = useQueryClient();

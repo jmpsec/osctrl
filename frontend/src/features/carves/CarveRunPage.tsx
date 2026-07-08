@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { runCarve } from '$/api/carves';
@@ -60,6 +61,7 @@ function validatePath(p: string): PathValidation {
 }
 
 export function CarveRunPage() {
+  usePageTitle('New Carve');
   const { env } = useParams({ from: '/_app/env/$env/carves/new' });
   const navigate = useNavigate({ from: '/_app/env/$env/carves/new' });
 

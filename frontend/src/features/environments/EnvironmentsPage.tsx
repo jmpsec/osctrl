@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -22,6 +23,7 @@ type ModalMode =
   | { kind: 'delete'; env: TLSEnvironment };
 
 export function EnvironmentsPage() {
+  usePageTitle('Environments');
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });

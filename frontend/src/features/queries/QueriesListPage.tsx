@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { listQueries, actOnQuery } from '$/api/queries';
@@ -66,6 +67,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 // QueriesListPage
 // ---------------------------------------------------------------------------
 export function QueriesListPage() {
+  usePageTitle('Queries');
   const { env } = useParams({ from: '/_app/env/$env/queries' });
   const search = useSearch({ from: '/_app/env/$env/queries' });
   const navigate = useNavigate({ from: '/_app/env/$env/queries' });

@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -21,6 +22,7 @@ import { Skeleton } from '$/components/data/Skeleton';
 import type { EnvAccess } from '$/api/types';
 
 export function ProfilePage() {
+  usePageTitle('Profile');
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [fullname, setFullname] = useState('');

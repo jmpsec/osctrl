@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,6 +21,7 @@ const SERVICES = ['tls', 'admin', 'api'] as const;
 type Service = (typeof SERVICES)[number];
 
 export function SettingsPage() {
+  usePageTitle('Settings');
   const params = useParams({ strict: false });
   const navigate = useNavigate();
   const serviceParam = (params as { service?: string }).service ?? 'admin';

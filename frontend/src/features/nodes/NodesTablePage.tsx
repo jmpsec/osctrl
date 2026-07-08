@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
@@ -334,6 +335,7 @@ function HeatmapCell({ buckets }: HeatmapCellProps) {
 // ---------------------------------------------------------------------------
 
 export function NodesTablePage() {
+  usePageTitle('Nodes');
   const { env } = useParams({ from: '/_app/env/$env/nodes' });
   const search = useSearch({ from: '/_app/env/$env/nodes' });
   const navigate = useNavigate({ from: '/_app/env/$env/nodes' });
