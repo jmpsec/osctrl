@@ -494,5 +494,5 @@ function frontend_files() {
   sudo rsync -av "$__path_frontend/dist" "$__dest"
 
   # Adjust permissions
-  sudo chown -R www-data.www-data "$__dest"
+  sudo chown -R www-data:www-data "$__dest"
 }
