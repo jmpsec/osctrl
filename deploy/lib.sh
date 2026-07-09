@@ -482,16 +482,16 @@ function self_signed_saml() {
 
 # Prepare frontend files
 #   string  path_to_frontend_code
-#   string  path_destination
+#   string  path_to_frontend_destination
 function frontend_files() {
   local __path_frontend=$1
   local __dest=$2
 
   # Make sure the destination is ready for frontend
-  sudo mkdir -p "$__dest/frontend"
+  sudo mkdir -p "$__dest"
 
   # rsync frontend files
-  sudo rsync -av "$__path_frontend/dist" "$__dest"
+  sudo rsync -av "$__path_frontend/dist/" "$__dest/"
 
   # Adjust permissions
   sudo chown -R www-data:www-data "$__dest"
