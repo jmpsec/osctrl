@@ -1092,7 +1092,10 @@ export function DashboardPage() {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
-  const inactiveHours = data?.inactive_hours ?? DEFAULT_INACTIVE_HOURS;
+  const inactiveHours =
+    data?.inactive_hours && data.inactive_hours > 0
+      ? data.inactive_hours
+      : DEFAULT_INACTIVE_HOURS;
 
   const [palette, setPaletteEntry, resetPalette] = useChartPalette();
 

@@ -26,7 +26,7 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 	}
 	// Check if service settings for node inactive hours is ready
 	if !mgr.IsValue(config.ServiceAdmin, settings.InactiveHours, settings.NoEnvironmentID) {
-		if err := mgr.NewIntegerValue(config.ServiceAdmin, settings.InactiveHours, int64(defaultInactive), settings.NoEnvironmentID); err != nil {
+		if err := mgr.NewIntegerValue(config.ServiceAdmin, settings.InactiveHours, settings.DefaultInactiveHours, settings.NoEnvironmentID); err != nil {
 			return fmt.Errorf("failed to add %s to configuration: %w", settings.InactiveHours, err)
 		}
 	}

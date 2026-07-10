@@ -224,4 +224,17 @@ describe('DashboardPage', () => {
     );
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
+
+  // Regression: when the backend returns inactive_hours: 0 (e.g. setting
+  // missing from DB), the dashboard must fall back to the default 72h
+  // label rather than showing "Inactive >= 0h".
+  it('falls back to default inactive threshold when API returns 0', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse({ inactive_hours: 0 }));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Active Nodes')).toBeInTheDocument());
+
+    expect(screen.getByText('Inactive \u2265 72h')).toBeInTheDocument();
+    expect(screen.queryByText('Inactive \u2265 0h')).not.toBeInTheDocument();
+  });
 });
