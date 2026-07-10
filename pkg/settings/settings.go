@@ -102,6 +102,13 @@ const (
 	NoEnvironmentID = iota
 )
 
+// DefaultInactiveHours is the fallback threshold (in hours) for classifying
+// nodes as active vs inactive when the inactive_hours setting is absent or
+// invalid. Keeps every service — including the API, which does not seed the
+// setting itself — from treating all nodes as inactive when the DB row is
+// missing.
+const DefaultInactiveHours int64 = 72
+
 // SettingValue to hold each value for settings
 type SettingValue struct {
 	gorm.Model
@@ -563,11 +570,17 @@ func (conf *Settings) CleanupExpired() int64 {
 	return value.Integer
 }
 
-// InactiveHours gets the value in hours for a node to be inactive by service
+// InactiveHours gets the value in hours for a node to be inactive by service.
+// Returns DefaultInactiveHours when the setting is absent or invalid so that
+// callers never receive a zero threshold (which would make every node appear
+// inactive).
 func (conf *Settings) InactiveHours(envID uint) int64 {
 	value, err := conf.RetrieveValue(config.ServiceAdmin, InactiveHours, envID)
 	if err != nil {
-		return 0
+		return DefaultInactiveHours
+	}
+	if value.Integer <= 0 {
+		return DefaultInactiveHours
 	}
 	return value.Integer
 }

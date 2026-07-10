@@ -29,6 +29,15 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add %s to settings: %w", settings.RefreshSettings, err)
 		}
 	}
+	// Ensure the inactive_hours admin setting exists so the API service can
+	// correctly classify nodes as active/inactive even if the admin service
+	// has never been started. The setting is stored under ServiceAdmin (read
+	// by all services via InactiveHours); we seed it here defensively.
+	if !mgr.IsValue(config.ServiceAdmin, settings.InactiveHours, settings.NoEnvironmentID) {
+		if err := mgr.NewIntegerValue(config.ServiceAdmin, settings.InactiveHours, settings.DefaultInactiveHours, settings.NoEnvironmentID); err != nil {
+			return fmt.Errorf("failed to add %s to configuration: %w", settings.InactiveHours, err)
+		}
+	}
 	// Write JSON config to settings
 	if err := mgr.SetAPIJSON(cfg, settings.NoEnvironmentID); err != nil {
 		return fmt.Errorf("failed to add JSON values to configuration: %w", err)
