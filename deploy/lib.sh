@@ -310,8 +310,11 @@ function _systemd() {
   cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sed "s|_ARGS|$__args|g" | sudo tee "$__systemd"
   sudo chmod 755 "$__systemd"
 
+  # Make sure the bin directory is present
+  sudo mkdir -p "$__dest/bin"
+
   # Copying binaries
-  sudo cp "$__path/bin/$__service" "$__dest"
+  sudo cp "$__path/bin/$__service" "$__dest/bin"
 
   # Enable and start service
   sudo systemctl enable "$__service.service"
@@ -475,4 +478,21 @@ function self_signed_saml() {
 
   sudo openssl req -x509 -newkey rsa:$__bits -sha256 -days 365 -nodes \
   -keyout "$__samlkey" -out "$__samlcert" -subj "/CN=$__name"
+}
+
+# Prepare frontend files
+#   string  path_to_frontend_code
+#   string  path_to_frontend_destination
+function frontend_files() {
+  local __path_frontend=$1
+  local __dest=$2
+
+  # Make sure the destination is ready for frontend
+  sudo mkdir -p "$__dest"
+
+  # rsync frontend files
+  sudo rsync -av "$__path_frontend/dist/" "$__dest/"
+
+  # Adjust permissions
+  sudo chown -R www-data:www-data "$__dest"
 }
