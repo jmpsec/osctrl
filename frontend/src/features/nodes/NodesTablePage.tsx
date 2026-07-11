@@ -248,7 +248,7 @@ interface HeatmapCellProps {
 function HeatmapCell({ buckets }: HeatmapCellProps) {
   // Collapse 96 15-min buckets into 24 hourly cells per category.
   // categoryHourly[catIdx][hourIdx] = count for that hour in that category.
-  // catIdx: 0=status, 1=result, 2=query, 3=carve.
+  // catIdx: 0=status, 1=result, 2=query, 3=config.
   const categoryHourly = (() => {
     const empty: number[][] = [
       new Array<number>(24).fill(0),
@@ -264,7 +264,7 @@ function HeatmapCell({ buckets }: HeatmapCellProps) {
       empty[0][h] += b.status;
       empty[1][h] += b.result;
       empty[2][h] += b.query;
-      empty[3][h] += b.carve;
+      empty[3][h] += b.config;
     }
     return empty;
   })();
@@ -277,7 +277,7 @@ function HeatmapCell({ buckets }: HeatmapCellProps) {
     { key: 'status', label: 'Status logs', baseVar: '--info' },
     { key: 'result', label: 'Result logs', baseVar: '--signal' },
     { key: 'query', label: 'Distributed queries', baseVar: '--success' },
-    { key: 'carve', label: 'Carves', baseVar: '--warning' },
+    { key: 'config', label: 'Config fetches', baseVar: '--warning' },
   ] as const;
 
   function tintForStep(baseVar: string, step: 0 | 1 | 2 | 3 | 4): string {

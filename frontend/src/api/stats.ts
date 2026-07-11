@@ -110,6 +110,7 @@ export interface NodeActivityBucket {
   result: number;
   query: number;
   carve: number;
+  config: number;
 }
 
 export function getNodeActivity(

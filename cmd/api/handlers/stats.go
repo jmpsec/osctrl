@@ -341,14 +341,19 @@ func (h *HandlersApi) EnvActivityHandler(w http.ResponseWriter, r *http.Request)
 //   - result  ← osquery_result_data row count (query results returned by this node)
 //   - query   ← node_queries row count (distributed queries scheduled against this node)
 //   - carve   ← carved_files row count (carves this node has produced)
+//   - config  ← Redis-backed hourly config-fetch count (osquery agent heartbeats)
 //
-// All four are joinable by node uuid (or numeric node id for node_queries).
+// The first four are DB-backed; config comes from the Redis activity rollup
+// store and is folded in by computeNodeActivityForNode when a NodeTileSeries
+// is provided. All five are joinable by node uuid (or numeric node id for
+// node_queries).
 type NodeActivityBucket struct {
 	BucketStart time.Time `json:"bucket_start"`
 	Status      int       `json:"status"`
 	Result      int       `json:"result"`
 	Query       int       `json:"query"`
 	Carve       int       `json:"carve"`
+	Config      int       `json:"config"`
 }
 
 // NodeActivityHandler — GET /api/v1/stats/activity/node/{env}/{uuid}?interval=KEY
@@ -436,7 +441,20 @@ func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request
 	endBucket := time.Unix((now.Unix()/int64(bucketSeconds))*int64(bucketSeconds), 0).UTC()
 	startBucket := endBucket.Add(-time.Duration(nBuckets-1) * time.Duration(bucketSeconds) * time.Second)
 
-	out := h.computeNodeActivityForNode(env.Name, node.UUID, node.ID, startBucket, bucketSeconds, nBuckets)
+	var tiles *activity.NodeTileSeries
+	if h.Activity != nil {
+		dayCount := (hours + 23) / 24
+		if dayCount < 1 {
+			dayCount = 1
+		}
+		series, err := h.Activity.ReadSeries(r.Context(), env.UUID, []string{node.UUID}, time.Now(), dayCount)
+		if err != nil {
+			log.Warn().Err(err).Str("node", node.UUID).Msg("node-activity: redis read failed, config will be 0")
+		} else if s, ok := series[node.UUID]; ok {
+			tiles = &s
+		}
+	}
+	out := h.computeNodeActivityForNode(env.Name, node.UUID, node.ID, startBucket, bucketSeconds, nBuckets, tiles)
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
@@ -457,6 +475,7 @@ func (h *HandlersApi) computeNodeActivityForNode(
 	startBucket time.Time,
 	bucketSeconds int,
 	nBuckets int,
+	tiles *activity.NodeTileSeries,
 ) []NodeActivityBucket {
 	startUnix := startBucket.Unix()
 
@@ -482,13 +501,54 @@ func (h *HandlersApi) computeNodeActivityForNode(
 	queryDense := dbutil.DensifyBuckets(queryRows, startUnix, bucketSeconds, nBuckets)
 	carveDense := dbutil.DensifyBuckets(carveRows, startUnix, bucketSeconds, nBuckets)
 
+	// Fold Redis-backed activity into the DB bucket grid. The Redis series is
+	// hourly (BucketSeconds=3600); DB buckets are finer (15-min for 1d). To
+	// avoid inflating the hourly sum when the SPA collapses sub-hourly buckets,
+	// each hourly Redis count is placed in the first DB bucket whose start
+	// falls within that Redis hour; the remaining sub-hourly buckets in the
+	// same hour get 0. This mirrors the merge the Node Detail page does
+	// client-side (mergeNodeActivityBuckets): config comes from Redis only,
+	// query gets DB node_queries + Redis query_read + query_write.
+	configDense := make([]int, nBuckets)
+	queryReadDense := make([]int, nBuckets)
+	queryWriteDense := make([]int, nBuckets)
+	if tiles != nil {
+		redisStart := tiles.Start
+		redisBucketSecs := tiles.BucketSeconds
+		if redisBucketSecs <= 0 {
+			redisBucketSecs = 3600
+		}
+		lastHour := -1
+		for i := 0; i < nBuckets; i++ {
+			bucketStart := startBucket.Add(time.Duration(i) * time.Duration(bucketSeconds) * time.Second)
+			hourIdx := int(bucketStart.Sub(redisStart) / (time.Duration(redisBucketSecs) * time.Second))
+			if hourIdx < 0 {
+				continue
+			}
+			if hourIdx == lastHour {
+				continue
+			}
+			if hourIdx < len(tiles.Config) {
+				configDense[i] = int(tiles.Config[hourIdx])
+			}
+			if hourIdx < len(tiles.QueryRead) {
+				queryReadDense[i] = int(tiles.QueryRead[hourIdx])
+			}
+			if hourIdx < len(tiles.QueryWrite) {
+				queryWriteDense[i] = int(tiles.QueryWrite[hourIdx])
+			}
+			lastHour = hourIdx
+		}
+	}
+
 	out := make([]NodeActivityBucket, nBuckets)
 	for i := range out {
 		out[i].BucketStart = startBucket.Add(time.Duration(i) * time.Duration(bucketSeconds) * time.Second)
 		out[i].Status = int(statusDense[i])
 		out[i].Result = int(resultDense[i])
-		out[i].Query = int(queryDense[i])
+		out[i].Query = int(queryDense[i]) + queryReadDense[i] + queryWriteDense[i]
 		out[i].Carve = int(carveDense[i])
+		out[i].Config = configDense[i]
 	}
 	return out
 }
@@ -590,6 +650,21 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 	endBucket := time.Unix((now.Unix()/int64(bucketSeconds))*int64(bucketSeconds), 0).UTC()
 	startBucket := endBucket.Add(-time.Duration(nBuckets-1) * time.Duration(bucketSeconds) * time.Second)
 
+	// Batch-read Redis activity tiles for all visible nodes in one pipeline
+	// call so config-fetch counts can be folded into the DB buckets.
+	var tilesByUUID map[string]activity.NodeTileSeries
+	if h.Activity != nil {
+		dayCount := (hours + 23) / 24
+		if dayCount < 1 {
+			dayCount = 1
+		}
+		tilesByUUID, err = h.Activity.ReadSeries(r.Context(), env.UUID, uuids, time.Now(), dayCount)
+		if err != nil {
+			log.Warn().Err(err).Msg("node-activity-batch: redis read failed, config will be 0")
+			tilesByUUID = nil
+		}
+	}
+
 	out := make(map[string][]NodeActivityBucket, len(uuids))
 	for _, u := range uuids {
 		// Per-uuid resolution. A miss is logged-but-skipped rather than
@@ -603,7 +678,13 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 			log.Debug().Str("node", u).Msg("node-activity-batch: uuid not in env, skipping")
 			continue
 		}
-		out[node.UUID] = h.computeNodeActivityForNode(env.Name, node.UUID, node.ID, startBucket, bucketSeconds, nBuckets)
+		var tiles *activity.NodeTileSeries
+		if tilesByUUID != nil {
+			if s, ok := tilesByUUID[node.UUID]; ok {
+				tiles = &s
+			}
+		}
+		out[node.UUID] = h.computeNodeActivityForNode(env.Name, node.UUID, node.ID, startBucket, bucketSeconds, nBuckets, tiles)
 	}
 
 	w.Header().Set("Cache-Control", "private, max-age=30")

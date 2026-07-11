@@ -11,6 +11,7 @@ describe('mergeNodeActivityBuckets', () => {
         result: 0,
         query: 0,
         carve: 0,
+        config: 0,
       },
       {
         bucket_start: '2026-07-02T11:00:00Z',
@@ -18,6 +19,7 @@ describe('mergeNodeActivityBuckets', () => {
         result: 0,
         query: 0,
         carve: 0,
+        config: 0,
       },
     ];
 
