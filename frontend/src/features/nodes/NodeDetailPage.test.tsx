@@ -110,6 +110,7 @@ function makeActivityBuckets(): NodeActivityBucket[] {
       result: 1,
       query: 0,
       carve: 0,
+      config: 0,
     },
     {
       bucket_start: '2026-06-17T11:00:00Z',
@@ -117,6 +118,7 @@ function makeActivityBuckets(): NodeActivityBucket[] {
       result: 2,
       query: 1,
       carve: 0,
+      config: 0,
     },
   ];
 }
