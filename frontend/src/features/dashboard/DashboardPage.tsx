@@ -3,7 +3,7 @@
  *
  * Data sources:
  *   GET /api/v1/stats                                  (polled every 30s)
- *   GET /api/v1/audit-logs?page_size=8                 (polled every 60s)
+ *   GET /api/v1/audit-logs?page_size=8                 (polled every 5m)
  *   GET /api/v1/nodes/{firstEnv}?page_size=5&sort=firstseen&dir=desc  (polled every 60s)
  *   GET /api/v1/stats/activity/env-tiles/{env}?days=N  (per env; node activity
  *                                                       line chart: status, result,
@@ -39,14 +39,13 @@ import { DEFAULT_INACTIVE_HOURS, isNodeActive } from '$/lib/node-status';
 // When the tiles endpoint hasn't returned yet (or Redis is unavailable),
 // all-zero arrays are returned so the chart renders an empty frame.
 // ---------------------------------------------------------------------------
-export type ChartCategory = 'status' | 'result' | 'config' | 'query_read' | 'query_write';
+export type ChartCategory = 'status' | 'result' | 'config' | 'query';
 
 interface ActivitySeries {
   status: number[];
   result: number[];
   config: number[];
-  query_read: number[];
-  query_write: number[];
+  query: number[];
   total: number[];
 }
 
@@ -55,8 +54,7 @@ function emptySeries(n: number): ActivitySeries {
     status: new Array<number>(n).fill(0),
     result: new Array<number>(n).fill(0),
     config: new Array<number>(n).fill(0),
-    query_read: new Array<number>(n).fill(0),
-    query_write: new Array<number>(n).fill(0),
+    query: new Array<number>(n).fill(0),
     total: new Array<number>(n).fill(0),
   };
 }
@@ -68,8 +66,7 @@ function tileSeriesToActivity(tiles: NodeTileSeries | undefined): ActivitySeries
     status: tiles.status.map((v) => v),
     result: tiles.result.map((v) => v),
     config: tiles.config.map((v) => v),
-    query_read: tiles.query_read.map((v) => v),
-    query_write: tiles.query_write.map((v) => v),
+    query: tiles.query_read.map((v) => v),
     total: tiles.total.map((v) => v),
   };
 }
@@ -184,11 +181,10 @@ function InlineSparkline({
 type ChartPalette = Record<ChartCategory, string>;
 
 const DEFAULT_PALETTE: ChartPalette = {
-  status:      '#67c0ff', // info blue — status logs
-  result:      '#2bc4be', // signal teal — query results
-  config:      '#a78bfa', // violet — config fetches (agent heartbeat)
-  query_read:  '#4ade80', // green — distributed query reads
-  query_write: '#fbbf24', // amber — query writes
+  status:  '#67c0ff', // info blue — status logs
+  result:  '#2bc4be', // signal teal — query results
+  config:  '#a78bfa', // violet — config fetches (agent heartbeat)
+  query:   '#4ade80', // green — distributed query reads
 };
 
 const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
@@ -268,8 +264,7 @@ function LineChart({
     { key: 'status', data: series.status },
     { key: 'result', data: series.result },
     { key: 'config', data: series.config },
-    { key: 'query_read', data: series.query_read },
-    { key: 'query_write', data: series.query_write },
+    { key: 'query', data: series.query },
   ];
 
   function linePath(data: number[]): string {
@@ -1091,7 +1086,7 @@ export function DashboardPage() {
   const { data: auditData, isLoading: auditLoading } = useQuery({
     queryKey: ['dashboard-audit'],
     queryFn: () => listAuditLogs({ page_size: 8 }),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
     retry: 1,
   });
@@ -1138,7 +1133,7 @@ export function DashboardPage() {
     queryKey: ['dashboard-failed-enrolls', since24hIso],
     queryFn: () =>
       listAuditLogs({ type: LOG_TYPE.Node, since: since24hIso, page_size: 200 }),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
     retry: 1,
   });
@@ -1188,23 +1183,42 @@ export function DashboardPage() {
     }
   });
   // Build the chart series for the selected environment only.
-  const fullSeries: ActivitySeries = (() => {
+  // The Redis day-blob is aligned to UTC midnight, so the series always has
+  // 24 (or 168 for 7d) hourly buckets — but the current hour is in the
+  // middle, with future hours padded as zeros. Trim at the current hour so
+  // "now" is always the rightmost data point.
+  const rawSeries: ActivitySeries = (() => {
     if (effectiveEnv && tilesByUuid.has(effectiveEnv)) {
       return tileSeriesToActivity(tilesByUuid.get(effectiveEnv));
     }
     return emptySeries(0);
   })();
-  // For 12h, slice the last 12 hourly buckets from the 24-bucket day.
+  const tiles = effectiveEnv ? tilesByUuid.get(effectiveEnv) : undefined;
+  const trimmedSeries: ActivitySeries = (() => {
+    if (rawSeries.total.length === 0 || !tiles) return rawSeries;
+    const startMs = Date.parse(tiles.start);
+    if (Number.isNaN(startMs)) return rawSeries;
+    const currentHourIdx = Math.floor((Date.now() - startMs) / 3_600_000);
+    const cut = Math.max(1, Math.min(currentHourIdx + 1, rawSeries.total.length));
+    const trim = (arr: number[]) => arr.slice(0, cut);
+    return {
+      status: trim(rawSeries.status),
+      result: trim(rawSeries.result),
+      config: trim(rawSeries.config),
+      query: trim(rawSeries.query),
+      total: trim(rawSeries.total),
+    };
+  })();
+  // For 12h, slice the last 12 hourly buckets from the trimmed series.
   const chartSeries: ActivitySeries = (() => {
-    if (activityInterval !== '12h') return fullSeries;
+    if (activityInterval !== '12h') return trimmedSeries;
     const slice = (arr: number[]) => arr.slice(-12);
     return {
-      status: slice(fullSeries.status),
-      result: slice(fullSeries.result),
-      config: slice(fullSeries.config),
-      query_read: slice(fullSeries.query_read),
-      query_write: slice(fullSeries.query_write),
-      total: slice(fullSeries.total),
+      status: slice(trimmedSeries.status),
+      result: slice(trimmedSeries.result),
+      config: slice(trimmedSeries.config),
+      query: slice(trimmedSeries.query),
+      total: slice(trimmedSeries.total),
     };
   })();
   // Sparkline data from the total series.
@@ -1393,7 +1407,7 @@ export function DashboardPage() {
                 'text-xs text-[color:var(--text-2)]',
               )}
             >
-              {(['status', 'result', 'config', 'query_read', 'query_write'] as ChartCategory[]).map((key) => (
+              {(['status', 'result', 'config', 'query'] as ChartCategory[]).map((key) => (
                 <label key={key} className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="color"
@@ -1402,7 +1416,7 @@ export function DashboardPage() {
                     className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
                     aria-label={`${key} color`}
                   />
-                  <span>{key === 'query_read' ? 'Query read' : key === 'query_write' ? 'Query write' : key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                  <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
                 </label>
               ))}
               <button

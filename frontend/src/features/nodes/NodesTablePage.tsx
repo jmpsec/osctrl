@@ -3,7 +3,7 @@ import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
-import { getStats, getNodeActivityBatch, type NodeActivityBucket } from '$/api/stats';
+import { getStats, getNodeActivityTilesBatch, type NodeTileSeries } from '$/api/stats';
 import { listEnvTags, tagNode } from '$/api/tags';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
@@ -228,56 +228,51 @@ function ActivityCell({ lastSeen, bytesReceived }: ActivityCellProps) {
 }
 
 interface HeatmapCellProps {
-  /** 96 15-min buckets covering the last 24h, or undefined while loading. */
-  buckets?: NodeActivityBucket[];
+  /** Redis-backed per-node hourly tile series, or undefined while loading. */
+  tiles?: NodeTileSeries;
+  /** Global max per category across all visible nodes, for cross-node intensity. */
+  globalMax?: Record<string, number>;
 }
 
 /**
- * Per-row 4×24 mini activity heatmap. Same data and bucketing as the Node
- * Detail page's Activity tab, just denser:
- *   - 4 rows of categories: status / result / query / carve.
+ * Per-row 5×24 mini activity heatmap from Redis-backed per-node tile data.
+ *   - 5 rows of categories: status / result / config / query read / query write.
  *   - 24 columns, one per hour of the last 24h (left = oldest, right = now).
- *   - Each cell tinted with its category color; intensity is a per-category
- *     log-scaled quantile so a single 3k-row spike doesn't flatten everything
- *     else into the same shade.
+ *   - Intensity uses a global max across all visible nodes (passed via
+ *     globalMax) so nodes with more activity show brighter than nodes with
+ *     less. Without this, per-row normalization would make every node's
+ *     busiest hour look identical.
  *
- * Per-cell tooltip shows the hour + 4-category breakdown. The full per-15-min
- * interactive version with interval picker lives on the Node Detail page —
- * this column is meant for at-a-glance fleet scanning.
+ * Per-cell tooltip shows the hour + 5-category breakdown.
  */
-function HeatmapCell({ buckets }: HeatmapCellProps) {
-  // Collapse 96 15-min buckets into 24 hourly cells per category.
-  // categoryHourly[catIdx][hourIdx] = count for that hour in that category.
-  // catIdx: 0=status, 1=result, 2=query, 3=config.
-  const categoryHourly = (() => {
-    const empty: number[][] = [
-      new Array<number>(24).fill(0),
-      new Array<number>(24).fill(0),
-      new Array<number>(24).fill(0),
-      new Array<number>(24).fill(0),
-    ];
-    if (!buckets || buckets.length === 0) return empty;
-    for (let i = 0; i < buckets.length && i < 96; i++) {
-      const b = buckets[i];
-      const h = Math.floor(i / 4);
-      if (h < 0 || h >= 24) continue;
-      empty[0][h] += b.status;
-      empty[1][h] += b.result;
-      empty[2][h] += b.query;
-      empty[3][h] += b.config;
-    }
-    return empty;
-  })();
+function HeatmapCell({ tiles, globalMax }: HeatmapCellProps) {
+  // The Redis tile series has 24 hourly buckets for a 1-day window.
+  // Trim future hours (the day blob is UTC-midnight aligned) so "now" is
+  // the rightmost column.
+  const trimToNow = (arr: number[] | undefined): number[] => {
+    if (!arr || arr.length === 0) return new Array<number>(24).fill(0);
+    const startMs = tiles ? Date.parse(tiles.start) : NaN;
+    if (Number.isNaN(startMs)) return arr;
+    const currentHourIdx = Math.floor((Date.now() - startMs) / 3_600_000);
+    const cut = Math.max(1, Math.min(currentHourIdx + 1, arr.length));
+    const trimmed = arr.slice(0, cut);
+    // Right-pad to 24 so the grid doesn't shrink.
+    while (trimmed.length < 24) trimmed.push(0);
+    return trimmed;
+  };
 
-  // Per-row max for log-scale normalization. Empty row = empty track for that
-  // category, no false hot color from a row that's actually zero.
-  const rowMax = categoryHourly.map((row) => Math.max(...row, 0));
+  const categoryHourly = [
+    trimToNow(tiles?.status.map((v) => v)),
+    trimToNow(tiles?.result.map((v) => v)),
+    trimToNow(tiles?.config.map((v) => v)),
+    trimToNow(tiles?.query_read.map((v) => v)),
+  ];
 
   const CATEGORIES = [
     { key: 'status', label: 'Status logs', baseVar: '--info' },
     { key: 'result', label: 'Result logs', baseVar: '--signal' },
-    { key: 'query', label: 'Distributed queries', baseVar: '--success' },
     { key: 'config', label: 'Config fetches', baseVar: '--warning' },
+    { key: 'query', label: 'Queries', baseVar: '--success' },
   ] as const;
 
   function tintForStep(baseVar: string, step: 0 | 1 | 2 | 3 | 4): string {
@@ -309,7 +304,7 @@ function HeatmapCell({ buckets }: HeatmapCellProps) {
     >
       {CATEGORIES.map((cat, catIdx) =>
         categoryHourly[catIdx].map((v, h) => {
-          const step = stepFor(v, rowMax[catIdx]);
+          const step = stepFor(v, (globalMax?.[CATEGORIES[catIdx].key] ?? 0) || Math.max(...categoryHourly[catIdx], 0));
           const hoursAgo = 23 - h;
           const when =
             hoursAgo === 0 ? 'last hour' : hoursAgo === 1 ? '1 hour ago' : `${hoursAgo} hours ago`;
@@ -453,20 +448,33 @@ export function NodesTablePage() {
     refetchInterval: 30_000,
   });
 
-  // Per-row activity sparklines. One batched HTTP call per visible page —
-  // cheaper than firing N parallel requests, and the server caps at 100
-  // uuids per request so it can't be turned into a DOS vector. While the
-  // batch resolves, each row renders an empty 24-cell track (rather than
-  // a Skeleton) so the column doesn't shift on data arrival.
+  // Per-row Redis-backed activity tiles. One batched HTTP call per visible
+  // page — the server does a single Redis pipeline for all nodes. Each
+  // row gets its own NodeTileSeries so the heatmap reflects that specific
+  // node's activity, not an env-level aggregate.
   const visibleUuids = (data?.items ?? []).map((n) => n.uuid);
-  const { data: activityByUuid } = useQuery({
-    queryKey: ['node-activity-batch', env, visibleUuids],
-    queryFn: () => getNodeActivityBatch(env, visibleUuids, '1d'),
+  const { data: tilesByUuid } = useQuery({
+    queryKey: ['node-tiles-batch', env, visibleUuids] as const,
+    queryFn: () => getNodeActivityTilesBatch(env, visibleUuids, 1),
     staleTime: 30_000,
     refetchInterval: 30_000,
-    // Don't fire on an empty page (loading state or zero results).
     enabled: visibleUuids.length > 0,
   });
+
+  // Compute a global max across all visible nodes (per category) so that
+  // nodes with more activity show higher intensity than nodes with less.
+  // Without this, per-row normalization makes every node's busiest hour
+  // look identical (all step-4) even when the counts differ 10x.
+  const globalMax = (() => {
+    const max: Record<string, number> = { status: 0, result: 0, config: 0, query: 0 };
+    for (const tiles of Object.values(tilesByUuid ?? {})) {
+      for (const v of tiles.status ?? []) { if (v > max.status) max.status = v; }
+      for (const v of tiles.result ?? []) { if (v > max.result) max.result = v; }
+      for (const v of tiles.config ?? []) { if (v > max.config) max.config = v; }
+      for (const v of tiles.query_read ?? []) { if (v > max.query) max.query = v; }
+    }
+    return max;
+  })();
 
   // Pick out the current env's stat row for chip counts (active/inactive/total
   // + per-platform). Falls back to undefined while loading; chips render with
@@ -818,7 +826,7 @@ export function NodesTablePage() {
 
                     {/* 24h — 4-category heatmap, dedicated column for breathing room */}
                     <td className="px-4 py-2.5 align-middle">
-                      <HeatmapCell buckets={activityByUuid?.[node.uuid]} />
+                      <HeatmapCell tiles={tilesByUuid?.[node.uuid]} globalMax={globalMax} />
                     </td>
                   </tr>
                 );
