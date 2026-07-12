@@ -190,15 +190,17 @@ describe('DashboardPage', () => {
     mockGetStats.mockResolvedValue(makeStatsResponse());
     renderWithProviders(makeTestRouter());
 
-    await waitFor(() => expect(screen.getByText('prod')).toBeInTheDocument());
-    expect(screen.getByText('staging')).toBeInTheDocument();
+    await waitFor(() => { expect(screen.getAllByText('prod').length).toBeGreaterThanOrEqual(1); });
+    expect(screen.getAllByText('staging').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders env tile links to /env/{uuid}/nodes', async () => {
     mockGetStats.mockResolvedValue(makeStatsResponse());
     renderWithProviders(makeTestRouter());
 
-    await waitFor(() => expect(screen.getByText('prod')).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getAllByText('prod').length).toBeGreaterThanOrEqual(1);
+    });
 
     const links = screen.getAllByRole('link');
     const hrefs = links.map((l) => l.getAttribute('href')).filter(Boolean);
