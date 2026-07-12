@@ -502,6 +502,10 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiStatsPath)+"/activity/node-tiles/{env}/{uuid}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityTilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: Redis-backed per-node activity tiles batch (Nodes table heatmap).
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/node-tiles-batch/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeActivityTilesBatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: Redis-backed per-env activity series.
 	muxAPI.Handle(
 		"GET "+_apiPath(apiStatsPath)+"/activity/env-tiles/{env}",

@@ -837,6 +837,109 @@ func (h *HandlersApi) NodeActivityTilesHandler(w http.ResponseWriter, r *http.Re
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
+// NodeActivityTilesBatchHandler — GET /api/v1/stats/activity/node-tiles-batch/{env}?uuids=A,B,C&days=N
+//
+// Batch version of NodeActivityTilesHandler: returns Redis-backed per-node
+// activity tile series for up to 100 nodes in one call. The response is a
+// map keyed by node UUID so the SPA can render a per-row heatmap in the
+// Nodes table without firing N parallel requests.
+//
+// Same 503 when Redis is not configured, same day-count clamping as the
+// single-node variant. Unknown / unauthorized UUIDs are silently omitted.
+// @Summary Get node activity tiles batch
+// @Description Returns Redis-backed hourly activity series for multiple nodes.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuids query string false "Comma-separated node UUIDs"
+// @Param days query int false "Days of history (1-7, default 1)"
+// @Success 200 {object} map[string]activity.NodeTileSeries
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/node-tiles-batch/{env} [get]
+func (h *HandlersApi) NodeActivityTilesBatchHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "env required", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
+		return
+	}
+	if h.Activity == nil {
+		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+
+	uuidsParam := strings.TrimSpace(r.URL.Query().Get("uuids"))
+	if uuidsParam == "" {
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, map[string]activity.NodeTileSeries{})
+		return
+	}
+	rawUUIDs := strings.Split(uuidsParam, ",")
+	const maxBatch = 100
+	if len(rawUUIDs) > maxBatch {
+		rawUUIDs = rawUUIDs[:maxBatch]
+	}
+	seen := make(map[string]struct{}, len(rawUUIDs))
+	uuids := rawUUIDs[:0]
+	for _, u := range rawUUIDs {
+		u = strings.ToUpper(strings.TrimSpace(u))
+		if u == "" {
+			continue
+		}
+		if _, dup := seen[u]; dup {
+			continue
+		}
+		seen[u] = struct{}{}
+		uuids = append(uuids, u)
+	}
+
+	days := activityTileDays(r.URL.Query().Get("days"))
+	series, err := h.Activity.ReadSeries(r.Context(), env.UUID, uuids, time.Now(), days)
+	if err != nil {
+		apiErrorResponse(w, "failed to load activity tiles", http.StatusInternalServerError, err)
+		return
+	}
+
+	// Only include nodes that actually belong to this env.
+	out := make(map[string]activity.NodeTileSeries, len(uuids))
+	for _, u := range uuids {
+		node, err := h.Nodes.GetByUUID(u)
+		if err != nil {
+			continue
+		}
+		if !strings.EqualFold(node.Environment, env.Name) {
+			continue
+		}
+		if s, ok := series[node.UUID]; ok {
+			out[node.UUID] = s
+		}
+	}
+
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
+}
+
 // EnvActivityTilesHandler — GET /api/v1/stats/activity/env-tiles/{env}?days=N
 //
 // Redis-backed environment-level activity series (same shape as the node

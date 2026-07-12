@@ -213,6 +213,22 @@ export function getNodeActivityTiles(
   );
 }
 
+export function getNodeActivityTilesBatch(
+  env: string,
+  uuids: string[],
+  days = 1,
+): Promise<Record<string, NodeTileSeries>> {
+  if (uuids.length === 0) {
+    return Promise.resolve({});
+  }
+  const sp = new URLSearchParams();
+  sp.set('uuids', uuids.join(','));
+  sp.set('days', String(days));
+  return apiFetch<Record<string, NodeTileSeries>>(
+    `/api/v1/stats/activity/node-tiles-batch/${encodeURIComponent(env)}?${sp.toString()}`,
+  );
+}
+
 export function getEnvActivityTiles(env: string, days = 1): Promise<NodeTileSeries> {
   const sp = new URLSearchParams();
   sp.set('days', String(days));
