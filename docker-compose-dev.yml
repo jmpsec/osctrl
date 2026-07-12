@@ -55,6 +55,10 @@ services:
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=osctrl-redis
+      # Trust the Docker network so GetIP honors X-Forwarded-For / X-Real-IP
+      # from the nginx reverse proxy. Without this, every node's IP shows as
+      # the nginx container's internal Docker IP instead of the real client.
+      - SERVICE_TRUSTED_PROXIES=172.16.0.0/12
     networks:
       - osctrl-dev-backend
     ports:
@@ -154,6 +158,7 @@ services:
       - DB_PASS=${POSTGRES_DB_PASSWORD}
       #### Redis settings ####
       - REDIS_HOST=osctrl-redis
+      - SERVICE_TRUSTED_PROXIES=172.16.0.0/12
     networks:
       - osctrl-dev-backend
     ports:
