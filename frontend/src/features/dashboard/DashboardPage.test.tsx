@@ -95,17 +95,17 @@ function makeTestRouter() {
     component: Outlet,
   });
 
-  const dashRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: '/',
-    component: DashboardPage,
-  });
-
-  // Env nodes route so Link to="/_app/env/$env/nodes" resolves correctly.
+  // Env layout route — DashboardPage is now mounted under env/$env
   const envRoute = createRoute({
     getParentRoute: () => appRoute,
     path: 'env/$env',
     component: Outlet,
+  });
+
+  const dashRoute = createRoute({
+    getParentRoute: () => envRoute,
+    path: '/',
+    component: DashboardPage,
   });
 
   const nodesRoute = createRoute({
@@ -116,12 +116,11 @@ function makeTestRouter() {
 
   const routeTree = rootRoute.addChildren([
     appRoute.addChildren([
-      dashRoute,
-      envRoute.addChildren([nodesRoute]),
+      envRoute.addChildren([dashRoute, nodesRoute]),
     ]),
   ]);
 
-  const history = createMemoryHistory({ initialEntries: ['/_app/'] });
+  const history = createMemoryHistory({ initialEntries: ['/_app/env/prod'] });
   return createRouter({ routeTree, history });
 }
 

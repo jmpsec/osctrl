@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -1091,33 +1092,42 @@ export function DashboardPage() {
     retry: 1,
   });
 
-  const firstEnvUuid = data?.environments[0]?.uuid;
+  // Env scope comes from the URL path param (same as nodes/queries/carves).
+  // The EnvSwitcher in the sidebar navigates to /_app/env/{envName} which
+  // updates this param; the dashboard follows automatically.
+  const { env: envParam } = useParams({ from: '/_app/env/$env' });
+  const envUuids = (data?.environments ?? []).map((e) => e.uuid);
+  // Resolve the env name from the URL to its UUID for API calls.
+  const effectiveEnv = (data?.environments ?? []).find(
+    (e) => e.name === envParam || e.uuid === envParam,
+  )?.uuid ?? envUuids[0] ?? '';
+
   const { data: recentNodes, isLoading: nodesLoading } = useQuery({
-    queryKey: ['dashboard-recent-nodes', firstEnvUuid],
+    queryKey: ['dashboard-recent-nodes', effectiveEnv],
     queryFn: () =>
       listNodes({
-        env: firstEnvUuid!,
+        env: effectiveEnv!,
         sort: 'firstseen',
         dir: 'desc',
         pageSize: 5,
       }),
-    enabled: !!firstEnvUuid,
+    enabled: !!effectiveEnv,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     retry: 1,
   });
 
-  // ── Recently seen nodes (NEW) — pulled from firstEnv, lastseen desc ────
+  // ── Recently seen nodes — pulled from the selected env, lastseen desc ─
   const { data: recentlySeenNodes, isLoading: recentlySeenLoading } = useQuery({
-    queryKey: ['dashboard-recently-seen', firstEnvUuid],
+    queryKey: ['dashboard-recently-seen', effectiveEnv],
     queryFn: () =>
       listNodes({
-        env: firstEnvUuid!,
+        env: effectiveEnv!,
         sort: 'lastseen',
         dir: 'desc',
         pageSize: 8,
       }),
-    enabled: !!firstEnvUuid,
+    enabled: !!effectiveEnv,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     retry: 1,
@@ -1156,14 +1166,10 @@ export function DashboardPage() {
   for (const e of envList ?? []) envExpireByUuid.set(e.uuid, e.enroll_expire);
 
   // ── Node activity series — one Redis-backed env-tiles request per env.
-  //    The user picks 12h / 24h / 7d via the chart's tab row and selects
-  //    a specific environment via the dropdown (no fleet-wide sum).
+  //    The user picks 12h / 24h / 7d via the chart's tab row. The env
+  //    dropdown (effectiveEnv, declared above) drives the chart and the
+  //    recent-nodes/recently-seen-nodes sections.
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('1d');
-  const envUuids = (data?.environments ?? []).map((e) => e.uuid);
-  const activityFirstEnv = envUuids[0] ?? '';
-  const [selectedEnv, setSelectedEnv] = useState<string>(activityFirstEnv);
-  // Keep selectedEnv valid when envs load/change.
-  const effectiveEnv = envUuids.includes(selectedEnv) ? selectedEnv : activityFirstEnv;
   // 12h and 24h both fetch 1 day (24 hourly buckets); 12h slices the last 12.
   const activityDays = activityInterval === '7d' ? 7 : 1;
   const activityQueries = useQueries({
@@ -1330,23 +1336,7 @@ export function DashboardPage() {
                 {activityInterval === '7d' ? 'Last 7 days' : activityInterval === '12h' ? 'Last 12 hours' : 'Last 24 hours'} · per environment
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={effectiveEnv}
-                onChange={(e) => setSelectedEnv(e.target.value)}
-                className={cn(
-                  'text-[12px] px-2 py-1 rounded',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                  'text-[color:var(--text-2)] focus-visible:outline focus-visible:outline-2',
-                  'focus-visible:outline-[color:var(--signal)]',
-                )}
-                aria-label="Environment"
-              >
-                {(data?.environments ?? []).map((e) => (
-                  <option key={e.uuid} value={e.uuid}>{e.name}</option>
-                ))}
-              </select>
-              <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
+            <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
                 <button
                   type="button"
                   role="tab"
@@ -1393,7 +1383,6 @@ export function DashboardPage() {
                   7 days
                 </button>
               </div>
-            </div>
           </div>
           {/* Palette row — always visible. Doubles as the chart's
               legend (swatch + label per category) and as the per-user
@@ -1527,10 +1516,10 @@ export function DashboardPage() {
                 </span>
               )}
             </h2>
-            {firstEnvUuid && (
+            {effectiveEnv && (
               <Link
                 to="/_app/env/$env/queries"
-                params={{ env: firstEnvUuid }}
+                params={{ env: effectiveEnv }}
                 className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
               >
                 View all →
@@ -1713,10 +1702,10 @@ export function DashboardPage() {
             <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
               Recent enrollments
             </span>
-            {firstEnvUuid && (
+            {effectiveEnv && (
               <Link
                 to="/_app/env/$env/nodes"
-                params={{ env: firstEnvUuid }}
+                params={{ env: effectiveEnv }}
                 className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
               >
                 View all →
@@ -1724,7 +1713,7 @@ export function DashboardPage() {
             )}
           </div>
           <div className="px-4 flex-1">
-            {nodesLoading || (!firstEnvUuid && isLoading) ? (
+            {nodesLoading || (!effectiveEnv && isLoading) ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 py-2.5 border-b border-[color:var(--border)] last:border-0">
                   <Skeleton className="w-2 h-2 rounded-full flex-shrink-0" />
@@ -1735,7 +1724,7 @@ export function DashboardPage() {
                   <Skeleton className="h-2.5 w-8 flex-shrink-0" />
                 </div>
               ))
-            ) : !firstEnvUuid ? (
+            ) : !effectiveEnv ? (
               <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
                 No environment selected.
               </div>
@@ -1768,17 +1757,17 @@ export function DashboardPage() {
           <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
             Recently seen nodes
           </h2>
-          {firstEnvUuid && (
+          {effectiveEnv && (
             <Link
               to="/_app/env/$env/nodes"
-              params={{ env: firstEnvUuid }}
+              params={{ env: effectiveEnv }}
               className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
             >
               View all →
             </Link>
           )}
         </div>
-        {!firstEnvUuid && !isLoading ? (
+        {!effectiveEnv && !isLoading ? (
           <EmptyState
             icon={
               <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
@@ -1810,7 +1799,7 @@ export function DashboardPage() {
           </div>
         ) : (
           <RecentlySeenNodesTable
-            envUuid={firstEnvUuid!}
+            envUuid={effectiveEnv!}
             nodes={recentlySeenNodes.items.map((n) => ({
               uuid: n.uuid,
               hostname: n.hostname,

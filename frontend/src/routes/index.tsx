@@ -11,6 +11,5 @@ export const indexRoute = createRoute({
     }
     throw redirect({ to: '/login' });
   },
-  // component is never rendered — beforeLoad always redirects
   component: () => null,
 });

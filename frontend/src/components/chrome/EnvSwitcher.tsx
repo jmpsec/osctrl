@@ -35,14 +35,15 @@ export function EnvSwitcher({ compact }: { compact?: boolean } = {}) {
 
   function handleSelect(envName: string) {
     // Send the user to the same logical page on the new env when possible.
-    // Default to /nodes if we can't infer the sub-route. We pass the env *name*
-    // in the URL (not UUID) for symmetry with SideNav and for human readability;
-    // the API resolves both since the path-param env now goes through
-    // Envs.Get(envVar) which accepts name OR UUID.
+    // We pass the env *name* in the URL (not UUID) for symmetry with SideNav
+    // and for human readability; the API resolves both since the path-param
+    // env now goes through Envs.Get(envVar) which accepts name OR UUID.
     const pathname = routerState.location.pathname;
     const match = pathname.match(/^\/_app\/env\/[^/]+\/(.*)$/);
-    const sub = match ? match[1] : 'nodes';
-    void navigate({ to: `/_app/env/${envName}/${sub}` });
+    // If we're at /_app/env/{env} (dashboard, no sub-route), stay at the
+    // dashboard for the new env. Otherwise preserve the sub-route.
+    const sub = match?.[1] ? match[1] : '';
+    void navigate({ to: sub ? `/_app/env/${envName}/${sub}` : `/_app/env/${envName}` });
   }
 
   return (
