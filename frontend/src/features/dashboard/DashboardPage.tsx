@@ -5,17 +5,17 @@
  *   GET /api/v1/stats                                  (polled every 30s)
  *   GET /api/v1/audit-logs?page_size=8                 (polled every 60s)
  *   GET /api/v1/nodes/{firstEnv}?page_size=5&sort=firstseen&dir=desc  (polled every 60s)
- *   GET /api/v1/stats/activity/{env}?interval=1d       (per env; summed for the
- *                                                       fleet-wide time-series
- *                                                       chart and KPI sparklines)
+ *   GET /api/v1/stats/activity/env-tiles/{env}?days=N  (per env; node activity
+ *                                                       line chart: status, result,
+ *                                                       config, query read/write)
  */
 
 import { useState } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { getStats, getOsqueryVersionCounts, getEnvActivity } from '$/api/stats';
-import type { PlatformCounts, ActivityBucket, ActivityInterval } from '$/api/stats';
+import { getStats, getOsqueryVersionCounts, getEnvActivityTiles } from '$/api/stats';
+import type { PlatformCounts, NodeTileSeries, ActivityInterval } from '$/api/stats';
 import { listAuditLogs, LOG_TYPE, LOG_TYPE_LABELS } from '$/api/audit';
 import { listNodes } from '$/api/nodes';
 import { listQueries } from '$/api/queries';
@@ -29,38 +29,52 @@ import { formatRelative } from '$/lib/time';
 import { DEFAULT_INACTIVE_HOURS, isNodeActive } from '$/lib/node-status';
 
 // ---------------------------------------------------------------------------
-// Aggregated 24h activity series, derived from the env-activity endpoint.
+// Node-activity series, derived from the Redis-backed env-tiles endpoint.
 //
-// `aggregateBuckets` collapses 96 15-min buckets into N evenly-spaced bins
-// and sums per-category counts. The dashboard renders two views:
-//   - 24 hourly bins for the main time-series chart (4 categories stacked)
-//   - 12 two-hour bins for the per-KPI sparklines
+// Each env returns a NodeTileSeries with hourly counters for status, result,
+// config, query_read, and query_write. When multiple envs are visible we sum
+// them into a fleet-wide series. The line chart renders one line per
+// category; the KPI sparklines use the total series.
 //
-// When the activity endpoint hasn't returned yet, an all-zero array is
-// returned so the chart components render an empty frame rather than
-// crashing or rendering a placeholder shape.
+// When the tiles endpoint hasn't returned yet (or Redis is unavailable),
+// all-zero arrays are returned so the chart renders an empty frame.
 // ---------------------------------------------------------------------------
-function aggregateBuckets(
-  buckets: ActivityBucket[] | undefined,
-  bins: number,
-): { config: number[]; query: number[]; carve: number[]; enroll: number[] } {
-  const out = {
-    config: new Array<number>(bins).fill(0),
-    query: new Array<number>(bins).fill(0),
-    carve: new Array<number>(bins).fill(0),
-    enroll: new Array<number>(bins).fill(0),
-  };
-  if (!buckets || buckets.length === 0) return out;
-  const perBin = Math.max(1, Math.floor(buckets.length / bins));
-  for (let i = 0; i < buckets.length; i++) {
-    const binIdx = Math.min(bins - 1, Math.floor(i / perBin));
-    out.config[binIdx] += buckets[i].config;
-    out.query[binIdx] += buckets[i].query;
-    out.carve[binIdx] += buckets[i].carve;
-    out.enroll[binIdx] += buckets[i].enroll;
-  }
-  return out;
+export type ChartCategory = 'status' | 'result' | 'config' | 'query_read' | 'query_write';
+
+interface ActivitySeries {
+  status: number[];
+  result: number[];
+  config: number[];
+  query_read: number[];
+  query_write: number[];
+  total: number[];
 }
+
+function emptySeries(n: number): ActivitySeries {
+  return {
+    status: new Array<number>(n).fill(0),
+    result: new Array<number>(n).fill(0),
+    config: new Array<number>(n).fill(0),
+    query_read: new Array<number>(n).fill(0),
+    query_write: new Array<number>(n).fill(0),
+    total: new Array<number>(n).fill(0),
+  };
+}
+
+function tileSeriesToActivity(tiles: NodeTileSeries | undefined): ActivitySeries {
+  if (!tiles) return emptySeries(0);
+  const n = tiles.total.length;
+  return {
+    status: tiles.status.map((v) => v),
+    result: tiles.result.map((v) => v),
+    config: tiles.config.map((v) => v),
+    query_read: tiles.query_read.map((v) => v),
+    query_write: tiles.query_write.map((v) => v),
+    total: tiles.total.map((v) => v),
+  };
+}
+
+
 
 // ---------------------------------------------------------------------------
 // LIVE badge — pulsing signal-teal pip with "LIVE" label.
@@ -167,14 +181,14 @@ function InlineSparkline({
 // Stored in localStorage per-browser so operators can re-map colors to match
 // their mental model (e.g. "Carve is always red for me").
 // ---------------------------------------------------------------------------
-export type ChartCategory = 'config' | 'query' | 'carve' | 'enroll';
 type ChartPalette = Record<ChartCategory, string>;
 
 const DEFAULT_PALETTE: ChartPalette = {
-  config: '#a78bfa', // violet — chart-local, distinct from --signal
-  query:  '#2bc4be', // matches --signal (dark theme)
-  carve:  '#fbbf24', // matches --warning (dark theme)
-  enroll: '#67c0ff', // matches --info (dark theme)
+  status:      '#67c0ff', // info blue — status logs
+  result:      '#2bc4be', // signal teal — query results
+  config:      '#a78bfa', // violet — config fetches (agent heartbeat)
+  query_read:  '#4ade80', // green — distributed query reads
+  query_write: '#fbbf24', // amber — query writes
 };
 
 const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
@@ -221,82 +235,66 @@ function useChartPalette(): [ChartPalette, (key: ChartCategory, hex: string) => 
 }
 
 // ---------------------------------------------------------------------------
-// Time-series chart — 24h stacked area of audit-log activity, by category.
-// Wired to the env-activity endpoint via aggregateBuckets.
+// Line chart — node activity by category (status, result, config, query
+// read/write). One line per category, drawn from the Redis-backed env-tiles
+// series. Replaces the old audit-log stacked area chart.
 // ---------------------------------------------------------------------------
-function TimeSeriesChart({
-  config,
-  query,
-  carve,
-  enroll,
+function LineChart({
+  series,
   intervalLabel,
   palette,
 }: {
-  config: number[];
-  query: number[];
-  carve: number[];
-  enroll: number[];
-  intervalLabel: '24h' | '7d';
+  series: ActivitySeries;
+  intervalLabel: '12h' | '24h' | '7d';
   palette: ChartPalette;
 }) {
   const W = 600;
   const H = 200;
   const padL = 40;
   const padR = 10;
-  // padT used to reserve 30px for the now-removed in-chart legend.
-  // Tighten so the chart uses the freed space; the palette/legend
-  // row above the SVG is rendered by DashboardPage.
   const padT = 10;
   const padB = 30;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
-  const n = config.length;
+  const n = series.total.length;
 
-  // Stack series bottom-to-top: enroll → carve → query → config. Compute the
-  // running upper bound at each x so each layer's polygon traces the top of
-  // the layer below it.
-  const stack = config.map((_, i) => ({
-    enroll: enroll[i],
-    carve: enroll[i] + carve[i],
-    query: enroll[i] + carve[i] + query[i],
-    config: enroll[i] + carve[i] + query[i] + config[i],
-  }));
-  const maxV = Math.max(1, ...stack.map((s) => s.config));
+  const maxV = Math.max(1, ...series.total);
   const stepX = n > 1 ? innerW / (n - 1) : innerW;
 
   const yFor = (v: number) => padT + (1 - v / maxV) * innerH;
+  const xFor = (i: number) => padL + i * stepX;
 
-  // Polygon between two series (used to draw a stacked layer).
-  const layerPath = (top: number[], bottom: number[]) => {
-    const fwd = top.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ');
-    const back = bottom
-      .map((v, i) => `L${(padL + (bottom.length - 1 - i) * stepX).toFixed(1)},${yFor(v).toFixed(1)}`)
-      .reverse()
-      .reverse() // keep order to traverse from right to left
+  const LINES: { key: ChartCategory; data: number[] }[] = [
+    { key: 'status', data: series.status },
+    { key: 'result', data: series.result },
+    { key: 'config', data: series.config },
+    { key: 'query_read', data: series.query_read },
+    { key: 'query_write', data: series.query_write },
+  ];
+
+  function linePath(data: number[]): string {
+    if (data.length === 0) return '';
+    return data
+      .map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`)
       .join(' ');
-    return `${fwd} ${back} Z`;
-  };
+  }
 
-  const enrollTop = stack.map((s) => s.enroll);
-  const carveTop = stack.map((s) => s.carve);
-  const queryTop = stack.map((s) => s.query);
-  const configTop = stack.map((s) => s.config);
-  const zero = stack.map(() => 0);
+  const xLabels =
+    intervalLabel === '7d'
+      ? ['-7d', '-6d', '-5d', '-4d', '-3d', '-2d', '-1d', 'now']
+      : intervalLabel === '12h'
+        ? ['-12h', '-10h', '-8h', '-6h', '-4h', '-2h', 'now']
+        : ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', 'now'];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="24-hour fleet activity by category">
-      {/* Flat fills, not gradients. Stacked layers represent additive
-          amounts; gradients made overlapping bands read muddy and
-          inverted the visual hierarchy. Each layer now reads as a
-          solid color band; the per-series top outline + gridlines
-          carry depth. */}
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Node activity by category">
       {/* gridlines */}
       <g stroke="var(--border)" strokeDasharray="2 4" strokeWidth="1">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
           <line key={t} x1={padL} y1={padT + t * innerH} x2={W - padR} y2={padT + t * innerH} />
         ))}
       </g>
-      {/* Y axis labels (max value at top) */}
+      {/* Y axis labels */}
       <g className="font-mono-tabular" fill="var(--text-3)" fontSize="9">
         {[1, 0.75, 0.5, 0.25, 0].map((t, i) => (
           <text key={t} x={padL - 6} y={padT + (i * innerH) / 4 + 3} textAnchor="end">
@@ -304,29 +302,21 @@ function TimeSeriesChart({
           </text>
         ))}
       </g>
-      {/* Stacked layers, bottom-to-top — flat fills.
-          Colors come from the operator-tunable ChartPalette so each
-          band can be remapped. Default mapping matches the previous
-          hard-coded scheme. */}
-      <path d={layerPath(enrollTop, zero)} fill={palette.enroll} fillOpacity="0.65" />
-      <path d={layerPath(carveTop, enrollTop)} fill={palette.carve} fillOpacity="0.65" />
-      <path d={layerPath(queryTop, carveTop)} fill={palette.query} fillOpacity="0.65" />
-      <path d={layerPath(configTop, queryTop)} fill={palette.config} fillOpacity="0.65" />
-      {/* Top-of-stack outline so the chart has a defined edge */}
-      <path
-        d={configTop.map((v, i) => `${i === 0 ? 'M' : 'L'}${(padL + i * stepX).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ')}
-        fill="none"
-        stroke={palette.config}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      {/* X axis labels — 7 anchor points across the chart width, label
-          format depends on the interval. */}
+      {/* Lines — one per category, no fill, 1.5px stroke with round joins */}
+      {LINES.map(({ key, data }) => (
+        <path
+          key={key}
+          d={linePath(data)}
+          fill="none"
+          stroke={palette[key]}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      ))}
+      {/* X axis labels */}
       <g className="font-mono-tabular" fill="var(--text-3)" fontSize="9">
-        {(intervalLabel === '7d'
-          ? ['-7d', '-6d', '-5d', '-4d', '-3d', '-2d', '-1d', 'now']
-          : ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', 'now']
-        ).map((lbl, i, arr) => {
+        {xLabels.map((lbl, i, arr) => {
           const x = padL + (i / (arr.length - 1)) * innerW;
           return (
             <text
@@ -340,9 +330,6 @@ function TimeSeriesChart({
           );
         })}
       </g>
-      {/* In-chart SVG legend removed — the always-visible palette row
-          rendered above the chart (DashboardPage) now serves as the
-          legend AND the per-category color picker in one control. */}
     </svg>
   );
 }
@@ -1173,46 +1160,55 @@ export function DashboardPage() {
   const envExpireByUuid = new Map<string, string>();
   for (const e of envList ?? []) envExpireByUuid.set(e.uuid, e.enroll_expire);
 
-  // ── Activity series — one request per env, summed across envs for the
-  //    fleet-wide time-series chart and the KPI-card sparklines. The user
-  //    picks 24h vs 7d via the chart's tab row; the chart's KPI sparklines
-  //    follow the same interval.
+  // ── Node activity series — one Redis-backed env-tiles request per env.
+  //    The user picks 12h / 24h / 7d via the chart's tab row and selects
+  //    a specific environment via the dropdown (no fleet-wide sum).
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('1d');
   const envUuids = (data?.environments ?? []).map((e) => e.uuid);
+  const activityFirstEnv = envUuids[0] ?? '';
+  const [selectedEnv, setSelectedEnv] = useState<string>(activityFirstEnv);
+  // Keep selectedEnv valid when envs load/change.
+  const effectiveEnv = envUuids.includes(selectedEnv) ? selectedEnv : activityFirstEnv;
+  // 12h and 24h both fetch 1 day (24 hourly buckets); 12h slices the last 12.
+  const activityDays = activityInterval === '7d' ? 7 : 1;
   const activityQueries = useQueries({
     queries: envUuids.map((uuid) => ({
-      queryKey: ['dashboard-env-activity', uuid, activityInterval] as const,
-      queryFn: () => getEnvActivity(uuid, activityInterval),
+      queryKey: ['dashboard-env-tiles', uuid, activityDays] as const,
+      queryFn: () => getEnvActivityTiles(uuid, activityDays),
       refetchInterval: 30_000,
       refetchIntervalInBackground: false,
       retry: 1,
     })),
   });
-  // Sum per-bucket counts across every env's response.
-  const fleetActivity: ActivityBucket[] = (() => {
-    const merged: Map<string, ActivityBucket> = new Map();
-    for (const q of activityQueries) {
-      for (const b of q.data ?? []) {
-        const prev = merged.get(b.bucket_start);
-        if (prev) {
-          prev.config += b.config;
-          prev.query += b.query;
-          prev.carve += b.carve;
-          prev.enroll += b.enroll;
-        } else {
-          merged.set(b.bucket_start, { ...b });
-        }
-      }
+  // Map env UUID → its tile series (or undefined while loading).
+  const tilesByUuid = new Map<string, NodeTileSeries>();
+  envUuids.forEach((uuid, i) => {
+    if (activityQueries[i]?.data) {
+      tilesByUuid.set(uuid, activityQueries[i].data);
     }
-    return [...merged.values()].sort((a, b) => a.bucket_start.localeCompare(b.bucket_start));
+  });
+  // Build the chart series for the selected environment only.
+  const fullSeries: ActivitySeries = (() => {
+    if (effectiveEnv && tilesByUuid.has(effectiveEnv)) {
+      return tileSeriesToActivity(tilesByUuid.get(effectiveEnv));
+    }
+    return emptySeries(0);
   })();
-  // Bin counts depend on the picker. 24h → 24 hourly bins for the main
-  // chart, 12 two-hour bins for the KPI sparklines. 7d → 28 six-hour bins
-  // for the chart, 14 twelve-hour bins for the sparklines.
-  const mainBins = activityInterval === '7d' ? 28 : 24;
-  const sparkBins = activityInterval === '7d' ? 14 : 12;
-  const fleet24 = aggregateBuckets(fleetActivity, mainBins);
-  const fleet12 = aggregateBuckets(fleetActivity, sparkBins);
+  // For 12h, slice the last 12 hourly buckets from the 24-bucket day.
+  const chartSeries: ActivitySeries = (() => {
+    if (activityInterval !== '12h') return fullSeries;
+    const slice = (arr: number[]) => arr.slice(-12);
+    return {
+      status: slice(fullSeries.status),
+      result: slice(fullSeries.result),
+      config: slice(fullSeries.config),
+      query_read: slice(fullSeries.query_read),
+      query_write: slice(fullSeries.query_write),
+      total: slice(fullSeries.total),
+    };
+  })();
+  // Sparkline data from the total series.
+  const sparkData = chartSeries.total;
 
   const envTableRows: EnvTableEnv[] = (data?.environments ?? []).map((e) => ({
     uuid: e.uuid,
@@ -1314,43 +1310,75 @@ export function DashboardPage() {
           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[color:var(--border)]">
             <div>
               <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">
-                Time-series
+                Node activity
               </div>
               <div className="text-[11px] font-mono-tabular text-[color:var(--text-3)] mt-0.5 tabular-nums">
-                {activityInterval === '7d' ? 'Last 7 days' : 'Last 24 hours'} · audit-log activity
+                {activityInterval === '7d' ? 'Last 7 days' : activityInterval === '12h' ? 'Last 12 hours' : 'Last 24 hours'} · per environment
               </div>
             </div>
-            <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activityInterval === '7d'}
-                onClick={() => setActivityInterval('7d')}
+            <div className="flex items-center gap-3">
+              <select
+                value={effectiveEnv}
+                onChange={(e) => setSelectedEnv(e.target.value)}
                 className={cn(
-                  'px-2 py-1 rounded transition-colors duration-[120ms]',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  activityInterval === '7d'
-                    ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
-                    : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  'text-[12px] px-2 py-1 rounded',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'text-[color:var(--text-2)] focus-visible:outline focus-visible:outline-2',
+                  'focus-visible:outline-[color:var(--signal)]',
                 )}
+                aria-label="Environment"
               >
-                7 days
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activityInterval === '1d'}
-                onClick={() => setActivityInterval('1d')}
-                className={cn(
-                  'px-2 py-1 rounded transition-colors duration-[120ms]',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  activityInterval === '1d'
-                    ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
-                    : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-                )}
-              >
-                24 hours
-              </button>
+                {(data?.environments ?? []).map((e) => (
+                  <option key={e.uuid} value={e.uuid}>{e.name}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activityInterval === '12h'}
+                  onClick={() => setActivityInterval('12h')}
+                  className={cn(
+                    'px-2 py-1 rounded transition-colors duration-[120ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    activityInterval === '12h'
+                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  )}
+                >
+                  12 hours
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activityInterval === '1d'}
+                  onClick={() => setActivityInterval('1d')}
+                  className={cn(
+                    'px-2 py-1 rounded transition-colors duration-[120ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    activityInterval === '1d'
+                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  )}
+                >
+                  24 hours
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activityInterval === '7d'}
+                  onClick={() => setActivityInterval('7d')}
+                  className={cn(
+                    'px-2 py-1 rounded transition-colors duration-[120ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    activityInterval === '7d'
+                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                  )}
+                >
+                  7 days
+                </button>
+              </div>
             </div>
           </div>
           {/* Palette row — always visible. Doubles as the chart's
@@ -1365,7 +1393,7 @@ export function DashboardPage() {
                 'text-xs text-[color:var(--text-2)]',
               )}
             >
-              {(['config', 'query', 'carve', 'enroll'] as ChartCategory[]).map((key) => (
+              {(['status', 'result', 'config', 'query_read', 'query_write'] as ChartCategory[]).map((key) => (
                 <label key={key} className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="color"
@@ -1374,7 +1402,7 @@ export function DashboardPage() {
                     className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
                     aria-label={`${key} color`}
                   />
-                  <span className="capitalize">{key}</span>
+                  <span>{key === 'query_read' ? 'Query read' : key === 'query_write' ? 'Query write' : key.charAt(0).toUpperCase() + key.slice(1)}</span>
                 </label>
               ))}
               <button
@@ -1391,12 +1419,9 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="p-5">
-            <TimeSeriesChart
-              config={fleet24.config}
-              query={fleet24.query}
-              carve={fleet24.carve}
-              enroll={fleet24.enroll}
-              intervalLabel={activityInterval === '7d' ? '7d' : '24h'}
+            <LineChart
+              series={chartSeries}
+              intervalLabel={activityInterval === '7d' ? '7d' : activityInterval === '12h' ? '12h' : '24h'}
               palette={palette}
             />
           </div>
@@ -1430,14 +1455,14 @@ export function DashboardPage() {
               <KpiCard
                 label="Active Nodes"
                 value={data?.active_nodes ?? 0}
-                sparkline={fleet12.config}
+                sparkline={sparkData}
                 halo="success"
                 polarity="up-good"
               />
               <KpiCard
                 label={`Inactive ≥ ${inactiveHours}h`}
                 value={data?.inactive_nodes ?? 0}
-                sparkline={fleet12.config}
+                sparkline={sparkData}
                 halo="warning"
                 polarity="up-bad"
               />
@@ -1445,7 +1470,7 @@ export function DashboardPage() {
               <KpiCard
                 label="Failed enrolls (24h)"
                 value={failedEnrolls}
-                sparkline={fleet12.enroll}
+                sparkline={sparkData}
                 halo={failedEnrolls > 0 ? 'danger' : 'success'}
                 polarity="up-bad"
                 deltaLabel={
@@ -1459,7 +1484,7 @@ export function DashboardPage() {
               <KpiCard
                 label="Active Queries"
                 value={data?.total_active_queries ?? 0}
-                sparkline={fleet12.query}
+                sparkline={sparkData}
                 halo="signal"
                 polarity="up-good"
               />
