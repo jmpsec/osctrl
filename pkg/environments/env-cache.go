@@ -18,10 +18,12 @@ const (
 	// the window during which enroll-secret rotations, env deletions,
 	// or config-PATCH changes can be served stale by osctrl-tls.
 	//
-	// Kept at the historical 2h cleanup interval; operators who need
-	// faster invalidation can rotate via `osctrl-tls` restart or tune
-	// this constant locally.
-	envCacheTTL = 2 * time.Hour
+	// 5 minutes: the fallback window if no invalidation signal is
+	// received. With Redis-based invalidation wired in (see
+	// SetInvalidationCheck), config PATCHes are picked up immediately;
+	// this TTL only bounds the worst case (Redis down, API and TLS
+	// can't communicate). 5m keeps DB load low while limiting staleness.
+	envCacheTTL = 5 * time.Minute
 )
 
 // EnvCache provides cached access to TLS environments
@@ -31,6 +33,12 @@ type EnvCache struct {
 
 	// Reference to the environment manager for cache misses
 	envs EnvManager
+
+	// invalidationCheck is called on each GetByUUID. If it returns
+	// true, the cached entry is stale and the env is refetched from
+	// the DB. Set via SetInvalidationCheck — typically a function
+	// that checks a Redis key set by osctrl-api after a config PATCH.
+	invalidationCheck func(ctx context.Context, uuid string) bool
 }
 
 // NewEnvCache creates a new environment cache
@@ -46,8 +54,22 @@ func NewEnvCache(envs EnvManager) *EnvCache {
 	}
 }
 
+// SetInvalidationCheck wires a callback that is called on each
+// GetByUUID. If the callback returns true, the cached entry is
+// considered stale and the env is refetched from the DB. The typical
+// implementation checks a Redis key that osctrl-api sets after
+// mutating an env row (config PATCH, secret rotation, etc.).
+func (ec *EnvCache) SetInvalidationCheck(fn func(ctx context.Context, uuid string) bool) {
+	ec.invalidationCheck = fn
+}
+
 // GetByUUID retrieves an environment by UUID, using cache when available
 func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment, error) {
+	// Check if a cross-process invalidation signal has been received
+	// (e.g., osctrl-api patched the config and set a Redis key).
+	if ec.invalidationCheck != nil && ec.invalidationCheck(ctx, uuid) {
+		ec.cache.Delete(ctx, uuid)
+	}
 	// Try to get from cache first
 	if env, found := ec.cache.Get(ctx, uuid); found {
 		return env, nil

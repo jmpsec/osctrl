@@ -225,6 +225,16 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
 // Log viewer
 // ---------------------------------------------------------------------------
 
+function severityBadge(severity: unknown): { label: string; className: string } | null {
+  if (severity == null) return null;
+  const n = typeof severity === 'string' ? parseInt(severity, 10) : typeof severity === 'number' ? severity : null;
+  if (n == null) return null;
+  if (n <= 0) return { label: 'INFO', className: 'text-[color:var(--info)] border-[color:var(--info)]/30 bg-[color:var(--info)]/10' };
+  if (n === 1) return { label: 'WARN', className: 'text-[color:var(--warning)] border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10' };
+  if (n === 2) return { label: 'ERROR', className: 'text-[color:var(--danger)] border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10' };
+  return { label: `L${n}`, className: 'text-[color:var(--danger)] border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10' };
+}
+
 function LogEntry({
   entry,
   type,
@@ -234,87 +244,52 @@ function LogEntry({
   type: 'status' | 'result';
   onSearchColumn?: (queryName: string, column: string, value: string) => void;
 }) {
-  // Try to parse a timestamp from common fields
   const timestamp =
     (entry['created_at'] as string) ??
     (entry['calendarTime'] as string) ??
     (entry['unixTime'] != null ? new Date(Number(entry['unixTime']) * 1000).toISOString() : null);
 
-  // For result rows, pull the structured fields if present. When `columns` is
-  // an object we render each [key]: [value] as its own row with a hover-only
-  // 🔍 button that builds a "find this everywhere" query (IR workflow).
   const isResult = type === 'result';
-  const columnsRaw = isResult ? entry['columns'] : undefined;
-  const columns =
-    isResult && columnsRaw && typeof columnsRaw === 'object' && !Array.isArray(columnsRaw)
-      ? (columnsRaw as Record<string, unknown>)
-      : null;
-  const queryName =
-    typeof entry['name'] === 'string' ? (entry['name'] as string) : '';
-  const action =
-    typeof entry['action'] === 'string' ? (entry['action'] as string) : '';
 
+  // --- Result logs: try to parse columns as object or JSON string ---
+  const columnsRaw = isResult ? entry['columns'] : undefined;
+  let columns: Record<string, unknown> | null = null;
+  if (columnsRaw && typeof columnsRaw === 'object' && !Array.isArray(columnsRaw)) {
+    columns = columnsRaw as Record<string, unknown>;
+  } else if (typeof columnsRaw === 'string') {
+    try {
+      const parsed = JSON.parse(columnsRaw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        columns = parsed as Record<string, unknown>;
+      }
+    } catch { /* not JSON — fall through */ }
+  }
+
+  const queryName = typeof entry['name'] === 'string' ? (entry['name'] as string) : '';
+  const action = typeof entry['action'] === 'string' ? (entry['action'] as string) : '';
+
+  // --- Result with structured columns: compact inline key=value chips ---
   if (isResult && columns) {
+    const entries = Object.entries(columns);
     return (
-      <div className="border-b border-[color:var(--border)] py-2 px-4">
-        <div className="flex items-center gap-3 font-mono-tabular text-[11px] text-[color:var(--text-3)] mb-1.5">
-          {queryName && (
-            <span className="text-[color:var(--signal)] font-medium">{queryName}</span>
-          )}
-          {action && <span className="text-[color:var(--text-2)]">{action}</span>}
-          {timestamp && (
-            <span className="ml-auto tnum" title={timestamp}>
-              {formatRelative(timestamp)}
-            </span>
-          )}
+      <div className="border-b border-[color:var(--border)] py-1 px-3 group">
+        <div className="flex items-center gap-2 font-mono-tabular text-[10px] mb-0.5">
+          {queryName && <span className="text-[color:var(--signal)] font-medium truncate">{queryName}</span>}
+          {action && <span className="text-[color:var(--text-3)]">{action}</span>}
+          {timestamp && <span className="ml-auto text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>{formatRelative(timestamp)}</span>}
         </div>
-        <div className="rounded border border-[color:var(--border)] overflow-hidden">
-          {Object.entries(columns).map(([col, val]) => {
-            const valueStr =
-              val == null
-                ? ''
-                : typeof val === 'string'
-                  ? val
-                  : JSON.stringify(val);
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {entries.map(([col, val]) => {
+            const valueStr = val == null ? '' : typeof val === 'string' ? val : JSON.stringify(val);
             return (
-              <div
-                key={col}
-                className={cn(
-                  'group flex items-start gap-2 px-3 py-1 text-xs font-mono-tabular',
-                  'border-b border-[color:var(--border)] last:border-b-0',
-                  'hover:bg-[color:var(--bg-2)] transition-colors',
-                )}
-              >
-                <span className="text-[color:var(--text-3)] min-w-[140px] flex-shrink-0">
-                  {col}
-                </span>
-                <span className="text-[color:var(--text-1)] break-all flex-1">
-                  {valueStr || <span className="text-[color:var(--text-3)] italic">empty</span>}
+              <div key={col} className="group/field inline-flex items-baseline gap-1 text-[10px] font-mono-tabular">
+                <span className="text-[color:var(--text-3)]">{col}=</span>
+                <span className="text-[color:var(--text-1)] break-all">
+                  {valueStr || <span className="text-[color:var(--text-3)] italic">∅</span>}
                 </span>
                 {onSearchColumn && valueStr && (
-                  <button
-                    type="button"
-                    aria-label={`Search ${col} across env`}
-                    title={`Search this ${col} value across the env`}
-                    onClick={() => onSearchColumn(queryName, col, valueStr)}
-                    className={cn(
-                      'flex-shrink-0 px-1 rounded',
-                      'text-[color:var(--text-3)] hover:text-[color:var(--signal)]',
-                      'opacity-0 group-hover:opacity-100 transition-opacity',
-                      'focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                    )}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="w-3.5 h-3.5"
-                      aria-hidden
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="M21 21l-4.35-4.35" />
-                    </svg>
+                  <button type="button" aria-label={`Search ${col}`} title={`Search ${col} across env`} onClick={() => onSearchColumn(queryName, col, valueStr)} className={cn('inline-flex flex-shrink-0 px-0.5 rounded', 'text-[color:var(--text-3)] hover:text-[color:var(--signal)]', 'opacity-0 group-hover/field:opacity-100 transition-opacity', 'focus-visible:opacity-100')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3" aria-hidden><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
                   </button>
                 )}
               </div>
@@ -325,18 +300,87 @@ function LogEntry({
     );
   }
 
-  const message = JSON.stringify(entry, null, 2);
+  // --- Status logs: structured layout with severity badge + metadata ---
+  if (!isResult) {
+    const sev = severityBadge(entry['severity']);
+    const message = typeof entry['message'] === 'string' ? (entry['message'] as string) : '';
+    const filename = typeof entry['filename'] === 'string' ? (entry['filename'] as string) : '';
+    const line = entry['line'] != null ? String(entry['line']) : '';
+    const version = typeof entry['version'] === 'string' ? (entry['version'] as string) : '';
+
+    // Extract known fields and show the rest as a collapsible JSON block
+    const knownKeys = new Set(['created_at', 'calendarTime', 'unixTime', 'message', 'filename', 'line', 'version', 'severity', 'environment', 'uuid', 'id', 'updated_at']);
+    const extras = Object.entries(entry).filter(([k]) => !knownKeys.has(k));
+
+    return (
+      <div className="border-b border-[color:var(--border)] py-2 px-4 group">
+        <div className="flex items-center gap-2 mb-1">
+          {sev && (
+            <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono-tabular font-semibold uppercase tracking-[0.08em] border', sev.className)}>
+              {sev.label}
+            </span>
+          )}
+          {timestamp && (
+            <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>
+              {formatRelative(timestamp)}
+            </span>
+          )}
+          {filename && (
+            <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] truncate" title={filename}>
+              {filename}{line && `:${line}`}
+            </span>
+          )}
+          {version && (
+            <span className="ml-auto font-mono-tabular text-[10px] text-[color:var(--text-3)]">
+              v{version}
+            </span>
+          )}
+        </div>
+        {message && (
+          <p className="text-xs text-[color:var(--text-2)] font-mono-tabular leading-relaxed break-all">
+            {message}
+          </p>
+        )}
+        {extras.length > 0 && (
+          <details className="mt-1.5">
+            <summary className="text-[10px] font-mono-tabular text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
+              {extras.length} more field{extras.length !== 1 ? 's' : ''}
+            </summary>
+            <pre className="mt-1 text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
+              {JSON.stringify(Object.fromEntries(extras), null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  // --- Result logs without structured columns: show key fields + collapsible JSON ---
+  const knownResultKeys = new Set(['created_at', 'calendarTime', 'unixTime', 'name', 'action', 'columns', 'epoch', 'counter', 'environment', 'uuid', 'id', 'updated_at']);
+  const resultExtras = Object.entries(entry).filter(([k]) => !knownResultKeys.has(k));
 
   return (
     <div className="border-b border-[color:var(--border)] py-2 px-4 group">
-      {timestamp && (
-        <div className="font-mono-tabular text-xs text-[color:var(--text-3)] mb-1">
-          {formatAbsolute(timestamp as string)}
-        </div>
+      <div className="flex items-center gap-2 mb-1">
+        {queryName && <span className="font-mono-tabular text-[11px] text-[color:var(--signal)] font-medium">{queryName}</span>}
+        {action && <span className="font-mono-tabular text-[10px] text-[color:var(--text-2)]">{action}</span>}
+        {timestamp && <span className="ml-auto font-mono-tabular text-[10px] text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>{formatRelative(timestamp)}</span>}
+      </div>
+      {typeof columnsRaw === 'string' && (
+        <pre className="text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-auto">
+          {columnsRaw}
+        </pre>
       )}
-      <pre className="text-xs text-[color:var(--text-2)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
-        {message}
-      </pre>
+      {resultExtras.length > 0 && (
+        <details className="mt-1.5">
+          <summary className="text-[10px] font-mono-tabular text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
+            {resultExtras.length} more field{resultExtras.length !== 1 ? 's' : ''}
+          </summary>
+          <pre className="mt-1 text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
+            {JSON.stringify(Object.fromEntries(resultExtras), null, 2)}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }

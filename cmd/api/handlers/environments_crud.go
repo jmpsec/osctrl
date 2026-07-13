@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -501,6 +503,15 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 		if err := h.Envs.RefreshConfiguration(envVar); err != nil {
 			apiErrorResponse(w, "error refreshing configuration", http.StatusInternalServerError, err)
 			return
+		}
+	}
+	// Signal osctrl-tls to invalidate its EnvCache for this env so
+	// agents receive the updated configuration on their next /config
+	// request instead of waiting for the cache TTL to expire.
+	if h.RedisCache != nil {
+		ctx := context.Background()
+		if err := h.RedisCache.Client.Set(ctx, "envcache:invalidate:"+env.UUID, "1", 60*time.Second).Err(); err != nil {
+			log.Warn().Err(err).Str("env", env.UUID).Msg("failed to signal env cache invalidation")
 		}
 	}
 	h.AuditLog.ConfAction(ctx[ctxUser], "config patch on env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
