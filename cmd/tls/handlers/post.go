@@ -239,7 +239,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		if ip == node.IPAddress {
 			ip = ""
 		}
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
 		h.recordActivity(env.UUID, node.UUID, activity.EventConfig)
 
@@ -449,7 +449,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		if ip == node.IPAddress {
 			ip = ""
 		}
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 	} else {
@@ -555,7 +555,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		if ip == node.IPAddress {
 			ip = ""
 		}
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 		// Process submitted results and mark query as processed
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryWrite)
 		go func() {
@@ -803,7 +803,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		if ip == node.IPAddress {
 			ip = ""
 		}
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 	}
 	// Prepare response
 	response = types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
@@ -870,7 +870,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
 		// Refresh last seen
 		ip := utils.GetIP(r)
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: carve.NodeID, IP: ip})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: carve.NodeID, IP: ip, SeenAt: time.Now()})
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}

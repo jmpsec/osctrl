@@ -496,6 +496,11 @@ func (n *NodeManager) RefreshLastSeenBatch(nodeID []uint) error {
 	return n.DB.Model(&OsqueryNode{}).Where("id IN ?", nodeID).UpdateColumn("last_seen", time.Now()).Error
 }
 
+// UpdateLastSeen sets last_seen for a single node to the given timestamp.
+func (n *NodeManager) UpdateLastSeen(nodeID uint, seenAt time.Time) error {
+	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("last_seen", seenAt).Error
+}
+
 func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
 	// Update the IP address in the database
 	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("ip_address", ip).Error

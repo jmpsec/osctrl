@@ -15,6 +15,7 @@ import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { IconPicker, resolveEnvIcon } from '$/components/forms/IconPicker';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -271,14 +272,20 @@ export function EnvironmentsPage() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
-                      {env.name}
-                    </span>
-                    {env.type && (
-                      <span className="ml-2 text-[10px] text-[color:var(--text-3)] uppercase tracking-wider">
-                        {env.type}
+                    <span className="flex items-center gap-2">
+                      {(() => {
+                        const Icon = resolveEnvIcon(env.icon);
+                        return Icon ? <Icon className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]" /> : null;
+                      })()}
+                      <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
+                        {env.name}
                       </span>
-                    )}
+                      {env.type && (
+                        <span className="ml-1 text-[10px] text-[color:var(--text-3)] uppercase tracking-wider">
+                          {env.type}
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-[color:var(--text-2)] text-xs font-mono-tabular">
                     {env.hostname || '—'}
@@ -436,6 +443,7 @@ function CreateEnvModal({
   const [name, setName] = useState('');
   const [hostname, setHostname] = useState('');
   const [type, setType] = useState('osquery');
+  const [icon, setIcon] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -444,7 +452,7 @@ function CreateEnvModal({
       const trimmedHost = hostname.trim();
       if (!trimmedName) throw new Error('Name is required.');
       if (!trimmedHost) throw new Error('Hostname is required.');
-      return createEnvironment({ name: trimmedName, hostname: trimmedHost, type: type.trim() });
+      return createEnvironment({ name: trimmedName, hostname: trimmedHost, type: type.trim(), icon: icon.trim() || undefined });
     },
     onSuccess: () => {
       onSaved();
@@ -530,6 +538,16 @@ function CreateEnvModal({
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            Icon
+          </label>
+          <IconPicker value={icon} onChange={setIcon} id="env-icon" />
+          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            Font Awesome icon shown next to the env name.
+          </p>
         </div>
 
         {err && (
@@ -678,21 +696,13 @@ function EditEnvModal({
         </div>
 
         <div>
-          <label htmlFor="edit-env-icon" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-            Icon class
+          <label className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            Icon
           </label>
-          <input
-            id="edit-env-icon"
-            type="text"
-            value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-            placeholder="fas fa-wrench"
-            className={cn(
-              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
-              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-            )}
-          />
+          <IconPicker value={icon} onChange={setIcon} id="edit-env-icon" />
+          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            Font Awesome icon shown next to the env name.
+          </p>
         </div>
 
         <fieldset className="space-y-2 border border-[color:var(--border)] rounded-md p-3">

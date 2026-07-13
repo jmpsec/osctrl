@@ -232,6 +232,10 @@ interface HeatmapCellProps {
   tiles?: NodeTileSeries;
   /** Global max per category across all visible nodes, for cross-node intensity. */
   globalMax?: Record<string, number>;
+  /** The node's last_seen timestamp — used as a fallback signal when
+   * Redis tiles are unavailable so the heatmap still reflects when this
+   * specific node was last active. */
+  lastSeen?: string;
 }
 
 /**
@@ -245,7 +249,7 @@ interface HeatmapCellProps {
  *
  * Per-cell tooltip shows the hour + 5-category breakdown.
  */
-function HeatmapCell({ tiles, globalMax }: HeatmapCellProps) {
+function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
   // The Redis tile series has 24 hourly buckets for a 1-day window.
   // Trim future hours (the day blob is UTC-midnight aligned) so "now" is
   // the rightmost column.
@@ -261,12 +265,42 @@ function HeatmapCell({ tiles, globalMax }: HeatmapCellProps) {
     return trimmed;
   };
 
-  const categoryHourly = [
-    trimToNow(tiles?.status.map((v) => v)),
-    trimToNow(tiles?.result.map((v) => v)),
-    trimToNow(tiles?.config.map((v) => v)),
-    trimToNow(tiles?.query_read.map((v) => v)),
-  ];
+  // Check if Redis tiles have any data at all. If not, fall back to a
+  // minimal signal from last_seen so each node's heatmap reflects when
+  // IT was last active rather than showing an identical empty grid.
+  const hasTilesData = tiles && tiles.total.some((v) => v > 0);
+
+  let categoryHourly: number[][];
+  if (hasTilesData) {
+    categoryHourly = [
+      trimToNow(tiles!.status.map((v) => v)),
+      trimToNow(tiles!.result.map((v) => v)),
+      trimToNow(tiles!.config.map((v) => v)),
+      trimToNow(tiles!.query_read.map((v) => v)),
+    ];
+  } else {
+    // Fallback: place a single config-row cell at the hour corresponding
+    // to last_seen. Zero everywhere else. This makes the heatmap reflect
+    // each node's actual last activity time.
+    const empty = new Array<number>(24).fill(0);
+    const config = new Array<number>(24).fill(0);
+    const status = new Array<number>(24).fill(0);
+    const result = new Array<number>(24).fill(0);
+    const query = new Array<number>(24).fill(0);
+    if (lastSeen) {
+      const d = new Date(lastSeen);
+      if (!isNaN(d.getTime())) {
+        const now = new Date();
+        const hoursAgo = Math.floor((now.getTime() - d.getTime()) / 3_600_000);
+        if (hoursAgo >= 0 && hoursAgo < 24) {
+          const idx = 23 - hoursAgo;
+          config[idx] = 1;
+          status[idx] = 1;
+        }
+      }
+    }
+    categoryHourly = [status, result, config, query];
+  }
 
   const CATEGORIES = [
     { key: 'status', label: 'Status logs', baseVar: '--info' },
@@ -468,6 +502,7 @@ export function NodesTablePage() {
   const globalMax = (() => {
     const max: Record<string, number> = { status: 0, result: 0, config: 0, query: 0 };
     for (const tiles of Object.values(tilesByUuid ?? {})) {
+      if (!tiles.total?.some((v) => v > 0)) continue;
       for (const v of tiles.status ?? []) { if (v > max.status) max.status = v; }
       for (const v of tiles.result ?? []) { if (v > max.result) max.result = v; }
       for (const v of tiles.config ?? []) { if (v > max.config) max.config = v; }
@@ -826,7 +861,7 @@ export function NodesTablePage() {
 
                     {/* 24h — 4-category heatmap, dedicated column for breathing room */}
                     <td className="px-4 py-2.5 align-middle">
-                      <HeatmapCell tiles={tilesByUuid?.[node.uuid]} globalMax={globalMax} />
+                      <HeatmapCell tiles={tilesByUuid?.[node.uuid]} globalMax={globalMax} lastSeen={node.last_seen} />
                     </td>
                   </tr>
                 );

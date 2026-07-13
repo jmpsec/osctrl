@@ -1126,10 +1126,12 @@ export function DashboardPage() {
   // updates this param; the dashboard follows automatically.
   const { env: envParam } = useParams({ from: '/_app/env/$env' });
   const envUuids = (data?.environments ?? []).map((e) => e.uuid);
-  // Resolve the env name from the URL to its UUID for API calls.
-  const effectiveEnv = (data?.environments ?? []).find(
+  // Resolve the env from the URL to its UUID and name for display.
+  const envMeta = (data?.environments ?? []).find(
     (e) => e.name === envParam || e.uuid === envParam,
-  )?.uuid ?? envUuids[0] ?? '';
+  );
+  const effectiveEnv = envMeta?.uuid ?? envUuids[0] ?? '';
+  const envName = envMeta?.name ?? envParam;
 
   const { data: recentNodes, isLoading: nodesLoading, refetch: refetchRecentNodes } = useQuery({
     queryKey: ['dashboard-recent-nodes', effectiveEnv],
@@ -1326,7 +1328,7 @@ export function DashboardPage() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
-            overview
+            overview · {envName}
           </div>
           <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight">
             Dashboard
