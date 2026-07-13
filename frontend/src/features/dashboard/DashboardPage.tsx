@@ -1492,22 +1492,32 @@ export function DashboardPage() {
               <KpiCard
                 label="Active Nodes"
                 value={data?.active_nodes ?? 0}
-                sparkline={sparkData}
+                sparkline={chartSeries.config}
                 halo="success"
                 polarity="up-good"
+                deltaLabel={
+                  (data?.total_nodes ?? 0) > 0
+                    ? `${Math.round(((data?.active_nodes ?? 0) / data!.total_nodes) * 100)}% of fleet`
+                    : 'no nodes'
+                }
               />
               <KpiCard
                 label={`Inactive ≥ ${inactiveHours}h`}
                 value={data?.inactive_nodes ?? 0}
-                sparkline={sparkData}
+                sparkline={chartSeries.status}
                 halo="warning"
                 polarity="up-bad"
+                deltaLabel={
+                  (data?.total_nodes ?? 0) > 0
+                    ? `${Math.round(((data?.inactive_nodes ?? 0) / data!.total_nodes) * 100)}% of fleet`
+                    : 'no nodes'
+                }
               />
               {/* Failed enrolls (24h) — danger-tinted when >0. */}
               <KpiCard
                 label="Failed enrolls (24h)"
                 value={failedEnrolls}
-                sparkline={sparkData}
+                sparkline={chartSeries.result}
                 halo={failedEnrolls > 0 ? 'danger' : 'success'}
                 polarity="up-bad"
                 deltaLabel={
@@ -1521,9 +1531,10 @@ export function DashboardPage() {
               <KpiCard
                 label="Active Queries"
                 value={data?.total_active_queries ?? 0}
-                sparkline={sparkData}
+                sparkline={chartSeries.query}
                 halo="signal"
                 polarity="up-good"
+                deltaLabel={`${data?.total_active_queries ?? 0} executing`}
               />
             </>
           )}

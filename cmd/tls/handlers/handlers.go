@@ -84,6 +84,15 @@ func WithEnvs(envs *environments.EnvManager) Option {
 	}
 }
 
+// WithEnvCache sets a pre-built EnvCache (e.g., one with a Redis-backed
+// invalidation check wired in). When provided, CreateHandlersTLS skips
+// the default NewEnvCache call.
+func WithEnvCache(ec *environments.EnvCache) Option {
+	return func(h *HandlersTLS) {
+		h.EnvCache = ec
+	}
+}
+
 // WithEnvsMap to pass value as option
 func WithEnvsMap(envsmap *environments.MapEnvironments) Option {
 	return func(h *HandlersTLS) {
@@ -205,7 +214,7 @@ func CreateHandlersTLS(opts ...Option) *HandlersTLS {
 	for _, opt := range opts {
 		opt(h)
 	}
-	if h.Envs != nil {
+	if h.Envs != nil && h.EnvCache == nil {
 		h.EnvCache = environments.NewEnvCache(*h.Envs)
 	}
 	if h.AuditLog == nil {

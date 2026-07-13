@@ -207,6 +207,20 @@ func osctrlService() {
 	}
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
+
+	// Build EnvCache with Redis-backed cross-process invalidation.
+	// When osctrl-api patches an env config, it sets a Redis key
+	// (envcache:invalidate:{uuid}) so osctrl-tls picks up the change
+	// on the next /config request instead of serving stale data for
+	// the full TTL.
+	envCache := environments.NewEnvCache(*envs)
+	if redis != nil {
+		envCache.SetInvalidationCheck(func(ctx context.Context, uuid string) bool {
+			n, err := redis.Client.Exists(ctx, "envcache:invalidate:"+uuid).Result()
+			return err == nil && n > 0
+		})
+		log.Info().Msg("EnvCache invalidation wired to Redis")
+	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
@@ -304,6 +318,7 @@ func osctrlService() {
 	log.Info().Msg("Initializing handlers")
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
+		handlers.WithEnvCache(envCache),
 		handlers.WithEnvsMap(&envsmap),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithTags(tagsmgr),
