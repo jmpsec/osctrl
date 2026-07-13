@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { RotateCw } from 'lucide-react';
 import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -1067,6 +1068,34 @@ function RecentlySeenNodesTable({
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// RefreshButton — small icon button for manual per-section refresh.
+// ---------------------------------------------------------------------------
+function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isPending}
+      className={cn(
+        'flex-shrink-0 p-1 rounded transition-colors duration-[120ms]',
+        'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+        'hover:bg-[color:var(--bg-2)]',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+        isPending && 'animate-spin',
+      )}
+      aria-label="Refresh"
+      title="Refresh"
+    >
+      <RotateCw className="w-3.5 h-3.5" />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 export function DashboardPage() {
   usePageTitle('Dashboard');
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -1084,7 +1113,7 @@ export function DashboardPage() {
 
   const is401 = isError && error instanceof AuthError;
 
-  const { data: auditData, isLoading: auditLoading } = useQuery({
+  const { data: auditData, isLoading: auditLoading, refetch: refetchAudit } = useQuery({
     queryKey: ['dashboard-audit'],
     queryFn: () => listAuditLogs({ page_size: 8 }),
     refetchInterval: 5 * 60_000,
@@ -1102,7 +1131,7 @@ export function DashboardPage() {
     (e) => e.name === envParam || e.uuid === envParam,
   )?.uuid ?? envUuids[0] ?? '';
 
-  const { data: recentNodes, isLoading: nodesLoading } = useQuery({
+  const { data: recentNodes, isLoading: nodesLoading, refetch: refetchRecentNodes } = useQuery({
     queryKey: ['dashboard-recent-nodes', effectiveEnv],
     queryFn: () =>
       listNodes({
@@ -1118,7 +1147,7 @@ export function DashboardPage() {
   });
 
   // ── Recently seen nodes — pulled from the selected env, lastseen desc ─
-  const { data: recentlySeenNodes, isLoading: recentlySeenLoading } = useQuery({
+  const { data: recentlySeenNodes, isLoading: recentlySeenLoading, refetch: refetchRecentlySeen } = useQuery({
     queryKey: ['dashboard-recently-seen', effectiveEnv],
     queryFn: () =>
       listNodes({
@@ -1135,14 +1164,14 @@ export function DashboardPage() {
 
   // ── Failed enrolls (24h) — Node-typed audit lines starting with
   //    "failed enroll". Capped at 200 by the request; >= 200 → render "200+".
-  const since24hIso = (() => {
-    const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return d.toISOString();
-  })();
+  //    The since-timestamp is computed inside queryFn (not in the query key)
+  //    so it doesn't change on every render and trigger a refetch storm.
   const { data: failedEnrollData } = useQuery({
-    queryKey: ['dashboard-failed-enrolls', since24hIso],
-    queryFn: () =>
-      listAuditLogs({ type: LOG_TYPE.Node, since: since24hIso, page_size: 200 }),
+    queryKey: ['dashboard-failed-enrolls'],
+    queryFn: () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      return listAuditLogs({ type: LOG_TYPE.Node, since, page_size: 200 });
+    },
     refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
     retry: 1,
@@ -1181,6 +1210,7 @@ export function DashboardPage() {
       retry: 1,
     })),
   });
+  const refetchActivityTiles = () => { activityQueries.forEach((q) => void q.refetch()); };
   // Map env UUID → its tile series (or undefined while loading).
   const tilesByUuid = new Map<string, NodeTileSeries>();
   envUuids.forEach((uuid, i) => {
@@ -1241,7 +1271,7 @@ export function DashboardPage() {
   }));
 
   // ── osquery agent versions (NEW) ──────────────────────────────────────
-  const { data: versionCounts, isLoading: versionsLoading } = useQuery({
+  const { data: versionCounts, isLoading: versionsLoading, refetch: refetchVersions } = useQuery({
     queryKey: ['dashboard-osquery-versions'],
     queryFn: getOsqueryVersionCounts,
     refetchInterval: 5 * 60_000,
@@ -1284,6 +1314,7 @@ export function DashboardPage() {
           new Date(b._createdAt).getTime() - new Date(a._createdAt).getTime(),
       )
       .slice(0, 8);
+  const refetchActiveQueries = () => { activeQueriesPerEnv.forEach((q) => void q.refetch()); };
   const activeQueriesLoading =
     activeQueriesPerEnv.length > 0 &&
     activeQueriesPerEnv.some((r) => r.isLoading);
@@ -1336,7 +1367,9 @@ export function DashboardPage() {
                 {activityInterval === '7d' ? 'Last 7 days' : activityInterval === '12h' ? 'Last 12 hours' : 'Last 24 hours'} · per environment
               </div>
             </div>
-            <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
+            <div className="flex items-center gap-2">
+              <RefreshButton onClick={() => void refetchActivityTiles()} isPending={activityQueries.some((q) => q.isFetching)} />
+              <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
                 <button
                   type="button"
                   role="tab"
@@ -1383,6 +1416,7 @@ export function DashboardPage() {
                   7 days
                 </button>
               </div>
+            </div>
           </div>
           {/* Palette row — always visible. Doubles as the chart's
               legend (swatch + label per category) and as the per-user
@@ -1516,18 +1550,21 @@ export function DashboardPage() {
                 </span>
               )}
             </h2>
-            {effectiveEnv && (
-              <Link
-                to="/_app/env/$env/queries"
-                params={{ env: effectiveEnv }}
-                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
-              >
-                View all →
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              <RefreshButton onClick={() => refetchActiveQueries()} isPending={activeQueriesPerEnv.some((q) => q.isFetching)} />
+              {effectiveEnv && (
+                <Link
+                  to="/_app/env/$env/queries"
+                  params={{ env: effectiveEnv }}
+                  className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+                >
+                  View all →
+                </Link>
+              )}
+            </div>
           </div>
           <div>
-            {activeQueriesLoading && activeQueriesFlat.length === 0 ? (
+            {activeQueriesLoading && activeQueriesFlat.length === 0 ?(
               Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
@@ -1565,11 +1602,14 @@ export function DashboardPage() {
             <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
               Environments
             </h2>
-            {data && (
-              <span className="text-xs text-[color:var(--text-3)] font-mono-tabular tabular-nums">
-                {data.environments.length} env{data.environments.length !== 1 ? 's' : ''}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {data && (
+                <span className="text-xs text-[color:var(--text-3)] font-mono-tabular tabular-nums">
+                  {data.environments.length} env{data.environments.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              <RefreshButton onClick={() => void refetch()} isPending={isLoading} />
+            </div>
           </div>
 
           {isLoading ? (
@@ -1645,6 +1685,12 @@ export function DashboardPage() {
 
       {/* ── osquery versions panel ───────────────────────────────────────── */}
       <section aria-label="osquery agent versions">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
+            osquery agent versions
+          </h2>
+          <RefreshButton onClick={() => void refetchVersions()} isPending={versionsLoading} />
+        </div>
         {versionsLoading ? (
           <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-5 min-h-[160px]">
             <Skeleton className="h-4 w-32 mb-3" />
@@ -1667,12 +1713,15 @@ export function DashboardPage() {
             <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
               Recent activity
             </span>
-            <Link
-              to="/_app/audit"
-              className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
-            >
-              View all →
-            </Link>
+            <div className="flex items-center gap-2">
+              <RefreshButton onClick={() => void refetchAudit()} isPending={auditLoading} />
+              <Link
+                to="/_app/audit"
+                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+              >
+                View all →
+              </Link>
+            </div>
           </div>
           <div className="px-4 flex-1">
             {auditLoading ? (
@@ -1702,15 +1751,18 @@ export function DashboardPage() {
             <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
               Recent enrollments
             </span>
-            {effectiveEnv && (
-              <Link
-                to="/_app/env/$env/nodes"
-                params={{ env: effectiveEnv }}
-                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
-              >
-                View all →
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              <RefreshButton onClick={() => void refetchRecentNodes()} isPending={nodesLoading} />
+              {effectiveEnv && (
+                <Link
+                  to="/_app/env/$env/nodes"
+                  params={{ env: effectiveEnv }}
+                  className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+                >
+                  View all →
+                </Link>
+              )}
+            </div>
           </div>
           <div className="px-4 flex-1">
             {nodesLoading || (!effectiveEnv && isLoading) ? (
@@ -1757,15 +1809,18 @@ export function DashboardPage() {
           <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
             Recently seen nodes
           </h2>
-          {effectiveEnv && (
-            <Link
-              to="/_app/env/$env/nodes"
-              params={{ env: effectiveEnv }}
-              className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
-            >
-              View all →
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <RefreshButton onClick={() => void refetchRecentlySeen()} isPending={recentlySeenLoading} />
+            {effectiveEnv && (
+              <Link
+                to="/_app/env/$env/nodes"
+                params={{ env: effectiveEnv }}
+                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+              >
+                View all →
+              </Link>
+            )}
+          </div>
         </div>
         {!effectiveEnv && !isLoading ? (
           <EmptyState
