@@ -153,8 +153,9 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
   const isSettingsActive =
     pathname.startsWith('/_app/settings') || pathname.startsWith('/settings');
   const isAuditActive = pathname.startsWith('/_app/audit') || pathname === '/audit';
-  // Match exactly '/' or '/_app/' (the dashboard route) but NOT '/env/...'
-  const isDashboardActive = pathname === '/' || pathname === '/_app' || pathname === '/_app/';
+  // Dashboard is now env-scoped at /_app/env/{env}
+  const dashboardPath = `/_app/env/${currentEnv}`;
+  const isDashboardActive = pathname === dashboardPath || pathname === dashboardPath + '/';
 
   return (
     <aside
@@ -205,7 +206,7 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
         <NavItem
           collapsed={collapsed}
           active={isDashboardActive}
-          to="/_app/"
+          to={dashboardPath}
           icon={
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M3 12h6v9H3zM15 3h6v9h-6zM3 3h6v6H3zM15 15h6v6h-6z" />

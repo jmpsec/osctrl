@@ -5,6 +5,7 @@ import { loginRoute } from './routes/login'
 import { appRoute } from './routes/_app/route'
 import { appIndexRoute } from './routes/_app/index'
 import { envRoute } from './routes/_app/env/$env/route'
+import { envIndexRoute } from './routes/_app/env/$env/index'
 import { envNodesRoute } from './routes/_app/env/$env/nodes'
 import { envNodeDetailRoute } from './routes/_app/env/$env/nodes.$uuid'
 import { envQueriesRoute } from './routes/_app/env/$env/queries'
@@ -36,6 +37,7 @@ const routeTree = rootRoute.addChildren([
     settingsServiceRoute,
     auditRoute,
     envRoute.addChildren([
+      envIndexRoute,
       envNodesRoute,
       envNodeDetailRoute,
       envQueriesRoute,

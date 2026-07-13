@@ -15,6 +15,7 @@ import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
+import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
@@ -37,6 +38,9 @@ export function ProfilePage() {
 
   const [tokenMsg, setTokenMsg] = useState<string | null>(null);
   const [tokenErr, setTokenErr] = useState<string | null>(null);
+  const [rawToken, setRawToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [theme, setTheme] = useState<Theme>(() => {
     const fromDom = document.documentElement.getAttribute('data-theme') as Theme | null;
@@ -123,7 +127,7 @@ export function ProfilePage() {
       if (!me) throw new Error('Profile not loaded yet.');
       return refreshUserToken(me.username);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Self-rotate: the API just re-issued osctrl_token + osctrl_csrf
       // cookies with the freshly minted JWT. Re-prime the in-memory
       // CSRF from the new cookie so subsequent X-CSRF-Token headers
@@ -131,8 +135,11 @@ export function ProfilePage() {
       // (e.g. revoke or password change) sends a stale CSRF and the
       // server rejects it.
       primeCsrfFromCookie();
+      setRawToken(data.token);
+      setShowToken(false);
+      setCopied(false);
       setTokenErr(null);
-      setTokenMsg('Token rotated. Store it now — it will not be shown again.');
+      setTokenMsg('Token rotated. Use the eye button to view it.');
       void refetch();
     },
     onError: (e) => {
@@ -419,12 +426,58 @@ export function ProfilePage() {
                   'rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]',
                 )}
               >
-                <span
-                  className="font-mono-tabular text-xs text-[color:var(--text-2)] tracking-wider truncate"
-                  aria-label="Token (masked)"
-                >
-                  ········••••
-                </span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span
+                    className="font-mono-tabular text-xs text-[color:var(--text-2)] tracking-wider truncate select-all"
+                    aria-label={showToken && rawToken ? 'Token (visible)' : 'Token (masked)'}
+                  >
+                    {showToken && rawToken
+                      ? rawToken
+                      : rawToken
+                        ? '••••••••••••••••'
+                        : '········••••'}
+                  </span>
+                  {rawToken && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowToken((v) => !v)}
+                        className={cn(
+                          'flex-shrink-0 p-1 rounded',
+                          'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                          'hover:bg-[color:var(--bg-1)] transition-colors',
+                        )}
+                        aria-label={showToken ? 'Hide token' : 'Show token'}
+                        title={showToken ? 'Hide' : 'Show'}
+                      >
+                        {showToken
+                          ? <EyeOff className="w-3.5 h-3.5" />
+                          : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (rawToken) {
+                            navigator.clipboard.writeText(rawToken);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }
+                        }}
+                        className={cn(
+                          'flex-shrink-0 p-1 rounded',
+                          'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
+                          'hover:bg-[color:var(--bg-1)] transition-colors',
+                        )}
+                        aria-label="Copy token"
+                        title="Copy"
+                      >
+                        {copied
+                          ? <Check className="w-3.5 h-3.5 text-[color:var(--success)]" />
+                          : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </>
+                  )}
+                </div>
                 <span
                   className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tnum whitespace-nowrap"
                   title={me.token_expire}
@@ -434,8 +487,9 @@ export function ProfilePage() {
               </div>
 
               <p className="text-[10px] text-[color:var(--text-3)] leading-relaxed">
-                The raw token is never displayed after issuance. Rotate to mint a
-                new one — the previous token will stop working immediately.
+                {rawToken
+                  ? 'Use the eye button to reveal the token. Copy it now — it will not be shown after you leave this page.'
+                  : 'No token in memory. Rotate to mint a new one — the previous token will stop working immediately.'}
               </p>
 
               {tokenErr && <Feedback kind="error" message={tokenErr} />}
