@@ -118,6 +118,11 @@ type YAMLConfigurationService struct {
 	LogLevel  string `yaml:"logLevel"`
 	LogFormat string `yaml:"logFormat"`
 	Host      string `yaml:"host"`
+	// GeoIPDBPath is the path to a MaxMind GeoLite2-Country .mmdb file.
+	// When set, the API resolves node IP addresses to country codes and
+	// includes them in the node API response. When empty (default), the
+	// feature is disabled and no country codes are returned.
+	GeoIPDBPath string `yaml:"geoipDBPath"`
 	Auth      string `yaml:"auth"`
 	AuditLog  bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose

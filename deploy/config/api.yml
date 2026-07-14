@@ -21,6 +21,16 @@ service:
   # when osctrl-api sits behind a trusted reverse proxy (e.g.
   # `10.0.0.0/8` or `192.0.2.1/32,2001:db8::/64`).
   trustedProxies: ""
+  # Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP
+  # addresses are resolved to ISO 3166-1 alpha-2 country codes and
+  # included in the node API response (shown as flag emojis in the
+  # SPA nodes table and node detail page). Empty (default) disables
+  # GeoIP entirely — no lookups, no country codes, no overhead.
+  # Download the free database from:
+  #   https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+  # Update weekly for best accuracy. Example:
+  #   geoipDBPath: /data/GeoLite2-Country.mmdb
+  geoipDBPath: ""
 
 # Database configuration
 db:

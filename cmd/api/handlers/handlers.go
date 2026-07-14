@@ -6,6 +6,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -32,6 +33,7 @@ type HandlersApi struct {
 	Settings        *settings.Settings
 	RedisCache      *cache.RedisManager
 	Activity        activityReader
+	GeoIP           *geoip.GeoIPResolver
 	ServiceVersion  string
 	ServiceName     string
 	AuditLog        *auditlog.AuditLogManager
@@ -120,6 +122,12 @@ func WithCache(rds *cache.RedisManager) HandlersOption {
 func WithActivityReader(ar activityReader) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Activity = ar
+	}
+}
+
+func WithGeoIP(g *geoip.GeoIPResolver) HandlersOption {
+	return func(h *HandlersApi) {
+		h.GeoIP = g
 	}
 }
 

@@ -138,6 +138,7 @@ interface HostCellProps {
   hostname: string;
   localname: string;
   ip: string;
+  countryCode?: string;
 }
 
 function HostCell({ env, uuid, hostname, localname, ip }: HostCellProps) {
@@ -839,6 +840,7 @@ export function NodesTablePage() {
                         hostname={node.hostname}
                         localname={node.localname}
                         ip={node.ip_address}
+                        countryCode={node.country_code}
                       />
                     </td>
 

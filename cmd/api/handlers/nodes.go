@@ -445,6 +445,13 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, n)
 }
 
+func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeView {
+	if h.GeoIP == nil {
+		return types.ProjectNodes(in)
+	}
+	return types.ProjectNodesWithCountry(in, h.GeoIP.Lookup)
+}
+
 // NodesPagedHandler returns paginated, sorted, searchable nodes for an env.
 // This is the canonical endpoint consumed by the React admin SPA.
 //
@@ -580,7 +587,7 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.NodesPagedResponse{
 		// ProjectNodes adds the parsed `system_info` enrichment block per row.
 		// The enroll_secret inside RawEnrollment is intentionally excluded.
-		Items:      types.ProjectNodes(pageData.Items),
+		Items:      h.projectNodesWithGeo(pageData.Items),
 		Page:       page,
 		PageSize:   pageSize,
 		TotalItems: pageData.TotalItems,

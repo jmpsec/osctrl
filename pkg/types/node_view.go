@@ -102,6 +102,7 @@ type NodeView struct {
 	nodes.OsqueryNode
 	NodeKey    string          `json:"node_key,omitempty"`
 	Enrichment *NodeEnrichment `json:"system_info,omitempty"`
+	CountryCode string         `json:"country_code,omitempty"`
 }
 
 // ProjectNode wraps a single OsqueryNode into the SPA-facing NodeView, parsing
@@ -110,7 +111,14 @@ type NodeView struct {
 // the SPA sees the same `OsqueryNode` shape it always saw, plus optional
 // detail when available.
 func ProjectNode(n nodes.OsqueryNode) NodeView {
+	return ProjectNodeWithCountry(n, "")
+}
+
+func ProjectNodeWithCountry(n nodes.OsqueryNode, countryCode string) NodeView {
 	view := NodeView{OsqueryNode: n}
+	if countryCode != "" {
+		view.CountryCode = countryCode
+	}
 	if n.RawEnrollment == "" {
 		return view
 	}
@@ -195,6 +203,18 @@ func ProjectNodes(in []nodes.OsqueryNode) []NodeView {
 	out := make([]NodeView, len(in))
 	for i, n := range in {
 		out[i] = ProjectNode(n)
+	}
+	return out
+}
+
+func ProjectNodesWithCountry(in []nodes.OsqueryNode, lookup func(ip string) string) []NodeView {
+	out := make([]NodeView, len(in))
+	for i, n := range in {
+		var cc string
+		if lookup != nil && n.IPAddress != "" {
+			cc = lookup(n.IPAddress)
+		}
+		out[i] = ProjectNodeWithCountry(n, cc)
 	}
 	return out
 }
