@@ -161,6 +161,12 @@ install_api:
 install_cli:
 	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)/$(OUTPUT)
 
+# Install frontend
+# optional DEST=destination_path
+install_frontend:
+	sudo rsync -av $(FRONTEND_DIR)/$(DIST)/ $(DEST)/$(FRONTEND_DIR)/
+	sudo chown -R www-data:www-data $(DEST)/$(FRONTEND_DIR)
+
 # Display systemd logs for TLS server
 logs_tls:
 	sudo journalctl -f -t $(TLS_NAME)
