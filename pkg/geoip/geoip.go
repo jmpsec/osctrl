@@ -68,7 +68,7 @@ func (g *GeoIPResolver) parseMetadata() error {
 	metaStart := idx + len(marker)
 	metaData := g.data[metaStart:]
 	// Parse the metadata as a mmdb data record (it's always a map)
-	val, _, err := decodeData(metaData, 0)
+	val, _, err := decodeData(metaData, 0, 0)
 	if err != nil {
 		return fmt.Errorf("decode metadata: %w", err)
 	}
@@ -199,7 +199,7 @@ func (g *GeoIPResolver) readCountry(dataIdx uint32, _ int) string {
 	if dataOffset >= len(g.data) {
 		return ""
 	}
-	val, _, err := decodeData(g.data, dataOffset)
+	val, _, err := decodeData(g.data, dataOffset, g.dataStart)
 	if err != nil {
 		return ""
 	}
@@ -225,7 +225,7 @@ func (g *GeoIPResolver) readCountry(dataIdx uint32, _ int) string {
 // Minimal MMDB data decoder — supports the types needed for country lookup:
 // map, string, uint16/32/64, array, bool, float32/64, and extensions.
 // -----------------------------------------------------------------------
-func decodeData(data []byte, offset int) (interface{}, int, error) {
+func decodeData(data []byte, offset int, dataStart int) (interface{}, int, error) {
 	if offset >= len(data) {
 		return nil, 0, fmt.Errorf("offset beyond data")
 	}
@@ -327,12 +327,12 @@ func decodeData(data []byte, offset int) (interface{}, int, error) {
 	case 4: // map
 		m := make(map[string]interface{}, size)
 		for i := 0; i < size; i++ {
-			key, newOff, err := decodeData(data, offset)
+			key, newOff, err := decodeData(data, offset, dataStart)
 			if err != nil {
 				return nil, 0, err
 			}
 			offset = newOff
-			val, newOff2, err := decodeData(data, offset)
+			val, newOff2, err := decodeData(data, offset, dataStart)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -358,7 +358,7 @@ func decodeData(data []byte, offset int) (interface{}, int, error) {
 	case 11: // array
 		arr := make([]interface{}, size)
 		for i := 0; i < size; i++ {
-			val, newOff, err := decodeData(data, offset)
+			val, newOff, err := decodeData(data, offset, dataStart)
 			if err != nil {
 				return nil, 0, err
 			}
