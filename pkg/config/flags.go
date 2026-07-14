@@ -250,6 +250,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_TRUSTED_PROXIES"),
 			Destination: &params.Service.TrustedProxies,
 		},
+		&cli.StringFlag{
+			Name:        "geoip-db",
+			Value:       "",
+			Usage:       "Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP addresses are resolved to country codes (shown as flag emojis in the SPA). Empty (default) disables GeoIP entirely.",
+			Sources:     cli.EnvVars("SERVICE_GEOIP_DB"),
+			Destination: &params.Service.GeoIPDBPath,
+		},
 	}
 }
 

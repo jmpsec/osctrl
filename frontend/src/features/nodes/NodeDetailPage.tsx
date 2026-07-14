@@ -20,6 +20,7 @@ import {
 import { AuthError } from '$/api/client';
 import type { NodeLogEntry } from '$/api/types';
 import { formatRelative, formatAbsolute, formatBucketAgo } from '$/lib/time';
+import { countryFlag } from '$/lib/flags';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
 import { StatusPip } from '$/components/data/StatusPip';
@@ -978,7 +979,16 @@ export function NodeDetailPage() {
                   { label: 'Local name', value: node.localname || '—' },
                   {
                     label: 'IP address',
-                    value: <span className="font-mono-tabular text-xs">{node.ip_address}</span>,
+                    value: (
+                      <span className="font-mono-tabular text-xs flex items-center gap-1.5">
+                        {node.country_code && (
+                          <span className="text-sm" title={node.country_code}>
+                            {countryFlag(node.country_code)}
+                          </span>
+                        )}
+                        {node.ip_address}
+                      </span>
+                    ),
                   },
                   { label: 'Username', value: node.username || '—' },
                   { label: 'Environment', value: node.environment },

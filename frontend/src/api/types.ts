@@ -89,6 +89,8 @@ export interface OsqueryNode {
   user_id: number;
   environment_id: number;
   extra_data: string;
+  /** ISO 3166-1 alpha-2 country code from GeoIP, or empty. */
+  country_code?: string;
   /** Optional enrichment parsed server-side from RawEnrollment (no secrets). */
   system_info?: NodeEnrichment;
 }

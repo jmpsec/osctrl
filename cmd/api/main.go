@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
@@ -287,6 +288,12 @@ func osctrlAPIService() {
 	apiUsers = users.CreateUserManager(db.Conn).WithJWT(flagParams.JWT)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
+	geoIPResolver, err := geoip.New(flagParams.Service.GeoIPDBPath)
+	if err != nil {
+		log.Warn().Err(err).Msg("GeoIP resolver not loaded, country codes will be empty")
+		geoIPResolver = nil
+	}
+
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 	// Initialize settings
@@ -358,6 +365,7 @@ func osctrlAPIService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithCache(redis),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
+		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
