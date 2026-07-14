@@ -80,6 +80,10 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// blob is intentionally NOT in the projection — see pkg/types/node_view.go.
 	view := types.ProjectNode(node)
 	view.NodeKey = node.NodeKey
+	// Resolve the node's IP to a country code via GeoIP (if configured).
+	if h.GeoIP != nil && node.IPAddress != "" {
+		view.CountryCode = h.GeoIP.Lookup(node.IPAddress)
+	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, view)
 }
 
