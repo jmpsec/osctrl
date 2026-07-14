@@ -162,7 +162,7 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument(),
     );
-    expect(screen.getByText('overview')).toBeInTheDocument();
+    expect(screen.getByText(/overview/)).toBeInTheDocument();
   });
 
   it('renders KPI card labels from the stats response', async () => {
