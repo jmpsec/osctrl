@@ -8,6 +8,7 @@ import { listEnvTags, tagNode } from '$/api/tags';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import { AuthError } from '$/api/client';
+import { countryFlag } from '$/lib/flags';
 import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag } from '$/api/types';
 import { formatRelative, formatBytes } from '$/lib/time';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
@@ -141,8 +142,9 @@ interface HostCellProps {
   countryCode?: string;
 }
 
-function HostCell({ env, uuid, hostname, localname, ip }: HostCellProps) {
+function HostCell({ env, uuid, hostname, localname, ip, countryCode }: HostCellProps) {
   const displayName = hostname || localname || '—';
+  const flag = countryFlag(countryCode);
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
       <Link
@@ -164,6 +166,7 @@ function HostCell({ env, uuid, hostname, localname, ip }: HostCellProps) {
         {ip && (
           <>
             <span aria-hidden className="opacity-50">·</span>
+            {flag && <span title={countryCode} className="text-sm leading-none">{flag}</span>}
             <span title={`IP ${ip}`}>{ip}</span>
           </>
         )}
