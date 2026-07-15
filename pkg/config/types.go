@@ -123,6 +123,12 @@ type YAMLConfigurationService struct {
 	// includes them in the node API response. When empty (default), the
 	// feature is disabled and no country codes are returned.
 	GeoIPDBPath string `yaml:"geoipDBPath"`
+	// PostureQueryPrefix is the prefix that identifies scheduled queries
+	// whose result logs should be ingested as node posture data. Empty
+	// (default "osctrl:posture:") disables posture ingestion. Queries in
+	// the osquery schedule named e.g. "osctrl:posture:packages" will have
+	// their results stored as the "packages" posture category.
+	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
 	Auth      string `yaml:"auth"`
 	AuditLog  bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose

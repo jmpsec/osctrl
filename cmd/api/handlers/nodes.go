@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -597,4 +598,120 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 		TotalItems: pageData.TotalItems,
 		TotalPages: totalPages,
 	})
+}
+
+// PostureProfilesHandler — GET /api/v1/posture/profiles
+//
+// Returns all predefined posture check profiles that operators can merge
+// into an environment's schedule config.
+// @Summary List posture profiles
+// @Description Returns predefined posture check profiles for different node types.
+// @Tags posture
+// @Produce json
+// @Success 200 {array} posture.PostureProfile
+// @Security ApiKeyAuth
+// @Router /api/v1/posture/profiles [get]
+func (h *HandlersApi) PostureProfilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, posture.AllProfiles())
+}
+
+// PostureProfileHandler — GET /api/v1/posture/profiles/{id}
+//
+// Returns a single posture profile by ID, including the full schedule
+// JSON ready to paste into the config editor.
+// @Summary Get posture profile
+// @Description Returns a single posture check profile by ID.
+// @Tags posture
+// @Produce json
+// @Param id path string true "Profile ID (server, laptop)"
+// @Success 200 {object} posture.PostureProfile
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Security ApiKeyAuth
+// @Router /api/v1/posture/profiles/{id} [get]
+func (h *HandlersApi) PostureProfileHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	profileID := r.PathValue("id")
+	if profileID == "" {
+		apiErrorResponse(w, "profile id required", http.StatusBadRequest, nil)
+		return
+	}
+	profile := posture.GetProfile(profileID)
+	if profile == nil {
+		apiErrorResponse(w, "profile not found", http.StatusNotFound, nil)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, profile)
+}
+
+// NodePostureHandler — GET /api/v1/nodes/{env}/node/{uuid}/posture
+//
+// Returns all posture categories for a node (latest snapshot per category).
+// @Summary Get node posture
+// @Description Returns security and compliance posture data for a node.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuid path string true "Node UUID"
+// @Success 200 {array} posture.NodePosture
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/node/{uuid}/posture [get]
+func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	uuidVar := r.PathValue("uuid")
+	if envVar == "" || uuidVar == "" {
+		apiErrorResponse(w, "env and uuid required", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return
+	}
+	node, err := h.Nodes.GetByUUID(uuidVar)
+	if err != nil {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		return
+	}
+	if !strings.EqualFold(node.Environment, env.Name) {
+		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+		return
+	}
+	if h.Posture == nil {
+		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+	records, err := h.Posture.GetByNode(node.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting posture", http.StatusInternalServerError, err)
+		return
+	}
+	if records == nil {
+		records = []posture.NodePosture{}
+	}
+	h.AuditLog.NodeAction(ctx[ctxUser], "viewed posture for "+uuidVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, records)
 }

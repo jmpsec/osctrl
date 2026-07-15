@@ -18,6 +18,24 @@ service:
   # prevents header-spoofed enroll-rate-limit bypass and audit-log
   # poisoning.
   trustedProxies: ""
+  # Prefix for scheduled query names whose results are ingested as
+  # node posture data (security & compliance). Queries in the osquery
+  # schedule named e.g. "osctrl:posture:packages" will have their
+  # results stored as the "packages" posture category.
+  #
+  # Recommended: set query intervals to once per day (86400 seconds).
+  # Posture data changes infrequently (installed packages, users, disk
+  # encryption state) and daily collection is sufficient for compliance
+  # without overloading agents or the logging pipeline.
+  #
+  # Example schedule entries:
+  #   "osctrl:posture:packages":  { "query": "SELECT name, version FROM deb_packages;", "interval": 86400 }
+  #   "osctrl:posture:users":     { "query": "SELECT username, uid, shell FROM users;", "interval": 86400 }
+  #   "osctrl:posture:encryption":{ "query": "SELECT encrypted, name FROM disk_encryption;", "interval": 86400 }
+  #   "osctrl:posture:uptime":    { "query": "SELECT days, hours, minutes FROM uptime;", "interval": 86400 }
+  #
+  # Empty disables posture ingestion entirely.
+  postureQueryPrefix: "osctrl:posture:"
 
 # Database configuration
 db:

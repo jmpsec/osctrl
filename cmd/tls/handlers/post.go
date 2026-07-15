@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -359,6 +360,10 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
 			duration := time.Since(start).Seconds()
 			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
+			// Ingest posture data from result logs (if enabled)
+			if h.Posture != nil && t.LogType == "result" {
+				h.ingestPosture(t.Data, node.UUID, env.Name)
+			}
 		}()
 	} else {
 		nodeInvalid = true
@@ -1387,4 +1392,19 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 	response := TLSResponse{Message: "configuration saved successfully"}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+}
+
+// ingestPosture parses result log entries and feeds any posture-prefixed
+// query results into the PostureManager.
+func (h *HandlersTLS) ingestPosture(data json.RawMessage, nodeUUID, environment string) {
+	var results []types.LogResultData
+	if err := json.Unmarshal(data, &results); err != nil {
+		log.Debug().Err(err).Msg("posture: failed to parse result log")
+		return
+	}
+	for _, r := range results {
+		if posture.IsPostureQuery(r.Name) {
+			h.Posture.IngestResult(nodeUUID, environment, r.Name, r.Columns)
+		}
+	}
 }

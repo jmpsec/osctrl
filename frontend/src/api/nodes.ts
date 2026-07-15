@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { NodePosture, PostureProfile } from './types';
 import type {
   NodesPagedResponse,
   OsqueryNode,
@@ -85,4 +86,18 @@ export function listNodeLogs(
   return apiFetch<NodeLogsResponse>(
     `/api/v1/logs/${encodeURIComponent(type)}/${encodeURIComponent(env)}/${encodeURIComponent(uuid)}${qs ? `?${qs}` : ''}`,
   );
+}
+
+export function getNodePosture(env: string, uuid: string): Promise<NodePosture[]> {
+  return apiFetch<NodePosture[]>(
+    `/api/v1/nodes/${encodeURIComponent(env)}/node/${encodeURIComponent(uuid)}/posture`,
+  );
+}
+
+export function getPostureProfiles(): Promise<PostureProfile[]> {
+  return apiFetch<PostureProfile[]>('/api/v1/posture/profiles');
+}
+
+export function getPostureProfile(id: string): Promise<PostureProfile> {
+  return apiFetch<PostureProfile>(`/api/v1/posture/profiles/${encodeURIComponent(id)}`);
 }

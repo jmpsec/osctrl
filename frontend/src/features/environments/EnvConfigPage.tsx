@@ -13,6 +13,8 @@ import {
   type EnvExpirationAction,
 } from '$/api/environments';
 import { AuthError, ApiError } from '$/api/client';
+import { getPostureProfiles } from '$/api/nodes';
+import type { PostureProfile, ProfileQuery } from '$/api/types';
 import { cn } from '$/lib/cn';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
@@ -108,6 +110,14 @@ export function EnvConfigPage() {
   // they save or explicitly reset.
   const [draft, setDraft] = useState<EnvConfigResponse | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [showPosturePicker, setShowPosturePicker] = useState(false);
+  const [postureAggressiveness, setPostureAggressiveness] = useState(1);
+  const { data: postureProfiles } = useQuery({
+    queryKey: ['posture-profiles'],
+    queryFn: () => getPostureProfiles(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
   const [diffsOpen, setDiffsOpen] = useState<Record<SectionKey, boolean>>({
     options: false,
     schedule: false,
@@ -192,6 +202,30 @@ export function EnvConfigPage() {
       setSaveErr(e instanceof Error ? e.message : 'Save failed');
     },
   });
+
+  const POSTURE_INTERVALS = [
+    { label: 'Daily', seconds: 86400, description: 'Once per day — sufficient for compliance' },
+    { label: 'Every 12h', seconds: 43200, description: 'Twice per day — faster detection' },
+    { label: 'Every 6h', seconds: 21600, description: 'Four times per day — active monitoring' },
+    { label: 'Every 1h', seconds: 3600, description: 'Hourly — high-frequency monitoring' },
+  ];
+
+  function applyPostureProfile(profile: PostureProfile) {
+    const interval = POSTURE_INTERVALS[postureAggressiveness - 1]?.seconds ?? 86400;
+    if (!draft) return;
+    // Merge posture queries into the schedule section
+    const existing = JSON.parse(draft.schedule || '{}');
+    for (const [name, q] of Object.entries(profile.queries) as [string, ProfileQuery][]) {
+      existing['osctrl:posture:' + name] = {
+        query: q.query,
+        interval,
+        snapshot: q.snapshot,
+        ...(q.platform ? { platform: q.platform } : {}),
+      };
+    }
+    setDraft({ ...draft, schedule: JSON.stringify(existing, null, 2) });
+    setShowPosturePicker(false);
+  }
 
   if (envQuery.isError && envQuery.error instanceof AuthError) {
     void navigate({ to: '/login' });
@@ -404,12 +438,28 @@ export function EnvConfigPage() {
                 />
               )}
               {key === 'schedule' && (
-                <AddScheduledQueryForm
-                  draftValue={after}
-                  onAdd={(next) =>
-                    setDraft((d) => (d ? { ...d, schedule: next } : d))
-                  }
-                />
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">Quick add</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPosturePicker(true)}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded',
+                        'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
+                        'hover:bg-[color:var(--signal)]/10 transition-colors',
+                      )}
+                    >
+                      Add posture checks
+                    </button>
+                  </div>
+                  <AddScheduledQueryForm
+                    draftValue={after}
+                    onAdd={(next) =>
+                      setDraft((d) => (d ? { ...d, schedule: next } : d))
+                    }
+                  />
+                </>
               )}
 
               <CodeEditor
@@ -430,6 +480,79 @@ export function EnvConfigPage() {
           );
         })}
       </div>
+      {showPosturePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowPosturePicker(false)}>
+          <div className="bg-[color:var(--bg-1)] rounded-xl border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)]">
+              <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">Posture check profiles</h2>
+              <button type="button" onClick={() => setShowPosturePicker(false)} className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]">✕</button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Aggressiveness slider */}
+              <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[color:var(--text-2)]">Check frequency</span>
+                  <span className="text-[10px] font-mono-tabular text-[color:var(--signal)]">
+                    {POSTURE_INTERVALS[postureAggressiveness - 1]?.label ?? 'Daily'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={4}
+                  step={1}
+                  value={postureAggressiveness}
+                  onChange={(e) => setPostureAggressiveness(Number(e.target.value))}
+                  className="w-full accent-[color:var(--signal)]"
+                />
+                <div className="flex justify-between mt-1">
+                  {POSTURE_INTERVALS.map((p, i) => (
+                    <span
+                      key={p.label}
+                      className={cn(
+                        'text-[9px] font-mono-tabular cursor-pointer select-none',
+                        postureAggressiveness === i + 1
+                          ? 'text-[color:var(--signal)]'
+                          : 'text-[color:var(--text-3)] hover:text-[color:var(--text-2)]',
+                      )}
+                      onClick={() => setPostureAggressiveness(i + 1)}
+                    >
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] text-[color:var(--text-3)] leading-relaxed">
+                  {POSTURE_INTERVALS[postureAggressiveness - 1]?.description}
+                </p>
+              </div>
+
+              {/* Profile cards */}
+              <div className="space-y-3">
+                {(postureProfiles ?? []).map((profile: PostureProfile) => (
+                  <div key={profile.id} className="rounded-lg border border-[color:var(--border)] p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[color:var(--text-1)]">{profile.name}</span>
+                        <span className="text-[9px] font-mono-tabular uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--bg-2)] text-[color:var(--text-3)] border border-[color:var(--border)]">{profile.platform}</span>
+                      </div>
+                      <button type="button" onClick={() => applyPostureProfile(profile)} className="px-2 py-1 text-[11px] font-medium rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10 transition-colors">Add to schedule</button>
+                    </div>
+                    <p className="text-xs text-[color:var(--text-3)] mb-2">{profile.description}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.keys(profile.queries).map((name) => (
+                        <span key={name} className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-3)] border border-[color:var(--border)]">{name}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {(!postureProfiles || postureProfiles.length === 0) && (
+                  <p className="text-xs text-[color:var(--text-3)] text-center py-4">No posture profiles available.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

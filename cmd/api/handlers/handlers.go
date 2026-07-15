@@ -9,6 +9,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -34,6 +35,7 @@ type HandlersApi struct {
 	RedisCache      *cache.RedisManager
 	Activity        activityReader
 	GeoIP           *geoip.GeoIPResolver
+	Posture         *posture.PostureManager
 	ServiceVersion  string
 	ServiceName     string
 	AuditLog        *auditlog.AuditLogManager
@@ -128,6 +130,12 @@ func WithActivityReader(ar activityReader) HandlersOption {
 func WithGeoIP(g *geoip.GeoIPResolver) HandlersOption {
 	return func(h *HandlersApi) {
 		h.GeoIP = g
+	}
+}
+
+func WithPosture(pm *posture.PostureManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Posture = pm
 	}
 }
 

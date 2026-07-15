@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -223,8 +224,12 @@ func osctrlService() {
 	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
+	// Set posture query prefix from config (empty disables the feature)
+	posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
+
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
+	posturemgr := posture.NewPostureManager(db.Conn)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
@@ -329,6 +334,7 @@ func osctrlService() {
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithActivityWriter(activityWriter),
+		handlers.WithPosture(posturemgr),
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),

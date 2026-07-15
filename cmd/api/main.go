@@ -23,6 +23,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -296,6 +297,7 @@ func osctrlAPIService() {
 
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
+	posturemgr := posture.NewPostureManager(db.Conn)
 	// Initialize settings
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
@@ -366,6 +368,7 @@ func osctrlAPIService() {
 		handlers.WithCache(redis),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
+		handlers.WithPosture(posturemgr),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
@@ -480,6 +483,17 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodesPagedHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: node posture (security & compliance data)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: posture profiles (predefined check templates)
+	muxAPI.Handle(
+		"GET "+_apiPath("/posture")+"/profiles",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath("/posture")+"/profiles/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfileHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: node logs
 	muxAPI.Handle(
 		"GET "+_apiPath(apiLogsPath)+"/{type}/{env}/{uuid}",
