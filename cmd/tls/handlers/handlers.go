@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -62,6 +63,7 @@ type HandlersTLS struct {
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
 	ActivityWriter  *activityWriter
+	Posture         *posture.PostureManager
 	OsqueryValues   *config.YAMLConfigurationOsquery
 	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
@@ -160,6 +162,12 @@ func WithWriteHandler(writeHandler *batchWriter) Option {
 func WithActivityWriter(activityWriter *activityWriter) Option {
 	return func(h *HandlersTLS) {
 		h.ActivityWriter = activityWriter
+	}
+}
+
+func WithPosture(pm *posture.PostureManager) Option {
+	return func(h *HandlersTLS) {
+		h.Posture = pm
 	}
 }
 

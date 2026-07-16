@@ -410,3 +410,32 @@ export interface OsqueryTable {
   platforms: string[];
   filter: string;
 }
+
+export interface NodePosture {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  node_uuid: string;
+  environment: string;
+  category: string;
+  query_name: string;
+  row_count: number;
+  summary: string;
+  first_seen: string;
+  last_seen: string;
+}
+
+export interface ProfileQuery {
+  query: string;
+  interval: number;
+  platform?: string;
+  snapshot: boolean;
+}
+
+export interface PostureProfile {
+  id: string;
+  name: string;
+  description: string;
+  platform: string;
+  queries: Record<string, ProfileQuery>;
+}

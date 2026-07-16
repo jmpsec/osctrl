@@ -8,11 +8,39 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ProcessLogs - Helper to process logs
-func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, dataLen int, debug bool) {
+func parseResultLogs(data json.RawMessage) ([]types.LogResultData, error) {
+	var logs []types.LogResultData
+	if err := json.Unmarshal(data, &logs); err != nil {
+		return nil, err
+	}
+	for i := range logs {
+		if len(logs[i].Columns) == 0 && len(logs[i].Snapshot) > 0 {
+			logs[i].Columns = logs[i].Snapshot
+		}
+	}
+	return logs, nil
+}
+
+// ProcessLogs processes and dispatches logs. Result entries are returned so
+// callers can reuse the decoded batch for secondary consumers such as posture.
+func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
-	if err := json.Unmarshal(data, &logs); err != nil {
+	var resultLogs []types.LogResultData
+	var err error
+	if logType == types.ResultLog {
+		resultLogs, err = parseResultLogs(data)
+		logs = make([]types.LogGenericData, len(resultLogs))
+		for i, result := range resultLogs {
+			logs[i] = types.LogGenericData{
+				HostIdentifier: result.HostIdentifier,
+				Decorations:    result.Decorations,
+			}
+		}
+	} else {
+		err = json.Unmarshal(data, &logs)
+	}
+	if err != nil {
 		// FIXME metrics for this
 		log.Err(err).Msgf("error parsing log %s", string(data))
 	}
@@ -47,6 +75,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 	}
 	// Dispatch logs and update metadata
 	l.DispatchLogs(data, uuid, logType, environment, metadata, debug)
+	return resultLogs
 }
 
 // ProcessLogQueryResult - Helper to process on-demand query result logs

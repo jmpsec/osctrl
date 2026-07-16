@@ -153,6 +153,7 @@ type LogResultData struct {
 	Epoch          int64           `json:"epoch"`
 	Action         string          `json:"action"`
 	Columns        json.RawMessage `json:"columns"`
+	Snapshot       json.RawMessage `json:"snapshot"`
 	Counter        int             `json:"counter"`
 	UnixTime       StringInt       `json:"unixTime"`
 	Decorations    LogDecorations  `json:"decorations"`

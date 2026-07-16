@@ -257,6 +257,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_GEOIP_DB"),
 			Destination: &params.Service.GeoIPDBPath,
 		},
+		&cli.StringFlag{
+			Name:        "posture-query-prefix",
+			Value:       "osctrl:posture:",
+			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data. Empty disables posture ingestion.",
+			Sources:     cli.EnvVars("SERVICE_POSTURE_QUERY_PREFIX"),
+			Destination: &params.Service.PostureQueryPrefix,
+		},
 	}
 }
 

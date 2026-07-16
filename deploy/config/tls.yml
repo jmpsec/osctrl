@@ -18,6 +18,13 @@ service:
   # prevents header-spoofed enroll-rate-limit bypass and audit-log
   # poisoning.
   trustedProxies: ""
+  # Prefix for scheduled query names whose results are ingested as
+  # node posture data (security & compliance). Queries in the osquery
+  # schedule named e.g. "osctrl:posture:packages" will have their
+  # results stored as the "packages" posture category.
+  #
+  # Empty disables posture ingestion entirely.
+  postureQueryPrefix: "osctrl:posture:"
 
 # Database configuration
 db:

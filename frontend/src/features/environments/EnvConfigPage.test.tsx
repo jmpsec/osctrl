@@ -20,6 +20,7 @@ const {
   mockPatchConfig,
   mockPatchIntervals,
   mockPatchExpiration,
+  mockGetPostureProfiles,
 } = vi.hoisted(() => ({
   mockGetEnvironment: vi.fn<() => Promise<TLSEnvironment>>(),
   mockGetConfig: vi.fn<() => Promise<EnvConfigResponse>>(),
@@ -27,6 +28,7 @@ const {
   mockPatchConfig: vi.fn(),
   mockPatchIntervals: vi.fn(),
   mockPatchExpiration: vi.fn(),
+  mockGetPostureProfiles: vi.fn(),
 }));
 
 vi.mock('$/api/environments', () => ({
@@ -50,6 +52,10 @@ vi.mock('$/api/client', () => ({
       super(msg);
     }
   },
+}));
+
+vi.mock('$/api/nodes', () => ({
+  getPostureProfiles: (...args: unknown[]) => mockGetPostureProfiles(...args),
 }));
 
 vi.mock('$/components/forms/CodeEditor', () => ({
@@ -166,6 +172,7 @@ describe('EnvConfigPage', () => {
     mockGetAssembledConfig.mockResolvedValue({
       data: '{"options":{"logger_plugin":"tls"}}',
     });
+    mockGetPostureProfiles.mockResolvedValue([]);
   });
 
   it('loads the fully rendered tab from the assembled config endpoint', async () => {
@@ -205,5 +212,37 @@ describe('EnvConfigPage', () => {
     await waitFor(() => {
       expect(mockGetAssembledConfig).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('loads posture profiles only after opening the picker', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders();
+
+    const scheduleTab = await screen.findByRole('tab', { name: 'Schedule' });
+    expect(mockGetPostureProfiles).not.toHaveBeenCalled();
+
+    await user.click(scheduleTab);
+    expect(mockGetPostureProfiles).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Add posture checks' }));
+
+    await waitFor(() => {
+      expect(mockGetPostureProfiles).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('distinguishes a profile load failure from an empty profile list', async () => {
+    const user = userEvent.setup();
+    mockGetPostureProfiles.mockRejectedValue(new Error('profiles unavailable'));
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Add posture checks' }));
+
+    expect(await screen.findByText('Failed to load posture profiles.', {}, { timeout: 3_000 })).toBeInTheDocument();
+    expect(screen.queryByText('No posture profiles available.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry loading profiles' })).toBeInTheDocument();
   });
 });

@@ -11,13 +11,14 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { OsqueryNode } from '$/api/types';
+import type { NodePosture, OsqueryNode } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { SettingValue } from '$/api/settings';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
 const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
+const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
 const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
@@ -28,6 +29,7 @@ vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
   listNodeLogs: (...args: unknown[]) => mockListNodeLogs(...(args as [])),
   deleteNode: (...args: unknown[]) => mockDeleteNode(...(args as [])),
+  getNodePosture: (...args: unknown[]) => mockGetNodePosture(...(args as [])),
 }));
 
 vi.mock('$/api/users', () => ({
@@ -189,6 +191,7 @@ describe('NodeDetailPage', () => {
       limit: 100,
     });
     mockDeleteNode.mockResolvedValue({ message: 'ok' });
+    mockGetNodePosture.mockResolvedValue([]);
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     mockListEnvironments.mockResolvedValue([{ name: 'test-env', uuid: 'env-uuid-1' }]);
     mockGetNodeActivity.mockResolvedValue(makeActivityBuckets());
@@ -268,5 +271,48 @@ describe('NodeDetailPage', () => {
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it('shows posture data for the selected node', async () => {
+    const user = userEvent.setup();
+    mockGetNodePosture.mockResolvedValue([
+      {
+        id: 10,
+        created_at: '2026-07-16T09:00:00Z',
+        updated_at: '2026-07-16T09:05:00Z',
+        node_uuid: 'abc12345-0000-0000-0000-000000000001',
+        environment: 'test-env',
+        category: 'firewall',
+        query_name: 'osctrl:posture:firewall',
+        row_count: 2,
+        summary: JSON.stringify([{ enabled: '1', profile: 'domain' }]),
+        first_seen: '2026-07-16T09:00:00Z',
+        last_seen: '2026-07-16T09:05:00Z',
+      },
+    ]);
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Posture' }));
+
+    await waitFor(() => {
+      expect(mockGetNodePosture).toHaveBeenCalledWith(
+        'test-env',
+        'abc12345-0000-0000-0000-000000000001',
+      );
+    });
+
+    expect(screen.getByRole('button', { name: /firewall/i })).toHaveTextContent('2 rows');
+
+    await user.click(screen.getByRole('button', { name: /firewall/i }));
+
+    expect(screen.getByText('enabled:')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('profile:')).toBeInTheDocument();
+    expect(screen.getByText('domain')).toBeInTheDocument();
   });
 });

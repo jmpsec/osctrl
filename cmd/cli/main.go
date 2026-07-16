@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/term"
+	"gorm.io/gorm/logger"
 
 	"github.com/urfave/cli/v3"
 )
@@ -75,6 +76,12 @@ var (
 	osctrlAPI    *OsctrlAPI
 	formats      map[string]bool
 )
+
+func quietDBLogger() {
+	if db != nil && db.Conn != nil {
+		db.Conn.Logger = logger.Discard
+	}
+}
 
 // Variables for flags
 var (
@@ -1922,6 +1929,7 @@ func checkDB(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to create backend - %w", err)
 		}
 	}
+	quietDBLogger()
 	if err := db.Check(); err != nil {
 		return err
 	}
@@ -2080,6 +2088,7 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 					return fmt.Errorf("in CreateDBManager - %w", err)
 				}
 			}
+			quietDBLogger()
 			// Initialize users. The CLI manages user/permission rows directly
 			// and never mints JWTs, so we skip WithJWT — CreateToken fails
 			// fast if anything in this binary ever tries to call it.

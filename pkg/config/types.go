@@ -123,8 +123,12 @@ type YAMLConfigurationService struct {
 	// includes them in the node API response. When empty (default), the
 	// feature is disabled and no country codes are returned.
 	GeoIPDBPath string `yaml:"geoipDBPath"`
-	Auth      string `yaml:"auth"`
-	AuditLog  bool   `yaml:"auditLog"`
+	// PostureQueryPrefix is the prefix that identifies scheduled queries
+	// whose result logs should be ingested as node posture data. Empty
+	// disables posture ingestion.
+	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
+	Auth               string `yaml:"auth"`
+	AuditLog           bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose
 	// X-Real-IP / X-Forwarded-For headers utils.GetIP will honor.
 	// Default empty → forwarding headers are ignored and the

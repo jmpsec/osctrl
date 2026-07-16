@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getNode, listNodeLogs, deleteNode } from '$/api/nodes';
+import { getNode, listNodeLogs, deleteNode, getNodePosture } from '$/api/nodes';
+import type { NodePosture } from '$/api/types';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
@@ -45,7 +46,7 @@ interface NodeHeatmapBucket {
 // Tabs
 // ---------------------------------------------------------------------------
 
-type Tab = 'details' | 'status-logs' | 'result-logs';
+type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture';
 
 // ---------------------------------------------------------------------------
 // Detail field groups
@@ -560,6 +561,7 @@ const TABS = [
   { id: 'details' as Tab, label: 'Details' },
   { id: 'status-logs' as Tab, label: 'Status logs' },
   { id: 'result-logs' as Tab, label: 'Result logs' },
+  { id: 'posture' as Tab, label: 'Posture' },
 ] as const;
 
 export function NodeDetailPage() {
@@ -1099,6 +1101,9 @@ export function NodeDetailPage() {
           </div>
         )}
 
+        {activeTab === 'posture' && (
+          <PostureTab env={env} uuid={uuid} />
+        )}
         {activeTab === 'status-logs' && (
           <LogsTab env={env} uuid={uuid} type="status" />
         )}
@@ -1536,3 +1541,117 @@ function NodeFragmentRow({
 }
 
 export default NodeDetailPage;
+
+
+// ---------------------------------------------------------------------------
+// PostureTab — security & compliance posture from scheduled prefixed queries.
+// ---------------------------------------------------------------------------
+function PostureTab({ env, uuid }: { env: string; uuid: string }) {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['node-posture', env, uuid],
+    queryFn: () => getNodePosture(env, uuid),
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <EmptyState
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+        }
+        title={error instanceof Error ? error.message : 'Failed to load posture'}
+      />
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <EmptyState
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+          </svg>
+        }
+        title="No posture data."
+        description="Add scheduled queries prefixed with osctrl:posture: to the environment's schedule config to collect compliance data."
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-auto p-4 space-y-3">
+      {data.map((item) => (
+        <PostureCard key={item.category} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function PostureCard({ item }: { item: NodePosture }) {
+  const [expanded, setExpanded] = useState(false);
+  const summary = (() => {
+    try {
+      return JSON.parse(item.summary) as Record<string, unknown>[];
+    } catch {
+      return [];
+    }
+  })();
+
+  return (
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[color:var(--bg-2)] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-display font-semibold text-[color:var(--text-1)]">
+            {item.category}
+          </span>
+          <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+            {item.row_count} row{item.row_count !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+          <span title={item.last_seen}>{formatRelative(item.last_seen)}</span>
+          <svg className={cn('w-3.5 h-3.5 transition-transform', expanded && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </button>
+      {expanded && summary.length > 0 && (
+        <div className="border-t border-[color:var(--border)] overflow-auto max-h-64">
+          <table className="w-full text-xs border-collapse">
+            {summary.map((row, i) => {
+              const entries = Object.entries(row);
+              return (
+                <tr key={i} className="border-b border-[color:var(--border)] last:border-b-0">
+                  {entries.map(([col, val]) => (
+                    <td key={col} className="px-3 py-1.5 font-mono-tabular text-[color:var(--text-2)] break-all">
+                      <span className="text-[color:var(--text-3)] mr-1">{col}:</span>
+                      {typeof val === 'string' ? val : JSON.stringify(val)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
