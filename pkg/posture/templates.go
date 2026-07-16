@@ -174,7 +174,7 @@ func LinuxServerProfile() PostureProfile {
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
 			"ssh_keys": {
-				Query:    "SELECT uid, key_file, key, algorithm FROM authorized_keys ORDER BY uid",
+				Query:    "SELECT * FROM users CROSS JOIN authorized_keys USING (uid)",
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
 		},
@@ -225,7 +225,7 @@ func MacOSLaptopProfile() PostureProfile {
 				Interval: 86400, Platform: "darwin", Snapshot: true,
 			},
 			"ssh_keys": {
-				Query:    "SELECT uid, key_file, key, algorithm FROM authorized_keys ORDER BY uid",
+				Query:    "SELECT * FROM users CROSS JOIN authorized_keys USING (uid)",
 				Interval: 86400, Snapshot: true,
 			},
 			"file_sharing": {
@@ -327,7 +327,7 @@ func LinuxLaptopProfile() PostureProfile {
 				Interval: 86400, Snapshot: true,
 			},
 			"ssh_keys": {
-				Query:    "SELECT uid, key_file, key, algorithm FROM authorized_keys ORDER BY uid",
+				Query:    "SELECT * FROM users CROSS JOIN authorized_keys USING (uid)",
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
 		},

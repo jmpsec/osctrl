@@ -92,11 +92,18 @@ func (pm *PostureManager) IngestResult(nodeUUID, environment, queryName string, 
 	}
 	category := PostureCategory(queryName)
 
-	// Parse columns to count rows and build a summary.
+	// Parse columns — osquery sends two formats:
+	// - Snapshot queries: columns is a JSON array of row objects
+	// - Non-snapshot queries: columns is a single JSON object (one row)
 	var rows []map[string]interface{}
 	if err := json.Unmarshal(columns, &rows); err != nil {
-		log.Warn().Err(err).Str("query", queryName).Msg("posture: failed to parse columns")
-		return false
+		// Try parsing as a single object (non-snapshot format)
+		var single map[string]interface{}
+		if err2 := json.Unmarshal(columns, &single); err2 != nil {
+			log.Warn().Err(err).Str("query", queryName).Msg("posture: failed to parse columns")
+			return false
+		}
+		rows = []map[string]interface{}{single}
 	}
 	rowCount := len(rows)
 
