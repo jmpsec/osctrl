@@ -622,13 +622,12 @@ func (h *HandlersApi) PostureProfilesHandler(w http.ResponseWriter, r *http.Requ
 
 // PostureProfileHandler — GET /api/v1/posture/profiles/{id}
 //
-// Returns a single posture profile by ID, including the full schedule
-// JSON ready to paste into the config editor.
+// Returns a single posture profile by ID.
 // @Summary Get posture profile
 // @Description Returns a single posture check profile by ID.
 // @Tags posture
 // @Produce json
-// @Param id path string true "Profile ID (server, laptop)"
+// @Param id path string true "Profile ID"
 // @Success 200 {object} posture.PostureProfile
 // @Failure 404 {object} types.ApiErrorResponse "Not found"
 // @Security ApiKeyAuth

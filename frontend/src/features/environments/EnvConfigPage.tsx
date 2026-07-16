@@ -14,7 +14,8 @@ import {
 } from '$/api/environments';
 import { AuthError, ApiError } from '$/api/client';
 import { getPostureProfiles } from '$/api/nodes';
-import type { PostureProfile, ProfileQuery } from '$/api/types';
+import type { PostureProfile } from '$/api/types';
+import { applyPostureProfileToSchedule } from './postureSchedule';
 import { cn } from '$/lib/cn';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
@@ -22,6 +23,13 @@ import { DocsLink } from '$/components/atoms/DocsLink';
 import { AssembledConfigCard } from '$/features/enrollment/AssembledConfigCard';
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
+
+const POSTURE_INTERVALS = [
+  { label: 'Daily', seconds: 86400, description: 'Once per day — sufficient for compliance' },
+  { label: 'Every 12h', seconds: 43200, description: 'Twice per day — faster detection' },
+  { label: 'Every 6h', seconds: 21600, description: 'Four times per day — active monitoring' },
+  { label: 'Every 1h', seconds: 3600, description: 'Hourly — high-frequency monitoring' },
+];
 
 // docs URLs point at the upstream osquery read-the-docs anchors so an
 // operator can jump from the section header straight to the canonical
@@ -112,12 +120,14 @@ export function EnvConfigPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [showPosturePicker, setShowPosturePicker] = useState(false);
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
-  const { data: postureProfiles } = useQuery({
+  const postureProfilesQuery = useQuery({
     queryKey: ['posture-profiles'],
     queryFn: () => getPostureProfiles(),
+    enabled: showPosturePicker,
     staleTime: 5 * 60_000,
     retry: 1,
   });
+  const postureProfiles = postureProfilesQuery.data;
   const [diffsOpen, setDiffsOpen] = useState<Record<SectionKey, boolean>>({
     options: false,
     schedule: false,
@@ -203,28 +213,17 @@ export function EnvConfigPage() {
     },
   });
 
-  const POSTURE_INTERVALS = [
-    { label: 'Daily', seconds: 86400, description: 'Once per day — sufficient for compliance' },
-    { label: 'Every 12h', seconds: 43200, description: 'Twice per day — faster detection' },
-    { label: 'Every 6h', seconds: 21600, description: 'Four times per day — active monitoring' },
-    { label: 'Every 1h', seconds: 3600, description: 'Hourly — high-frequency monitoring' },
-  ];
-
   function applyPostureProfile(profile: PostureProfile) {
     const interval = POSTURE_INTERVALS[postureAggressiveness - 1]?.seconds ?? 86400;
     if (!draft) return;
-    // Merge posture queries into the schedule section
-    const existing = JSON.parse(draft.schedule || '{}');
-    for (const [name, q] of Object.entries(profile.queries) as [string, ProfileQuery][]) {
-      existing['osctrl:posture:' + name] = {
-        query: q.query,
-        interval,
-        snapshot: q.snapshot,
-        ...(q.platform ? { platform: q.platform } : {}),
-      };
+    try {
+      const schedule = applyPostureProfileToSchedule(draft.schedule, profile, interval);
+      setDraft({ ...draft, schedule });
+      setSaveErr(null);
+      setShowPosturePicker(false);
+    } catch (error) {
+      setSaveErr(error instanceof Error ? error.message : 'Schedule must be a JSON object.');
     }
-    setDraft({ ...draft, schedule: JSON.stringify(existing, null, 2) });
-    setShowPosturePicker(false);
   }
 
   if (envQuery.isError && envQuery.error instanceof AuthError) {
@@ -528,6 +527,15 @@ export function EnvConfigPage() {
 
               {/* Profile cards */}
               <div className="space-y-3">
+                {postureProfilesQuery.isLoading && (
+                  <p className="text-xs text-[color:var(--text-3)] text-center py-4">Loading posture profiles…</p>
+                )}
+                {postureProfilesQuery.isError && (
+                  <div className="text-center py-4 space-y-2">
+                    <p className="text-xs text-[color:var(--danger)]">Failed to load posture profiles.</p>
+                    <button type="button" onClick={() => void postureProfilesQuery.refetch()} className="text-xs text-[color:var(--signal)] hover:underline">Retry loading profiles</button>
+                  </div>
+                )}
                 {(postureProfiles ?? []).map((profile: PostureProfile) => (
                   <div key={profile.id} className="rounded-lg border border-[color:var(--border)] p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -545,7 +553,7 @@ export function EnvConfigPage() {
                     </div>
                   </div>
                 ))}
-                {(!postureProfiles || postureProfiles.length === 0) && (
+                {postureProfilesQuery.isSuccess && (postureProfiles?.length ?? 0) === 0 && (
                   <p className="text-xs text-[color:var(--text-3)] text-center py-4">No posture profiles available.</p>
                 )}
               </div>

@@ -224,9 +224,7 @@ func osctrlService() {
 	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
-	// Set posture query prefix from config (empty disables the feature)
 	posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
-
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
 	posturemgr := posture.NewPostureManager(db.Conn)

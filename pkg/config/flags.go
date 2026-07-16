@@ -260,7 +260,7 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "posture-query-prefix",
 			Value:       "osctrl:posture:",
-			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data (security & compliance). e.g. osctrl:posture:packages stores the result as the \"packages\" posture category. Recommended query interval: once per day (86400s). Empty disables posture ingestion.",
+			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data. Empty disables posture ingestion.",
 			Sources:     cli.EnvVars("SERVICE_POSTURE_QUERY_PREFIX"),
 			Destination: &params.Service.PostureQueryPrefix,
 		},

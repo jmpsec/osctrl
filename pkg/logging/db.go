@@ -134,8 +134,8 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 // Result - Function that sends JSON result logs to the configured DB
 func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool) {
 	// Parse JSON
-	var logs []types.LogResultData
-	if err := json.Unmarshal(data, &logs); err != nil {
+	logs, err := parseResultLogs(data)
+	if err != nil {
 		log.Err(err).Msgf("error parsing logs %s", string(data))
 	}
 	// Iterate and insert in DB

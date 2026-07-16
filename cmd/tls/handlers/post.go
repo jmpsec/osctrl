@@ -357,12 +357,12 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		// Process logs and update metadata
 		go func() {
 			start := time.Now()
-			h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
+			results := h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
 			duration := time.Since(start).Seconds()
 			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
 			// Ingest posture data from result logs (if enabled)
 			if h.Posture != nil && t.LogType == "result" {
-				h.ingestPosture(t.Data, node.UUID, env.Name)
+				h.ingestPosture(results, node.UUID, env.Name)
 			}
 		}()
 	} else {
@@ -1396,15 +1396,40 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 
 // ingestPosture parses result log entries and feeds any posture-prefixed
 // query results into the PostureManager.
-func (h *HandlersTLS) ingestPosture(data json.RawMessage, nodeUUID, environment string) {
-	var results []types.LogResultData
-	if err := json.Unmarshal(data, &results); err != nil {
-		log.Debug().Err(err).Msg("posture: failed to parse result log")
-		return
-	}
+func (h *HandlersTLS) ingestPosture(results []types.LogResultData, nodeUUID, environment string) {
+	grouped := make(map[string][]json.RawMessage)
+	var queryOrder []string
 	for _, r := range results {
-		if posture.IsPostureQuery(r.Name) {
-			h.Posture.IngestResult(nodeUUID, environment, r.Name, r.Columns)
+		if !posture.IsPostureQuery(r.Name) {
+			continue
+		}
+		if _, ok := grouped[r.Name]; !ok {
+			queryOrder = append(queryOrder, r.Name)
+			grouped[r.Name] = []json.RawMessage{}
+		}
+		var rows []json.RawMessage
+		trimmed := bytes.TrimSpace(r.Columns)
+		switch {
+		case len(trimmed) == 0:
+			rows = []json.RawMessage{}
+		case trimmed[0] == '[':
+			if err := json.Unmarshal(trimmed, &rows); err != nil {
+				log.Warn().Err(err).Str("query", r.Name).Msg("posture: failed to parse result rows")
+				continue
+			}
+		default:
+			rows = []json.RawMessage{json.RawMessage(trimmed)}
+		}
+		grouped[r.Name] = append(grouped[r.Name], rows...)
+	}
+	for _, queryName := range queryOrder {
+		columns, err := json.Marshal(grouped[queryName])
+		if err != nil {
+			log.Warn().Err(err).Str("query", queryName).Msg("posture: failed to marshal grouped result")
+			continue
+		}
+		if err := h.Posture.IngestResult(nodeUUID, environment, queryName, columns); err != nil {
+			log.Warn().Err(err).Str("query", queryName).Msg("posture: failed to ingest result")
 		}
 	}
 }

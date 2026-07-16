@@ -26,7 +26,7 @@ type ProfileQuery struct {
 }
 
 // ToScheduleEntries converts a profile's queries into a JSON map suitable
-// for pasting into the environment's schedule config section.
+// for merging into an environment's schedule config section.
 func (p PostureProfile) ToScheduleEntries() (map[string]map[string]interface{}, error) {
 	out := make(map[string]map[string]interface{}, len(p.Queries))
 	for name, q := range p.Queries {
@@ -43,7 +43,7 @@ func (p PostureProfile) ToScheduleEntries() (map[string]map[string]interface{}, 
 	return out, nil
 }
 
-// ToScheduleJSON returns the schedule entries as a pretty-printed JSON string.
+// ToScheduleJSON returns the schedule entries as pretty-printed JSON.
 func (p PostureProfile) ToScheduleJSON() (string, error) {
 	entries, err := p.ToScheduleEntries()
 	if err != nil {
@@ -71,9 +71,9 @@ func AllProfiles() []PostureProfile {
 
 // GetProfile returns a single profile by ID, or nil if not found.
 func GetProfile(id string) *PostureProfile {
-	for _, p := range AllProfiles() {
-		if p.ID == id {
-			return &p
+	for _, profile := range AllProfiles() {
+		if profile.ID == id {
+			return &profile
 		}
 	}
 	return nil
@@ -88,7 +88,7 @@ func WindowsServerProfile() PostureProfile {
 		ID:          "win-server",
 		Name:        "Windows Servers",
 		Platform:    "windows",
-		Description: "Posture checks for Windows production servers: installed programs, real users, disk encryption, running services, scheduled tasks, autorun entries, listening ports, and event log errors. All queries run once per day.",
+		Description: "Posture checks for Windows production servers: installed programs, real users, disk encryption, running services, scheduled tasks, autorun entries, listening ports, and patches. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_windows": {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
@@ -99,15 +99,15 @@ func WindowsServerProfile() PostureProfile {
 				Interval: 86400, Snapshot: true,
 			},
 			"disk_encryption": {
-				Query:    "SELECT name, encrypted, type FROM disk_encryption WHERE name IS NOT NULL",
-				Interval: 86400, Snapshot: true,
+				Query:    "SELECT drive_letter, protection_status, encryption_method, percentage_encrypted, lock_status FROM bitlocker_info ORDER BY drive_letter",
+				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 			"listening_ports": {
 				Query:    "SELECT pid, port, address, family, path FROM listening_ports WHERE port != 0 ORDER BY port",
 				Interval: 86400, Snapshot: true,
 			},
 			"windows_services": {
-				Query:    "SELECT name, display_name, status, start_type, path FROM services WHERE status = 'Running' ORDER BY name",
+				Query:    "SELECT name, display_name, status, start_type, path FROM services WHERE status = 'RUNNING' ORDER BY name",
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 			"windows_scheduled_tasks": {
@@ -245,7 +245,7 @@ func WindowsLaptopProfile() PostureProfile {
 		ID:          "win-laptop",
 		Name:        "Windows Laptops",
 		Platform:    "windows",
-		Description: "Posture checks for corporate Windows laptops: installed programs, real users, disk encryption, startup items, browser extensions, autorun entries, WiFi networks, and patches. All queries run once per day.",
+		Description: "Posture checks for corporate Windows laptops: installed programs, real users, disk encryption, startup items, browser extensions, autorun entries, and patches. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_windows": {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
@@ -256,8 +256,8 @@ func WindowsLaptopProfile() PostureProfile {
 				Interval: 86400, Snapshot: true,
 			},
 			"disk_encryption": {
-				Query:    "SELECT name, encrypted, type FROM disk_encryption WHERE name IS NOT NULL",
-				Interval: 86400, Snapshot: true,
+				Query:    "SELECT drive_letter, protection_status, encryption_method, percentage_encrypted, lock_status FROM bitlocker_info ORDER BY drive_letter",
+				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 			"startup_items": {
 				Query:    "SELECT path, name, type, status, source FROM startup_items ORDER BY name",
@@ -273,10 +273,6 @@ func WindowsLaptopProfile() PostureProfile {
 			},
 			"autorun": {
 				Query:    "SELECT name, path, source FROM autoexec ORDER BY name",
-				Interval: 86400, Platform: "windows", Snapshot: true,
-			},
-			"wifi_networks": {
-				Query:    "SELECT ssid, security_type, last_connected, auto_join FROM wifi_networks ORDER BY ssid",
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 			"patches": {
@@ -296,7 +292,7 @@ func LinuxLaptopProfile() PostureProfile {
 		ID:          "linux-laptop",
 		Name:        "Linux Laptops",
 		Platform:    "linux",
-		Description: "Posture checks for corporate Linux laptops: deb/rpm packages, real users, disk encryption, startup items, browser extensions, SSH keys, and WiFi networks. All queries run once per day.",
+		Description: "Posture checks for corporate Linux laptops: deb/rpm packages, real users, disk encryption, startup items, browser extensions, and SSH keys. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_deb": {
 				Query:    "SELECT name, version, revision, source AS repo FROM deb_packages ORDER BY name",

@@ -125,12 +125,10 @@ type YAMLConfigurationService struct {
 	GeoIPDBPath string `yaml:"geoipDBPath"`
 	// PostureQueryPrefix is the prefix that identifies scheduled queries
 	// whose result logs should be ingested as node posture data. Empty
-	// (default "osctrl:posture:") disables posture ingestion. Queries in
-	// the osquery schedule named e.g. "osctrl:posture:packages" will have
-	// their results stored as the "packages" posture category.
+	// disables posture ingestion.
 	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
-	Auth      string `yaml:"auth"`
-	AuditLog  bool   `yaml:"auditLog"`
+	Auth               string `yaml:"auth"`
+	AuditLog           bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose
 	// X-Real-IP / X-Forwarded-For headers utils.GetIP will honor.
 	// Default empty → forwarding headers are ignored and the
