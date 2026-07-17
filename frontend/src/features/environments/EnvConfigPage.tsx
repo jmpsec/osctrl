@@ -468,7 +468,7 @@ export function EnvConfigPage() {
                 onChange={(v) =>
                   setDraft((d) => (d ? { ...d, [key]: v } : d))
                 }
-                height="420px"
+                height="calc(100vh - 220px)"
               />
               {isDirty && diffsOpen[key] && (
                 <div className="p-3 border-t border-[color:var(--border)]">
