@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { NodePosture, PostureProfile } from './types';
+import type { NodePosture, PostureProfile, PostureScore } from './types';
 import type {
   NodesPagedResponse,
   OsqueryNode,
@@ -100,4 +100,10 @@ export function getPostureProfiles(): Promise<PostureProfile[]> {
 
 export function getPostureProfile(id: string): Promise<PostureProfile> {
   return apiFetch<PostureProfile>(`/api/v1/posture/profiles/${encodeURIComponent(id)}`);
+}
+
+export function getNodePostureScore(env: string, uuid: string): Promise<PostureScore> {
+  return apiFetch<PostureScore>(
+    `/api/v1/nodes/${encodeURIComponent(env)}/node/${encodeURIComponent(uuid)}/posture/score`,
+  );
 }

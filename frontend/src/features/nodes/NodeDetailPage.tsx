@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getNode, listNodeLogs, deleteNode, getNodePosture } from '$/api/nodes';
-import type { NodePosture } from '$/api/types';
+import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
+import type { NodePosture, PostureScore } from '$/api/types';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
@@ -1553,6 +1553,12 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
     staleTime: 30_000,
     retry: 1,
   });
+  const { data: scoreData, isLoading: scoreLoading } = useQuery({
+    queryKey: ['node-posture-score', env, uuid],
+    queryFn: () => getNodePostureScore(env, uuid),
+    staleTime: 30_000,
+    retry: 1,
+  });
 
   if (isLoading) {
     return (
@@ -1594,9 +1600,96 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
 
   return (
     <div className="overflow-auto p-4 space-y-3">
+      {scoreData && <PostureScorePanel score={scoreData} />}
       {data.map((item) => (
         <PostureCard key={item.category} item={item} />
       ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PostureScorePanel — risk score gauge + control summary
+// ---------------------------------------------------------------------------
+function PostureScorePanel({ score }: { score: PostureScore }) {
+  const riskColors: Record<string, string> = {
+    low: 'var(--success)',
+    medium: 'var(--warning)',
+    high: 'var(--danger)',
+    critical: 'var(--danger)',
+  };
+  const riskColor = riskColors[score.risk_level] ?? 'var(--text-3)';
+
+  return (
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+      {/* Score header */}
+      <div className="flex items-center gap-4 px-4 py-3 border-b border-[color:var(--border)]">
+        {/* Score gauge */}
+        <div className="relative flex-shrink-0">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="28" fill="none" stroke="var(--bg-3)" strokeWidth="6" />
+            <circle
+              cx="32" cy="32" r="28" fill="none"
+              stroke={riskColor} strokeWidth="6"
+              strokeDasharray={`${(score.total_score / 100) * 176} 176`}
+              strokeLinecap="round"
+              transform="rotate(-90 32 32)"
+            />
+          </svg>
+          <span
+            className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono-tabular"
+            style={{ color: riskColor }}
+          >
+            {score.total_score}
+          </span>
+        </div>
+        {/* Summary */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-display font-semibold text-[color:var(--text-1)]">
+              Risk score
+            </span>
+            <span
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular font-semibold uppercase tracking-[0.08em] border"
+              style={{ color: riskColor, borderColor: riskColor, background: `color-mix(in oklab, ${riskColor} 10%, transparent)` }}
+            >
+              {score.risk_level}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-1 text-[11px] font-mono-tabular">
+            <span className="text-[color:var(--success)]">{score.pass_count} pass</span>
+            <span className="text-[color:var(--warning)]">{score.warn_count} warn</span>
+            <span className="text-[color:var(--danger)]">{score.fail_count} fail</span>
+          </div>
+        </div>
+      </div>
+      {/* Control results */}
+      <div className="divide-y divide-[color:var(--border)]">
+        {score.controls.map((ctrl) => {
+          const statusColor = ctrl.status === 'pass' ? 'var(--success)' : ctrl.status === 'warn' ? 'var(--warning)' : 'var(--danger)';
+          return (
+            <div key={ctrl.control_id + ctrl.category} className="px-4 py-2 flex items-start gap-3">
+              <span
+                className="flex-shrink-0 mt-0.5 inline-block w-2 h-2 rounded-full"
+                style={{ background: statusColor }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-[color:var(--text-1)]">{ctrl.title}</span>
+                  <span className="text-[9px] font-mono-tabular text-[color:var(--text-3)] px-1 rounded bg-[color:var(--bg-2)]">{ctrl.control_id}</span>
+                  <span className="text-[9px] font-mono-tabular text-[color:var(--text-3)]">{ctrl.framework}</span>
+                </div>
+                <p className="text-[10px] text-[color:var(--text-3)] mt-0.5">{ctrl.detail}</p>
+              </div>
+              {ctrl.score > 0 && (
+                <span className="flex-shrink-0 text-[10px] font-mono-tabular font-semibold" style={{ color: statusColor }}>
+                  +{ctrl.score}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
