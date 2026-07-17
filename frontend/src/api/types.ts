@@ -439,3 +439,26 @@ export interface PostureProfile {
   platform: string;
   queries: Record<string, ProfileQuery>;
 }
+
+export interface ControlResult {
+  category: string;
+  control_id: string;
+  framework: string;
+  title: string;
+  description: string;
+  status: string;
+  severity: string;
+  score: number;
+  detail: string;
+}
+
+export interface PostureScore {
+  node_uuid: string;
+  timestamp: string;
+  total_score: number;
+  risk_level: string;
+  controls: ControlResult[];
+  pass_count: number;
+  warn_count: number;
+  fail_count: number;
+}

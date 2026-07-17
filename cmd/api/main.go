@@ -487,6 +487,9 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture/score",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureScoreHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: posture profiles (predefined check templates)
 	muxAPI.Handle(
 		"GET "+_apiPath("/posture")+"/profiles",

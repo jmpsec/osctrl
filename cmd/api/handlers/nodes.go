@@ -714,3 +714,67 @@ func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request)
 	h.AuditLog.NodeAction(ctx[ctxUser], "viewed posture for "+uuidVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, records)
 }
+
+// NodePostureScoreHandler — GET /api/v1/nodes/{env}/node/{uuid}/posture/score
+//
+// Evaluates the node's posture data against SOC2/ISO 27001 controls
+// and returns a quantified risk score.
+// @Summary Get node posture risk score
+// @Description Returns a security and compliance risk score based on posture data.
+// @Tags nodes
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param uuid path string true "Node UUID"
+// @Success 200 {object} posture.PostureScore
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/nodes/{env}/node/{uuid}/posture/score [get]
+func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	uuidVar := r.PathValue("uuid")
+	if envVar == "" || uuidVar == "" {
+		apiErrorResponse(w, "env and uuid required", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return
+	}
+	node, err := h.Nodes.GetByUUID(uuidVar)
+	if err != nil {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		return
+	}
+	if !strings.EqualFold(node.Environment, env.Name) {
+		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+		return
+	}
+	if h.Posture == nil {
+		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+	records, err := h.Posture.GetByNode(node.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting posture", http.StatusInternalServerError, err)
+		return
+	}
+	calculator := posture.NewScoreCalculator()
+	score := calculator.Score(records)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, score)
+}
