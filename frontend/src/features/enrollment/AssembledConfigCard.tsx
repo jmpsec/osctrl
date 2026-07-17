@@ -127,7 +127,7 @@ export function AssembledConfigCard({ env }: { env: string }) {
         <CodeEditor
           value={cfgQuery.data?.data ?? ''}
           language="json"
-          height="360px"
+          height="calc(100vh - 260px)"
           readOnly
           aria-label={`Assembled osquery configuration for environment ${env}`}
         />
