@@ -3,6 +3,13 @@ name: CI - Pull Requests
 on:
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - "frontend/**"
+      - "*.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/workflows/frontend-build.yml"
+      - ".github/workflows/golangci-lint.yml"
 
 permissions:
   contents: read
