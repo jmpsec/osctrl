@@ -123,9 +123,13 @@ type YAMLConfigurationService struct {
 	// includes them in the node API response. When empty (default), the
 	// feature is disabled and no country codes are returned.
 	GeoIPDBPath string `yaml:"geoipDBPath"`
+	// PostureEnabled controls whether the security & compliance posture
+	// system is active. When false (default), the entire posture
+	// subsystem is disabled — no ingestion, no API endpoints.
+	PostureEnabled bool `yaml:"postureEnabled"`
 	// PostureQueryPrefix is the prefix that identifies scheduled queries
-	// whose result logs should be ingested as node posture data. Empty
-	// disables posture ingestion.
+	// whose result logs are ingested as node posture data. Only used
+	// when PostureEnabled is true.
 	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
 	Auth               string `yaml:"auth"`
 	AuditLog           bool   `yaml:"auditLog"`

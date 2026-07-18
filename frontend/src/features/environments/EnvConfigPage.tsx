@@ -14,6 +14,7 @@ import {
 } from '$/api/environments';
 import { AuthError, ApiError } from '$/api/client';
 import { getPostureProfiles } from '$/api/nodes';
+import { getFeatures } from '$/api/features';
 import type { PostureProfile } from '$/api/types';
 import { applyPostureProfileToSchedule } from './postureSchedule';
 import { cn } from '$/lib/cn';
@@ -120,14 +121,25 @@ export function EnvConfigPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [showPosturePicker, setShowPosturePicker] = useState(false);
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
+  const featuresQuery = useQuery({
+    queryKey: ['features'],
+    queryFn: () => getFeatures(),
+    staleTime: 5 * 60_000,
+  });
+  const postureEnabled = featuresQuery.data?.posture === true;
   const postureProfilesQuery = useQuery({
     queryKey: ['posture-profiles'],
     queryFn: () => getPostureProfiles(),
-    enabled: showPosturePicker,
+    enabled: showPosturePicker && postureEnabled,
     staleTime: 5 * 60_000,
     retry: 1,
   });
   const postureProfiles = postureProfilesQuery.data;
+  useEffect(() => {
+    if (!postureEnabled && showPosturePicker) {
+      setShowPosturePicker(false);
+    }
+  }, [postureEnabled, showPosturePicker]);
   const [diffsOpen, setDiffsOpen] = useState<Record<SectionKey, boolean>>({
     options: false,
     schedule: false,
@@ -440,17 +452,19 @@ export function EnvConfigPage() {
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">Quick add</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowPosturePicker(true)}
-                      className={cn(
-                        'px-2.5 py-1 text-[11px] font-medium rounded',
-                        'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
-                        'hover:bg-[color:var(--signal)]/10 transition-colors',
-                      )}
-                    >
-                      Add posture checks
-                    </button>
+                    {postureEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPosturePicker(true)}
+                        className={cn(
+                          'px-2.5 py-1 text-[11px] font-medium rounded',
+                          'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
+                          'hover:bg-[color:var(--signal)]/10 transition-colors',
+                        )}
+                      >
+                        Add posture checks
+                      </button>
+                    )}
                   </div>
                   <AddScheduledQueryForm
                     draftValue={after}

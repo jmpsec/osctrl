@@ -18,6 +18,7 @@ import {
   tileLastSeen,
   tileCategoryTotal,
 } from '$/api/stats';
+import { getFeatures } from '$/api/features';
 import { AuthError } from '$/api/client';
 import type { NodeLogEntry } from '$/api/types';
 import { formatRelative, formatAbsolute, formatBucketAgo } from '$/lib/time';
@@ -574,15 +575,31 @@ export function NodeDetailPage() {
   const [copiedNodeKey, setCopiedNodeKey] = useState(false);
   const [copyNodeKeyError, setCopyNodeKeyError] = useState<string | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { data: features } = useQuery({
+    queryKey: ['features'],
+    queryFn: () => getFeatures(),
+    staleTime: 5 * 60_000,
+  });
+  const postureEnabled = features?.posture === true;
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => tab.id !== 'posture' || postureEnabled),
+    [postureEnabled],
+  );
+
+  useEffect(() => {
+    if (activeTab === 'posture' && !postureEnabled) {
+      setActiveTab('details');
+    }
+  }, [activeTab, postureEnabled]);
 
   function handleTabKeyDown(e: React.KeyboardEvent) {
-    const currentIndex = TABS.findIndex((t) => t.id === activeTab);
+    const currentIndex = visibleTabs.findIndex((t) => t.id === activeTab);
     let nextIndex = currentIndex;
-    if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
-    else if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % TABS.length;
+    if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + visibleTabs.length) % visibleTabs.length;
+    else if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % visibleTabs.length;
     else return;
     e.preventDefault();
-    const nextTab = TABS[nextIndex];
+    const nextTab = visibleTabs[nextIndex];
     setActiveTab(nextTab.id);
     tabRefs.current[nextIndex]?.focus();
   }
@@ -880,7 +897,7 @@ export function NodeDetailPage() {
           className="flex gap-1 -mb-px"
           onKeyDown={handleTabKeyDown}
         >
-          {TABS.map(({ id, label }, idx) => (
+          {visibleTabs.map(({ id, label }, idx) => (
             <button
               key={id}
               ref={(el) => { tabRefs.current[idx] = el; }}
@@ -1101,7 +1118,7 @@ export function NodeDetailPage() {
           </div>
         )}
 
-        {activeTab === 'posture' && (
+        {activeTab === 'posture' && postureEnabled && (
           <PostureTab env={env} uuid={uuid} />
         )}
         {activeTab === 'status-logs' && (

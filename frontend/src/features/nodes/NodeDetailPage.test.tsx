@@ -14,6 +14,7 @@ import { NodeDetailPage } from './NodeDetailPage';
 import type { NodePosture, OsqueryNode } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { SettingValue } from '$/api/settings';
+import type { Features } from '$/api/features';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
@@ -24,6 +25,7 @@ const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: str
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
 const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
 const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
+const mockGetFeatures = vi.fn<() => Promise<Features>>();
 
 vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
@@ -51,6 +53,10 @@ vi.mock('$/api/stats', async () => {
 
 vi.mock('$/api/settings', () => ({
   listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
+}));
+
+vi.mock('$/api/features', () => ({
+  getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -207,6 +213,7 @@ describe('NodeDetailPage', () => {
       total: [],
     });
     mockListServiceSettings.mockResolvedValue([]);
+    mockGetFeatures.mockResolvedValue({ posture: false });
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {
@@ -275,6 +282,7 @@ describe('NodeDetailPage', () => {
 
   it('shows posture data for the selected node', async () => {
     const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true });
     mockGetNodePosture.mockResolvedValue([
       {
         id: 10,
@@ -314,5 +322,16 @@ describe('NodeDetailPage', () => {
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('profile:')).toBeInTheDocument();
     expect(screen.getByText('domain')).toBeInTheDocument();
+  });
+
+  it('hides posture tab while the posture feature is disabled', async () => {
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('tab', { name: 'Posture' })).not.toBeInTheDocument();
+    expect(mockGetNodePosture).not.toHaveBeenCalled();
   });
 });

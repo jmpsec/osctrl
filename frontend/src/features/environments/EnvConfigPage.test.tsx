@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-router';
 import { EnvConfigPage } from './EnvConfigPage';
 import type { TLSEnvironment, EnvConfigResponse } from '$/api/environments';
+import type { Features } from '$/api/features';
 
 const {
   mockGetEnvironment,
@@ -21,6 +22,7 @@ const {
   mockPatchIntervals,
   mockPatchExpiration,
   mockGetPostureProfiles,
+  mockGetFeatures,
 } = vi.hoisted(() => ({
   mockGetEnvironment: vi.fn<() => Promise<TLSEnvironment>>(),
   mockGetConfig: vi.fn<() => Promise<EnvConfigResponse>>(),
@@ -29,6 +31,7 @@ const {
   mockPatchIntervals: vi.fn(),
   mockPatchExpiration: vi.fn(),
   mockGetPostureProfiles: vi.fn(),
+  mockGetFeatures: vi.fn<() => Promise<Features>>(),
 }));
 
 vi.mock('$/api/environments', () => ({
@@ -56,6 +59,10 @@ vi.mock('$/api/client', () => ({
 
 vi.mock('$/api/nodes', () => ({
   getPostureProfiles: (...args: unknown[]) => mockGetPostureProfiles(...args),
+}));
+
+vi.mock('$/api/features', () => ({
+  getFeatures: () => mockGetFeatures(),
 }));
 
 vi.mock('$/components/forms/CodeEditor', () => ({
@@ -173,6 +180,7 @@ describe('EnvConfigPage', () => {
       data: '{"options":{"logger_plugin":"tls"}}',
     });
     mockGetPostureProfiles.mockResolvedValue([]);
+    mockGetFeatures.mockResolvedValue({ posture: false });
   });
 
   it('loads the fully rendered tab from the assembled config endpoint', async () => {
@@ -216,6 +224,7 @@ describe('EnvConfigPage', () => {
 
   it('loads posture profiles only after opening the picker', async () => {
     const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true });
 
     renderWithProviders();
 
@@ -234,6 +243,7 @@ describe('EnvConfigPage', () => {
 
   it('distinguishes a profile load failure from an empty profile list', async () => {
     const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true });
     mockGetPostureProfiles.mockRejectedValue(new Error('profiles unavailable'));
 
     renderWithProviders();
@@ -244,5 +254,16 @@ describe('EnvConfigPage', () => {
     expect(await screen.findByText('Failed to load posture profiles.', {}, { timeout: 3_000 })).toBeInTheDocument();
     expect(screen.queryByText('No posture profiles available.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry loading profiles' })).toBeInTheDocument();
+  });
+
+  it('hides posture profile controls while the posture feature is disabled', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
+
+    expect(screen.queryByRole('button', { name: 'Add posture checks' })).not.toBeInTheDocument();
+    expect(mockGetPostureProfiles).not.toHaveBeenCalled();
   });
 });

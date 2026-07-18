@@ -95,6 +95,8 @@ const (
 	apiTagsPath = "/tags"
 	// API settings path
 	apiSettingsPath = "/settings"
+	// API features path
+	apiFeaturesPath = "/features"
 	// API audit logs path
 	apiAuditLogsPath = "/audit-logs"
 	// API logs path
@@ -297,7 +299,14 @@ func osctrlAPIService() {
 
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
-	posturemgr := posture.NewPostureManager(db.Conn)
+	// Security & compliance posture system (disabled by default)
+	var posturemgr *posture.PostureManager
+	if flagParams.Service.PostureEnabled {
+		posturemgr = posture.NewPostureManager(db.Conn)
+		log.Info().Msg("Posture system enabled")
+	} else {
+		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
+	}
 	// Initialize settings
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
@@ -369,6 +378,7 @@ func osctrlAPIService() {
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
+		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
@@ -457,6 +467,10 @@ func osctrlAPIService() {
 	// API: check auth
 	muxAPI.Handle(
 		"GET "+_apiPath(checksAuthPath), handlerAuthCheck(http.HandlerFunc(handlersApi.CheckHandlerAuth), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: deployment feature switches
+	muxAPI.Handle(
+		"GET "+_apiPath(apiFeaturesPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.FeaturesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: nodes by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/all",
@@ -483,20 +497,22 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodesPagedHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: node posture (security & compliance data)
-	muxAPI.Handle(
-		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture/score",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureScoreHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: posture profiles (predefined check templates)
-	muxAPI.Handle(
-		"GET "+_apiPath("/posture")+"/profiles",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath("/posture")+"/profiles/{id}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfileHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	if flagParams.Service.PostureEnabled {
+		// API: node posture (security & compliance data)
+		muxAPI.Handle(
+			"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/posture/score",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.NodePostureScoreHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// API: posture profiles (predefined check templates)
+		muxAPI.Handle(
+			"GET "+_apiPath("/posture")+"/profiles",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/posture")+"/profiles/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfileHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
 	// API: node logs
 	muxAPI.Handle(
 		"GET "+_apiPath(apiLogsPath)+"/{type}/{env}/{uuid}",
