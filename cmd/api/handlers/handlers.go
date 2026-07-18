@@ -36,6 +36,7 @@ type HandlersApi struct {
 	Activity        activityReader
 	GeoIP           *geoip.GeoIPResolver
 	Posture         *posture.PostureManager
+	PostureEnabled  bool
 	ServiceVersion  string
 	ServiceName     string
 	AuditLog        *auditlog.AuditLogManager
@@ -136,6 +137,12 @@ func WithGeoIP(g *geoip.GeoIPResolver) HandlersOption {
 func WithPosture(pm *posture.PostureManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Posture = pm
+	}
+}
+
+func WithPostureEnabled(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.PostureEnabled = enabled
 	}
 }
 

@@ -224,10 +224,17 @@ func osctrlService() {
 	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
-	posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
-	posturemgr := posture.NewPostureManager(db.Conn)
+	var posturemgr *posture.PostureManager
+	if flagParams.Service.PostureEnabled {
+		posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
+		posturemgr = posture.NewPostureManager(db.Conn)
+		log.Info().Msg("Posture system enabled")
+	} else {
+		posture.SetPrefix("")
+		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
+	}
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
@@ -332,7 +339,7 @@ func osctrlService() {
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithActivityWriter(activityWriter),
-		handlers.WithPosture(posturemgr),
+		handlers.WithPosture(posturemgr), // nil when posture disabled
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),

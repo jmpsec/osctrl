@@ -23,7 +23,13 @@ service:
   # schedule named e.g. "osctrl:posture:packages" will have their
   # results stored as the "packages" posture category.
   #
-  # Empty disables posture ingestion entirely.
+  # Enable the security & compliance posture system. When false
+  # (default), no posture data is collected, no posture API endpoints
+  # are available, and the posture tab is hidden in the SPA.
+  # When true, result logs from posture-prefixed scheduled queries
+  # are ingested and stored per node.
+  postureEnabled: false
+  # Only used when postureEnabled is true.
   postureQueryPrefix: "osctrl:posture:"
 
 # Database configuration

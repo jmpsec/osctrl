@@ -31,6 +31,11 @@ service:
   # Update weekly for best accuracy. Example:
   #   geoipDBPath: /data/GeoLite2-Country.mmdb
   geoipDBPath: ""
+  # Enable the security & compliance posture system. When false
+  # (default), posture API endpoints are not registered and the SPA
+  # hides posture controls. When true, the API serves posture data
+  # from the shared database (collected by osctrl-tls).
+  postureEnabled: false
 
 # Database configuration
 db:

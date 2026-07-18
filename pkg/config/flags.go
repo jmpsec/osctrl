@@ -257,10 +257,17 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_GEOIP_DB"),
 			Destination: &params.Service.GeoIPDBPath,
 		},
+		&cli.BoolFlag{
+			Name:        "posture-enabled",
+			Value:       false,
+			Usage:       "Enable the security and compliance posture system. Disabled by default; when enabled osctrl-tls ingests posture query results and osctrl-api exposes posture endpoints to the SPA.",
+			Sources:     cli.EnvVars("SERVICE_POSTURE_ENABLED"),
+			Destination: &params.Service.PostureEnabled,
+		},
 		&cli.StringFlag{
 			Name:        "posture-query-prefix",
 			Value:       "osctrl:posture:",
-			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data. Empty disables posture ingestion.",
+			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data when --posture-enabled is true.",
 			Sources:     cli.EnvVars("SERVICE_POSTURE_QUERY_PREFIX"),
 			Destination: &params.Service.PostureQueryPrefix,
 		},
