@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -610,6 +611,37 @@ func init() {
 						},
 					},
 					Action: cliWrapper(addScheduledQuery),
+				},
+				{
+					Name:  "add-posture-queries",
+					Usage: "Add posture profile queries to the osquery schedule for an environment",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "name",
+							Aliases: []string{"n"},
+							Value:   "",
+							Usage:   "Environment name to be updated",
+						},
+						&cli.StringFlag{
+							Name:    "profile",
+							Aliases: []string{"p"},
+							Value:   "",
+							Usage:   "Posture profile ID to add (win-server, linux-server, macos-laptop, win-laptop, linux-laptop)",
+						},
+						&cli.StringFlag{
+							Name:    "prefix",
+							Aliases: []string{"P"},
+							Value:   posture.DefaultQueryPrefix,
+							Usage:   "Posture query name prefix",
+						},
+						&cli.IntFlag{
+							Name:    "interval",
+							Aliases: []string{"i"},
+							Value:   0,
+							Usage:   "Override posture query interval in seconds; 0 keeps profile defaults",
+						},
+					},
+					Action: cliWrapper(addPostureQueries),
 				},
 				{
 					Name:  "remove-scheduled-query",

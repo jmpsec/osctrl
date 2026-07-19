@@ -384,6 +384,37 @@ func (environment *EnvManager) AddScheduleConfQuery(name, qName string, query Sc
 	return nil
 }
 
+// AddScheduleConfQueries merges multiple queries into the osquery schedule.
+func (environment *EnvManager) AddScheduleConfQueries(name string, queries ScheduleConf) error {
+	env, err := environment.Get(name)
+	if err != nil {
+		return fmt.Errorf("error getting environment %w", err)
+	}
+	// Parse schedule into struct
+	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
+	if err != nil {
+		return fmt.Errorf("error structuring schedule %w", err)
+	}
+	// Add new queries
+	for qName, query := range queries {
+		_schedule[qName] = query
+	}
+	// Generate serialized indented schedule
+	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
+	if err != nil {
+		return fmt.Errorf("error serializing schedule %w", err)
+	}
+	// Update schedule in environment
+	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
+		return fmt.Errorf("error updating schedule %w", err)
+	}
+	// Refresh all configuration
+	if err := environment.RefreshConfiguration(name); err != nil {
+		return fmt.Errorf("error refreshing configuration %w", err)
+	}
+	return nil
+}
+
 // RemoveScheduleConfQuery to remove a query from the osquery schedule
 func (environment *EnvManager) RemoveScheduleConfQuery(name, qName string) error {
 	env, err := environment.Get(name)

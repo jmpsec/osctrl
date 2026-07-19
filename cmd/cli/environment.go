@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
@@ -756,6 +757,70 @@ func addScheduledQuery(ctx context.Context, cmd *cli.Command) error {
 	}
 	fmt.Printf("✅ query %s was created successfully\n", queryName)
 	return nil
+}
+
+func addPostureQueries(ctx context.Context, cmd *cli.Command) error {
+	envName := cmd.String("name")
+	if envName == "" {
+		fmt.Println("❌ environment name is required")
+		os.Exit(1)
+	}
+	profileID := cmd.String("profile")
+	if profileID == "" {
+		fmt.Println("❌ posture profile is required")
+		os.Exit(1)
+	}
+	prefix := cmd.String("prefix")
+	if prefix == "" {
+		fmt.Println("❌ posture query prefix is required")
+		os.Exit(1)
+	}
+	interval := cmd.Int("interval")
+	if interval < 0 {
+		fmt.Println("❌ posture query interval must be zero or greater")
+		os.Exit(1)
+	}
+
+	if dbFlag {
+		schedule, err := postureProfileScheduleQueries(profileID, prefix, interval)
+		if err != nil {
+			return err
+		}
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.AddScheduleConfQueries(envName, schedule); err != nil {
+			return err
+		}
+		auditlogsmgr.EnvAction(getShellUsername(), "add posture queries "+profileID+" to "+envName, "CLI", env.ID)
+		fmt.Printf("✅ posture profile %s added %d scheduled queries to %s\n", profileID, len(schedule), envName)
+	} else if apiFlag {
+		fmt.Println("❌ API not supported yet for this operation")
+		os.Exit(1)
+	}
+	return nil
+}
+
+func postureProfileScheduleQueries(profileID, prefix string, intervalOverride int) (environments.ScheduleConf, error) {
+	profile := posture.GetProfile(profileID)
+	if profile == nil {
+		return nil, fmt.Errorf("unknown posture profile %q", profileID)
+	}
+	schedule := make(environments.ScheduleConf, len(profile.Queries))
+	for name, query := range profile.Queries {
+		interval := query.Interval
+		if intervalOverride > 0 {
+			interval = intervalOverride
+		}
+		schedule[prefix+name] = environments.ScheduleQuery{
+			Query:    query.Query,
+			Interval: json.Number(strconv.Itoa(interval)),
+			Platform: query.Platform,
+			Snapshot: query.Snapshot,
+		}
+	}
+	return schedule, nil
 }
 
 func removeScheduledQuery(ctx context.Context, cmd *cli.Command) error {
