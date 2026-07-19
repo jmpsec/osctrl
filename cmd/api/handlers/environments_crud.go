@@ -510,7 +510,7 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 	// request instead of waiting for the cache TTL to expire.
 	if h.RedisCache != nil {
 		ctx := context.Background()
-		if err := h.RedisCache.Client.Set(ctx, "envcache:invalidate:"+env.UUID, "1", 60*time.Second).Err(); err != nil {
+		if err := h.RedisCache.Client.Set(ctx, environments.RedisEnvInvalidatePrefix+env.UUID, "1", 60*time.Second).Err(); err != nil {
 			log.Warn().Err(err).Str("env", env.UUID).Msg("failed to signal env cache invalidation")
 		}
 	}

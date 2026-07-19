@@ -4,11 +4,14 @@ import (
 	"context"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/jmpsec/osctrl/pkg/cache"
 )
 
 const (
-	cacheName = "environments"
+	cacheName                = "environments"
+	redisEnvCacheName        = "osctrl:tls:environment"
+	RedisEnvInvalidatePrefix = "envcache:invalidate:"
 	// envCacheTTL is the maximum time a TLSEnvironment can sit in the
 	// EnvCache before the next request refetches from the database.
 	//
@@ -29,7 +32,9 @@ const (
 // EnvCache provides cached access to TLS environments
 type EnvCache struct {
 	// The cache itself, storing Environment objects
-	cache *cache.MemoryCache[TLSEnvironment]
+	cache       *cache.MemoryCache[TLSEnvironment]
+	redisCache  *cache.RedisJSONCache[TLSEnvironment]
+	redisClient *redis.Client
 
 	// Reference to the environment manager for cache misses
 	envs EnvManager
@@ -54,6 +59,15 @@ func NewEnvCache(envs EnvManager) *EnvCache {
 	}
 }
 
+// NewRedisEnvCache creates a Redis-backed environment cache.
+func NewRedisEnvCache(envs EnvManager, client *redis.Client) *EnvCache {
+	return &EnvCache{
+		redisCache:  cache.NewRedisJSONCache[TLSEnvironment](client, redisEnvCacheName),
+		redisClient: client,
+		envs:        envs,
+	}
+}
+
 // SetInvalidationCheck wires a callback that is called on each
 // GetByUUID. If the callback returns true, the cached entry is
 // considered stale and the env is refetched from the DB. The typical
@@ -68,8 +82,27 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 	// Check if a cross-process invalidation signal has been received
 	// (e.g., osctrl-api patched the config and set a Redis key).
 	if ec.invalidationCheck != nil && ec.invalidationCheck(ctx, uuid) {
-		ec.cache.Delete(ctx, uuid)
+		ec.InvalidateEnv(ctx, uuid)
+		if ec.redisClient != nil {
+			_ = ec.redisClient.Del(ctx, RedisEnvInvalidatePrefix+uuid).Err()
+		}
 	}
+
+	if ec.redisCache != nil {
+		if env, found, err := ec.redisCache.Get(ctx, uuid); err == nil && found {
+			return env, nil
+		} else if err != nil {
+			_ = ec.redisCache.Delete(ctx, uuid)
+		}
+
+		env, err := ec.envs.GetByUUID(uuid)
+		if err != nil {
+			return TLSEnvironment{}, err
+		}
+		_ = ec.redisCache.Set(ctx, uuid, env, envCacheTTL)
+		return env, nil
+	}
+
 	// Try to get from cache first
 	if env, found := ec.cache.Get(ctx, uuid); found {
 		return env, nil
@@ -90,17 +123,28 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 // that mutate env rows in the same process SHOULD invoke this so the
 // next request refetches the row without waiting for the TTL.
 func (ec *EnvCache) InvalidateEnv(ctx context.Context, uuid string) {
+	if ec.redisCache != nil {
+		_ = ec.redisCache.Delete(ctx, uuid)
+		return
+	}
 	ec.cache.Delete(ctx, uuid)
 }
 
 // InvalidateAll clears the entire cache. Used on bulk operations or
 // after operator-driven secret rotations.
 func (ec *EnvCache) InvalidateAll(ctx context.Context) {
+	if ec.redisCache != nil {
+		return
+	}
 	ec.cache.Clear(ctx)
 }
 
 // UpdateEnvInCache updates an environment in the cache
 func (ec *EnvCache) UpdateEnvInCache(ctx context.Context, env TLSEnvironment) {
+	if ec.redisCache != nil {
+		_ = ec.redisCache.Set(ctx, env.UUID, env, envCacheTTL)
+		return
+	}
 	ec.cache.Set(ctx, env.UUID, env, envCacheTTL)
 }
 

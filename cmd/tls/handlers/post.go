@@ -169,7 +169,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -252,7 +252,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		response = types.ConfigResponse{NodeInvalid: true}
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		if x, ok := response.([]byte); ok {
 			log.Debug().Msgf("Configuration: %s", string(x))
 		} else {
@@ -357,7 +357,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		// Process logs and update metadata
 		go func() {
 			start := time.Now()
-			results := h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), (*h.EnvsMap)[env.Name].DebugHTTP)
+			results := h.Logs.ProcessLogs(t.Data, t.LogType, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
 			duration := time.Since(start).Seconds()
 			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
 			// Ingest posture data from result logs (if enabled)
@@ -371,7 +371,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response = types.LogResponse{NodeInvalid: nodeInvalid}
 	// Debug
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -464,13 +464,13 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Serialize queries
 	if accelerate {
-		sAccelerate := int((*h.SettingsMap)[settings.AcceleratedSeconds].Integer)
+		sAccelerate := h.acceleratedSeconds(r.Context())
 		response = types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid}
 	} else {
 		response = types.QueryReadResponse{Queries: qs, NodeInvalid: nodeInvalid}
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Serialize and send response
@@ -565,7 +565,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryWrite)
 		go func() {
 			start := time.Now()
-			h.Logs.ProcessLogQueryResult(t, env.ID, (*h.EnvsMap)[env.Name].DebugHTTP)
+			h.Logs.ProcessLogQueryResult(t, env.ID, env.DebugHTTP)
 			duration := time.Since(start).Seconds()
 			distributedQueryProcessingDuration.WithLabelValues(string(env.UUID)).Observe(duration)
 		}()
@@ -575,7 +575,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 	// Prepare response
 	response = types.QueryWriteResponse{NodeInvalid: nodeInvalid}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
@@ -596,7 +596,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
@@ -669,7 +669,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
@@ -744,7 +744,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -813,7 +813,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare response
 	response = types.CarveInitResponse{Success: initCarve, SessionID: carveSessionID}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
@@ -834,7 +834,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -879,7 +879,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Prepare response
 	response := types.CarveBlockResponse{Success: blockCarve}
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Response: %+v", response)
 	}
 	// Send response
@@ -901,7 +901,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -940,7 +940,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Flags: %s", string(response))
 	}
 	// Send response
@@ -962,7 +962,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -995,7 +995,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Certificate: %s", string(response))
 	}
 	// Send response
@@ -1017,7 +1017,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -1060,7 +1060,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Certificate: %v", response)
 	}
 	// Send response
@@ -1082,7 +1082,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -1148,7 +1148,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Debug HTTP
-	if (*h.EnvsMap)[env.Name].DebugHTTP {
+	if env.DebugHTTP {
 		log.Debug().Msgf("Script: %s", string(response))
 	}
 	// Send response
@@ -1169,7 +1169,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -1300,7 +1300,7 @@ func (h *HandlersTLS) OsqueryConfigEndpointHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	// If we are here, the secret is confirmed, so we can proceed to get the environment
-	env, err := h.Envs.GetByUUID(envVar)
+	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
 	if err != nil {
 		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))

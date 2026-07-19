@@ -71,8 +71,6 @@ var (
 	redis                *cache.RedisManager
 	settingsmgr          *settings.Settings
 	envs                 *environments.EnvManager
-	envsmap              environments.MapEnvironments
-	settingsmap          settings.MapSettings
 	nodesmgr             *nodes.NodeManager
 	queriesmgr           *queries.Queries
 	filecarves           *carves.Carves
@@ -214,14 +212,12 @@ func osctrlService() {
 	// (envcache:invalidate:{uuid}) so osctrl-tls picks up the change
 	// on the next /config request instead of serving stale data for
 	// the full TTL.
-	envCache := environments.NewEnvCache(*envs)
-	if redis != nil {
-		envCache.SetInvalidationCheck(func(ctx context.Context, uuid string) bool {
-			n, err := redis.Client.Exists(ctx, "envcache:invalidate:"+uuid).Result()
-			return err == nil && n > 0
-		})
-		log.Info().Msg("EnvCache invalidation wired to Redis")
-	}
+	envCache := environments.NewRedisEnvCache(*envs, redis.Client)
+	envCache.SetInvalidationCheck(func(ctx context.Context, uuid string) bool {
+		n, err := redis.Client.Exists(ctx, environments.RedisEnvInvalidatePrefix+uuid).Result()
+		return err == nil && n > 0
+	})
+	log.Info().Msg("Environment cache wired to Redis")
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
@@ -245,6 +241,12 @@ func osctrlService() {
 	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
+	settingsCacheTTL := time.Duration(settingsmgr.RefreshSettings(config.ServiceTLS)) * time.Second
+	if settingsCacheTTL <= 0 {
+		settingsCacheTTL = time.Duration(defaultRefresh) * time.Second
+	}
+	settingsCache := settings.NewRedisSettingsCache(settingsmgr, redis.Client, config.ServiceTLS, settings.NoEnvironmentID, settingsCacheTTL)
+	log.Info().Msg("TLS settings cache wired to Redis")
 	// Initialize batch writer
 	log.Info().Msg("Initializing batch writer")
 	tlsWriter := handlers.NewBatchWriter(
@@ -268,36 +270,6 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.Logger.Type, err)
 	}
-	// Sleep to reload environments
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	log.Info().Msg("Preparing pseudo-cache for environments")
-	go func() {
-		_t := settingsmgr.RefreshEnvs(config.ServiceTLS)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			log.Debug().Msg("Refreshing environments")
-			envsmap = refreshEnvironments()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
-	// Sleep to reload settings
-	// FIXME Implement Redis cache
-	// FIXME splay this?
-	log.Info().Msg("Preparing pseudo-cache for settings")
-	go func() {
-		_t := settingsmgr.RefreshSettings(config.ServiceTLS)
-		if _t == 0 {
-			_t = int64(defaultRefresh)
-		}
-		for {
-			log.Debug().Msg("Refreshing settings")
-			settingsmap = refreshSettings()
-			time.Sleep(time.Duration(_t) * time.Second)
-		}
-	}()
 	if flagParams.Metrics.Enabled {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
@@ -329,13 +301,12 @@ func osctrlService() {
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
 		handlers.WithEnvCache(envCache),
-		handlers.WithEnvsMap(&envsmap),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithTags(tagsmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithSettingsMap(&settingsmap),
+		handlers.WithSettingsCache(settingsCache),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithActivityWriter(activityWriter),
