@@ -48,6 +48,7 @@ services:
       - SERVICE_LOGGER=${OSCTRL_TLS_LOGGER}
       - LOGGER_DB_SAME=true
       - SERVICE_LOG_FORMAT=console
+      - SERVICE_POSTURE_ENABLED=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
@@ -149,6 +150,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVICE_LOGGER=db
       - SERVICE_LOG_FORMAT=console
+      - SERVICE_POSTURE_ENABLED=true
       #### osquery settings ####
       - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
       #### Database settings ####
