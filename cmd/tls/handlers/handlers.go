@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,14 +53,13 @@ var validPlatform = map[string]bool{
 // HandlersTLS to keep all handlers for TLS
 type HandlersTLS struct {
 	Envs            *environments.EnvManager
-	EnvsMap         *environments.MapEnvironments
 	EnvCache        *environments.EnvCache
 	Nodes           *nodes.NodeManager
 	Tags            *tags.TagManager
 	Queries         *queries.Queries
 	Carves          *carves.Carves
 	Settings        *settings.Settings
-	SettingsMap     *settings.MapSettings
+	SettingsCache   *settings.RedisSettingsCache
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
 	ActivityWriter  *activityWriter
@@ -95,13 +95,6 @@ func WithEnvCache(ec *environments.EnvCache) Option {
 	}
 }
 
-// WithEnvsMap to pass value as option
-func WithEnvsMap(envsmap *environments.MapEnvironments) Option {
-	return func(h *HandlersTLS) {
-		h.EnvsMap = envsmap
-	}
-}
-
 // WithSettings to pass value as option
 func WithSettings(settings *settings.Settings) Option {
 	return func(h *HandlersTLS) {
@@ -109,10 +102,10 @@ func WithSettings(settings *settings.Settings) Option {
 	}
 }
 
-// WithSettingsMap to pass value as option
-func WithSettingsMap(settingsmap *settings.MapSettings) Option {
+// WithSettingsCache to pass Redis-backed TLS settings cache
+func WithSettingsCache(settingsCache *settings.RedisSettingsCache) Option {
 	return func(h *HandlersTLS) {
-		h.SettingsMap = settingsmap
+		h.SettingsCache = settingsCache
 	}
 }
 
@@ -268,6 +261,24 @@ func (h *HandlersTLS) shouldDebugHTTP(uuid string) bool {
 // node has been identified, via shouldDebugHTTP + DebugHTTPDumpWithBody.
 func (h *HandlersTLS) debugHTTPAll() bool {
 	return h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP && h.DebugHTTPConfig.TargetHostIdentifier == ""
+}
+
+func (h *HandlersTLS) acceleratedSeconds(ctx context.Context) int {
+	if h.SettingsCache != nil {
+		values, err := h.SettingsCache.GetMap(ctx)
+		if err == nil {
+			if value, ok := values[settings.AcceleratedSeconds]; ok {
+				return int(value.Integer)
+			}
+		}
+	}
+	if h.Settings != nil {
+		value, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID)
+		if err == nil {
+			return int(value)
+		}
+	}
+	return 0
 }
 
 func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
