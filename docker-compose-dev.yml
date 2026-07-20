@@ -274,6 +274,9 @@ services:
       - ENV_NAME=dev
       - CERT_FILE=/opt/osctrl/config/osctrl.crt
       - HOST=osctrl-nginx
+      - POSTURE_PROFILE=linux-server
+      - POSTURE_INTERVAL=75
+      - POSTURE_QUERY_PREFIX
       #### osctrl admin ####
       - OSCTRL_USER=${OSCTRL_USER}
       - OSCTRL_PASS=${OSCTRL_PASS}

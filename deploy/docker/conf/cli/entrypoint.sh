@@ -8,6 +8,9 @@ OSCTRL_PASS="${OSCTRL_PASS:=admin}"
 LOGGING_INTERVAL="${LOGGING_INTERVAL:=90}"
 CONFIG_INTERVAL="${CONFIG_INTERVAL:=60}"
 QUERY_INTERVAL="${QUERY_INTERVAL:=30}"
+POSTURE_PROFILE="${POSTURE_PROFILE:=linux-server}"
+POSTURE_INTERVAL="${POSTURE_INTERVAL:=75}"
+POSTURE_QUERY_PREFIX="${POSTURE_QUERY_PREFIX:=osctrl:posture:}"
 WAIT="${WAIT:=5}"
 
 ######################################### OSCTRL_PASS ##############################################
@@ -57,6 +60,19 @@ if [ $? -eq 0 ]; then
   echo "Added query to schedule in ${ENV_NAME}"
 else
   echo "Something happened adding query to schedule in ${ENV_NAME}"
+fi
+
+######################################### Add posture checks #######################################
+
+/opt/osctrl/bin/osctrl-cli --db env add-posture-queries \
+  --name "${ENV_NAME}" \
+  --profile "${POSTURE_PROFILE}" \
+  --interval "${POSTURE_INTERVAL}" \
+  --prefix "${POSTURE_QUERY_PREFIX}"
+if [ $? -eq 0 ]; then
+  echo "Added posture profile ${POSTURE_PROFILE} to schedule in ${ENV_NAME}"
+else
+  echo "Something happened adding posture profile ${POSTURE_PROFILE} to schedule in ${ENV_NAME}"
 fi
 
 ######################################### Create admin user ########################################
