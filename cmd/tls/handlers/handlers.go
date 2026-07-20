@@ -263,6 +263,10 @@ func (h *HandlersTLS) debugHTTPAll() bool {
 	return h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP && h.DebugHTTPConfig.TargetHostIdentifier == ""
 }
 
+func (h *HandlersTLS) allowsAcceleratedQueries(queryAccelerated bool) bool {
+	return queryAccelerated && h.OsqueryValues != nil && h.OsqueryValues.Accelerated
+}
+
 func (h *HandlersTLS) acceleratedSeconds(ctx context.Context) int {
 	if h.SettingsCache != nil {
 		values, err := h.SettingsCache.GetMap(ctx)
