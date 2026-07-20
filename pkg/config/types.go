@@ -168,13 +168,14 @@ type YAMLConfigurationRedis struct {
 
 // YAMLConfigurationOsquery to hold the osquery configuration values
 type YAMLConfigurationOsquery struct {
-	Version    string `yaml:"version"`
-	TablesFile string `yaml:"tablesFile"`
-	Logger     bool   `yaml:"logger"`
-	Config     bool   `yaml:"config"`
-	Query      bool   `yaml:"query"`
-	Carve      bool   `yaml:"carve"`
-	ReadOnly   bool   `yaml:"readOnly"`
+	Version     string `yaml:"version"`
+	TablesFile  string `yaml:"tablesFile"`
+	Logger      bool   `yaml:"logger"`
+	Config      bool   `yaml:"config"`
+	Query       bool   `yaml:"query"`
+	Carve       bool   `yaml:"carve"`
+	Accelerated bool   `yaml:"accelerated"`
+	ReadOnly    bool   `yaml:"readOnly"`
 }
 
 // YAMLConfigurationEndpoints to hold the configuration endpoints that will receive osquery configuration updates

@@ -70,6 +70,7 @@ osquery:
   config: true
   query: true
   carve: true
+  accelerated: false
 
 # Osctrl daemon configuration
 osctrld:

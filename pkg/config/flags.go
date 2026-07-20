@@ -895,6 +895,13 @@ func initOsqueryFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Osquery.Carve,
 		},
 		&cli.BoolFlag{
+			Name:        "osquery-accelerated",
+			Value:       false,
+			Usage:       "Enable accelerated mode when returning distributed queries to osquery",
+			Sources:     cli.EnvVars("OSQUERY_ACCELERATED"),
+			Destination: &params.Osquery.Accelerated,
+		},
+		&cli.BoolFlag{
 			Name:        "read-only-configuration",
 			Value:       false,
 			Usage:       "Disable configuration changes via admin or api services",

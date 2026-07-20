@@ -61,3 +61,10 @@ func TestShouldDebugHTTPNilConfig(t *testing.T) {
 	assert.False(t, h.shouldDebugHTTP("DEADBEEF-1234"))
 	assert.False(t, h.debugHTTPAll())
 }
+
+func TestAllowsAcceleratedQueriesRequiresConfigAndQuerySignal(t *testing.T) {
+	assert.False(t, (&HandlersTLS{}).allowsAcceleratedQueries(true))
+	assert.False(t, (&HandlersTLS{OsqueryValues: &config.YAMLConfigurationOsquery{Accelerated: false}}).allowsAcceleratedQueries(true))
+	assert.False(t, (&HandlersTLS{OsqueryValues: &config.YAMLConfigurationOsquery{Accelerated: true}}).allowsAcceleratedQueries(false))
+	assert.True(t, (&HandlersTLS{OsqueryValues: &config.YAMLConfigurationOsquery{Accelerated: true}}).allowsAcceleratedQueries(true))
+}

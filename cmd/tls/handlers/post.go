@@ -463,7 +463,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		accelerate = false
 	}
 	// Serialize queries
-	if accelerate {
+	if h.allowsAcceleratedQueries(accelerate) {
 		sAccelerate := h.acceleratedSeconds(r.Context())
 		response = types.AcceleratedQueryReadResponse{Queries: qs, Accelerate: sAccelerate, NodeInvalid: nodeInvalid}
 	} else {

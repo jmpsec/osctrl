@@ -31,3 +31,29 @@ func TestServicePostureEnabledFlagDefaultsOff(t *testing.T) {
 		t.Fatalf("posture-enabled flag destination does not wire Service.PostureEnabled")
 	}
 }
+
+func TestOsqueryAcceleratedFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Osquery: &YAMLConfigurationOsquery{}}
+	flags := initOsqueryFlags(params)
+
+	if params.Osquery.Accelerated {
+		t.Fatalf("accelerated osquery default: got true want false")
+	}
+
+	var acceleratedFlag *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "osquery-accelerated" {
+			acceleratedFlag = f
+			break
+		}
+	}
+	if acceleratedFlag == nil {
+		t.Fatalf("missing osquery-accelerated flag")
+	}
+	if acceleratedFlag.Value {
+		t.Fatalf("osquery-accelerated flag default: got true want false")
+	}
+	if acceleratedFlag.Destination != &params.Osquery.Accelerated {
+		t.Fatalf("osquery-accelerated flag destination does not wire Osquery.Accelerated")
+	}
+}
