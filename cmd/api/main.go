@@ -299,6 +299,8 @@ func osctrlAPIService() {
 
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
+	envCache := environments.NewRedisEnvCache(*envs, redis.Client)
+	log.Info().Msg("Environment cache wired to Redis")
 	// Security & compliance posture system (disabled by default)
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
@@ -368,13 +370,13 @@ func osctrlAPIService() {
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithEnvs(envs),
+		handlers.WithEnvCache(envCache),
 		handlers.WithUsers(apiUsers),
 		handlers.WithTags(tagsmgr),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
-		handlers.WithCache(redis),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),

@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -96,6 +94,7 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	// Grant the creating user full access to the new environment so it shows up
 	// in their env list immediately (matches the legacy admin behaviour).
 	access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, true, true, true)
@@ -254,6 +253,7 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error updating environment", http.StatusInternalServerError, err)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	updated, _ := h.Envs.Get(envVar)
 	h.AuditLog.EnvAction(ctx[ctxUser], "update env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	log.Debug().Msgf("Updated environment %s", env.Name)
@@ -306,6 +306,7 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	h.AuditLog.EnvAction(ctx[ctxUser], "delete env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	log.Debug().Msgf("Deleted environment %s", env.Name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: fmt.Sprintf("environment %s deleted", env.Name)})
@@ -505,15 +506,7 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 			return
 		}
 	}
-	// Signal osctrl-tls to invalidate its EnvCache for this env so
-	// agents receive the updated configuration on their next /config
-	// request instead of waiting for the cache TTL to expire.
-	if h.RedisCache != nil {
-		ctx := context.Background()
-		if err := h.RedisCache.Client.Set(ctx, environments.RedisEnvInvalidatePrefix+env.UUID, "1", 60*time.Second).Err(); err != nil {
-			log.Warn().Err(err).Str("env", env.UUID).Msg("failed to signal env cache invalidation")
-		}
-	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	h.AuditLog.ConfAction(ctx[ctxUser], "config patch on env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	updated, _ := h.Envs.Get(envVar)
 	resp := types.EnvConfigResponse{
@@ -605,6 +598,7 @@ func (h *HandlersApi) EnvironmentIntervalsPatchHandler(w http.ResponseWriter, r 
 		apiErrorResponse(w, "error updating intervals", http.StatusInternalServerError, err)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	h.AuditLog.ConfAction(ctx[ctxUser],
 		fmt.Sprintf("intervals patch on env %s: config=%d log=%d query=%d", env.Name, cfg, lg, qr),
 		strings.Split(r.RemoteAddr, ":")[0], env.ID)
@@ -689,6 +683,7 @@ func (h *HandlersApi) EnvironmentExpirationPatchHandler(w http.ResponseWriter, r
 		apiErrorResponse(w, "action must be one of: extend, expire, rotate, not-expire", http.StatusBadRequest, nil)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	h.AuditLog.EnvAction(ctx[ctxUser], body.Action+" enrollment for env "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	updated, _ := h.Envs.Get(envVar)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, updated)

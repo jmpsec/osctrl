@@ -532,6 +532,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("invalid action %s", actionVar))
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	// Return query name as serialized response
 	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, msgReturn)
 	h.AuditLog.EnvAction(ctx[ctxUser], actionVar+" enrollment for environment "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
@@ -626,6 +627,7 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("invalid action %s", actionVar))
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	// Return query name as serialized response
 	log.Debug().Msgf("Returned data for environment %s : %s", env.Name, msgReturn)
 	h.AuditLog.EnvAction(ctx[ctxUser], actionVar+" removal for environment "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
@@ -739,6 +741,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 			msgReturn = "environment created successfully"
+			h.invalidateEnvCache(r.Context(), env.UUID)
 		} else {
 			apiErrorResponse(w, "environment already exists", http.StatusBadRequest, fmt.Errorf("environment %s already exists", e.Name))
 			return
@@ -774,6 +777,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
 			return
 		}
+		h.invalidateEnvCache(r.Context(), targetEnv.UUID)
 		msgReturn = "environment deleted successfully"
 	case "edit":
 		// Verify request fields
@@ -790,6 +794,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 				apiErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
 				return
 			}
+			h.invalidateEnvCache(r.Context(), e.UUID)
 			msgReturn = "environment updated successfully"
 		} else {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, fmt.Errorf("environment %s not found", e.UUID))
@@ -914,6 +919,7 @@ func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "error saving certificate", http.StatusInternalServerError, err)
 		return
 	}
+	h.invalidateEnvCache(r.Context(), env.UUID)
 	log.Debug().Msgf("Certificate updated for environment %s", env.Name)
 	h.AuditLog.EnvAction(ctx[ctxUser], "upload certificate for environment "+env.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "certificate uploaded successfully"})

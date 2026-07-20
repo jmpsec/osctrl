@@ -15,17 +15,15 @@ const (
 	// envCacheTTL is the maximum time a TLSEnvironment can sit in the
 	// EnvCache before the next request refetches from the database.
 	//
-	// osctrl-tls holds this cache; osctrl-api mutates env rows in the
-	// same DB from a different process. There is no IPC channel between
-	// the two, so envCache invalidation is TTL-based — the TTL bounds
-	// the window during which enroll-secret rotations, env deletions,
-	// or config-PATCH changes can be served stale by osctrl-tls.
+	// osctrl-tls and osctrl-api share this Redis-backed cache across
+	// processes. The TTL bounds the window during which enroll-secret
+	// rotations, env deletions, or config-PATCH changes can be served
+	// stale if Redis invalidation is unavailable.
 	//
 	// 5 minutes: the fallback window if no invalidation signal is
-	// received. With Redis-based invalidation wired in (see
-	// SetInvalidationCheck), config PATCHes are picked up immediately;
-	// this TTL only bounds the worst case (Redis down, API and TLS
-	// can't communicate). 5m keeps DB load low while limiting staleness.
+	// received. With Redis-backed EnvCache invalidation wired in, config
+	// PATCHes are picked up immediately; this TTL only bounds the worst
+	// case. 5m keeps DB load low while limiting staleness.
 	envCacheTTL = 5 * time.Minute
 )
 
@@ -41,8 +39,8 @@ type EnvCache struct {
 
 	// invalidationCheck is called on each GetByUUID. If it returns
 	// true, the cached entry is stale and the env is refetched from
-	// the DB. Set via SetInvalidationCheck — typically a function
-	// that checks a Redis key set by osctrl-api after a config PATCH.
+	// the DB. Set via SetInvalidationCheck for compatibility with
+	// external invalidation signals.
 	invalidationCheck func(ctx context.Context, uuid string) bool
 }
 
@@ -70,9 +68,7 @@ func NewRedisEnvCache(envs EnvManager, client *redis.Client) *EnvCache {
 
 // SetInvalidationCheck wires a callback that is called on each
 // GetByUUID. If the callback returns true, the cached entry is
-// considered stale and the env is refetched from the DB. The typical
-// implementation checks a Redis key that osctrl-api sets after
-// mutating an env row (config PATCH, secret rotation, etc.).
+// considered stale and the env is refetched from the DB.
 func (ec *EnvCache) SetInvalidationCheck(fn func(ctx context.Context, uuid string) bool) {
 	ec.invalidationCheck = fn
 }
