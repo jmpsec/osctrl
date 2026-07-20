@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
-	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -28,11 +27,11 @@ type HandlersApi struct {
 	Users           *users.UserManager
 	Tags            *tags.TagManager
 	Envs            *environments.EnvManager
+	EnvCache        *environments.EnvCache
 	Nodes           *nodes.NodeManager
 	Queries         *queries.Queries
 	Carves          *carves.Carves
 	Settings        *settings.Settings
-	RedisCache      *cache.RedisManager
 	Activity        activityReader
 	GeoIP           *geoip.GeoIPResolver
 	Posture         *posture.PostureManager
@@ -92,6 +91,12 @@ func WithEnvs(envs *environments.EnvManager) HandlersOption {
 	}
 }
 
+func WithEnvCache(envCache *environments.EnvCache) HandlersOption {
+	return func(h *HandlersApi) {
+		h.EnvCache = envCache
+	}
+}
+
 func WithNodes(nodes *nodes.NodeManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Nodes = nodes
@@ -113,12 +118,6 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 func WithSettings(settings *settings.Settings) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Settings = settings
-	}
-}
-
-func WithCache(rds *cache.RedisManager) HandlersOption {
-	return func(h *HandlersApi) {
-		h.RedisCache = rds
 	}
 }
 

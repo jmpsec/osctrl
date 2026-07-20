@@ -208,10 +208,9 @@ func osctrlService() {
 	envs = environments.CreateEnvironment(db.Conn)
 
 	// Build EnvCache with Redis-backed cross-process invalidation.
-	// When osctrl-api patches an env config, it sets a Redis key
-	// (envcache:invalidate:{uuid}) so osctrl-tls picks up the change
-	// on the next /config request instead of serving stale data for
-	// the full TTL.
+	// osctrl-api now invalidates the same Redis-backed EnvCache directly
+	// after env mutations so osctrl-tls picks up changes on the next
+	// request instead of serving stale data for the full TTL.
 	envCache := environments.NewRedisEnvCache(*envs, redis.Client)
 	envCache.SetInvalidationCheck(func(ctx context.Context, uuid string) bool {
 		n, err := redis.Client.Exists(ctx, environments.RedisEnvInvalidatePrefix+uuid).Result()
