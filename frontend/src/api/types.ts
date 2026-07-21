@@ -217,6 +217,51 @@ export type QuerySortColumn =
   | 'errors';
 
 // ---------------------------------------------------------------------------
+// Console types
+// ---------------------------------------------------------------------------
+
+export type ConsoleCommandStatus = 'queued' | 'delivered' | 'completed' | 'error' | 'expired';
+
+export interface ConsoleSession {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  environment_id: number;
+  node_id: number;
+  node_uuid: string;
+  creator: string;
+  cwd: string;
+  platform: string;
+  active: boolean;
+  closed_at?: string;
+}
+
+export interface ConsoleCommand {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  session_id: number;
+  input: string;
+  translated_sql?: string;
+  distributed_query_name?: string;
+  status: ConsoleCommandStatus;
+  error?: string;
+  delivered_at?: string;
+  completed_at?: string;
+  expired_at?: string;
+}
+
+export interface ParsedConsoleCommand {
+  kind: 'local' | 'remote';
+  command: string;
+  path?: string;
+  sql?: string;
+  output?: string;
+}
+
+export type ConsoleResultRow = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
 // Saved queries
 // ---------------------------------------------------------------------------
 

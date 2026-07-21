@@ -180,7 +180,7 @@ describe('EnvConfigPage', () => {
       data: '{"options":{"logger_plugin":"tls"}}',
     });
     mockGetPostureProfiles.mockResolvedValue([]);
-    mockGetFeatures.mockResolvedValue({ posture: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
   });
 
   it('loads the fully rendered tab from the assembled config endpoint', async () => {
@@ -224,7 +224,7 @@ describe('EnvConfigPage', () => {
 
   it('loads posture profiles only after opening the picker', async () => {
     const user = userEvent.setup();
-    mockGetFeatures.mockResolvedValue({ posture: true });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
 
     renderWithProviders();
 
@@ -243,7 +243,7 @@ describe('EnvConfigPage', () => {
 
   it('distinguishes a profile load failure from an empty profile list', async () => {
     const user = userEvent.setup();
-    mockGetFeatures.mockResolvedValue({ posture: true });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
     mockGetPostureProfiles.mockRejectedValue(new Error('profiles unavailable'));
 
     renderWithProviders();

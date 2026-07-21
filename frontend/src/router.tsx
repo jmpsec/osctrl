@@ -8,6 +8,7 @@ import { envRoute } from './routes/_app/env/$env/route'
 import { envIndexRoute } from './routes/_app/env/$env/index'
 import { envNodesRoute } from './routes/_app/env/$env/nodes'
 import { envNodeDetailRoute } from './routes/_app/env/$env/nodes.$uuid'
+import { envNodeConsoleRoute } from './routes/_app/env/$env/nodes.$uuid.console'
 import { envQueriesRoute } from './routes/_app/env/$env/queries'
 import { envQueryNewRoute } from './routes/_app/env/$env/queries.new'
 import { envQueryDetailRoute } from './routes/_app/env/$env/queries.$name'
@@ -40,6 +41,7 @@ const routeTree = rootRoute.addChildren([
       envIndexRoute,
       envNodesRoute,
       envNodeDetailRoute,
+      envNodeConsoleRoute,
       envQueriesRoute,
       envQueryNewRoute,
       envQueryDetailRoute,

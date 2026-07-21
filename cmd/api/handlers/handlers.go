@@ -4,6 +4,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
@@ -30,6 +31,7 @@ type HandlersApi struct {
 	EnvCache        *environments.EnvCache
 	Nodes           *nodes.NodeManager
 	Queries         *queries.Queries
+	Console         *console.Manager
 	Carves          *carves.Carves
 	Settings        *settings.Settings
 	Activity        activityReader
@@ -106,6 +108,12 @@ func WithNodes(nodes *nodes.NodeManager) HandlersOption {
 func WithQueries(queries *queries.Queries) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Queries = queries
+	}
+}
+
+func WithConsole(consoleManager *console.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Console = consoleManager
 	}
 }
 

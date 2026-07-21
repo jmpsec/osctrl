@@ -43,6 +43,8 @@ const (
 	CarveQueryType string = "carve"
 	// MetadataQueryType defines a regular query
 	MetadataQueryType string = "metadata"
+	// ConsoleQueryType defines a hidden accelerated query used by node consoles
+	ConsoleQueryType string = "console"
 )
 
 const (
@@ -170,10 +172,11 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	var results []struct {
 		Name  string
 		Query string
+		Type  string
 	}
 
 	q.DB.Table("distributed_queries dq").
-		Select("dq.name, dq.query").
+		Select("dq.name, dq.query, dq.type").
 		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
 		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
 		Scan(&results)
@@ -183,16 +186,23 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	}
 
 	qs := make(QueryReadQueries)
+	accelerate := false
 	for _, _q := range results {
 		qs[_q.Name] = _q.Query
+		if _q.Type == ConsoleQueryType {
+			accelerate = true
+		}
 	}
 
-	return qs, false, nil
+	return qs, accelerate, nil
 }
 
 // Gets all queries by target (active/completed/all/all-full/deleted/hidden/expired)
 func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
+	if qtype == ConsoleQueryType {
+		return queries, nil
+	}
 	switch target {
 	case TargetActive:
 		if err := q.DB.Where(
@@ -598,6 +608,9 @@ func (q *Queries) SetNodeQueriesAsExpired(queryID uint) error {
 //
 // page is 1-indexed. pageSize is clamped to [1, 500] with default 50.
 func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, page, pageSize int, sortColumn string, desc bool) (QueryListPage, error) {
+	if qtype == ConsoleQueryType {
+		return QueryListPage{Items: []DistributedQuery{}}, nil
+	}
 	if pageSize <= 0 {
 		pageSize = 50
 	}
