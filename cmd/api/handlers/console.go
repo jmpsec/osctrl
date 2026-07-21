@@ -189,7 +189,7 @@ func (h *HandlersApi) consoleSessionContext(w http.ResponseWriter, r *http.Reque
 
 func consolePathUint(w http.ResponseWriter, r *http.Request, name string) (uint, bool) {
 	value := r.PathValue(name)
-	id, err := strconv.ParseUint(value, 10, 64)
+	id, err := strconv.ParseUint(value, 10, strconv.IntSize)
 	if value == "" || err != nil {
 		apiErrorResponse(w, "invalid "+name, http.StatusBadRequest, err)
 		return 0, false
