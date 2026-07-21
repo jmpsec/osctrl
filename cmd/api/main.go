@@ -18,6 +18,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
@@ -123,6 +124,7 @@ var (
 	envs                 *environments.EnvManager
 	nodesmgr             *nodes.NodeManager
 	queriesmgr           *queries.Queries
+	consolemgr           *console.Manager
 	filecarves           *carves.Carves
 	handlersApi          *handlers.HandlersApi
 	app                  *cli.Command
@@ -316,6 +318,8 @@ func osctrlAPIService() {
 	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
+	log.Info().Msg("Initialize console")
+	consolemgr = console.NewManager(db.Conn, queriesmgr)
 	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, nil)
 	log.Info().Msg("Loading service settings")
@@ -375,6 +379,7 @@ func osctrlAPIService() {
 		handlers.WithTags(tagsmgr),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithQueries(queriesmgr),
+		handlers.WithConsole(consolemgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
@@ -589,6 +594,25 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// API: accelerated per-node console
+		muxAPI.Handle(
+			"POST "+_apiPath("/console")+"/{env}/nodes/{uuid}/sessions",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath("/console")+"/{env}/sessions/{session_id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}/results",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		// API: saved queries (Track 4)
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSavedQueriesPath)+"/{env}",

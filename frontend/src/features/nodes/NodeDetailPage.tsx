@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Terminal } from 'lucide-react';
 import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
 import type { NodePosture, PostureScore } from '$/api/types';
 import { getMe } from '$/api/users';
@@ -581,6 +582,7 @@ export function NodeDetailPage() {
     staleTime: 5 * 60_000,
   });
   const postureEnabled = features?.posture === true;
+  const acceleratedEnabled = features?.accelerated === true;
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => tab.id !== 'posture' || postureEnabled),
     [postureEnabled],
@@ -788,6 +790,22 @@ export function NodeDetailPage() {
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {acceleratedEnabled && (
+                <Link
+                  to="/_app/env/$env/nodes/$uuid/console"
+                  params={{ env, uuid }}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
+                  Console
+                </Link>
+              )}
               {node.node_key && (
                 <button
                   type="button"

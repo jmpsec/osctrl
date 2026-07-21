@@ -213,7 +213,7 @@ describe('NodeDetailPage', () => {
       total: [],
     });
     mockListServiceSettings.mockResolvedValue([]);
-    mockGetFeatures.mockResolvedValue({ posture: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {
@@ -282,7 +282,7 @@ describe('NodeDetailPage', () => {
 
   it('shows posture data for the selected node', async () => {
     const user = userEvent.setup();
-    mockGetFeatures.mockResolvedValue({ posture: true });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
     mockGetNodePosture.mockResolvedValue([
       {
         id: 10,
@@ -333,5 +333,30 @@ describe('NodeDetailPage', () => {
 
     expect(screen.queryByRole('tab', { name: 'Posture' })).not.toBeInTheDocument();
     expect(mockGetNodePosture).not.toHaveBeenCalled();
+  });
+
+  it('shows the console action only when accelerated queries are enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+    const router = makeTestRouter();
+
+    renderWithProviders(router);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('link', { name: /console/i })).toBeInTheDocument();
+  });
+
+  it('hides the console action when accelerated queries are disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
   });
 });

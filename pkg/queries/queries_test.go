@@ -96,6 +96,27 @@ func TestNodeQueries(t *testing.T) {
 	})
 }
 
+func TestNodeQueriesAcceleratesConsoleQueries(t *testing.T) {
+	db := testDB(t)
+	q, testNodes, _ := setupTestData(t, db)
+
+	consoleQuery := queries.DistributedQuery{
+		Name:          "console-query",
+		Query:         "SELECT * FROM processes;",
+		Type:          queries.ConsoleQueryType,
+		Hidden:        true,
+		Active:        true,
+		EnvironmentID: 1,
+	}
+	require.NoError(t, q.Create(&consoleQuery))
+	require.NoError(t, q.CreateNodeQueries([]uint{testNodes[0].ID}, consoleQuery.ID))
+
+	result, accelerate, err := q.NodeQueries(testNodes[0])
+	require.NoError(t, err)
+	require.True(t, accelerate)
+	require.Equal(t, "SELECT * FROM processes;", result["console-query"])
+}
+
 func TestUpdateQueryStatus(t *testing.T) {
 	db := testDB(t)
 	q, nodes, query := setupTestData(t, db)
@@ -244,6 +265,45 @@ func TestQuerySortableColumnsAllowlist(t *testing.T) {
 	if queries.QuerySortableColumns["created"] != "created_at" {
 		t.Error("created → created_at")
 	}
+}
+
+func TestConsoleQueriesAreExcludedFromNormalLists(t *testing.T) {
+	db := testDB(t)
+	q := queries.CreateQueries(db)
+
+	envID := uint(1)
+	normal := queries.DistributedQuery{
+		Name:          "normal-query",
+		Query:         "SELECT 1;",
+		Type:          queries.StandardQueryType,
+		EnvironmentID: envID,
+		Active:        true,
+	}
+	consoleQuery := queries.DistributedQuery{
+		Name:          "console-query",
+		Query:         "SELECT * FROM file;",
+		Type:          queries.ConsoleQueryType,
+		EnvironmentID: envID,
+		Active:        true,
+		Hidden:        true,
+	}
+	require.NoError(t, q.Create(&normal))
+	require.NoError(t, q.Create(&consoleQuery))
+
+	items, err := q.GetQueries(queries.TargetAllFull, envID)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, "normal-query", items[0].Name)
+
+	hidden, err := q.GetQueries(queries.TargetHidden, envID)
+	require.NoError(t, err)
+	require.Empty(t, hidden)
+
+	page, err := q.GetByEnvTargetPaged(envID, queries.TargetAllFull, queries.StandardQueryType, "", 1, 50, "created", true)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), page.TotalItems)
+	require.Len(t, page.Items, 1)
+	require.Equal(t, "normal-query", page.Items[0].Name)
 }
 
 func TestSetNodeQueriesAsExpired(t *testing.T) {

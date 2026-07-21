@@ -8,7 +8,8 @@ import (
 
 // FeaturesResponse advertises server-side feature switches consumed by the SPA.
 type FeaturesResponse struct {
-	Posture bool `json:"posture"`
+	Posture     bool `json:"posture"`
+	Accelerated bool `json:"accelerated"`
 }
 
 // FeaturesHandler — GET /api/v1/features.
@@ -17,6 +18,7 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, FeaturesResponse{
-		Posture: h.PostureEnabled,
+		Posture:     h.PostureEnabled,
+		Accelerated: h.OsqueryValues.Accelerated,
 	})
 }
