@@ -60,6 +60,8 @@ services:
       # from the nginx reverse proxy. Without this, every node's IP shows as
       # the nginx container's internal Docker IP instead of the real client.
       - SERVICE_TRUSTED_PROXIES=172.16.0.0/12
+      #### osquery settings ####
+      - OSQUERY_ACCELERATED=true
     networks:
       - osctrl-dev-backend
     ports:
@@ -153,6 +155,7 @@ services:
       - SERVICE_POSTURE_ENABLED=true
       #### osquery settings ####
       - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
+      - OSQUERY_ACCELERATED=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}
