@@ -156,6 +156,30 @@ func TestRefreshCDUpdatesWorkingDirectoryAfterResult(t *testing.T) {
 	require.Equal(t, "/etc", refreshed.CWD)
 }
 
+func TestCommandResultsDecodeStoredQueryWriteData(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommand(session.ID, "ps")
+	require.NoError(t, err)
+
+	result, err := json.Marshal([]map[string]string{{"pid": "1", "name": "launchd"}})
+	require.NoError(t, err)
+	wrapped, err := json.Marshal(map[string]any{
+		"name":    command.DistributedQueryName,
+		"result":  json.RawMessage(result),
+		"status":  0,
+		"message": "",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&logging.OsqueryQueryData{Name: command.DistributedQueryName, Data: string(wrapped), Status: 0}).Error)
+	require.NoError(t, markNodeQueryStatus(db, command.DistributedQueryName, queries.DistributedQueryStatusCompleted))
+
+	rows, err := manager.CommandResults(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, []map[string]any{{"pid": "1", "name": "launchd"}}, rows)
+}
+
 func markNodeQueryStatus(db *gorm.DB, name, status string) error {
 	var distributed queries.DistributedQuery
 	if err := db.Where("name = ?", name).First(&distributed).Error; err != nil {
