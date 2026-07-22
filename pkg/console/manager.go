@@ -9,6 +9,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"gorm.io/gorm"
 )
 
@@ -244,14 +245,27 @@ func (m *Manager) queryResults(queryName string) ([]map[string]any, error) {
 		return rows, nil
 	}
 	err := logging.StreamQueryResults(m.DB, queryName, func(row logging.OsqueryQueryData) error {
-		var decoded []map[string]any
-		if err := json.Unmarshal([]byte(row.Data), &decoded); err != nil {
+		decoded, err := decodeResultRows([]byte(row.Data))
+		if err != nil {
 			return err
 		}
 		rows = append(rows, decoded...)
 		return nil
 	})
 	return rows, err
+}
+
+func decodeResultRows(data []byte) ([]map[string]any, error) {
+	var wrapped types.QueryWriteData
+	if err := json.Unmarshal(data, &wrapped); err == nil && wrapped.Result != nil {
+		data = wrapped.Result
+	}
+
+	var rows []map[string]any
+	if err := json.Unmarshal(data, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 func isTerminalStatus(status string) bool {
