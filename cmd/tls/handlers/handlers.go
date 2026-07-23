@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -34,6 +35,8 @@ var validAction = map[string]bool{
 	settings.ScriptEnroll: true,
 	settings.ScriptRemove: true,
 }
+
+const consoleSessionFreshness = 30 * time.Second
 
 // Valid values for enroll packages
 var validEnrollPackage = map[string]bool{
@@ -265,6 +268,27 @@ func (h *HandlersTLS) debugHTTPAll() bool {
 
 func (h *HandlersTLS) allowsAcceleratedQueries(queryAccelerated bool) bool {
 	return queryAccelerated && h.OsqueryValues != nil && h.OsqueryValues.Accelerated
+}
+
+func (h *HandlersTLS) shouldAccelerateQueryRead(node nodes.OsqueryNode, queryAccelerated bool) bool {
+	if queryAccelerated {
+		return true
+	}
+	return h.hasActiveConsoleSession(node)
+}
+
+func (h *HandlersTLS) hasActiveConsoleSession(node nodes.OsqueryNode) bool {
+	if node.ID == 0 || node.UUID == "" || node.EnvironmentID == 0 || h.Queries == nil || h.Queries.DB == nil {
+		return false
+	}
+	var count int64
+	if err := h.Queries.DB.Model(&console.Session{}).
+		Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
+		Count(&count).Error; err != nil {
+		log.Debug().Err(err).Msg("error checking active console session for accelerated query read")
+		return false
+	}
+	return count > 0
 }
 
 func (h *HandlersTLS) acceleratedSeconds(ctx context.Context) int {

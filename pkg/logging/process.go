@@ -91,20 +91,31 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 		log.Error().Msgf("ProcessLogQueryResult: EnvID[%d] does not match Node.EnvironmentID[%d] — dropping results", envid, node.EnvironmentID)
 		return
 	}
-	// Tap into results so we can update internal metrics
-	for q, r := range queriesWrite.Queries {
-		// Dispatch query name, result and status
-		d := types.QueryWriteData{
-			Name:    q,
-			Result:  r,
-			Status:  queriesWrite.Statuses[q],
-			Message: queriesWrite.Messages[q],
+	// Tap into results/statuses so we can update internal metrics. Failed
+	// osquery queries may report only status/message without a result payload.
+	queryNames := make(map[string]struct{}, len(queriesWrite.Queries)+len(queriesWrite.Statuses))
+	for q := range queriesWrite.Queries {
+		queryNames[q] = struct{}{}
+	}
+	for q := range queriesWrite.Statuses {
+		queryNames[q] = struct{}{}
+	}
+	for q := range queryNames {
+		status := queriesWrite.Statuses[q]
+		if r, ok := queriesWrite.Queries[q]; ok {
+			// Dispatch query name, result and status
+			d := types.QueryWriteData{
+				Name:    q,
+				Result:  r,
+				Status:  status,
+				Message: queriesWrite.Messages[q],
+			}
+			go l.DispatchQueries(d, node, debug)
 		}
-		go l.DispatchQueries(d, node, debug)
 		// TODO: need be refactored
 		// Update internal metrics per query
 		var err error
-		if queriesWrite.Statuses[q] != 0 {
+		if status != 0 {
 			err = l.Queries.IncError(q, envid)
 		} else {
 			err = l.Queries.IncExecution(q, envid)
@@ -113,7 +124,7 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 			log.Err(err).Msg("error updating query")
 		}
 		// Update query status
-		if err := l.Queries.UpdateQueryStatus(q, node.ID, queriesWrite.Statuses[q]); err != nil {
+		if err := l.Queries.UpdateQueryStatus(q, node.ID, status); err != nil {
 			log.Err(err).Msg("error updating query status")
 		}
 	}

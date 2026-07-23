@@ -107,6 +107,7 @@ func TestNodeQueriesAcceleratesConsoleQueries(t *testing.T) {
 		Hidden:        true,
 		Active:        true,
 		EnvironmentID: 1,
+		Expiration:    time.Now().Add(time.Hour),
 	}
 	require.NoError(t, q.Create(&consoleQuery))
 	require.NoError(t, q.CreateNodeQueries([]uint{testNodes[0].ID}, consoleQuery.ID))
@@ -115,6 +116,33 @@ func TestNodeQueriesAcceleratesConsoleQueries(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, accelerate)
 	require.Equal(t, "SELECT * FROM processes;", result["console-query"])
+
+	otherResult, otherAccelerate, err := q.NodeQueries(testNodes[1])
+	require.NoError(t, err)
+	require.False(t, otherAccelerate)
+	require.NotContains(t, otherResult, "console-query")
+}
+
+func TestNodeQueriesSkipsExpiredPendingQueries(t *testing.T) {
+	db := testDB(t)
+	q, testNodes, _ := setupTestData(t, db)
+
+	expiredQuery := queries.DistributedQuery{
+		Name:          "expired-console-query",
+		Query:         "SELECT * FROM osquery_info;",
+		Type:          queries.ConsoleQueryType,
+		Hidden:        true,
+		Active:        true,
+		EnvironmentID: 1,
+		Expiration:    time.Now().Add(-time.Minute),
+	}
+	require.NoError(t, q.Create(&expiredQuery))
+	require.NoError(t, q.CreateNodeQueries([]uint{testNodes[0].ID}, expiredQuery.ID))
+
+	result, accelerate, err := q.NodeQueries(testNodes[0])
+	require.NoError(t, err)
+	require.False(t, accelerate)
+	require.NotContains(t, result, "expired-console-query")
 }
 
 func TestUpdateQueryStatus(t *testing.T) {

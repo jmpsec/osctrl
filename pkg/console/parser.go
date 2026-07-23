@@ -17,9 +17,26 @@ func DefaultCWD(platform string) string {
 }
 
 func Parse(input, cwd, platform string) (ParsedCommand, error) {
+	return ParseInput(input, cwd, platform, false)
+}
+
+func ParseInput(input, cwd, platform string, osqueryMode bool) (ParsedCommand, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return ParsedCommand{}, fmt.Errorf("command can not be empty")
+	}
+
+	if osqueryMode {
+		switch strings.ToLower(input) {
+		case "exit", "quit", ".exit":
+			return ParsedCommand{Kind: CommandExitMode, Command: strings.ToLower(input), Mode: "osquery", Message: "leaving osquery mode"}, nil
+		case ".tables":
+			return ParsedCommand{Kind: CommandLocal, Command: "tables", Mode: "osquery"}, nil
+		}
+		if err := validateSelect(input); err != nil {
+			return ParsedCommand{}, err
+		}
+		return ParsedCommand{Kind: CommandRemote, Command: "sql", Mode: "osquery", SQL: input}, nil
 	}
 
 	fields := strings.Fields(input)
@@ -33,6 +50,15 @@ func Parse(input, cwd, platform string) (ParsedCommand, error) {
 		return ParsedCommand{Kind: CommandLocal, Command: "help", Output: helpText()}, nil
 	case "clear":
 		return ParsedCommand{Kind: CommandLocal, Command: "clear"}, nil
+	case "get":
+		if args == "" {
+			return ParsedCommand{}, fmt.Errorf("get requires a path")
+		}
+		if forbiddenShellSyntax.MatchString(args) {
+			return ParsedCommand{}, fmt.Errorf("shell syntax is not supported")
+		}
+		target := resolvePath(args, cwd, platform)
+		return ParsedCommand{Kind: CommandCarve, Command: "get", Path: target}, nil
 	case "ls":
 		if forbiddenShellSyntax.MatchString(args) {
 			return ParsedCommand{}, fmt.Errorf("shell syntax is not supported")
@@ -67,10 +93,18 @@ func Parse(input, cwd, platform string) (ParsedCommand, error) {
 		return ParsedCommand{Kind: CommandRemote, Command: "cd", Path: target, SQL: sql}, nil
 	case "sql":
 		sql := strings.TrimSpace(args)
+		if sql == "" {
+			return ParsedCommand{Kind: CommandMode, Command: "sql", Mode: "osquery", Message: "entering osquery mode"}, nil
+		}
 		if err := validateSelect(sql); err != nil {
 			return ParsedCommand{}, err
 		}
 		return ParsedCommand{Kind: CommandRemote, Command: "sql", SQL: sql}, nil
+	case "osquery":
+		if args != "" {
+			return ParsedCommand{}, fmt.Errorf("osquery does not accept arguments")
+		}
+		return ParsedCommand{Kind: CommandMode, Command: "osquery", Mode: "osquery", Message: "entering osquery mode"}, nil
 	default:
 		return ParsedCommand{}, fmt.Errorf("unsupported command %q", cmd)
 	}
@@ -148,5 +182,5 @@ func quoteSQL(value string) string {
 }
 
 func helpText() string {
-	return "Supported commands: pwd, cd <path>, ls [path], stat <path>, ps, sql <select ...>, help, clear"
+	return "Supported commands: pwd, cd <path>, ls [path], stat <path>, ps, sql [select ...], osquery, get <path>, help, clear. In osquery mode: .tables, .exit"
 }

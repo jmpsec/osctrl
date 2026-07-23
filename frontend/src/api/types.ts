@@ -236,6 +236,14 @@ export interface ConsoleSession {
   closed_at?: string;
 }
 
+export interface ConsoleNodeInfo {
+  ip_address: string;
+  osquery_user: string;
+  osquery_version: string;
+  platform: string;
+  platform_version: string;
+}
+
 export interface ConsoleCommand {
   id: number;
   created_at: string;
@@ -252,14 +260,27 @@ export interface ConsoleCommand {
 }
 
 export interface ParsedConsoleCommand {
-  kind: 'local' | 'remote';
+  kind: 'local' | 'remote' | 'carve' | 'mode' | 'exit-mode';
   command: string;
+  mode?: string;
   path?: string;
   sql?: string;
   output?: string;
+  message?: string;
 }
 
 export type ConsoleResultRow = Record<string, unknown>;
+
+export interface ConsoleHistoryEntry {
+  command: ConsoleCommand;
+  results: ConsoleResultRow[];
+}
+
+export interface ConsoleSessionResponse {
+  session: ConsoleSession;
+  history: ConsoleHistoryEntry[];
+  node_info?: ConsoleNodeInfo;
+}
 
 // ---------------------------------------------------------------------------
 // Saved queries
