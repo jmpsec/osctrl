@@ -5,11 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -17,13 +24,30 @@ import (
 )
 
 type consoleCommandRequest struct {
-	Input string `json:"input"`
+	Input       string `json:"input"`
+	OsqueryMode bool   `json:"osquery_mode"`
 }
 
 type consoleCommandResponse struct {
 	Command console.Command       `json:"command"`
 	Parsed  console.ParsedCommand `json:"parsed"`
 }
+
+type consoleNodeInfo struct {
+	IPAddress       string `json:"ip_address"`
+	OsqueryUser     string `json:"osquery_user"`
+	OsqueryVersion  string `json:"osquery_version"`
+	Platform        string `json:"platform"`
+	PlatformVersion string `json:"platform_version"`
+}
+
+type consoleSessionResponse struct {
+	Session  console.Session        `json:"session"`
+	History  []console.HistoryEntry `json:"history"`
+	NodeInfo consoleNodeInfo        `json:"node_info"`
+}
+
+const defaultConsoleQueryReadSeconds = 5
 
 func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http.Request) {
 	env, ctx, ok := h.consoleEnvContext(w, r)
@@ -44,18 +68,32 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		return
 	}
+	history, err := h.Console.History(env.ID, node.ID, ctx[ctxUser], 100)
+	if err != nil {
+		apiErrorResponse(w, "error getting console history", http.StatusInternalServerError, err)
+		return
+	}
 	session, err := h.Console.CreateSession(env, node, ctx[ctxUser])
 	if err != nil {
 		apiErrorResponse(w, "error creating console session", http.StatusInternalServerError, err)
 		return
 	}
 	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, session)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, consoleSessionResponse{
+		Session:  session,
+		History:  history,
+		NodeInfo: consoleNodeInfoFromNode(node),
+	})
 }
 
 func (h *HandlersApi) ConsoleSessionShowHandler(w http.ResponseWriter, r *http.Request) {
 	env, ctx, session, ok := h.consoleSessionContext(w, r)
 	if !ok {
+		return
+	}
+	session, err := h.Console.TouchSession(session.ID)
+	if err != nil {
+		apiErrorResponse(w, "error refreshing console session", http.StatusInternalServerError, err)
 		return
 	}
 	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
@@ -84,15 +122,128 @@ func (h *HandlersApi) ConsoleCommandCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
-	command, parsed, err := h.Console.SubmitCommand(session.ID, body.Input)
+	preview, err := console.ParseInput(body.Input, session.CWD, session.Platform, body.OsqueryMode)
 	if err != nil {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
+	}
+	if preview.Kind == console.CommandCarve && !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use console get by user %s", ctx[ctxUser]))
+		return
+	}
+
+	command, parsed, err := h.Console.SubmitCommandWithTimeout(session.ID, body.Input, h.consoleCommandTimeout(preview), body.OsqueryMode)
+	if err != nil {
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
+	}
+	if parsed.Kind == console.CommandCarve {
+		carveName, err := h.createConsoleCarve(env, session, ctx[ctxUser], parsed.Path)
+		if err != nil {
+			apiErrorResponse(w, "error creating carve", http.StatusInternalServerError, err)
+			return
+		}
+		parsed.Message = "created carve " + carveName
+	} else if parsed.Kind == console.CommandLocal && parsed.Command == "tables" && parsed.Mode == "osquery" {
+		parsed.Output = h.consoleTablesOutput(session.Platform)
 	}
 	if h.AuditLog != nil {
 		h.AuditLog.QueryAction(ctx[ctxUser], "console command "+parsed.Command, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, consoleCommandResponse{Command: command, Parsed: parsed})
+}
+
+func (h *HandlersApi) createConsoleCarve(env environments.TLSEnvironment, session console.Session, creator, path string) (string, error) {
+	newQuery := queries.DistributedQuery{
+		Query:         carves.GenCarveQuery(path, false),
+		Name:          carves.GenCarveName(),
+		Creator:       "console:" + creator,
+		Active:        true,
+		Type:          queries.CarveQueryType,
+		Path:          path,
+		EnvironmentID: env.ID,
+		Expected:      1,
+	}
+	if err := h.Queries.Create(&newQuery); err != nil {
+		return "", err
+	}
+	if err := h.Queries.CreateNodeQueries([]uint{session.NodeID}, newQuery.ID); err != nil {
+		return "", err
+	}
+	if err := h.Queries.CreateTarget(newQuery.Name, "uuid", session.NodeUUID); err != nil {
+		return "", err
+	}
+	if err := h.Queries.SetExpected(newQuery.Name, 1, env.ID); err != nil {
+		return "", err
+	}
+	if h.AuditLog != nil {
+		h.AuditLog.NewCarve(creator, path, "", env.ID)
+	}
+	return newQuery.Name, nil
+}
+
+func consoleNodeInfoFromNode(node nodes.OsqueryNode) consoleNodeInfo {
+	return consoleNodeInfo{
+		IPAddress:       node.IPAddress,
+		OsqueryUser:     node.OsqueryUser,
+		OsqueryVersion:  node.OsqueryVersion,
+		Platform:        node.Platform,
+		PlatformVersion: node.PlatformVersion,
+	}
+}
+
+func (h *HandlersApi) consoleTablesOutput(platform string) string {
+	names := make([]string, 0, len(h.OsqueryTables))
+	for _, table := range h.OsqueryTables {
+		if osqueryTableSupportsPlatform(table, platform) {
+			names = append(names, table.Name)
+		}
+	}
+	sort.Strings(names)
+	if len(names) == 0 {
+		if platform == "" {
+			return "no osquery tables loaded"
+		}
+		return "no osquery tables loaded for " + platform
+	}
+	label := platform
+	if label == "" {
+		label = "all platforms"
+	}
+	return fmt.Sprintf("tables for %s (%d)\n%s", label, len(names), strings.Join(names, "\n"))
+}
+
+func (h *HandlersApi) consoleCommandTimeout(parsed console.ParsedCommand) time.Duration {
+	seconds := int64(defaultConsoleQueryReadSeconds)
+	if h.Settings != nil {
+		if configured, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID); err == nil && configured > 0 {
+			seconds = configured
+		}
+	}
+	if parsed.Kind == console.CommandRemote && parsed.Command == "sql" {
+		timeout := time.Duration(seconds*12) * time.Second
+		if timeout < time.Minute {
+			return time.Minute
+		}
+		return timeout
+	}
+	return time.Duration(seconds*2) * time.Second
+}
+
+func osqueryTableSupportsPlatform(table types.OsqueryTable, platform string) bool {
+	if platform == "" {
+		return true
+	}
+	if len(table.Platforms) == 0 {
+		return true
+	}
+	nodeBucket := nodes.NormalizePlatformBucket(platform)
+	for _, supported := range table.Platforms {
+		if strings.EqualFold(supported, platform) || nodes.NormalizePlatformBucket(supported) == nodeBucket {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *HandlersApi) ConsoleCommandShowHandler(w http.ResponseWriter, r *http.Request) {

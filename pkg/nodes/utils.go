@@ -186,10 +186,10 @@ func applyPlatformBucket(q *gorm.DB, bucket string) *gorm.DB {
 	return q
 }
 
-// normalizePlatformBucket folds the osquery-reported platform string into the
+// NormalizePlatformBucket folds the osquery-reported platform string into the
 // SPA-facing buckets. Reads from platformsByBucket so we only maintain one
 // list of recognised distros. Anything not in any bucket lands in "other".
-func normalizePlatformBucket(p string) string {
+func NormalizePlatformBucket(p string) string {
 	for bucket, vals := range platformsByBucket {
 		for _, v := range vals {
 			if v == p {
@@ -198,4 +198,8 @@ func normalizePlatformBucket(p string) string {
 		}
 	}
 	return "other"
+}
+
+func normalizePlatformBucket(p string) string {
+	return NormalizePlatformBucket(p)
 }

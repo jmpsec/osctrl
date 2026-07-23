@@ -56,6 +56,60 @@ func TestParseRawSQLRequiresSelect(t *testing.T) {
 	require.Contains(t, err.Error(), "single")
 }
 
+func TestParseEntersOsqueryMode(t *testing.T) {
+	for _, input := range []string{"sql", "osquery"} {
+		got, err := console.Parse(input, "/", "linux")
+		require.NoError(t, err)
+		require.Equal(t, console.CommandMode, got.Kind)
+		require.Equal(t, input, got.Command)
+		require.Equal(t, "osquery", got.Mode)
+	}
+}
+
+func TestParseOsqueryModeTreatsInputAsSQL(t *testing.T) {
+	got, err := console.ParseInput("select * from osquery_info", "/", "linux", true)
+	require.NoError(t, err)
+	require.Equal(t, console.CommandRemote, got.Kind)
+	require.Equal(t, "sql", got.Command)
+	require.Equal(t, "select * from osquery_info", got.SQL)
+
+	_, err = console.ParseInput("delete from processes", "/", "linux", true)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "SELECT")
+}
+
+func TestParseOsqueryModeExit(t *testing.T) {
+	for _, input := range []string{"exit", "quit", ".exit"} {
+		got, err := console.ParseInput(input, "/", "linux", true)
+		require.NoError(t, err)
+		require.Equal(t, console.CommandExitMode, got.Kind)
+		require.Equal(t, "osquery", got.Mode)
+	}
+}
+
+func TestParseOsqueryModeTables(t *testing.T) {
+	got, err := console.ParseInput(".tables", "/", "linux", true)
+	require.NoError(t, err)
+	require.Equal(t, console.CommandLocal, got.Kind)
+	require.Equal(t, "tables", got.Command)
+	require.Equal(t, "osquery", got.Mode)
+
+	_, err = console.Parse(".tables", "/", "linux")
+	require.Error(t, err)
+}
+
+func TestParseGetCreatesCarveCommand(t *testing.T) {
+	got, err := console.Parse("get ssh/sshd_config", "/etc", "linux")
+	require.NoError(t, err)
+	require.Equal(t, console.CommandCarve, got.Kind)
+	require.Equal(t, "get", got.Command)
+	require.Equal(t, "/etc/ssh/sshd_config", got.Path)
+
+	_, err = console.Parse("get", "/", "linux")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "path")
+}
+
 func TestParseRejectsShellSyntax(t *testing.T) {
 	for _, input := range []string{"ls /tmp | head", "ls > out", "ls && ps", "cat /etc/passwd"} {
 		_, err := console.Parse(input, "/", "linux")

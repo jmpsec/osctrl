@@ -449,6 +449,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Err(err).Msg("error getting queries from db")
 		}
+		accelerate = h.shouldAccelerateQueryRead(node, accelerate)
 		// Refresh node last seen
 		ip := utils.GetIP(r)
 		if ip == node.IPAddress {

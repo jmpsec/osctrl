@@ -179,6 +179,8 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 		Select("dq.name, dq.query, dq.type").
 		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
 		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
+		Where("dq.active = ? AND dq.completed = ? AND dq.deleted = ? AND dq.expired = ?", true, false, false, false).
+		Where("dq.expiration > ?", time.Now()).
 		Scan(&results)
 
 	if len(results) == 0 {

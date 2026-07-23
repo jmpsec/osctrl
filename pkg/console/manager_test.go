@@ -3,12 +3,14 @@ package console_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -120,6 +122,80 @@ func TestRefreshCommandStatusFromNodeQuery(t *testing.T) {
 	require.NotNil(t, got.CompletedAt)
 }
 
+func TestRefreshCommandStatusExpiresDistributedQueryAndNodeQuery(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommandWithTimeout(session.ID, "select * from osquery_info", time.Nanosecond, true)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond)
+
+	got, err := manager.RefreshCommandStatus(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, console.StatusExpired, got.Status)
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", command.DistributedQueryName).First(&distributed).Error)
+	require.True(t, distributed.Expired)
+	require.False(t, distributed.Active)
+
+	var nodeQuery queries.NodeQuery
+	require.NoError(t, db.Where("query_id = ?", distributed.ID).First(&nodeQuery).Error)
+	require.Equal(t, queries.DistributedQueryStatusExpired, nodeQuery.Status)
+}
+
+func TestRefreshOsqueryModeSQLCompletesFromNodeQuery(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommand(session.ID, "select * from osquery_info", true)
+	require.NoError(t, err)
+
+	require.NoError(t, markNodeQueryStatus(db, command.DistributedQueryName, queries.DistributedQueryStatusCompleted))
+	got, err := manager.RefreshCommandStatus(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, console.StatusCompleted, got.Status)
+	require.Empty(t, got.Error)
+	require.NotNil(t, got.CompletedAt)
+}
+
+func TestOsqueryModeSQLIsDeliveredAndCompletesFromQueryWrite(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommand(session.ID, "select * from osquery_info", true)
+	require.NoError(t, err)
+
+	delivered, accelerate, err := manager.Queries.NodeQueries(node)
+	require.NoError(t, err)
+	require.True(t, accelerate)
+	require.Equal(t, "select * from osquery_info", delivered[command.DistributedQueryName])
+
+	result, err := json.Marshal([]map[string]string{{"version": "5.13.1"}})
+	require.NoError(t, err)
+	wrapped, err := json.Marshal(types.QueryWriteData{
+		Name:   command.DistributedQueryName,
+		Result: result,
+		Status: 0,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&logging.OsqueryQueryData{
+		UUID:        node.UUID,
+		Environment: env.UUID,
+		Name:        command.DistributedQueryName,
+		Data:        string(wrapped),
+		Status:      0,
+	}).Error)
+	require.NoError(t, manager.Queries.UpdateQueryStatus(command.DistributedQueryName, node.ID, 0))
+
+	got, err := manager.RefreshCommandStatus(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, console.StatusCompleted, got.Status)
+	rows, err := manager.CommandResults(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, []map[string]any{{"version": "5.13.1"}}, rows)
+}
+
 func TestRefreshCommandStatusMarksError(t *testing.T) {
 	db, manager, env, node := setupConsoleManager(t)
 	session, err := manager.CreateSession(env, node, "alice")
@@ -178,6 +254,41 @@ func TestCommandResultsDecodeStoredQueryWriteData(t *testing.T) {
 	rows, err := manager.CommandResults(command.ID)
 	require.NoError(t, err)
 	require.Equal(t, []map[string]any{{"pid": "1", "name": "launchd"}}, rows)
+}
+
+func TestHistoryReturnsCommandsForSameNodeUserAndEnvironment(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommand(session.ID, "ps")
+	require.NoError(t, err)
+
+	result, err := json.Marshal([]map[string]string{{"pid": "1", "name": "launchd"}})
+	require.NoError(t, err)
+	wrapped, err := json.Marshal(map[string]any{
+		"name":   command.DistributedQueryName,
+		"result": json.RawMessage(result),
+		"status": 0,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&logging.OsqueryQueryData{Name: command.DistributedQueryName, Data: string(wrapped), Status: 0}).Error)
+
+	otherNode := nodes.OsqueryNode{UUID: "OTHER-NODE", Platform: "linux", EnvironmentID: env.ID, Environment: env.UUID}
+	require.NoError(t, db.Create(&otherNode).Error)
+	otherSession, err := manager.CreateSession(env, otherNode, "alice")
+	require.NoError(t, err)
+	_, _, err = manager.SubmitCommand(otherSession.ID, "pwd")
+	require.NoError(t, err)
+	bobSession, err := manager.CreateSession(env, node, "bob")
+	require.NoError(t, err)
+	_, _, err = manager.SubmitCommand(bobSession.ID, "pwd")
+	require.NoError(t, err)
+
+	history, err := manager.History(env.ID, node.ID, "alice", 25)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	require.Equal(t, command.ID, history[0].Command.ID)
+	require.Equal(t, []map[string]any{{"pid": "1", "name": "launchd"}}, history[0].Results)
 }
 
 func markNodeQueryStatus(db *gorm.DB, name, status string) error {

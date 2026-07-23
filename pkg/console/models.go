@@ -7,8 +7,11 @@ import (
 )
 
 const (
-	CommandLocal  = "local"
-	CommandRemote = "remote"
+	CommandLocal    = "local"
+	CommandRemote   = "remote"
+	CommandCarve    = "carve"
+	CommandMode     = "mode"
+	CommandExitMode = "exit-mode"
 
 	StatusQueued    = "queued"
 	StatusDelivered = "delivered"
@@ -32,6 +35,10 @@ type Session struct {
 	ClosedAt      *time.Time     `json:"closed_at,omitempty"`
 }
 
+func (Session) TableName() string {
+	return "console_sessions"
+}
+
 type Command struct {
 	ID                   uint           `gorm:"primarykey" json:"id"`
 	CreatedAt            time.Time      `json:"created_at"`
@@ -48,10 +55,21 @@ type Command struct {
 	ExpiredAt            *time.Time     `json:"expired_at,omitempty"`
 }
 
+func (Command) TableName() string {
+	return "console_commands"
+}
+
 type ParsedCommand struct {
 	Kind    string `json:"kind"`
 	Command string `json:"command"`
+	Mode    string `json:"mode,omitempty"`
 	Path    string `json:"path,omitempty"`
 	SQL     string `json:"sql,omitempty"`
 	Output  string `json:"output,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+type HistoryEntry struct {
+	Command Command          `json:"command"`
+	Results []map[string]any `json:"results"`
 }

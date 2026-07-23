@@ -3,6 +3,7 @@ package console
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -13,7 +14,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const commandExpiration = 5 * time.Minute
+const defaultCommandTimeout = 10 * time.Second
 
 type Manager struct {
 	DB      *gorm.DB
@@ -51,7 +52,23 @@ func (m *Manager) GetSession(sessionID uint) (Session, error) {
 	return session, nil
 }
 
-func (m *Manager) SubmitCommand(sessionID uint, input string) (Command, ParsedCommand, error) {
+func (m *Manager) TouchSession(sessionID uint) (Session, error) {
+	if err := m.DB.Model(&Session{}).
+		Where("id = ? AND active = ?", sessionID, true).
+		UpdateColumn("updated_at", time.Now()).Error; err != nil {
+		return Session{}, err
+	}
+	return m.GetSession(sessionID)
+}
+
+func (m *Manager) SubmitCommand(sessionID uint, input string, osqueryModeOpt ...bool) (Command, ParsedCommand, error) {
+	return m.SubmitCommandWithTimeout(sessionID, input, defaultCommandTimeout, osqueryModeOpt...)
+}
+
+func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout time.Duration, osqueryModeOpt ...bool) (Command, ParsedCommand, error) {
+	if timeout <= 0 {
+		timeout = defaultCommandTimeout
+	}
 	var session Session
 	if err := m.DB.First(&session, sessionID).Error; err != nil {
 		return Command{}, ParsedCommand{}, err
@@ -69,7 +86,11 @@ func (m *Manager) SubmitCommand(sessionID uint, input string) (Command, ParsedCo
 		return Command{}, ParsedCommand{}, fmt.Errorf("another command is still pending")
 	}
 
-	parsed, err := Parse(input, session.CWD, session.Platform)
+	osqueryMode := false
+	if len(osqueryModeOpt) > 0 {
+		osqueryMode = osqueryModeOpt[0]
+	}
+	parsed, err := ParseInput(input, session.CWD, session.Platform, osqueryMode)
 	if err != nil {
 		return Command{}, ParsedCommand{}, err
 	}
@@ -104,7 +125,7 @@ func (m *Manager) SubmitCommand(sessionID uint, input string) (Command, ParsedCo
 			Hidden:        true,
 			Type:          queries.ConsoleQueryType,
 			EnvironmentID: session.EnvironmentID,
-			Expiration:    time.Now().Add(commandExpiration),
+			Expiration:    time.Now().Add(timeout),
 			Expected:      1,
 			ExtraData:     string(extra),
 		}
@@ -175,6 +196,9 @@ func (m *Manager) RefreshCommandStatus(commandID uint) (Command, error) {
 		if distributed.Expiration.Before(now) {
 			updates["status"] = StatusExpired
 			updates["expired_at"] = &now
+			if err := m.expireDistributedQuery(distributed.ID); err != nil {
+				return Command{}, err
+			}
 		}
 	case queries.DistributedQueryStatusCompleted:
 		status, errText, err := m.completedStatusForCommand(command)
@@ -205,6 +229,19 @@ func (m *Manager) RefreshCommandStatus(commandID uint) (Command, error) {
 	return command, nil
 }
 
+func (m *Manager) expireDistributedQuery(queryID uint) error {
+	return m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&queries.DistributedQuery{}).
+			Where("id = ?", queryID).
+			Updates(map[string]any{"expired": true, "active": false}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&queries.NodeQuery{}).
+			Where("query_id = ? AND status = ?", queryID, queries.DistributedQueryStatusPending).
+			Update("status", queries.DistributedQueryStatusExpired).Error
+	})
+}
+
 func (m *Manager) CommandResults(commandID uint) ([]map[string]any, error) {
 	command, err := m.RefreshCommandStatus(commandID)
 	if err != nil {
@@ -213,7 +250,41 @@ func (m *Manager) CommandResults(commandID uint) ([]map[string]any, error) {
 	return m.queryResults(command.DistributedQueryName)
 }
 
+func (m *Manager) History(envID, nodeID uint, creator string, limit int) ([]HistoryEntry, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	var commands []Command
+	err := m.DB.Model(&Command{}).
+		Joins("JOIN console_sessions ON console_sessions.id = console_commands.session_id").
+		Where("console_sessions.environment_id = ? AND console_sessions.node_id = ? AND console_sessions.creator = ?", envID, nodeID, creator).
+		Order("console_commands.created_at DESC").
+		Limit(limit).
+		Find(&commands).Error
+	if err != nil {
+		return nil, err
+	}
+
+	history := make([]HistoryEntry, 0, len(commands))
+	for i := len(commands) - 1; i >= 0; i-- {
+		command := commands[i]
+		results, err := m.queryResults(command.DistributedQueryName)
+		if err != nil {
+			results = []map[string]any{}
+		}
+		history = append(history, HistoryEntry{Command: command, Results: results})
+	}
+	return history, nil
+}
+
 func (m *Manager) completedStatusForCommand(command Command) (string, string, error) {
+	if !isCDCommand(command.Input) {
+		return StatusCompleted, "", nil
+	}
+
 	var session Session
 	if err := m.DB.First(&session, command.SessionID).Error; err != nil {
 		return StatusError, "", err
@@ -237,6 +308,11 @@ func (m *Manager) completedStatusForCommand(command Command) (string, string, er
 		return StatusError, "", err
 	}
 	return StatusCompleted, "", nil
+}
+
+func isCDCommand(input string) bool {
+	fields := strings.Fields(input)
+	return len(fields) > 0 && strings.EqualFold(fields[0], "cd")
 }
 
 func (m *Manager) queryResults(queryName string) ([]map[string]any, error) {

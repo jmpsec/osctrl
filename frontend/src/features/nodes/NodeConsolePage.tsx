@@ -1,25 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Loader2, Terminal } from 'lucide-react';
+import { ArrowLeft, Loader2, Terminal } from 'lucide-react';
 import {
   closeConsoleSession,
   createConsoleSession,
   getConsoleCommand,
   getConsoleCommandResults,
+  getConsoleSession,
   submitConsoleCommand,
 } from '$/api/console';
 import { ApiError, AuthError } from '$/api/client';
-import type { ConsoleCommand, ConsoleResultRow, ConsoleSession } from '$/api/types';
+import type {
+  ConsoleCommand,
+  ConsoleHistoryEntry,
+  ConsoleNodeInfo,
+  ConsoleResultRow,
+  ConsoleSession,
+} from '$/api/types';
 import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
 
 type Entry =
-  | { id: string; type: 'input'; cwd: string; text: string }
+  | { id: string; type: 'input'; prompt: string; text: string }
   | { id: string; type: 'text'; text: string; tone?: 'error' | 'muted' }
   | { id: string; type: 'table'; rows: ConsoleResultRow[] };
 
+type NodeInfoItem = { label: string; value: string };
+
 const terminalStatuses = new Set(['completed', 'error', 'expired']);
+const consoleHeartbeatMs = 10000;
 type PendingCommand = { command: ConsoleCommand; path?: string };
 
 export function NodeConsolePage() {
@@ -30,22 +40,30 @@ export function NodeConsolePage() {
 export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
   const navigate = useNavigate();
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const sessionRef = useRef<ConsoleSession | null>(null);
   const handledCommandRef = useRef<number | null>(null);
+  const focusedOnOpenRef = useRef(false);
+  const focusAfterCommandRef = useRef(false);
   const [session, setSession] = useState<ConsoleSession | null>(null);
+  const [nodeInfo, setNodeInfo] = useState<ConsoleNodeInfo | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<PendingCommand | null>(null);
+  const [osqueryMode, setOsqueryMode] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
+  const sessionID = session?.id;
 
   useEffect(() => {
     let alive = true;
     void createConsoleSession(env, uuid)
       .then((created) => {
         if (!alive) return;
-        sessionRef.current = created;
-        setSession(created);
+        sessionRef.current = created.session;
+        setSession(created.session);
+        setNodeInfo(created.node_info ?? null);
+        setEntries(historyToEntries(created.history));
       })
       .catch((error: unknown) => {
         if (!alive) return;
@@ -68,14 +86,54 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     bottomRef.current?.scrollIntoView?.({ block: 'end' });
   }, [entries, pending]);
 
+  useEffect(() => {
+    if (!sessionID) return undefined;
+    const interval = window.setInterval(() => {
+      void getConsoleSession(env, sessionID)
+        .then((fresh) => {
+          sessionRef.current = fresh;
+          setSession(fresh);
+        })
+        .catch((error: unknown) => {
+          if (error instanceof AuthError) {
+            void navigate({ to: '/login' });
+          }
+      });
+    }, consoleHeartbeatMs);
+    return () => window.clearInterval(interval);
+  }, [env, navigate, sessionID]);
+
   const submitMutation = useMutation({
     mutationFn: async (value: string) => {
       if (!session) throw new Error('Console is not ready');
-      return submitConsoleCommand(env, session.id, value);
+      return submitConsoleCommand(env, session.id, value, osqueryMode);
     },
     onSuccess: ({ command, parsed }) => {
       if (!session) return;
       setCommandError(null);
+      if (parsed.kind === 'mode') {
+        setOsqueryMode(true);
+        if (parsed.message) {
+          const message = parsed.message;
+          setEntries((current) => [...current, { id: `mode-${command.id}`, type: 'text', text: message }]);
+        }
+        return;
+      }
+      if (parsed.kind === 'exit-mode') {
+        setOsqueryMode(false);
+        if (parsed.message) {
+          const message = parsed.message;
+          setEntries((current) => [...current, { id: `mode-${command.id}`, type: 'text', text: message }]);
+        }
+        return;
+      }
+      if (parsed.kind === 'carve') {
+        setEntries((current) => [
+          ...current,
+          { id: `carve-${command.id}`, type: 'text', text: parsed.message || 'carve created' },
+        ]);
+        return;
+      }
       if (parsed.kind === 'local') {
         if (parsed.command === 'clear') {
           setEntries([]);
@@ -155,36 +213,75 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     if (!value || !session || pending || submitMutation.isPending) return;
     setEntries((current) => [
       ...current,
-      { id: `in-${Date.now()}`, type: 'input', cwd: session.cwd, text: value },
+      { id: `in-${Date.now()}`, type: 'input', prompt, text: value },
     ]);
     setInput('');
+    focusAfterCommandRef.current = true;
     submitMutation.mutate(value);
   }
 
   const disabled = !session || Boolean(pending) || submitMutation.isPending;
-  const prompt = useMemo(() => `${session?.cwd ?? '/'} $`, [session?.cwd]);
+  const prompt = useMemo(() => (osqueryMode ? 'osquery>' : `${session?.cwd ?? '/'} $`), [osqueryMode, session?.cwd]);
+  const nodeInfoItems = useMemo(() => formatNodeInfoItems(nodeInfo), [nodeInfo]);
+
+  function focusCommandInput() {
+    if (disabled) return;
+    inputRef.current?.focus({ preventScroll: true });
+  }
+
+  useEffect(() => {
+    if (session && !disabled && !focusedOnOpenRef.current) {
+      focusCommandInput();
+      focusedOnOpenRef.current = true;
+      return;
+    }
+    if (disabled || !focusAfterCommandRef.current) return;
+    focusCommandInput();
+    focusAfterCommandRef.current = false;
+  }, [commandError, disabled, entries, session]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col px-6 py-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[color:var(--text-1)]">
-            <Terminal className="h-4 w-4 text-[color:var(--signal)]" aria-hidden="true" />
-            <h1 className="text-base font-semibold">Console</h1>
+    <div
+      data-testid="node-console-page"
+      className="flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden px-6 py-4"
+    >
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-[color:var(--border)] pb-3">
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--signal)]">
+              <Terminal className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold leading-5 text-[color:var(--text-1)]">Console</h1>
+              <p className="mt-0.5 truncate font-mono-tabular text-xs text-[color:var(--text-3)]">{uuid}</p>
+            </div>
           </div>
-          <p className="mt-0.5 truncate font-mono-tabular text-xs text-[color:var(--text-3)]">{uuid}</p>
+          {nodeInfoItems.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {nodeInfoItems.map((item) => (
+                <span
+                  key={`${item.label}-${item.value}`}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-2 py-1 text-[11px] leading-none text-[color:var(--text-3)]"
+                >
+                  <span className="uppercase tracking-normal text-[color:var(--text-4)]">{item.label}</span>
+                  <span className="truncate font-mono-tabular text-[color:var(--text-2)]">{item.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <Link
           to="/_app/env/$env/nodes/$uuid"
           params={{ env, uuid }}
-          className="rounded border border-[color:var(--border)] px-3 py-1.5 text-xs font-medium text-[color:var(--text-2)] transition-colors hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-1)] px-3 py-1.5 text-xs font-medium text-[color:var(--text-2)] transition-colors hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]"
         >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back
         </Link>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-[color:var(--border)] bg-[#050708] text-[#d7f8df] shadow-inner">
-        <div className="flex-1 overflow-auto px-4 py-3 font-mono text-xs leading-5">
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3 font-mono text-xs leading-5" onScroll={focusCommandInput}>
           {sessionError && <Line tone="error" text={sessionError} />}
           {!session && !sessionError && <Line tone="muted" text="opening console..." />}
           {entries.map((entry) => (
@@ -200,9 +297,14 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={onSubmit} className="flex items-center gap-2 border-t border-white/10 px-4 py-2">
+        <form
+          onSubmit={onSubmit}
+          data-console-command-bar="true"
+          className="sticky bottom-0 z-10 flex shrink-0 items-center gap-2 border-t border-white/10 bg-[#050708] px-4 py-2"
+        >
           <span className="shrink-0 font-mono text-xs text-[#8fe8a4]">{prompt}</span>
           <input
+            ref={inputRef}
             aria-label="Console input"
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -224,7 +326,7 @@ function ConsoleEntry({ entry }: { entry: Entry }) {
   if (entry.type === 'input') {
     return (
       <div className="whitespace-pre-wrap">
-        <span className="text-[#8fe8a4]">{entry.cwd} $ </span>
+        <span className="text-[#8fe8a4]">{entry.prompt} </span>
         <span>{entry.text}</span>
       </div>
     );
@@ -233,6 +335,45 @@ function ConsoleEntry({ entry }: { entry: Entry }) {
     return <ResultTable rows={entry.rows} />;
   }
   return <Line text={entry.text} tone={entry.tone} />;
+}
+
+function historyToEntries(history: ConsoleHistoryEntry[]): Entry[] {
+  const entries: Entry[] = [];
+  for (const item of history) {
+    entries.push({
+      id: `history-in-${item.command.id}`,
+      type: 'input',
+      prompt: '$',
+      text: item.command.input,
+    });
+    if (item.command.error) {
+      entries.push({
+        id: `history-err-${item.command.id}`,
+        type: 'text',
+        tone: 'error',
+        text: item.command.error,
+      });
+    }
+    if (item.results.length > 0) {
+      entries.push({
+        id: `history-rows-${item.command.id}`,
+        type: 'table',
+        rows: item.results,
+      });
+    }
+  }
+  return entries;
+}
+
+function formatNodeInfoItems(info: ConsoleNodeInfo | null): NodeInfoItem[] {
+  if (!info) return [];
+  const items: NodeInfoItem[] = [];
+  if (info.ip_address) items.push({ label: 'ip', value: info.ip_address });
+  if (info.osquery_user) items.push({ label: 'user', value: info.osquery_user });
+  if (info.osquery_version) items.push({ label: 'osquery', value: info.osquery_version });
+  const platform = [info.platform, info.platform_version].filter(Boolean).join(' ');
+  if (platform) items.push({ label: 'platform', value: platform });
+  return items;
 }
 
 function Line({ text, tone }: { text: string; tone?: 'error' | 'muted' }) {
