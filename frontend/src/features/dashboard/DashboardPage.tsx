@@ -4,7 +4,6 @@
  * Data sources:
  *   GET /api/v1/stats                                  (polled every 30s)
  *   GET /api/v1/audit-logs?page_size=8                 (polled every 5m)
- *   GET /api/v1/nodes/{firstEnv}?page_size=5&sort=firstseen&dir=desc  (polled every 60s)
  *   GET /api/v1/stats/activity/env-tiles/{env}?days=N  (per env; node activity
  *                                                       line chart: status, result,
  *                                                       config, query read/write)
@@ -16,8 +15,16 @@ import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { getStats, getOsqueryVersionCounts, getEnvActivityTiles } from '$/api/stats';
-import type { PlatformCounts, NodeTileSeries, ActivityInterval } from '$/api/stats';
+import {
+  getStats,
+  getOsqueryVersionCounts,
+  getEnvActivityTiles,
+  TILE_CATEGORIES,
+  TILE_CATEGORY_LABELS,
+  tileCategoryTotal,
+  tileLastSeen,
+} from '$/api/stats';
+import type { PlatformCounts, NodeTileSeries, ActivityInterval, TileCategory } from '$/api/stats';
 import { listAuditLogs, LOG_TYPE, LOG_TYPE_LABELS } from '$/api/audit';
 import { listNodes } from '$/api/nodes';
 import { listQueries } from '$/api/queries';
@@ -28,7 +35,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { StatusPip } from '$/components/data/StatusPip';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
-import { DEFAULT_INACTIVE_HOURS, isNodeActive } from '$/lib/node-status';
+import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
 
 // ---------------------------------------------------------------------------
 // Node-activity series, derived from the Redis-backed env-tiles endpoint.
@@ -628,29 +635,115 @@ function ActivityRow({
 }
 
 // ---------------------------------------------------------------------------
-// Recent enrollment row
+// Endpoint health — selected-environment osquery endpoint activity.
 // ---------------------------------------------------------------------------
-function EnrollRow({
-  hostname, platform, environment, lastSeen, isActive,
-}: { hostname: string; platform: string; environment: string; lastSeen: string; isActive: boolean }) {
+const ENDPOINT_HEALTH_TONE: Record<TileCategory, string> = {
+  config: 'var(--info)',
+  status: 'var(--success)',
+  result: 'var(--signal)',
+  query_read: 'var(--warning)',
+  query_write: 'var(--signal)',
+};
+
+function EndpointHealthPanel({
+  tiles,
+  intervalLabel,
+  isLoading,
+  isFetching,
+  hasEnvironment,
+  onRefresh,
+}: {
+  tiles?: NodeTileSeries;
+  intervalLabel: string;
+  isLoading: boolean;
+  isFetching: boolean;
+  hasEnvironment: boolean;
+  onRefresh: () => void;
+}) {
+  const rows = TILE_CATEGORIES.map((category) => {
+    const total = tiles ? tileCategoryTotal(tiles, category) : 0;
+    const lastSeen = tiles ? tileLastSeen(tiles, category) : null;
+    return { category, total, lastSeen };
+  });
+  const anyActivity = rows.some((row) => row.total > 0);
+
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-[color:var(--border)] last:border-0">
-      <StatusPip variant={isActive ? 'success' : 'warning'} />
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-[color:var(--text-1)] truncate font-mono-tabular">
-          {hostname || 'unknown'}
+    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
+        <div>
+          <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
+            Endpoint health
+          </span>
+          <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+            {intervalLabel}
+          </div>
         </div>
-        <div className="text-[10px] text-[color:var(--text-3)] mt-0.5 uppercase tracking-[0.08em] font-mono-tabular">
-          {platform || '—'} · {environment}
-        </div>
+        <RefreshButton onClick={onRefresh} isPending={isFetching} />
       </div>
-      <time
-        className="flex-shrink-0 text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums"
-        dateTime={lastSeen}
-        title={new Date(lastSeen).toLocaleString()}
-      >
-        {relativeTime(lastSeen)}
-      </time>
+      <div className="px-4 flex-1">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2.5 border-b border-[color:var(--border)] last:border-0">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+          ))
+        ) : !hasEnvironment ? (
+          <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
+            No environment selected.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-0 h-8 items-center border-b border-[color:var(--border)] text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
+              <span>Endpoint</span>
+              <span className="text-right">Events</span>
+              <span className="text-right">Last seen</span>
+            </div>
+            {rows.map((row) => {
+              const label = TILE_CATEGORY_LABELS[row.category];
+              return (
+                <div
+                  key={row.category}
+                  className="grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2.5 border-b border-[color:var(--border)] last:border-0"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      aria-hidden
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: ENDPOINT_HEALTH_TONE[row.category] }}
+                    />
+                    <span className="text-[13px] font-medium text-[color:var(--text-1)] truncate">
+                      {label}
+                    </span>
+                  </div>
+                  <span className="font-mono-tabular text-[12px] text-[color:var(--text-1)] tabular-nums text-right">
+                    {row.total.toLocaleString()}
+                  </span>
+                  {row.lastSeen ? (
+                    <time
+                      className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tabular-nums text-right"
+                      dateTime={row.lastSeen}
+                      title={new Date(row.lastSeen).toLocaleString()}
+                    >
+                      {formatRelative(row.lastSeen)}
+                    </time>
+                  ) : (
+                    <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tabular-nums text-right">
+                      none
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {!anyActivity && (
+              <div className="py-3 text-center text-[11px] text-[color:var(--text-3)]">
+                No endpoint activity in this window.
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1133,21 +1226,6 @@ export function DashboardPage() {
   const effectiveEnv = envMeta?.uuid ?? envUuids[0] ?? '';
   const envName = envMeta?.name ?? envParam;
 
-  const { data: recentNodes, isLoading: nodesLoading, refetch: refetchRecentNodes } = useQuery({
-    queryKey: ['dashboard-recent-nodes', effectiveEnv],
-    queryFn: () =>
-      listNodes({
-        env: effectiveEnv!,
-        sort: 'firstseen',
-        dir: 'desc',
-        pageSize: 5,
-      }),
-    enabled: !!effectiveEnv,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: false,
-    retry: 1,
-  });
-
   // ── Recently seen nodes — pulled from the selected env, lastseen desc ─
   const { data: recentlySeenNodes, isLoading: recentlySeenLoading, refetch: refetchRecentlySeen } = useQuery({
     queryKey: ['dashboard-recently-seen', effectiveEnv],
@@ -1259,8 +1337,12 @@ export function DashboardPage() {
       total: slice(trimmedSeries.total),
     };
   })();
-  // Sparkline data from the total series.
-  const sparkData = chartSeries.total;
+  const activityWindowLabel =
+    activityInterval === '7d'
+      ? 'Last 7 days'
+      : activityInterval === '12h'
+        ? 'Last 12 hours'
+        : 'Last 24 hours';
 
   const envTableRows: EnvTableEnv[] = (data?.environments ?? []).map((e) => ({
     uuid: e.uuid,
@@ -1366,7 +1448,7 @@ export function DashboardPage() {
                 Node activity
               </div>
               <div className="text-[11px] font-mono-tabular text-[color:var(--text-3)] mt-0.5 tabular-nums">
-                {activityInterval === '7d' ? 'Last 7 days' : activityInterval === '12h' ? 'Last 12 hours' : 'Last 24 hours'} · per environment
+                {activityWindowLabel} · per environment
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1718,8 +1800,8 @@ export function DashboardPage() {
         )}
       </section>
 
-      {/* ── Activity feed + Recent enrollments ──────────────────────────── */}
-      <section aria-label="Recent activity and enrollments" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ── Activity feed + Endpoint health ────────────────────────────── */}
+      <section aria-label="Recent activity and endpoint health" className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Activity feed — 2/3 width on md+ */}
         <div className="md:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
@@ -1758,62 +1840,14 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent enrollments — 1/3 */}
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
-            <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
-              Recent enrollments
-            </span>
-            <div className="flex items-center gap-2">
-              <RefreshButton onClick={() => void refetchRecentNodes()} isPending={nodesLoading} />
-              {effectiveEnv && (
-                <Link
-                  to="/_app/env/$env/nodes"
-                  params={{ env: effectiveEnv }}
-                  className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
-                >
-                  View all →
-                </Link>
-              )}
-            </div>
-          </div>
-          <div className="px-4 flex-1">
-            {nodesLoading || (!effectiveEnv && isLoading) ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-[color:var(--border)] last:border-0">
-                  <Skeleton className="w-2 h-2 rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-2 w-1/2" />
-                  </div>
-                  <Skeleton className="h-2.5 w-8 flex-shrink-0" />
-                </div>
-              ))
-            ) : !effectiveEnv ? (
-              <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
-                No environment selected.
-              </div>
-            ) : !recentNodes?.items.length ? (
-              <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
-                No nodes enrolled yet.
-              </div>
-            ) : (
-              recentNodes.items.map((node) => {
-                const isActive = isNodeActive(node.last_seen, inactiveHours);
-                return (
-                  <EnrollRow
-                    key={node.uuid}
-                    hostname={node.hostname || node.localname}
-                    platform={node.platform}
-                    environment={node.environment}
-                    lastSeen={node.last_seen}
-                    isActive={isActive}
-                  />
-                );
-              })
-            )}
-          </div>
-        </div>
+        <EndpointHealthPanel
+          tiles={tiles}
+          intervalLabel={activityWindowLabel}
+          isLoading={activityQueries.some((q) => q.isLoading) || (!effectiveEnv && isLoading)}
+          isFetching={activityQueries.some((q) => q.isFetching)}
+          hasEnvironment={!!effectiveEnv}
+          onRefresh={() => void refetchActivityTiles()}
+        />
       </section>
 
       {/* ── Recently seen nodes ─────────────────────────────────────────── */}
