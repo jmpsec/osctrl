@@ -10,19 +10,25 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { DashboardPage } from './DashboardPage';
-import type { StatsResponse } from '$/api/stats';
+import type { NodeTileSeries, StatsResponse } from '$/api/stats';
 
 // ---------------------------------------------------------------------------
 // Mock the stats API module
 // ---------------------------------------------------------------------------
 const mockGetStats = vi.fn<() => Promise<StatsResponse>>();
+const mockGetEnvActivityTiles = vi.fn<(env: string, days?: number) => Promise<NodeTileSeries>>();
 
-vi.mock('$/api/stats', () => ({
-  getStats: () => mockGetStats(),
-  // Other dashboard panels call these; tests don't assert on them, so
-  // resolve to empty so the queries don't reject and trigger extra logs.
-  getOsqueryVersionCounts: () => Promise.resolve([]),
-}));
+vi.mock('$/api/stats', async () => {
+  const actual = await vi.importActual<typeof import('$/api/stats')>('$/api/stats');
+  return {
+    ...actual,
+    getStats: () => mockGetStats(),
+    // Other dashboard panels call these; tests don't assert on them, so
+    // resolve to empty so the queries don't reject and trigger extra logs.
+    getOsqueryVersionCounts: () => Promise.resolve([]),
+    getEnvActivityTiles: (env: string, days?: number) => mockGetEnvActivityTiles(env, days),
+  };
+});
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
@@ -80,6 +86,23 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
       },
     ],
     ...overrides,
+  };
+}
+
+function makeTileSeries(): NodeTileSeries {
+  const buckets = 24;
+  const start = new Date(Date.now() - (buckets - 1) * 60 * 60 * 1000).toISOString();
+  const zeros = () => Array.from({ length: buckets }, () => 0);
+  return {
+    start,
+    bucket_seconds: 3600,
+    enroll: zeros(),
+    config: [...zeros().slice(0, buckets - 1), 3],
+    status: [...zeros().slice(0, buckets - 2), 1, 2],
+    result: [...zeros().slice(0, buckets - 3), 2, 1, 1],
+    query_read: [...zeros().slice(0, buckets - 1), 1],
+    query_write: [...zeros().slice(0, buckets - 1), 1],
+    total: [...zeros().slice(0, buckets - 3), 2, 2, 7],
   };
 }
 
@@ -141,6 +164,7 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries());
   });
 
   afterEach(() => {
@@ -214,6 +238,20 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(screen.getByText('No environments configured.')).toBeInTheDocument(),
     );
+  });
+
+  it('shows endpoint health instead of recent enrollments', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument(),
+    );
+
+    expect(screen.getByText('Endpoint health')).toBeInTheDocument();
+    expect(await screen.findByText('Query read')).toBeInTheDocument();
+    expect(screen.getByText('Query write')).toBeInTheDocument();
+    expect(screen.queryByText('Recent enrollments')).not.toBeInTheDocument();
   });
 
   it('shows error state and retry button when the API call fails', async () => {
