@@ -306,7 +306,7 @@ func (h *HandlersApi) consoleEnvContext(w http.ResponseWriter, r *http.Request) 
 		return environments.TLSEnvironment{}, nil, false
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return environments.TLSEnvironment{}, nil, false
 	}

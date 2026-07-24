@@ -627,7 +627,7 @@ export function NodeDetailPage() {
     staleTime: 60_000,
   });
   const envUuid = envs?.find((e) => e.name === env)?.uuid;
-  const canDeleteNode =
+  const canAdminNode =
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
 
@@ -790,7 +790,7 @@ export function NodeDetailPage() {
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {acceleratedEnabled && (
+              {acceleratedEnabled && canAdminNode && (
                 <Link
                   to="/_app/env/$env/nodes/$uuid/console"
                   params={{ env, uuid }}
@@ -845,7 +845,7 @@ export function NodeDetailPage() {
                   a true hard-delete is ever needed it should land as a
                   separate package-level call gated behind a stronger
                   confirmation. */}
-              {canDeleteNode && (
+              {canAdminNode && (
                 <button
                   type="button"
                   aria-label="Archive this node"

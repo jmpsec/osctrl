@@ -359,4 +359,22 @@ describe('NodeDetailPage', () => {
 
     expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
   });
+
+  it('hides the console action from non-admin users even when accelerated queries are enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: {
+        'env-uuid-1': { user: true, query: true, carve: false, admin: false },
+      },
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
+  });
 });

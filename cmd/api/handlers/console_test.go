@@ -49,7 +49,7 @@ func setupConsoleHandlers(t *testing.T) (*gorm.DB, *HandlersApi, environments.TL
 	require.NoError(t, userManager.Create(users.AdminUser{Username: "bob"}))
 	require.NoError(t, userManager.CreatePermission(users.UserPermission{
 		Username:      "alice",
-		AccessType:    int(users.QueryLevel),
+		AccessType:    int(users.AdminLevel),
 		AccessValue:   true,
 		Environment:   env.UUID,
 		EnvironmentID: env.ID,
@@ -124,8 +124,27 @@ func TestConsoleSessionCreateReturnsNodeInfo(t *testing.T) {
 	require.Equal(t, "14.5", resp.NodeInfo.PlatformVersion)
 }
 
-func TestConsoleSessionCreateRequiresQueryPermission(t *testing.T) {
+func TestConsoleSessionCreateRejectsUserWithoutAdminPermission(t *testing.T) {
 	_, h, env, node := setupConsoleHandlers(t)
+
+	req := consoleRequest(http.MethodPost, "/console", nil, "bob")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("uuid", node.UUID)
+	rr := httptest.NewRecorder()
+
+	h.ConsoleSessionCreateHandler(rr, req)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func TestConsoleSessionCreateRejectsQueryOnlyUser(t *testing.T) {
+	_, h, env, node := setupConsoleHandlers(t)
+	require.NoError(t, h.Users.CreatePermission(users.UserPermission{
+		Username:      "bob",
+		AccessType:    int(users.QueryLevel),
+		AccessValue:   true,
+		Environment:   env.UUID,
+		EnvironmentID: env.ID,
+	}))
 
 	req := consoleRequest(http.MethodPost, "/console", nil, "bob")
 	req.SetPathValue("env", env.Name)
@@ -238,12 +257,19 @@ func TestConsoleOsqueryModeSQLUsesLongerExpiration(t *testing.T) {
 	require.True(t, distributed.Expiration.Before(before.Add(61*time.Second)))
 }
 
-func TestConsoleGetRequiresCarvePermission(t *testing.T) {
+func TestConsoleCommandRejectsNonAdminSessionOwner(t *testing.T) {
 	_, h, env, node := setupConsoleHandlers(t)
-	session, err := h.Console.CreateSession(env, node, "alice")
+	require.NoError(t, h.Users.CreatePermission(users.UserPermission{
+		Username:      "bob",
+		AccessType:    int(users.QueryLevel),
+		AccessValue:   true,
+		Environment:   env.UUID,
+		EnvironmentID: env.ID,
+	}))
+	session, err := h.Console.CreateSession(env, node, "bob")
 	require.NoError(t, err)
 
-	req := consoleRequest(http.MethodPost, "/console", []byte(`{"input":"get /etc/passwd"}`), "alice")
+	req := consoleRequest(http.MethodPost, "/console", []byte(`{"input":"ps"}`), "bob")
 	req.SetPathValue("env", env.Name)
 	req.SetPathValue("session_id", fmt.Sprint(session.ID))
 	rr := httptest.NewRecorder()
@@ -254,13 +280,6 @@ func TestConsoleGetRequiresCarvePermission(t *testing.T) {
 
 func TestConsoleGetCreatesNodeTargetedCarve(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
-	require.NoError(t, h.Users.CreatePermission(users.UserPermission{
-		Username:      "alice",
-		AccessType:    int(users.CarveLevel),
-		AccessValue:   true,
-		Environment:   env.UUID,
-		EnvironmentID: env.ID,
-	}))
 	session, err := h.Console.CreateSession(env, node, "alice")
 	require.NoError(t, err)
 
