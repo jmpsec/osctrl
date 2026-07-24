@@ -10,7 +10,8 @@ Talks exclusively to `osctrl-api` (port 8081 by default). Served as static files
 ## 🤔 What is the frontend?
 
 The **osctrl frontend** is the modern operator UI for managing environments,
-nodes, queries, carves, tags, users, and settings through `osctrl-api`.
+nodes, node console sessions, queries, saved queries, carves, tags, users,
+settings, and optional posture data through `osctrl-api`.
 
 ### 🚀 Why it exists
 
@@ -54,7 +55,7 @@ frontend/
 
 ```bash
 # Terminal 1 — osctrl API (Go)
-make api-dev   # starts osctrl-api on :8081
+osctrl-api     # start osctrl-api on :8081 for the Vite proxy
 
 # Terminal 2 — React SPA
 cd frontend
@@ -88,13 +89,14 @@ Output: `frontend/dist/`. Deploy options:
 
 ## ⚙️ Tech stack
 
-- React 19 + TypeScript 5 (strict)
-- Vite 7
+- React 19 + TypeScript 6 (strict)
+- Vite 8
 - TanStack Router (typed routing)
 - TanStack Query 5 (server state)
 - TanStack Table 8 (headless table)
 - Tailwind CSS v4 via `@tailwindcss/vite`
 - Radix UI primitives (à la carte)
-- react-hook-form 7 + zod 3
+- react-hook-form 7 + zod 4
+- Monaco Editor
 - Vitest + @testing-library/react + jsdom
 - Playwright (e2e)
