@@ -302,12 +302,12 @@ func ParseUptime(record NodePosture) (*types.NodeUptime, error) {
 	if err != nil {
 		return nil, err
 	}
-	totalSeconds, _ := parseUptimeInt(row, "total_seconds")
+	totalSeconds, _ := parseUptimeInt64(row, "total_seconds")
 	return &types.NodeUptime{
-		Days:         int(days),
-		Hours:        int(hours),
-		Minutes:      int(minutes),
-		Seconds:      int(seconds),
+		Days:         days,
+		Hours:        hours,
+		Minutes:      minutes,
+		Seconds:      seconds,
 		TotalSeconds: totalSeconds,
 		LastSeen:     record.LastSeen,
 	}, nil
@@ -336,7 +336,31 @@ func parsePostureRows(raw string) ([]map[string]json.RawMessage, error) {
 	}
 }
 
-func parseUptimeInt(row map[string]json.RawMessage, key string) (int64, error) {
+func parseUptimeInt(row map[string]json.RawMessage, key string) (int, error) {
+	raw, ok := row[key]
+	if !ok {
+		return 0, fmt.Errorf("uptime missing %q", key)
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		n, err := strconv.ParseInt(text, 10, strconv.IntSize)
+		if err != nil {
+			return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+		}
+		return int(n), nil
+	}
+	var num json.Number
+	if err := json.Unmarshal(raw, &num); err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	n, err := strconv.ParseInt(num.String(), 10, strconv.IntSize)
+	if err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	return int(n), nil
+}
+
+func parseUptimeInt64(row map[string]json.RawMessage, key string) (int64, error) {
 	raw, ok := row[key]
 	if !ok {
 		return 0, fmt.Errorf("uptime missing %q", key)
