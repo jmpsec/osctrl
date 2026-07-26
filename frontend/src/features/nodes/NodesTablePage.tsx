@@ -7,9 +7,10 @@ import { getStats, getNodeActivityTilesBatch, type NodeTileSeries } from '$/api/
 import { listEnvTags, tagNode } from '$/api/tags';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
+import { getFeatures } from '$/api/features';
 import { AuthError } from '$/api/client';
 import { countryFlag } from '$/lib/flags';
-import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag } from '$/api/types';
+import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag, NodeUptime, NodePostureSummary } from '$/api/types';
 import { formatRelative, formatBytes } from '$/lib/time';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
@@ -20,6 +21,7 @@ import { Pagination } from '$/components/data/Pagination';
 import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { HealthBadge, TagChips } from './nodeSignals';
 
 const TAG_TYPE_REGULAR = 6; // mirrors pkg/tags.TagTypeTag
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
@@ -210,10 +212,57 @@ interface ActivityCellProps {
   bytesReceived: number;
 }
 
+function formatTableUptime(uptime?: NodeUptime): string {
+  if (!uptime) return '—';
+  if (uptime.days > 0) return `${uptime.days}d ${uptime.hours}h`;
+  if (uptime.hours > 0) return `${uptime.hours}h ${uptime.minutes}m`;
+  if (uptime.minutes > 0) return `${uptime.minutes}m`;
+  return `${uptime.seconds}s`;
+}
+
+function displayRiskLevel(riskLevel?: string): 'low' | 'medium' | 'high' | undefined {
+  if (riskLevel === 'low' || riskLevel === 'medium' || riskLevel === 'high') return riskLevel;
+  if (riskLevel === 'critical') return 'high';
+  return undefined;
+}
+
+function RiskBadge({ riskLevel }: { riskLevel?: string }) {
+  const risk = displayRiskLevel(riskLevel);
+  if (!risk) {
+    return <span className="text-[color:var(--text-3)]">—</span>;
+  }
+  return (
+    <span
+      aria-label={`Posture risk ${risk}`}
+      className={cn(
+        'inline-flex items-center px-1.5 py-0.5 rounded-full border',
+        'text-[9px] font-mono-tabular uppercase tracking-[0.08em]',
+        risk === 'low' && 'border-[color:var(--success)]/25 bg-[color:var(--success)]/10 text-[color:var(--success)]',
+        risk === 'medium' && 'border-[color:var(--warning)]/25 bg-[color:var(--warning)]/10 text-[color:var(--warning)]',
+        risk === 'high' && 'border-[color:var(--danger)]/25 bg-[color:var(--danger)]/10 text-[color:var(--danger)]',
+      )}
+    >
+      {risk}
+    </span>
+  );
+}
+
+function PostureCell({ uptime, posture }: { uptime?: NodeUptime; posture?: NodePostureSummary }) {
+  return (
+    <div className="flex flex-col gap-1 leading-tight">
+      <span className="text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
+        Uptime {formatTableUptime(uptime)}
+      </span>
+      <span className="inline-flex items-center gap-1 text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
+        Risk <RiskBadge riskLevel={posture?.risk_level} />
+      </span>
+    </div>
+  );
+}
+
 /**
- * Per-row "Activity" cell — last seen + bytes received. Just the textual
- * busy-signal; the 24h heatmap lives in its own column (HeatmapCell) so
- * each gets the width it needs.
+ * Per-row "Activity" cell — last seen + bytes received. Posture quick signals
+ * live in their own column when posture is enabled.
  */
 function ActivityCell({ lastSeen, bytesReceived }: ActivityCellProps) {
   return (
@@ -419,6 +468,12 @@ export function NodesTablePage() {
     me?.admin === true ||
     (envUuidForPerms !== undefined &&
       me?.permissions?.[envUuidForPerms]?.admin === true);
+  const { data: features } = useQuery({
+    queryKey: ['features'],
+    queryFn: getFeatures,
+    staleTime: 5 * 60_000,
+  });
+  const postureEnabled = features?.posture === true;
 
   const queryKey = ['nodes', env, { status, q, sort, dir, page, pageSize, platform }] as const;
 
@@ -529,6 +584,7 @@ export function NodesTablePage() {
   const nodes = data?.items ?? [];
   const totalItems = data?.total_items ?? 0;
   const totalPages = data?.total_pages ?? 0;
+  const tableColumnCount = postureEnabled ? 9 : 8;
 
   function handleSortChange(col: NodeSort, newDir: SortDir) {
     updateSearch({ sort: col, dir: newDir, page: 1 });
@@ -670,17 +726,20 @@ export function NodesTablePage() {
 
       {/* ── Table ──
           table-fixed + explicit colgroup. The 24h heatmap gets its own
-          240px column so it can use comfortable 7px cells without competing
-          with the Activity (last-seen + bytes) column for space. Hostname
-          is the flex column that absorbs leftover width. */}
+          240px column so it can use comfortable 7px cells. Posture has a
+          dedicated column when the feature is enabled. Hostname absorbs
+          leftover width. */}
       <div className="flex-1 overflow-auto min-h-0">
         <table className="w-full text-sm border-collapse table-fixed">
           <colgroup>
             <col className="w-10" />
             <col className="w-[110px]" />
-            <col />
-            <col className="w-[180px]" />
             <col className="w-[120px]" />
+            <col />
+            <col className="w-[160px]" />
+            <col className="w-[170px]" />
+            <col className="w-[120px]" />
+            {postureEnabled && <col className="w-[150px]" />}
             <col className="w-[240px]" />
           </colgroup>
           <thead>
@@ -703,6 +762,12 @@ export function NodesTablePage() {
               >
                 Status
               </th>
+              <th
+                scope="col"
+                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+              >
+                Health
+              </th>
               <SortableHeader
                 column="hostname"
                 label="Hostname"
@@ -710,6 +775,12 @@ export function NodesTablePage() {
                 currentDir={dir}
                 onSortChange={handleSortChange}
               />
+              <th
+                scope="col"
+                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+              >
+                Tags
+              </th>
               {/*
                 We surface a single "UUID" header — invisible to the eye, but
                 the test fixture references `getByText('abc12345')` and we want
@@ -731,6 +802,14 @@ export function NodesTablePage() {
                 defaultDir="desc"
                 onSortChange={handleSortChange}
               />
+              {postureEnabled && (
+                <th
+                  scope="col"
+                  className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                >
+                  Posture
+                </th>
+              )}
               <th
                 scope="col"
                 className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
@@ -741,11 +820,11 @@ export function NodesTablePage() {
           </thead>
 
           <tbody data-stale={isFetching && !isLoading ? 'true' : undefined}>
-            {isLoading && Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={6} />)}
+            {isLoading && Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cells={tableColumnCount} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={tableColumnCount}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -770,7 +849,7 @@ export function NodesTablePage() {
 
             {!isLoading && !isError && nodes.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={tableColumnCount}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -835,6 +914,11 @@ export function NodesTablePage() {
                       />
                     </td>
 
+                    {/* Health — server-side compact triage calculation */}
+                    <td className="px-4 py-2.5 align-middle">
+                      <HealthBadge health={node.health} />
+                    </td>
+
                     {/* Host — name + uuid + ip stacked */}
                     <td className="px-4 py-2.5 align-middle">
                       <HostCell
@@ -845,6 +929,11 @@ export function NodesTablePage() {
                         ip={node.ip_address}
                         countryCode={node.country_code}
                       />
+                    </td>
+
+                    {/* Tags — compact grouping chips */}
+                    <td className="px-4 py-2.5 align-middle">
+                      <TagChips tags={node.tags} max={3} />
                     </td>
 
                     {/* System — platform icon + version + osquery */}
@@ -863,6 +952,12 @@ export function NodesTablePage() {
                         bytesReceived={node.bytes_received}
                       />
                     </td>
+
+                    {postureEnabled && (
+                      <td className="px-4 py-2.5 align-middle">
+                        <PostureCell uptime={node.uptime} posture={node.posture} />
+                      </td>
+                    )}
 
                     {/* 24h — 4-category heatmap, dedicated column for breathing room */}
                     <td className="px-4 py-2.5 align-middle">

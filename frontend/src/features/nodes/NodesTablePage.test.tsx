@@ -14,12 +14,14 @@ import { NodesTablePage } from './NodesTablePage';
 import { nodesSearchSchema } from '$/routes/_app/env/$env/nodes';
 import type { NodesPagedResponse } from '$/api/types';
 import type { SettingValue } from '$/api/settings';
+import type { Features } from '$/api/features';
 
 // ---------------------------------------------------------------------------
 // Mock the nodes API module
 // ---------------------------------------------------------------------------
 const mockListNodes = vi.fn<() => Promise<NodesPagedResponse>>();
 const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
+const mockGetFeatures = vi.fn<() => Promise<Features>>();
 
 vi.mock('$/api/nodes', () => ({
   listNodes: (...args: unknown[]) => mockListNodes(...(args as [])),
@@ -27,6 +29,10 @@ vi.mock('$/api/nodes', () => ({
 
 vi.mock('$/api/settings', () => ({
   listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
+}));
+
+vi.mock('$/api/features', () => ({
+  getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -153,6 +159,7 @@ describe('NodesTablePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListServiceSettings.mockResolvedValue([]);
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
   });
 
   it('renders node rows after loading', async () => {
@@ -264,5 +271,150 @@ describe('NodesTablePage', () => {
     });
 
     expect(screen.getByText('active')).toBeInTheDocument();
+  });
+
+  it('shows uptime and posture risk badge when posture is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockListNodes.mockResolvedValue(
+      makeResponse({
+        items: [
+          {
+            ...makeResponse().items[0],
+            uptime: {
+              days: 7,
+              hours: 3,
+              minutes: 12,
+              seconds: 9,
+              total_seconds: 616329,
+              last_seen: '2026-07-26T10:30:00Z',
+            },
+            posture: {
+              risk_level: 'high',
+            },
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('web-server-01')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Posture' })).toBeInTheDocument();
+    expect(screen.getByText('Uptime 7d 3h')).toBeInTheDocument();
+    const badge = screen.getByText('high');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute('aria-label', 'Posture risk high');
+    expect(screen.queryByText('42')).not.toBeInTheDocument();
+
+    const row = screen.getByText('web-server-01').closest('tr') as HTMLTableRowElement | null;
+    expect(row).not.toBeNull();
+    expect(row!.cells[6]).not.toHaveTextContent('Uptime');
+    expect(row!.cells[6]).not.toHaveTextContent('Risk');
+    expect(row!.cells[7]).toHaveTextContent('Uptime 7d 3h');
+    expect(row!.cells[7]).toHaveTextContent('Risk');
+  });
+
+  it('shows health and tags in their own columns', async () => {
+    mockListNodes.mockResolvedValue(
+      makeResponse({
+        items: [
+          {
+            ...makeResponse().items[0],
+            health: {
+              status: 'at_risk',
+              reason: 'Posture risk high',
+              signals: ['active', 'posture high'],
+            },
+            tags: [
+              {
+                id: 1,
+                created_at: '2026-07-26T10:00:00Z',
+                updated_at: '2026-07-26T10:00:00Z',
+                name: 'prod',
+                description: 'Production',
+                color: '#2ecc71',
+                icon: 'fas fa-tag',
+                created_by: 'alice',
+                custom_tag: 'tag',
+                auto_tag: false,
+                environment_id: 1,
+                tag_type: 6,
+                cohort: true,
+              },
+              {
+                id: 2,
+                created_at: '2026-07-26T10:00:00Z',
+                updated_at: '2026-07-26T10:00:00Z',
+                name: 'critical',
+                description: 'Critical',
+                color: '#e74c3c',
+                icon: 'fas fa-tag',
+                created_by: 'alice',
+                custom_tag: 'tag',
+                auto_tag: false,
+                environment_id: 1,
+                tag_type: 6,
+                cohort: true,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('web-server-01')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Health' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Tags' })).toBeInTheDocument();
+    expect(screen.getByText('at risk')).toHaveAttribute('title', 'Posture risk high');
+    expect(screen.getByText('prod')).toBeInTheDocument();
+    expect(screen.getByText('critical')).toBeInTheDocument();
+
+    const row = screen.getByText('web-server-01').closest('tr') as HTMLTableRowElement | null;
+    expect(row).not.toBeNull();
+    expect(row!.cells[2]).toHaveTextContent('at risk');
+    expect(row!.cells[4]).toHaveTextContent('prod');
+    expect(row!.cells[4]).toHaveTextContent('critical');
+  });
+
+  it('hides posture quick signals when posture is disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockListNodes.mockResolvedValue(
+      makeResponse({
+        items: [
+          {
+            ...makeResponse().items[0],
+            uptime: {
+              days: 7,
+              hours: 3,
+              minutes: 12,
+              seconds: 9,
+              total_seconds: 616329,
+              last_seen: '2026-07-26T10:30:00Z',
+            },
+            posture: {
+              risk_level: 'high',
+            },
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('web-server-01')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('columnheader', { name: 'Posture' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Uptime 7d 3h')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Posture risk high')).not.toBeInTheDocument();
   });
 });

@@ -73,6 +73,18 @@ export interface NodeUptime {
   last_seen?: string;
 }
 
+export interface NodePostureSummary {
+  risk_level?: string;
+}
+
+export type NodeHealthStatus = 'healthy' | 'attention' | 'at_risk' | 'offline' | 'unknown';
+
+export interface NodeHealth {
+  status?: NodeHealthStatus;
+  reason?: string;
+  signals?: string[];
+}
+
 export interface OsqueryNode {
   id: number;
   created_at: string;
@@ -104,6 +116,12 @@ export interface OsqueryNode {
   system_info?: NodeEnrichment;
   /** Optional uptime populated from the latest posture uptime result. */
   uptime?: NodeUptime;
+  /** Optional posture summary populated when posture is enabled. */
+  posture?: NodePostureSummary;
+  /** Environment-scoped tags currently attached to the node. */
+  tags?: AdminTag[];
+  /** Compact server-side triage calculation for list/detail surfaces. */
+  health?: NodeHealth;
 }
 
 export type NodeStatus = 'all' | 'active' | 'inactive';
