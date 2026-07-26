@@ -2,10 +2,12 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/tags"
 )
 
 // SPA-facing node projections that surface the parsed-and-sanitized subset of
@@ -106,6 +108,21 @@ type NodeUptime struct {
 	LastSeen     time.Time `json:"last_seen,omitempty"`
 }
 
+// NodePostureSummary is optional quick posture metadata for dense node-list
+// surfaces. Keep this intentionally compact: detailed controls and numeric
+// scores stay on the posture tab.
+type NodePostureSummary struct {
+	RiskLevel string `json:"risk_level,omitempty"`
+}
+
+// NodeHealth is a compact triage signal for dense node-list and node-detail
+// surfaces. Detailed evidence stays in activity/status/posture views.
+type NodeHealth struct {
+	Status  string   `json:"status,omitempty"`
+	Reason  string   `json:"reason,omitempty"`
+	Signals []string `json:"signals,omitempty"`
+}
+
 // NodeView is the JSON shape returned by the node show + list endpoints.
 // It embeds OsqueryNode verbatim (so existing JSON fields stay) and adds the
 // optional enrichment block. Consumers that don't care about the enrichment
@@ -113,10 +130,84 @@ type NodeUptime struct {
 // from it directly.
 type NodeView struct {
 	nodes.OsqueryNode
-	NodeKey     string          `json:"node_key,omitempty"`
-	Enrichment  *NodeEnrichment `json:"system_info,omitempty"`
-	CountryCode string          `json:"country_code,omitempty"`
-	Uptime      *NodeUptime     `json:"uptime,omitempty"`
+	NodeKey     string              `json:"node_key,omitempty"`
+	Enrichment  *NodeEnrichment     `json:"system_info,omitempty"`
+	CountryCode string              `json:"country_code,omitempty"`
+	Uptime      *NodeUptime         `json:"uptime,omitempty"`
+	Posture     *NodePostureSummary `json:"posture,omitempty"`
+	Tags        []tags.AdminTag     `json:"tags,omitempty"`
+	Health      NodeHealth          `json:"health,omitempty"`
+}
+
+// CalculateNodeHealth produces the table/detail triage state from the same
+// data the API already projects. Offline wins over posture so operators do not
+// mistake stale posture data for current risk.
+func CalculateNodeHealth(n nodes.OsqueryNode, inactiveHours int64, postureEnabled bool, posture *NodePostureSummary) NodeHealth {
+	if inactiveHours <= 0 {
+		inactiveHours = 72
+	}
+	if !nodes.IsActive(n, inactiveHours) {
+		if n.LastSeen.IsZero() {
+			return NodeHealth{
+				Status:  "offline",
+				Reason:  "Node has never checked in",
+				Signals: []string{"last seen unknown"},
+			}
+		}
+		return NodeHealth{
+			Status:  "offline",
+			Reason:  "Node has not checked in within the inactive threshold",
+			Signals: []string{"inactive threshold " + formatHoursSignal(inactiveHours)},
+		}
+	}
+	if postureEnabled {
+		risk := strings.ToLower(strings.TrimSpace(postureRisk(posture)))
+		switch risk {
+		case "critical", "high":
+			return NodeHealth{
+				Status:  "at_risk",
+				Reason:  "Posture risk " + risk,
+				Signals: []string{"active", "posture " + risk},
+			}
+		case "medium":
+			return NodeHealth{
+				Status:  "attention",
+				Reason:  "Posture risk medium",
+				Signals: []string{"active", "posture medium"},
+			}
+		case "low":
+			return NodeHealth{
+				Status:  "healthy",
+				Reason:  "Node is active and posture risk is low",
+				Signals: []string{"active", "posture low"},
+			}
+		default:
+			return NodeHealth{
+				Status:  "attention",
+				Reason:  "Posture data unavailable",
+				Signals: []string{"active", "posture unknown"},
+			}
+		}
+	}
+	return NodeHealth{
+		Status:  "healthy",
+		Reason:  "Node is active",
+		Signals: []string{"active"},
+	}
+}
+
+func postureRisk(posture *NodePostureSummary) string {
+	if posture == nil {
+		return ""
+	}
+	return posture.RiskLevel
+}
+
+func formatHoursSignal(hours int64) string {
+	if hours%24 == 0 {
+		return fmt.Sprintf("%dd", hours/24)
+	}
+	return fmt.Sprintf("%dh", hours)
 }
 
 // ProjectNode wraps a single OsqueryNode into the SPA-facing NodeView, parsing
@@ -137,7 +228,15 @@ func ProjectNodeWithUptime(n nodes.OsqueryNode, uptime *NodeUptime) NodeView {
 }
 
 func ProjectNodeWithCountryAndUptime(n nodes.OsqueryNode, countryCode string, uptime *NodeUptime) NodeView {
-	view := NodeView{OsqueryNode: n, Uptime: uptime}
+	return ProjectNodeWithCountryUptimeAndPosture(n, countryCode, uptime, nil)
+}
+
+func ProjectNodeWithCountryUptimeAndPosture(n nodes.OsqueryNode, countryCode string, uptime *NodeUptime, posture *NodePostureSummary) NodeView {
+	return ProjectNodeWithCountryUptimePostureTagsAndHealth(n, countryCode, uptime, posture, nil, NodeHealth{})
+}
+
+func ProjectNodeWithCountryUptimePostureTagsAndHealth(n nodes.OsqueryNode, countryCode string, uptime *NodeUptime, posture *NodePostureSummary, nodeTags []tags.AdminTag, health NodeHealth) NodeView {
+	view := NodeView{OsqueryNode: n, Uptime: uptime, Posture: posture, Tags: nodeTags, Health: health}
 	if countryCode != "" {
 		view.CountryCode = countryCode
 	}
@@ -242,6 +341,14 @@ func ProjectNodesWithCountry(in []nodes.OsqueryNode, lookup func(ip string) stri
 }
 
 func ProjectNodesWithCountryAndUptime(in []nodes.OsqueryNode, lookup func(ip string) string, uptimes map[string]*NodeUptime) []NodeView {
+	return ProjectNodesWithCountryUptimeAndPosture(in, lookup, uptimes, nil)
+}
+
+func ProjectNodesWithCountryUptimeAndPosture(in []nodes.OsqueryNode, lookup func(ip string) string, uptimes map[string]*NodeUptime, postures map[string]*NodePostureSummary) []NodeView {
+	return ProjectNodesWithCountryUptimePostureTagsAndHealth(in, lookup, uptimes, postures, nil, nil)
+}
+
+func ProjectNodesWithCountryUptimePostureTagsAndHealth(in []nodes.OsqueryNode, lookup func(ip string) string, uptimes map[string]*NodeUptime, postures map[string]*NodePostureSummary, tagsByNodeID map[uint][]tags.AdminTag, healthByNodeID map[uint]NodeHealth) []NodeView {
 	out := make([]NodeView, len(in))
 	for i, n := range in {
 		var cc string
@@ -252,7 +359,11 @@ func ProjectNodesWithCountryAndUptime(in []nodes.OsqueryNode, lookup func(ip str
 		if uptime == nil {
 			uptime = uptimes[strings.ToUpper(n.UUID)]
 		}
-		out[i] = ProjectNodeWithCountryAndUptime(n, cc, uptime)
+		posture := postures[n.UUID]
+		if posture == nil {
+			posture = postures[strings.ToUpper(n.UUID)]
+		}
+		out[i] = ProjectNodeWithCountryUptimePostureTagsAndHealth(n, cc, uptime, posture, tagsByNodeID[n.ID], healthByNodeID[n.ID])
 	}
 	return out
 }

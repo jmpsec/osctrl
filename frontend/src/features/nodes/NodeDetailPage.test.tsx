@@ -360,6 +360,65 @@ describe('NodeDetailPage', () => {
     expect(screen.getByText('7d 3h 12m')).toBeInTheDocument();
   });
 
+  it('shows node health and tags in the details view', async () => {
+    mockGetNode.mockResolvedValue(
+      makeNode({
+        health: {
+          status: 'attention',
+          reason: 'Posture data unavailable',
+          signals: ['active', 'posture unknown'],
+        },
+        tags: [
+          {
+            id: 1,
+            created_at: '2026-07-26T10:00:00Z',
+            updated_at: '2026-07-26T10:00:00Z',
+            name: 'prod',
+            description: 'Production',
+            color: '#2ecc71',
+            icon: 'fas fa-tag',
+            created_by: 'alice',
+            custom_tag: 'tag',
+            auto_tag: false,
+            environment_id: 1,
+            tag_type: 6,
+            cohort: true,
+          },
+          {
+            id: 2,
+            created_at: '2026-07-26T10:00:00Z',
+            updated_at: '2026-07-26T10:00:00Z',
+            name: 'critical',
+            description: 'Critical',
+            color: '#e74c3c',
+            icon: 'fas fa-tag',
+            created_by: 'alice',
+            custom_tag: 'tag',
+            auto_tag: false,
+            environment_id: 1,
+            tag_type: 6,
+            cohort: true,
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Health')).toBeInTheDocument();
+    expect(screen.getByText('attention')).toBeInTheDocument();
+    expect(screen.getByText('Posture data unavailable')).toBeInTheDocument();
+    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getByText('posture unknown')).toBeInTheDocument();
+    expect(screen.getByText('Tags')).toBeInTheDocument();
+    expect(screen.getByText('prod')).toBeInTheDocument();
+    expect(screen.getByText('critical')).toBeInTheDocument();
+  });
+
   it('hides node uptime while posture is disabled', async () => {
     mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
     mockGetNode.mockResolvedValue(

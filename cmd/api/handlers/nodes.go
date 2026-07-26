@@ -11,6 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -454,14 +455,30 @@ func (h *HandlersApi) projectNode(node nodes.OsqueryNode) types.NodeView {
 		countryCode = h.GeoIP.Lookup(node.IPAddress)
 	}
 	var uptime *types.NodeUptime
+	var postureSummary *types.NodePostureSummary
 	if h.PostureEnabled && h.Posture != nil {
 		var err error
 		uptime, err = h.Posture.GetUptimeByNode(node.UUID)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Err(err).Str("node_uuid", node.UUID).Msg("posture: failed to load node uptime")
 		}
+		postureSummary, err = h.Posture.GetSummaryByNode(node.UUID)
+		if err != nil {
+			log.Warn().Err(err).Str("node_uuid", node.UUID).Msg("posture: failed to load node posture summary")
+			postureSummary = nil
+		}
 	}
-	return types.ProjectNodeWithCountryAndUptime(node, countryCode, uptime)
+	var nodeTags []tags.AdminTag
+	if h.Tags != nil {
+		var err error
+		nodeTags, err = h.Tags.GetTags(node)
+		if err != nil {
+			log.Warn().Err(err).Uint("node_id", node.ID).Str("node_uuid", node.UUID).Msg("tags: failed to load node tags")
+			nodeTags = nil
+		}
+	}
+	health := types.CalculateNodeHealth(node, h.inactiveHours(), h.PostureEnabled, postureSummary)
+	return types.ProjectNodeWithCountryUptimePostureTagsAndHealth(node, countryCode, uptime, postureSummary, nodeTags, health)
 }
 
 func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeView {
@@ -470,6 +487,8 @@ func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeVi
 		lookup = h.GeoIP.Lookup
 	}
 	uptimes := map[string]*types.NodeUptime{}
+	postureSummaries := map[string]*types.NodePostureSummary{}
+	nodeTags := map[uint][]tags.AdminTag{}
 	if h.PostureEnabled && h.Posture != nil && len(in) > 0 {
 		uuids := make([]string, 0, len(in))
 		for _, node := range in {
@@ -481,8 +500,41 @@ func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeVi
 			log.Warn().Err(err).Msg("posture: failed to load node uptime batch")
 			uptimes = map[string]*types.NodeUptime{}
 		}
+		postureSummaries, err = h.Posture.GetSummaryByNodes(uuids)
+		if err != nil {
+			log.Warn().Err(err).Msg("posture: failed to load node posture summary batch")
+			postureSummaries = map[string]*types.NodePostureSummary{}
+		}
 	}
-	return types.ProjectNodesWithCountryAndUptime(in, lookup, uptimes)
+	if h.Tags != nil && len(in) > 0 {
+		nodeIDs := make([]uint, 0, len(in))
+		for _, node := range in {
+			nodeIDs = append(nodeIDs, node.ID)
+		}
+		var err error
+		nodeTags, err = h.Tags.GetTagsByNodeIDs(nodeIDs)
+		if err != nil {
+			log.Warn().Err(err).Msg("tags: failed to load node tags batch")
+			nodeTags = map[uint][]tags.AdminTag{}
+		}
+	}
+	healthByNode := make(map[uint]types.NodeHealth, len(in))
+	inactiveHours := h.inactiveHours()
+	for _, node := range in {
+		posture := postureSummaries[node.UUID]
+		if posture == nil {
+			posture = postureSummaries[strings.ToUpper(node.UUID)]
+		}
+		healthByNode[node.ID] = types.CalculateNodeHealth(node, inactiveHours, h.PostureEnabled, posture)
+	}
+	return types.ProjectNodesWithCountryUptimePostureTagsAndHealth(in, lookup, uptimes, postureSummaries, nodeTags, healthByNode)
+}
+
+func (h *HandlersApi) inactiveHours() int64 {
+	if h.Settings == nil {
+		return settings.DefaultInactiveHours
+	}
+	return h.Settings.InactiveHours(settings.NoEnvironmentID)
 }
 
 // NodesPagedHandler returns paginated, sorted, searchable nodes for an env.

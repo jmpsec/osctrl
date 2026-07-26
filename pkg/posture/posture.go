@@ -429,6 +429,62 @@ func (pm *PostureManager) GetUptimeByNodes(nodeUUIDs []string) (map[string]*type
 	return out, nil
 }
 
+func SummaryFromRecords(records []NodePosture) *types.NodePostureSummary {
+	if len(records) == 0 {
+		return nil
+	}
+	score := NewScoreCalculator().Score(records)
+	if score.RiskLevel == "" {
+		return nil
+	}
+	return &types.NodePostureSummary{RiskLevel: score.RiskLevel}
+}
+
+func (pm *PostureManager) GetSummaryByNode(nodeUUID string) (*types.NodePostureSummary, error) {
+	records, err := pm.GetByNode(nodeUUID)
+	if err != nil {
+		return nil, err
+	}
+	return SummaryFromRecords(records), nil
+}
+
+func (pm *PostureManager) GetSummaryByNodes(nodeUUIDs []string) (map[string]*types.NodePostureSummary, error) {
+	out := make(map[string]*types.NodePostureSummary)
+	if len(nodeUUIDs) == 0 {
+		return out, nil
+	}
+	upperUUIDs := make([]string, 0, len(nodeUUIDs))
+	seen := make(map[string]struct{}, len(nodeUUIDs))
+	for _, uuid := range nodeUUIDs {
+		upper := strings.ToUpper(uuid)
+		if upper == "" {
+			continue
+		}
+		if _, ok := seen[upper]; ok {
+			continue
+		}
+		seen[upper] = struct{}{}
+		upperUUIDs = append(upperUUIDs, upper)
+	}
+	if len(upperUUIDs) == 0 {
+		return out, nil
+	}
+	var records []NodePosture
+	if err := pm.DB.Where("node_uuid IN ?", upperUUIDs).Order("node_uuid ASC, category ASC").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	grouped := make(map[string][]NodePosture)
+	for _, record := range records {
+		grouped[record.NodeUUID] = append(grouped[record.NodeUUID], record)
+	}
+	for nodeUUID, nodeRecords := range grouped {
+		if summary := SummaryFromRecords(nodeRecords); summary != nil {
+			out[nodeUUID] = summary
+		}
+	}
+	return out, nil
+}
+
 // FleetCategorySummary is a per-category summary across all nodes in an environment.
 type FleetCategorySummary struct {
 	Category  string `json:"category"`

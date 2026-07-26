@@ -30,6 +30,7 @@ import { StatusPip } from '$/components/data/StatusPip';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
+import { HealthBadge, TagChips } from './nodeSignals';
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
 // status/result/query come from the DB-backed logging buckets (full history,
@@ -1018,6 +1019,39 @@ export function NodeDetailPage() {
                   isLoading={tiles24hLoading}
                 />
               </div>
+
+              <KvGrid
+                title="Health"
+                items={[
+                  {
+                    label: 'Status',
+                    value: <HealthBadge health={node.health} />,
+                  },
+                  {
+                    label: 'Reason',
+                    value: node.health?.reason || '—',
+                  },
+                  {
+                    label: 'Signals',
+                    value: node.health?.signals?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {node.health.signals.map((signal) => (
+                          <span
+                            key={signal}
+                            className="rounded-full border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10.5px] font-mono-tabular text-[color:var(--text-2)]"
+                          >
+                            {signal}
+                          </span>
+                        ))}
+                      </div>
+                    ) : '—',
+                  },
+                  {
+                    label: 'Tags',
+                    value: <TagChips tags={node.tags} max={50} />,
+                  },
+                ]}
+              />
 
               <KvGrid
                 title="Identity"

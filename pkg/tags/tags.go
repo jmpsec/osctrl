@@ -2,6 +2,7 @@ package tags
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -498,6 +499,58 @@ func (m *TagManager) GetTags(node nodes.OsqueryNode) ([]AdminTag, error) {
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+// GetTagsByNodeIDs retrieves tags for multiple nodes with two DB queries and
+// groups them by node ID for paginated node-list projection.
+func (m *TagManager) GetTagsByNodeIDs(nodeIDs []uint) (map[uint][]AdminTag, error) {
+	out := make(map[uint][]AdminTag, len(nodeIDs))
+	if len(nodeIDs) == 0 {
+		return out, nil
+	}
+	var tagged []TaggedNode
+	if err := m.DB.Where("node_id IN ?", nodeIDs).Find(&tagged).Error; err != nil {
+		return out, err
+	}
+	if len(tagged) == 0 {
+		return out, nil
+	}
+	tagIDs := make([]uint, 0, len(tagged))
+	seen := make(map[uint]struct{}, len(tagged))
+	for _, t := range tagged {
+		if t.AdminTagID == 0 {
+			continue
+		}
+		if _, ok := seen[t.AdminTagID]; ok {
+			continue
+		}
+		seen[t.AdminTagID] = struct{}{}
+		tagIDs = append(tagIDs, t.AdminTagID)
+	}
+	if len(tagIDs) == 0 {
+		return out, nil
+	}
+	var adminTags []AdminTag
+	if err := m.DB.Where("id IN ?", tagIDs).Find(&adminTags).Error; err != nil {
+		return out, err
+	}
+	byID := make(map[uint]AdminTag, len(adminTags))
+	for _, tag := range adminTags {
+		byID[tag.ID] = tag
+	}
+	for _, t := range tagged {
+		tag, ok := byID[t.AdminTagID]
+		if !ok {
+			continue
+		}
+		out[t.NodeID] = append(out[t.NodeID], tag)
+	}
+	for nodeID := range out {
+		sort.Slice(out[nodeID], func(i, j int) bool {
+			return out[nodeID][i].Name < out[nodeID][j].Name
+		})
+	}
+	return out, nil
 }
 
 // GetTagsByTypeEnv to retrieve the tags of a given type and environment
