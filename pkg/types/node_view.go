@@ -2,6 +2,8 @@ package types
 
 import (
 	"encoding/json"
+	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 )
@@ -93,6 +95,17 @@ type NodeEnrichment struct {
 	Osquery *OsqueryRuntime `json:"osquery,omitempty"`
 }
 
+// NodeUptime is optional node metadata populated from the latest
+// osctrl:posture:uptime result when posture collection is enabled.
+type NodeUptime struct {
+	Days         int       `json:"days"`
+	Hours        int       `json:"hours"`
+	Minutes      int       `json:"minutes"`
+	Seconds      int       `json:"seconds"`
+	TotalSeconds int64     `json:"total_seconds,omitempty"`
+	LastSeen     time.Time `json:"last_seen,omitempty"`
+}
+
 // NodeView is the JSON shape returned by the node show + list endpoints.
 // It embeds OsqueryNode verbatim (so existing JSON fields stay) and adds the
 // optional enrichment block. Consumers that don't care about the enrichment
@@ -100,9 +113,10 @@ type NodeEnrichment struct {
 // from it directly.
 type NodeView struct {
 	nodes.OsqueryNode
-	NodeKey    string          `json:"node_key,omitempty"`
-	Enrichment *NodeEnrichment `json:"system_info,omitempty"`
-	CountryCode string         `json:"country_code,omitempty"`
+	NodeKey     string          `json:"node_key,omitempty"`
+	Enrichment  *NodeEnrichment `json:"system_info,omitempty"`
+	CountryCode string          `json:"country_code,omitempty"`
+	Uptime      *NodeUptime     `json:"uptime,omitempty"`
 }
 
 // ProjectNode wraps a single OsqueryNode into the SPA-facing NodeView, parsing
@@ -115,7 +129,15 @@ func ProjectNode(n nodes.OsqueryNode) NodeView {
 }
 
 func ProjectNodeWithCountry(n nodes.OsqueryNode, countryCode string) NodeView {
-	view := NodeView{OsqueryNode: n}
+	return ProjectNodeWithCountryAndUptime(n, countryCode, nil)
+}
+
+func ProjectNodeWithUptime(n nodes.OsqueryNode, uptime *NodeUptime) NodeView {
+	return ProjectNodeWithCountryAndUptime(n, "", uptime)
+}
+
+func ProjectNodeWithCountryAndUptime(n nodes.OsqueryNode, countryCode string, uptime *NodeUptime) NodeView {
+	view := NodeView{OsqueryNode: n, Uptime: uptime}
 	if countryCode != "" {
 		view.CountryCode = countryCode
 	}
@@ -215,6 +237,22 @@ func ProjectNodesWithCountry(in []nodes.OsqueryNode, lookup func(ip string) stri
 			cc = lookup(n.IPAddress)
 		}
 		out[i] = ProjectNodeWithCountry(n, cc)
+	}
+	return out
+}
+
+func ProjectNodesWithCountryAndUptime(in []nodes.OsqueryNode, lookup func(ip string) string, uptimes map[string]*NodeUptime) []NodeView {
+	out := make([]NodeView, len(in))
+	for i, n := range in {
+		var cc string
+		if lookup != nil && n.IPAddress != "" {
+			cc = lookup(n.IPAddress)
+		}
+		uptime := uptimes[n.UUID]
+		if uptime == nil {
+			uptime = uptimes[strings.ToUpper(n.UUID)]
+		}
+		out[i] = ProjectNodeWithCountryAndUptime(n, cc, uptime)
 	}
 	return out
 }

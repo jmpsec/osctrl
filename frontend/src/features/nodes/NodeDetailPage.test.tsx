@@ -335,6 +335,56 @@ describe('NodeDetailPage', () => {
     expect(mockGetNodePosture).not.toHaveBeenCalled();
   });
 
+  it('shows posture uptime in lifecycle details only when posture is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetNode.mockResolvedValue(
+      makeNode({
+        uptime: {
+          days: 7,
+          hours: 3,
+          minutes: 12,
+          seconds: 9,
+          total_seconds: 616329,
+          last_seen: '2026-07-26T10:30:00Z',
+        },
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Uptime')).toBeInTheDocument();
+    expect(screen.getByText('7d 3h 12m')).toBeInTheDocument();
+  });
+
+  it('hides node uptime while posture is disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetNode.mockResolvedValue(
+      makeNode({
+        uptime: {
+          days: 7,
+          hours: 3,
+          minutes: 12,
+          seconds: 9,
+          total_seconds: 616329,
+          last_seen: '2026-07-26T10:30:00Z',
+        },
+      }),
+    );
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Uptime')).not.toBeInTheDocument();
+    expect(screen.queryByText('7d 3h 12m')).not.toBeInTheDocument();
+  });
+
   it('shows the console action only when accelerated queries are enabled', async () => {
     mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
     const router = makeTestRouter();

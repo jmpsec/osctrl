@@ -167,6 +167,50 @@ func TestIngestResultRejectsMalformedColumns(t *testing.T) {
 	}
 }
 
+func TestParseUptimeFromRecord(t *testing.T) {
+	record := NodePosture{
+		Category: "uptime",
+		Summary:  `[{"days":"7","hours":"3","minutes":"12","seconds":"9","total_seconds":"616329"}]`,
+		LastSeen: time.Date(2026, 7, 26, 10, 30, 0, 0, time.UTC),
+	}
+
+	uptime, err := ParseUptime(record)
+	if err != nil {
+		t.Fatalf("parse uptime: %v", err)
+	}
+	if uptime == nil {
+		t.Fatal("expected uptime")
+	}
+	if uptime.Days != 7 || uptime.Hours != 3 || uptime.Minutes != 12 || uptime.Seconds != 9 {
+		t.Fatalf("unexpected uptime parts: %+v", uptime)
+	}
+	if uptime.TotalSeconds != 616329 {
+		t.Fatalf("unexpected total seconds %d", uptime.TotalSeconds)
+	}
+	if !uptime.LastSeen.Equal(record.LastSeen) {
+		t.Fatalf("unexpected last seen %s", uptime.LastSeen)
+	}
+}
+
+func TestGetUptimeByNodesNormalizesUUIDs(t *testing.T) {
+	pm := newTestManager(t)
+	if err := pm.IngestResult("node-a", "dev", QueryPrefix+"uptime", json.RawMessage(`[{"days":"1","hours":"2","minutes":"3","seconds":"4"}]`)); err != nil {
+		t.Fatalf("ingest uptime: %v", err)
+	}
+
+	uptimes, err := pm.GetUptimeByNodes([]string{"node-a"})
+	if err != nil {
+		t.Fatalf("get uptime batch: %v", err)
+	}
+	uptime := uptimes["NODE-A"]
+	if uptime == nil {
+		t.Fatalf("missing uptime for NODE-A: %+v", uptimes)
+	}
+	if uptime.Days != 1 || uptime.Hours != 2 || uptime.Minutes != 3 || uptime.Seconds != 4 {
+		t.Fatalf("unexpected uptime: %+v", uptime)
+	}
+}
+
 type legacyNodePosture struct {
 	ID          uint `gorm:"primarykey"`
 	CreatedAt   time.Time

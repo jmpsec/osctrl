@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -21,6 +23,8 @@ import (
 // daily collection is sufficient for compliance audits without
 // overloading agents or the logging pipeline.
 const DefaultQueryPrefix = "osctrl:posture:"
+
+const UptimeCategory = "uptime"
 
 // QueryPrefix is the active posture query prefix. It is configured once at TLS
 // startup. Empty disables posture ingestion.
@@ -264,6 +268,165 @@ func (pm *PostureManager) GetByNodeCategory(nodeUUID, category string) (*NodePos
 		return nil, err
 	}
 	return &record, nil
+}
+
+// ParseUptime converts the latest uptime posture result into node metadata.
+func ParseUptime(record NodePosture) (*types.NodeUptime, error) {
+	if record.Category != UptimeCategory {
+		return nil, fmt.Errorf("posture category %q is not uptime", record.Category)
+	}
+	rows, err := parsePostureRows(record.Summary)
+	if err != nil || len(rows) == 0 {
+		rows, err = parsePostureRows(record.Snapshot)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	row := rows[0]
+	days, err := parseUptimeInt(row, "days")
+	if err != nil {
+		return nil, err
+	}
+	hours, err := parseUptimeInt(row, "hours")
+	if err != nil {
+		return nil, err
+	}
+	minutes, err := parseUptimeInt(row, "minutes")
+	if err != nil {
+		return nil, err
+	}
+	seconds, err := parseUptimeInt(row, "seconds")
+	if err != nil {
+		return nil, err
+	}
+	totalSeconds, _ := parseUptimeInt64(row, "total_seconds")
+	return &types.NodeUptime{
+		Days:         days,
+		Hours:        hours,
+		Minutes:      minutes,
+		Seconds:      seconds,
+		TotalSeconds: totalSeconds,
+		LastSeen:     record.LastSeen,
+	}, nil
+}
+
+func parsePostureRows(raw string) ([]map[string]json.RawMessage, error) {
+	trimmed := bytes.TrimSpace([]byte(raw))
+	if len(trimmed) == 0 {
+		return nil, nil
+	}
+	switch trimmed[0] {
+	case '[':
+		var rows []map[string]json.RawMessage
+		if err := json.Unmarshal(trimmed, &rows); err != nil {
+			return nil, fmt.Errorf("parse posture rows: %w", err)
+		}
+		return rows, nil
+	case '{':
+		var row map[string]json.RawMessage
+		if err := json.Unmarshal(trimmed, &row); err != nil {
+			return nil, fmt.Errorf("parse posture row: %w", err)
+		}
+		return []map[string]json.RawMessage{row}, nil
+	default:
+		return nil, fmt.Errorf("posture rows must be a JSON object or array")
+	}
+}
+
+func parseUptimeInt(row map[string]json.RawMessage, key string) (int, error) {
+	raw, ok := row[key]
+	if !ok {
+		return 0, fmt.Errorf("uptime missing %q", key)
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		n, err := strconv.ParseInt(text, 10, strconv.IntSize)
+		if err != nil {
+			return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+		}
+		return int(n), nil
+	}
+	var num json.Number
+	if err := json.Unmarshal(raw, &num); err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	n, err := strconv.ParseInt(num.String(), 10, strconv.IntSize)
+	if err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	return int(n), nil
+}
+
+func parseUptimeInt64(row map[string]json.RawMessage, key string) (int64, error) {
+	raw, ok := row[key]
+	if !ok {
+		return 0, fmt.Errorf("uptime missing %q", key)
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		n, err := strconv.ParseInt(text, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+		}
+		return n, nil
+	}
+	var num json.Number
+	if err := json.Unmarshal(raw, &num); err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	n, err := num.Int64()
+	if err != nil {
+		return 0, fmt.Errorf("parse uptime %s: %w", key, err)
+	}
+	return n, nil
+}
+
+func (pm *PostureManager) GetUptimeByNode(nodeUUID string) (*types.NodeUptime, error) {
+	record, err := pm.GetByNodeCategory(nodeUUID, UptimeCategory)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUptime(*record)
+}
+
+func (pm *PostureManager) GetUptimeByNodes(nodeUUIDs []string) (map[string]*types.NodeUptime, error) {
+	out := make(map[string]*types.NodeUptime)
+	if len(nodeUUIDs) == 0 {
+		return out, nil
+	}
+	upperUUIDs := make([]string, 0, len(nodeUUIDs))
+	seen := make(map[string]struct{}, len(nodeUUIDs))
+	for _, uuid := range nodeUUIDs {
+		upper := strings.ToUpper(uuid)
+		if upper == "" {
+			continue
+		}
+		if _, ok := seen[upper]; ok {
+			continue
+		}
+		seen[upper] = struct{}{}
+		upperUUIDs = append(upperUUIDs, upper)
+	}
+	if len(upperUUIDs) == 0 {
+		return out, nil
+	}
+	var records []NodePosture
+	if err := pm.DB.Where("node_uuid IN ? AND category = ?", upperUUIDs, UptimeCategory).Find(&records).Error; err != nil {
+		return nil, err
+	}
+	for _, record := range records {
+		uptime, err := ParseUptime(record)
+		if err != nil {
+			return nil, err
+		}
+		if uptime != nil {
+			out[record.NodeUUID] = uptime
+		}
+	}
+	return out, nil
 }
 
 // FleetCategorySummary is a per-category summary across all nodes in an environment.
