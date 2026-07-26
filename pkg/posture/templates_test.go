@@ -67,6 +67,21 @@ func TestWindowsServicesUseOsqueryStatusValue(t *testing.T) {
 	}
 }
 
+func TestProfilesCollectUptime(t *testing.T) {
+	for _, profile := range AllProfiles() {
+		query, ok := profile.Queries["uptime"]
+		if !ok {
+			t.Fatalf("%s has no uptime query", profile.ID)
+		}
+		if query.Query != "SELECT days, hours, minutes, seconds, total_seconds FROM uptime" {
+			t.Fatalf("%s uptime query = %q", profile.ID, query.Query)
+		}
+		if !query.Snapshot {
+			t.Fatalf("%s uptime query must be a snapshot", profile.ID)
+		}
+	}
+}
+
 func TestProfileTablesSupportTargetPlatform(t *testing.T) {
 	type schemaTable struct {
 		Name      string   `json:"name"`

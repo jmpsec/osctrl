@@ -64,6 +64,15 @@ export interface NodeEnrichment {
   osquery?: NodeOsqueryRuntime;
 }
 
+export interface NodeUptime {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  total_seconds?: number;
+  last_seen?: string;
+}
+
 export interface OsqueryNode {
   id: number;
   created_at: string;
@@ -93,6 +102,8 @@ export interface OsqueryNode {
   country_code?: string;
   /** Optional enrichment parsed server-side from RawEnrollment (no secrets). */
   system_info?: NodeEnrichment;
+  /** Optional uptime populated from the latest posture uptime result. */
+  uptime?: NodeUptime;
 }
 
 export type NodeStatus = 'all' | 'active' | 'inactive';

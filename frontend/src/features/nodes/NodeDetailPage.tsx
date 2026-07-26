@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Terminal } from 'lucide-react';
 import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
-import type { NodePosture, PostureScore } from '$/api/types';
+import type { NodePosture, NodeUptime, PostureScore } from '$/api/types';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
 import {
@@ -124,6 +124,16 @@ function fmtBytes(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} MB`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)} KB`;
   return `${n} B`;
+}
+
+function formatNodeUptime(uptime?: NodeUptime): string {
+  if (!uptime) return '—';
+  const parts: string[] = [];
+  if (uptime.days > 0) parts.push(`${uptime.days}d`);
+  if (uptime.hours > 0 || parts.length > 0) parts.push(`${uptime.hours}h`);
+  if (uptime.minutes > 0 || parts.length > 0) parts.push(`${uptime.minutes}m`);
+  if (parts.length === 0) parts.push(`${uptime.seconds}s`);
+  return parts.join(' ');
 }
 
 interface HeroStripProps {
@@ -1106,6 +1116,19 @@ export function NodeDetailPage() {
               <KvGrid
                 title="Lifecycle"
                 items={[
+                  ...(postureEnabled ? [
+                    {
+                      label: 'Uptime',
+                      value: (
+                        <span
+                          className="font-mono-tabular tnum text-xs"
+                          title={node.uptime?.last_seen ? `Collected ${formatAbsolute(node.uptime.last_seen)}` : undefined}
+                        >
+                          {formatNodeUptime(node.uptime)}
+                        </span>
+                      ),
+                    },
+                  ] : []),
                   {
                     label: 'First seen',
                     value: (

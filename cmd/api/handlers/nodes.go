@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 // NodeHandler - GET Handler for single JSON nodes
@@ -79,12 +81,8 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// enrichment fields (CPU cores, BIOS, hardware vendor/model) parsed from
 	// the otherwise-hidden RawEnrollment blob. The enroll_secret inside that
 	// blob is intentionally NOT in the projection — see pkg/types/node_view.go.
-	view := types.ProjectNode(node)
+	view := h.projectNode(node)
 	view.NodeKey = node.NodeKey
-	// Resolve the node's IP to a country code via GeoIP (if configured).
-	if h.GeoIP != nil && node.IPAddress != "" {
-		view.CountryCode = h.GeoIP.Lookup(node.IPAddress)
-	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, view)
 }
 
@@ -450,11 +448,41 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, n)
 }
 
-func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeView {
-	if h.GeoIP == nil {
-		return types.ProjectNodes(in)
+func (h *HandlersApi) projectNode(node nodes.OsqueryNode) types.NodeView {
+	var countryCode string
+	if h.GeoIP != nil && node.IPAddress != "" {
+		countryCode = h.GeoIP.Lookup(node.IPAddress)
 	}
-	return types.ProjectNodesWithCountry(in, h.GeoIP.Lookup)
+	var uptime *types.NodeUptime
+	if h.PostureEnabled && h.Posture != nil {
+		var err error
+		uptime, err = h.Posture.GetUptimeByNode(node.UUID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Str("node_uuid", node.UUID).Msg("posture: failed to load node uptime")
+		}
+	}
+	return types.ProjectNodeWithCountryAndUptime(node, countryCode, uptime)
+}
+
+func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeView {
+	var lookup func(string) string
+	if h.GeoIP != nil {
+		lookup = h.GeoIP.Lookup
+	}
+	uptimes := map[string]*types.NodeUptime{}
+	if h.PostureEnabled && h.Posture != nil && len(in) > 0 {
+		uuids := make([]string, 0, len(in))
+		for _, node := range in {
+			uuids = append(uuids, node.UUID)
+		}
+		var err error
+		uptimes, err = h.Posture.GetUptimeByNodes(uuids)
+		if err != nil {
+			log.Warn().Err(err).Msg("posture: failed to load node uptime batch")
+			uptimes = map[string]*types.NodeUptime{}
+		}
+	}
+	return types.ProjectNodesWithCountryAndUptime(in, lookup, uptimes)
 }
 
 // NodesPagedHandler returns paginated, sorted, searchable nodes for an env.

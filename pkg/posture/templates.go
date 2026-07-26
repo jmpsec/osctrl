@@ -25,6 +25,16 @@ type ProfileQuery struct {
 	Snapshot bool   `json:"snapshot"`
 }
 
+const uptimeProfileQuery = "SELECT days, hours, minutes, seconds, total_seconds FROM uptime"
+
+func uptimeCheck() ProfileQuery {
+	return ProfileQuery{
+		Query:    uptimeProfileQuery,
+		Interval: 86400,
+		Snapshot: true,
+	}
+}
+
 // ToScheduleEntries converts a profile's queries into a JSON map suitable
 // for merging into an environment's schedule config section.
 func (p PostureProfile) ToScheduleEntries() (map[string]map[string]interface{}, error) {
@@ -94,6 +104,7 @@ func WindowsServerProfile() PostureProfile {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
+			"uptime": uptimeCheck(),
 			"users": {
 				Query:    "SELECT username, uid, gid, shell, type FROM users WHERE shell IS NOT NULL AND shell != '' AND shell NOT LIKE '%/nologin' AND shell NOT LIKE '%/false' ORDER BY username",
 				Interval: 86400, Snapshot: true,
@@ -145,6 +156,7 @@ func LinuxServerProfile() PostureProfile {
 				Query:    "SELECT name, version, release, '' AS repo FROM rpm_packages ORDER BY name",
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
+			"uptime": uptimeCheck(),
 			"users": {
 				Query:    "SELECT username, uid, gid, shell, type FROM users WHERE shell IS NOT NULL AND shell != '' AND shell NOT LIKE '%/nologin' AND shell NOT LIKE '%/false' ORDER BY username",
 				Interval: 86400, Snapshot: true,
@@ -200,6 +212,7 @@ func MacOSLaptopProfile() PostureProfile {
 				Query:    "SELECT name, bundle_identifier AS bundle_id, bundle_short_version AS version FROM apps ORDER BY name",
 				Interval: 86400, Platform: "darwin", Snapshot: true,
 			},
+			"uptime": uptimeCheck(),
 			"users": {
 				Query:    "SELECT username, uid, gid, shell, type FROM users WHERE shell IS NOT NULL AND shell != '' AND shell NOT LIKE '%/nologin' AND shell NOT LIKE '%/false' ORDER BY username",
 				Interval: 86400, Snapshot: true,
@@ -251,6 +264,7 @@ func WindowsLaptopProfile() PostureProfile {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
+			"uptime": uptimeCheck(),
 			"users": {
 				Query:    "SELECT username, uid, gid, shell, type FROM users WHERE shell IS NOT NULL AND shell != '' AND shell NOT LIKE '%/nologin' AND shell NOT LIKE '%/false' ORDER BY username",
 				Interval: 86400, Snapshot: true,
@@ -302,6 +316,7 @@ func LinuxLaptopProfile() PostureProfile {
 				Query:    "SELECT name, version, release, '' AS repo FROM rpm_packages ORDER BY name",
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
+			"uptime": uptimeCheck(),
 			"users": {
 				Query:    "SELECT username, uid, gid, shell, type FROM users WHERE shell IS NOT NULL AND shell != '' AND shell NOT LIKE '%/nologin' AND shell NOT LIKE '%/false' ORDER BY username",
 				Interval: 86400, Snapshot: true,
