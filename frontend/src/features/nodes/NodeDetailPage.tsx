@@ -2,8 +2,12 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Terminal } from 'lucide-react';
+import { Archive, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
 import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
+import { runCarve } from '$/api/carves';
+import { runQuery } from '$/api/queries';
+import { listSavedQueries } from '$/api/saved-queries';
+import { listEnvTags, tagNode } from '$/api/tags';
 import type { NodePosture, NodeUptime, PostureScore } from '$/api/types';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
@@ -30,6 +34,7 @@ import { StatusPip } from '$/components/data/StatusPip';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
+import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
@@ -50,6 +55,8 @@ interface NodeHeatmapBucket {
 // ---------------------------------------------------------------------------
 
 type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture';
+type NodeActionModal = 'query' | 'carve' | 'tag' | null;
+const TAG_TYPE_REGULAR = 6;
 
 // ---------------------------------------------------------------------------
 // Detail field groups
@@ -586,6 +593,7 @@ export function NodeDetailPage() {
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('6h');
   const [copiedNodeKey, setCopiedNodeKey] = useState(false);
   const [copyNodeKeyError, setCopyNodeKeyError] = useState<string | null>(null);
+  const [actionModal, setActionModal] = useState<NodeActionModal>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { data: features } = useQuery({
     queryKey: ['features'],
@@ -641,6 +649,9 @@ export function NodeDetailPage() {
   const canAdminNode =
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
+  const envAccess = envUuid !== undefined ? me?.permissions?.[envUuid] : undefined;
+  const canQueryNode = canAdminNode || envAccess?.query === true;
+  const canCarveNode = canAdminNode || envAccess?.carve === true;
 
   // Archive the current node. The backend's POST /nodes/{env}/delete
   // handler maps to ArchiveDeleteByUUID — it always snapshots into the
@@ -780,7 +791,7 @@ export function NodeDetailPage() {
       </div>
 
       {/* ── Header ── */}
-      <div className="mb-6 flex items-start gap-3">
+      <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-start">
         {isLoading ? (
           <div className="flex-1 space-y-2">
             <Skeleton className="h-8 w-64" />
@@ -788,7 +799,7 @@ export function NodeDetailPage() {
           </div>
         ) : node ? (
           <>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 xl:flex-1">
               <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight">
                 {node.hostname}
               </h1>
@@ -800,13 +811,67 @@ export function NodeDetailPage() {
                 Archive routes through the same DELETE endpoint with
                 archive=true, which the server gates on env-admin —
                 so the button hides for non-admins same as Delete. */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div
+              aria-label="Node actions"
+              className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center xl:justify-end xl:flex-shrink-0"
+            >
+              {canQueryNode && (
+                <button
+                  type="button"
+                  aria-label="Run query"
+                  onClick={() => setActionModal('query')}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  Run Query
+                </button>
+              )}
+              {canCarveNode && (
+                <button
+                  type="button"
+                  aria-label="Carve file"
+                  onClick={() => setActionModal('carve')}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  <FileArchive className="h-3.5 w-3.5" aria-hidden="true" />
+                  Carve File
+                </button>
+              )}
+              {canAdminNode && (
+                <button
+                  type="button"
+                  aria-label="Tag"
+                  onClick={() => setActionModal('tag')}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+                  Tag
+                </button>
+              )}
               {acceleratedEnabled && canAdminNode && (
                 <Link
                   to="/_app/env/$env/nodes/$uuid/console"
                   params={{ env, uuid }}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
                     'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
@@ -823,13 +888,14 @@ export function NodeDetailPage() {
                   aria-label="Copy node key"
                   onClick={handleCopyNodeKey}
                   className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded',
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
                     'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
                 >
+                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                   {copiedNodeKey ? 'Copied node key' : 'Copy node key'}
                 </button>
               )}
@@ -838,13 +904,14 @@ export function NodeDetailPage() {
                 aria-label="Refresh node"
                 onClick={handleRefresh}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded',
+                  'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                   'border border-[color:var(--border)] text-[color:var(--text-2)]',
                   'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
                   'transition-colors',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 )}
               >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 Refresh
               </button>
               {/* Single archive action — no separate hard-delete button.
@@ -863,7 +930,7 @@ export function NodeDetailPage() {
                   onClick={handleArchive}
                   disabled={archiveMut.isPending}
                   className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded',
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--danger)] text-[color:var(--danger)]',
                     'hover:bg-[color:var(--danger)] hover:text-white',
                     'transition-colors',
@@ -871,6 +938,7 @@ export function NodeDetailPage() {
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
+                  <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                   {archiveMut.isPending ? 'Archiving…' : 'Archive'}
                 </button>
               )}
@@ -1209,7 +1277,361 @@ export function NodeDetailPage() {
           />
         )}
       </div>
+
+      {node && actionModal === 'query' && (
+        <RunNodeQueryModal
+          env={env}
+          uuid={node.uuid}
+          hostname={node.hostname}
+          onClose={() => setActionModal(null)}
+          onStarted={(name) => {
+            setActionModal(null);
+            void navigate({ to: '/_app/env/$env/queries/$name', params: { env, name } });
+          }}
+        />
+      )}
+
+      {node && actionModal === 'carve' && (
+        <CarveNodeFileModal
+          env={env}
+          uuid={node.uuid}
+          hostname={node.hostname}
+          onClose={() => setActionModal(null)}
+          onStarted={(name) => {
+            setActionModal(null);
+            void navigate({ to: '/_app/env/$env/carves/$name', params: { env, name } });
+          }}
+        />
+      )}
+
+      {node && actionModal === 'tag' && (
+        <TagNodeModal
+          env={env}
+          uuid={node.uuid}
+          hostname={node.hostname}
+          onClose={() => setActionModal(null)}
+          onTagged={() => {
+            setActionModal(null);
+            void qc.invalidateQueries({ queryKey: ['node', env, uuid] });
+            void qc.invalidateQueries({ queryKey: ['nodes', env] });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function RunNodeQueryModal({
+  env,
+  uuid,
+  hostname,
+  onClose,
+  onStarted,
+}: {
+  env: string;
+  uuid: string;
+  hostname: string;
+  onClose: () => void;
+  onStarted: (name: string) => void;
+}) {
+  const [chosen, setChosen] = useState('');
+  const [sql, setSql] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const { data, isLoading } = useQuery({
+    queryKey: ['saved-queries', env, 'node-action'],
+    queryFn: () => listSavedQueries({ env, sort: 'name', dir: 'asc', pageSize: 200 }),
+    staleTime: 60_000,
+  });
+  const list = data?.items ?? [];
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const trimmed = sql.trim();
+      if (!trimmed) throw new Error('Query is required.');
+      return runQuery(env, { query: trimmed, uuid_list: [uuid], exp_hours: 24 });
+    },
+    onSuccess: (res) => onStarted(res.query_name),
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Query failed');
+    },
+  });
+
+  return (
+    <ModalShell title={`Run query on ${hostname}`} titleId="node-run-query-modal-title" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label htmlFor="node-query-select" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            Saved query
+          </label>
+          <select
+            id="node-query-select"
+            value={chosen}
+            onChange={(e) => {
+              const name = e.target.value;
+              setChosen(name);
+              const next = list.find((query) => query.name === name);
+              if (next) setSql(next.query);
+            }}
+            disabled={isLoading || list.length === 0}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            <option value="">
+              {isLoading ? 'Loading saved queries…' : list.length === 0 ? 'No saved queries in this environment' : 'Pick a saved query…'}
+            </option>
+            {list.map((query) => (
+              <option key={query.id} value={query.name}>
+                {query.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="node-query-sql" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            SQL query
+          </label>
+          <textarea
+            id="node-query-sql"
+            value={sql}
+            onChange={(e) => {
+              setSql(e.target.value);
+              setChosen('');
+            }}
+            rows={5}
+            placeholder="select * from os_version;"
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+            )}
+          />
+        </div>
+
+        {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || sql.trim().length === 0}
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mutation.isPending ? 'Running…' : 'Run on node'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function CarveNodeFileModal({
+  env,
+  uuid,
+  hostname,
+  onClose,
+  onStarted,
+}: {
+  env: string;
+  uuid: string;
+  hostname: string;
+  onClose: () => void;
+  onStarted: (name: string) => void;
+}) {
+  const [path, setPath] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const trimmed = path.trim();
+      if (!trimmed) throw new Error('File path is required.');
+      return runCarve(env, { path: trimmed, uuid_list: [uuid] });
+    },
+    onSuccess: (res) => onStarted(res.query_name),
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Carve failed');
+    },
+  });
+
+  return (
+    <ModalShell title={`Carve file from ${hostname}`} titleId="node-carve-file-modal-title" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label htmlFor="node-carve-path" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            File path
+          </label>
+          <input
+            id="node-carve-path"
+            type="text"
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="/etc/hosts"
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+            )}
+          />
+        </div>
+
+        {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mutation.isPending ? 'Starting…' : 'Start carve'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function TagNodeModal({
+  env,
+  uuid,
+  hostname,
+  onClose,
+  onTagged,
+}: {
+  env: string;
+  uuid: string;
+  hostname: string;
+  onClose: () => void;
+  onTagged: () => void;
+}) {
+  const [chosen, setChosen] = useState('');
+  const [customTag, setCustomTag] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const { data: tags, isLoading } = useQuery({
+    queryKey: ['tags', env],
+    queryFn: () => listEnvTags(env),
+    staleTime: 60_000,
+  });
+  const list = tags ?? [];
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const tag = (customTag.trim() || chosen).trim();
+      if (!tag) throw new Error('Pick a tag to assign.');
+      return tagNode(env, { uuid, tag, type: TAG_TYPE_REGULAR });
+    },
+    onSuccess: () => onTagged(),
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Tagging failed');
+    },
+  });
+
+  return (
+    <ModalShell title={`Tag ${hostname}`} titleId="node-tag-modal-title" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label htmlFor="node-tag-select" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            Tag
+          </label>
+          <select
+            id="node-tag-select"
+            value={chosen}
+            onChange={(e) => {
+              setChosen(e.target.value);
+              setCustomTag('');
+            }}
+            disabled={isLoading || list.length === 0}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            <option value="">
+              {isLoading ? 'Loading tags…' : list.length === 0 ? 'No tags in this environment' : 'Pick a tag…'}
+            </option>
+            {list.map((tag) => (
+              <option key={tag.id} value={tag.name}>
+                {tag.name}
+                {tag.description ? ` — ${tag.description}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="node-custom-tag" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+            Custom tag
+          </label>
+          <input
+            id="node-custom-tag"
+            type="text"
+            value={customTag}
+            onChange={(e) => {
+              setCustomTag(e.target.value);
+              if (e.target.value.trim()) setChosen('');
+            }}
+            placeholder="incident-response"
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+            )}
+          />
+        </div>
+
+        {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || (!chosen && customTag.trim().length === 0)}
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mutation.isPending ? 'Tagging…' : 'Apply tag'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 // QueryTargets enumerates the target filters accepted by QueryListHandler.
@@ -194,21 +195,6 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	if q.ExpHours == 0 {
 		expTime = time.Time{}
 	}
-	// Prepare and create new query
-	newQuery := queries.DistributedQuery{
-		Query:         q.Query,
-		Name:          queries.GenQueryName(),
-		Creator:       ctx[ctxUser],
-		Active:        true,
-		Expiration:    expTime,
-		Hidden:        q.Hidden,
-		Type:          queries.StandardQueryType,
-		EnvironmentID: env.ID,
-	}
-	if err := h.Queries.Create(&newQuery); err != nil {
-		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
-		return
-	}
 	// Prepare data for the handler code
 	data := handlers.ProcessingQuery{
 		Envs:          q.Environments,
@@ -224,33 +210,49 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		Envs:  h.Envs,
 		Tags:  h.Tags,
 	}
-	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, queries.DistributedQuery{})
 	if err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
-	}
-	// If the list is empty, we don't need to create node queries
-	if len(targetNodesID) != 0 {
-		if err := h.Queries.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
-			log.Err(err).Msgf("error creating node queries for query %s", newQuery.Name)
-			apiErrorResponse(w, "error creating node queries", http.StatusInternalServerError, err)
-			return
-		}
 	}
 	targetRows, err := handlers.BuildQueryTargetRecords(data, manager)
 	if err != nil {
 		apiErrorResponse(w, "error creating query targets", http.StatusInternalServerError, err)
 		return
 	}
-	for _, target := range targetRows {
-		if err := h.Queries.CreateTarget(newQuery.Name, target.Type, target.Value); err != nil {
-			apiErrorResponse(w, "error creating query targets", http.StatusInternalServerError, err)
-			return
-		}
+
+	// Prepare and create new query. Target rows and node-query rows are
+	// committed atomically so TLS never sees a half-built query with Expected=0.
+	newQuery := queries.DistributedQuery{
+		Query:         q.Query,
+		Name:          queries.GenQueryName(),
+		Creator:       ctx[ctxUser],
+		Expected:      len(targetNodesID),
+		Active:        true,
+		Expiration:    expTime,
+		Hidden:        q.Hidden,
+		Type:          queries.StandardQueryType,
+		EnvironmentID: env.ID,
 	}
-	// Update value for expected
-	if err := h.Queries.SetExpected(newQuery.Name, len(targetNodesID), env.ID); err != nil {
-		apiErrorResponse(w, "error setting expected", http.StatusInternalServerError, err)
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		queryStore := &queries.Queries{DB: tx}
+		if err := queryStore.Create(&newQuery); err != nil {
+			return err
+		}
+		if len(targetNodesID) != 0 {
+			if err := queryStore.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
+				log.Err(err).Msgf("error creating node queries for query %s", newQuery.Name)
+				return err
+			}
+		}
+		for _, target := range targetRows {
+			if err := queryStore.CreateTarget(newQuery.Name, target.Type, target.Value); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
 	// Return query name as serialized response

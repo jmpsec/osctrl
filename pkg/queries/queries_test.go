@@ -145,6 +145,49 @@ func TestNodeQueriesSkipsExpiredPendingQueries(t *testing.T) {
 	require.NotContains(t, result, "expired-console-query")
 }
 
+func TestNodeQueriesReturnsNonExpiringPendingQueries(t *testing.T) {
+	db := testDB(t)
+	q, testNodes, _ := setupTestData(t, db)
+
+	neverExpiresQuery := queries.DistributedQuery{
+		Name:          "never-expires-query",
+		Query:         "SELECT * FROM osquery_info;",
+		Type:          queries.StandardQueryType,
+		Active:        true,
+		EnvironmentID: 1,
+		Expiration:    time.Time{},
+	}
+	require.NoError(t, q.Create(&neverExpiresQuery))
+	require.NoError(t, q.CreateNodeQueries([]uint{testNodes[0].ID}, neverExpiresQuery.ID))
+
+	result, accelerate, err := q.NodeQueries(testNodes[0])
+	require.NoError(t, err)
+	require.False(t, accelerate)
+	require.Equal(t, neverExpiresQuery.Query, result["never-expires-query"])
+}
+
+func TestCleanupExpiredQueriesKeepsNonExpiringQueriesActive(t *testing.T) {
+	db := testDB(t)
+	q, _, _ := setupTestData(t, db)
+
+	neverExpiresQuery := queries.DistributedQuery{
+		Name:          "never-expires-cleanup-query",
+		Query:         "SELECT * FROM osquery_info;",
+		Type:          queries.StandardQueryType,
+		Active:        true,
+		EnvironmentID: 1,
+		Expiration:    time.Time{},
+	}
+	require.NoError(t, q.Create(&neverExpiresQuery))
+
+	require.NoError(t, q.CleanupExpiredQueries(1))
+
+	var reloaded queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", neverExpiresQuery.Name).First(&reloaded).Error)
+	require.True(t, reloaded.Active)
+	require.False(t, reloaded.Expired)
+}
+
 func TestUpdateQueryStatus(t *testing.T) {
 	db := testDB(t)
 	q, nodes, query := setupTestData(t, db)

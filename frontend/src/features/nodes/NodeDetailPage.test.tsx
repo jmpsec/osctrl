@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -11,7 +11,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { NodePosture, OsqueryNode } from '$/api/types';
+import type { NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { SettingValue } from '$/api/settings';
 import type { Features } from '$/api/features';
@@ -26,6 +26,11 @@ const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
 const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
 const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
 const mockGetFeatures = vi.fn<() => Promise<Features>>();
+const mockListSavedQueries = vi.fn<() => Promise<SavedQueriesPagedResponse>>();
+const mockRunQuery = vi.fn<() => Promise<{ query_name: string }>>();
+const mockRunCarve = vi.fn<() => Promise<{ query_name: string }>>();
+const mockListEnvTags = vi.fn<() => Promise<AdminTag[]>>();
+const mockTagNode = vi.fn<() => Promise<{ message: string }>>();
 
 vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
@@ -57,6 +62,23 @@ vi.mock('$/api/settings', () => ({
 
 vi.mock('$/api/features', () => ({
   getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
+}));
+
+vi.mock('$/api/saved-queries', () => ({
+  listSavedQueries: (...args: unknown[]) => mockListSavedQueries(...(args as [])),
+}));
+
+vi.mock('$/api/queries', () => ({
+  runQuery: (...args: unknown[]) => mockRunQuery(...(args as [])),
+}));
+
+vi.mock('$/api/carves', () => ({
+  runCarve: (...args: unknown[]) => mockRunCarve(...(args as [])),
+}));
+
+vi.mock('$/api/tags', () => ({
+  listEnvTags: (...args: unknown[]) => mockListEnvTags(...(args as [])),
+  tagNode: (...args: unknown[]) => mockTagNode(...(args as [])),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -131,6 +153,46 @@ function makeActivityBuckets(): NodeActivityBucket[] {
   ];
 }
 
+function makeSavedQueries(): SavedQueriesPagedResponse {
+  return {
+    items: [
+      {
+        id: 1,
+        created_at: '2026-07-26T10:00:00Z',
+        updated_at: '2026-07-26T10:00:00Z',
+        name: 'process inventory',
+        creator: 'alice',
+        query: 'select * from processes;',
+        environment_id: 1,
+      },
+    ],
+    page: 1,
+    page_size: 50,
+    total_items: 1,
+    total_pages: 1,
+  };
+}
+
+function makeTags(): AdminTag[] {
+  return [
+    {
+      id: 1,
+      created_at: '2026-07-26T10:00:00Z',
+      updated_at: '2026-07-26T10:00:00Z',
+      name: 'prod',
+      description: 'Production',
+      color: '#2ecc71',
+      icon: 'fas fa-tag',
+      created_by: 'alice',
+      custom_tag: 'tag',
+      auto_tag: false,
+      environment_id: 1,
+      tag_type: 6,
+      cohort: true,
+    },
+  ];
+}
+
 function makeTestRouter(initialPath = '/_app/env/test-env/nodes/abc12345-0000-0000-0000-000000000001') {
   const rootRoute = createRootRoute({ component: Outlet });
 
@@ -164,9 +226,21 @@ function makeTestRouter(initialPath = '/_app/env/test-env/nodes/abc12345-0000-00
     component: () => <div data-testid="query-new-page">query new</div>,
   });
 
+  const queryDetailRoute = createRoute({
+    getParentRoute: () => envRoute,
+    path: 'queries/$name',
+    component: () => <div data-testid="query-detail-page">query detail</div>,
+  });
+
+  const carveDetailRoute = createRoute({
+    getParentRoute: () => envRoute,
+    path: 'carves/$name',
+    component: () => <div data-testid="carve-detail-page">carve detail</div>,
+  });
+
   const routeTree = rootRoute.addChildren([
     appRoute.addChildren([
-      envRoute.addChildren([nodesRoute, nodeDetailRoute, queryNewRoute]),
+      envRoute.addChildren([nodesRoute, nodeDetailRoute, queryNewRoute, queryDetailRoute, carveDetailRoute]),
     ]),
   ]);
 
@@ -214,6 +288,11 @@ describe('NodeDetailPage', () => {
     });
     mockListServiceSettings.mockResolvedValue([]);
     mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockListSavedQueries.mockResolvedValue(makeSavedQueries());
+    mockRunQuery.mockResolvedValue({ query_name: 'query-123' });
+    mockRunCarve.mockResolvedValue({ query_name: 'carve-123' });
+    mockListEnvTags.mockResolvedValue(makeTags());
+    mockTagNode.mockResolvedValue({ message: 'ok' });
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {
@@ -485,5 +564,150 @@ describe('NodeDetailPage', () => {
     });
 
     expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
+  });
+
+  it('wraps single-node actions away from the hostname block', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    const toolbar = screen.getByLabelText('Node actions');
+    expect(toolbar).toHaveClass('grid');
+    expect(toolbar).toHaveClass('grid-cols-2');
+    expect(toolbar).toHaveClass('xl:flex');
+  });
+
+  it('runs a saved query against the current node from a modal', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: {
+        'env-uuid-1': { user: true, query: true, carve: false, admin: false },
+      },
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /run query/i }));
+    await user.selectOptions(screen.getByLabelText('Saved query'), 'process inventory');
+    await user.click(screen.getByRole('button', { name: /run on node/i }));
+
+    await waitFor(() => {
+      expect(mockRunQuery).toHaveBeenCalledWith('test-env', {
+        query: 'select * from processes;',
+        uuid_list: ['abc12345-0000-0000-0000-000000000001'],
+        exp_hours: 24,
+      });
+    });
+  });
+
+  it('runs an ad-hoc query against the current node from a modal', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: {
+        'env-uuid-1': { user: true, query: true, carve: false, admin: false },
+      },
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /run query/i }));
+    await user.type(screen.getByLabelText('SQL query'), 'select * from os_version;');
+    await user.click(screen.getByRole('button', { name: /run on node/i }));
+
+    await waitFor(() => {
+      expect(mockRunQuery).toHaveBeenCalledWith('test-env', {
+        query: 'select * from os_version;',
+        uuid_list: ['abc12345-0000-0000-0000-000000000001'],
+        exp_hours: 24,
+      });
+    });
+  });
+
+  it('starts a file carve against the current node from a modal', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: {
+        'env-uuid-1': { user: true, query: false, carve: true, admin: false },
+      },
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /carve file/i }));
+    await user.type(screen.getByLabelText('File path'), '/etc/hosts');
+    await user.click(screen.getByRole('button', { name: /start carve/i }));
+
+    await waitFor(() => {
+      expect(mockRunCarve).toHaveBeenCalledWith('test-env', {
+        path: '/etc/hosts',
+        uuid_list: ['abc12345-0000-0000-0000-000000000001'],
+      });
+    });
+  });
+
+  it('tags the current node from a modal', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /^tag$/i }));
+    const dialog = screen.getByRole('dialog', { name: /tag web-server-01/i });
+    await user.selectOptions(within(dialog).getByLabelText('Tag'), 'prod');
+    await user.click(within(dialog).getByRole('button', { name: /apply tag/i }));
+
+    await waitFor(() => {
+      expect(mockTagNode).toHaveBeenCalledWith('test-env', {
+        uuid: 'abc12345-0000-0000-0000-000000000001',
+        tag: 'prod',
+        type: 6,
+      });
+    });
+  });
+
+  it('creates and applies a custom tag from the node modal', async () => {
+    const user = userEvent.setup();
+    mockListEnvTags.mockResolvedValue([]);
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /^tag$/i }));
+    const dialog = screen.getByRole('dialog', { name: /tag web-server-01/i });
+    await user.type(within(dialog).getByLabelText('Custom tag'), 'incident-response');
+    await user.click(within(dialog).getByRole('button', { name: /apply tag/i }));
+
+    await waitFor(() => {
+      expect(mockTagNode).toHaveBeenCalledWith('test-env', {
+        uuid: 'abc12345-0000-0000-0000-000000000001',
+        tag: 'incident-response',
+        type: 6,
+      });
+    });
   });
 });
