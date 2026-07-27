@@ -175,12 +175,13 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 		Type  string
 	}
 
+	now := time.Now()
 	q.DB.Table("distributed_queries dq").
 		Select("dq.name, dq.query, dq.type").
 		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
 		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
 		Where("dq.active = ? AND dq.completed = ? AND dq.deleted = ? AND dq.expired = ?", true, false, false, false).
-		Where("dq.expiration > ?", time.Now()).
+		Where("(dq.expiration = ? OR dq.expiration > ?)", time.Time{}, now).
 		Scan(&results)
 
 	if len(results) == 0 {
@@ -434,6 +435,9 @@ func (q *Queries) CleanupExpiredQueries(envid uint) error {
 		return err
 	}
 	for _, query := range qs {
+		if query.Expiration.IsZero() {
+			continue
+		}
 		if query.Expiration.Before(time.Now()) {
 			if err := q.Expire(query.Name, envid); err != nil {
 				return err
@@ -450,6 +454,9 @@ func (q *Queries) CleanupExpiredCarves(envid uint) error {
 		return err
 	}
 	for _, query := range qs {
+		if query.Expiration.IsZero() {
+			continue
+		}
 		if query.Expiration.Before(time.Now()) {
 			if err := q.Expire(query.Name, envid); err != nil {
 				return err
