@@ -57,7 +57,9 @@ func TestProjectNodeAddsPostureRiskWhenPostureEnabled(t *testing.T) {
 	if view.Posture == nil {
 		t.Fatal("expected posture summary")
 	}
-	if view.Posture.RiskLevel != "high" {
+	// An unencrypted disk is a failing critical control, which escalates
+	// the risk level to critical regardless of the numeric score.
+	if view.Posture.RiskLevel != "critical" {
 		t.Fatalf("unexpected risk level %q", view.Posture.RiskLevel)
 	}
 }

@@ -3,6 +3,8 @@ package posture
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 	"time"
 )
@@ -10,6 +12,27 @@ import (
 // ---------------------------------------------------------------------------
 // Control framework — maps posture data to SOC2 / ISO 27001 controls and
 // evaluates each against a policy to produce a quantified risk score.
+//
+// Scoring model:
+//
+//   - A control may draw evidence from several posture categories (e.g.
+//     software inventory accepts deb, rpm, Windows programs, Homebrew or
+//     macOS apps). A category that is empty because it does not apply to
+//     the platform (rpm on a Debian host) is NOT a finding — the control
+//     passes as long as one applicable source has data.
+//   - Controls whose categories were never collected are not evaluated at
+//     all: they do not count as pass, warn or fail ("not applicable" rather
+//     than "unknown risk").
+//   - The total score is normalized: earned risk points divided by the
+//     maximum possible points of the controls that were actually evaluated,
+//     scaled to 0-100. This keeps scores comparable between platforms that
+//     collect a different number of categories, and means a well-monitored
+//     node is not penalized for having more checks.
+//   - The risk level is exception-driven, the way an auditor reads a
+//     report: any failing critical control (e.g. no disk encryption) makes
+//     the node "critical" regardless of how many other controls pass; any
+//     failing high control raises it to at least "high". Otherwise the
+//     normalized score thresholds decide.
 // ---------------------------------------------------------------------------
 
 // Framework is the compliance framework a control belongs to.
@@ -32,14 +55,14 @@ const (
 
 // ControlResult is the evaluation outcome for a single control.
 type ControlResult struct {
-	Category    string    `json:"category"`   // posture category (e.g. "disk_encryption")
-	ControlID   string    `json:"control_id"` // e.g. "A.8.5" or "CC6.6"
+	Category    string    `json:"category"`   // posture category the evidence came from
+	ControlID   string    `json:"control_id"` // e.g. "A.8.24" or "CC6.6"
 	Framework   Framework `json:"framework"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      string    `json:"status"` // "pass", "warn", "fail"
 	Severity    Severity  `json:"severity"`
-	Score       int       `json:"score"`  // 0 = pass, 1-100 = risk points
+	Score       int       `json:"score"`  // 0 = pass, otherwise earned risk points
 	Detail      string    `json:"detail"` // human-readable explanation
 }
 
@@ -47,7 +70,7 @@ type ControlResult struct {
 type PostureScore struct {
 	NodeUUID   string          `json:"node_uuid"`
 	Timestamp  time.Time       `json:"timestamp"`
-	TotalScore int             `json:"total_score"` // 0-100, lower is better
+	TotalScore int             `json:"total_score"` // 0-100 normalized, lower is better
 	RiskLevel  string          `json:"risk_level"`  // "low", "medium", "high", "critical"
 	Controls   []ControlResult `json:"controls"`
 	PassCount  int             `json:"pass_count"`
@@ -55,7 +78,7 @@ type PostureScore struct {
 	FailCount  int             `json:"fail_count"`
 }
 
-// RiskLevelFromScore converts a numeric score to a risk level.
+// RiskLevelFromScore converts a normalized score to a risk level.
 func RiskLevelFromScore(score int) string {
 	switch {
 	case score >= 70:
@@ -77,6 +100,11 @@ var SeverityWeight = map[Severity]int{
 	SeverityLow:      5,
 }
 
+// warnDivisor: a warning earns a quarter of the control's weight. Warnings
+// are "needs review" items, not confirmed exposures — pricing them at half
+// weight (as before) let a handful of review items outrank a real failure.
+const warnDivisor = 4
+
 // ---------------------------------------------------------------------------
 // ScoreCalculator — takes posture records and evaluates them against
 // policy rules to produce a PostureScore.
@@ -87,17 +115,22 @@ type ScoreCalculator struct {
 	rules []ScoringRule
 }
 
-// ScoringRule defines how to evaluate a posture category.
+// ScoringRule defines how to evaluate one control from posture data.
 type ScoringRule struct {
-	Category    string    `json:"category"`
+	// Categories lists every posture category that can provide evidence
+	// for this control. The rule is evaluated when at least one of them
+	// has been collected; mutually exclusive sources (deb vs rpm) belong
+	// in the same rule so an empty inapplicable source is not a finding.
+	Categories  []string  `json:"categories"`
 	ControlID   string    `json:"control_id"`
 	Framework   Framework `json:"framework"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Severity    Severity  `json:"severity"`
-	// Evaluate receives the parsed rows from the posture summary and
-	// returns (status, detail). status is "pass", "warn", or "fail".
-	Evaluate func(rows []map[string]interface{}) (status, detail string)
+	// Evaluate receives the collected categories (only those present for
+	// the node) with their parsed rows and returns (status, detail).
+	// status is "pass", "warn", or "fail".
+	Evaluate func(data map[string][]map[string]interface{}) (status, detail string)
 }
 
 // NewScoreCalculator returns a calculator with all built-in rules.
@@ -111,7 +144,9 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 		Timestamp: time.Now(),
 	}
 
-	// Build a lookup: category → parsed rows
+	// Build a lookup: category → parsed rows. A collected category with an
+	// empty result is kept as an empty (non-nil) slice — "the query ran and
+	// found nothing" is different from "never collected".
 	categoryData := make(map[string][]map[string]interface{})
 	for _, r := range records {
 		var rows []map[string]interface{}
@@ -124,25 +159,43 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 				_ = json.Unmarshal([]byte(r.Snapshot), &rows)
 			}
 		}
+		if rows == nil {
+			rows = []map[string]interface{}{}
+		}
 		categoryData[r.Category] = rows
 		if score.NodeUUID == "" {
 			score.NodeUUID = r.NodeUUID
 		}
 	}
 
-	totalScore := 0
+	earned := 0
+	possible := 0
 	for _, rule := range sc.rules {
-		rows, exists := categoryData[rule.Category]
-		if !exists {
-			// Category not collected — skip (can't evaluate what we don't have)
+		// Collect the evidence categories present for this node.
+		data := make(map[string][]map[string]interface{})
+		resultCategory := ""
+		for _, cat := range rule.Categories {
+			rows, exists := categoryData[cat]
+			if !exists {
+				continue
+			}
+			data[cat] = rows
+			// Attribute the result to the first collected category with
+			// data so UI drill-downs land on actual evidence.
+			if resultCategory == "" || (len(categoryData[resultCategory]) == 0 && len(rows) > 0) {
+				resultCategory = cat
+			}
+		}
+		if len(data) == 0 {
+			// Nothing collected for this control — not applicable, skip.
 			continue
 		}
 
-		status, detail := rule.Evaluate(rows)
+		status, detail := rule.Evaluate(data)
 		weight := SeverityWeight[rule.Severity]
 
 		result := ControlResult{
-			Category:    rule.Category,
+			Category:    resultCategory,
 			ControlID:   rule.ControlID,
 			Framework:   rule.Framework,
 			Title:       rule.Title,
@@ -157,87 +210,148 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 			result.Score = 0
 			score.PassCount++
 		case "warn":
-			result.Score = weight / 2
+			result.Score = weight / warnDivisor
 			score.WarnCount++
 		case "fail":
 			result.Score = weight
 			score.FailCount++
 		}
 
-		totalScore += result.Score
+		earned += result.Score
+		possible += weight
 		score.Controls = append(score.Controls, result)
 	}
 
-	if totalScore > 100 {
-		totalScore = 100
+	if possible > 0 {
+		score.TotalScore = int(math.Round(100 * float64(earned) / float64(possible)))
 	}
-	score.TotalScore = totalScore
-	score.RiskLevel = RiskLevelFromScore(totalScore)
+	score.RiskLevel = riskLevel(score.TotalScore, score.Controls)
 	return score
 }
 
+// riskLevel derives the risk level from the normalized score, escalated by
+// the worst failing control: auditors reason in exceptions, and a single
+// failed critical control (unencrypted disk) is a major nonconformity no
+// matter how many low-weight controls pass around it.
+func riskLevel(score int, controls []ControlResult) string {
+	level := RiskLevelFromScore(score)
+	for _, c := range controls {
+		if c.Status != "fail" {
+			continue
+		}
+		switch c.Severity {
+		case SeverityCritical:
+			return "critical"
+		case SeverityHigh:
+			if level == "low" || level == "medium" {
+				level = "high"
+			}
+		}
+	}
+	return level
+}
+
 // ---------------------------------------------------------------------------
-// Default scoring rules — mapped to SOC2 TSC and ISO 27001 Annex A controls.
-// Each rule evaluates the posture data and returns pass/warn/fail.
+// Default scoring rules — mapped to ISO 27001:2022 Annex A and SOC2 TSC
+// controls. Each rule evaluates the posture evidence and returns
+// pass/warn/fail.
 // ---------------------------------------------------------------------------
 
 func defaultRules() []ScoringRule {
 	return []ScoringRule{
-		// --- Disk Encryption (A.8.5 / CC6.6) ---
+		// --- Disk encryption at rest (A.8.24 / CC6.6) ---
+		// Evidence arrives either as generic disk_encryption rows (Linux and
+		// macOS: "encrypted" flag) or BitLocker rows ("protection_status"),
+		// which Windows profiles store under the disk_encryption category.
 		{
-			Category: "disk_encryption", ControlID: "A.8.5", Framework: FrameworkISO27001,
+			Categories: []string{"disk_encryption", "bitlocker_info"},
+			ControlID:  "A.8.24", Framework: FrameworkISO27001,
 			Title:       "Disk encryption at rest",
-			Description: "All disks must be encrypted. Unencrypted disks expose data at rest.",
+			Description: "Data volumes must be encrypted at rest. Boot and recovery partitions are commonly unencrypted by design.",
 			Severity:    SeverityCritical,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
-					return "warn", "No disk encryption data collected — cannot verify"
+					return "warn", "No disk encryption data collected — cannot verify encryption at rest"
 				}
-				unencrypted := 0
+				total := 0
+				protected := 0
+				osDriveUnprotected := false
 				for _, row := range rows {
+					total++
+					if _, isBitlocker := row["protection_status"]; isBitlocker {
+						// osquery bitlocker_info: protection_status 1 = on
+						status := getStr(row, "protection_status")
+						if status == "1" || strings.EqualFold(status, "On") || strings.EqualFold(status, "Protected") {
+							protected++
+						} else if strings.EqualFold(strings.TrimSuffix(getStr(row, "drive_letter"), ":"), "c") {
+							osDriveUnprotected = true
+						}
+						continue
+					}
 					enc := getStr(row, "encrypted")
-					if enc == "0" || strings.EqualFold(enc, "false") || enc == "" {
-						unencrypted++
+					if enc == "1" || strings.EqualFold(enc, "true") {
+						protected++
 					}
 				}
-				if unencrypted > 0 {
-					return "fail", fmt.Sprintf("%d of %d disk(s) are not encrypted", unencrypted, len(rows))
+				switch {
+				case osDriveUnprotected:
+					return "fail", "OS drive (C:) is not BitLocker-protected"
+				case protected == 0:
+					return "fail", fmt.Sprintf("None of %d disk(s) are encrypted", total)
+				case protected < total:
+					return "warn", fmt.Sprintf("%d of %d disk(s)/volume(s) are not encrypted — verify they hold no data (boot, swap and recovery partitions are commonly unencrypted)", total-protected, total)
+				default:
+					return "pass", fmt.Sprintf("All %d disk(s) are encrypted", total)
 				}
-				return "pass", fmt.Sprintf("All %d disk(s) are encrypted", len(rows))
 			},
 		},
 
-		// --- Disk Encryption Windows (bitlocker_info) ---
+		// --- Software inventory (A.5.9 / CC6.1) ---
+		// One control fed by every package source. Sources are mutually
+		// exclusive per platform (deb vs rpm, Homebrew is optional on
+		// macOS), so an empty inapplicable source is not a finding: the
+		// control passes when any source has data.
 		{
-			Category: "bitlocker_info", ControlID: "A.8.5", Framework: FrameworkISO27001,
-			Title:       "BitLocker disk encryption",
-			Description: "BitLocker protection must be active on all drives.",
-			Severity:    SeverityCritical,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No BitLocker data collected"
+			Categories: []string{"packages_deb", "packages_rpm", "packages_windows", "packages_apps", "packages_brew"},
+			ControlID:  "A.5.9", Framework: FrameworkISO27001,
+			Title:       "Software inventory",
+			Description: "An inventory of installed software must be available for asset management and vulnerability assessment.",
+			Severity:    SeverityLow,
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				sourceLabels := map[string]string{
+					"packages_deb":     "deb",
+					"packages_rpm":     "rpm",
+					"packages_windows": "programs",
+					"packages_apps":    "apps",
+					"packages_brew":    "brew",
 				}
-				unprotected := 0
-				for _, row := range rows {
-					status := getStr(row, "protection_status")
-					if status != "On" && !strings.EqualFold(status, "Protected") {
-						unprotected++
+				parts := []string{}
+				totalRows := 0
+				for cat, rows := range data {
+					if len(rows) == 0 {
+						continue
 					}
+					totalRows += len(rows)
+					parts = append(parts, fmt.Sprintf("%d %s", len(rows), sourceLabels[cat]))
 				}
-				if unprotected > 0 {
-					return "fail", fmt.Sprintf("%d of %d drive(s) lack BitLocker protection", unprotected, len(rows))
+				if totalRows == 0 {
+					return "warn", fmt.Sprintf("Package inventory collected from %d source(s) but empty — verify osquery table access", len(data))
 				}
-				return "pass", fmt.Sprintf("All %d drive(s) have BitLocker protection", len(rows))
+				sort.Strings(parts)
+				return "pass", fmt.Sprintf("%d packages inventoried (%s)", totalRows, strings.Join(parts, ", "))
 			},
 		},
 
-		// --- Users with real shells (A.5.15 / CC6.1) ---
+		// --- Users with real shells (A.8.2 / CC6.1) ---
 		{
-			Category: "users", ControlID: "A.5.15", Framework: FrameworkISO27001,
+			Categories: []string{"users"},
+			ControlID:  "A.8.2", Framework: FrameworkISO27001,
 			Title:       "Interactive user accounts",
-			Description: "Review users with login shells. Excessive interactive accounts increase attack surface.",
+			Description: "Review users with login shells. Multiple UID-0 accounts or excessive interactive accounts increase attack surface.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "warn", "No user data collected"
 				}
@@ -258,13 +372,15 @@ func defaultRules() []ScoringRule {
 			},
 		},
 
-		// --- SSH authorized keys (A.5.37 / CC6.7) ---
+		// --- SSH authorized keys (A.5.17 / CC6.1) ---
 		{
-			Category: "ssh_keys", ControlID: "A.5.37", Framework: FrameworkISO27001,
+			Categories: []string{"ssh_keys"},
+			ControlID:  "A.5.17", Framework: FrameworkISO27001,
 			Title:       "SSH authorized keys",
 			Description: "Review SSH key access. Keys for root or excessive keys increase unauthorized access risk.",
 			Severity:    SeverityHigh,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No SSH authorized keys found"
 				}
@@ -282,48 +398,65 @@ func defaultRules() []ScoringRule {
 			},
 		},
 
-		// --- Listening ports (A.5.15 / CC6.1) ---
+		// --- Listening ports (A.8.20 / CC6.6) ---
+		// Plaintext-authentication services are always a failure. Services
+		// that are legitimate on many servers but dangerous when exposed
+		// (RDP, SMB, SNMP, VNC) are a warning to review exposure, not a
+		// failure: RDP/SMB listen on effectively every Windows server.
 		{
-			Category: "listening_ports", ControlID: "A.5.15", Framework: FrameworkISO27001,
+			Categories: []string{"listening_ports"},
+			ControlID:  "A.8.20", Framework: FrameworkISO27001,
 			Title:       "Open listening ports",
-			Description: "Minimize open ports. Unexpected services increase attack surface.",
+			Description: "Minimize open ports. Plaintext services must not run; remote-access services must not be exposed beyond trusted networks.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No listening ports"
 				}
-				// Flag well-known dangerous ports
-				dangerousPorts := map[string]bool{
-					"23":   true, // telnet
-					"21":   true, // ftp
-					"3389": true, // rdp (only dangerous if exposed)
-					"445":  true, // smb
-					"161":  true, // snmp
+				plaintextPorts := map[string]string{
+					"23": "telnet",
+					"21": "ftp",
 				}
-				dangerCount := 0
+				reviewPorts := map[string]string{
+					"3389": "rdp",
+					"445":  "smb",
+					"161":  "snmp",
+					"5900": "vnc",
+				}
+				plaintext := []string{}
+				review := []string{}
 				for _, row := range rows {
 					port := getStr(row, "port")
-					if dangerousPorts[port] {
-						dangerCount++
+					if svc, ok := plaintextPorts[port]; ok {
+						plaintext = append(plaintext, svc)
+					}
+					if svc, ok := reviewPorts[port]; ok {
+						review = append(review, svc)
 					}
 				}
-				if dangerCount > 0 {
-					return "fail", fmt.Sprintf("%d listening port(s) on dangerous services (telnet/ftp/rdp/smb/snmp)", dangerCount)
+				if len(plaintext) > 0 {
+					return "fail", fmt.Sprintf("Plaintext service(s) listening: %s", strings.Join(dedupe(plaintext), ", "))
+				}
+				if len(review) > 0 {
+					return "warn", fmt.Sprintf("Remote-access service(s) listening: %s — verify they are not exposed beyond trusted networks", strings.Join(dedupe(review), ", "))
 				}
 				if len(rows) > 50 {
 					return "warn", fmt.Sprintf("%d listening ports — review if all are necessary", len(rows))
 				}
-				return "pass", fmt.Sprintf("%d listening ports, none on dangerous services", len(rows))
+				return "pass", fmt.Sprintf("%d listening ports, none on risky services", len(rows))
 			},
 		},
 
 		// --- Patches / hotfixes (A.8.8 / CC7.1) ---
 		{
-			Category: "patches", ControlID: "A.8.8", Framework: FrameworkISO27001,
+			Categories: []string{"patches"},
+			ControlID:  "A.8.8", Framework: FrameworkISO27001,
 			Title:       "Security patches installed",
 			Description: "Verify security patches are installed. Missing patches are exploitable vulnerabilities.",
 			Severity:    SeverityHigh,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "warn", "No patch data collected — cannot verify patch status"
 				}
@@ -333,11 +466,13 @@ func defaultRules() []ScoringRule {
 
 		// --- SUID binaries (A.8.9 / CC7.4) ---
 		{
-			Category: "suid_binaries", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"suid_binaries"},
+			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "SUID binaries",
 			Description: "SUID binaries are privilege escalation vectors. Non-standard SUID binaries are high risk.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No SUID binaries found"
 				}
@@ -364,11 +499,13 @@ func defaultRules() []ScoringRule {
 
 		// --- Startup items (A.8.9 / CC8.1) ---
 		{
-			Category: "startup_items", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"startup_items"},
+			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "Startup items / autostart",
 			Description: "Review programs that run at startup. Unexpected startup items may indicate persistence.",
 			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No startup items found"
 				}
@@ -379,13 +516,15 @@ func defaultRules() []ScoringRule {
 			},
 		},
 
-		// --- Browser extensions (A.8.9 / CC6.6) ---
+		// --- Browser extensions (A.8.19 / CC6.6) ---
 		{
-			Category: "browser_extensions_chrome", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"browser_extensions_chrome"},
+			ControlID:  "A.8.19", Framework: FrameworkISO27001,
 			Title:       "Chrome browser extensions",
 			Description: "Browser extensions can access sensitive data. Review for unknown or malicious extensions.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No Chrome extensions found"
 				}
@@ -396,11 +535,13 @@ func defaultRules() []ScoringRule {
 			},
 		},
 		{
-			Category: "browser_extensions_firefox", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"browser_extensions_firefox"},
+			ControlID:  "A.8.19", Framework: FrameworkISO27001,
 			Title:       "Firefox browser add-ons",
 			Description: "Firefox add-ons can access sensitive data. Review for unknown or malicious add-ons.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No Firefox add-ons found"
 				}
@@ -411,13 +552,15 @@ func defaultRules() []ScoringRule {
 			},
 		},
 
-		// --- WiFi networks (A.8.9 / CC6.1) ---
+		// --- WiFi networks (A.8.21 / CC6.1) ---
 		{
-			Category: "wifi_networks", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"wifi_networks"},
+			ControlID:  "A.8.21", Framework: FrameworkISO27001,
 			Title:       "Known WiFi networks",
 			Description: "Review saved WiFi networks. Open or unsecured networks pose data interception risk.",
 			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No saved WiFi networks"
 				}
@@ -437,29 +580,25 @@ func defaultRules() []ScoringRule {
 
 		// --- macOS sharing preferences (A.8.9 / CC6.1) ---
 		{
-			Category: "file_sharing", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"file_sharing"},
+			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "macOS sharing services",
 			Description: "File sharing, screen sharing, and remote login should be disabled unless explicitly required.",
 			Severity:    SeverityMedium,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "warn", "No sharing preference data collected"
 				}
-				if len(rows) == 0 {
-					return "pass", "No sharing data"
-				}
 				row := rows[0]
 				enabled := []string{}
-				for _, svc := range []string{"file_sharing", "screen_sharing", "remote_management", "internet_sharing", "printer_sharing"} {
+				for _, svc := range []string{"file_sharing", "screen_sharing", "remote_login", "remote_management", "internet_sharing", "printer_sharing"} {
 					if getStr(row, svc) == "1" || strings.EqualFold(getStr(row, svc), "true") || strings.EqualFold(getStr(row, svc), "on") {
 						enabled = append(enabled, svc)
 					}
 				}
-				if len(enabled) > 2 {
-					return "warn", fmt.Sprintf("Multiple sharing services enabled: %s", strings.Join(enabled, ", "))
-				}
 				if len(enabled) > 0 {
-					return "pass", fmt.Sprintf("Sharing services enabled: %s", strings.Join(enabled, ", "))
+					return "warn", fmt.Sprintf("Sharing service(s) enabled: %s — disable unless explicitly required", strings.Join(enabled, ", "))
 				}
 				return "pass", "No sharing services enabled"
 			},
@@ -467,77 +606,17 @@ func defaultRules() []ScoringRule {
 
 		// --- Kernel modules (A.8.9 / CC7.4) — Linux servers ---
 		{
-			Category: "kernel_modules", ControlID: "A.8.9", Framework: FrameworkISO27001,
+			Categories: []string{"kernel_modules"},
+			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "Loaded kernel modules",
 			Description: "Review loaded kernel modules. Non-standard modules may indicate rootkits or unnecessary drivers.",
 			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
+			Evaluate: func(data map[string][]map[string]interface{}) (string, string) {
+				rows := mergeRows(data)
 				if len(rows) == 0 {
 					return "pass", "No kernel modules loaded"
 				}
 				return "pass", fmt.Sprintf("%d kernel modules loaded", len(rows))
-			},
-		},
-
-		// --- Installed packages (A.8.7 / CC7.1) ---
-		{
-			Category: "packages_deb", ControlID: "A.8.7", Framework: FrameworkISO27001,
-			Title:       "Installed packages (DEB)",
-			Description: "Track installed packages for inventory and vulnerability assessment.",
-			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No package data collected"
-				}
-				return "pass", fmt.Sprintf("%d packages installed", len(rows))
-			},
-		},
-		{
-			Category: "packages_rpm", ControlID: "A.8.7", Framework: FrameworkISO27001,
-			Title:       "Installed packages (RPM)",
-			Description: "Track installed packages for inventory and vulnerability assessment.",
-			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No package data collected"
-				}
-				return "pass", fmt.Sprintf("%d packages installed", len(rows))
-			},
-		},
-		{
-			Category: "packages_windows", ControlID: "A.8.7", Framework: FrameworkISO27001,
-			Title:       "Installed programs (Windows)",
-			Description: "Track installed programs for inventory and vulnerability assessment.",
-			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No program data collected"
-				}
-				return "pass", fmt.Sprintf("%d programs installed", len(rows))
-			},
-		},
-		{
-			Category: "packages_brew", ControlID: "A.8.7", Framework: FrameworkISO27001,
-			Title:       "Homebrew packages",
-			Description: "Track Homebrew packages for inventory and vulnerability assessment.",
-			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No Homebrew package data collected"
-				}
-				return "pass", fmt.Sprintf("%d Homebrew packages installed", len(rows))
-			},
-		},
-		{
-			Category: "packages_apps", ControlID: "A.8.7", Framework: FrameworkISO27001,
-			Title:       "Installed applications (macOS)",
-			Description: "Track installed macOS applications for inventory and vulnerability assessment.",
-			Severity:    SeverityLow,
-			Evaluate: func(rows []map[string]interface{}) (string, string) {
-				if len(rows) == 0 {
-					return "warn", "No application data collected"
-				}
-				return "pass", fmt.Sprintf("%d applications installed", len(rows))
 			},
 		},
 	}
@@ -546,6 +625,34 @@ func defaultRules() []ScoringRule {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// mergeRows flattens the rows of every collected category, in stable
+// category order.
+func mergeRows(data map[string][]map[string]interface{}) []map[string]interface{} {
+	cats := make([]string, 0, len(data))
+	for cat := range data {
+		cats = append(cats, cat)
+	}
+	sort.Strings(cats)
+	var out []map[string]interface{}
+	for _, cat := range cats {
+		out = append(out, data[cat]...)
+	}
+	return out
+}
+
+func dedupe(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
 
 func getStr(row map[string]interface{}, key string) string {
 	v, ok := row[key]
