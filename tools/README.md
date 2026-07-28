@@ -118,6 +118,52 @@ $ make -C tools/fake_news_go sweep ENV_UUID=<env-uuid> SECRET=<secret>
 
 See [tools/fake_news_go/README.md](./fake_news_go/README.md) for details.
 
+## json2yaml-config
+
+Go tool to convert the old (pre 0.5.0) osctrl JSON configuration files into the single YAML configuration file used by `osctrl-tls`, `osctrl-admin` and `osctrl-api` since the YAML migration. The old configuration was split in multiple JSON files (`tls.json`/`admin.json`/`api.json`, `db.json`, `redis.json`, `jwt.json`, plus optional SAML, logger and carver files), each wrapped in a top-level JSON key.
+
+```shell
+# Convert an old TLS configuration with graylog logger and S3 carver
+$ go run ./tools/json2yaml-config -service tls \
+    -config config/tls.json \
+    -db config/db.json \
+    -redis config/redis.json \
+    -logger config/graylog.json \
+    -carver config/carver_tls.json \
+    -output tls.yml
+
+# Convert an old admin configuration with SAML auth
+$ go run ./tools/json2yaml-config -service admin \
+    -config config/admin.json \
+    -db config/db.json \
+    -redis config/redis.json \
+    -jwt config/jwt.json \
+    -saml config/saml.json \
+    -output admin.yml
+
+# Convert an old API configuration and print to stdout
+$ go run ./tools/json2yaml-config -service api \
+    -config config/api.json \
+    -db config/db.json \
+    -redis config/redis.json \
+    -jwt config/jwt.json \
+    -output -
+```
+
+**Options:**
+
+- `-service`: Service to convert the configuration for: `tls`, `admin` or `api`. Required.
+- `-config`: Path to the old service JSON file (`tls.json`, `admin.json` or `api.json`). Required.
+- `-db`: Path to the old `db.json` file (optional, defaults are used if omitted)
+- `-redis`: Path to the old `redis.json` file (optional, defaults are used if omitted)
+- `-jwt`: Path to the old `jwt.json` file (optional, `admin`/`api` only)
+- `-saml`: Path to the old `saml.json` file (optional, `admin` only)
+- `-logger`: Path to the old logger JSON file, keyed by logger type: `graylog`, `splunk`, `elastic`, `logstash`, `kinesis`, `s3` or `kafka` (optional)
+- `-carver`: Path to the old S3 carver JSON file (optional)
+- `-output`: Path to write the YAML output to (default: `<service>.yml`, use `-` for stdout)
+
+Fields that did not exist in the old JSON configuration (`osquery`, `osctrld`, TLS termination, debug, OIDC...) are filled with the same defaults as the sample files in `deploy/config/`. Review the generated file before using it, in particular `auditLog` (emitted as `false` since the option did not exist pre 0.5.0) and the `osquery` section.
+
 ## fake_logging.py
 
 Script to simulate HTTP logging services (Graylog, Splunk...) for osctrl and check if logs are being sent. It is just an HTTP catchall service.
