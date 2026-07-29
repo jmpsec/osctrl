@@ -17,20 +17,18 @@
 # Arguments for TYPE:
 #   self    Provision will use a self-signed TLS certificate that will be generated.
 #   own     Provision will use the TLS certificate provided by the user.
-#   certbot Provision will generate a TLS certificate using letsencrypt/certbot. More info here: https://certbot.eff.org/
 #
 # Argument for PART:
-#   admin   Provision will deploy only the admin interface.
-#   tls     Provision will deploy only the TLS endpoint.
-#   api     Provision will deploy only the API endpoint.
-#   all     Provision will deploy both the admin and the TLS endpoint.
+#   admin  Provision will deploy only the admin interface.
+#   tls       Provision will deploy only the TLS endpoint.
+#   api       Provision will deploy only the API endpoint.
+#   all       Provision will deploy all components (admin, tls, api).
 #
 # Optional Parameters:
 #   --public-tls-port PORT      Port for the TLS endpoint service. Default is 443
 #   --public-admin-port PORT    Port for the admin service. Default is 8443
 #   --public-api-port PORT      Port for the API service. Default is 8444
 #   --private-tls-port PORT     Port for the TLS endpoint service. Default is 9000
-#   --private-admin-port PORT   Port for the admin service. Default is 9001
 #   --private-api-port PORT     Port for the API service. Default is 9002
 #   --all-hostname HOSTNAME     Hostname for all the services. Default is 127.0.0.1
 #   --tls-hostname HOSTNAME     Hostname for the TLS endpoint service. Default is 127.0.0.1
@@ -39,8 +37,6 @@
 #   -X PASS     --password      Force the admin password for the admin interface. Default is random
 #   -k PATH     --keyfile PATH  Path to supplied TLS key file
 #   -c PATH     --certfile PATH Path to supplied TLS server PEM certificate(s) bundle
-#   -d DOMAIN   --domain DOMAIN Domain for the TLS certificate to be generated using letsencrypt
-#   -e EMAIL    --email EMAIL   Domain for the TLS certificate to be generated using letsencrypt
 #   -s PATH     --source PATH   Path to code. Default is auto-detected from script location
 #   -S PATH     --dest PATH     Path to binaries. Default is /opt/osctrl
 #   -n          --nginx         Install and configure nginx as TLS termination
@@ -91,12 +87,11 @@ function usage() {
   printf "\nArguments for TYPE:\n"
   printf "  self \t\tProvision will use a self-signed TLS certificate that will be generated.\n"
   printf "  own \t\tProvision will use the TLS certificate provided by the user.\n"
-  printf "  certbot \tProvision will generate a TLS certificate using letsencrypt/certbot. More info here: https://certbot.eff.org/\n"
   printf "\nArguments for PART:\n"
-  printf "  admin \tProvision will deploy only the admin interface.\n"
+  printf "  admin \t\tProvision will deploy only the admin interface.\n"
   printf "  tls \t\tProvision will deploy only the TLS endpoint.\n"
   printf "  api \t\tProvision will deploy only the API endpoint.\n"
-  printf "  all \t\tProvision will deploy both the admin and the TLS endpoint.\n"
+  printf "  all \t\tProvision will deploy all components (admin, tls, api).\n"
   printf "\nOptional Parameters:\n"
   printf "  --public-tls-port PORT \tPort for the TLS endpoint service. Default is 443\n"
   printf "  --public-admin-port PORT \tPort for the admin service. Default is 8443\n"
@@ -110,8 +105,6 @@ function usage() {
   printf "  --api-hostname HOSTNAME \tHostname for the API service. Default is 127.0.0.1\n"
   printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random\n"
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
-  printf "  -d DOMAIN   --domain DOMAIN \tDomain for the TLS certificate to be generated using letsencrypt\n"
-  printf "  -e EMAIL    --email EMAIL \tDomain for the TLS certificate to be generated using letsencrypt\n"
   printf "  -s PATH     --source PATH \tPath to code. Default is auto-detected from script location\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
@@ -139,7 +132,6 @@ TLS_COMPONENT="tls"
 ADMIN_COMPONENT="admin"
 API_COMPONENT="api"
 TLS_CONF="$TLS_COMPONENT.yml"
-ADMIN_CONF="$ADMIN_COMPONENT.yml"
 API_CONF="$API_COMPONENT.yml"
 SYSTEMD_TEMPLATE="systemd.service"
 DEV_HOST="osctrl.dev"
@@ -152,8 +144,6 @@ TYPE="self"
 PART="all"
 KEYFILE=""
 CERTFILE=""
-DOMAIN=""
-EMAIL=""
 ENROLL=false
 UPDATE=false
 NGINX=false
@@ -188,7 +178,6 @@ _T_LOGGING="db"
 _T_CARVER="db"
 
 # Admin Service
-_A_INT_PORT="9001"
 _A_PUB_PORT="8443"
 _A_HOST="$ALL_HOST"
 _A_AUTH="db"
@@ -216,7 +205,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUc:d:e:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,private-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,certfile:,domain:,email:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUc:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,certfile:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -278,11 +267,6 @@ while true; do
     --public-admin-port)
       SHOW_USAGE=false
       _A_PUB_PORT=$2
-      shift 2
-      ;;
-    --private-admin-port)
-      SHOW_USAGE=false
-      _A_INT_PORT=$2
       shift 2
       ;;
     --public-api-port)
@@ -353,16 +337,6 @@ while true; do
       CERTFILE=$2
       shift 2
       ;;
-    -d|--domain)
-      SHOW_USAGE=false
-      DOMAIN=$2
-      shift 2
-      ;;
-    -e|--email)
-      SHOW_USAGE=false
-      EMAIL=$2
-      shift 2
-      ;;
     -s|--source)
       SHOW_USAGE=false
       SOURCE_PATH=$2
@@ -406,32 +380,8 @@ elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
 fi
 
-# Git is needed
-package git
-
-# Update distro
-package_repo_update
-
-# Required packages
-if [[ "$DISTRO" == "ubuntu" ]]; then
-  package build-essential
-fi
-package sudo
-package wget
-package curl
-package gcc
-package make
-package openssl
-package tmux
-package bc
-package rsync
-install_yq
-
-# Golang
-# package golang-go
-if ! [ -x "$(command -v go)" ]; then
-  install_go_25
-fi
+# Prepare for provisioning
+prepare_deployment "$DISTRO"
 
 # Upgrade service
 if [[ "$UPGRADE" == true ]]; then
@@ -457,27 +407,23 @@ if [[ "$UPGRADE" == true ]]; then
     make install_tls
   fi
 
-  if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
-    # Build Admin service
-    make admin
-
-    # Prepare static files for Admin service
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/templates" "tmpl_admin"
-    _static_files "$MODE" "$SOURCE_PATH" "$DEST_PATH" "admin/static" "static"
+  if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
+    # Build API service
+    make api
 
     # Copy osquery tables JSON file
     sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
 
     # Restart service with new binary
-    make install_admin
+    make install_api
   fi
 
-  if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
-    # Build API service
-    make api
+  if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
+    # Build frontend/admin service
+    make frontend
 
-    # Restart service with new binary
-    make install_api
+    # Install frontend/admin service
+    make install_frontend
   fi
 
   # Compile CLI
@@ -500,7 +446,7 @@ else
   log ""
 
   if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
-    log "  -> Deploying Admin service for ports $_A_PUB_PORT:$_A_INT_PORT"
+    log "  -> Deploying Admin service for ports $_A_PUB_PORT"
     log "  -> Hostname for admin: $_A_HOST"
   fi
   log ""
@@ -512,6 +458,84 @@ else
   log ""
 
   log "Installing and configuring services for $NAME"
+
+  # PostgreSQL - Backend
+  if [[ "$POSTGRES" == true ]]; then
+    provision_postgresql "$DISTRO" "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
+  fi
+
+  # Redis - Cache
+  if [[ "$REDIS" == true ]]; then
+    provision_redis "$DISTRO" "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
+  fi
+
+  # Prepare destination and configuration folder
+  sudo mkdir -p "$DEST_PATH/config"
+
+  # Build code
+  cd "$SOURCE_PATH"
+  make clean
+
+  # Compile CLI
+  make cli
+
+  # Install CLI
+  DEST="$DEST_PATH" make install_cli
+
+  if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
+    # Build TLS service
+    make tls
+
+    # Generate TLS configuration file using osctrl-tls
+    sudo ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF" --force
+
+    # Prepare DB configuration values for services
+    configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
+    # Prepare Cache configuration values for services
+    configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
+
+    configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "console" "$_T_LOGGING" "$_T_CARVER"
+
+    # Verify TLS configuration
+    ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
+
+    # Systemd configuration for TLS service
+    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$TLS_CONF"
+  fi
+
+  if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
+    # Build Admin service
+    make frontend
+
+    # Prepare folder
+    frontend_files "$SOURCE_PATH/frontend" "$DEST_PATH/frontend"
+  fi
+
+  if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
+    # Build API service
+    make api
+
+    # Generate API configuration file using osctrl-api
+    sudo ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF" --force
+
+    # Prepare DB configuration values for services
+    configuration_db "$DEST_PATH/config/$API_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
+
+    # Prepare Cache configuration values for services
+    configuration_cache "$DEST_PATH/config/$API_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
+
+    configuration_service "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$_P_AUTH" "console" "$_P_LOGGING" "$_P_CARVER"
+
+    # JWT configuration
+    configuration_jwt "$DEST_PATH/config/$API_CONF" "$_JWT_SECRET"
+
+    # Verify API configuration
+    ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
+
+    # Systemd configuration for API service
+    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$API_CONF"
+  fi
 
   # nginx as TLS termination
   if [[ "$NGINX" == true ]]; then
@@ -569,16 +593,6 @@ else
       fi
     fi
 
-    # Certbot certificates
-    if [[ "$TYPE" == "certbot" ]]; then
-      #certbot_certificates_nginx "$_certificates_dir" "$_certificate_name" "$EMAIL" "$DOMAIN"
-      # FIXME: REMEMBER GENERATE THE CERTIFICATES MANUALLY!
-      _log "************** GENERATE THE CERTIFICATES MANUALLY AND USE THEM WITH -t own **************"
-      exit $OHNOES
-      #sudo cp "/etc/letsencrypt/archive/osctrl/fullchain1.pem" "$_cert_file"
-      #sudo cp "/etc/letsencrypt/archive/osctrl/privkey1.pem" "$_key_file"
-    fi
-
     # Diffie-Hellman parameter for DHE ciphersuites
     log "Generating dhparam.pem with $_dh_bits bits... It may take a while"
     sudo openssl dhparam -out "$_dh_file" $_dh_bits &>/dev/null
@@ -597,7 +611,7 @@ else
     nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
 
     # Configuration for Admin service
-    nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH"
+    nginx_service "$SOURCE_PATH/deploy/nginx/frontend.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH" "$DEST_PATH/frontend"
 
     # Configuration for API service
     nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
@@ -605,153 +619,6 @@ else
     # Restart nginx
     sudo nginx -t
     sudo service nginx restart
-  fi
-
-  # PostgreSQL - Backend
-  if [[ "$POSTGRES" == true ]]; then
-    if [[ "$DISTRO" == "ubuntu" ]]; then
-      # Ubuntu 24.04 uses postgresql 16
-      if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
-        package postgresql-16
-        package postgresql-contrib
-        package postgresql-client-16
-        POSTGRES_SERVICE="postgresql"
-        POSTGRES_PSQL="/usr/lib/postgresql/16/bin/psql"
-      else
-        # Assuming we are in Ubuntu 22.04, which uses postgresql 14
-        package postgresql
-        package postgresql-contrib
-        package postgresql-client-14
-        POSTGRES_SERVICE="postgresql"
-        POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
-      fi
-    # Debian uses postgresql 15
-    elif [[ "$DISTRO" == "debian" ]]; then
-      package postgresql
-      package postgresql-contrib
-      package postgresql-client-15
-      POSTGRES_SERVICE="postgresql"
-      POSTGRES_PSQL="/usr/lib/postgresql/15/bin/psql"
-    elif [[ "$DISTRO" == "centos" ]]; then
-      log "For CentOS, please install Postgres 14 manually"
-      exit $OHNOES
-    fi
-    sudo systemctl enable "$POSTGRES_SERVICE"
-    sudo systemctl start "$POSTGRES_SERVICE"
-    db_user_postgresql "$_DB_NAME" "$_DB_SYSTEM_USER" "$_DB_USER" "$_DB_PASS" "$POSTGRES_PSQL"
-  fi
-
-  # Redis - Cache
-  if [[ "$REDIS" == true ]]; then
-    REDIS_CONF="$SOURCE_PATH/deploy/redis/redis.conf"
-    REDIS_SERVICE="redis-server.service"
-    REDIS_ETC="/etc/redis/redis.conf"
-    if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
-      package redis-server
-    elif [[ "$DISTRO" == "centos" ]]; then
-      log "For CentOS, please install Redis manually"
-      exit $OHNOES
-    fi
-    configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
-  fi
-
-  # Prepare destination and configuration folder
-  sudo mkdir -p "$DEST_PATH/config"
-
-  # Build code
-  cd "$SOURCE_PATH"
-  make clean
-
-  # Compile CLI
-  make cli
-
-  # Install CLI
-  DEST="$DEST_PATH" make install_cli
-
-  if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
-    # Build TLS service
-    make tls
-
-    # Generate TLS configuration file using osctrl-tls
-    sudo ./bin/osctrl-tls config-generate -f "$DEST_PATH/config/$TLS_CONF" --force
-
-    # Prepare DB configuration values for services
-    configuration_db "$DEST_PATH/config/$TLS_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
-
-    # Prepare Cache configuration values for services
-    configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
-
-    configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "console" "$_T_LOGGING" "$_T_CARVER"
-
-    # Verify TLS configuration
-    ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
-
-    # Systemd configuration for TLS service
-    _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$TLS_CONF"
-  fi
-
-  if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
-    # Build Admin service
-    make admin
-
-    # Generate Admin configuration file using osctrl-admin
-    sudo ./bin/osctrl-admin config-generate -f "$DEST_PATH/config/$ADMIN_CONF" --force
-
-    # Prepare DB configuration values for services
-    configuration_db "$DEST_PATH/config/$ADMIN_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
-
-    # Prepare Cache configuration values for services
-    configuration_cache "$DEST_PATH/config/$ADMIN_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
-
-    configuration_service "$DEST_PATH/config/$ADMIN_CONF" "$_A_HOST|$_A_INT_PORT" "$_A_AUTH" "console" "$_A_LOGGING" "$_A_CARVER"
-
-    # JWT configuration
-    configuration_jwt "$DEST_PATH/config/$ADMIN_CONF" "$_JWT_SECRET"
-
-    # Prepare data folder
-    sudo mkdir -p "$DEST_PATH/data"
-
-    # Prepare carved files folder
-    sudo mkdir -p "$DEST_PATH/carved_files"
-    sudo chown osctrl.osctrl "$DEST_PATH/carved_files"
-
-    # Copy osquery tables JSON file
-    sudo cp "$SOURCE_PATH/deploy/osquery/data/$OSQUERY_VERSION.json" "$DEST_PATH/data"
-
-    # Prepare static files for Admin service
-    sudo rsync -av "$SOURCE_PATH/cmd/admin/templates/" "$DEST_PATH/tmpl_admin"
-    sudo rsync -av "$SOURCE_PATH/cmd/admin/static/" "$DEST_PATH/static"
-
-    # Verify TLS configuration
-    ./bin/osctrl-admin config-verify -f "$DEST_PATH/config/$ADMIN_CONF"
-
-    # Systemd configuration for Admin service
-    _systemd "osctrl" "osctrl" "osctrl-admin" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$ADMIN_CONF"
-  fi
-
-  if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
-    # Build API service
-    make api
-
-    # Generate API configuration file using osctrl-api
-    sudo ./bin/osctrl-api config-generate -f "$DEST_PATH/config/$API_CONF" --force
-
-    # Prepare DB configuration values for services
-    configuration_db "$DEST_PATH/config/$API_CONF" "$_DB_HOST" "$_DB_PORT" "$_DB_NAME" "$_DB_USER" "$_DB_PASS"
-
-    # Prepare Cache configuration values for services
-    configuration_cache "$DEST_PATH/config/$API_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
-
-    configuration_service "$DEST_PATH/config/$API_CONF" "$_P_HOST|$_P_INT_PORT" "$_P_AUTH" "console" "$_P_LOGGING" "$_P_CARVER"
-
-    # JWT configuration
-    configuration_jwt "$DEST_PATH/config/$API_CONF" "$_JWT_SECRET"
-
-    # Verify API configuration
-    ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
-
-    # Systemd configuration for API service
-    _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$API_CONF"
   fi
 
   # Some needed files

@@ -104,6 +104,7 @@ function nginx_main() {
 #   int     private_port
 #   string  configuration_output
 #   string  nginx_folder
+#   string  html_folder
 function nginx_service() {
   local __conf=$1
   local __cert=$2
@@ -113,6 +114,8 @@ function nginx_service() {
   local __iport=$6
   local __out=$7
   local __nginx=$8
+  local __html=$9
+
 
   local __available="$__nginx/sites-available"
   local __enabled="$__nginx/sites-enabled"
@@ -126,6 +129,12 @@ function nginx_service() {
     sudo rm -f "$__enabled/default"
   fi
 
+  # If _html is not empty, then replace that in the configuration
+  if [[ -n "$__html" ]]; then
+    sudo sed -i "s|HTML_FOLDER|$__html|g" "$__available/$__out"
+  fi
+
+  # Enable the site
   sudo ln -sf "$__available/$__out" "$__enabled/$__out"
 }
 
@@ -172,34 +181,6 @@ function self_signed_cert() {
   sudo openssl req -x509 -newkey rsa:$__bits -sha256 -days 365 -nodes \
   -keyout "$__devkey" -out "$__devcert" -subj "/CN=$__host" \
   -addext "subjectAltName=IP:$__ip"
-}
-
-# Generate certbot certificates for nginx
-#   string  certs_directory
-#   string  certificate_name
-#   string  email_certbot
-#   string  domain_certificate
-function certbot_certificates_nginx() {
-  local __certs_path=$1
-  local __name=$2
-  local __email=$3
-  local __domain=$4
-  local __cert="$__certs_path/$__name.crt"
-  local __key="$__certs_path/$__name.key"
-
-  log "Installing certbot components"
-
-  package software-properties-common
-  sudo add-apt-repository ppa:certbot/certbot -y
-  package_repo_update
-  package python-certbot-nginx
-
-  # Just in case nginx is running
-  sudo systemctl stop nginx
-
-  # Generating certificate
-  log "Generating certificate with certbot for $DOMAIN"
-  sudo certbot -n --agree-tos --standalone certonly -m "$__email" -d "$__domain" --cert-name "$__name" --cert-path "$__cert" --key-path "$__key"
 }
 
 # Service configuration file generation
@@ -398,6 +379,29 @@ function set_motd_centos() {
   echo "$__centosmotd" | sudo tee -a /etc/profile
 }
 
+# Install all the required packages for osctrl deployment
+#   string  distro_name
+function prepare_deployment() {
+  local __distro=$1
+
+  # Distro dependent actions
+  if [[ "$__distro" == "ubuntu" ]]; then
+    package_repo_update
+    package_install build-essential
+  elif [[ "$__distro" == "centos" ]]; then
+    sudo yum install epel-release -y
+  fi
+
+  log "Installing required packages"
+  packages git sudo curl wget gcc make openssl tmux bc rsync nodejs npm
+  install_yq
+
+  # Install go 1.26.3 if not present
+  if ! [ -x "$(command -v go)" ]; then
+    install_go_26
+  fi
+}
+
 # Install go 1.26.3 from tgz
 function install_go_26() {
   local __version="1.26.3"
@@ -495,4 +499,82 @@ function frontend_files() {
 
   # Adjust permissions
   sudo chown -R www-data:www-data "$__dest"
+}
+
+# Provision postgresql database and user
+#   string  distro_name
+#   string  PostgreSQL_db_name
+#   string  PostgreSQL_system_user
+#   string  PostgreSQL_db_user
+#   string  PostgreSQL_db_pass
+#   string  PostgerSQL_psql
+function provision_postgresql() {
+  local __distro=$1
+  local __pgdb=$2
+  local __pguser=$3
+  local __dbuser=$4
+  local __dbpass=$5
+  local __psql=$6
+
+  local POSTGRES_SERVICE=""
+  local POSTGRES_PSQL=""
+
+  if [[ "$__distro" == "ubuntu" ]]; then
+    # Ubuntu 24.04 uses postgresql 16
+    if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
+      package postgresql-16
+      package postgresql-contrib
+      package postgresql-client-16
+      POSTGRES_SERVICE="postgresql"
+      POSTGRES_PSQL="/usr/lib/postgresql/16/bin/psql"
+    else
+      # Assuming we are in Ubuntu 22.04, which uses postgresql 14
+      package postgresql
+      package postgresql-contrib
+      package postgresql-client-14
+      POSTGRES_SERVICE="postgresql"
+      POSTGRES_PSQL="/usr/lib/postgresql/14/bin/psql"
+    fi
+  # Debian uses postgresql 15
+  elif [[ "$__distro" == "debian" ]]; then
+    package postgresql
+    package postgresql-contrib
+    package postgresql-client-15
+    POSTGRES_SERVICE="postgresql"
+    POSTGRES_PSQL="/usr/lib/postgresql/15/bin/psql"
+  elif [[ "$__distro" == "centos" ]]; then
+    log "For CentOS, please install Postgres 14 manually"
+    exit 1
+  fi
+
+  # Enable and start postgresql service
+  sudo systemctl enable "$POSTGRES_SERVICE"
+  sudo systemctl start "$POSTGRES_SERVICE"
+
+  # Configure PostgreSQL user and database
+  db_user_postgresql "$__pgdb" "$__pguser" "$__dbuser" "$__dbpass" "$__psql"
+}
+
+# Provision redis cache
+#   string  distro_name
+#   string  Redis_conf_file_location
+#   string  Redis_service_name
+#   string  Redis_conf_file
+#   string  Redis_password
+function provision_redis() {
+  local __distro=$1
+  local __conf=$2
+  local __service=$3
+  local __redis=$4
+  local __password=$5
+
+  if [[ "$__distro" == "ubuntu" || "$__distro" == "debian" ]]; then
+    package redis-server
+  elif [[ "$__distro" == "centos" ]]; then
+    log "For CentOS, please install Redis manually"
+    exit 1
+  fi
+
+  # Configure Redis with password
+  configure_redis "$__conf" "$__service" "$__redis" "$__password"
 }
