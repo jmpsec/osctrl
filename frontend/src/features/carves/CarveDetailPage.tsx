@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
+import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCarve, getCarveArchiveUrl, actOnCarve } from '$/api/carves';
@@ -28,9 +29,49 @@ function StatusBadge({ status }: { status: string }) {
       'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
     dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
   }[variant];
+  const inProgress = normalized === 'IN PROGRESS' || normalized === 'SCHEDULED' || normalized === 'QUERIED';
   return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+      {inProgress && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
       {status || 'Unknown'}
+    </span>
+  );
+}
+
+// Overall carve lifecycle badge for the header — mirrors the status column
+// of the carves list (colors and spinner) so both surfaces read the same.
+function CarveStatusBadge({ status }: { status?: string }) {
+  const normalized = (status || '').toUpperCase();
+  const { variant, label, spin } = (() => {
+    switch (normalized) {
+      case 'PENDING':
+        return { variant: 'warning' as const, label: 'Pending', spin: true };
+      case 'COMPLETED':
+        return { variant: 'success' as const, label: 'Completed', spin: false };
+      case 'EXPIRED':
+        return { variant: 'warning' as const, label: 'Expired', spin: false };
+      case 'DELETED':
+        return { variant: 'danger' as const, label: 'Deleted', spin: false };
+      case 'ACTIVE':
+        return { variant: 'info' as const, label: 'Active', spin: true };
+      default:
+        return { variant: 'dim' as const, label: status || 'Unknown', spin: false };
+    }
+  })();
+  const cls = {
+    success:
+      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
+    warning:
+      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
+    danger:
+      'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
+    info: 'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
+    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
+  }[variant];
+  return (
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+      {label}
     </span>
   );
 }
@@ -97,8 +138,9 @@ export function CarveDetailPage() {
       <div className="px-6 py-4 border-b border-[color:var(--border)]">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
+            <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] flex items-center gap-2">
               <span className="font-mono-tabular">{name}</span>
+              {query?.carve_status && <CarveStatusBadge status={query.carve_status} />}
             </h1>
             <p className="text-sm text-[color:var(--text-2)] mt-0.5">
               <Link

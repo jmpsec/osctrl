@@ -306,18 +306,24 @@ function LineChart({
           </text>
         ))}
       </g>
-      {/* Lines — one per category, no fill, 1.5px stroke with round joins */}
-      {LINES.map(({ key, data }) => (
-        <path
-          key={key}
-          d={linePath(data)}
-          fill="none"
-          stroke={palette[key]}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ))}
+      {/* Lines — one per category, no fill, 1.5px stroke with round joins.
+          A single-bucket series (e.g. a deployment in its first hour) has no
+          line segment to draw, so render a dot instead of an invisible path. */}
+      {LINES.map(({ key, data }) =>
+        data.length === 1 ? (
+          <circle key={key} cx={xFor(0)} cy={yFor(data[0])} r="2.5" fill={palette[key]} />
+        ) : (
+          <path
+            key={key}
+            d={linePath(data)}
+            fill="none"
+            stroke={palette[key]}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ),
+      )}
       {/* X axis labels */}
       <g className="font-mono-tabular" fill="var(--text-3)" fontSize="9">
         {xLabels.map((lbl, i, arr) => {
@@ -1279,8 +1285,12 @@ export function DashboardPage() {
   //    dropdown (effectiveEnv, declared above) drives the chart and the
   //    recent-nodes/recently-seen-nodes sections.
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('1d');
-  // 12h and 24h both fetch 1 day (24 hourly buckets); 12h slices the last 12.
-  const activityDays = activityInterval === '7d' ? 7 : 1;
+  // The Redis day-blobs are aligned to UTC midnight, so a trailing 12h/24h
+  // window almost always spans TWO calendar days. Fetching a single day made
+  // the chart empty right after UTC midnight (only the current hour existed);
+  // fetch 2 days and slice the trailing window below instead. 7d fetches the
+  // full retention (a trailing 168h window is approximated by the trim+slice).
+  const activityDays = activityInterval === '7d' ? 7 : 2;
   const activityQueries = useQueries({
     queries: envUuids.map((uuid) => ({
       queryKey: ['dashboard-env-tiles', uuid, activityDays] as const,
@@ -1325,10 +1335,14 @@ export function DashboardPage() {
       total: trim(rawSeries.total),
     };
   })();
-  // For 12h, slice the last 12 hourly buckets from the trimmed series.
+  // Slice the trailing window (12h/24h/7d of hourly buckets) from the
+  // trimmed series so the chart is a true "last N hours" view regardless of
+  // where the UTC day boundary falls.
+  const windowHours =
+    activityInterval === '7d' ? 168 : activityInterval === '12h' ? 12 : 24;
   const chartSeries: ActivitySeries = (() => {
-    if (activityInterval !== '12h') return trimmedSeries;
-    const slice = (arr: number[]) => arr.slice(-12);
+    if (trimmedSeries.total.length <= windowHours) return trimmedSeries;
+    const slice = (arr: number[]) => arr.slice(-windowHours);
     return {
       status: slice(trimmedSeries.status),
       result: slice(trimmedSeries.result),

@@ -1,4 +1,5 @@
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
+import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getQuery, listQueryResults, getQueryResultsCSVUrl, actOnQuery } from '$/api/queries';
@@ -17,7 +18,7 @@ function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; exp
   if (q.deleted) return <Badge variant="danger" label="Deleted" />;
   if (q.expired) return <Badge variant="warning" label="Expired" />;
   if (q.completed) return <Badge variant="success" label="Completed" />;
-  if (q.active) return <Badge variant="info" label="Active" />;
+  if (q.active) return <Badge variant="info" label="Active" spin />;
   return <Badge variant="dim" label="Unknown" />;
 }
 
@@ -36,9 +37,11 @@ function StatusBadge({ code }: { code: number }) {
 function Badge({
   variant,
   label,
+  spin,
 }: {
   variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
   label: string;
+  spin?: boolean;
 }) {
   const cls = {
     success: 'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
@@ -49,7 +52,8 @@ function Badge({
   }[variant];
 
   return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
       {label}
     </span>
   );

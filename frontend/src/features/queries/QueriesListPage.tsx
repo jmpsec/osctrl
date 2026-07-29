@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -23,16 +24,18 @@ function QueryStatusBadge({
   if (q.deleted) return <ListBadge variant="danger" label="Deleted" />;
   if (q.expired) return <ListBadge variant="warning" label="Expired" />;
   if (q.completed) return <ListBadge variant="success" label="Completed" />;
-  if (q.active) return <ListBadge variant="info" label="Active" />;
+  if (q.active) return <ListBadge variant="info" label="Active" spin />;
   return <ListBadge variant="dim" label="Unknown" />;
 }
 
 function ListBadge({
   variant,
   label,
+  spin,
 }: {
   variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
   label: string;
+  spin?: boolean;
 }) {
   const cls = {
     success:
@@ -45,7 +48,12 @@ function ListBadge({
     dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
   }[variant];
 
-  return <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cls)}>{label}</span>;
+  return (
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
+      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+      {label}
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
