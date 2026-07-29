@@ -180,6 +180,18 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('staging')).not.toBeInTheDocument();
   });
 
+  it('fetches 2 days of activity tiles so the trailing 24h window spans the UTC day boundary', async () => {
+    // The Redis tile blobs are aligned to UTC midnight. Fetching days=1
+    // right after midnight yields a single hourly bucket and the activity
+    // chart rendered nothing; the trailing 12h/24h windows need 2 days.
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(mockGetEnvActivityTiles).toHaveBeenCalled());
+    for (const call of mockGetEnvActivityTiles.mock.calls) {
+      expect(call[1]).toBe(2);
+    }
+  });
+
   it('renders the page header', async () => {
     mockGetStats.mockResolvedValue(makeStatsResponse());
     renderWithProviders(makeTestRouter());

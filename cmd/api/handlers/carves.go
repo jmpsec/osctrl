@@ -151,6 +151,10 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Err(terr).Msgf("carve targets fetch failed for %s", name)
 	}
 
+	// Same derived lifecycle status the list endpoint returns, so the SPA
+	// detail header can render the identical badge.
+	q.CarveStatus = deriveCarveStatus(q, files)
+
 	resp := types.CarveDetailResponse{
 		Query: types.DistributedQueryView{
 			DistributedQuery: q,
