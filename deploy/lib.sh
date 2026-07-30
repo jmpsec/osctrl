@@ -305,14 +305,15 @@ function _systemd() {
     sudo mkdir -p "$__dest/bin"
   fi
 
-  # Copying binaries
-  sudo cp "$__path/bin/$__service" "$__dest/bin/$__service"
-
   # Check if service is already running, if so, stop it
   if systemctl is-active --quiet "$__service.service"; then
     log "Stopping $__service.service"
     sudo systemctl stop "$__service.service"
   fi
+
+  # Copying binaries
+  sudo cp "$__path/bin/$__service" "$__dest/bin/$__service"
+
   # Enable and start service
   sudo systemctl enable "$__service.service"
   sudo systemctl start "$__service.service"
@@ -490,11 +491,10 @@ function install_nvm() {
   if ! [[ -d "$HOME/.nvm" ]]; then
     log "Installing NVM"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm
   fi
-
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm
   nvm install --lts
   nvm use --lts
 }
