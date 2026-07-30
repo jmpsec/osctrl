@@ -387,7 +387,7 @@ function prepare_deployment() {
   # Distro dependent actions
   if [[ "$__distro" == "ubuntu" ]]; then
     package_repo_update
-    package_install build-essential
+    package build-essential
   elif [[ "$__distro" == "centos" ]]; then
     sudo yum install epel-release -y
   fi
@@ -517,7 +517,7 @@ function provision_postgresql() {
   local __psql=$6
 
   local POSTGRES_SERVICE=""
-  local POSTGRES_PSQL=""
+  local POSTGRES_PSQL="$__psql"
 
   if [[ "$__distro" == "ubuntu" ]]; then
     # Ubuntu 24.04 uses postgresql 16
@@ -552,22 +552,20 @@ function provision_postgresql() {
   sudo systemctl start "$POSTGRES_SERVICE"
 
   # Configure PostgreSQL user and database
-  db_user_postgresql "$__pgdb" "$__pguser" "$__dbuser" "$__dbpass" "$__psql"
+  db_user_postgresql "$__pgdb" "$__pguser" "$__dbuser" "$__dbpass" "$POSTGRES_PSQL"
 }
 
 # Provision redis cache
 #   string  distro_name
-#   string  Redis_conf_file_location
-#   string  Redis_service_name
-#   string  Redis_conf_file
 #   string  Redis_password
 function provision_redis() {
   local __distro=$1
-  local __conf=$2
-  local __service=$3
-  local __redis=$4
-  local __password=$5
+  local __source_path=$2
+  local __password=$3
 
+  REDIS_CONF="$__source_path/deploy/redis/redis.conf"
+  REDIS_SERVICE="redis-server.service"
+  REDIS_ETC="/etc/redis/redis.conf"
   if [[ "$__distro" == "ubuntu" || "$__distro" == "debian" ]]; then
     package redis-server
   elif [[ "$__distro" == "centos" ]]; then
@@ -576,5 +574,5 @@ function provision_redis() {
   fi
 
   # Configure Redis with password
-  configure_redis "$__conf" "$__service" "$__redis" "$__password"
+  configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$__password"
 }

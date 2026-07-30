@@ -466,7 +466,7 @@ else
 
   # Redis - Cache
   if [[ "$REDIS" == true ]]; then
-    provision_redis "$DISTRO" "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$_CACHE_PASS"
+    provision_redis "$DISTRO" "$SOURCE_PATH" "$_CACHE_PASS"
   fi
 
   # Prepare destination and configuration folder
