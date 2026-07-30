@@ -367,8 +367,8 @@ function configure_redis() {
   cat "$_systemd_redis" | sed "s|Type=forking|Type=notify|g" | sudo tee "$_systemd_redis"
 
   sudo systemctl daemon-reload
-  sudo systemctl restart "$__service"
   sudo systemctl enable "$__service"
+  sudo systemctl start "$__service"
 }
 
 # Customize the MOTD in CentOS
