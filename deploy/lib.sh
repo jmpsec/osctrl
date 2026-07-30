@@ -120,8 +120,12 @@ function nginx_service() {
   local __available="$__nginx/sites-available"
   local __enabled="$__nginx/sites-enabled"
 
-  sudo mkdir -p "$__available"
-  sudo mkdir -p "$__enabled"
+  if [[ ! -d "$__available" ]]; then
+    sudo mkdir -p "$__available"
+  fi
+  if [[ ! -d "$__enabled" ]]; then
+    sudo mkdir -p "$__enabled"
+  fi
 
   nginx_generate "$__conf" "$__cert" "$__key" "$__dh" "$__pport" "$__iport" "localhost" "$__available/$__out" "sudo"
 
@@ -495,7 +499,9 @@ function frontend_files() {
   local __dest=$2
 
   # Make sure the destination is ready for frontend
-  sudo mkdir -p "$__dest"
+  if [[ ! -d "$__dest" ]]; then
+    sudo mkdir -p "$__dest"
+  fi
 
   # rsync frontend files
   sudo rsync -av "$__path_frontend/dist/" "$__dest/"
