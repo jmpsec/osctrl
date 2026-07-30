@@ -469,8 +469,9 @@ else
     provision_redis "$DISTRO" "$SOURCE_PATH" "$_CACHE_PASS"
   fi
 
-  # Prepare destination and configuration folder
+  # Prepare destination and configuration folders
   sudo mkdir -p "$DEST_PATH/config"
+  sudo mkdir -p "$DEST_PATH/bin"
 
   # Build code
   cd "$SOURCE_PATH"
