@@ -146,20 +146,20 @@ install:
 # optional DEST=destination_path
 install_tls:
 	sudo systemctl stop $(TLS_NAME)
-	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)/$(OUTPUT)/$(TLS_NAME)
 	sudo systemctl start $(TLS_NAME)
 
 # Install API server and restart service
 # optional DEST=destination_path
 install_api:
 	sudo systemctl stop $(API_NAME)
-	sudo cp $(OUTPUT)/$(API_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(API_NAME) $(DEST)/$(OUTPUT)/$(API_NAME)
 	sudo systemctl start $(API_NAME)
 
 # Install CLI
 # optional DEST=destination_path
 install_cli:
-	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)/$(OUTPUT)/$(CLI_NAME)
 
 # Install frontend
 # optional DEST=destination_path
@@ -296,7 +296,7 @@ docker_dev_rebuild_api:
 
 # Deploy osctrl in a single server using the provision.sh script
 provision_dev:
-	./deploy/provision.sh -m prod -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
+	./deploy/provision.sh -m "$(DEV_ENV)" -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
 
 # Run linter
 lint:
