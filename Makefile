@@ -296,7 +296,7 @@ docker_dev_rebuild_api:
 
 # Deploy osctrl in a single server using the provision.sh script
 provision_dev:
-	./deploy/provision.sh -m prod -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
+	./deploy/provision.sh -m "$(DEV_ENV)" -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
 
 # Run linter
 lint:
