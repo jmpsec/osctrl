@@ -292,7 +292,10 @@ function _systemd() {
   sudo chmod 755 "$__systemd"
 
   # Make sure the bin directory is present
-  sudo mkdir -p "$__dest/bin"
+  if [[ ! -d "$__dest/bin" ]]; then
+    log "Creating $__dest/bin directory"
+    sudo mkdir -p "$__dest/bin"
+  fi
 
   # Copying binaries
   sudo cp "$__path/bin/$__service" "$__dest/bin"

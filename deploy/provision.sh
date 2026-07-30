@@ -495,6 +495,7 @@ else
     # Prepare Cache configuration values for services
     configuration_cache "$DEST_PATH/config/$TLS_CONF" "$_CACHE_HOST" "$_CACHE_PORT" "$_CACHE_PASS"
 
+    # Prepare TLS service configuration values
     configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "console" "$_T_LOGGING" "$_T_CARVER"
 
     # Verify TLS configuration
