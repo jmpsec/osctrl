@@ -295,6 +295,10 @@ function _systemd() {
   cat "$__template" | sed "s|_UU|$__user|g" | sed "s|_GG|$__group|g" | sed "s|_DEST|$__dest|g" | sed "s|_NAME|$__service|g" | sed "s|_ARGS|$__args|g" | sudo tee "$__systemd"
   sudo chmod 755 "$__systemd"
 
+  # Reload systemd to recognize the new service
+  log "Reloading systemd"
+  sudo systemctl daemon-reload
+
   # Make sure the bin directory is present
   if [[ ! -d "$__dest/bin" ]]; then
     log "Creating $__dest/bin directory"
@@ -486,10 +490,10 @@ function install_nvm() {
   if ! [[ -d "$HOME/.nvm" ]]; then
     log "Installing NVM"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm
   fi
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm
 
   nvm install --lts
   nvm use --lts
