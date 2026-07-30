@@ -304,6 +304,11 @@ function _systemd() {
   # Copying binaries
   sudo cp "$__path/bin/$__service" "$__dest/bin/$__service"
 
+  # Check if service is already running, if so, stop it
+  if systemctl is-active --quiet "$__service.service"; then
+    log "Stopping $__service.service"
+    sudo systemctl stop "$__service.service"
+  fi
   # Enable and start service
   sudo systemctl enable "$__service.service"
   sudo systemctl start "$__service.service"
