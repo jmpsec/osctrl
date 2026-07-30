@@ -146,20 +146,20 @@ install:
 # optional DEST=destination_path
 install_tls:
 	sudo systemctl stop $(TLS_NAME)
-	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(TLS_NAME) $(DEST)/$(OUTPUT)/$(TLS_NAME)
 	sudo systemctl start $(TLS_NAME)
 
 # Install API server and restart service
 # optional DEST=destination_path
 install_api:
 	sudo systemctl stop $(API_NAME)
-	sudo cp $(OUTPUT)/$(API_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(API_NAME) $(DEST)/$(OUTPUT)/$(API_NAME)
 	sudo systemctl start $(API_NAME)
 
 # Install CLI
 # optional DEST=destination_path
 install_cli:
-	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)/$(OUTPUT)
+	sudo cp $(OUTPUT)/$(CLI_NAME) $(DEST)/$(OUTPUT)/$(CLI_NAME)
 
 # Install frontend
 # optional DEST=destination_path
