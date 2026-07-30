@@ -400,8 +400,9 @@ function prepare_deployment() {
   fi
 
   log "Installing required packages"
-  packages git sudo curl wget gcc make openssl tmux bc rsync nodejs npm
+  packages git sudo curl wget gcc make openssl tmux bc rsync
   install_yq
+  install_nvm
 
   # Install go 1.26.3 if not present
   if ! [ -x "$(command -v go)" ]; then
@@ -473,6 +474,19 @@ function install_yq() {
   else
     yq --version
   fi
+}
+
+# Install NVM to manage Node.js versions
+function install_nvm() {
+  if ! [[ -d "$HOME/.nvm" ]]; then
+    log "Installing NVM"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm
+  fi
+  nvm install --lts
+  nvm use --lts
 }
 
 # Generate self-signed certificate for SAML authentication
