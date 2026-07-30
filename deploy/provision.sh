@@ -613,7 +613,7 @@ else
     nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
 
     # Configuration for Admin service
-    nginx_service "$SOURCE_PATH/deploy/nginx/frontend.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_A_INT_PORT" "admin.conf" "$NGINX_PATH" "$DEST_PATH/frontend"
+    nginx_service "$SOURCE_PATH/deploy/nginx/frontend.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_P_INT_PORT" "admin.conf" "$NGINX_PATH" "$DEST_PATH/frontend"
 
     # Configuration for API service
     nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
