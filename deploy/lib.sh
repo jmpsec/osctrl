@@ -302,7 +302,7 @@ function _systemd() {
   fi
 
   # Copying binaries
-  sudo cp "$__path/bin/$__service" "$__dest/bin"
+  sudo cp "$__path/bin/$__service" "$__dest/bin/$__service"
 
   # Enable and start service
   sudo systemctl enable "$__service.service"
