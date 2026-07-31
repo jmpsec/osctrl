@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { nodesSearchSchema } from '$/routes/_app/env/$env/nodes';
 import type { NodesPagedResponse } from '$/api/types';
 import type { SettingValue } from '$/api/settings';
 import type { Features } from '$/api/features';
+import type { NodeTileSeries, StatsResponse } from '$/api/stats';
 
 // ---------------------------------------------------------------------------
 // Mock the nodes API module
@@ -22,6 +23,8 @@ import type { Features } from '$/api/features';
 const mockListNodes = vi.fn<() => Promise<NodesPagedResponse>>();
 const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
 const mockGetFeatures = vi.fn<() => Promise<Features>>();
+const mockGetStats = vi.fn<() => Promise<StatsResponse>>();
+const mockGetNodeActivityTilesBatch = vi.fn<() => Promise<Record<string, NodeTileSeries>>>();
 
 vi.mock('$/api/nodes', () => ({
   listNodes: (...args: unknown[]) => mockListNodes(...(args as [])),
@@ -33,6 +36,11 @@ vi.mock('$/api/settings', () => ({
 
 vi.mock('$/api/features', () => ({
   getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
+}));
+
+vi.mock('$/api/stats', () => ({
+  getStats: (...args: unknown[]) => mockGetStats(...(args as [])),
+  getNodeActivityTilesBatch: (...args: unknown[]) => mockGetNodeActivityTilesBatch(...(args as [])),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -92,6 +100,56 @@ function makeResponse(overrides: Partial<NodesPagedResponse> = {}): NodesPagedRe
     page_size: 50,
     total_items: 1,
     total_pages: 1,
+    ...overrides,
+  };
+}
+
+function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsResponse {
+  return {
+    total_nodes: 1,
+    active_nodes: 1,
+    inactive_nodes: 0,
+    inactive_hours: 72,
+    total_active_queries: 0,
+    total_active_carves: 0,
+    platform_counts: {
+      linux: 1,
+      darwin: 0,
+      windows: 0,
+      other: 0,
+    },
+    environments: [
+      {
+        uuid: 'test-env',
+        name: 'test-env',
+        active: 1,
+        inactive: 0,
+        total: 1,
+        active_queries: 0,
+        active_carves: 0,
+        platform_counts: {
+          linux: 1,
+          darwin: 0,
+          windows: 0,
+          other: 0,
+        },
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function makeTileSeries(overrides: Partial<NodeTileSeries> = {}): NodeTileSeries {
+  return {
+    start: '2026-07-31T00:00:00Z',
+    bucket_seconds: 3600,
+    enroll: new Array(48).fill(0),
+    config: new Array(48).fill(0),
+    status: new Array(48).fill(0),
+    result: new Array(48).fill(0),
+    query_read: new Array(48).fill(0),
+    query_write: new Array(48).fill(0),
+    total: new Array(48).fill(0),
     ...overrides,
   };
 }
@@ -156,10 +214,19 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 // ---------------------------------------------------------------------------
 
 describe('NodesTablePage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockListServiceSettings.mockResolvedValue([]);
     mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetNodeActivityTilesBatch.mockResolvedValue({
+      'ABC12345-0000-0000-0000-000000000001': makeTileSeries(),
+    });
   });
 
   it('renders node rows after loading', async () => {
@@ -173,6 +240,49 @@ describe('NodesTablePage', () => {
 
     expect(screen.getByText('abc12345')).toBeInTheDocument();
     expect(screen.getByText('linux')).toBeInTheDocument();
+  });
+
+  it('loads two Redis day blobs for the 24h activity column', async () => {
+    mockListNodes.mockResolvedValue(makeResponse());
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(mockGetNodeActivityTilesBatch).toHaveBeenCalled();
+    });
+
+    expect(mockGetNodeActivityTilesBatch).toHaveBeenCalledWith(
+      'test-env',
+      ['abc12345-0000-0000-0000-000000000001'],
+      2,
+    );
+  });
+
+  it('renders exactly the trailing 24 hourly buckets from two-day activity data', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-07-31T10:30:00Z').getTime());
+
+    const status = new Array(48).fill(0);
+    const total = new Array(48).fill(0);
+    status[11] = 2;
+    status[34] = 3;
+    total[11] = 2;
+    total[34] = 3;
+    mockListNodes.mockResolvedValue(makeResponse());
+    mockGetNodeActivityTilesBatch.mockResolvedValue({
+      'abc12345-0000-0000-0000-000000000001': makeTileSeries({
+        start: '2026-07-30T00:00:00Z',
+        status,
+        total,
+      }),
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    const heatmap = await screen.findByRole('img', {
+      name: /Node activity over the last 24 hours, 5 events total/i,
+    });
+
+    expect(heatmap.querySelectorAll('span')).toHaveLength(96);
   });
 
   it('shows nothing except skeleton rows while loading', () => {

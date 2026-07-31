@@ -303,18 +303,18 @@ interface HeatmapCellProps {
  * Per-cell tooltip shows the hour + 5-category breakdown.
  */
 function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
-  // The Redis tile series has 24 hourly buckets for a 1-day window.
-  // Trim future hours (the day blob is UTC-midnight aligned) so "now" is
-  // the rightmost column.
+  // Redis tile series are UTC-day aligned. The table requests two day blobs
+  // so the visual can always slice the trailing 24 hourly buckets across the
+  // UTC midnight boundary.
   const trimToNow = (arr: number[] | undefined): number[] => {
     if (!arr || arr.length === 0) return new Array<number>(24).fill(0);
     const startMs = tiles ? Date.parse(tiles.start) : NaN;
     if (Number.isNaN(startMs)) return arr;
     const currentHourIdx = Math.floor((Date.now() - startMs) / 3_600_000);
     const cut = Math.max(1, Math.min(currentHourIdx + 1, arr.length));
-    const trimmed = arr.slice(0, cut);
-    // Right-pad to 24 so the grid doesn't shrink.
-    while (trimmed.length < 24) trimmed.push(0);
+    const trimmed = arr.slice(Math.max(0, cut - 24), cut);
+    // Left-pad to 24 so the rightmost column remains the current hour.
+    while (trimmed.length < 24) trimmed.unshift(0);
     return trimmed;
   };
 
@@ -548,7 +548,7 @@ export function NodesTablePage() {
   const visibleUuids = (data?.items ?? []).map((n) => n.uuid);
   const { data: tilesByUuid } = useQuery({
     queryKey: ['node-tiles-batch', env, visibleUuids] as const,
-    queryFn: () => getNodeActivityTilesBatch(env, visibleUuids, 1),
+    queryFn: () => getNodeActivityTilesBatch(env, visibleUuids, 2),
     staleTime: 30_000,
     refetchInterval: 30_000,
     enabled: visibleUuids.length > 0,
