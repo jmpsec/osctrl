@@ -19,6 +19,10 @@ import { formatRelative } from '$/lib/time';
 // the user-facing labels add the `osctrl-` prefix for readability.
 const SERVICES = ['tls', 'admin', 'api'] as const;
 type Service = (typeof SERVICES)[number];
+const HIDDEN_SETTINGS_BY_SERVICE: Partial<Record<Service, ReadonlySet<string>>> = {
+  tls: new Set(['refresh_envs']),
+  api: new Set(['refresh_envs']),
+};
 
 export function SettingsPage() {
   usePageTitle('Settings');
@@ -41,7 +45,9 @@ export function SettingsPage() {
     return null;
   }
 
-  const items = data ?? [];
+  const items = (data ?? []).filter(
+    (setting) => !HIDDEN_SETTINGS_BY_SERVICE[service]?.has(setting.Name),
+  );
 
   return (
     <div className="flex flex-col h-full min-h-0">

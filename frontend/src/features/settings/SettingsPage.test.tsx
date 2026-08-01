@@ -110,6 +110,20 @@ describe('SettingsPage', () => {
     expect(screen.getByText('NodeDashboard')).toBeInTheDocument();
   });
 
+  it('hides stale refresh_envs rows for tls and api settings', async () => {
+    mockList.mockResolvedValue([
+      makeSetting({ ID: 1, Name: 'refresh_envs', Service: 'tls', Info: 'legacy env refresh interval' }),
+      makeSetting({ ID: 2, Name: 'accelerated_seconds', Service: 'tls', Info: 'Console acceleration' }),
+    ]);
+
+    renderWithProviders(makeTestRouter('/_app/settings/tls'));
+
+    await waitFor(() => {
+      expect(screen.getByText('accelerated_seconds')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('refresh_envs')).not.toBeInTheDocument();
+  });
+
   it('shows empty state when no settings exist', async () => {
     mockList.mockResolvedValue([]);
     renderWithProviders(makeTestRouter());
