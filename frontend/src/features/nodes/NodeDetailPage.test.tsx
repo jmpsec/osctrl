@@ -11,7 +11,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag } from '$/api/types';
+import type { NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { SettingValue } from '$/api/settings';
 import type { Features } from '$/api/features';
@@ -20,6 +20,7 @@ const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
 const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
 const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
+const mockGetNodePostureScore = vi.fn<() => Promise<PostureScore>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
 const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
@@ -37,6 +38,7 @@ vi.mock('$/api/nodes', () => ({
   listNodeLogs: (...args: unknown[]) => mockListNodeLogs(...(args as [])),
   deleteNode: (...args: unknown[]) => mockDeleteNode(...(args as [])),
   getNodePosture: (...args: unknown[]) => mockGetNodePosture(...(args as [])),
+  getNodePostureScore: (...args: unknown[]) => mockGetNodePostureScore(...(args as [])),
 }));
 
 vi.mock('$/api/users', () => ({
@@ -288,6 +290,16 @@ describe('NodeDetailPage', () => {
     });
     mockListServiceSettings.mockResolvedValue([]);
     mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetNodePostureScore.mockResolvedValue({
+      node_uuid: 'abc12345-0000-0000-0000-000000000001',
+      timestamp: '2026-07-16T09:05:00Z',
+      total_score: 0,
+      risk_level: 'low',
+      controls: [],
+      pass_count: 0,
+      warn_count: 0,
+      fail_count: 0,
+    });
     mockListSavedQueries.mockResolvedValue(makeSavedQueries());
     mockRunQuery.mockResolvedValue({ query_name: 'query-123' });
     mockRunCarve.mockResolvedValue({ query_name: 'carve-123' });
@@ -403,6 +415,47 @@ describe('NodeDetailPage', () => {
     expect(screen.getByText('domain')).toBeInTheDocument();
   });
 
+  it('renders posture score when controls is null', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetNodePosture.mockResolvedValue([
+      {
+        id: 10,
+        created_at: '2026-07-16T09:00:00Z',
+        updated_at: '2026-07-16T09:05:00Z',
+        node_uuid: 'abc12345-0000-0000-0000-000000000001',
+        environment: 'test-env',
+        category: 'firewall',
+        query_name: 'osctrl:posture:firewall',
+        row_count: 1,
+        summary: JSON.stringify([{ enabled: '1' }]),
+        first_seen: '2026-07-16T09:00:00Z',
+        last_seen: '2026-07-16T09:05:00Z',
+      },
+    ]);
+    mockGetNodePostureScore.mockResolvedValue({
+      node_uuid: 'abc12345-0000-0000-0000-000000000001',
+      timestamp: '2026-07-16T09:05:00Z',
+      total_score: 0,
+      risk_level: 'low',
+      controls: null,
+      pass_count: 0,
+      warn_count: 0,
+      fail_count: 0,
+    } as unknown as PostureScore);
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Posture' }));
+
+    expect(await screen.findByText('Risk score')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /firewall/i })).toBeInTheDocument();
+  });
+
   it('hides posture tab while the posture feature is disabled', async () => {
     renderWithProviders(makeTestRouter());
 
@@ -412,6 +465,43 @@ describe('NodeDetailPage', () => {
 
     expect(screen.queryByRole('tab', { name: 'Posture' })).not.toBeInTheDocument();
     expect(mockGetNodePosture).not.toHaveBeenCalled();
+  });
+
+  it('hides posture query results from the result logs tab', async () => {
+    const user = userEvent.setup();
+    mockListNodeLogs.mockResolvedValue({
+      items: [
+        {
+          created_at: '2026-07-16T09:05:00Z',
+          name: 'osctrl:posture:firewall',
+          action: 'added',
+          columns: '{"enabled":"1"}',
+        },
+        {
+          created_at: '2026-07-16T09:04:00Z',
+          name: 'process inventory',
+          action: 'added',
+          columns: '{"pid":"1","name":"launchd"}',
+        },
+      ],
+      type: 'result',
+      uuid: 'abc12345-0000-0000-0000-000000000001',
+      env: 'test-env',
+      limit: 100,
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Result logs' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('process inventory')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('osctrl:posture:firewall')).not.toBeInTheDocument();
   });
 
   it('shows posture uptime in lifecycle details only when posture is enabled', async () => {

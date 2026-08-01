@@ -57,6 +57,7 @@ interface NodeHeatmapBucket {
 type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture';
 type NodeActionModal = 'query' | 'carve' | 'tag' | null;
 const TAG_TYPE_REGULAR = 6;
+const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
 
 // ---------------------------------------------------------------------------
 // Detail field groups
@@ -462,11 +463,13 @@ function LogsTab({
   uuid,
   type,
   onSearchColumn,
+  filterEntry,
 }: {
   env: string;
   uuid: string;
   type: 'status' | 'result';
   onSearchColumn?: (queryName: string, column: string, value: string) => void;
+  filterEntry?: (entry: NodeLogEntry) => boolean;
 }) {
   const accumulatedRef = useRef<NodeLogEntry[]>([]);
   const sinceRef = useRef<string | undefined>(undefined);
@@ -508,8 +511,11 @@ function LogsTab({
           (newest['created_at'] as string | undefined) ??
           (newest['calendarTime'] as string | undefined);
         if (ts) sinceRef.current = ts;
+      }
+      const nextItems = filterEntry ? res.items.filter(filterEntry) : res.items;
+      if (nextItems.length > 0) {
         // Prepend new entries (newest-first) ahead of already-accumulated ones
-        accumulatedRef.current = [...res.items, ...accumulatedRef.current];
+        accumulatedRef.current = [...nextItems, ...accumulatedRef.current];
       }
       return { ...res, items: accumulatedRef.current };
     },
@@ -1274,6 +1280,9 @@ export function NodeDetailPage() {
             uuid={uuid}
             type="result"
             onSearchColumn={onSearchColumn}
+            filterEntry={(entry) =>
+              !(typeof entry['name'] === 'string' && entry['name'].startsWith(POSTURE_QUERY_PREFIX))
+            }
           />
         )}
       </div>
@@ -2126,6 +2135,7 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
 // PostureScorePanel — risk score gauge + control summary
 // ---------------------------------------------------------------------------
 function PostureScorePanel({ score }: { score: PostureScore }) {
+  const controls = score.controls ?? [];
   const riskColors: Record<string, string> = {
     low: 'var(--success)',
     medium: 'var(--warning)',
@@ -2179,7 +2189,7 @@ function PostureScorePanel({ score }: { score: PostureScore }) {
       </div>
       {/* Control results */}
       <div className="divide-y divide-[color:var(--border)]">
-        {score.controls.map((ctrl) => {
+        {controls.map((ctrl) => {
           const statusColor = ctrl.status === 'pass' ? 'var(--success)' : ctrl.status === 'warn' ? 'var(--warning)' : 'var(--danger)';
           return (
             <div key={ctrl.control_id + ctrl.category} className="px-4 py-2 flex items-start gap-3">

@@ -309,3 +309,14 @@ func TestNoRecordsProducesEmptyScore(t *testing.T) {
 		t.Errorf("no controls should be evaluated without records")
 	}
 }
+
+func TestNoRecordsScoreEncodesControlsAsEmptyArray(t *testing.T) {
+	score := NewScoreCalculator().Score(nil)
+	payload, err := json.Marshal(score)
+	if err != nil {
+		t.Fatalf("marshal score: %v", err)
+	}
+	if !strings.Contains(string(payload), `"controls":[]`) {
+		t.Fatalf("expected controls to encode as [], got %s", payload)
+	}
+}

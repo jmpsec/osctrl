@@ -111,6 +111,12 @@ func migrateNodePosture(db *gorm.DB) error {
 			lastErr = fmt.Errorf("auto-migrate posture table: %w", err)
 			continue
 		}
+		if db.Migrator().HasIndex(&NodePosture{}, "idx_posture_node_uuid") {
+			if err := db.Migrator().DropIndex(&NodePosture{}, "idx_posture_node_uuid"); err != nil && db.Migrator().HasIndex(&NodePosture{}, "idx_posture_node_uuid") {
+				lastErr = fmt.Errorf("drop overbroad posture node index: %w", err)
+				continue
+			}
+		}
 		if db.Migrator().HasIndex(&NodePosture{}, "idx_posture_node") {
 			if err := db.Migrator().DropIndex(&NodePosture{}, "idx_posture_node"); err != nil && db.Migrator().HasIndex(&NodePosture{}, "idx_posture_node") {
 				lastErr = fmt.Errorf("drop legacy posture index: %w", err)

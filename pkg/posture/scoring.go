@@ -142,6 +142,7 @@ func NewScoreCalculator() *ScoreCalculator {
 func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 	score := PostureScore{
 		Timestamp: time.Now(),
+		Controls:  []ControlResult{},
 	}
 
 	// Build a lookup: category → parsed rows. A collected category with an
