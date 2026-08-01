@@ -152,6 +152,30 @@ func TestIngestResultUpdatesMutableFieldsAndPreservesFirstSeen(t *testing.T) {
 	}
 }
 
+func TestIngestResultKeepsLatestResultPerNodeCategory(t *testing.T) {
+	pm := newTestManager(t)
+	if err := pm.IngestResult("node-a", "dev", QueryPrefix+"users", marshalRows(t, 1)); err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+	if err := pm.IngestResult("node-a", "dev", QueryPrefix+"packages", marshalRows(t, 2)); err != nil {
+		t.Fatalf("second ingest: %v", err)
+	}
+
+	records, err := pm.GetByNode("node-a")
+	if err != nil {
+		t.Fatalf("get posture: %v", err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected latest posture result per category, got %d records: %+v", len(records), records)
+	}
+	if records[0].Category != "packages" || records[0].RowCount != 2 {
+		t.Fatalf("expected packages posture result, got %+v", records[0])
+	}
+	if records[1].Category != "users" || records[1].RowCount != 1 {
+		t.Fatalf("expected users posture result, got %+v", records[1])
+	}
+}
+
 func TestIngestResultRejectsMalformedColumns(t *testing.T) {
 	pm := newTestManager(t)
 	for _, columns := range []json.RawMessage{
@@ -227,6 +251,23 @@ type legacyNodePosture struct {
 
 func (legacyNodePosture) TableName() string { return "node_posture" }
 
+type categoryUniqueNodePosture struct {
+	ID          uint `gorm:"primarykey"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	NodeUUID    string `gorm:"type:varchar(36);uniqueIndex:idx_posture_node_category"`
+	Environment string
+	Category    string `gorm:"uniqueIndex:idx_posture_node_category;type:varchar(64)"`
+	QueryName   string `gorm:"type:varchar(255)"`
+	RowCount    int
+	Summary     string `gorm:"type:text"`
+	Snapshot    string `gorm:"type:text"`
+	FirstSeen   time.Time
+	LastSeen    time.Time
+}
+
+func (categoryUniqueNodePosture) TableName() string { return "node_posture" }
+
 func TestMigrateNodePostureDeduplicatesLegacyRowsBeforeUniqueIndex(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:posture_migration?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
@@ -261,6 +302,36 @@ func TestMigrateNodePostureDeduplicatesLegacyRowsBeforeUniqueIndex(t *testing.T)
 	}
 	if db.Migrator().HasIndex(&NodePosture{}, "idx_posture_node") {
 		t.Fatal("legacy duplicate index still exists after migration")
+	}
+}
+
+func TestMigrateNodePostureKeepsPreviousNodeCategorySchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:posture_node_category_migration?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&categoryUniqueNodePosture{}); err != nil {
+		t.Fatalf("migrate category-unique schema: %v", err)
+	}
+	oldTime := time.Now().Add(-time.Hour)
+	newTime := time.Now()
+	rows := []categoryUniqueNodePosture{
+		{NodeUUID: "NODE-A", Category: "users", Summary: `[{"old":true}]`, UpdatedAt: oldTime},
+		{NodeUUID: "NODE-A", Category: "packages", Summary: `[{"new":true}]`, UpdatedAt: newTime},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatalf("insert previous-schema rows: %v", err)
+	}
+
+	if err := migrateNodePosture(db); err != nil {
+		t.Fatalf("migrate posture table: %v", err)
+	}
+	var retained []NodePosture
+	if err := db.Find(&retained).Error; err != nil {
+		t.Fatalf("read migrated rows: %v", err)
+	}
+	if len(retained) != 2 {
+		t.Fatalf("expected both node/category rows to survive, got %+v", retained)
 	}
 }
 

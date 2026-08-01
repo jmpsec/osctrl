@@ -552,7 +552,7 @@ export interface PostureScore {
   timestamp: string;
   total_score: number;
   risk_level: string;
-  controls: ControlResult[];
+  controls: ControlResult[] | null;
   pass_count: number;
   warn_count: number;
   fail_count: number;
