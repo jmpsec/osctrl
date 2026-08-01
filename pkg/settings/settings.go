@@ -72,7 +72,6 @@ const (
 
 // Names for all possible settings values for services
 const (
-	RefreshEnvs        string = "refresh_envs"
 	RefreshSettings    string = "refresh_settings"
 	CleanupSessions    string = "cleanup_sessions"
 	CleanupExpired     string = "cleanup_expired"
@@ -532,15 +531,6 @@ func (conf *Settings) IsValue(service, name string, envID uint) bool {
 func (conf *Settings) IsJSON(service, name string, envID uint) bool {
 	_, err := conf.RetrieveJSON(service, name, envID)
 	return err == nil
-}
-
-// RefreshEnvs gets the interval in seconds to refresh environments by service
-func (conf *Settings) RefreshEnvs(service string) int64 {
-	value, err := conf.RetrieveValue(service, RefreshEnvs, NoEnvironmentID)
-	if err != nil {
-		return 0
-	}
-	return value.Integer
 }
 
 // RefreshSettings gets the interval in seconds to refresh settings by service

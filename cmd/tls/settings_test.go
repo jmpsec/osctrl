@@ -25,3 +25,18 @@ func TestLoadingSettingsDefaultsAcceleratedSecondsToFive(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(5), got)
 }
+
+func TestLoadingSettingsDoesNotSeedRefreshEnvs(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	mgr := settings.NewSettings(db)
+
+	require.NoError(t, loadingSettings(mgr, &config.ServiceParameters{
+		Service: &config.YAMLConfigurationService{},
+		Logger:  &config.YAMLConfigurationLogger{},
+		Carver:  &config.YAMLConfigurationCarver{},
+	}))
+
+	_, err = mgr.RetrieveValue(config.ServiceTLS, "refresh_envs", settings.NoEnvironmentID)
+	require.Error(t, err)
+}

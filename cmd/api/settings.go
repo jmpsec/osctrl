@@ -17,12 +17,6 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add %s to settings: %w", settings.ServiceMetrics, err)
 		}
 	}
-	// Check if service settings for environments refresh is ready
-	if !mgr.IsValue(config.ServiceAPI, settings.RefreshEnvs, settings.NoEnvironmentID) {
-		if err := mgr.NewIntegerValue(config.ServiceAPI, settings.RefreshEnvs, int64(defaultRefresh), settings.NoEnvironmentID); err != nil {
-			return fmt.Errorf("failed to add %s to settings: %w", settings.RefreshEnvs, err)
-		}
-	}
 	// Check if service settings for settings refresh is ready
 	if !mgr.IsValue(config.ServiceAPI, settings.RefreshSettings, settings.NoEnvironmentID) {
 		if err := mgr.NewIntegerValue(config.ServiceAPI, settings.RefreshSettings, int64(defaultRefresh), settings.NoEnvironmentID); err != nil {
