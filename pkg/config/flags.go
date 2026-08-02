@@ -902,6 +902,13 @@ func initOsqueryFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Osquery.Accelerated,
 		},
 		&cli.BoolFlag{
+			Name:        "osquery-file-explorer",
+			Value:       false,
+			Usage:       "Enable on-demand node file explorer queries",
+			Sources:     cli.EnvVars("OSQUERY_FILE_EXPLORER"),
+			Destination: &params.Osquery.FileExplorer,
+		},
+		&cli.BoolFlag{
 			Name:        "read-only-configuration",
 			Value:       false,
 			Usage:       "Disable configuration changes via admin or api services",

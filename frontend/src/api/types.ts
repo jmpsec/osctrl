@@ -312,6 +312,61 @@ export interface ConsoleSessionResponse {
 }
 
 // ---------------------------------------------------------------------------
+// File explorer types
+// ---------------------------------------------------------------------------
+
+export type FileExplorerRequestStatus = 'queued' | 'completed' | 'error' | 'expired';
+export type FileExplorerAction = 'list' | 'stat';
+
+export interface FileExplorerSession {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  environment_id: number;
+  node_id: number;
+  node_uuid: string;
+  creator: string;
+  platform: string;
+  root: string;
+  active: boolean;
+  closed_at?: string;
+}
+
+export interface FileExplorerRequest {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  session_id: number;
+  action: FileExplorerAction;
+  path: string;
+  translated_sql?: string;
+  distributed_query_name?: string;
+  status: FileExplorerRequestStatus;
+  error?: string;
+  completed_at?: string;
+  expired_at?: string;
+}
+
+export interface FileExplorerEntry {
+  path: string;
+  filename: string;
+  directory: string;
+  type: string;
+  size?: number;
+  mode?: string;
+  uid?: string;
+  gid?: string;
+  mtime?: number;
+  atime?: number;
+  ctime?: number;
+}
+
+export interface FileExplorerSessionResponse {
+  session: FileExplorerSession;
+  node_info?: ConsoleNodeInfo;
+}
+
+// ---------------------------------------------------------------------------
 // Saved queries
 // ---------------------------------------------------------------------------
 

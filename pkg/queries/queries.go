@@ -45,6 +45,8 @@ const (
 	MetadataQueryType string = "metadata"
 	// ConsoleQueryType defines a hidden accelerated query used by node consoles
 	ConsoleQueryType string = "console"
+	// FileExplorerQueryType defines a hidden accelerated query used by node file explorer tabs
+	FileExplorerQueryType string = "file_explorer"
 )
 
 const (
@@ -192,7 +194,7 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	accelerate := false
 	for _, _q := range results {
 		qs[_q.Name] = _q.Query
-		if _q.Type == ConsoleQueryType {
+		if IsInternalQueryType(_q.Type) {
 			accelerate = true
 		}
 	}
@@ -200,10 +202,14 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 	return qs, accelerate, nil
 }
 
+func IsInternalQueryType(qtype string) bool {
+	return qtype == ConsoleQueryType || qtype == FileExplorerQueryType
+}
+
 // Gets all queries by target (active/completed/all/all-full/deleted/hidden/expired)
 func (q *Queries) Gets(target, qtype string, envid uint) ([]DistributedQuery, error) {
 	var queries []DistributedQuery
-	if qtype == ConsoleQueryType {
+	if IsInternalQueryType(qtype) {
 		return queries, nil
 	}
 	switch target {
@@ -617,7 +623,7 @@ func (q *Queries) SetNodeQueriesAsExpired(queryID uint) error {
 //
 // page is 1-indexed. pageSize is clamped to [1, 500] with default 50.
 func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, page, pageSize int, sortColumn string, desc bool) (QueryListPage, error) {
-	if qtype == ConsoleQueryType {
+	if IsInternalQueryType(qtype) {
 		return QueryListPage{Items: []DistributedQuery{}}, nil
 	}
 	if pageSize <= 0 {

@@ -62,6 +62,7 @@ services:
       - SERVICE_TRUSTED_PROXIES=172.16.0.0/12
       #### osquery settings ####
       - OSQUERY_ACCELERATED=true
+      - OSQUERY_FILE_EXPLORER=true
     networks:
       - osctrl-dev-backend
     ports:
@@ -156,6 +157,7 @@ services:
       #### osquery settings ####
       - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
       - OSQUERY_ACCELERATED=true
+      - OSQUERY_FILE_EXPLORER=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
       - DB_NAME=${POSTGRES_DB_NAME}

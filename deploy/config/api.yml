@@ -69,6 +69,8 @@ osquery:
   config: true
   query: true
   carve: true
+  accelerated: false
+  fileExplorer: false
 
 # JWT authentication configuration
 jwt:
