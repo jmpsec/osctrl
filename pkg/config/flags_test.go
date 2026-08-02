@@ -57,3 +57,29 @@ func TestOsqueryAcceleratedFlagDefaultsOff(t *testing.T) {
 		t.Fatalf("osquery-accelerated flag destination does not wire Osquery.Accelerated")
 	}
 }
+
+func TestOsqueryFileExplorerFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Osquery: &YAMLConfigurationOsquery{}}
+	flags := initOsqueryFlags(params)
+
+	if params.Osquery.FileExplorer {
+		t.Fatalf("file explorer osquery default: got true want false")
+	}
+
+	var fileExplorerFlag *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "osquery-file-explorer" {
+			fileExplorerFlag = f
+			break
+		}
+	}
+	if fileExplorerFlag == nil {
+		t.Fatalf("missing osquery-file-explorer flag")
+	}
+	if fileExplorerFlag.Value {
+		t.Fatalf("osquery-file-explorer flag default: got true want false")
+	}
+	if fileExplorerFlag.Destination != &params.Osquery.FileExplorer {
+		t.Fatalf("osquery-file-explorer flag destination does not wire Osquery.FileExplorer")
+	}
+}

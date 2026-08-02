@@ -83,6 +83,10 @@ vi.mock('$/api/tags', () => ({
   tagNode: (...args: unknown[]) => mockTagNode(...(args as [])),
 }));
 
+vi.mock('./NodeFileExplorerTab', () => ({
+  NodeFileExplorerTab: () => <div data-testid="file-explorer-panel" />,
+}));
+
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
   getCsrfToken: () => 'test-csrf',
@@ -289,7 +293,7 @@ describe('NodeDetailPage', () => {
       total: [],
     });
     mockListServiceSettings.mockResolvedValue([]);
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false, file_explorer: false });
     mockGetNodePostureScore.mockResolvedValue({
       node_uuid: 'abc12345-0000-0000-0000-000000000001',
       timestamp: '2026-07-16T09:05:00Z',
@@ -373,7 +377,7 @@ describe('NodeDetailPage', () => {
 
   it('shows posture data for the selected node', async () => {
     const user = userEvent.setup();
-    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false, file_explorer: false });
     mockGetNodePosture.mockResolvedValue([
       {
         id: 10,
@@ -417,7 +421,7 @@ describe('NodeDetailPage', () => {
 
   it('renders posture score when controls is null', async () => {
     const user = userEvent.setup();
-    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false, file_explorer: false });
     mockGetNodePosture.mockResolvedValue([
       {
         id: 10,
@@ -505,7 +509,7 @@ describe('NodeDetailPage', () => {
   });
 
   it('shows posture uptime in lifecycle details only when posture is enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false, file_explorer: false });
     mockGetNode.mockResolvedValue(
       makeNode({
         uptime: {
@@ -589,7 +593,7 @@ describe('NodeDetailPage', () => {
   });
 
   it('hides node uptime while posture is disabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false, file_explorer: false });
     mockGetNode.mockResolvedValue(
       makeNode({
         uptime: {
@@ -614,7 +618,7 @@ describe('NodeDetailPage', () => {
   });
 
   it('shows the console action only when accelerated queries are enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: false });
     const router = makeTestRouter();
 
     renderWithProviders(router);
@@ -627,7 +631,7 @@ describe('NodeDetailPage', () => {
   });
 
   it('hides the console action when accelerated queries are disabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false, file_explorer: false });
 
     renderWithProviders(makeTestRouter());
 
@@ -639,7 +643,7 @@ describe('NodeDetailPage', () => {
   });
 
   it('hides the console action from non-admin users even when accelerated queries are enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: false });
     mockGetMe.mockResolvedValue({
       admin: false,
       permissions: {
@@ -656,8 +660,49 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
   });
 
+  it('shows the file explorer tab when file explorer is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: true });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('tab', { name: /file explorer/i })).toBeInTheDocument();
+  });
+
+  it('lets the file explorer details panel stick to the page scroll container', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: true });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: /file explorer/i }));
+
+    const panel = screen.getByRole('tabpanel', { name: /file explorer/i });
+    expect(panel).toHaveClass('overflow-visible');
+    expect(panel).not.toHaveClass('overflow-auto');
+  });
+
+  it('hides the file explorer tab when file explorer is disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: false });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('tab', { name: /file explorer/i })).not.toBeInTheDocument();
+  });
+
   it('wraps single-node actions away from the hostname block', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: true, file_explorer: false });
 
     renderWithProviders(makeTestRouter());
 

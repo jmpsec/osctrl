@@ -3,6 +3,7 @@ import { apiFetch } from './client';
 export interface Features {
   posture: boolean;
   accelerated: boolean;
+  file_explorer: boolean;
 }
 
 export function getFeatures(): Promise<Features> {

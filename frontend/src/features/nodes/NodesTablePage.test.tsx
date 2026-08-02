@@ -222,7 +222,7 @@ describe('NodesTablePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListServiceSettings.mockResolvedValue([]);
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false, file_explorer: false });
     mockGetStats.mockResolvedValue(makeStatsResponse());
     mockGetNodeActivityTilesBatch.mockResolvedValue({
       'ABC12345-0000-0000-0000-000000000001': makeTileSeries(),
@@ -384,7 +384,7 @@ describe('NodesTablePage', () => {
   });
 
   it('shows uptime and posture risk badge when posture is enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: true, accelerated: false, file_explorer: false });
     mockListNodes.mockResolvedValue(
       makeResponse({
         items: [
@@ -495,7 +495,7 @@ describe('NodesTablePage', () => {
   });
 
   it('hides posture quick signals when posture is disabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, accelerated: false, file_explorer: false });
     mockListNodes.mockResolvedValue(
       makeResponse({
         items: [

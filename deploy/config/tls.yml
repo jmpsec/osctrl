@@ -71,6 +71,7 @@ osquery:
   query: true
   carve: true
   accelerated: false
+  fileExplorer: false
 
 # Osctrl daemon configuration
 osctrld:

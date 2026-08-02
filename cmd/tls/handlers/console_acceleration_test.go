@@ -11,6 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -87,6 +88,29 @@ func TestShouldAccelerateQueryReadForActiveConsoleSession(t *testing.T) {
 		Platform:      "linux",
 		Active:        true,
 	}).Error)
+	require.True(t, handler.shouldAccelerateQueryRead(node, false))
+}
+
+func TestShouldAccelerateQueryReadForActiveFileExplorerSession(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&fileexplorer.Session{}))
+	queryManager := queries.CreateQueries(db)
+	handler := &HandlersTLS{Queries: queryManager}
+	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
+
+	require.NoError(t, db.Create(&fileexplorer.Session{
+		EnvironmentID: node.EnvironmentID,
+		NodeID:        node.ID,
+		NodeUUID:      node.UUID,
+		Creator:       "alice",
+		Platform:      "linux",
+		Root:          "/",
+		Active:        true,
+	}).Error)
+
+	require.False(t, handler.shouldAccelerateQueryRead(node, false))
+	handler.OsqueryValues = &config.YAMLConfigurationOsquery{FileExplorer: true}
 	require.True(t, handler.shouldAccelerateQueryRead(node, false))
 }
 

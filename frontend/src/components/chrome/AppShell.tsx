@@ -50,7 +50,7 @@ export function AppShell({ children, username }: AppShellProps) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[color:var(--bg-0)]">
+    <div className="flex h-screen overflow-hidden bg-[color:var(--bg-0)]">
       {/* Desktop rail — hidden on phones in favor of the drawer below.
           Collapsible to an icon-only strip; preference persists. */}
       <SideNav
@@ -84,13 +84,13 @@ export function AppShell({ children, username }: AppShellProps) {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex min-h-0 flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar
           username={username}
           onCommandPalette={() => setPaletteOpen(true)}
           onMenuToggle={() => setNavOpen((o) => !o)}
         />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>

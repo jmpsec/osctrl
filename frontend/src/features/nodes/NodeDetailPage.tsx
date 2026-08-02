@@ -36,6 +36,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
+import { NodeFileExplorerTab } from './NodeFileExplorerTab';
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
 // status/result/query come from the DB-backed logging buckets (full history,
@@ -54,7 +55,7 @@ interface NodeHeatmapBucket {
 // Tabs
 // ---------------------------------------------------------------------------
 
-type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture';
+type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'file-explorer';
 type NodeActionModal = 'query' | 'carve' | 'tag' | null;
 const TAG_TYPE_REGULAR = 6;
 const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
@@ -588,6 +589,7 @@ const TABS = [
   { id: 'status-logs' as Tab, label: 'Status logs' },
   { id: 'result-logs' as Tab, label: 'Result logs' },
   { id: 'posture' as Tab, label: 'Posture' },
+  { id: 'file-explorer' as Tab, label: 'File Explorer' },
 ] as const;
 
 export function NodeDetailPage() {
@@ -608,16 +610,24 @@ export function NodeDetailPage() {
   });
   const postureEnabled = features?.posture === true;
   const acceleratedEnabled = features?.accelerated === true;
+  const fileExplorerEnabled = features?.file_explorer === true;
   const visibleTabs = useMemo(
-    () => TABS.filter((tab) => tab.id !== 'posture' || postureEnabled),
-    [postureEnabled],
+    () => TABS.filter((tab) => {
+      if (tab.id === 'posture') return postureEnabled;
+      if (tab.id === 'file-explorer') return fileExplorerEnabled;
+      return true;
+    }),
+    [fileExplorerEnabled, postureEnabled],
   );
 
   useEffect(() => {
     if (activeTab === 'posture' && !postureEnabled) {
       setActiveTab('details');
     }
-  }, [activeTab, postureEnabled]);
+    if (activeTab === 'file-explorer' && !fileExplorerEnabled) {
+      setActiveTab('details');
+    }
+  }, [activeTab, fileExplorerEnabled, postureEnabled]);
 
   function handleTabKeyDown(e: React.KeyboardEvent) {
     const currentIndex = visibleTabs.findIndex((t) => t.id === activeTab);
@@ -1031,7 +1041,10 @@ export function NodeDetailPage() {
         role="tabpanel"
         id={`panel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
-        className="flex-1 overflow-auto min-h-0"
+        className={cn(
+          'flex-1 min-h-0',
+          activeTab === 'file-explorer' ? 'overflow-visible' : 'overflow-auto',
+        )}
       >
         {activeTab === 'details' && node && (() => {
           // Pull the parsed system_info enrichment that the API now exposes
@@ -1269,6 +1282,9 @@ export function NodeDetailPage() {
 
         {activeTab === 'posture' && postureEnabled && (
           <PostureTab env={env} uuid={uuid} />
+        )}
+        {activeTab === 'file-explorer' && fileExplorerEnabled && (
+          <NodeFileExplorerTab env={env} uuid={uuid} />
         )}
         {activeTab === 'status-logs' && (
           <LogsTab env={env} uuid={uuid} type="status" />

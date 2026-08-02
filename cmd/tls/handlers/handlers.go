@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
@@ -274,7 +275,7 @@ func (h *HandlersTLS) shouldAccelerateQueryRead(node nodes.OsqueryNode, queryAcc
 	if queryAccelerated {
 		return true
 	}
-	return h.hasActiveConsoleSession(node)
+	return h.hasActiveConsoleSession(node) || h.hasActiveFileExplorerSession(node)
 }
 
 func (h *HandlersTLS) hasActiveConsoleSession(node nodes.OsqueryNode) bool {
@@ -286,6 +287,23 @@ func (h *HandlersTLS) hasActiveConsoleSession(node nodes.OsqueryNode) bool {
 		Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
 		Count(&count).Error; err != nil {
 		log.Debug().Err(err).Msg("error checking active console session for accelerated query read")
+		return false
+	}
+	return count > 0
+}
+
+func (h *HandlersTLS) hasActiveFileExplorerSession(node nodes.OsqueryNode) bool {
+	if h.OsqueryValues == nil || !h.OsqueryValues.FileExplorer {
+		return false
+	}
+	if node.ID == 0 || node.UUID == "" || node.EnvironmentID == 0 || h.Queries == nil || h.Queries.DB == nil {
+		return false
+	}
+	var count int64
+	if err := h.Queries.DB.Model(&fileexplorer.Session{}).
+		Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
+		Count(&count).Error; err != nil {
+		log.Debug().Err(err).Msg("error checking active file explorer session for accelerated query read")
 		return false
 	}
 	return count > 0

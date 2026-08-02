@@ -10,8 +10,12 @@ const STORAGE_KEY = 'osctrl.theme';
 
 export function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return DEFAULT_THEME;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === 'dark' || stored === 'light') return stored;
+  try {
+    const stored = window.localStorage?.getItem(STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+  } catch {
+    /* localStorage blocked — fall back to system/default */
+  }
   // first visit: follow system preference
   if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
   return DEFAULT_THEME;

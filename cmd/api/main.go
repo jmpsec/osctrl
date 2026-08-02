@@ -20,6 +20,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -98,6 +99,8 @@ const (
 	apiSettingsPath = "/settings"
 	// API features path
 	apiFeaturesPath = "/features"
+	// API file explorer path
+	apiFileExplorerPath = "/file-explorer"
 	// API audit logs path
 	apiAuditLogsPath = "/audit-logs"
 	// API logs path
@@ -125,6 +128,7 @@ var (
 	nodesmgr             *nodes.NodeManager
 	queriesmgr           *queries.Queries
 	consolemgr           *console.Manager
+	fileexplorermgr      *fileexplorer.Manager
 	filecarves           *carves.Carves
 	handlersApi          *handlers.HandlersApi
 	app                  *cli.Command
@@ -320,6 +324,8 @@ func osctrlAPIService() {
 	queriesmgr = queries.CreateQueries(db.Conn)
 	log.Info().Msg("Initialize console")
 	consolemgr = console.NewManager(db.Conn, queriesmgr)
+	log.Info().Msg("Initialize file explorer")
+	fileexplorermgr = fileexplorer.NewManager(db.Conn, queriesmgr)
 	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, nil)
 	log.Info().Msg("Loading service settings")
@@ -380,6 +386,7 @@ func osctrlAPIService() {
 		handlers.WithNodes(nodesmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithConsole(consolemgr),
+		handlers.WithFileExplorer(fileexplorermgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
@@ -613,6 +620,30 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}/results",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		if flagParams.Osquery.Accelerated && flagParams.Osquery.FileExplorer {
+			// API: accelerated per-node file explorer
+			muxAPI.Handle(
+				"POST "+_apiPath(apiFileExplorerPath)+"/{env}/nodes/{uuid}/sessions",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerSessionCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerSessionShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"DELETE "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerSessionDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"POST "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/list",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"POST "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/stat",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerStatHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/requests/{request_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerRequestShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/requests/{request_id}/results",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerRequestResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		}
 		// API: saved queries (Track 4)
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSavedQueriesPath)+"/{env}",

@@ -123,6 +123,28 @@ func TestNodeQueriesAcceleratesConsoleQueries(t *testing.T) {
 	require.NotContains(t, otherResult, "console-query")
 }
 
+func TestNodeQueriesAcceleratesFileExplorerQueries(t *testing.T) {
+	db := testDB(t)
+	q, testNodes, _ := setupTestData(t, db)
+
+	fileExplorerQuery := queries.DistributedQuery{
+		Name:          "file-explorer-query",
+		Query:         "select path from file where directory = '/'",
+		Type:          queries.FileExplorerQueryType,
+		Hidden:        true,
+		Active:        true,
+		EnvironmentID: 1,
+		Expiration:    time.Now().Add(time.Hour),
+	}
+	require.NoError(t, q.Create(&fileExplorerQuery))
+	require.NoError(t, q.CreateNodeQueries([]uint{testNodes[0].ID}, fileExplorerQuery.ID))
+
+	result, accelerate, err := q.NodeQueries(testNodes[0])
+	require.NoError(t, err)
+	require.True(t, accelerate)
+	require.Equal(t, "select path from file where directory = '/'", result["file-explorer-query"])
+}
+
 func TestNodeQueriesSkipsExpiredPendingQueries(t *testing.T) {
 	db := testDB(t)
 	q, testNodes, _ := setupTestData(t, db)

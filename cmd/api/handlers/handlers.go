@@ -6,6 +6,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -32,6 +33,7 @@ type HandlersApi struct {
 	Nodes           *nodes.NodeManager
 	Queries         *queries.Queries
 	Console         *console.Manager
+	FileExplorer    *fileexplorer.Manager
 	Carves          *carves.Carves
 	Settings        *settings.Settings
 	Activity        activityReader
@@ -114,6 +116,12 @@ func WithQueries(queries *queries.Queries) HandlersOption {
 func WithConsole(consoleManager *console.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Console = consoleManager
+	}
+}
+
+func WithFileExplorer(fileExplorerManager *fileexplorer.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.FileExplorer = fileExplorerManager
 	}
 }
 
