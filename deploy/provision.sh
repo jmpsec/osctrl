@@ -45,6 +45,7 @@
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
 #   -U          --upgrade       Keep osctrl upgraded with the latest code from Github
+#   -A          --admin         Create and configure an admin user with a random password. Default is disabled
 #
 # Examples:
 #   Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):
@@ -113,6 +114,7 @@ function usage() {
   printf "  -E          --enroll  \tEnroll the serve into itself using osquery. Default is disabled\n"
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "  -U          --upgrade \tKeep osctrl upgraded with the latest code from Github\n"
+  printf "  -A          --admin \t\tCreate and configure an admin user with a random password. Default is disabled\n"
   printf "\nExamples:\n"
   printf "  Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):\n"
   printf "\t%s -m dev -s /code/osctrl -p all\n" "${0}"
@@ -145,11 +147,11 @@ PART="all"
 KEYFILE=""
 CERTFILE=""
 ENROLL=false
-UPDATE=false
 NGINX=false
 POSTGRES=false
 REDIS=false
 UPGRADE=false
+ADMIN=false
 BRANCH="main"
 SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_PATH=/opt/osctrl
@@ -205,7 +207,7 @@ VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUc:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,certfile:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUAc:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,admin,certfile:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -325,6 +327,11 @@ while true; do
     -U|--upgrade)
       SHOW_USAGE=false
       UPGRADE=true
+      shift
+      ;;
+    -A|--admin)
+      SHOW_USAGE=false
+      ADMIN=true
       shift
       ;;
     -k|--keyfile)
@@ -628,16 +635,19 @@ else
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # Create initial environment to enroll machines
-  log "Creating environment $ENVIRONMENT"
-  "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
-
-  # Create admin user
-  log "Creating admin user"
-  "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
-
   # If we are in dev, lower intervals
   if [[ "$MODE" == "dev" ]]; then
+    # Create initial environment to enroll machines
+    log "Creating environment $ENVIRONMENT"
+    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+
+    # Create admin user
+    if [[ "$ADMIN" == true ]]; then
+      log "Creating admin user"
+      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
+    fi
+
+    # Continue the configuration of the environment for development purposes
     log "Decrease intervals for environment $ENVIRONMENT"
     "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
     log "Enable verbose mode"
@@ -678,7 +688,9 @@ fi
 if [[ "$UPGRADE" == false ]]; then
   echo
   log " -> https://$_A_HOST:$_A_PUB_PORT"
-  log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
+  if [[ "$ADMIN" == true ]]; then
+    log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
+  fi
   echo
 fi
 
@@ -697,4 +709,4 @@ exit 0
 # kthxbai
 
 # Standard deployment in a linux box would be like:
-# ./deploy/provision.sh -m dev -s /path/to/code --nginx --postgres --redis -p all --all-hostname "dev.osctrl.net" -E
+# ./deploy/provision.sh -m dev -s /path/to/code --nginx --postgres --redis -p all --all-hostname "dev.osctrl.net" -E -A
