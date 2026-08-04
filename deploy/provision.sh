@@ -106,6 +106,7 @@ function usage() {
   printf "  --api-hostname HOSTNAME \tHostname for the API service. Default is 127.0.0.1\n"
   printf "  -X PASS     --password \tForce the admin password for the admin interface. Default is random\n"
   printf "  -c PATH     --certfile PATH \tPath to supplied TLS server PEM certificate(s) bundle\n"
+  printf "  -k PATH     --keyfile PATH \tPath to supplied TLS key file\n"
   printf "  -s PATH     --source PATH \tPath to code. Default is auto-detected from script location\n"
   printf "  -S PATH     --dest PATH \tPath to binaries. Default is /opt/osctrl\n"
   printf "  -n          --nginx \t\tInstall and configure nginx as TLS termination\n"
@@ -617,13 +618,19 @@ else
     fi
 
     # Configuration for TLS service
-    nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
+    if [[ "$PART" == "all" ]] || [[ "$PART" == "$TLS_COMPONENT" ]]; then
+      nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file" "$_key_file" "$_dh_file" "$_T_PUB_PORT" "$_T_INT_PORT" "tls.conf" "$NGINX_PATH"
+    fi
 
     # Configuration for Admin service
-    nginx_service "$SOURCE_PATH/deploy/nginx/frontend.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_P_INT_PORT" "admin.conf" "$NGINX_PATH" "$DEST_PATH/frontend"
+    if [[ "$PART" == "all" ]] || [[ "$PART" == "$ADMIN_COMPONENT" ]]; then
+      nginx_service "$SOURCE_PATH/deploy/nginx/frontend.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_A_PUB_PORT" "$_P_INT_PORT" "admin.conf" "$NGINX_PATH" "$DEST_PATH/frontend"
+    fi
 
     # Configuration for API service
-    nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
+    if [[ "$PART" == "all" ]] || [[ "$PART" == "$API_COMPONENT" ]]; then
+      nginx_service "$SOURCE_PATH/deploy/nginx/ssl.conf" "$_cert_file_a" "$_key_file_a" "$_dh_file" "$_P_PUB_PORT" "$_P_INT_PORT" "api.conf" "$NGINX_PATH"
+    fi
 
     # Restart nginx
     sudo nginx -t
@@ -635,19 +642,19 @@ else
   __osquery_cfg="$SOURCE_PATH/deploy/osquery/osquery-cfg.json"
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
-  # If we are in dev, lower intervals
+  # Create admin user
+  if [[ "$ADMIN" == true ]]; then
+    log "Creating admin user"
+    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
+  fi
+
+  # If we are in dev, create an initial environment to enroll machines
   if [[ "$MODE" == "dev" ]]; then
     # Create initial environment to enroll machines
     log "Creating environment $ENVIRONMENT"
     "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
 
-    # Create admin user
-    if [[ "$ADMIN" == true ]]; then
-      log "Creating admin user"
-      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
-    fi
-
-    # Continue the configuration of the environment for development purposes
+    # Continue the configuration of the environment for development purposes, which means lower intervals. Not recommended for production.
     log "Decrease intervals for environment $ENVIRONMENT"
     "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
     log "Enable verbose mode"
