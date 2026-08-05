@@ -9,7 +9,7 @@ info:
     url: https://github.com/jmpsec/osctrl/blob/master/LICENSE
   termsOfService: https://github.com/jmpsec/osctrl
   title: osctrl API
-  version: 0.5.4
+  version: 0.5.5
 paths:
   /:
     get:
@@ -3245,7 +3245,8 @@ paths:
         - nodes
   "/api/v1/nodes/{env}/node/{node}":
     get:
-      description: Returns a single enrolled node in an environment.
+      description: Returns a single enrolled node in an environment, including
+        admin-only detail fields.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -3317,6 +3318,106 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Get node
+      tags:
+        - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/posture":
+    get:
+      description: Returns security and compliance posture data for a node.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/posture.NodePosture"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get node posture
+      tags:
+        - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/posture/score":
+    get:
+      description: Returns a security and compliance risk score based on posture data.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/posture.PostureScore"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get node posture risk score
       tags:
         - nodes
   "/api/v1/nodes/{env}/tag":
@@ -3603,6 +3704,51 @@ paths:
       summary: List platforms
       tags:
         - platforms
+  /api/v1/posture/profiles:
+    get:
+      description: Returns predefined posture check profiles for different node types.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/posture.PostureProfile"
+                type: array
+      security:
+        - ApiKeyAuth: []
+      summary: List posture profiles
+      tags:
+        - posture
+  "/api/v1/posture/profiles/{id}":
+    get:
+      description: Returns a single posture check profile by ID.
+      parameters:
+        - description: Profile ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/posture.PostureProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get posture profile
+      tags:
+        - posture
   "/api/v1/queries/{env}":
     get:
       description: Returns on-demand queries for an environment.
@@ -5142,6 +5288,69 @@ paths:
       summary: Get environment activity
       tags:
         - stats
+  "/api/v1/stats/activity/env-tiles/{env}":
+    get:
+      description: Returns Redis-backed hourly activity series for an environment.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Days of history (1-7, default 1)
+          in: query
+          name: days
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/activity.EnvSeries"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get environment activity tiles
+      tags:
+        - stats
   "/api/v1/stats/activity/node-batch/{env}":
     get:
       description: Returns activity buckets for multiple nodes in an environment.
@@ -5224,6 +5433,145 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Get node activity batch
+      tags:
+        - stats
+  "/api/v1/stats/activity/node-tiles-batch/{env}":
+    get:
+      description: Returns Redis-backed hourly activity series for multiple nodes.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Comma-separated node UUIDs
+          in: query
+          name: uuids
+          schema:
+            type: string
+        - description: Days of history (1-7, default 1)
+          in: query
+          name: days
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: "#/components/schemas/activity.NodeTileSeries"
+                type: object
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get node activity tiles batch
+      tags:
+        - stats
+  "/api/v1/stats/activity/node-tiles/{env}/{uuid}":
+    get:
+      description: Returns Redis-backed hourly activity series for a node.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+        - description: Days of history (1-7, default 1)
+          in: query
+          name: days
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/activity.NodeTileSeries"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get per-node activity tiles
       tags:
         - stats
   "/api/v1/stats/activity/node/{env}/{uuid}":
@@ -6569,6 +6917,12 @@ paths:
             application/json:
               schema:
                 type: string
+        "204":
+          description: Degraded — backend unreachable, serving from cache
+          content:
+            application/json:
+              schema:
+                type: string
         "400":
           description: Bad request
           content:
@@ -6651,6 +7005,76 @@ components:
       name: Authorization
       type: apiKey
   schemas:
+    activity.EnvSeries:
+      properties:
+        bucket_seconds:
+          type: integer
+        config:
+          items:
+            type: integer
+          type: array
+        enroll:
+          items:
+            type: integer
+          type: array
+        query_read:
+          items:
+            type: integer
+          type: array
+        query_write:
+          items:
+            type: integer
+          type: array
+        result:
+          items:
+            type: integer
+          type: array
+        start:
+          type: string
+        status:
+          items:
+            type: integer
+          type: array
+        total:
+          items:
+            type: integer
+          type: array
+      type: object
+    activity.NodeTileSeries:
+      properties:
+        bucket_seconds:
+          type: integer
+        config:
+          items:
+            type: integer
+          type: array
+        enroll:
+          items:
+            type: integer
+          type: array
+        query_read:
+          items:
+            type: integer
+          type: array
+        query_write:
+          items:
+            type: integer
+          type: array
+        result:
+          items:
+            type: integer
+          type: array
+        start:
+          type: string
+        status:
+          items:
+            type: integer
+          type: array
+        total:
+          items:
+            type: integer
+          type: array
+      type: object
     carves.CarveSample:
       properties:
         category:
@@ -6881,6 +7305,8 @@ components:
           type: string
         carve:
           type: integer
+        config:
+          type: integer
         query:
           type: integer
         result:
@@ -6915,6 +7341,8 @@ components:
           items:
             $ref: "#/components/schemas/handlers.EnvStats"
           type: array
+        inactive_hours:
+          type: integer
         inactive_nodes:
           type: integer
         platform_counts:
@@ -7000,10 +7428,150 @@ components:
         windows:
           type: integer
       type: object
+    posture.ControlResult:
+      properties:
+        category:
+          description: posture category the evidence came from
+          type: string
+        control_id:
+          description: e.g. "A.8.24" or "CC6.6"
+          type: string
+        description:
+          type: string
+        detail:
+          description: human-readable explanation
+          type: string
+        framework:
+          $ref: "#/components/schemas/posture.Framework"
+        score:
+          description: 0 = pass, otherwise earned risk points
+          type: integer
+        severity:
+          $ref: "#/components/schemas/posture.Severity"
+        status:
+          description: '"pass", "warn", "fail"'
+          type: string
+        title:
+          type: string
+      type: object
+    posture.Framework:
+      enum:
+        - SOC2
+        - ISO27001
+      type: string
+      x-enum-varnames:
+        - FrameworkSOC2
+        - FrameworkISO27001
+    posture.NodePosture:
+      properties:
+        category:
+          type: string
+        created_at:
+          type: string
+        environment:
+          type: string
+        first_seen:
+          description: FirstSeen is when this category was first observed for this node.
+          type: string
+        id:
+          type: integer
+        last_seen:
+          type: string
+        node_uuid:
+          type: string
+        query_name:
+          description: QueryName is the full osquery scheduled-query name including prefix.
+          type: string
+        row_count:
+          description: RowCount is the number of rows in the result (e.g. 3 packages, 5
+            users).
+          type: integer
+        summary:
+          description: |-
+            Summary is a compact JSON snapshot of the result data. For small
+            results this is the full columns array; for large results it's
+            truncated to the first 100 rows to keep the record manageable.
+          type: string
+        updated_at:
+          type: string
+      type: object
+    posture.PostureProfile:
+      properties:
+        description:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+        queries:
+          additionalProperties:
+            $ref: "#/components/schemas/posture.ProfileQuery"
+          type: object
+      type: object
+    posture.PostureScore:
+      properties:
+        controls:
+          items:
+            $ref: "#/components/schemas/posture.ControlResult"
+          type: array
+        fail_count:
+          type: integer
+        node_uuid:
+          type: string
+        pass_count:
+          type: integer
+        risk_level:
+          description: '"low", "medium", "high", "critical"'
+          type: string
+        timestamp:
+          type: string
+        total_score:
+          description: 0-100 normalized, lower is better
+          type: integer
+        warn_count:
+          type: integer
+      type: object
+    posture.ProfileQuery:
+      properties:
+        interval:
+          type: integer
+        platform:
+          type: string
+        query:
+          type: string
+        snapshot:
+          type: boolean
+      type: object
+    posture.Severity:
+      enum:
+        - critical
+        - high
+        - medium
+        - low
+      type: string
+      x-enum-comments:
+        SeverityCritical: immediate risk, must fix
+        SeverityHigh: significant risk
+        SeverityLow: minor risk
+        SeverityMedium: moderate risk
+      x-enum-descriptions:
+        - immediate risk, must fix
+        - significant risk
+        - moderate risk
+        - minor risk
+      x-enum-varnames:
+        - SeverityCritical
+        - SeverityHigh
+        - SeverityMedium
+        - SeverityLow
     queries.DistributedQuery:
       properties:
         active:
           type: boolean
+        carve_status:
+          type: string
         completed:
           type: boolean
         created_at:
@@ -7409,7 +7977,7 @@ components:
             $ref: "#/components/schemas/types.CarveFileView"
           type: array
         query:
-          $ref: "#/components/schemas/queries.DistributedQuery"
+          $ref: "#/components/schemas/types.DistributedQueryView"
       type: object
     types.CarveFileView:
       properties:
@@ -7452,6 +8020,57 @@ components:
           type: integer
         total_pages:
           type: integer
+      type: object
+    types.DistributedQueryView:
+      properties:
+        active:
+          type: boolean
+        carve_status:
+          type: string
+        completed:
+          type: boolean
+        created_at:
+          type: string
+        creator:
+          type: string
+        deleted:
+          type: boolean
+        environment_id:
+          type: integer
+        errors:
+          type: integer
+        executions:
+          type: integer
+        expected:
+          type: integer
+        expiration:
+          type: string
+        expired:
+          type: boolean
+        extra_data:
+          type: string
+        hidden:
+          type: boolean
+        id:
+          type: integer
+        name:
+          type: string
+        path:
+          type: string
+        protected:
+          type: boolean
+        query:
+          type: string
+        target:
+          type: string
+        targets:
+          items:
+            $ref: "#/components/schemas/types.QueryTargetView"
+          type: array
+        type:
+          type: string
+        updated_at:
+          type: string
       type: object
     types.EnvAccessView:
       properties:
@@ -7561,11 +8180,44 @@ components:
         system:
           $ref: "#/components/schemas/types.SystemInfo"
       type: object
+    types.NodeHealth:
+      properties:
+        reason:
+          type: string
+        signals:
+          items:
+            type: string
+          type: array
+        status:
+          type: string
+      type: object
+    types.NodePostureSummary:
+      properties:
+        risk_level:
+          type: string
+      type: object
+    types.NodeUptime:
+      properties:
+        days:
+          type: integer
+        hours:
+          type: integer
+        last_seen:
+          type: string
+        minutes:
+          type: integer
+        seconds:
+          type: integer
+        total_seconds:
+          type: integer
+      type: object
     types.NodeView:
       properties:
         bytes_received:
           type: integer
         config_hash:
+          type: string
+        country_code:
           type: string
         cpu:
           type: string
@@ -7581,6 +8233,8 @@ components:
           type: string
         hardware_serial:
           type: string
+        health:
+          $ref: "#/components/schemas/types.NodeHealth"
         hostname:
           type: string
         id:
@@ -7593,6 +8247,8 @@ components:
           type: string
         memory:
           type: string
+        node_key:
+          type: string
         osquery_user:
           type: string
         osquery_version:
@@ -7601,10 +8257,18 @@ components:
           type: string
         platform_version:
           type: string
+        posture:
+          $ref: "#/components/schemas/types.NodePostureSummary"
         system_info:
           $ref: "#/components/schemas/types.NodeEnrichment"
+        tags:
+          items:
+            $ref: "#/components/schemas/tags.AdminTag"
+          type: array
         updated_at:
           type: string
+        uptime:
+          $ref: "#/components/schemas/types.NodeUptime"
         user_id:
           type: integer
         username:
@@ -7713,6 +8377,13 @@ components:
           type: integer
         total_pages:
           type: integer
+      type: object
+    types.QueryTargetView:
+      properties:
+        type:
+          type: string
+        value:
+          type: string
       type: object
     types.SavedQueriesPagedResponse:
       properties:
