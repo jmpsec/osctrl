@@ -8,6 +8,8 @@
 # IDE metadata
 .vscode
 .idea
+.claude
+.codex
 
 # Logs
 *.log

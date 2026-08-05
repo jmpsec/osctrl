@@ -37,6 +37,7 @@ func GenerateAdminConfigFile(path string, cfg *ServiceParameters, overwrite bool
 		Osquery: *cfg.Osquery,
 		Osctrld: *cfg.Osctrld,
 		SAML:    *cfg.SAML,
+		OIDC:    *cfg.OIDC,
 		JWT:     *cfg.JWT,
 		TLS:     *cfg.TLS,
 		Logger:  *cfg.Logger,
@@ -54,9 +55,12 @@ func GenerateAPIConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 		DB:      *cfg.DB,
 		Redis:   *cfg.Redis,
 		Osquery: *cfg.Osquery,
+		SAML:    *cfg.SAML,
+		OIDC:    *cfg.OIDC,
 		JWT:     *cfg.JWT,
 		TLS:     *cfg.TLS,
 		Logger:  *cfg.Logger,
+		Carver:  *cfg.Carver,
 		Debug:   *cfg.Debug,
 	}
 	return GenerateGenericConfigFile(path, cfgAPI, overwrite)

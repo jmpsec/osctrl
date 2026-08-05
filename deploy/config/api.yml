@@ -72,6 +72,75 @@ osquery:
   accelerated: false
   fileExplorer: false
 
+# SAML 2.0 federated login. Disabled by default; when `enabled` is true
+# the API fetches the IdP metadata at startup and REFUSES TO START if
+# that fails, rather than serving a login page with a broken SSO button.
+# The SPA discovers this via GET /api/v1/auth/methods and renders a
+# "Continue with SAML" button automatically — no frontend rebuild needed.
+#
+# Register osctrl with the IdP by pointing it at the SP metadata URL:
+#   https://<host>/api/v1/auth/saml/metadata
+#
+# Note: certPath, keyPath, rootUrl, loginUrl and spInitiated are legacy
+# fields consumed only by osctrl-admin; osctrl-api ignores them.
+# See docs/auth-providers.md for per-IdP walkthroughs.
+saml:
+  enabled: false
+  # SP entity ID — what the IdP knows us by, conventionally the metadata URL
+  entityId: ""
+  # Where the IdP POSTs the SAMLResponse; must end with /api/v1/auth/saml/acs
+  acsUrl: ""
+  certPath: ""
+  keyPath: ""
+  # IdP metadata XML — fetched once at startup for signing certs + SSO endpoint
+  metadataUrl: ""
+  rootUrl: ""
+  loginUrl: ""
+  # IdP session-termination URL (e.g. https://<tenant>.auth0.com/v2/logout).
+  # Returned to the SPA on logout so the IdP session dies too; without it
+  # the next SSO click silently re-authenticates.
+  logoutUrl: ""
+  # Auto-create osctrl users on first login, as non-admin
+  jitProvision: false
+  # Attribute (Name or FriendlyName) whose value becomes the osctrl username.
+  # Empty = use the NameID verbatim. Usernames must match ^[a-zA-Z0-9_-]{1,64}$,
+  # so email-format NameIDs are rejected — point this at a short handle instead.
+  usernameAttribute: ""
+  # PEM cert + RSA key for signing outbound AuthnRequests. Both must be set
+  # to enable signing; some IdPs require it and all should support it.
+  signingCertPath: ""
+  signingKeyPath: ""
+  # Force re-authentication at the IdP on every login. Defaults true — it is
+  # the substitute for SAML SLO, which is not implemented yet.
+  forceAuthn: true
+  spInitiated: false
+
+# OIDC federated login. Same posture as SAML above: disabled by default,
+# fail-fast on discovery errors at startup, advertised to the SPA through
+# /api/v1/auth/methods. Both protocols can be enabled at the same time.
+oidc:
+  enabled: false
+  # Realm root — /.well-known/openid-configuration is appended automatically
+  issuerUrl: ""
+  clientId: ""
+  clientSecret: ""
+  # Must match the IdP client config and end with /api/v1/auth/oidc/callback
+  redirectUrl: ""
+  # Empty defaults to [openid, profile, email]
+  scopes: []
+  # Empty defaults to preferred_username. Same charset rule as SAML applies,
+  # so `email` and Auth0's `sub` will be rejected — use `nickname` there.
+  usernameClaim: ""
+  # Empty defaults to `groups`
+  groupsClaim: ""
+  # Login is denied unless the user belongs to at least one of these.
+  # Empty disables the group gate.
+  requiredGroups: []
+  # Auto-create osctrl users on first login, as non-admin
+  jitProvision: false
+  # PKCE (S256) for the authorization code flow
+  usePKCE: false
+
 # JWT authentication configuration
 jwt:
   jwtSecret: ""
