@@ -37,6 +37,12 @@ var (
 		Help:    "The duration of batch data flushing to backend",
 		Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5},
 	}, []string{"operation"})
+	// DBDegraded is 1 when the DB health monitor reports the database
+	// as degraded (caches are in stale-serve mode), 0 when healthy.
+	dbDegraded = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "osctrl_tls_db_degraded",
+		Help: "1 when the DB health monitor reports the database as degraded and caches are in stale-serve mode, 0 when healthy.",
+	})
 )
 
 func RegisterMetrics(reg prometheus.Registerer) {
@@ -45,4 +51,17 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(logProcessDuration)
 	reg.MustRegister(distributedQueryProcessingDuration)
 	reg.MustRegister(batchFlushDuration)
+	reg.MustRegister(dbDegraded)
+}
+
+// SetDBDegraded updates the db_degraded gauge. Called by the DB
+// health monitor via its OnChange callback. Safe to call even when
+// metrics are not registered (the gauge is a no-op until
+// RegisterMetrics runs).
+func SetDBDegraded(degraded bool) {
+	if degraded {
+		dbDegraded.Set(1)
+	} else {
+		dbDegraded.Set(0)
+	}
 }

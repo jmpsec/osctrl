@@ -180,3 +180,37 @@ func TestMemoryCache_DifferentTypes(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, person, retrievedPerson)
 }
+
+// TestMemoryCache_GetStaleReturnsExpiredValue verifies that GetStale
+// returns a value whose TTL has expired but which the cleanup
+// goroutine has not yet evicted. This is the stale-serve fallback
+// used during DB outages.
+func TestMemoryCache_GetStaleReturnsExpiredValue(t *testing.T) {
+	c := NewMemoryCache[string](WithCleanupInterval[string](1 * time.Hour))
+	defer c.Stop()
+
+	ctx := context.Background()
+	c.Set(ctx, "key", "value", 10*time.Millisecond)
+
+	// Wait long enough for the TTL to expire but not for cleanup.
+	time.Sleep(30 * time.Millisecond)
+
+	// Normal Get treats it as a miss.
+	_, found := c.Get(ctx, "key")
+	assert.False(t, found, "Get should miss an expired item")
+
+	// GetStale returns the value anyway.
+	val, found := c.GetStale(ctx, "key")
+	assert.True(t, found, "GetStale should return the expired item")
+	assert.Equal(t, "value", val)
+}
+
+// TestMemoryCache_GetStaleReturnsFalseForMissing verifies GetStale
+// does not invent values for keys that were never written.
+func TestMemoryCache_GetStaleReturnsFalseForMissing(t *testing.T) {
+	c := NewMemoryCache[string]()
+	defer c.Stop()
+
+	_, found := c.GetStale(context.Background(), "never-written")
+	assert.False(t, found)
+}

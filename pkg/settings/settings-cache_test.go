@@ -47,3 +47,19 @@ func TestRedisSettingsCacheRefreshesAfterInvalidation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(10), got[AcceleratedSeconds].Integer)
 }
+
+// TestRedisSettingsCacheSetDBHealthIsNoOp verifies that wiring a
+// nil DegradedReader (the default) does not change GetMap behavior.
+func TestRedisSettingsCacheSetDBHealthIsNoOp(t *testing.T) {
+	db := setupSettingsTestDB(t)
+	conf := &Settings{DB: db}
+	require.NoError(t, conf.NewIntegerValue(config.ServiceTLS, AcceleratedSeconds, 7, NoEnvironmentID))
+
+	client, _ := newSettingsRedisTestClient(t)
+	cache := NewRedisSettingsCache(conf, client, config.ServiceTLS, NoEnvironmentID, time.Minute)
+	cache.SetDBHealth(nil) // no-op
+
+	got, err := cache.GetMap(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, int64(7), got[AcceleratedSeconds].Integer)
+}

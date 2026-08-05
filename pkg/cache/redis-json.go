@@ -51,6 +51,20 @@ func (c *RedisJSONCache[T]) Set(ctx context.Context, key string, value T, ttl ti
 	return c.client.Set(ctx, c.cacheKey(key), data, ttl).Err()
 }
 
+// GetStale retrieves the cached value ignoring whether it has
+// technically expired. Redis only returns a value if the key still
+// exists; expired keys are deleted by Redis on read or by the
+// background eviction, so "stale" here means "still present in Redis
+// past the TTL we set". Callers use this as a last-resort fallback
+// when the primary data source (e.g. the DB) is unavailable.
+//
+// Returns (value, true, nil) when the key exists regardless of its
+// remaining TTL, and (zero, false, nil) when Redis does not have the
+// key. Redis errors are returned as-is.
+func (c *RedisJSONCache[T]) GetStale(ctx context.Context, key string) (T, bool, error) {
+	return c.Get(ctx, key)
+}
+
 // Delete removes a cached value.
 func (c *RedisJSONCache[T]) Delete(ctx context.Context, key string) error {
 	return c.client.Del(ctx, c.cacheKey(key)).Err()

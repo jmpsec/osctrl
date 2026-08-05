@@ -49,6 +49,34 @@ func TestRedisJSONCacheDelete(t *testing.T) {
 	require.False(t, ok)
 }
 
+// TestRedisJSONCacheGetStaleReturnsValue verifies GetStale returns
+// a value that is still present in Redis. The fake store does not
+// enforce TTL eviction, so this mirrors the "TTL expired but Redis
+// has not yet evicted" window during a DB outage.
+func TestRedisJSONCacheGetStaleReturnsValue(t *testing.T) {
+	client, _ := newRedisJSONTestClient(t)
+	cache := NewRedisJSONCache[redisJSONTestValue](client, "test:json")
+
+	ctx := context.Background()
+	require.NoError(t, cache.Set(ctx, "stale", redisJSONTestValue{Name: "stale"}, time.Second))
+
+	got, ok, err := cache.GetStale(ctx, "stale")
+	require.NoError(t, err)
+	require.True(t, ok, "GetStale should return a value that Redis still holds")
+	require.Equal(t, "stale", got.Name)
+}
+
+// TestRedisJSONCacheGetStaleMissingKey verifies GetStale returns
+// ok=false for a key that was never written.
+func TestRedisJSONCacheGetStaleMissingKey(t *testing.T) {
+	client, _ := newRedisJSONTestClient(t)
+	cache := NewRedisJSONCache[redisJSONTestValue](client, "test:json")
+
+	_, ok, err := cache.GetStale(context.Background(), "never")
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
 func newRedisJSONTestClient(t *testing.T) (*redis.Client, *redisJSONFakeStore) {
 	t.Helper()
 

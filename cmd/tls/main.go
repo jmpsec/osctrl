@@ -217,6 +217,23 @@ func osctrlService() {
 		return err == nil && n > 0
 	})
 	log.Info().Msg("Environment cache wired to Redis")
+	// DB health monitor: when enabled, pings the DB on a fixed
+	// interval and switches EnvCache + SettingsCache into stale-serve
+	// mode after N consecutive failures, so osquery nodes keep getting
+	// config/logs during a DB outage. See pkg/backend/health.go.
+	var dbHealth *backend.DBHealth
+	if flagParams.Service.DBHealthCheck {
+		interval := time.Duration(flagParams.Service.DBHealthInterval) * time.Second
+		threshold := uint32(flagParams.Service.DBHealthThreshold)
+		dbHealth = backend.NewDBHealth(db, interval, threshold)
+		dbHealth.SetOnChange(handlers.SetDBDegraded)
+		dbHealth.Start()
+		envCache.SetDBHealth(dbHealth)
+		log.Info().
+			Dur("interval", interval).
+			Uint32("threshold", threshold).
+			Msg("DB health monitor enabled — caches will stale-serve on DB outage")
+	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
@@ -245,6 +262,9 @@ func osctrlService() {
 		settingsCacheTTL = time.Duration(defaultRefresh) * time.Second
 	}
 	settingsCache := settings.NewRedisSettingsCache(settingsmgr, redis.Client, config.ServiceTLS, settings.NoEnvironmentID, settingsCacheTTL)
+	if dbHealth != nil {
+		settingsCache.SetDBHealth(dbHealth)
+	}
 	log.Info().Msg("TLS settings cache wired to Redis")
 	// Initialize batch writer
 	log.Info().Msg("Initializing batch writer")

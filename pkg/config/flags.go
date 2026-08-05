@@ -127,6 +127,27 @@ func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceTLS)...)
+	allFlags = append(allFlags, &cli.BoolFlag{
+		Name:        "db-health-check",
+		Value:       false,
+		Usage:       "Enable a background DB liveness monitor. After --db-health-threshold consecutive ping failures, EnvCache and SettingsCache switch to stale-serve mode (serve cached entries on DB miss, extend TTLs) so osquery nodes keep getting config/logs during a DB outage. Disabled by default.",
+		Sources:     cli.EnvVars("DB_HEALTH_CHECK"),
+		Destination: &params.Service.DBHealthCheck,
+	},
+		&cli.IntFlag{
+			Name:        "db-health-interval",
+			Value:       5,
+			Usage:       "Seconds between DB health pings when --db-health-check is enabled.",
+			Sources:     cli.EnvVars("DB_HEALTH_INTERVAL"),
+			Destination: &params.Service.DBHealthInterval,
+		},
+		&cli.IntFlag{
+			Name:        "db-health-threshold",
+			Value:       3,
+			Usage:       "Consecutive DB ping failures required before EnvCache and SettingsCache enter stale-serve mode.",
+			Sources:     cli.EnvVars("DB_HEALTH_THRESHOLD"),
+			Destination: &params.Service.DBHealthThreshold,
+		})
 	return allFlags
 }
 
