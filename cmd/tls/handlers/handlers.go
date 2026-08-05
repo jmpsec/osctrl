@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
@@ -73,6 +74,10 @@ type HandlersTLS struct {
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
 	AuditLog        *auditlog.AuditLogManager
+	// DBHealth, when wired via WithDBHealth, lets HealthHandler
+	// report backend degradation. nil means "no monitor" and the
+	// health endpoint reports healthy as before.
+	DBHealth backend.DegradedReader
 }
 
 // TLSResponse to be returned to requests
@@ -96,6 +101,15 @@ func WithEnvs(envs *environments.EnvManager) Option {
 func WithEnvCache(ec *environments.EnvCache) Option {
 	return func(h *HandlersTLS) {
 		h.EnvCache = ec
+	}
+}
+
+// WithDBHealth wires a DB health monitor so HealthHandler can report
+// backend degradation (HTTP 204) instead of always reporting 200.
+// Pass nil to keep the legacy "always healthy" behavior.
+func WithDBHealth(hl backend.DegradedReader) Option {
+	return func(h *HandlersTLS) {
+		h.DBHealth = hl
 	}
 }
 

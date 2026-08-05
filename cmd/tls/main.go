@@ -334,6 +334,7 @@ func osctrlService() {
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
 		handlers.WithAuditLog(auditLog),
+		handlers.WithDBHealth(dbHealth), // nil when DB health monitor disabled
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
