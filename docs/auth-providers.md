@@ -7,6 +7,7 @@ for each tested provider.
 
 ## Table of contents
 
+- [Configuration modes](#configuration-modes)
 - [Environment variables reference](#environment-variables-reference)
 - [Username rules](#username-rules)
 - [OIDC](#oidc)
@@ -22,6 +23,30 @@ for each tested provider.
 - [Logout and IdP session termination](#logout-and-idp-session-termination)
 - [Running OIDC and SAML simultaneously](#running-oidc-and-saml-simultaneously)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Configuration modes
+
+osctrl-api takes its settings from **either** flags/environment variables
+**or** a YAML file — not both. When `--config` is passed (which is what
+the systemd unit written by `deploy/provision.sh` does), the YAML file is
+the only source: environment variables are not merged in and are ignored.
+
+So pick the one that matches how you run the service:
+
+- **Provisioned / systemd deployments** — edit the `saml:` and `oidc:`
+  sections of `config/osctrl-api.yml`. Run
+  `osctrl-api config-generate` to emit a fresh file with both sections
+  present, or copy them from
+  [`deploy/config/api.yml`](../deploy/config/api.yml).
+- **Containers or a hand-rolled invocation with no `--config`** — use the
+  environment variables below.
+
+The YAML keys are the camelCase equivalents of the flags
+(`OIDC_ISSUER_URL` → `oidc.issuerUrl`, `SAML_ACS_URL` → `saml.acsUrl`,
+and so on). A complete annotated example of both sections lives in
+`deploy/config/api.yml`.
 
 ---
 

@@ -16,6 +16,8 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 		DB:                &yml.DB,
 		Redis:             &yml.Redis,
 		Osquery:           &yml.Osquery,
+		SAML:              &yml.SAML,
+		OIDC:              &yml.OIDC,
 		JWT:               &yml.JWT,
 		TLS:               &yml.TLS,
 		Logger:            &yml.Logger,

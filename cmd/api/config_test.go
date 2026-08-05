@@ -1,0 +1,140 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+// osctrl-api reads its config either from flags/env vars or from a YAML
+// file via --config. The YAML path replaces flagParams wholesale, so any
+// section loadedYAMLToServiceParams forgets to carry over is silently
+// dropped — which is exactly how the SAML/OIDC sections went missing:
+// federated login stayed off no matter what the operator configured,
+// with no error anywhere. These tests pin the wiring.
+
+const ssoConfigYAML = `
+service:
+  listener: 127.0.0.1
+  port: 9000
+  auth: jwt
+db:
+  type: postgres
+jwt:
+  jwtSecret: "not-a-real-secret-just-for-parsing"
+saml:
+  enabled: true
+  entityId: https://osctrl.example.com/api/v1/auth/saml/metadata
+  acsUrl: https://osctrl.example.com/api/v1/auth/saml/acs
+  metadataUrl: https://idp.example.com/realms/osctrl/protocol/saml/descriptor
+  usernameAttribute: preferred_username
+  jitProvision: true
+  forceAuthn: false
+oidc:
+  enabled: true
+  issuerUrl: https://idp.example.com/realms/osctrl
+  clientId: osctrl-api
+  clientSecret: shhh
+  redirectUrl: https://osctrl.example.com/api/v1/auth/oidc/callback
+  scopes:
+    - openid
+    - profile
+  usernameClaim: nickname
+  requiredGroups:
+    - osctrl-admins
+  jitProvision: true
+  usePKCE: true
+`
+
+func writeTempConfig(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "api.yml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("writing temp config: %v", err)
+	}
+	return path
+}
+
+func TestLoadedYAMLCarriesSSOSections(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, ssoConfigYAML))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+
+	if params.OIDC == nil {
+		t.Fatal("OIDC params are nil — the oidc section was dropped")
+	}
+	if params.SAML == nil {
+		t.Fatal("SAML params are nil — the saml section was dropped")
+	}
+
+	// main.go gates provider init on Enabled; if it doesn't survive the
+	// round-trip, the routes are never registered and /auth/methods
+	// advertises password-only.
+	if !params.OIDC.Enabled {
+		t.Error("OIDC.Enabled = false, want true")
+	}
+	if !params.SAML.Enabled {
+		t.Error("SAML.Enabled = false, want true")
+	}
+
+	if got, want := params.OIDC.IssuerURL, "https://idp.example.com/realms/osctrl"; got != want {
+		t.Errorf("OIDC.IssuerURL = %q, want %q", got, want)
+	}
+	if got, want := params.OIDC.ClientID, "osctrl-api"; got != want {
+		t.Errorf("OIDC.ClientID = %q, want %q", got, want)
+	}
+	if got, want := params.OIDC.UsernameClaim, "nickname"; got != want {
+		t.Errorf("OIDC.UsernameClaim = %q, want %q", got, want)
+	}
+	if !params.OIDC.UsePKCE {
+		t.Error("OIDC.UsePKCE = false, want true")
+	}
+	if got, want := len(params.OIDC.Scopes), 2; got != want {
+		t.Errorf("len(OIDC.Scopes) = %d, want %d", got, want)
+	}
+	if got, want := len(params.OIDC.RequiredGroups), 1; got != want {
+		t.Errorf("len(OIDC.RequiredGroups) = %d, want %d", got, want)
+	}
+
+	// EntityID and ACSURL are passed to InitSAML as separate arguments,
+	// so an empty value here means metadata registration silently
+	// mismatches whatever the IdP has on file.
+	if got, want := params.SAML.EntityID, "https://osctrl.example.com/api/v1/auth/saml/metadata"; got != want {
+		t.Errorf("SAML.EntityID = %q, want %q", got, want)
+	}
+	if got, want := params.SAML.ACSURL, "https://osctrl.example.com/api/v1/auth/saml/acs"; got != want {
+		t.Errorf("SAML.ACSURL = %q, want %q", got, want)
+	}
+	if got, want := params.SAML.MetaDataURL, "https://idp.example.com/realms/osctrl/protocol/saml/descriptor"; got != want {
+		t.Errorf("SAML.MetaDataURL = %q, want %q", got, want)
+	}
+	if got, want := params.SAML.UsernameAttribute, "preferred_username"; got != want {
+		t.Errorf("SAML.UsernameAttribute = %q, want %q", got, want)
+	}
+	if params.SAML.ForceAuthn {
+		t.Error("SAML.ForceAuthn = true, want false — an explicit false must override the default")
+	}
+}
+
+func TestSAMLForceAuthnDefaultsTrueWhenOmitted(t *testing.T) {
+	// forceAuthn is a bool, so an omitted key is indistinguishable from
+	// an explicit false once unmarshalled. The --saml-force-authn flag
+	// defaults to true; the YAML path has to match it, otherwise "log
+	// out" appears not to work — the IdP re-auths from its own cookie.
+	const body = `
+service:
+  auth: jwt
+saml:
+  enabled: true
+  metadataUrl: https://idp.example.com/metadata
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	if !cfg.SAML.ForceAuthn {
+		t.Error("SAML.ForceAuthn = false, want true when the key is omitted")
+	}
+}

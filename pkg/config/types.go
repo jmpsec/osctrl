@@ -104,6 +104,8 @@ type APIConfiguration struct {
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
 	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
+	SAML    YAMLConfigurationSAML    `mapstructure:"saml"`
+	OIDC    YAMLConfigurationOIDC    `mapstructure:"oidc"`
 	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
 	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
 	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
