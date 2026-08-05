@@ -2269,19 +2269,21 @@ function PostureCard({ item }: { item: NodePosture }) {
       {expanded && summary.length > 0 && (
         <div className="border-t border-[color:var(--border)] overflow-auto max-h-64">
           <table className="w-full text-xs border-collapse">
-            {summary.map((row, i) => {
-              const entries = Object.entries(row);
-              return (
-                <tr key={i} className="border-b border-[color:var(--border)] last:border-b-0">
-                  {entries.map(([col, val]) => (
-                    <td key={col} className="px-3 py-1.5 font-mono-tabular text-[color:var(--text-2)] break-all">
-                      <span className="text-[color:var(--text-3)] mr-1">{col}:</span>
-                      {typeof val === 'string' ? val : JSON.stringify(val)}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            <tbody>
+              {summary.map((row, i) => {
+                const entries = Object.entries(row);
+                return (
+                  <tr key={i} className="border-b border-[color:var(--border)] last:border-b-0">
+                    {entries.map(([col, val]) => (
+                      <td key={col} className="px-3 py-1.5 font-mono-tabular text-[color:var(--text-2)] break-all">
+                        <span className="text-[color:var(--text-3)] mr-1">{col}:</span>
+                        {typeof val === 'string' ? val : JSON.stringify(val)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
         </div>
       )}
