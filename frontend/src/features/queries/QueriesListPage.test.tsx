@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -147,11 +147,15 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  let ui: ReturnType<typeof render>;
+  act(() => {
+    ui = render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  return ui!;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,9 +190,12 @@ describe('QueriesListPage', () => {
     });
   });
 
-  it('shows skeleton rows while loading', () => {
+  it('shows skeleton rows while loading', async () => {
     mockListQueries.mockReturnValue(new Promise(() => {}));
     renderWithProviders(makeTestRouter());
+    // Let the router's async route match resolve inside act() so the
+    // MatchesInner state update does not leak out as an unhandled act warning.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     // Data row should not be present while loading
     expect(screen.queryByText('SELECT * FROM osquery_info;')).not.toBeInTheDocument();
   });

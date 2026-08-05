@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -124,11 +124,15 @@ function makeTestRouter(initialPath = '/_app/env/test-env/carves/carve_abcdef') 
 
 function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  let ui: ReturnType<typeof render>;
+  act(() => {
+    ui = render(
+      <QueryClientProvider client={qc}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  return ui!;
 }
 
 describe('CarveDetailPage', () => {

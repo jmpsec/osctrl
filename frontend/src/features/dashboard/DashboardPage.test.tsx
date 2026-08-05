@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -151,11 +151,15 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  let ui: ReturnType<typeof render>;
+  act(() => {
+    ui = render(
+      <QueryClientProvider client={qc}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  return ui!;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,10 +175,13 @@ describe('DashboardPage', () => {
     vi.clearAllMocks();
   });
 
-  it('shows skeleton cards while loading (no data yet)', () => {
+  it('shows skeleton cards while loading (no data yet)', async () => {
     // Never resolves during this test — simulates pending network request
     mockGetStats.mockReturnValue(new Promise(() => {}));
     renderWithProviders(makeTestRouter());
+    // Let the router's async route match resolve inside act() so the
+    // MatchesInner state update does not leak out as an unhandled act warning.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     // While loading, env names are not in the DOM
     expect(screen.queryByText('prod')).not.toBeInTheDocument();
     expect(screen.queryByText('staging')).not.toBeInTheDocument();

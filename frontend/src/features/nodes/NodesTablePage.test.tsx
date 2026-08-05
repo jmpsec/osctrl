@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -202,11 +202,15 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  let ui: ReturnType<typeof render>;
+  act(() => {
+    ui = render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  return ui!;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,11 +289,14 @@ describe('NodesTablePage', () => {
     expect(heatmap.querySelectorAll('span')).toHaveLength(96);
   });
 
-  it('shows nothing except skeleton rows while loading', () => {
+  it('shows nothing except skeleton rows while loading', async () => {
     // Never resolve
     mockListNodes.mockReturnValue(new Promise(() => {}));
     const router = makeTestRouter();
     renderWithProviders(router);
+    // Let the router's async route match resolve inside act() so the
+    // MatchesInner state update does not leak out as an unhandled act warning.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect(screen.queryByText('web-server-01')).not.toBeInTheDocument();
   });
 
