@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { Suspense } from 'react';
 import { CodeEditor } from './CodeEditor';
 
@@ -12,25 +12,29 @@ vi.mock('@monaco-editor/react', () => ({
 }));
 
 describe('CodeEditor', () => {
-  it('renders without crashing', () => {
-    render(
-      <Suspense fallback={<div>Loading…</div>}>
-        <CodeEditor value="SELECT 1;" />
-      </Suspense>,
-    );
+  it('renders without crashing', async () => {
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>Loading…</div>}>
+          <CodeEditor value="SELECT 1;" />
+        </Suspense>,
+      );
+    });
     // Either the editor renders (mock resolved) or the fallback is shown.
     // Both are valid — we just assert no uncaught error.
     expect(document.body).toBeTruthy();
   });
 
-  it('shows the loading fallback while the lazy chunk is pending', () => {
+  it('shows the loading fallback while the lazy chunk is pending', async () => {
     // With the mock in place the lazy import resolves synchronously, so the
     // editor itself renders. We verify the mock editor renders with the value.
-    render(
-      <Suspense fallback={<div>Loading editor…</div>}>
-        <CodeEditor value="SELECT * FROM processes;" />
-      </Suspense>,
-    );
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>Loading editor…</div>}>
+          <CodeEditor value="SELECT * FROM processes;" />
+        </Suspense>,
+      );
+    });
     // The mock renders synchronously via the vi.mock above.
     const editor = screen.queryByTestId('monaco-editor');
     if (editor) {
@@ -38,13 +42,15 @@ describe('CodeEditor', () => {
     }
   });
 
-  it('accepts a readOnly prop without errors', () => {
-    expect(() =>
-      render(
-        <Suspense fallback={null}>
-          <CodeEditor value="SELECT 1;" readOnly />
-        </Suspense>,
-      ),
-    ).not.toThrow();
+  it('accepts a readOnly prop without errors', async () => {
+    await act(async () => {
+      expect(() =>
+        render(
+          <Suspense fallback={null}>
+            <CodeEditor value="SELECT 1;" readOnly />
+          </Suspense>,
+        ),
+      ).not.toThrow();
+    });
   });
 });
