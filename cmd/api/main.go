@@ -314,6 +314,24 @@ func osctrlAPIService() {
 	envs = environments.CreateEnvironment(db.Conn)
 	envCache := environments.NewRedisEnvCache(*envs, redis.Client)
 	log.Info().Msg("Environment cache wired to Redis")
+	// DB health monitor: when enabled, pings the DB on a fixed
+	// interval and switches EnvCache into stale-serve mode after N
+	// consecutive failures, so the API keeps responding to read-only
+	// env lookups (used by handlers that hit EnvCache) during a DB
+	// outage. Writes still require the DB and will fail. See
+	// pkg/backend/health.go.
+	var dbHealth *backend.DBHealth
+	if flagParams.Service.DBHealthCheck {
+		interval := time.Duration(flagParams.Service.DBHealthInterval) * time.Second
+		threshold := uint32(flagParams.Service.DBHealthThreshold)
+		dbHealth = backend.NewDBHealth(db, interval, threshold)
+		dbHealth.Start()
+		envCache.SetDBHealth(dbHealth)
+		log.Info().
+			Dur("interval", interval).
+			Uint32("threshold", threshold).
+			Msg("DB health monitor enabled — EnvCache will stale-serve on DB outage")
+	}
 	// Security & compliance posture system (disabled by default)
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
