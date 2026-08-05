@@ -104,6 +104,23 @@ func (c *MemoryCache[T]) Get(ctx context.Context, key string) (T, bool) {
 	return item.Value, true
 }
 
+// GetStale returns a cached item even if its TTL has expired but
+// the cleanup goroutine has not yet evicted it. Callers use this as
+// a fallback when the primary data source is unavailable (e.g. DB
+// outage). Returns (zero, false) when the key was never written or
+// has already been evicted by the cleanup goroutine.
+func (c *MemoryCache[T]) GetStale(ctx context.Context, key string) (T, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	item, found := c.items[key]
+	if !found {
+		var zero T
+		return zero, false
+	}
+	return item.Value, true
+}
+
 // Set adds an item to the cache with expiration
 func (c *MemoryCache[T]) Set(ctx context.Context, key string, value T, duration time.Duration) {
 	var expiration int64

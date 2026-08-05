@@ -140,6 +140,15 @@ type YAMLConfigurationService struct {
 	// Default empty → forwarding headers are ignored and the
 	// connection's RemoteAddr is used.
 	TrustedProxies string `yaml:"trustedProxies"`
+	// DBHealthCheck enables a background DB liveness monitor.
+	// When true, the service pings the DB every DBHealthInterval
+	// seconds and, after DBHealthThreshold consecutive failures,
+	// switches EnvCache and SettingsCache into stale-serve mode
+	// (serve cached entries on DB miss, extend TTLs) so osquery
+	// nodes keep getting config/logs during a DB outage.
+	DBHealthCheck     bool `yaml:"dbHealthCheck"`
+	DBHealthInterval  int  `yaml:"dbHealthInterval"`
+	DBHealthThreshold int  `yaml:"dbHealthThreshold"`
 }
 
 // YAMLConfigurationDB to hold all backend configuration values

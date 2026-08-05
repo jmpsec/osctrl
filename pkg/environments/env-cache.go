@@ -5,6 +5,7 @@ import (
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 )
 
@@ -25,6 +26,14 @@ const (
 	// PATCHes are picked up immediately; this TTL only bounds the worst
 	// case. 5m keeps DB load low while limiting staleness.
 	envCacheTTL = 5 * time.Minute
+	// envCacheDegradedTTL is the TTL used when the DB health monitor
+	// reports the database as degraded. Extending the TTL during a DB
+	// outage keeps cached envs available longer so the service can
+	// keep serving osquery nodes that already have a cached env row.
+	// Capped at 60m so a long outage does not serve enroll secrets
+	// indefinitely — rotated secrets would still be accepted for up
+	// to this window, which is the documented trade-off.
+	envCacheDegradedTTL = 60 * time.Minute
 )
 
 // EnvCache provides cached access to TLS environments
@@ -42,6 +51,11 @@ type EnvCache struct {
 	// the DB. Set via SetInvalidationCheck for compatibility with
 	// external invalidation signals.
 	invalidationCheck func(ctx context.Context, uuid string) bool
+
+	// dbHealth, when non-nil, gates stale-serve and TTL extension
+	// during DB outages. nil means "no monitor" and the cache behaves
+	// as before: TTL expiry + DB miss returns an error.
+	dbHealth backend.DegradedReader
 }
 
 // NewEnvCache creates a new environment cache
@@ -73,7 +87,23 @@ func (ec *EnvCache) SetInvalidationCheck(fn func(ctx context.Context, uuid strin
 	ec.invalidationCheck = fn
 }
 
-// GetByUUID retrieves an environment by UUID, using cache when available
+// SetDBHealth wires a DB health monitor. When the monitor reports
+// the database as degraded, GetByUUID serves stale cached entries
+// instead of returning an error on a DB miss, and writes during
+// degradation use envCacheDegradedTTL so the cache stays warm longer.
+// Pass nil to disable stale-serve (the default).
+func (ec *EnvCache) SetDBHealth(h backend.DegradedReader) {
+	ec.dbHealth = h
+}
+
+// GetByUUID retrieves an environment by UUID, using cache when available.
+//
+// During a DB outage (when a DB health monitor is wired via SetDBHealth
+// and reports IsDegraded), GetByUUID serves a stale cached entry on a
+// DB miss instead of returning an error. This keeps osquery nodes
+// that already have a cached env row serving requests (config, log,
+// query) for the duration of the outage, bounded by envCacheStaleMaxAge
+// so rotated enroll secrets are not accepted indefinitely.
 func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment, error) {
 	// Check if a cross-process invalidation signal has been received
 	// (e.g., osctrl-api patched the config and set a Redis key).
@@ -93,9 +123,18 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 
 		env, err := ec.envs.GetByUUID(uuid)
 		if err != nil {
+			if ec.dbHealth != nil && ec.dbHealth.IsDegraded() {
+				if stale, found, _ := ec.redisCache.GetStale(ctx, uuid); found {
+					return stale, nil
+				}
+			}
 			return TLSEnvironment{}, err
 		}
-		_ = ec.redisCache.Set(ctx, uuid, env, envCacheTTL)
+		ttl := envCacheTTL
+		if ec.dbHealth != nil && ec.dbHealth.IsDegraded() {
+			ttl = envCacheDegradedTTL
+		}
+		_ = ec.redisCache.Set(ctx, uuid, env, ttl)
 		return env, nil
 	}
 
@@ -107,10 +146,19 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 	// Not in cache, fetch from database
 	env, err := ec.envs.GetByUUID(uuid)
 	if err != nil {
+		if ec.dbHealth != nil && ec.dbHealth.IsDegraded() {
+			if stale, found := ec.cache.GetStale(ctx, uuid); found {
+				return stale, nil
+			}
+		}
 		return TLSEnvironment{}, err
 	}
 
-	ec.cache.Set(ctx, uuid, env, envCacheTTL)
+	ttl := envCacheTTL
+	if ec.dbHealth != nil && ec.dbHealth.IsDegraded() {
+		ttl = envCacheDegradedTTL
+	}
+	ec.cache.Set(ctx, uuid, env, ttl)
 
 	return env, nil
 }

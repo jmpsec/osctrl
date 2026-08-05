@@ -31,6 +31,22 @@ service:
   postureEnabled: false
   # Only used when postureEnabled is true.
   postureQueryPrefix: "osctrl:posture:"
+  # DB health monitor. When enabled, osctrl-tls pings the database
+  # every dbHealthInterval seconds. After dbHealthThreshold
+  # consecutive failures, EnvCache and SettingsCache switch to
+  # stale-serve mode: cached entries are served on DB miss instead of
+  # returning 500, and TTLs are extended to ~60m so cached envs/settings
+  # stay warm for the duration of the outage. This keeps osquery nodes
+  # that already have a cached env row receiving config/log/query
+  # responses during a DB outage. The stale-serve window is bounded at
+  # 60m so rotated enroll secrets are not accepted indefinitely.
+  # Disabled by default; enable in production where DB blips are
+  # expected and osquery fleet stability is prioritized.
+  dbHealthCheck: false
+  # Seconds between DB health pings.
+  dbHealthInterval: 5
+  # Consecutive failures before caches enter stale-serve mode.
+  dbHealthThreshold: 3
 
 # Database configuration
 db:

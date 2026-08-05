@@ -6,10 +6,16 @@ import (
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 )
 
 const redisSettingsCacheName = "osctrl:tls:settings"
+
+// settingsCacheDegradedTTL extends the cache TTL during a DB outage
+// so the service keeps serving cached settings to osquery nodes.
+// 60m matches the EnvCache degraded TTL for a consistent outage window.
+const settingsCacheDegradedTTL = 60 * time.Minute
 
 // RedisSettingsCache caches a service/env settings map in Redis.
 type RedisSettingsCache struct {
@@ -18,6 +24,7 @@ type RedisSettingsCache struct {
 	service  string
 	envID    uint
 	ttl      time.Duration
+	dbHealth backend.DegradedReader
 }
 
 // NewRedisSettingsCache creates a Redis-backed cache for settings.GetMap.
@@ -34,6 +41,14 @@ func NewRedisSettingsCache(settings *Settings, client *redis.Client, service str
 	}
 }
 
+// SetDBHealth wires a DB health monitor. When the monitor reports the
+// database as degraded, GetMap serves a stale cached entry on a DB
+// miss instead of returning an error, and writes during degradation
+// use settingsCacheDegradedTTL. Pass nil to disable (the default).
+func (c *RedisSettingsCache) SetDBHealth(h backend.DegradedReader) {
+	c.dbHealth = h
+}
+
 // GetMap returns the cached settings map, refetching from DB on Redis miss/error.
 func (c *RedisSettingsCache) GetMap(ctx context.Context) (MapSettings, error) {
 	key := c.key()
@@ -45,9 +60,18 @@ func (c *RedisSettingsCache) GetMap(ctx context.Context) (MapSettings, error) {
 
 	values, err := c.settings.GetMap(c.service, c.envID)
 	if err != nil {
+		if c.dbHealth != nil && c.dbHealth.IsDegraded() {
+			if stale, found, _ := c.cache.GetStale(ctx, key); found {
+				return stale, nil
+			}
+		}
 		return MapSettings{}, err
 	}
-	_ = c.cache.Set(ctx, key, values, c.ttl)
+	ttl := c.ttl
+	if c.dbHealth != nil && c.dbHealth.IsDegraded() {
+		ttl = settingsCacheDegradedTTL
+	}
+	_ = c.cache.Set(ctx, key, values, ttl)
 	return values, nil
 }
 
