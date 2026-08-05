@@ -25,13 +25,13 @@ runs:
   steps:
     ########################### Checkout code ###########################
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 2
 
     ########################### Download osctrl binary ###########################
     - name: Download a osctrl binaries
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}.bin
 
@@ -49,7 +49,7 @@ runs:
 
     - name: Create DEB package contents for tagged version
       id: create_deb_tagged_pkgs
-      uses: jiro4989/build-deb-action@7c566f3f2a33e1dbf0bf70b52511d628f76f72f0 # v4.2.1
+      uses: jiro4989/build-deb-action@a883c65147d80579cb359548b9a902ff0a35ae5b # v4.3.0
       if: startsWith(github.ref, 'refs/tags/')
       with:
         package: osctrl-${{ inputs.osctrl_component }}
@@ -61,7 +61,7 @@ runs:
 
     - name: Create DEB package contents
       id: create_deb_pkgs
-      uses: jiro4989/build-deb-action@7c566f3f2a33e1dbf0bf70b52511d628f76f72f0 # v4.2.1
+      uses: jiro4989/build-deb-action@a883c65147d80579cb359548b9a902ff0a35ae5b # v4.3.0
       with:
         package: osctrl-${{ inputs.osctrl_component }}
         package_root: ".debpkg-osctrl-${{ inputs.osctrl_component }}-${{ inputs.commit_sha }}-${{ inputs.go_os }}-${{ inputs.go_arch }}"
@@ -82,7 +82,7 @@ runs:
       shell: bash
 
     - name: Upload osctrl DEBs for tagged version
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.release_version_tag }}_${{ inputs.go_arch }}.deb
@@ -90,7 +90,7 @@ runs:
         retention-days: 10
 
     - name: Upload osctrl DEBs
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: osctrl-${{ inputs.osctrl_component }}_${{ inputs.commit_sha }}_${{ inputs.go_arch }}.deb
         path: ${{ steps.create_deb_pkgs.outputs.file_name }}
