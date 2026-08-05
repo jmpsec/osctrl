@@ -67,13 +67,15 @@ osctrl/
 │   ├── activity/                 # Node activity tracking
 │   ├── auditlog/                # Audit log manager
 │   ├── auth/                    # Shared auth helpers
-│   ├── backend/                 # DB manager/bootstrap
+│   ├── backend/                 # DB manager/bootstrap + health canary
 │   ├── cache/                   # Redis/cache managers
 │   ├── carves/                  # File carve logic/storage integrations
 │   ├── config/                  # Config structs/flags/validation
 │   ├── console/                 # Node console sessions/commands/parser
 │   ├── dbutil/                  # Database query helpers
-│   ├── environments/            # Environment management
+│   ├── environments/            # Environment management + cache
+│   ├── fileexplorer/            # Accelerated per-node file explorer
+│   ├── filequery/               # File query helpers
 │   ├── geoip/                   # MaxMind GeoIP enrichment
 │   ├── handlers/                # Shared HTTP handlers
 │   ├── logging/                 # Log pipeline + logger backends
@@ -82,14 +84,14 @@ osctrl/
 │   ├── posture/                 # Optional posture ingestion and storage
 │   ├── queries/                 # Query management/scheduling/results
 │   ├── ratelimit/               # Rate limiting helpers
-│   ├── settings/                # Runtime settings
+│   ├── settings/                # Runtime settings + cache
 │   ├── tags/                    # Tag management
 │   ├── users/                   # User and permissions management
 │   ├── utils/                   # Utility helpers
 │   ├── types/                   # Shared type definitions
 │   └── version/                 # Version metadata
 ├── deploy/                      # Deployment configs/scripts (docker/nginx/osquery/systemd, CI/CD, redis, config, helpers, etc.)
-├── tools/                       # Dev/release helpers and API test assets (Bruno collections, scripts)
+├── tools/                       # Dev/release helpers (Bruno API collections, fake_news_go load simulator, json2yaml-config converter)
 ├── bin/                         # Built binaries (from make)
 ├── docker-compose-dev.yml       # Local multi-service development stack
 ├── Makefile                     # Build/test/dev targets
@@ -167,8 +169,10 @@ Ultimately you can just execute `make docker_dev` and it will automagically buil
 ### 📦 Runtime and tooling versions
 
 - Go module target: **Go 1.26.3**
-- Frontend runtime: **Node.js 20+**
-- Frontend stack: **React 19**, **TypeScript 6**, **Vite 8**, **Tailwind CSS 4**
+- Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
+- Frontend runtime: **Node.js 22+**
+- Frontend stack: **React 19**, **TypeScript 7**, **Vite 8**, **Tailwind CSS 4**, **TanStack Router/Query/Table**, **zod 4**, **Monaco Editor**
+- Frontend testing: **Vitest 4**, **@testing-library/react 16**, **jsdom 30**, **Playwright 1**
 - osquery schema data included through **osquery 5.23.1**
 - Default database/cache stack: **PostgreSQL** and **Redis**
 

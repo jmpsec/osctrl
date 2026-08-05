@@ -89,14 +89,14 @@ Output: `frontend/dist/`. Deploy options:
 
 ## ⚙️ Tech stack
 
-- React 19 + TypeScript 6 (strict)
-- Vite 8
-- TanStack Router (typed routing)
-- TanStack Query 5 (server state)
-- TanStack Table 8 (headless table)
-- Tailwind CSS v4 via `@tailwindcss/vite`
+- React 19 + TypeScript 7 (strict)
+- Vite 8 + @vitejs/plugin-react 6
+- TanStack Router 1, Query 5, Table 9
+- Tailwind CSS 4 via @tailwindcss/vite
 - Radix UI primitives (à la carte)
-- react-hook-form 7 + zod 4
-- Monaco Editor
-- Vitest + @testing-library/react + jsdom
-- Playwright (e2e)
+- react-hook-form 7 + zod 4 + @hookform/resolvers 5
+- Monaco Editor 0.56 (@monaco-editor/react 4)
+- clsx 2 + tailwind-merge 3 + lucide-react 1
+- Vitest 4 + @testing-library/react 16 + jsdom 30
+- @playwright/test 1 (e2e)
+- @types/react 19, @types/react-dom 19, @types/node 26
