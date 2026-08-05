@@ -427,6 +427,7 @@ func osctrlAPIService() {
 		handlers.WithJWTSecret([]byte(flagParams.JWT.JWTSecret)),
 		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
 		handlers.WithSAML(flagParams.SAML != nil && flagParams.SAML.Enabled),
+		handlers.WithDBHealth(dbHealth), // nil when DB health monitor disabled
 	)
 
 	// ///////////////////////// API
