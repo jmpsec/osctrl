@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
@@ -67,6 +68,10 @@ type HandlersApi struct {
 	// simultaneously — the SPA renders one button per advertised
 	// method.
 	SAMLEnabled bool
+	// DBHealth, when wired via WithDBHealth, lets HealthHandler
+	// report backend degradation. nil means "no monitor" and the
+	// health endpoint reports healthy as before.
+	DBHealth backend.DegradedReader
 }
 
 type HandlersOption func(*HandlersApi)
@@ -240,6 +245,15 @@ func WithOIDC(enabled bool) HandlersOption {
 func WithSAML(enabled bool) HandlersOption {
 	return func(h *HandlersApi) {
 		h.SAMLEnabled = enabled
+	}
+}
+
+// WithDBHealth wires a DB health monitor so HealthHandler can
+// report backend degradation (HTTP 204) instead of always reporting
+// 200. Pass nil to keep the legacy "always healthy" behavior.
+func WithDBHealth(hl backend.DegradedReader) HandlersOption {
+	return func(h *HandlersApi) {
+		h.DBHealth = hl
 	}
 }
 

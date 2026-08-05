@@ -14,6 +14,7 @@ import (
 // @Tags system
 // @Produce json
 // @Success 200 {string} string
+// @Success 204 {string} string "Degraded — backend unreachable, serving from cache"
 // @Failure 400 {object} types.ApiErrorResponse "Bad request"
 // @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
 // @Failure 403 {object} types.ApiErrorResponse "Forbidden"
@@ -27,6 +28,15 @@ func (h *HandlersApi) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	// Debug HTTP if enabled
 	if h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	// Report degraded backend as 204. The API is still serving
+	// read paths from stale-serve caches; 204 — rather than 503 —
+	// lets LBs/operators distinguish the degraded state without
+	// dropping traffic that the service is intentionally still
+	// handling.
+	if h.DBHealth != nil && h.DBHealth.IsDegraded() {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 	// Send response
 	utils.HTTPResponse(w, "", http.StatusOK, []byte(okContent))
