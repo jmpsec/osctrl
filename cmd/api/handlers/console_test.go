@@ -89,6 +89,29 @@ func TestConsoleSessionCreateReturnsHistory(t *testing.T) {
 	require.Equal(t, "pwd", resp.History[0].Command.Input)
 }
 
+func TestConsoleSessionCreateDispatchesPrimingCommand(t *testing.T) {
+	db, h, env, node := setupConsoleHandlers(t)
+	req := consoleRequest(http.MethodPost, "/console", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("uuid", node.UUID)
+	rr := httptest.NewRecorder()
+
+	h.ConsoleSessionCreateHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+
+	var resp consoleSessionResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Priming)
+	require.True(t, resp.Priming.Priming)
+	require.Equal(t, console.StatusQueued, resp.Priming.Status)
+	require.NotEmpty(t, resp.Priming.DistributedQueryName)
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
+	require.Equal(t, queries.ConsoleQueryType, distributed.Type)
+	require.True(t, distributed.Hidden)
+}
+
 func TestConsoleSessionCreateReturnsNodeInfo(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, db.Model(&node).Updates(map[string]any{

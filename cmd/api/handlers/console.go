@@ -45,6 +45,12 @@ type consoleSessionResponse struct {
 	Session  console.Session        `json:"session"`
 	History  []console.HistoryEntry `json:"history"`
 	NodeInfo consoleNodeInfo        `json:"node_info"`
+	// Priming is the priming metadata command dispatched at session
+	// creation. The frontend polls the existing command show/results
+	// endpoints with this command id to render live osquery_info metadata.
+	// It may be nil if priming submission failed (the session is still
+	// usable; acceleration just won't be pre-warmed).
+	Priming *console.Command `json:"priming,omitempty"`
 }
 
 const defaultConsoleQueryReadSeconds = 5
@@ -78,11 +84,21 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "error creating console session", http.StatusInternalServerError, err)
 		return
 	}
+	// Dispatch a priming metadata query so the node's next QueryRead
+	// returns an accelerated interval (fast polling) before the operator
+	// types their first command, and live osquery_info metadata can be
+	// surfaced in the console header. A priming failure is non-fatal:
+	// the session is still usable, acceleration just won't be pre-warmed.
+	var priming *console.Command
+	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout()); primingErr == nil {
+		priming = &primingCmd
+	}
 	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, consoleSessionResponse{
 		Session:  session,
 		History:  history,
 		NodeInfo: consoleNodeInfoFromNode(node),
+		Priming:  priming,
 	})
 }
 
@@ -228,6 +244,25 @@ func (h *HandlersApi) consoleCommandTimeout(parsed console.ParsedCommand) time.D
 		return timeout
 	}
 	return time.Duration(seconds*2) * time.Second
+}
+
+// consolePrimingTimeout is the expiration given to the priming metadata
+// query. It is intentionally generous (the accelerated interval doubled
+// plus a minute floor) so the priming query stays pending long enough for
+// the next accelerated QueryRead to deliver it even if the node's first
+// poll after session open arrives a few seconds late.
+func (h *HandlersApi) consolePrimingTimeout() time.Duration {
+	seconds := int64(defaultConsoleQueryReadSeconds)
+	if h.Settings != nil {
+		if configured, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID); err == nil && configured > 0 {
+			seconds = configured
+		}
+	}
+	timeout := time.Duration(seconds*2) * time.Second
+	if timeout < time.Minute {
+		return time.Minute
+	}
+	return timeout
 }
 
 func osqueryTableSupportsPlatform(table types.OsqueryTable, platform string) bool {

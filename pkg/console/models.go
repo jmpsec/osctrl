@@ -50,6 +50,7 @@ type Command struct {
 	DistributedQueryName string         `gorm:"index" json:"distributed_query_name,omitempty"`
 	Status               string         `gorm:"not null;index" json:"status"`
 	Error                string         `json:"error,omitempty"`
+	Priming              bool           `gorm:"not null;default:false;index" json:"priming"`
 	DeliveredAt          *time.Time     `json:"delivered_at,omitempty"`
 	CompletedAt          *time.Time     `json:"completed_at,omitempty"`
 	ExpiredAt            *time.Time     `json:"expired_at,omitempty"`

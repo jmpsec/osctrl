@@ -669,6 +669,9 @@ func osctrlAPIService() {
 			muxAPI.Handle(
 				"GET "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/requests/{request_id}/results",
 				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerRequestResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath(apiFileExplorerPath)+"/{env}/sessions/{session_id}/requests/{request_id}/metadata",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerPrimingResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		}
 		// API: saved queries (Track 4)
 		muxAPI.Handle(

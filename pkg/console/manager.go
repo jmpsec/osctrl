@@ -16,6 +16,19 @@ import (
 
 const defaultCommandTimeout = 10 * time.Second
 
+// PrimingMetadataSQL is the read-only osquery statement dispatched when a
+// console session is opened. Its purpose is twofold:
+//  1. Be present in the node's pending distributed queue so that the
+//     next QueryRead returns an accelerated interval — the node switches
+//     to fast polling before the user types their first command.
+//  2. Surface live metadata (osquery version, build platform, start time,
+//     uptime) into the session UI so the operator sees fresh values
+//     rather than the last-seen DB snapshot.
+//
+// It is a single statement (no semicolons) so validateSelect stays happy
+// and osquery treats it atomically.
+const PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid, optimizations from osquery_info"
+
 type Manager struct {
 	DB      *gorm.DB
 	Queries *queries.Queries
@@ -76,9 +89,13 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 	if !session.Active {
 		return Command{}, ParsedCommand{}, fmt.Errorf("console session is closed")
 	}
+	// Only user-issued commands block each other. Priming commands are
+	// excluded from the in-flight count so a still-pending priming query
+	// (which exists to warm acceleration) never gates the operator's
+	// first real command.
 	var pending int64
 	if err := m.DB.Model(&Command{}).
-		Where("session_id = ? AND status IN ?", sessionID, []string{StatusQueued, StatusDelivered}).
+		Where("session_id = ? AND status IN ? AND priming = ?", sessionID, []string{StatusQueued, StatusDelivered}, false).
 		Count(&pending).Error; err != nil {
 		return Command{}, ParsedCommand{}, err
 	}
@@ -148,6 +165,92 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 	}
 
 	return command, parsed, nil
+}
+
+// SubmitPrimingCommand dispatches the console priming metadata query for
+// the session. The priming query is a hidden ConsoleQueryType distributed
+// query whose presence in the node's pending queue causes the TLS
+// QueryRead handler to return an accelerated interval — so the node
+// switches to fast polling before the operator types their first command.
+//
+// Unlike SubmitCommand, priming commands are not mutually exclusive with
+// each other or with user commands: a fresh session may legitimately have
+// a priming query in flight when the user submits their first real
+// command, and SubmitCommandWithTimeout's pending-count ignores priming
+// rows for exactly that reason.
+//
+// The returned Command is marked Priming=true so the API layer can
+// surface it separately from operator history.
+func (m *Manager) SubmitPrimingCommand(sessionID uint, timeout time.Duration) (Command, error) {
+	if timeout <= 0 {
+		timeout = defaultCommandTimeout
+	}
+	var session Session
+	if err := m.DB.First(&session, sessionID).Error; err != nil {
+		return Command{}, err
+	}
+	if !session.Active {
+		return Command{}, fmt.Errorf("console session is closed")
+	}
+
+	command := Command{
+		SessionID:     sessionID,
+		Input:         PrimingMetadataSQL,
+		TranslatedSQL: PrimingMetadataSQL,
+		Status:        StatusQueued,
+		Priming:       true,
+	}
+
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&command).Error; err != nil {
+			return err
+		}
+		extra, err := json.Marshal(map[string]uint{"session_id": session.ID, "command_id": command.ID})
+		if err != nil {
+			return err
+		}
+		distributed := queries.DistributedQuery{
+			Name:          queries.GenQueryName(),
+			Query:         PrimingMetadataSQL,
+			Creator:       session.Creator,
+			Active:        true,
+			Hidden:        true,
+			Type:          queries.ConsoleQueryType,
+			EnvironmentID: session.EnvironmentID,
+			Expiration:    time.Now().Add(timeout),
+			Expected:      1,
+			ExtraData:     string(extra),
+		}
+		if err := tx.Create(&distributed).Error; err != nil {
+			return err
+		}
+		nodeQuery := queries.NodeQuery{
+			NodeID:  session.NodeID,
+			QueryID: distributed.ID,
+			Status:  queries.DistributedQueryStatusPending,
+		}
+		if err := tx.Create(&nodeQuery).Error; err != nil {
+			return err
+		}
+		command.DistributedQueryName = distributed.Name
+		return tx.Model(&command).Update("distributed_query_name", distributed.Name).Error
+	})
+	if err != nil {
+		return Command{}, err
+	}
+	return command, nil
+}
+
+// PrimingCommand returns the most recent priming command for a session,
+// or gorm.ErrRecordNotFound if none exists.
+func (m *Manager) PrimingCommand(sessionID uint) (Command, error) {
+	var command Command
+	if err := m.DB.Where("session_id = ? AND priming = ?", sessionID, true).
+		Order("created_at DESC").
+		First(&command).Error; err != nil {
+		return Command{}, err
+	}
+	return command, nil
 }
 
 func (m *Manager) CloseSession(sessionID uint) error {
@@ -260,7 +363,7 @@ func (m *Manager) History(envID, nodeID uint, creator string, limit int) ([]Hist
 	var commands []Command
 	err := m.DB.Model(&Command{}).
 		Joins("JOIN console_sessions ON console_sessions.id = console_commands.session_id").
-		Where("console_sessions.environment_id = ? AND console_sessions.node_id = ? AND console_sessions.creator = ?", envID, nodeID, creator).
+		Where("console_sessions.environment_id = ? AND console_sessions.node_id = ? AND console_sessions.creator = ? AND console_commands.priming = ?", envID, nodeID, creator, false).
 		Order("console_commands.created_at DESC").
 		Limit(limit).
 		Find(&commands).Error

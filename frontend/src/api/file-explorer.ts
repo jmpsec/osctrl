@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 import type {
   FileExplorerEntry,
+  FileExplorerMetadataRow,
   FileExplorerRequest,
   FileExplorerSession,
   FileExplorerSessionResponse,
@@ -59,6 +60,20 @@ export function getFileExplorerRequestResults(
 ): Promise<FileExplorerEntry[]> {
   return apiFetch<FileExplorerEntry[]>(
     `/api/v1/file-explorer/${encodeURIComponent(env)}/sessions/${sessionId}/requests/${requestId}/results`,
+  );
+}
+
+/** Raw osquery_info row returned by the priming metadata request.
+ *  Re-exported from ./types for callers that import from this module. */
+export type { FileExplorerMetadataRow } from './types';
+
+export function getFileExplorerPrimingMetadata(
+  env: string,
+  sessionId: number,
+  requestId: number,
+): Promise<FileExplorerMetadataRow[]> {
+  return apiFetch<FileExplorerMetadataRow[]>(
+    `/api/v1/file-explorer/${encodeURIComponent(env)}/sessions/${sessionId}/requests/${requestId}/metadata`,
   );
 }
 
