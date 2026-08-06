@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GOLANG_VERSION: 1.26.3
+  GOLANG_VERSION: 1.26.5
 
 jobs:
   release:
