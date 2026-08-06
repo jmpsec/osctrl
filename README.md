@@ -168,7 +168,7 @@ Ultimately you can just execute `make docker_dev` and it will automagically buil
 
 ### 📦 Runtime and tooling versions
 
-- Go module target: **Go 1.26.3**
+- Go module target: **Go 1.26.5**
 - Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
 - Frontend runtime: **Node.js 22+**
 - Frontend stack: **React 19**, **TypeScript 7**, **Vite 8**, **Tailwind CSS 4**, **TanStack Router/Query/Table**, **zod 4**, **Monaco Editor**
@@ -186,7 +186,7 @@ Ultimately the script can also be used to deploy **osctrl** in production system
 
 ### 🏗 Building from source
 
-To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.3 or higher is recommended). Then, clone the repository and run the following commands:
+To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.5 or higher is recommended). Then, clone the repository and run the following commands:
 
 ```bash
 git clone https://github.com/jmpsec/osctrl.git
