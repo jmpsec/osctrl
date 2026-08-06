@@ -12,7 +12,7 @@ import { Label } from '$/components/atoms/Label';
 import { login, listAuthMethods } from '$/api/client';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
-import './login-trace-map.css';
+import './login-cyber-grid.css';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -67,29 +67,23 @@ export function LoginPage() {
       className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
       style={{ background: 'var(--bg-0)' }}
     >
-      {/* ── Trace Map background — three layered elements ──
-          1. Drifting circuit pattern (var(--circuit-url)) — repeats
-             diagonally over 25s, picking up the brand teal at low alpha.
-          2. Scanning spotlight — a bright teal disc that translates
-             across the viewport on a 12s loop, brightening the
-             traces underneath as it passes.
-          3. Static brand halo — radial gradient anchored behind the
-             card so the eye stays on the form.
-          All three layers respect prefers-reduced-motion (see
-          login-trace-map.css below — animations get killed).
-          z-index: 0 = circuit + spotlight, 1 = halo, 5 = card. */}
-      <div
-        aria-hidden
-        className="login-trace-circuit"
-        style={{ position: 'absolute', inset: '-200px', zIndex: 0 }}
-      />
-      <div aria-hidden className="login-trace-spotlight" />
+      {/* ── Cyberpunk login background ──
+          1. Full-page circuit — the circuit-board SVG tiled across
+             the entire viewport as a static background texture. No
+             movement, just a quiet circuit wall behind everything.
+          2. Static grid floor — a perspective grid at the bottom of
+             the viewport for geometric depth. No scroll animation.
+          The login card floats above with a layered teal glow
+          (login-card-glow) for a 3D lit-from-below presence.
+          Only the glow pulse respects prefers-reduced-motion. */}
+      <div aria-hidden className="login-cyber-circuit" />
+      <div aria-hidden className="login-cyber-floor" />
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(900px 600px at 50% 50%, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.12) 0%, transparent 60%)',
+            'radial-gradient(900px 600px at 50% 45%, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.10) 0%, transparent 55%)',
           zIndex: 1,
         }}
       />
@@ -127,14 +121,15 @@ export function LoginPage() {
         )}
       </button>
 
-      <div
-        className={cn(
-          'relative z-5 w-full max-w-sm',
-          'bg-[color:var(--bg-1)] border border-[color:var(--border)]',
-          'rounded-2xl p-8',
-          'shadow-[0_10px_28px_rgba(0,0,0,0.32)]'
-        )}
-      >
+      <div className="login-card-glow w-full max-w-sm">
+        <div
+          className={cn(
+            'relative z-5',
+            'bg-[color:var(--bg-1)] border border-[color:var(--border)]',
+            'rounded-2xl p-8',
+            'shadow-[0_10px_28px_rgba(0,0,0,0.32)]'
+          )}
+        >
         {/* Wordmark */}
         <div className="flex flex-col items-center mb-8">
           {/* Original osctrl tower mark — two PNG variants ship, light
@@ -287,6 +282,7 @@ export function LoginPage() {
             </a>
           )}
         </form>
+        </div>
       </div>
     </div>
   );
