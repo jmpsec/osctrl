@@ -20,19 +20,20 @@ import (
 //
 // Key layouts (must match the write path in s3.go):
 //
-//	status/result: {env}/{logType}/{uuid}:{ts}.json
-//	query:        {env}/query/{name}/{uuid}:{ts}.json
+//	status/result: {env}/{logType}/{uuid}/{ts}.json
+//	query:        {env}/query/{name}/{uuid}/{ts}.json
+//
+// The UUID is a path segment (not jammed into the filename) so the
+// reader can list a single node's objects with a prefix filter — listing
+// the whole environment's logs to find one node's would be a DoS vector.
 //
 // The timestamp in the key is millisecond Unix time, so lexical ordering
 // of keys within a prefix == chronological ordering. ListObjectsV2 returns
 // keys in lexical order, so the reader gets pre-sorted results for free
 // and only needs to fetch the objects for the requested page/limit.
 //
-// Status/result reads list by prefix {env}/{logType}/ and keep only keys
-// whose UUID segment matches (the prefix is environment-scoped, not
-// node-scoped, because the write path does not nest under the node).
-// Query reads list by prefix {env}/query/{name}/ which is already
-// name-scoped, so every key in the prefix is a result for that query.
+// Status/result reads list by prefix {env}/{logType}/{uuid}/ (node-scoped).
+// Query reads list by prefix {env}/query/{name}/ (name-scoped).
 type s3LogReader struct {
 	client *s3.Client
 	bucket string
@@ -45,15 +46,17 @@ func NewS3LogReader(client *s3.Client, bucket string) LogReader {
 	return &s3LogReader{client: client, bucket: bucket}
 }
 
-// NodeLogs implements LogReader. It lists the {env}/{logType}/ prefix,
-// keeps keys whose UUID matches, applies the since/search filters
+// NodeLogs implements LogReader. It lists the {env}/{logType}/{uuid}/
+// prefix (node-scoped by key layout), applies the since/search filters
 // (best-effort — the search is applied against the decoded JSON body),
 // and returns up to `limit` rows ordered newest-first.
 func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
-	prefix, err := normalizeLogType(logType)
+	logTypePrefix, err := normalizeLogType(logType)
 	if err != nil {
 		return nil, err
 	}
+	// Clamp limit defensively so make([]..., 0, limit) can never receive
+	// a negative or oversized cap — the HTTP query param is untrusted.
 	if limit <= 0 {
 		limit = 100
 	}
@@ -61,7 +64,12 @@ func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 		limit = 1000
 	}
 	wantUUID := upperUUID(uuid)
-	prefix = env + "/" + prefix + "/"
+	// The status/result key layout nests the UUID as a path segment
+	// ({env}/{logType}/{uuid}/{ts}.json), so this prefix lists only this
+	// node's objects — not every node's logs in the environment. Without
+	// the per-node nesting the reader would list the whole env prefix
+	// and filter client-side, a DoS vector on busy environments.
+	prefix := env + "/" + logTypePrefix + "/" + wantUUID + "/"
 
 	keys, err := r.listKeys(prefix)
 	if err != nil {
@@ -228,23 +236,20 @@ type nodeLogEntry struct {
 	CreatedAt time.Time
 }
 
-// decodeNodeLogKey parses {env}/{logType}/{uuid}:{ts}.json and reports
-// whether the key belongs to wantUUID.
+// decodeNodeLogKey parses {env}/{logType}/{uuid}/{ts}.json. Because the
+// reader lists a per-node prefix, every key already belongs to wantUUID;
+// the UUID check is a defensive guard against mislaid objects.
 func decodeNodeLogKey(key, wantUUID string) (nodeLogEntry, bool) {
-	base := key
-	if i := strings.LastIndex(base, "/"); i >= 0 {
-		base = base[i+1:]
-	}
-	// base is "{uuid}:{ts}.json"
-	colon := strings.LastIndex(base, ":")
-	if colon < 0 {
+	parts := strings.Split(key, "/")
+	// {env}/{logType}/{uuid}/{ts}.json -> 4 segments
+	if len(parts) != 4 {
 		return nodeLogEntry{}, false
 	}
-	uuidPart := base[:colon]
+	uuidPart := parts[2]
 	if !strings.EqualFold(uuidPart, wantUUID) {
 		return nodeLogEntry{}, false
 	}
-	tsStr := strings.TrimSuffix(base[colon+1:], ".json")
+	tsStr := strings.TrimSuffix(parts[3], ".json")
 	tsMs, err := strconv.ParseInt(tsStr, 10, 64)
 	if err != nil {
 		return nodeLogEntry{}, false
@@ -361,37 +366,30 @@ func decodeQueryLogRow(body []byte, key string) (OsqueryQueryData, error) {
 	}, nil
 }
 
-// splitQueryKey parses {env}/query/{name}/{uuid}:{ts}.json and returns
+// splitQueryKey parses {env}/query/{name}/{uuid}/{ts}.json and returns
 // env, uuid, name, ok.
 func splitQueryKey(key string) (env, uuid, name string, ok bool) {
-	parts := strings.SplitN(key, "/", 4)
-	if len(parts) != 4 {
+	parts := strings.Split(key, "/")
+	// {env}/query/{name}/{uuid}/{ts}.json -> 5 segments
+	if len(parts) != 5 {
 		return "", "", "", false
 	}
 	env = parts[0]
 	// parts[1] == "query"
 	name = parts[2]
-	last := parts[3]
-	colon := strings.LastIndex(last, ":")
-	if colon < 0 {
-		return "", "", "", false
-	}
-	uuid = last[:colon]
+	uuid = parts[3]
 	return env, uuid, name, true
 }
 
 // tsFromKey extracts the millisecond timestamp from the trailing
-// "{ts}.json" segment of any S3 log key.
+// "{ts}.json" segment of any S3 log key. Both layouts end with a bare
+// "{ts}.json" filename (no colon) since the UUID is now a path segment.
 func tsFromKey(key string) (time.Time, bool) {
 	base := key
 	if i := strings.LastIndex(base, "/"); i >= 0 {
 		base = base[i+1:]
 	}
-	colon := strings.LastIndex(base, ":")
-	if colon < 0 {
-		return time.Time{}, false
-	}
-	tsStr := strings.TrimSuffix(base[colon+1:], ".json")
+	tsStr := strings.TrimSuffix(base, ".json")
 	tsMs, err := strconv.ParseInt(tsStr, 10, 64)
 	if err != nil {
 		return time.Time{}, false

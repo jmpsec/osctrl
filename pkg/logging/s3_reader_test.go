@@ -11,14 +11,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestS3LogKeyLayout(t *testing.T) {
+	ts := time.UnixMilli(1700000000000)
+	key := s3LogKey("env-uuid", "status", "NODE-UUID", ts)
+	require.Equal(t, "env-uuid/status/NODE-UUID/1700000000000.json", key)
+}
+
 func TestS3QueryKeyLayout(t *testing.T) {
 	ts := time.UnixMilli(1700000000000)
 	key := s3QueryKey("env-uuid", "q-123", "NODE-UUID", ts)
-	require.Equal(t, "env-uuid/query/q-123/NODE-UUID:1700000000000.json", key)
+	require.Equal(t, "env-uuid/query/q-123/NODE-UUID/1700000000000.json", key)
 }
 
 func TestSplitQueryKey(t *testing.T) {
-	env, uuid, name, ok := splitQueryKey("env-uuid/query/q-123/NODE-UUID:1700000000000.json")
+	env, uuid, name, ok := splitQueryKey("env-uuid/query/q-123/NODE-UUID/1700000000000.json")
 	require.True(t, ok)
 	require.Equal(t, "env-uuid", env)
 	require.Equal(t, "q-123", name)
@@ -31,13 +37,19 @@ func TestSplitQueryKeyRejectsBadKey(t *testing.T) {
 }
 
 func TestTsFromKey(t *testing.T) {
-	ts, ok := tsFromKey("env-uuid/query/q-123/NODE-UUID:1700000000000.json")
+	ts, ok := tsFromKey("env-uuid/query/q-123/NODE-UUID/1700000000000.json")
+	require.True(t, ok)
+	require.Equal(t, time.UnixMilli(1700000000000), ts)
+}
+
+func TestTsFromKeyStatusLayout(t *testing.T) {
+	ts, ok := tsFromKey("env-uuid/status/NODE-UUID/1700000000000.json")
 	require.True(t, ok)
 	require.Equal(t, time.UnixMilli(1700000000000), ts)
 }
 
 func TestDecodeNodeLogKeyStatusMatch(t *testing.T) {
-	key := "env-uuid/status/NODE-UUID:1700000000000.json"
+	key := "env-uuid/status/NODE-UUID/1700000000000.json"
 	entry, ok := decodeNodeLogKey(key, "NODE-UUID")
 	require.True(t, ok)
 	require.Equal(t, "NODE-UUID", entry.UUID)
@@ -45,8 +57,14 @@ func TestDecodeNodeLogKeyStatusMatch(t *testing.T) {
 }
 
 func TestDecodeNodeLogKeyStatusRejectsOtherUUID(t *testing.T) {
-	key := "env-uuid/status/OTHER-UUID:1700000000000.json"
+	key := "env-uuid/status/OTHER-UUID/1700000000000.json"
 	_, ok := decodeNodeLogKey(key, "NODE-UUID")
+	require.False(t, ok)
+}
+
+func TestDecodeNodeLogKeyRejectsBadSegmentCount(t *testing.T) {
+	// Old layout with colon would now have a wrong segment count.
+	_, ok := decodeNodeLogKey("env-uuid/status/NODE-UUID:1700000000000.json", "NODE-UUID")
 	require.False(t, ok)
 }
 
@@ -80,7 +98,7 @@ func TestDecodeQueryLogRow(t *testing.T) {
 	data := types.QueryWriteData{Name: "q-123", Result: json.RawMessage(`[{"version":"5.13.1"}]`), Status: 0}
 	body, err := json.Marshal(data)
 	require.NoError(t, err)
-	row, err := decodeQueryLogRow(body, "env-uuid/query/q-123/NODE-UUID:1700000000000.json")
+	row, err := decodeQueryLogRow(body, "env-uuid/query/q-123/NODE-UUID/1700000000000.json")
 	require.NoError(t, err)
 	require.Equal(t, "NODE-UUID", row.UUID)
 	require.Equal(t, "env-uuid", row.Environment)
@@ -93,7 +111,7 @@ func TestDecodeQueryLogBodyMap(t *testing.T) {
 	data := types.QueryWriteData{Name: "q-123", Result: json.RawMessage(`[{"version":"5.13.1"}]`), Status: 0}
 	body, err := json.Marshal(data)
 	require.NoError(t, err)
-	item, err := decodeQueryLogBody(body, "env-uuid/query/q-123/NODE-UUID:1700000000000.json")
+	item, err := decodeQueryLogBody(body, "env-uuid/query/q-123/NODE-UUID/1700000000000.json")
 	require.NoError(t, err)
 	require.Equal(t, "NODE-UUID", item["uuid"])
 	require.Equal(t, "q-123", item["name"])
@@ -107,14 +125,14 @@ func TestNodeLogMatchesSearch(t *testing.T) {
 
 func TestSortKeysDesc(t *testing.T) {
 	keys := []string{
-		"env/query/q/1:1000.json",
-		"env/query/q/1:3000.json",
-		"env/query/q/1:2000.json",
+		"env/query/q/uuid/1000.json",
+		"env/query/q/uuid/3000.json",
+		"env/query/q/uuid/2000.json",
 	}
 	sortKeysDesc(keys)
-	require.Equal(t, "env/query/q/1:3000.json", keys[0])
-	require.Equal(t, "env/query/q/1:2000.json", keys[1])
-	require.Equal(t, "env/query/q/1:1000.json", keys[2])
+	require.Equal(t, "env/query/q/uuid/3000.json", keys[0])
+	require.Equal(t, "env/query/q/uuid/2000.json", keys[1])
+	require.Equal(t, "env/query/q/uuid/1000.json", keys[2])
 }
 
 func TestDBLogReaderNodeLogsFallsBackToDB(t *testing.T) {
@@ -131,7 +149,19 @@ func TestS3QueryKeyLexicalOrder(t *testing.T) {
 	// Verify that lexical ordering of keys within a prefix matches
 	// chronological ordering — this is the invariant the reader relies
 	// on for free pre-sorting.
-	base := "env/query/q/uuid:"
+	base := "env/query/q/uuid/"
+	keys := []string{
+		base + strconv.FormatInt(1700000000000, 10) + ".json",
+		base + strconv.FormatInt(1700000000001, 10) + ".json",
+		base + strconv.FormatInt(1699999999999, 10) + ".json",
+	}
+	require.True(t, strings.Compare(keys[0], keys[1]) < 0, "ts 0 < ts 1 should sort first")
+	require.True(t, strings.Compare(keys[2], keys[0]) < 0, "ts -1 < ts 0 should sort first")
+}
+
+func TestS3StatusKeyLexicalOrder(t *testing.T) {
+	// Same invariant for the status/result layout.
+	base := "env/status/NODE-UUID/"
 	keys := []string{
 		base + strconv.FormatInt(1700000000000, 10) + ".json",
 		base + strconv.FormatInt(1700000000001, 10) + ".json",
