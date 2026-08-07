@@ -186,7 +186,7 @@ Ultimately the script can also be used to deploy **osctrl** in production system
 
 ### 🏗 Building from source
 
-To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.5 or higher is recommended). Then, clone the repository and run the following commands:
+To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.5 is recommended). Then, clone the repository and run the following commands:
 
 ```bash
 git clone https://github.com/jmpsec/osctrl.git
