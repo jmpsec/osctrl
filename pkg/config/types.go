@@ -222,6 +222,7 @@ type YAMLConfigurationTLS struct {
 // YAMLConfigurationLogger to hold the logger configuration values
 type YAMLConfigurationLogger struct {
 	Type         string               `yaml:"type"`
+	Types        []string             `yaml:"types" mapstructure:"types"`
 	LoggerDBSame bool                 `yaml:"loggerDBSame"`
 	AlwaysLog    bool                 `yaml:"alwaysLog"`
 	DB           *YAMLConfigurationDB `mapstructure:"db"`

@@ -354,9 +354,11 @@ func osctrlAdminService() {
 	}()
 	var loggerDBConfig *config.YAMLConfigurationDB
 	// Set the logger configuration file if we have a DB logger
-	if flagParams.Logger.Type == config.LoggingDB {
+	if config.LoggerHasType(flagParams.Logger, config.LoggingDB) {
 		if flagParams.Logger.LoggerDBSame {
 			loggerDBConfig = flagParams.DB
+		} else {
+			loggerDBConfig = flagParams.Logger.DB
 		}
 	}
 	// Initialize audit log manager

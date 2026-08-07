@@ -50,10 +50,10 @@ func TestProcessLogQueryResultUpdatesStatusOnlyError(t *testing.T) {
 	nodeMgr := nodes.CreateNodes(db)
 	queryMgr := queries.CreateQueries(db)
 	logger := &LoggerTLS{
-		Logging: config.LoggingNone,
-		Logger:  &LoggerNone{Enabled: false},
-		Nodes:   nodeMgr,
-		Queries: queryMgr,
+		Logging:   config.LoggingNone,
+		Exporters: NewMultiExporter(&LoggerNone{Enabled: false}),
+		Nodes:     nodeMgr,
+		Queries:   queryMgr,
 	}
 	node := nodes.OsqueryNode{NodeKey: "node-key", UUID: "NODE-A", EnvironmentID: 1, Environment: "env"}
 	if err := db.Create(&node).Error; err != nil {

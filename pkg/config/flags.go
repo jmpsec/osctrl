@@ -327,6 +327,25 @@ func initLoggingFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_LOGGER"),
 			Destination: &params.Logger.Type,
 		},
+		&cli.StringFlag{
+			Name:    "loggers",
+			Usage:   "Logger mechanisms to handle status/result logs from nodes as a comma-separated list",
+			Sources: cli.EnvVars("SERVICE_LOGGERS"),
+			Action: func(_ context.Context, _ *cli.Command, v string) error {
+				if v == "" {
+					return nil
+				}
+				parts := strings.Split(v, ",")
+				out := make([]string, 0, len(parts))
+				for _, p := range parts {
+					if p = strings.TrimSpace(p); p != "" {
+						out = append(out, p)
+					}
+				}
+				params.Logger.Types = out
+				return nil
+			},
+		},
 		&cli.BoolFlag{
 			Name:        "logger-db-same",
 			Value:       false,

@@ -122,7 +122,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get logs
 	logJSON := []LogJSON{}
-	if logType == types.StatusLog && h.Configuration.Logger.Type == config.LoggingDB {
+	if logType == types.StatusLog && config.LoggerHasType(h.Configuration.Logger, config.LoggingDB) {
 		statusLogs, err := h.DBLogger.StatusLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")
@@ -141,7 +141,7 @@ func (h *HandlersAdmin) JSONLogsHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			logJSON = append(logJSON, _l)
 		}
-	} else if logType == types.ResultLog && h.Configuration.Logger.Type == config.LoggingDB {
+	} else if logType == types.ResultLog && config.LoggerHasType(h.Configuration.Logger, config.LoggingDB) {
 		resultLogs, err := h.DBLogger.ResultLogsLimit(UUID, env.Name, int(limitItems))
 		if err != nil {
 			log.Err(err).Msg("error getting logs")

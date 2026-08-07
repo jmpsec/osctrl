@@ -152,6 +152,8 @@ type QueryLogsTemplateData struct {
 	Metadata      TemplateMetadata
 	LeftMetadata  AsideLeftMetadata
 	ServiceConfig *config.ServiceParameters
+	LoggerTypes   string
+	DBLogger      bool
 }
 
 // EnvironmentsTemplateData for passing data to the environments template
@@ -171,6 +173,7 @@ type SettingsTemplateData struct {
 	Platforms       []string
 	CurrentSettings []settings.SettingValue
 	ServiceConfig   *config.ServiceParameters
+	LoggerTypes     string
 	Metadata        TemplateMetadata
 	LeftMetadata    AsideLeftMetadata
 }
@@ -249,4 +252,6 @@ type NodeTemplateData struct {
 	Schedule      environments.ScheduleConf
 	Packs         environments.PacksEntries
 	ServiceConfig *config.ServiceParameters
+	LoggerTypes   string
+	DBLogger      bool
 }
