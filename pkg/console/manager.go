@@ -30,8 +30,9 @@ const defaultCommandTimeout = 10 * time.Second
 const PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid, optimizations from osquery_info"
 
 type Manager struct {
-	DB      *gorm.DB
-	Queries *queries.Queries
+	DB        *gorm.DB
+	Queries   *queries.Queries
+	LogReader logging.LogReader
 }
 
 func NewManager(db *gorm.DB, queryManager *queries.Queries) *Manager {
@@ -41,9 +42,24 @@ func NewManager(db *gorm.DB, queryManager *queries.Queries) *Manager {
 	return &Manager{DB: db, Queries: queryManager}
 }
 
+// SetLogReader wires a LogReader (DB- or S3-backed). When unset, the
+// manager falls back to NewDBLogReader(m.DB) so existing callers keep
+// the legacy DB-backed behavior.
+func (m *Manager) SetLogReader(r logging.LogReader) {
+	m.LogReader = r
+}
+
+func (m *Manager) logReader() logging.LogReader {
+	if m.LogReader != nil {
+		return m.LogReader
+	}
+	return logging.NewDBLogReader(m.DB)
+}
+
 func (m *Manager) CreateSession(env environments.TLSEnvironment, node nodes.OsqueryNode, creator string) (Session, error) {
 	session := Session{
 		EnvironmentID: env.ID,
+		Environment:   env.UUID,
 		NodeID:        node.ID,
 		NodeUUID:      node.UUID,
 		Creator:       creator,
@@ -350,7 +366,23 @@ func (m *Manager) CommandResults(commandID uint) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.queryResults(command.DistributedQueryName)
+	env, _ := m.commandEnv(commandID)
+	return m.queryResults(env, command.DistributedQueryName)
+}
+
+// commandEnv resolves the env UUID for a command's session, used as the
+// S3 key prefix when the log reader is S3-backed. Returns "" if the
+// session can't be loaded (the DB reader ignores it).
+func (m *Manager) commandEnv(commandID uint) (string, error) {
+	var command Command
+	if err := m.DB.Select("session_id").First(&command, commandID).Error; err != nil {
+		return "", err
+	}
+	var session Session
+	if err := m.DB.Select("environment").First(&session, command.SessionID).Error; err != nil {
+		return "", err
+	}
+	return session.Environment, nil
 }
 
 func (m *Manager) History(envID, nodeID uint, creator string, limit int) ([]HistoryEntry, error) {
@@ -371,10 +403,18 @@ func (m *Manager) History(envID, nodeID uint, creator string, limit int) ([]Hist
 		return nil, err
 	}
 
+	// Resolve the env UUID for the S3 reader's key prefix. The DB reader
+	// ignores it. A miss here just means "" — the DB reader still works.
+	var envRow Session
+	envUUID := ""
+	if err := m.DB.Select("environment").Where("environment_id = ?", envID).First(&envRow).Error; err == nil {
+		envUUID = envRow.Environment
+	}
+
 	history := make([]HistoryEntry, 0, len(commands))
 	for i := len(commands) - 1; i >= 0; i-- {
 		command := commands[i]
-		results, err := m.queryResults(command.DistributedQueryName)
+		results, err := m.queryResults(envUUID, command.DistributedQueryName)
 		if err != nil {
 			results = []map[string]any{}
 		}
@@ -400,7 +440,7 @@ func (m *Manager) completedStatusForCommand(command Command) (string, string, er
 		return StatusCompleted, "", nil
 	}
 
-	rows, err := m.queryResults(command.DistributedQueryName)
+	rows, err := m.queryResults(session.Environment, command.DistributedQueryName)
 	if err != nil {
 		return StatusError, "", err
 	}
@@ -418,12 +458,12 @@ func isCDCommand(input string) bool {
 	return len(fields) > 0 && strings.EqualFold(fields[0], "cd")
 }
 
-func (m *Manager) queryResults(queryName string) ([]map[string]any, error) {
+func (m *Manager) queryResults(env, queryName string) ([]map[string]any, error) {
 	rows := []map[string]any{}
 	if queryName == "" {
 		return rows, nil
 	}
-	err := logging.StreamQueryResults(m.DB, queryName, func(row logging.OsqueryQueryData) error {
+	err := m.logReader().StreamQueryResults(env, queryName, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeResultRows([]byte(row.Data))
 		if err != nil {
 			return err

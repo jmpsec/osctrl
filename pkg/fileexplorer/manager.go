@@ -28,8 +28,9 @@ const (
 )
 
 type Manager struct {
-	DB      *gorm.DB
-	Queries *queries.Queries
+	DB        *gorm.DB
+	Queries   *queries.Queries
+	LogReader logging.LogReader
 }
 
 func NewManager(db *gorm.DB, queryManager *queries.Queries) *Manager {
@@ -39,9 +40,24 @@ func NewManager(db *gorm.DB, queryManager *queries.Queries) *Manager {
 	return &Manager{DB: db, Queries: queryManager}
 }
 
+// SetLogReader wires a LogReader (DB- or S3-backed). When unset, the
+// manager falls back to NewDBLogReader(m.DB) so existing callers keep
+// the legacy DB-backed behavior.
+func (m *Manager) SetLogReader(r logging.LogReader) {
+	m.LogReader = r
+}
+
+func (m *Manager) logReader() logging.LogReader {
+	if m.LogReader != nil {
+		return m.LogReader
+	}
+	return logging.NewDBLogReader(m.DB)
+}
+
 func (m *Manager) CreateSession(env environments.TLSEnvironment, node nodes.OsqueryNode, creator string) (Session, error) {
 	session := Session{
 		EnvironmentID: env.ID,
+		Environment:   env.UUID,
 		NodeID:        node.ID,
 		NodeUUID:      node.UUID,
 		Creator:       creator,
@@ -347,7 +363,8 @@ func (m *Manager) RequestResults(requestID uint) ([]Entry, error) {
 	if request.DistributedQueryName == "" {
 		return entries, nil
 	}
-	err = logging.StreamQueryResults(m.DB, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
+	env := m.requestEnv(requestID)
+	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeEntries([]byte(row.Data))
 		if err != nil {
 			return err
@@ -372,7 +389,8 @@ func (m *Manager) RequestMetadataRows(requestID uint) ([]map[string]any, error) 
 	if request.DistributedQueryName == "" {
 		return rows, nil
 	}
-	err = logging.StreamQueryResults(m.DB, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
+	env := m.requestEnv(requestID)
+	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeRows([]byte(row.Data))
 		if err != nil {
 			return err
@@ -381,6 +399,21 @@ func (m *Manager) RequestMetadataRows(requestID uint) ([]map[string]any, error) 
 		return nil
 	})
 	return rows, err
+}
+
+// requestEnv resolves the env UUID for a request's session, used as the
+// S3 key prefix when the log reader is S3-backed. Returns "" if the
+// session can't be loaded (the DB reader ignores it).
+func (m *Manager) requestEnv(requestID uint) string {
+	var request Request
+	if err := m.DB.Select("session_id").First(&request, requestID).Error; err != nil {
+		return ""
+	}
+	var session Session
+	if err := m.DB.Select("environment").First(&session, request.SessionID).Error; err != nil {
+		return ""
+	}
+	return session.Environment
 }
 
 func decodeRows(data []byte) ([]map[string]any, error) {
