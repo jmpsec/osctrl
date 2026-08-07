@@ -600,7 +600,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	items, total, err := logging.GetQueryResults(h.DB, name, since, page, pageSize)
+	items, total, err := h.logReader().QueryResults(env.UUID, name, since, page, pageSize)
 	if err != nil {
 		apiErrorResponse(w, "error getting query results", http.StatusInternalServerError, err)
 		return
@@ -686,7 +686,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 	// Pass 1 (streaming): walk every row, collect the union of column names.
 	// We only retain column names here — never the row data — to keep memory at O(columns).
 	colSet := make(map[string]struct{})
-	if err := logging.StreamQueryResults(h.DB, name, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}
@@ -725,7 +725,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 
 	// Pass 2 (streaming): write data rows, flushing after each so bytes reach the client incrementally.
 	rowCount := 0
-	if err := logging.StreamQueryResults(h.DB, name, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}

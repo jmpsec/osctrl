@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -124,7 +123,7 @@ func (h *HandlersApi) NodeLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Use the node's canonical UUID (already upper-cased in the DB) from the
 	// verified node record, not the raw URL parameter.
-	items, err := logging.GetNodeLogs(h.DB, logType, env.Name, node.UUID, since, limit, search)
+	items, err := h.logReader().NodeLogs(logType, env.Name, node.UUID, since, limit, search)
 	if err != nil {
 		apiErrorResponse(w, "failed to query logs", http.StatusInternalServerError, err)
 		return

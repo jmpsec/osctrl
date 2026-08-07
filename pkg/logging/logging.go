@@ -292,7 +292,7 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 			log.Error().Msgf("error casting logger to %s", config.LoggingS3)
 		}
 		if l.Enabled {
-			l.Send(logType, data, environment, uuid, debug)
+			l.Query(data, environment, uuid, name, status, debug)
 		}
 	case config.LoggingKafka:
 		k, ok := logTLS.Logger.(*LoggerKafka)
