@@ -93,6 +93,100 @@ func TestSubmitRejectsWhenCommandInFlight(t *testing.T) {
 	require.Contains(t, err.Error(), "pending")
 }
 
+func TestSubmitPrimingCommandCreatesHiddenConsoleQuery(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+
+	priming, err := manager.SubmitPrimingCommand(session.ID, time.Minute)
+	require.NoError(t, err)
+	require.True(t, priming.Priming)
+	require.Equal(t, console.StatusQueued, priming.Status)
+	require.NotEmpty(t, priming.DistributedQueryName)
+	require.Equal(t, console.PrimingMetadataSQL, priming.TranslatedSQL)
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", priming.DistributedQueryName).First(&distributed).Error)
+	require.Equal(t, queries.ConsoleQueryType, distributed.Type)
+	require.True(t, distributed.Hidden)
+	require.True(t, distributed.Active)
+
+	delivered, accelerate, err := manager.Queries.NodeQueries(node)
+	require.NoError(t, err)
+	require.True(t, accelerate)
+	require.Equal(t, console.PrimingMetadataSQL, delivered[priming.DistributedQueryName])
+}
+
+func TestPrimingCommandDoesNotBlockUserCommand(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+
+	_, err = manager.SubmitPrimingCommand(session.ID, time.Minute)
+	require.NoError(t, err)
+
+	// A priming command is in flight, but the user's first real command
+	// must still be accepted — priming rows are excluded from the
+	// pending-count gate.
+	_, _, err = manager.SubmitCommand(session.ID, "ps")
+	require.NoError(t, err)
+
+	// A second user command while the first is pending is still rejected.
+	_, _, err = manager.SubmitCommand(session.ID, "ls")
+	require.Error(t, err)
+
+	// Sanity: a priming row exists and is queued.
+	var primingCount int64
+	require.NoError(t, db.Model(&console.Command{}).
+		Where("session_id = ? AND priming = ?", session.ID, true).Count(&primingCount).Error)
+	require.Equal(t, int64(1), primingCount)
+}
+
+func TestHistoryExcludesPrimingCommands(t *testing.T) {
+	_, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+
+	_, err = manager.SubmitPrimingCommand(session.ID, time.Minute)
+	require.NoError(t, err)
+	_, _, err = manager.SubmitCommand(session.ID, "pwd")
+	require.NoError(t, err)
+
+	history, err := manager.History(env.ID, node.ID, "alice", 25)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	require.Equal(t, "pwd", history[0].Command.Input)
+}
+
+func TestPrimingCommandResultsReturnOsqueryInfoRows(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	priming, err := manager.SubmitPrimingCommand(session.ID, time.Minute)
+	require.NoError(t, err)
+
+	result, err := json.Marshal([]map[string]string{{"version": "5.13.1", "build_platform": "linux"}})
+	require.NoError(t, err)
+	wrapped, err := json.Marshal(types.QueryWriteData{
+		Name:   priming.DistributedQueryName,
+		Result: result,
+		Status: 0,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&logging.OsqueryQueryData{
+		UUID:        node.UUID,
+		Environment: env.UUID,
+		Name:        priming.DistributedQueryName,
+		Data:        string(wrapped),
+		Status:      0,
+	}).Error)
+	require.NoError(t, markNodeQueryStatus(db, priming.DistributedQueryName, queries.DistributedQueryStatusCompleted))
+
+	rows, err := manager.CommandResults(priming.ID)
+	require.NoError(t, err)
+	require.Equal(t, []map[string]any{{"version": "5.13.1", "build_platform": "linux"}}, rows)
+}
+
 func TestCloseSessionExpiresPendingCommands(t *testing.T) {
 	db, manager, env, node := setupConsoleManager(t)
 	session, err := manager.CreateSession(env, node, "alice")

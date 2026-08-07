@@ -31,6 +31,7 @@ type NodeInfoItem = { label: string; value: string };
 const terminalStatuses = new Set(['completed', 'error', 'expired']);
 const consoleHeartbeatMs = 10000;
 type PendingCommand = { command: ConsoleCommand; path?: string };
+type PrimingMetadata = Record<string, unknown>;
 
 export function NodeConsolePage() {
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid/console' });
@@ -47,6 +48,8 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
   const focusAfterCommandRef = useRef(false);
   const [session, setSession] = useState<ConsoleSession | null>(null);
   const [nodeInfo, setNodeInfo] = useState<ConsoleNodeInfo | null>(null);
+  const [primingCommand, setPrimingCommand] = useState<ConsoleCommand | null>(null);
+  const [primingMetadata, setPrimingMetadata] = useState<PrimingMetadata | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<PendingCommand | null>(null);
@@ -64,6 +67,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
         setSession(created.session);
         setNodeInfo(created.node_info ?? null);
         setEntries(historyToEntries(created.history));
+        setPrimingCommand(created.priming ?? null);
       })
       .catch((error: unknown) => {
         if (!alive) return;
@@ -102,6 +106,43 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     }, consoleHeartbeatMs);
     return () => window.clearInterval(interval);
   }, [env, navigate, sessionID]);
+
+  // Poll the priming metadata command until it reaches a terminal
+  // status, then fetch its osquery_info results and surface them as
+  // live node metadata in the console header. This is what makes the
+  // console "already responsive" on first open: the priming query both
+  // warms acceleration (so the node polls fast) and gives us fresh
+  // osquery version / build / start_time values.
+  const primingCommandId = primingCommand?.id;
+  const primingQuery = useQuery({
+    queryKey: ['console-priming', env, session?.id, primingCommandId],
+    queryFn: () => getConsoleCommand(env, session!.id, primingCommand!.id),
+    enabled: Boolean(session && primingCommand),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && terminalStatuses.has(status) ? false : 1000;
+    },
+    refetchIntervalInBackground: false,
+  });
+
+  useEffect(() => {
+    const command = primingQuery.data;
+    if (!session || !primingCommand || !command || !terminalStatuses.has(command.status)) return;
+    if (command.id !== primingCommand.id) return;
+    if (primingMetadata !== null) return;
+    if (command.status !== 'completed') {
+      setPrimingCommand(null);
+      return;
+    }
+    void getConsoleCommandResults(env, session.id, command.id)
+      .then((rows) => {
+        if (rows.length > 0) {
+          setPrimingMetadata(rows[0] as PrimingMetadata);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setPrimingCommand(null));
+  }, [primingQuery.data, env, primingCommand, primingMetadata, session]);
 
   const submitMutation = useMutation({
     mutationFn: async (value: string) => {
@@ -222,7 +263,10 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
 
   const disabled = !session || Boolean(pending) || submitMutation.isPending;
   const prompt = useMemo(() => (osqueryMode ? 'osquery>' : `${session?.cwd ?? '/'} $`), [osqueryMode, session?.cwd]);
-  const nodeInfoItems = useMemo(() => formatNodeInfoItems(nodeInfo), [nodeInfo]);
+  const nodeInfoItems = useMemo(
+    () => formatNodeInfoItems(nodeInfo, primingMetadata),
+    [nodeInfo, primingMetadata],
+  );
 
   function focusCommandInput() {
     if (disabled) return;
@@ -255,6 +299,15 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
               <h1 className="text-base font-semibold leading-5 text-[color:var(--text-1)]">Console</h1>
               <p className="mt-0.5 truncate font-mono-tabular text-xs text-[color:var(--text-3)]">{uuid}</p>
             </div>
+            {primingCommand && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-2 py-1 text-[10px] leading-none text-[color:var(--text-3)]"
+                title="Warming accelerated query polling"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                accelerating
+              </span>
+            )}
           </div>
           {nodeInfoItems.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -365,15 +418,55 @@ function historyToEntries(history: ConsoleHistoryEntry[]): Entry[] {
   return entries;
 }
 
-function formatNodeInfoItems(info: ConsoleNodeInfo | null): NodeInfoItem[] {
-  if (!info) return [];
+function formatNodeInfoItems(info: ConsoleNodeInfo | null, metadata?: PrimingMetadata | null): NodeInfoItem[] {
   const items: NodeInfoItem[] = [];
-  if (info.ip_address) items.push({ label: 'ip', value: info.ip_address });
-  if (info.osquery_user) items.push({ label: 'user', value: info.osquery_user });
-  if (info.osquery_version) items.push({ label: 'osquery', value: info.osquery_version });
-  const platform = [info.platform, info.platform_version].filter(Boolean).join(' ');
-  if (platform) items.push({ label: 'platform', value: platform });
+  const liveVersion = typeof metadata?.version === 'string' ? (metadata.version as string) : '';
+  const liveBuild = typeof metadata?.build_platform === 'string' ? (metadata.build_platform as string) : '';
+  const liveDistro = typeof metadata?.build_distro === 'string' ? (metadata.build_distro as string) : '';
+  const liveStartTime = metadata?.start_time != null ? String(metadata.start_time) : '';
+  const liveConfigValid = typeof metadata?.config_valid === 'string' ? (metadata.config_valid as string) : '';
+
+  if (info) {
+    if (info.ip_address) items.push({ label: 'ip', value: info.ip_address });
+    if (info.osquery_user) items.push({ label: 'user', value: info.osquery_user });
+  }
+  // Prefer live osquery version from the priming query over the
+  // last-seen DB snapshot; fall back to the snapshot if priming
+  // hasn't completed yet.
+  if (liveVersion) items.push({ label: 'osquery', value: liveVersion });
+  else if (info?.osquery_version) items.push({ label: 'osquery', value: info.osquery_version });
+
+  if (liveBuild) {
+    const build = [liveBuild, liveDistro].filter(Boolean).join(' ');
+    items.push({ label: 'build', value: build });
+  }
+  if (liveStartTime) {
+    const secs = Number(liveStartTime);
+    if (!Number.isNaN(secs) && secs > 0) {
+      const started = new Date(secs * 1000);
+      const uptimeMs = Date.now() - started.getTime();
+      if (uptimeMs > 0) {
+        items.push({ label: 'uptime', value: formatUptime(uptimeMs) });
+      }
+    }
+  }
+  if (liveConfigValid) items.push({ label: 'config', value: liveConfigValid });
+
+  if (info) {
+    const platform = [info.platform, info.platform_version].filter(Boolean).join(' ');
+    if (platform) items.push({ label: 'platform', value: platform });
+  }
   return items;
+}
+
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 function Line({ text, tone }: { text: string; tone?: 'error' | 'muted' }) {

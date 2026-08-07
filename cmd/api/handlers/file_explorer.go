@@ -24,6 +24,12 @@ type fileExplorerPathRequest struct {
 type fileExplorerSessionResponse struct {
 	Session  fileexplorer.Session `json:"session"`
 	NodeInfo consoleNodeInfo      `json:"node_info"`
+	// Priming is the priming metadata request dispatched at session
+	// creation. The frontend polls the new priming results endpoint with
+	// this request id to render live osquery_info metadata, and its
+	// presence in the node's pending queue warms acceleration. May be nil
+	// if priming submission failed.
+	Priming *fileexplorer.Request `json:"priming,omitempty"`
 }
 
 func (h *HandlersApi) FileExplorerSessionCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,10 +56,19 @@ func (h *HandlersApi) FileExplorerSessionCreateHandler(w http.ResponseWriter, r 
 		apiErrorResponse(w, "error creating file explorer session", http.StatusInternalServerError, err)
 		return
 	}
+	// Dispatch a priming metadata query so the node's next QueryRead
+	// returns an accelerated interval (fast polling) before the operator
+	// expands the first directory, and live osquery_info metadata can be
+	// surfaced in the file explorer header. Non-fatal on failure.
+	var priming *fileexplorer.Request
+	if primingReq, primingErr := h.FileExplorer.SubmitPrimingRequest(session.ID, h.fileExplorerRequestTimeout()); primingErr == nil {
+		priming = &primingReq
+	}
 	h.auditFileExplorerAction(ctx[ctxUser], "file explorer session", r, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, fileExplorerSessionResponse{
 		Session:  session,
 		NodeInfo: consoleNodeInfoFromNode(node),
+		Priming:  priming,
 	})
 }
 
@@ -161,6 +176,33 @@ func (h *HandlersApi) FileExplorerRequestResultsHandler(w http.ResponseWriter, r
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, results)
+}
+
+// FileExplorerPrimingResultsHandler returns the raw osquery_info rows
+// for the session's priming metadata request. Unlike the list/stat
+// results endpoint (which decodes file columns into Entry structs), this
+// returns the generic row maps so the frontend can render osquery_info
+// columns directly.
+func (h *HandlersApi) FileExplorerPrimingResultsHandler(w http.ResponseWriter, r *http.Request) {
+	_, _, session, ok := h.fileExplorerSessionContext(w, r)
+	if !ok {
+		return
+	}
+	requestID, ok := consolePathUint(w, r, "request_id")
+	if !ok {
+		return
+	}
+	request, err := h.FileExplorer.GetRequest(session.ID, requestID)
+	if err != nil {
+		consoleNotFoundOrError(w, "request not found", "error getting file explorer request", err)
+		return
+	}
+	rows, err := h.FileExplorer.RequestMetadataRows(request.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting file explorer metadata", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rows)
 }
 
 func (h *HandlersApi) fileExplorerEnvContext(w http.ResponseWriter, r *http.Request) (environments.TLSEnvironment, ContextValue, bool) {

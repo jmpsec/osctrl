@@ -283,6 +283,7 @@ export interface ConsoleCommand {
   distributed_query_name?: string;
   status: ConsoleCommandStatus;
   error?: string;
+  priming?: boolean;
   delivered_at?: string;
   completed_at?: string;
   expired_at?: string;
@@ -309,6 +310,9 @@ export interface ConsoleSessionResponse {
   session: ConsoleSession;
   history: ConsoleHistoryEntry[];
   node_info?: ConsoleNodeInfo;
+  /** Priming metadata command dispatched at session open; poll its
+   *  command show/results endpoints to render live osquery_info. */
+  priming?: ConsoleCommand;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +320,7 @@ export interface ConsoleSessionResponse {
 // ---------------------------------------------------------------------------
 
 export type FileExplorerRequestStatus = 'queued' | 'completed' | 'error' | 'expired';
-export type FileExplorerAction = 'list' | 'stat';
+export type FileExplorerAction = 'list' | 'stat' | 'priming';
 
 export interface FileExplorerSession {
   id: number;
@@ -343,6 +347,7 @@ export interface FileExplorerRequest {
   distributed_query_name?: string;
   status: FileExplorerRequestStatus;
   error?: string;
+  priming?: boolean;
   completed_at?: string;
   expired_at?: string;
 }
@@ -364,7 +369,13 @@ export interface FileExplorerEntry {
 export interface FileExplorerSessionResponse {
   session: FileExplorerSession;
   node_info?: ConsoleNodeInfo;
+  /** Priming metadata request dispatched at session open; poll its
+   *  request show/metadata endpoints to render live osquery_info. */
+  priming?: FileExplorerRequest;
 }
+
+/** Raw osquery_info row returned by the priming metadata request. */
+export type FileExplorerMetadataRow = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Saved queries

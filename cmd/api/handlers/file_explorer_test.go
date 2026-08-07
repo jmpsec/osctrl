@@ -84,6 +84,69 @@ func TestFileExplorerSessionCreateReturnsSession(t *testing.T) {
 	require.Equal(t, "/", resp.Session.Root)
 }
 
+func TestFileExplorerSessionCreateDispatchesPrimingRequest(t *testing.T) {
+	db, h, env, node := setupFileExplorerHandlers(t)
+	req := fileExplorerRequest(http.MethodPost, "/file-explorer", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("uuid", node.UUID)
+	rr := httptest.NewRecorder()
+
+	h.FileExplorerSessionCreateHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+
+	var resp fileExplorerSessionResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Priming)
+	require.True(t, resp.Priming.Priming)
+	require.Equal(t, fileexplorer.ActionPriming, resp.Priming.Action)
+	require.NotEmpty(t, resp.Priming.DistributedQueryName)
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
+	require.Equal(t, queries.FileExplorerQueryType, distributed.Type)
+	require.True(t, distributed.Hidden)
+}
+
+func TestFileExplorerPrimingResultsReturnsOsqueryInfoRows(t *testing.T) {
+	db, h, env, node := setupFileExplorerHandlers(t)
+	session, err := h.FileExplorer.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	priming, err := h.FileExplorer.SubmitPrimingRequest(session.ID, time.Second)
+	require.NoError(t, err)
+
+	result, err := json.Marshal([]map[string]string{{"version": "5.13.1", "build_platform": "linux"}})
+	require.NoError(t, err)
+	wrapped, err := json.Marshal(types.QueryWriteData{
+		Name:   priming.DistributedQueryName,
+		Result: result,
+		Status: 0,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&logging.OsqueryQueryData{
+		UUID:        node.UUID,
+		Environment: env.UUID,
+		Name:        priming.DistributedQueryName,
+		Data:        string(wrapped),
+		Status:      0,
+	}).Error)
+	require.NoError(t, markFileExplorerHandlerNodeQueryStatus(db, priming.DistributedQueryName, queries.DistributedQueryStatusCompleted))
+
+	req := fileExplorerRequest(http.MethodGet, "/file-explorer/metadata", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("session_id", fmt.Sprint(session.ID))
+	req.SetPathValue("request_id", fmt.Sprint(priming.ID))
+	rr := httptest.NewRecorder()
+
+	h.FileExplorerPrimingResultsHandler(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var rows []map[string]any
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &rows))
+	require.Len(t, rows, 1)
+	require.Equal(t, "5.13.1", rows[0]["version"])
+	require.Equal(t, "linux", rows[0]["build_platform"])
+}
+
 func TestFileExplorerSessionCreateRejectsUserWithoutAdminPermission(t *testing.T) {
 	_, h, env, node := setupFileExplorerHandlers(t)
 

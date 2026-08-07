@@ -6,13 +6,19 @@ import { AuthError } from '$/api/client';
 import {
   closeFileExplorerSession,
   createFileExplorerSession,
+  getFileExplorerPrimingMetadata,
   getFileExplorerRequest,
   getFileExplorerRequestResults,
   getFileExplorerSession,
   listFileExplorerDirectory,
   statFileExplorerPath,
 } from '$/api/file-explorer';
-import type { FileExplorerEntry, FileExplorerRequest, FileExplorerSession } from '$/api/types';
+import type {
+  FileExplorerEntry,
+  FileExplorerMetadataRow,
+  FileExplorerRequest,
+  FileExplorerSession,
+} from '$/api/types';
 import { cn } from '$/lib/cn';
 
 type EntriesByDirectory = Record<string, FileExplorerEntry[]>;
@@ -28,6 +34,8 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   const sessionRef = useRef<FileExplorerSession | null>(null);
   const loadingPathsRef = useRef<Set<string>>(new Set());
   const [session, setSession] = useState<FileExplorerSession | null>(null);
+  const [primingRequest, setPrimingRequest] = useState<FileExplorerRequest | null>(null);
+  const [primingMetadata, setPrimingMetadata] = useState<FileExplorerMetadataRow | null>(null);
   const [entriesByDirectory, setEntriesByDirectory] = useState<EntriesByDirectory>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
@@ -91,6 +99,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
         sessionRef.current = created.session;
         setSession(created.session);
         setExpanded(new Set([created.session.root]));
+        setPrimingRequest(created.priming ?? null);
         void loadDirectory(created.session, created.session.root);
       })
       .catch((createError: unknown) => {
@@ -105,6 +114,36 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
       }
     };
   }, [env, loadDirectory, uuid]);
+
+  // Poll the priming metadata request until it reaches a terminal
+  // status, then fetch its osquery_info rows and surface live metadata
+  // in the file explorer header. The priming query's presence in the
+  // node's pending queue also warms acceleration so the first directory
+  // listing is delivered on the next fast poll.
+  useEffect(() => {
+    const activeSession = sessionRef.current;
+    if (!activeSession || !primingRequest) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const completed = await waitForRequest(env, activeSession.id, primingRequest.id);
+        if (!alive || completed.status !== 'completed') {
+          if (alive) setPrimingRequest(null);
+          return;
+        }
+        const rows = await getFileExplorerPrimingMetadata(env, activeSession.id, primingRequest.id);
+        if (!alive) return;
+        if (rows.length > 0) setPrimingMetadata(rows[0] as FileExplorerMetadataRow);
+      } catch {
+        // Priming is best-effort; ignore errors.
+      } finally {
+        if (alive) setPrimingRequest(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [env, primingRequest]);
 
   useEffect(() => {
     const sessionID = session?.id;
@@ -170,12 +209,38 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
     }
   }
 
+  const primingItems = useMemo(() => formatPrimingItems(primingMetadata), [primingMetadata]);
+
   return (
     <section className="min-h-[360px] border border-[color:var(--border)] rounded-lg bg-[color:var(--bg-1)]">
       <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] px-3 py-2">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-[color:var(--text-1)]">File Explorer</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-[color:var(--text-1)]">File Explorer</h2>
+            {primingRequest && (
+              <span
+                className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10px] leading-none text-[color:var(--text-3)]"
+                title="Warming accelerated query polling"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                accelerating
+              </span>
+            )}
+          </div>
           <p className="font-mono-tabular text-[11px] text-[color:var(--text-3)] truncate">{root}</p>
+          {primingItems.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {primingItems.map((item) => (
+                <span
+                  key={`${item.label}-${item.value}`}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10px] leading-none text-[color:var(--text-3)]"
+                >
+                  <span className="uppercase tracking-normal text-[color:var(--text-4)]">{item.label}</span>
+                  <span className="truncate font-mono-tabular text-[color:var(--text-2)]">{item.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -436,4 +501,40 @@ function formatSize(size?: number) {
 function formatUnix(value?: number) {
   if (!value) return '';
   return new Date(value * 1000).toLocaleString();
+}
+
+type PrimingItem = { label: string; value: string };
+
+function formatPrimingItems(metadata: FileExplorerMetadataRow | null): PrimingItem[] {
+  if (!metadata) return [];
+  const items: PrimingItem[] = [];
+  const version = typeof metadata.version === 'string' ? (metadata.version as string) : '';
+  const build = typeof metadata.build_platform === 'string' ? (metadata.build_platform as string) : '';
+  const distro = typeof metadata.build_distro === 'string' ? (metadata.build_distro as string) : '';
+  const startTime = metadata.start_time != null ? String(metadata.start_time) : '';
+  const configValid = typeof metadata.config_valid === 'string' ? (metadata.config_valid as string) : '';
+  if (version) items.push({ label: 'osquery', value: version });
+  if (build) {
+    const value = [build, distro].filter(Boolean).join(' ');
+    items.push({ label: 'build', value });
+  }
+  if (startTime) {
+    const secs = Number(startTime);
+    if (!Number.isNaN(secs) && secs > 0) {
+      const uptimeMs = Date.now() - secs * 1000;
+      if (uptimeMs > 0) items.push({ label: 'uptime', value: formatUptimeBrief(uptimeMs) });
+    }
+  }
+  if (configValid) items.push({ label: 'config', value: configValid });
+  return items;
+}
+
+function formatUptimeBrief(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
