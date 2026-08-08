@@ -29,24 +29,6 @@ builds:
       - -X main.buildCommit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
-  - id: osctrl-admin
-    main: ./cmd/admin
-    binary: "osctrl-admin-{{ .Os }}-{{ .Arch }}"
-    no_unique_dist_dir: true
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
-      - -X main.buildVersion={{.Version}}
-      - -X main.buildCommit={{.Commit}}
-      - -X main.buildDate={{.Date}}
-
   - id: osctrl-api
     main: ./cmd/api
     binary: "osctrl-api-{{ .Os }}-{{ .Arch }}"
@@ -98,7 +80,6 @@ archives:
         formats: [ 'zip' ]
     ids:
       - osctrl-tls
-      - osctrl-admin
       - osctrl-api
       - osctrl-cli
     files:
@@ -144,36 +125,6 @@ dockers:
       - "--build-arg=GOARCH=arm64"
     extra_files:
       - dist/osctrl-tls-linux-arm64
-
-  # osctrl-admin — amd64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
-    use: buildx
-    goarch: amd64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    extra_files:
-      - dist/osctrl-admin-linux-amd64
-      - cmd/admin/templates
-      - cmd/admin/static
-      - deploy/osquery/data
-  # osctrl-admin — arm64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-admin
-    use: buildx
-    goarch: arm64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=GOARCH=arm64"
-    extra_files:
-      - dist/osctrl-admin-linux-arm64
-      - cmd/admin/templates
-      - cmd/admin/static
-      - deploy/osquery/data
 
   # osctrl-api — amd64
   - image_templates:
@@ -246,17 +197,6 @@ docker_manifests:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
     skip_push: '{{ .IsSnapshot }}'
 
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-admin:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-
   - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
     image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
@@ -302,26 +242,6 @@ nfpms:
     contents:
       - src: ./dist/osctrl-tls-{{ .Os }}-{{ .Arch }}
         dst: /opt/osctrl/bin/osctrl-tls
-    overrides:
-      deb:
-        scripts:
-          postinstall: deploy/cicd/deb/post-install.sh
-          preremove: deploy/cicd/deb/pre-remove.sh
-
-  - id: osctrl-admin
-    ids:
-      - osctrl-admin
-    package_name: osctrl-admin
-    maintainer: jmpsec/osctrl
-    description: osctrl Admin component
-    homepage: https://github.com/jmpsec/osctrl
-    license: MIT
-    formats:
-      - deb
-    bindir: /opt/osctrl/bin
-    contents:
-      - src: ./dist/osctrl-admin-{{ .Os }}-{{ .Arch }}
-        dst: /opt/osctrl/bin/osctrl-admin
     overrides:
       deb:
         scripts:

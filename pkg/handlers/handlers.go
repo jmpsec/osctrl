@@ -31,7 +31,7 @@ type QueryTargetRecord struct {
 	Value string
 }
 
-// CreateQueryCarve - Create On-demand Query or Carve, to be used in osctrl-admin or osctrl-api
+// CreateQueryCarve - Create On-demand Query or Carve, to be used in osctrl-api
 func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.DistributedQuery) ([]uint, error) {
 	var expected []uint
 	targetNodesID := []uint{}
