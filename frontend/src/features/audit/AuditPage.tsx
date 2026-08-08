@@ -21,11 +21,11 @@ type Search = z.infer<typeof auditSearchSchema>;
 
 // Audit log filter values: empty string = no service filter; the other three
 // match the literal strings written to audit_logs.service by each Go service —
-// `osctrl-tls`, `osctrl-admin`, `osctrl-api`, `osctrl-cli`. Note the prefixed
+// `osctrl-tls`, `osctrl-api`, `osctrl-cli`. Note the prefixed
 // form here is DELIBERATE: it is NOT the same namespace as pkg/settings (which
 // uses bare "tls"/"admin"/"api"). The two should not be unified — audit
 // readers compare to what was actually written to the column.
-const SERVICES = ['', 'osctrl-tls', 'osctrl-admin', 'osctrl-api', 'osctrl-cli'] as const;
+const SERVICES = ['', 'osctrl-tls', 'osctrl-api', 'osctrl-cli'] as const;
 const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 export function AuditPage() {

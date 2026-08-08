@@ -4,9 +4,6 @@ React + TypeScript + Vite SPA for the osctrl admin UI.
 
 Talks exclusively to `osctrl-api` (port 8081 by default). Served as static files — no Node.js server in production.
 
-> [!IMPORTANT]
-> The frontend is the primary operator UI going forward. The legacy server-rendered `osctrl-admin` HTML interface is being kept for transition purposes and will be deprecated.
-
 ## 🤔 What is the frontend?
 
 The **osctrl frontend** is the modern operator UI for managing environments,
@@ -69,8 +66,7 @@ Open `http://localhost:5173` in the browser. Vite's dev proxy forwards all `/api
 The repository's `docker-compose-dev.yml` exposes the frontend through
 `osctrl-nginx` at:
 
-- `https://localhost:8444` for the frontend SPA
-- `https://localhost:8443` for the legacy `osctrl-admin` HTML interface
+- `https://localhost:8444` for the frontend SPA (React + Vite)
 
 In that setup, `osctrl-frontend` stays internal-only on the Docker network and
 `osctrl-nginx` performs TLS termination before proxying requests to it.

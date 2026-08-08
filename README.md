@@ -30,9 +30,6 @@ With **osctrl** you can:
 - 🧭 Track node posture, GeoIP country metadata, and node activity in the modern UI
 - ⚙️ Scale from **hundreds to hundreds of thousands of nodes**
 
-> [!IMPORTANT]
-> The legacy server-rendered `osctrl-admin` HTML interface will be deprecated soon. The new frontend is the primary operator experience going forward and will receive future UI improvements and features.
-
 > [!WARNING]
 > **osctrl** is a fast evolving project, and while it is already being used in production environments, it is still under active development. Please make sure to read the documentation and understand its current state before deploying it in a critical environment.
 
@@ -58,7 +55,6 @@ You can find the documentation of the project in [https://osctrl.net](https://os
 ```text
 osctrl/
 ├── cmd/                         # Service and CLI entrypoints
-│   ├── admin/                   # osctrl-admin (legacy HTML UI + admin handlers/templates/static)
 │   ├── api/                     # osctrl-api (REST API service)
 │   ├── cli/                     # osctrl-cli (operator CLI)
 │   └── tls/                     # osctrl-tls (osquery remote API endpoint)
@@ -109,9 +105,8 @@ flowchart LR
     end
 
     subgraph Interfaces["Interfaces"]
-        Tls["osctrl-tls"]
+        TLS["osctrl-tls"]
         Frontend["osctrl frontend"]
-        Admin["osctrl-admin (legacy HTML UI)"]
         API["osctrl-api"]
         CLI["osctrl-cli"]
     end
@@ -127,19 +122,17 @@ flowchart LR
         Carves["Carve storage"]
     end
 
-    Agents -->|TLS remote API| Tls
+    Agents -->|TLS remote API| TLS
     Ops -->|Browser UI| Frontend
-    Ops -.->|Legacy browser UI| Admin
     Tools -->|REST API| API
     Tools -->|CLI| CLI
 
     Frontend -->|HTTP API| API
-    Admin -->|HTTP API| API
     CLI -->|HTTP API| API
 
-    Tls --> Shared
+    TLS --> Shared
     API --> Shared
-    Admin --> Shared
+    Frontend --> Shared
     CLI --> Shared
 
     Shared --> DB
@@ -160,7 +153,6 @@ You can use docker to run **osctrl** and all the components are defined in the `
 The docker development stack exposes:
 
 - `https://localhost:8444` for the frontend
-- `https://localhost:8443` for the legacy `osctrl-admin` HTML interface
 
 For frontend-only development details, see [frontend/README.md](./frontend/README.md).
 
@@ -194,7 +186,7 @@ cd osctrl
 make
 ```
 
-This will compile all the **osctrl** [components](https://osctrl.net/components/) (`osctrl-tls`, `osctrl-admin`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
+This will compile all the **osctrl** [components](https://osctrl.net/components/) (`osctrl-tls`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
 
 The default `make`/`make build` target also builds the frontend bundle. If you are working on the operator UI directly, the frontend SPA lives in `frontend/` and can be run with `make frontend-dev` or `cd frontend && npm run dev`.
 

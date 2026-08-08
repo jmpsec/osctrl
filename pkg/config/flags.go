@@ -92,8 +92,6 @@ type ServiceParameters struct {
 //     and surfaces the OSCTRL_INSECURE_NO_AUTH env-var requirement
 //     in `--help` so operators discover the opt-in path before
 //     hitting the fatal guardAuthMode check at startup.
-//   - osctrl-admin uses DB-backed user/password (or SAML/OIDC) for
-//     its browser login form. No INSECURE_NO_AUTH equivalent.
 //   - osctrl-tls authenticates osquery agents via per-environment
 //     enroll secret, not via this flag; AuthNone is correct for
 //     it and the help text doesn't need additional notes.
@@ -148,28 +146,6 @@ func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("DB_HEALTH_THRESHOLD"),
 			Destination: &params.Service.DBHealthThreshold,
 		})
-	return allFlags
-}
-
-// InitAdminFlags initializes all the flags needed for the Admin service
-func InitAdminFlags(params *ServiceParameters) []cli.Flag {
-	var allFlags []cli.Flag
-	// Add flags by category
-	allFlags = append(allFlags, initConfigFlags(params, ServiceAdmin)...)
-	allFlags = append(allFlags, initServiceFlags(params)...)
-	allFlags = append(allFlags, initAuthFlag(params, AuthDB, "Authentication mechanism for the service"))
-	allFlags = append(allFlags, initLoggingFlags(params)...)
-	allFlags = append(allFlags, initRedisFlags(params)...)
-	allFlags = append(allFlags, initDBFlags(params)...)
-	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
-	allFlags = append(allFlags, initOsctrldFlags(params)...)
-	allFlags = append(allFlags, initCarverFlags(params, ServiceAdmin)...)
-	allFlags = append(allFlags, initS3LoggingFlags(params)...)
-	allFlags = append(allFlags, initJWTFlags(params)...)
-	allFlags = append(allFlags, initOIDCFlags(params)...)
-	allFlags = append(allFlags, initOsqueryFlags(params)...)
-	allFlags = append(allFlags, initAdminFlags(params)...)
-	allFlags = append(allFlags, initDebugFlags(params, ServiceAdmin)...)
 	return allFlags
 }
 
@@ -747,7 +723,7 @@ func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "oidc-enabled",
-			Usage:       "Enable the federated-login surface on osctrl-api (osctrl-admin uses --auth=oidc instead and ignores this flag)",
+			Usage:       "Enable the federated-login surface on osctrl-api",
 			Sources:     cli.EnvVars("OIDC_ENABLED"),
 			Destination: &params.OIDC.Enabled,
 		},
@@ -975,58 +951,6 @@ func initOsqueryFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Disable configuration changes via admin or api services",
 			Sources:     cli.EnvVars("OSQUERY_READ_ONLY"),
 			Destination: &params.Osquery.ReadOnly,
-		},
-	}
-}
-
-// initAdminFlags initializes all the admin service specific flags
-func initAdminFlags(params *ServiceParameters) []cli.Flag {
-	return []cli.Flag{
-		&cli.StringFlag{
-			Name:        "session-key",
-			Value:       "",
-			Usage:       "Session key to generate cookies from it",
-			Sources:     cli.EnvVars("SESSION_KEY"),
-			Destination: &params.Admin.SessionKey,
-		},
-		&cli.StringFlag{
-			Name:        "static",
-			Aliases:     []string{"s"},
-			Value:       defStaticFilesFolder,
-			Usage:       "Directory with all the static files needed for the osctrl-admin UI",
-			Sources:     cli.EnvVars("STATIC_FILES"),
-			Destination: &params.Admin.StaticDir,
-		},
-		&cli.BoolFlag{
-			Name:        "static-offline",
-			Aliases:     []string{"S"},
-			Value:       false,
-			Usage:       "Use offline static files (js and css). Default is online files.",
-			Sources:     cli.EnvVars("STATIC_ONLINE"),
-			Destination: &params.Admin.StaticOffline,
-		},
-		&cli.StringFlag{
-			Name:        "templates",
-			Value:       defTemplatesFolder,
-			Usage:       "Directory with all the templates needed for the osctrl-admin UI",
-			Sources:     cli.EnvVars("TEMPLATES_DIR"),
-			Destination: &params.Admin.TemplatesDir,
-		},
-		&cli.StringFlag{
-			Name:        "background-image",
-			Aliases:     []string{"bg-img", "background"},
-			Value:       defBackgroundImageFile,
-			Usage:       "Background image file for all the pages in the osctrl-admin UI",
-			Sources:     cli.EnvVars("BACKGROUND_IMAGE"),
-			Destination: &params.Admin.BackgroundImage,
-		},
-		&cli.StringFlag{
-			Name:        "branding-image",
-			Aliases:     []string{"brand-img", "branding"},
-			Value:       defBrandingImageFile,
-			Usage:       "Branding image file for the osctrl-admin UI. Use an image with 450x130 pixels for best results.",
-			Sources:     cli.EnvVars("BRANDING_IMAGE"),
-			Destination: &params.Admin.BrandingImage,
 		},
 	}
 }

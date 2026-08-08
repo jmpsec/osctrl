@@ -16,7 +16,7 @@ Follow these steps to generate a self-signed certificate that is going to be use
 
 ## Generate JWT secret
 
-You can generate a random enough JWT secret to be used with the `osctrl-api` and `osctrl-admin` components using one of the following commands:
+You can generate a random enough JWT secret to be used with the `osctrl-api` component using one of the following commands:
 
 1. `uuidgen | shasum -a 256 | awk '{print $1}'`
    1. ![docker_uuid_gen](../../.img/docker_uuid_gen.png)
