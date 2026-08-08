@@ -351,6 +351,23 @@ func osctrlAPIService() {
 	consolemgr = console.NewManager(db.Conn, queriesmgr)
 	log.Info().Msg("Initialize file explorer")
 	fileexplorermgr = fileexplorer.NewManager(db.Conn, queriesmgr)
+	// Construct the log reader. When the TLS logger ships logs to S3 the
+	// osquery_*_data tables are empty, so the API/console/file-explorer
+	// read logs back from S3 instead. For every other logger the data
+	// lives in the DB and the legacy GORM-backed reader is used.
+	var logReader logging.LogReader
+	if flagParams.Logger != nil && flagParams.Logger.Type == config.LoggingS3 && flagParams.Logger.S3 != nil {
+		log.Info().Msg("Logger is S3 — initializing S3-backed log reader")
+		s3Logger, err := logging.CreateLoggerS3(flagParams.Logger.S3)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error initializing S3 log reader")
+		}
+		logReader = logging.NewS3LogReader(s3Logger.Client, s3Logger.S3Config.Bucket)
+	} else {
+		logReader = logging.NewDBLogReader(db.Conn)
+	}
+	consolemgr.SetLogReader(logReader)
+	fileexplorermgr.SetLogReader(logReader)
 	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, nil)
 	log.Info().Msg("Loading service settings")
@@ -404,6 +421,7 @@ func osctrlAPIService() {
 
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
+		handlers.WithLogReader(logReader),
 		handlers.WithEnvs(envs),
 		handlers.WithEnvCache(envCache),
 		handlers.WithUsers(apiUsers),

@@ -26,7 +26,14 @@ const errorContent = "❌"
 const okContent = "✅"
 
 type HandlersApi struct {
-	DB              *gorm.DB
+	DB *gorm.DB
+	// LogReader is the read side of the status/result/query log store.
+	// When the TLS logger writes to S3, this is the S3-backed reader so
+	// the API can still surface logs to the frontend. When the logger
+	// writes to the DB, this is the legacy GORM-backed reader. nil falls
+	// back to h.DB via NewDBLogReader at call time so existing tests
+	// that only wire WithDB keep working.
+	LogReader       logging.LogReader
 	Users           *users.UserManager
 	Tags            *tags.TagManager
 	Envs            *environments.EnvManager
@@ -79,6 +86,15 @@ type HandlersOption func(*HandlersApi)
 func WithDB(db *gorm.DB) HandlersOption {
 	return func(h *HandlersApi) {
 		h.DB = db
+	}
+}
+
+// WithLogReader wires a LogReader (DB- or S3-backed). When unset, the
+// handlers fall back to NewDBLogReader(h.DB) so tests that only wire
+// WithDB behave as before.
+func WithLogReader(r logging.LogReader) HandlersOption {
+	return func(h *HandlersApi) {
+		h.LogReader = r
 	}
 }
 
@@ -264,4 +280,13 @@ func CreateHandlersApi(opts ...HandlersOption) *HandlersApi {
 		opt(h)
 	}
 	return h
+}
+
+// logReader returns the wired LogReader, falling back to a DB-backed
+// reader over h.DB so existing tests that only set WithDB keep working.
+func (h *HandlersApi) logReader() logging.LogReader {
+	if h.LogReader != nil {
+		return h.LogReader
+	}
+	return logging.NewDBLogReader(h.DB)
 }

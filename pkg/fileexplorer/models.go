@@ -23,13 +23,17 @@ type Session struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 	EnvironmentID uint           `gorm:"not null;index" json:"environment_id"`
-	NodeID        uint           `gorm:"not null;index" json:"node_id"`
-	NodeUUID      string         `gorm:"not null;index" json:"node_uuid"`
-	Creator       string         `gorm:"not null;index" json:"creator"`
-	Platform      string         `json:"platform"`
-	Root          string         `gorm:"not null" json:"root"`
-	Active        bool           `gorm:"not null;default:true" json:"active"`
-	ClosedAt      *time.Time     `json:"closed_at,omitempty"`
+	// Environment is the env UUID used as the S3 key prefix when the
+	// log reader is S3-backed. Populated at session creation; the DB
+	// reader ignores it.
+	Environment string     `gorm:"index" json:"environment"`
+	NodeID      uint       `gorm:"not null;index" json:"node_id"`
+	NodeUUID    string     `gorm:"not null;index" json:"node_uuid"`
+	Creator     string     `gorm:"not null;index" json:"creator"`
+	Platform    string     `json:"platform"`
+	Root        string     `gorm:"not null" json:"root"`
+	Active      bool       `gorm:"not null;default:true" json:"active"`
+	ClosedAt    *time.Time `json:"closed_at,omitempty"`
 }
 
 func (Session) TableName() string {
