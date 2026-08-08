@@ -11,6 +11,7 @@ import (
 	"github.com/jmpsec/osctrl/cmd/admin/sessions"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -20,6 +21,20 @@ import (
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
+
+func configuredLoggerTypes(cfg *config.ServiceParameters) string {
+	if cfg == nil {
+		return ""
+	}
+	return strings.Join(config.LoggerTypes(cfg.Logger), ",")
+}
+
+func configuredDBLogger(cfg *config.ServiceParameters) bool {
+	if cfg == nil {
+		return false
+	}
+	return config.LoggerHasType(cfg.Logger, config.LoggingDB)
+}
 
 // TemplateFiles for building UI layout
 type TemplateFiles struct {
@@ -632,6 +647,8 @@ func (h *HandlersAdmin) QueryLogsHandler(w http.ResponseWriter, r *http.Request)
 		Query:         query,
 		QueryTargets:  parseQueryTarget(query.Target),
 		ServiceConfig: h.Configuration,
+		LoggerTypes:   configuredLoggerTypes(h.Configuration),
+		DBLogger:      configuredDBLogger(h.Configuration),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -1107,6 +1124,8 @@ func (h *HandlersAdmin) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		Packs:         packs,
 		Schedule:      schedule,
 		ServiceConfig: h.Configuration,
+		LoggerTypes:   configuredLoggerTypes(h.Configuration),
+		DBLogger:      configuredDBLogger(h.Configuration),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")
@@ -1227,6 +1246,7 @@ func (h *HandlersAdmin) SettingsGETHandler(w http.ResponseWriter, r *http.Reques
 		Environments:    h.allowedEnvironments(ctx[sessions.CtxUser], envAll),
 		CurrentSettings: _settings,
 		ServiceConfig:   toJSONConfigurationService(svcJSON),
+		LoggerTypes:     configuredLoggerTypes(toJSONConfigurationService(svcJSON)),
 	}
 	if err := t.Execute(w, templateData); err != nil {
 		log.Err(err).Msg("template error")

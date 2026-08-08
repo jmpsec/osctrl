@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -322,7 +323,7 @@ func (conf *Settings) SetTLSJSON(cfg *config.ServiceParameters, envID uint) erro
 	if err := conf.SetJSON(config.ServiceTLS, JSONAuth, cfg.Service.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceTLS, JSONLogger, cfg.Logger.Type, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceTLS, JSONLogger, loggerSettingValue(cfg.Logger), envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(config.ServiceTLS, JSONCarver, cfg.Carver.Type, envID); err != nil {
@@ -345,13 +346,17 @@ func (conf *Settings) SetAdminJSON(cfg *config.ServiceParameters, envID uint) er
 	if err := conf.SetJSON(config.ServiceAdmin, JSONAuth, cfg.Service.Auth, envID); err != nil {
 		return err
 	}
-	if err := conf.SetJSON(config.ServiceAdmin, JSONLogger, cfg.Logger.Type, envID); err != nil {
+	if err := conf.SetJSON(config.ServiceAdmin, JSONLogger, loggerSettingValue(cfg.Logger), envID); err != nil {
 		return err
 	}
 	if err := conf.SetJSON(config.ServiceAdmin, JSONSessionKey, cfg.Admin.SessionKey, envID); err != nil {
 		return err
 	}
 	return nil
+}
+
+func loggerSettingValue(cfg *config.YAMLConfigurationLogger) string {
+	return strings.Join(config.LoggerTypes(cfg), ",")
 }
 
 // SetAPIJSON sets all the JSON configuration values for API service

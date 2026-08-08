@@ -1,8 +1,6 @@
 package config
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Valid values for authentication in configuration
 var validAuth = map[string]bool{
@@ -20,6 +18,7 @@ var validLogging = map[string]bool{
 	LoggingLogstash: true,
 	LoggingKinesis:  true,
 	LoggingS3:       true,
+	LoggingKafka:    true,
 	LoggingElastic:  true,
 }
 
@@ -36,7 +35,13 @@ func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 	if !validAuth[cfg.Service.Auth] {
 		return fmt.Errorf("invalid auth method: %s", cfg.Service.Auth)
 	}
-	if !validLogging[cfg.Logger.Type] {
+	if len(cfg.Logger.Types) > 0 {
+		for _, loggingType := range LoggerTypes(&cfg.Logger) {
+			if !validLogging[loggingType] {
+				return fmt.Errorf("invalid logging method: %s", loggingType)
+			}
+		}
+	} else if !validLogging[cfg.Logger.Type] {
 		return fmt.Errorf("invalid logging method: %s", cfg.Logger.Type)
 	}
 	if !validCarver[cfg.Carver.Type] {

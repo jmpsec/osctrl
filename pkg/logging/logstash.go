@@ -113,6 +113,7 @@ func (logLS *LoggerLogstash) SendUDP(logType string, data []byte, environment, u
 	conn, err := net.Dial("udp", connAddr)
 	if err != nil {
 		log.Err(err).Msg("Error connecting to Logstash")
+		return
 	}
 	defer conn.Close()
 	_, err = conn.Write(data)
@@ -136,6 +137,7 @@ func (logLS *LoggerLogstash) SendTCP(logType string, data []byte, environment, u
 	conn, err := net.Dial("tcp", connAddr)
 	if err != nil {
 		log.Err(err).Msg("Error connecting to Logstash")
+		return
 	}
 	defer conn.Close()
 	_, err = conn.Write(data)

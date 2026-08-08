@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // S3Logger to hold all S3 configuration values
 type S3Logger struct {
@@ -93,4 +96,44 @@ type LocalLogger struct {
 	MaxAge int `yaml:"maxAge"`
 	// If the rotated log files should be compressed using gzip
 	Compress bool `yaml:"compress"`
+}
+
+// LoggerTypes returns the normalized configured logger/exporter destinations.
+// The legacy single Type value is used when Types is empty.
+func LoggerTypes(cfg *YAMLConfigurationLogger) []string {
+	if cfg == nil {
+		return []string{LoggingDB}
+	}
+	values := cfg.Types
+	if len(values) == 0 {
+		values = []string{cfg.Type}
+	}
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	if len(out) == 0 {
+		return []string{LoggingDB}
+	}
+	return out
+}
+
+// LoggerHasType reports whether a logger/exporter destination is configured.
+func LoggerHasType(cfg *YAMLConfigurationLogger, loggerType string) bool {
+	loggerType = strings.ToLower(strings.TrimSpace(loggerType))
+	for _, configured := range LoggerTypes(cfg) {
+		if configured == loggerType {
+			return true
+		}
+	}
+	return false
 }
