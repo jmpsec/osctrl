@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listServiceSettings,
+  listServiceJSONSettings,
   patchSetting,
   type SettingValue,
   type SettingType,
@@ -17,7 +18,7 @@ import { formatRelative } from '$/lib/time';
 // Services are constant in the backend (pkg/settings.ValidServices = {tls, admin, api}).
 // The raw values are the strings the API accepts on /api/v1/settings/{service};
 // the user-facing labels add the `osctrl-` prefix for readability.
-const SERVICES = ['tls', 'admin', 'api'] as const;
+const SERVICES = ['api', 'tls'] as const;
 type Service = (typeof SERVICES)[number];
 const HIDDEN_SETTINGS_BY_SERVICE: Partial<Record<Service, ReadonlySet<string>>> = {
   tls: new Set(['refresh_envs']),
@@ -28,19 +29,41 @@ export function SettingsPage() {
   usePageTitle('Settings');
   const params = useParams({ strict: false });
   const navigate = useNavigate();
-  const serviceParam = (params as { service?: string }).service ?? 'admin';
+  const serviceParam = (params as { service?: string }).service ?? 'api';
   const service = (SERVICES as readonly string[]).includes(serviceParam)
     ? (serviceParam as Service)
-    : 'admin';
+    : 'api';
 
   const qc = useQueryClient();
-  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['settings', service],
     queryFn: () => listServiceSettings(service),
     staleTime: 30_000,
   });
+  const {
+    data: configData,
+    isLoading: isConfigLoading,
+    isFetching: isConfigFetching,
+    isError: isConfigError,
+    error: configError,
+    refetch: refetchConfig,
+  } = useQuery({
+    queryKey: ['settings', service, 'json'],
+    queryFn: () => listServiceJSONSettings(service),
+    staleTime: 30_000,
+  });
 
-  if (isError && error instanceof AuthError) {
+  if (
+    (isError && error instanceof AuthError) ||
+    (isConfigError && configError instanceof AuthError)
+  ) {
     void navigate({ to: '/login' });
     return null;
   }
@@ -48,6 +71,11 @@ export function SettingsPage() {
   const items = (data ?? []).filter(
     (setting) => !HIDDEN_SETTINGS_BY_SERVICE[service]?.has(setting.Name),
   );
+  const flagParameters = configData ?? [];
+  const loading = isLoading || isConfigLoading;
+  const fetching = isFetching || isConfigFetching;
+  const hasError = isError || isConfigError;
+  const pageError = error ?? configError;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -57,7 +85,7 @@ export function SettingsPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Settings
         </h1>
-        {isFetching && !isLoading && (
+        {fetching && !loading && (
           <span
             aria-live="polite"
             aria-label="Refreshing data"
@@ -98,7 +126,7 @@ export function SettingsPage() {
       </div>
 
       <div className="flex-1 overflow-auto min-h-0 p-4">
-        {isLoading && (
+        {loading && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full" />
@@ -106,7 +134,7 @@ export function SettingsPage() {
           </div>
         )}
 
-        {isError && !isLoading && (
+        {hasError && !loading && (
           <EmptyState
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -114,11 +142,14 @@ export function SettingsPage() {
                 <path d="M12 8v4M12 16h.01" />
               </svg>
             }
-            title={error instanceof Error ? error.message : 'Failed to load settings'}
+            title={pageError instanceof Error ? pageError.message : 'Failed to load settings'}
             action={
               <button
                 type="button"
-                onClick={() => void refetch()}
+                onClick={() => {
+                  void refetch();
+                  void refetchConfig();
+                }}
                 className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
               >
                 Retry
@@ -127,7 +158,7 @@ export function SettingsPage() {
           />
         )}
 
-        {!isLoading && !isError && items.length === 0 && (
+        {!loading && !hasError && items.length === 0 && flagParameters.length === 0 && (
           <EmptyState
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -138,21 +169,80 @@ export function SettingsPage() {
           />
         )}
 
-        {!isLoading && !isError && items.length > 0 && (
-          <div className="space-y-2">
-            {items.map((s) => (
-              <SettingRow
-                key={s.ID}
-                setting={s}
-                service={service}
-                onSaved={() => qc.invalidateQueries({ queryKey: ['settings', service] })}
-              />
-            ))}
+        {!loading && !hasError && (items.length > 0 || flagParameters.length > 0) && (
+          <div className="space-y-4">
+            {flagParameters.length > 0 && (
+              <SettingsTable title="Flag Parameters" settings={flagParameters} />
+            )}
+            {items.length > 0 && (
+              <section aria-labelledby="settings-updatable-heading" className="space-y-2">
+                <h2
+                  id="settings-updatable-heading"
+                  className="font-display text-sm font-semibold text-[color:var(--text-1)]"
+                >
+                  Settings
+                </h2>
+                {items.map((s) => (
+                  <SettingRow
+                    key={s.ID}
+                    setting={s}
+                    service={service}
+                    onSaved={() => qc.invalidateQueries({ queryKey: ['settings', service] })}
+                  />
+                ))}
+              </section>
+            )}
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function SettingsTable({ title, settings }: { title: string; settings: SettingValue[] }) {
+  return (
+    <section
+      aria-labelledby={`settings-${title.toLowerCase()}-heading`}
+      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+    >
+      <header className="px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
+        <h2
+          id={`settings-${title.toLowerCase()}-heading`}
+          className="font-display text-sm font-semibold text-[color:var(--text-1)]"
+        >
+          {title}
+        </h2>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)]">
+            <tr>
+              <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {settings.map((setting) => (
+              <tr key={setting.ID} className="border-t border-[color:var(--border)]">
+                <td className="px-3 py-2 font-mono-tabular text-[color:var(--text-1)]">
+                  {setting.Name}
+                </td>
+                <td className="px-3 py-2 font-mono-tabular text-[color:var(--text-2)]">
+                  {settingValue(setting)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function settingValue(setting: SettingValue) {
+  if (setting.Type === 'boolean') return setting.Boolean ? 'true' : 'false';
+  if (setting.Type === 'integer') return String(setting.Integer);
+  return setting.String;
 }
 
 function SettingRow({
@@ -191,7 +281,6 @@ function SettingRow({
         case 'integer':
           return patchSetting(service, setting.Name, { integer: pendingInt });
         default: {
-          // unreachable: SettingType is exhaustive
           const _exhaustive: never = setting.Type as never;
           throw new Error(`Unsupported setting type: ${String(_exhaustive)}`);
         }
@@ -216,12 +305,6 @@ function SettingRow({
     },
   });
 
-  // Section-style chrome matching EnvConfigPage: rounded card with a
-  // bg-0 header strip holding name + type chip + info + dirty/save
-  // controls, body underneath. Per-row Save is intentionally preserved
-  // (the settings list is a flat catalogue of unrelated knobs, so
-  // saving the whole list at once would be a worse UX than saving
-  // each one when ready).
   return (
     <section
       className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
