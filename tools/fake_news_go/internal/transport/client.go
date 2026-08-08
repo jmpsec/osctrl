@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -32,10 +33,25 @@ func New(doer Doer) *Client {
 	return &Client{doer: doer}
 }
 
+// maxResponseBodySize caps how much of a response body we read into memory.
+// 4 MiB is generous for osctrl-tls JSON responses (enroll/config/query-read
+// are all small) while preventing a malformed or hostile server from
+// exhausting memory when thousands of simulated nodes are running.
+const maxResponseBodySize = 4 << 20
+
 func NewDefault(insecure bool) *Client {
 	return New(&http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: insecure},
+			MaxIdleConns:        2000,
+			MaxIdleConnsPerHost: 2000,
+			MaxConnsPerHost:     0,
+			IdleConnTimeout:     90 * time.Second,
+			DialContext: (&net.Dialer{
+				Timeout:   10 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2: true,
 		},
 		Timeout: 30 * time.Second,
 	})
@@ -81,7 +97,7 @@ func (c *Client) doJSON(req *http.Request) (JSONResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return JSONResponse{StatusCode: resp.StatusCode}, err
 	}
