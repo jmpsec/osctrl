@@ -809,8 +809,13 @@ func configRequest(ctx context.Context, client *HTTPClient, node *Node, urls map
 	}
 }
 
-// queryRead sends query read requests for a node
-func queryRead(ctx context.Context, client *HTTPClient, node *Node, urls map[string]string, secret string, interval time.Duration, mutex *sync.Mutex, config FakeNewsConfig) {
+// queryRead sends query read requests for a node. writeSem caps the
+// number of concurrent queryWrite goroutines spawned per node so a
+// server flooding queries to 10k nodes doesn't produce 10k+ transient
+// goroutines hitting /write simultaneously (a thundering herd that
+// doesn't reflect real osquery behavior, which processes queries
+// serially per node).
+func queryRead(ctx context.Context, client *HTTPClient, node *Node, urls map[string]string, secret string, interval time.Duration, mutex *sync.Mutex, config FakeNewsConfig, writeSem chan struct{}) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -851,7 +856,22 @@ func queryRead(ctx context.Context, client *HTTPClient, node *Node, urls map[str
 
 			if queries, ok := resp["queries"].(map[string]interface{}); ok && len(queries) > 0 {
 				for queryName, query := range queries {
-					go queryWrite(client, node, queryName, query, urls["write"], config)
+					// Acquire the semaphore before spawning the write
+					// goroutine. If the cap is reached we skip this
+					// query cycle rather than blocking the read loop —
+					// real osquery would queue it internally and
+					// respond on the next read.
+					select {
+					case writeSem <- struct{}{}:
+						go func(name, q interface{}) {
+							defer func() { <-writeSem }()
+							queryWrite(client, node, name.(string), q, urls["write"], config)
+						}(queryName, query)
+					default:
+						if config.OutputMode == VerboseMode {
+							fmt.Printf("query write semaphore full for %s, skipping %s\n", node.Name, queryName)
+						}
+					}
 				}
 			}
 		}
@@ -922,14 +942,34 @@ func loadNodesFromFile(filename string) ([]Node, error) {
 	return nodes, nil
 }
 
-// saveNodesToFile saves nodes to a JSON file
+// saveNodesToFile saves nodes to a JSON file atomically by writing to
+// a temp file in the same directory and renaming on success. This
+// prevents a crash or signal during the write from leaving a
+// truncated/corrupt state file — at 10,000 nodes a corrupt state file
+// means losing all accumulated node keys and re-enrolling every node
+// with new UUIDs on restart.
 func saveNodesToFile(nodes []Node, filename string) error {
 	data, err := json.MarshalIndent(nodes, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filename, data, 0644)
+	dir := filepath.Dir(filename)
+	tmp, err := os.CreateTemp(dir, ".fake_news_state_*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, filename)
 }
 
 // AddLatency adds a latency measurement to the statistics
@@ -1039,19 +1079,20 @@ func (gs *GlobalStats) RecordOperation(opType OperationType, latency time.Durati
 	gs.mu.Unlock()
 }
 
-// RecordURLOperation records an operation for a specific URL
+// RecordURLOperation records an operation for a specific URL. It only
+// takes the per-URL mutex (not the outer GlobalStats mutex) to avoid
+// nested locking on every request — at 10,000 nodes the double lock
+// was a contention bottleneck. lastUpdate is updated best-effort under
+// the URL mutex.
 func (gs *GlobalStats) RecordURLOperation(url string, latency time.Duration, success bool) {
-	gs.mu.Lock()
 	gs.urls.mu.Lock()
+	defer gs.urls.mu.Unlock()
 
 	if gs.urls.stats[url] == nil {
 		gs.urls.stats[url] = &LatencyStats{}
 	}
 	gs.urls.stats[url].AddLatency(latency, success)
 	gs.lastUpdate = time.Now()
-
-	gs.urls.mu.Unlock()
-	gs.mu.Unlock()
 }
 
 // GetURLStats returns statistics for all URLs
@@ -1574,18 +1615,45 @@ func (d *dashboardSession) Events() <-chan ui.Event {
 	return d.events
 }
 
+// enrollNodes enrolls all nodes that lack a key. Enrollment is done
+// concurrently with a bounded parallelism cap so 10,000 nodes don't
+// take 10,000 sequential HTTP round-trips to start. The cap of 100
+// keeps the TLS server's enroll handler from being overwhelmed at
+// startup while still finishing in seconds rather than minutes.
 func enrollNodes(client *HTTPClient, nodes []Node, secret string, urls map[string]string, config FakeNewsConfig) {
+	const maxConcurrency = 100
+	sem := make(chan struct{}, maxConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
 	for i := range nodes {
-		if nodes[i].Key == "" {
-			nodes[i].Key = enrollNode(client, nodes[i], secret, urls["enroll"], config)
+		if nodes[i].Key != "" {
+			continue
 		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			key := enrollNode(client, nodes[idx], secret, urls["enroll"], config)
+			mu.Lock()
+			nodes[idx].Key = key
+			mu.Unlock()
+		}(i)
 	}
+	wg.Wait()
 }
 
 func startTraffic(ctx context.Context, client *HTTPClient, nodes []Node, urls map[string]string, config FakeNewsConfig) {
 	var mutex sync.Mutex
 
 	for i := range nodes {
+		// Per-node write semaphore: caps concurrent queryWrite
+		// goroutines so a query flood doesn't produce a thundering
+		// herd against /write. 2 allows a small amount of pipelining
+		// while staying close to real osquery's serial-per-node
+		// processing.
+		writeSem := make(chan struct{}, 2)
 		go logStatus(ctx, client, &nodes[i], urls, config.Secret,
 			time.Duration(config.StatusInterval)*time.Second, &mutex, config)
 		go logResult(ctx, client, &nodes[i], urls, config.Secret,
@@ -1593,7 +1661,7 @@ func startTraffic(ctx context.Context, client *HTTPClient, nodes []Node, urls ma
 		go configRequest(ctx, client, &nodes[i], urls, config.Secret,
 			time.Duration(config.ConfigInterval)*time.Second, &mutex, config)
 		go queryRead(ctx, client, &nodes[i], urls, config.Secret,
-			time.Duration(config.QueryInterval)*time.Second, &mutex, config)
+			time.Duration(config.QueryInterval)*time.Second, &mutex, config, writeSem)
 	}
 }
 
