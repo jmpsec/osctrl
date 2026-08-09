@@ -298,6 +298,55 @@ func sectionNames(rows []ServiceConfig) map[string]bool {
 	return out
 }
 
+// Seed must sync the Editable flag from the registry to existing rows.
+// This is the regression for the bug where rows seeded before a section was
+// marked editable kept the stale Editable=false, so the frontend never
+// showed the Edit button even though the registry said it was editable.
+func TestSeed_SyncsEditableFlagToExistingRows(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+
+	// Seed with all sections non-editable by temporarily swapping the
+	// registry. We can't easily swap the global, so instead we manually
+	// insert rows with Editable=false and then re-seed — the sync should
+	// flip the debug row's Editable to true.
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Force the debug row's Editable to false (simulating a stale row
+	// from before debug was marked editable).
+	require.NoError(t, db.Model(&ServiceConfig{}).
+		Where("service = ? AND name = ?", config.ServiceTLS, "debug").
+		Update("editable", false).Error)
+
+	// Re-seed — the sync must flip Editable back to true.
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	sc, err := m.GetSection(config.ServiceTLS, "debug", 0)
+	require.NoError(t, err)
+	assert.True(t, sc.Editable, "Seed must sync Editable=true for debug section to existing rows")
+}
+
+// Seed must sync the Info text from the registry to existing rows.
+func TestSeed_SyncsInfoToExistingRows(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Corrupt the info on the service row.
+	require.NoError(t, db.Model(&ServiceConfig{}).
+		Where("service = ? AND name = ?", config.ServiceTLS, "service").
+		Update("info", "stale info").Error)
+
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	sc, err := m.GetSection(config.ServiceTLS, "service", 0)
+	require.NoError(t, err)
+	assert.Equal(t, "Core service listener, port, log level, auth mode", sc.Info)
+}
+
 // UpdateSection must update the value and flip source to "db" for an editable
 // section.
 func TestUpdateSection_Success(t *testing.T) {

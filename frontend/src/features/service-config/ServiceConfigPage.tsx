@@ -1,8 +1,13 @@
+import { useState, useEffect } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { listServiceConfig, type ServiceConfig } from '$/api/service-config';
-import { AuthError } from '$/api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  listServiceConfig,
+  updateServiceConfig,
+  type ServiceConfig,
+} from '$/api/service-config';
+import { AuthError, ApiError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
@@ -21,6 +26,7 @@ export function ServiceConfigPage() {
     ? (serviceParam as Service)
     : 'api';
 
+  const qc = useQueryClient();
   const {
     data,
     isLoading,
@@ -134,7 +140,12 @@ export function ServiceConfigPage() {
         {!loading && !hasError && sections.length > 0 && (
           <div className="space-y-3">
             {sections.map((s) => (
-              <ConfigSectionCard key={s.ID} section={s} />
+              <ConfigSectionCard
+                key={s.ID}
+                section={s}
+                service={service}
+                onSaved={() => qc.invalidateQueries({ queryKey: ['service-config', service] })}
+              />
             ))}
           </div>
         )}
@@ -143,14 +154,81 @@ export function ServiceConfigPage() {
   );
 }
 
-function ConfigSectionCard({ section }: { section: ServiceConfig }) {
-  // Pretty-print the JSON so the Monaco viewer gets syntax-highlighted,
-  // folded, scrollable content instead of a single long line.
-  let prettyValue = section.Value;
+function prettyPrint(value: string): string {
   try {
-    prettyValue = JSON.stringify(JSON.parse(section.Value), null, 2);
+    return JSON.stringify(JSON.parse(value), null, 2);
   } catch {
-    // not JSON — show raw
+    return value;
+  }
+}
+
+function ConfigSectionCard({
+  section,
+  service,
+  onSaved,
+}: {
+  section: ServiceConfig;
+  service: string;
+  onSaved: () => void;
+}) {
+  const storedPretty = prettyPrint(section.Value);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(storedPretty);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Reset draft when the section value changes externally (e.g. after a
+  // refetch invalidates the query and new data arrives), but only when not
+  // actively editing so we don't clobber unsaved changes.
+  useEffect(() => {
+    if (!editing) {
+      setDraft(storedPretty);
+    }
+  }, [storedPretty, editing]);
+
+  const dirty = editing && draft !== storedPretty;
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      // Parse the draft so we send a raw JSON object, not a pre-serialized
+      // string. The backend expects { "value": {...} }.
+      const parsed = JSON.parse(draft);
+      return updateServiceConfig(service, section.Name, { value: parsed });
+    },
+    onSuccess: () => {
+      setErr(null);
+      setEditing(false);
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1200);
+      onSaved();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      if (e instanceof ApiError && e.status === 409) {
+        setErr('Section is not editable.');
+        return;
+      }
+      if (e instanceof ApiError && e.status === 400) {
+        setErr('Invalid JSON value.');
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Save failed');
+    },
+  });
+
+  function handleCancel() {
+    setEditing(false);
+    setDraft(storedPretty);
+    setErr(null);
+  }
+
+  function handleEdit() {
+    setEditing(true);
+    setDraft(storedPretty);
+    setErr(null);
   }
 
   return (
@@ -192,22 +270,70 @@ function ConfigSectionCard({ section }: { section: ServiceConfig }) {
           </p>
         )}
         {!section.Info && <div className="flex-1" />}
+        {dirty && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
+            pending
+          </span>
+        )}
         <span
           className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap"
           title={section.UpdatedAt}
         >
           updated {formatRelative(section.UpdatedAt)}
         </span>
+        {section.Editable && !editing && (
+          <button
+            type="button"
+            onClick={handleEdit}
+            className="text-[10px] px-2 py-0.5 rounded font-medium border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors"
+          >
+            Edit
+          </button>
+        )}
+        {editing && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={!dirty || mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className={cn(
+                'text-[10px] px-2 py-0.5 rounded font-medium',
+                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                'disabled:opacity-40 disabled:cursor-not-allowed',
+              )}
+            >
+              {mutation.isPending ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={mutation.isPending}
+              className="text-[10px] px-2 py-0.5 rounded font-medium border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="p-3">
         <CodeEditor
-          value={prettyValue}
+          value={editing ? draft : storedPretty}
+          onChange={editing ? (v) => setDraft(v ?? '') : undefined}
           language="json"
-          readOnly
+          readOnly={!editing}
           height="200px"
           aria-label={`Configuration section ${section.Name}`}
         />
+
+        {err && (
+          <p
+            role="alert"
+            className="mt-2 text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-1.5 rounded-md"
+          >
+            {err}
+          </p>
+        )}
       </div>
     </section>
   );
